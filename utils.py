@@ -1,14 +1,40 @@
 import smtplib, ssl, random
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from models import db # Import Firebase DB
 
 # --- CONFIGURATION ---
-SMTP_EMAIL = "sapthhack@gmail.com"  # Update this
-SMTP_PASSWORD = "bbcw iimk ghvu pvof" # Update this
-otp_storage = {}
+SMTP_EMAIL = "sapthhack@gmail.com"  
+SMTP_PASSWORD = "bbcw iimk ghvu pvof" 
 
-def generate_otp():
-    return str(random.randint(100000, 999999))
+def generate_otp(email):
+    """Generates a 6-digit OTP and saves it to Firestore."""
+    otp = str(random.randint(100000, 999999))
+    
+    # Save to Firebase (Collection: 'otps')
+    # This ensures OTPs survive if the server restarts
+    try:
+        db.collection('otps').document(email).set({
+            'otp': otp
+        })
+    except Exception as e:
+        print(f"Error saving OTP to DB: {e}")
+        
+    return otp
+
+def verify_otp_logic(email, user_input):
+    """Helper to verify OTP from Firestore"""
+    try:
+        doc = db.collection('otps').document(email).get()
+        if doc.exists:
+            stored_otp = doc.to_dict().get('otp')
+            if str(stored_otp) == str(user_input):
+                # Optional: Delete OTP after successful use
+                db.collection('otps').document(email).delete()
+                return True
+    except Exception as e:
+        print(f"OTP Verify Error: {e}")
+    return False
 
 def send_email(to_email, subject, body_html):
     msg = MIMEMultipart()
@@ -18,17 +44,17 @@ def send_email(to_email, subject, body_html):
     msg.attach(MIMEText(body_html, 'html'))
 
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
-        server.quit()
+        context = ssl.create_default_context()
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls(context=context)
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
         return True
     except Exception as e:
         print(f"Email Error: {e}")
         return False
 
-# --- NEW: AI ANALYSIS ENGINE ---
+# --- AI ANALYSIS ENGINE ---
 def ai_analyze_domain(text):
     """
     Scans the problem statement and returns detected Tech Stacks.

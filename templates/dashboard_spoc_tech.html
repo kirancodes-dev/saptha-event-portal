@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold text-dark">Technical Event Manager</h2>
+        <p class="text-muted mb-0">Club SPOC Dashboard <span class="badge bg-primary ms-2">TECH</span></p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#createTechModal">
+            <i class="fas fa-plus me-2"></i>Create Tech Event
+        </button>
+    </div>
+</div>
+
+<div class="row g-3 mb-5">
+    <div class="col-md-4"><div class="card p-4 border-start border-4 border-primary h-100 shadow-sm"><h6 class="text-muted text-uppercase fw-bold small">Active Events</h6><h2 class="mb-0 fw-bold text-primary">{{ events|length }}</h2></div></div>
+    <div class="col-md-4"><div class="card p-4 border-start border-4 border-warning h-100 shadow-sm"><h6 class="text-muted text-uppercase fw-bold small">Total Registrations</h6><h2 class="mb-0 fw-bold text-dark">{{ total_regs }}</h2></div></div>
+    <div class="col-md-4"><div class="card p-4 border-start border-4 border-success h-100 shadow-sm"><h6 class="text-muted text-uppercase fw-bold small">Completed</h6><h2 class="mb-0 fw-bold text-success">0</h2></div></div>
+</div>
+
+<h5 class="fw-bold text-dark mb-3 ps-2 border-start border-4 border-dark">My Technical Events</h5>
+
+{% for event in events %}
+<div class="card mb-4 shadow-sm border-0 rounded-3 overflow-hidden">
+    <div class="card-header bg-white p-4 border-bottom d-flex justify-content-between align-items-start">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h4 class="fw-bold text-dark mb-0">{{ event.name }}</h4>
+                <span class="badge {{ 'bg-success' if event.is_published else 'bg-secondary' }}">
+                    {{ 'LIVE' if event.is_published else 'DRAFT' }}
+                </span>
+                <span class="badge bg-light text-dark border">{{ event.event_mode }}</span>
+            </div>
+            <div class="text-muted small">
+                <i class="far fa-calendar me-2"></i>{{ event.date.strftime('%d %b %Y') }} 
+                <span class="mx-2">|</span>
+                <i class="fas fa-map-marker-alt me-2"></i>{{ event.venue or 'TBA' }}
+            </div>
+        </div>
+        <div class="text-end d-none d-md-block">
+            <div class="d-flex flex-column gap-1 align-items-end">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Student Coord</span>
+                    <span class="badge bg-light text-dark border"><i class="fas fa-user-graduate me-1"></i>{{ get_coord_name(event.coord_student_id) }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Faculty Coord</span>
+                    <span class="badge bg-light text-dark border"><i class="fas fa-chalkboard-teacher me-1"></i>{{ get_coord_name(event.coord_staff_id) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body bg-light p-3 d-flex justify-content-between align-items-center">
+        <form action="/spoc/toggle_publish/{{ event.id }}" method="POST">
+            <button class="btn btn-sm btn-outline-dark fw-bold" type="submit">{{ 'Unpublish' if event.is_published else 'Publish' }}</button>
+        </form>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-white border fw-bold text-primary" data-bs-toggle="modal" data-bs-target="#editTechModal{{ event.id }}"><i class="fas fa-edit me-1"></i> Edit</button>
+            <button class="btn btn-sm btn-white border fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#coordModal{{ event.id }}"><i class="fas fa-users-cog me-1"></i> Coords</button>
+            <button class="btn btn-sm btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#judgeModal{{ event.id }}"><i class="fas fa-gavel me-1"></i> Judges</button>
+            <a href="/spoc/export_csv/{{ event.id }}" class="btn btn-sm btn-success fw-bold"><i class="fas fa-file-csv me-1"></i> CSV</a>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editTechModal{{ event.id }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">Edit Tech Event</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4">
+                    <form action="/spoc/edit_event/{{ event.id }}" method="POST">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6"><label class="form-label small fw-bold">Title</label><input type="text" name="name" class="form-control" value="{{ event.name }}"></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold">Date</label><input type="datetime-local" name="date" class="form-control" value="{{ event.date.strftime('%Y-%m-%dT%H:%M') }}"></div>
+                            <div class="col-md-3"><label class="form-label small fw-bold">Deadline</label><input type="datetime-local" name="reg_deadline" class="form-control" value="{{ event.reg_deadline.strftime('%Y-%m-%dT%H:%M') if event.reg_deadline else '' }}"></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold">Mode</label><select name="event_mode" class="form-select"><option value="Offline" {% if event.event_mode=='Offline' %}selected{% endif %}>Offline</option><option value="Online" {% if event.event_mode=='Online' %}selected{% endif %}>Online</option><option value="Hybrid" {% if event.event_mode=='Hybrid' %}selected{% endif %}>Hybrid</option></select></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold">Venue/Link</label><input type="text" name="venue" class="form-control" value="{{ event.venue }}"></div>
+                        </div>
+                        <div class="modal-footer px-0 pb-0 mt-4"><button class="btn btn-primary w-100 fw-bold" type="submit">Save Changes</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="coordModal{{ event.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white"><h5 class="modal-title">Assign Coordinators</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <form action="/spoc/assign_coordinators" method="POST">
+                    <div class="modal-body p-4">
+                        <input type="hidden" name="event_id" value="{{ event.id }}">
+                        <div class="mb-3"><label class="small fw-bold text-primary">Student Coordinator</label><input type="text" name="stu_name" class="form-control mb-2" placeholder="Name" value="{{ get_coord_name(event.coord_student_id) if get_coord_name(event.coord_student_id) != 'Not Assigned' else '' }}" required><input type="email" name="stu_email" class="form-control" placeholder="Email" required></div>
+                        <hr>
+                        <div class="mb-3"><label class="small fw-bold text-primary">Faculty Coordinator</label><input type="text" name="staff_name" class="form-control mb-2" placeholder="Name" value="{{ get_coord_name(event.coord_staff_id) if get_coord_name(event.coord_staff_id) != 'Not Assigned' else '' }}" required><input type="email" name="staff_email" class="form-control" placeholder="Email" required></div>
+                    </div>
+                    <div class="modal-footer"><button class="btn btn-primary w-100" type="submit">Save</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="judgeModal{{ event.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white"><h5 class="modal-title">Manage Judges</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4">
+                    <h6 class="small text-muted mb-3">Assigned Judges</h6>
+                    <ul class="list-group mb-4">
+                        {% for judge in event.judges %}
+                        <li class="list-group-item d-flex justify-content-between"><div><strong>{{ judge.name }}</strong><br><small>{{ judge.email }}</small></div>
+                        <form action="/spoc/remove_judge" method="POST"><input type="hidden" name="judge_id" value="{{ judge.id }}"><button class="btn btn-sm btn-outline-danger" type="submit"><i class="fas fa-trash"></i></button></form></li>
+                        {% else %} <li class="list-group-item text-center text-muted">No judges assigned.</li> {% endfor %}
+                    </ul>
+                    <h6 class="small text-primary border-top pt-3">Add Judge</h6>
+                    <form action="/spoc/assign_judge" method="POST">
+                        <input type="hidden" name="event_id" value="{{ event.id }}">
+                        <div class="row g-2 mb-2"><div class="col"><input type="text" name="name" class="form-control" placeholder="Name" required></div><div class="col"><input type="text" name="expertise" class="form-control" placeholder="Expertise"></div></div>
+                        <input type="email" name="email" class="form-control mb-2" placeholder="Email" required>
+                        <button class="btn btn-dark w-100">Assign</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">No technical events created yet.</div>
+{% endfor %}
+
+<div class="modal fade" id="createTechModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">Create Technical Event</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form action="/spoc/create_event" method="POST">
+                    
+                    <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">1. Basic Details & Mode</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Event Title</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Event Mode</label>
+                            <select name="event_mode" class="form-select" onchange="toggleVenue(this)">
+                                <option value="Offline">Offline (On Campus)</option>
+                                <option value="Online">Online (Virtual)</option>
+                                <option value="Hybrid">Hybrid</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Date</label>
+                            <input type="datetime-local" name="date" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Reg Deadline</label>
+                            <input type="datetime-local" name="reg_deadline" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold" id="venueLabel">Venue (Room/Hall)</label>
+                            <input type="text" name="venue" class="form-control" placeholder="e.g. Auditorium">
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4">2. Participation Logic</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Type</label>
+                            <select name="event_type" class="form-select" onchange="toggleTeamConfig(this)">
+                                <option value="Team">Team Based</option>
+                                <option value="Individual">Individual</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Max Capacity</label>
+                            <input type="number" name="max_participants" class="form-control" value="100">
+                        </div>
+                        <div class="col-md-2 team-field">
+                            <label class="form-label small fw-bold">Min Team</label>
+                            <input type="number" name="team_min" class="form-control" value="1">
+                        </div>
+                        <div class="col-md-2 team-field">
+                            <label class="form-label small fw-bold">Max Team</label>
+                            <input type="number" name="team_max" class="form-control" value="4">
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-warning border-bottom pb-2 mb-3 mt-4">3. Tech Configuration</h6>
+                    <div class="bg-light p-3 rounded mb-3 border">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Problem Statement Mode</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input ps-mode" type="radio" name="tech_problem_type" value="Predefined" id="createPre" checked onchange="togglePsFields(this)">
+                                    <label class="form-check-label small" for="createPre">Fixed List (Upload Link)</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input ps-mode" type="radio" name="tech_problem_type" value="Open" id="createOpen" onchange="togglePsFields(this)">
+                                    <label class="form-check-label small" for="createOpen">Student Choice (Open)</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 field-predefined">
+                            <label class="form-label small fw-bold">Link to Problem Statements (Drive/PDF)</label>
+                            <input type="url" name="problem_stmt_link" class="form-control">
+                        </div>
+                        <div class="mb-3 field-open d-none">
+                            <label class="form-label small fw-bold">Allowed Tech Domains</label>
+                            <input type="text" name="tech_domain" class="form-control" placeholder="AI, Blockchain, IoT...">
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold">Allowed Submission Formats</label><br>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="sub_formats" value="GitHub" checked> <label class="form-check-label small">GitHub</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="sub_formats" value="Drive"> <label class="form-check-label small">Drive Link</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="sub_formats" value="PPT"> <label class="form-check-label small">PPT/PDF</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="sub_formats" value="ZIP"> <label class="form-check-label small">ZIP File</label>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold">Rounds (Optional)</label>
+                                <input type="text" name="rounds_config" class="form-control" placeholder="e.g. Round 1: Idea Submission -> Round 2: Final Hack">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4">4. Evaluation Criteria (%)</h6>
+                    <div class="row g-2 text-center mb-3">
+                        <div class="col"><small>Innovation</small><input type="number" name="eval_innovation" class="form-control form-control-sm" value="25"></div>
+                        <div class="col"><small>Tech</small><input type="number" name="eval_tech_complexity" class="form-control form-control-sm" value="25"></div>
+                        <div class="col"><small>Feasible</small><input type="number" name="eval_feasibility" class="form-control form-control-sm" value="20"></div>
+                        <div class="col"><small>Present</small><input type="number" name="eval_presentation" class="form-control form-control-sm" value="15"></div>
+                        <div class="col"><small>Impact</small><input type="number" name="eval_impact" class="form-control form-control-sm" value="15"></div>
+                    </div>
+
+                    <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4">5. Content & Assets</h6>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Overview</label>
+                        <textarea name="overview" class="form-control" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Rules</label>
+                        <textarea name="rules" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label small fw-bold">Prizes</label><input type="text" name="prizes" class="form-control" placeholder="e.g. $500"></div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">Image URL</label><input type="url" name="image_url" class="form-control"></div>
+                    </div>
+
+                    <div class="modal-footer px-0 pb-0 mt-4">
+                        <button class="btn btn-warning w-100 fw-bold" type="submit">Publish Event</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleTeamConfig(selectElement) {
+        const form = selectElement.closest('form');
+        const teamFields = form.querySelectorAll('.team-field');
+        if (selectElement.value === 'Individual') { teamFields.forEach(field => field.style.display = 'none'); } 
+        else { teamFields.forEach(field => field.style.display = 'block'); }
+    }
+    
+    function togglePsFields(radioElement) {
+        const form = radioElement.closest('form');
+        const preField = form.querySelector('.field-predefined');
+        const openField = form.querySelector('.field-open');
+        if (radioElement.value === 'Predefined') { preField.classList.remove('d-none'); openField.classList.add('d-none'); } 
+        else { preField.classList.add('d-none'); openField.classList.remove('d-none'); }
+    }
+
+    function toggleVenue(selectElement) {
+        const label = document.getElementById('venueLabel');
+        if (selectElement.value === 'Online') { label.innerText = 'Meeting Link / Platform'; }
+        else { label.innerText = 'Venue (Room/Hall)'; }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('select[name="event_type"]').forEach(select => toggleTeamConfig(select));
+        document.querySelectorAll('input[type=radio][name="tech_problem_type"]:checked').forEach(radio => togglePsFields(radio));
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block content_home %}
+
+<style>
+    /* === PAGE STYLES === */
+    :root {
+        --card-border-radius: 12px;
+    }
+
+    /* CALENDAR WIDGET */
+    .calendar-widget {
+        background: white;
+        border-radius: var(--card-border-radius);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .calendar-header {
+        background: var(--primary-color);
+        color: white;
+        padding: 15px;
+        text-align: center;
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        padding: 15px;
+        background: #fff;
+    }
+    .calendar-day-label {
+        text-align: center;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #adb5bd;
+        margin-bottom: 10px;
+    }
+    .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-radius: 50%;
+        margin: 2px;
+        transition: all 0.2s;
+    }
+    .calendar-day:hover:not(.empty) { background-color: #f1f5f9; color: var(--primary-color); }
+    .calendar-day.active { background-color: var(--accent-color); color: #000; font-weight: bold; }
+    .calendar-day.has-event { border: 2px solid var(--primary-color); }
+    
+    /* FILTER CARD */
+    .filter-card {
+        border: none;
+        border-radius: var(--card-border-radius);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+
+    /* CAROUSEL */
+    .hero-carousel {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    }
+    .carousel-caption-custom {
+        background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+        bottom: 0; left: 0; right: 0;
+        padding: 4rem 2rem 2rem 2rem;
+        text-align: left;
+    }
+
+    /* EVENT CARDS (THE FIX) */
+    .card-event {
+        border: none;
+        border-radius: var(--card-border-radius);
+        background: white;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%; /* Ensure full height */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .card-event:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    .event-img-wrapper {
+        height: 220px; /* Fixed height for images */
+        position: relative;
+        overflow: hidden;
+    }
+    .event-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Prevents stretching */
+        transition: transform 0.5s ease;
+    }
+    .card-event:hover .event-img { transform: scale(1.05); }
+    
+    .event-date-badge {
+        position: absolute;
+        top: 15px; right: 15px;
+        background: rgba(255,255,255,0.95);
+        border-radius: 8px;
+        padding: 8px 12px;
+        text-align: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    .card-body-custom {
+        padding: 1.5rem;
+        flex-grow: 1; /* Pushes footer down */
+        display: flex;
+        flex-direction: column;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row g-5">
+        
+        <div class="col-lg-3 d-none d-lg-block">
+            
+            <div class="card filter-card p-4 mb-4 position-sticky" style="top: 100px; z-index: 10;">
+                <h6 class="fw-bold text-uppercase text-secondary mb-3"><i class="fas fa-sliders-h me-2"></i> Filters</h6>
+                
+                <div class="mb-4">
+                    <label class="small fw-bold text-muted mb-2">CATEGORY</label>
+                    <div class="form-check"><input class="form-check-input filter-checkbox" type="checkbox" value="Tech" id="catTech" checked><label class="form-check-label" for="catTech">Technology</label></div>
+                    <div class="form-check"><input class="form-check-input filter-checkbox" type="checkbox" value="Sports" id="catSports" checked><label class="form-check-label" for="catSports">Sports</label></div>
+                    <div class="form-check"><input class="form-check-input filter-checkbox" type="checkbox" value="Cultural" id="catCult" checked><label class="form-check-label" for="catCult">Cultural</label></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted mb-2">TYPE</label>
+                    <div class="form-check"><input class="form-check-input filter-checkbox" type="checkbox" value="Team" id="typeTeam" checked><label class="form-check-label" for="typeTeam">Team Event</label></div>
+                    <div class="form-check"><input class="form-check-input filter-checkbox" type="checkbox" value="Individual" id="typeInd" checked><label class="form-check-label" for="typeInd">Individual</label></div>
+                </div>
+
+                <button class="btn btn-outline-dark btn-sm w-100 rounded-pill" onclick="resetFilters()">Reset Filters</button>
+            </div>
+
+            <div class="calendar-widget position-sticky" style="top: 480px;">
+                <div class="calendar-header" id="calendarMonth">Loading...</div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-9">
+            
+            {% if featured %}
+            <div id="heroCarousel" class="carousel slide hero-carousel mb-5" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    {% for event in featured %}
+                    <div class="carousel-item {% if loop.first %}active{% endif %}">
+                        <div class="position-relative" style="height: 400px;">
+                            <img src="{{ event.image_url or 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=2070' }}" class="w-100 h-100 object-fit-cover">
+                            <div class="carousel-caption-custom position-absolute">
+                                <span class="badge bg-warning text-dark fw-bold mb-2">FEATURED</span>
+                                <h2 class="fw-bold text-white mb-2" style="text-shadow: 0 2px 10px rgba(0,0,0,0.5);">{{ event.name }}</h2>
+                                <p class="text-white-50 d-none d-md-block">{{ (event.overview or '')[:100] }}...</p>
+                                <a href="/event/{{ event.id }}" class="btn btn-gold btn-sm px-4 fw-bold mt-2">View Details</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if featured|length > 1 %}
+                <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+                <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h3 class="fw-bold text-dark mb-0" style="font-family: 'Cinzel', serif;">Upcoming Events</h3>
+                <span class="text-muted small">{{ upcoming|length }} Events Found</span>
+            </div>
+
+            <div class="row g-4" id="eventsContainer">
+                {% for event in upcoming %}
+                <div class="col-md-6 event-card-wrapper" 
+                     data-category="{{ event.category }}" 
+                     data-type="{{ event.event_type }}"
+                     data-date="{{ event.date.strftime('%Y-%m-%d') }}">
+                    
+                    <div class="card-event">
+                        <div class="event-img-wrapper">
+                            <img src="{{ event.image_url or 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=2012' }}" class="event-img">
+                            
+                            <div class="event-date-badge">
+                                <div class="small fw-bold text-uppercase text-danger">{{ event.date.strftime('%b') }}</div>
+                                <div class="h4 fw-bold text-dark mb-0">{{ event.date.strftime('%d') }}</div>
+                            </div>
+                            
+                            <span class="position-absolute bottom-0 start-0 m-3 badge bg-dark text-white shadow-sm">
+                                {{ event.category }}
+                            </span>
+                        </div>
+
+                        <div class="card-body-custom">
+                            <div class="d-flex align-items-center text-muted small fw-bold mb-2">
+                                <i class="fas fa-map-marker-alt me-2 text-warning"></i> {{ event.venue or 'Campus' }}
+                            </div>
+                            
+                            <h5 class="fw-bold text-dark mb-3">{{ event.name }}</h5>
+                            
+                            <p class="text-muted small flex-grow-1">
+                                {{ (event.overview or 'Join us for this exciting event.')[:80] }}...
+                            </p>
+                            
+                            <div class="pt-3 border-top d-flex justify-content-between align-items-center mt-auto">
+                                <span class="badge bg-light text-secondary border">
+                                    <i class="fas fa-user-friends me-1"></i> {{ event.event_type }}
+                                </span>
+                                <a href="/event/{{ event.id }}" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3">
+                                    Read More <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12 py-5 text-center">
+                    <div class="mb-3 opacity-25"><i class="fas fa-calendar-times fa-4x"></i></div>
+                    <h5 class="fw-bold text-muted">No Upcoming Events</h5>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentDateFilter = null;
+
+    function renderCalendar() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        
+        document.getElementById('calendarMonth').innerText = `${monthNames[month]} ${year}`;
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+
+        ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => grid.innerHTML += `<div class="calendar-day-label">${d}</div>`);
+        for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div class="calendar-day empty"></div>`;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const hasEvent = document.querySelector(`.event-card-wrapper[data-date="${dateStr}"]`) !== null;
+            grid.innerHTML += `<div class="calendar-day ${hasEvent ? 'has-event' : ''}" onclick="selectDate(this, '${dateStr}')">${day}</div>`;
+        }
+    }
+
+    function selectDate(el, dateStr) {
+        document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('active'));
+        if (currentDateFilter === dateStr) { currentDateFilter = null; } 
+        else { el.classList.add('active'); currentDateFilter = dateStr; }
+        filterEvents();
+    }
+
+    function filterEvents() {
+        const cats = Array.from(document.querySelectorAll('input[id^="cat"]:checked')).map(cb => cb.value);
+        const types = Array.from(document.querySelectorAll('input[id^="type"]:checked')).map(cb => cb.value);
+        
+        document.querySelectorAll('.event-card-wrapper').forEach(card => {
+            const cat = card.dataset.category;
+            const type = card.dataset.type;
+            const date = card.dataset.date;
+            const show = (cats.length === 0 || cats.includes(cat)) && 
+                         (types.length === 0 || types.includes(type)) && 
+                         (!currentDateFilter || date === currentDateFilter);
+            card.style.display = show ? 'block' : 'none';
+        });
+    }
+
+    function resetFilters() {
+        document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = true);
+        currentDateFilter = null;
+        renderCalendar();
+        filterEvents();
+    }
+
+    document.querySelectorAll('.filter-checkbox').forEach(i => i.addEventListener('change', filterEvents));
+    renderCalendar();
+</script>
+
+{% endblock %}

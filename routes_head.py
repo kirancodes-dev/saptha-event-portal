@@ -1,35 +1,45 @@
 from flask import Blueprint, render_template, session, redirect, request, flash, Response
-from models import db, Event, ProblemStatement, Coordinator, Team, Announcement, Fixture, Performance
+from models import db
+from datetime import datetime
 import csv
 import io
-from datetime import datetime
 
 head_bp = Blueprint('head_bp', __name__, url_prefix='/event_head')
 
+class FirebaseWrapper:
+    def __init__(self, id, data):
+        self.id = id
+        self._data = data
+    def __getattr__(self, name):
+        return self._data.get(name)
+
 @head_bp.route('/dashboard')
 def dashboard():
-    # 1. Security Check
-    if session.get('role') != 'Coordinator': 
-        return redirect('/login')
+    if session.get('role') != 'Coordinator': return redirect('/login')
     
-    # 2. Identify Coordinator & Event
-    coord_id = session.get('user_id')
+    coord_email = session['user_id']
     
-    # SEARCH LOGIC: Find event where this user ID matches either student or staff column
-    event = Event.query.filter(
-        (Event.coord_student_id == coord_id) | 
-        (Event.coord_staff_id == coord_id)
-    ).first()
+    # FIND EVENT
+    # We query events where coord_student_id OR coord_staff_id matches
+    # Firestore doesn't support logical OR directly in one query efficiently.
+    # We check student column first, then staff.
     
-    if not event:
-        # Debugging: Show ID if no event found
-        return render_template('dashboard_head.html', event=None, analytics=None, user_id=coord_id)
+    query = db.collection('events').where('coord_student_id', '==', coord_email).get()
+    if not query:
+        query = db.collection('events').where('coord_staff_id', '==', coord_email).get()
     
-    # Save event ID to session for easier updates later
-    session['event_id'] = event.id
+    if not query:
+        return render_template('dashboard_head.html', event=None, analytics=None, teams=[])
     
-    # 3. Calculate Operational Analytics
-    teams = event.teams_rel
+    event_doc = query[0]
+    session['event_id'] = event_doc.id
+    event_obj = FirebaseWrapper(event_doc.id, event_doc.to_dict())
+    
+    # FETCH TEAMS
+    teams_query = db.collection('teams').where('event_id', '==', event_doc.id).stream()
+    teams = [FirebaseWrapper(t.id, t.to_dict()) for t in teams_query]
+    
+    # ANALYTICS
     analytics = {
         'total_teams': len(teams),
         'pending': len([t for t in teams if t.approval_status == 'Pending']),
@@ -38,86 +48,61 @@ def dashboard():
         'submissions': len([t for t in teams if t.project_link])
     }
 
-    return render_template('dashboard_head.html', 
-                           event=event, 
-                           analytics=analytics,
-                           teams=teams)
+    return render_template('dashboard_head.html', event=event_obj, analytics=analytics, teams=teams)
 
-# --- 1. REGISTRATION MANAGEMENT (Approve/Reject) ---
-@head_bp.route('/manage_registration/<int:team_id>/<string:action>', methods=['POST'])
+@head_bp.route('/manage_registration/<team_id>/<action>', methods=['POST'])
 def manage_registration(team_id, action):
-    if session.get('role') != 'Coordinator': return redirect('/login')
-    
-    team = Team.query.get(team_id)
-    if team:
-        if action == 'approve':
-            team.approval_status = 'Approved'
-            flash(f"Team {team.name} Approved!", "success")
-        elif action == 'reject':
-            team.approval_status = 'Rejected'
-            flash(f"Team {team.name} Rejected.", "danger")
-        db.session.commit()
+    status = 'Approved' if action == 'approve' else 'Rejected'
+    db.collection('teams').document(team_id).update({'approval_status': status})
+    flash(f"Team {status}", "info")
     return redirect('/event_head/dashboard')
 
-# --- 2. EVENT DAY: ATTENDANCE ---
-@head_bp.route('/mark_attendance/<int:team_id>', methods=['POST'])
+@head_bp.route('/mark_attendance/<team_id>', methods=['POST'])
 def mark_attendance(team_id):
-    if session.get('role') != 'Coordinator': return redirect('/login')
-    
-    team = Team.query.get(team_id)
-    if team:
-        # Toggle Attendance
-        if team.attendance_status == 'Present':
-            team.attendance_status = 'Absent'
-        else:
-            team.attendance_status = 'Present'
-        db.session.commit()
-        
+    doc_ref = db.collection('teams').document(team_id)
+    doc = doc_ref.get().to_dict()
+    new_status = 'Absent' if doc.get('attendance_status') == 'Present' else 'Present'
+    doc_ref.update({'attendance_status': new_status})
     return redirect('/event_head/dashboard')
 
-# --- 3. COMMUNICATION ---
 @head_bp.route('/add_announcement', methods=['POST'])
 def add_announcement():
-    if session.get('role') != 'Coordinator': return redirect('/login')
-    
     msg = request.form.get('message')
     if msg:
-        new_ann = Announcement(message=msg, event_id=session['event_id'])
-        db.session.add(new_ann)
-        db.session.commit()
-        flash("Announcement broadcasted!", "success")
+        db.collection('announcements').add({
+            'message': msg,
+            'event_id': session['event_id'],
+            'timestamp': datetime.now(),
+            'type': 'Info'
+        })
+        flash("Broadcast sent", "success")
     return redirect('/event_head/dashboard')
 
-# --- 4. REPORTING ---
 @head_bp.route('/download_report')
 def download_report():
-    if session.get('role') != 'Coordinator': return redirect('/login')
+    event_id = session.get('event_id')
+    event_name = db.collection('events').document(event_id).get().to_dict().get('name')
     
-    event = Event.query.get(session['event_id'])
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Team Code', 'Team Name', 'Members', 'Approval Status', 'Attendance', 'Submission Link'])
+    writer.writerow(['Team Code', 'Team Name', 'Members', 'Approval Status', 'Attendance', 'Submission'])
     
-    for team in event.teams_rel:
-        members_txt = ", ".join([m.name for m in team.members])
-        writer.writerow([team.code, team.name, members_txt, team.approval_status, team.attendance_status, team.project_link])
+    teams = db.collection('teams').where('event_id', '==', event_id).stream()
+    for t in teams:
+        d = t.to_dict()
+        # d['members'] is a list of dicts [{'name':'..', 'email':'..'}]
+        members_str = ", ".join([m['name'] for m in d.get('members', [])])
+        writer.writerow([d.get('code'), d.get('name'), members_str, d.get('approval_status'), d.get('attendance_status'), d.get('project_link')])
         
-    return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": f"attachment; filename={event.name}_Report.csv"})
+    return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": f"attachment; filename={event_name}_Report.csv"})
 
-# --- 5. EVENT MANAGEMENT (Tech/Sports) ---
 @head_bp.route('/add_problem', methods=['POST'])
 def add_problem():
     import random
-    title = request.form.get('ps_title')
-    desc = request.form.get('ps_desc')
-    uid = f"PS-{random.randint(100, 999)}"
-    new_ps = ProblemStatement(uid=uid, title=title, description=desc, event_id=session['event_id'])
-    db.session.add(new_ps)
-    db.session.commit()
-    return redirect('/event_head/dashboard')
-
-@head_bp.route('/delete_problem/<int:id>', methods=['POST'])
-def delete_problem(id):
-    ProblemStatement.query.filter_by(id=id).delete()
-    db.session.commit()
+    db.collection('problem_statements').add({
+        'uid': f"PS-{random.randint(100,999)}",
+        'title': request.form.get('ps_title'),
+        'description': request.form.get('ps_desc'),
+        'event_id': session['event_id']
+    })
     return redirect('/event_head/dashboard')

@@ -1,130 +1,99 @@
 from flask import Blueprint, render_template, request, redirect, session, flash, jsonify, current_app
-from models import db, SuperAdmin, ClubSPOC, Coordinator, Judge, Participant, Event
+from models import db
 
 auth_bp = Blueprint('auth_bp', __name__)
 
-# --- LOGIN ROUTE ---
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    # 1. GET Request: Render Login Page
     if request.method == 'GET':
-        response = current_app.make_response(render_template('login.html'))
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        return response
+        return render_template('login.html')
 
-    # 2. POST Request: Handle Login Logic
     role = request.form.get('role')
     email = request.form.get('email')
     password = request.form.get('password')
     secret_key = request.form.get('secret_key')
 
-    user = None
+    # Firebase: Fetch User by Email (User ID is Email)
+    user_ref = db.collection('users').document(email)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        flash("User not found", "danger")
+        return redirect('/login')
+
+    user_data = user_doc.to_dict()
+
+    # Verify Password (In production, hash this!)
+    if user_data.get('password') != password:
+        flash("Invalid Password", "danger")
+        return redirect('/login')
+
+    # --- ROLE ROUTING ---
     redirect_url = '/login'
-
-    # --- ROLE BASED AUTHENTICATION ---
-
-    # A. SUPER ADMIN
+    
+    # 1. SUPER ADMIN (Special Case - maybe stored in users or checks code)
     if role == 'super_admin':
-        user = SuperAdmin.query.filter_by(email=email).first()
-        if user and user.password == password and user.secret_key == secret_key:
+        if user_data.get('role') == 'SuperAdmin' and secret_key == 'SuperSecret123': # Hardcoded for now
             session['role'] = 'SuperAdmin'
-            session['user_id'] = user.id
+            session['user_id'] = email
             redirect_url = '/super_admin/dashboard'
     
-    # B. CLUB SPOC
-    elif role == 'club_spoc':
-        user = ClubSPOC.query.filter_by(email=email).first()
-        if user and user.password == password:
-            session['role'] = 'ClubSPOC'
-            session['user_id'] = user.id
-            session['category'] = user.category
-            redirect_url = '/spoc/dashboard'
-            
-    # C. COORDINATOR (EVENT HEAD) - [FIXED HERE]
-    elif role == 'event_head':
-        user = Coordinator.query.filter_by(email=email).first()
-        if user and user.password == password:
-            session['role'] = 'Coordinator'
-            session['user_id'] = user.id  # <--- CRITICAL FIX: This was missing!
-            session['coord_type'] = user.role_type
-            
-            # Helper: Check if event is already assigned to redirect smoothly
-            if user.role_type == 'Student':
-                event = Event.query.filter_by(coord_student_id=user.id).first()
-            else:
-                event = Event.query.filter_by(coord_staff_id=user.id).first()
-            
-            if event:
-                session['event_id'] = event.id
-            
-            redirect_url = '/event_head/dashboard'
-
-    # D. JUDGE
-    elif role == 'judge':
-        user = Judge.query.filter_by(email=email).first()
-        if user and user.password == password:
-            session['role'] = 'Judge'
-            session['user_id'] = user.id
-            redirect_url = '/judge/dashboard'
-            
-    # E. PARTICIPANT
-    elif role == 'participant':
-        user = Participant.query.filter_by(email=email).first()
-        if user and user.password == password:
-            session['role'] = 'Participant'
-            session['user_id'] = user.id
-            redirect_url = '/participant/dashboard'
-
-    # --- FINAL SESSION SETTING ---
-    if user:
-        session['email'] = user.email
-        session['name'] = getattr(user, 'name', 'User')
-        return redirect(redirect_url)
+    # 2. GENERAL ROLES
+    elif role == 'club_spoc' and user_data.get('role') == 'ClubSPOC':
+        session['role'] = 'ClubSPOC'
+        session['user_id'] = email
+        session['category'] = user_data.get('category')
+        redirect_url = '/spoc/dashboard'
+        
+    elif role == 'event_head' and user_data.get('role') == 'Coordinator':
+        session['role'] = 'Coordinator'
+        session['user_id'] = email
+        session['coord_type'] = user_data.get('role_type')
+        redirect_url = '/event_head/dashboard'
+        
+    elif role == 'judge' and user_data.get('role') == 'Judge':
+        session['role'] = 'Judge'
+        session['user_id'] = email
+        redirect_url = '/judge/dashboard'
+        
+    elif role == 'participant' and user_data.get('role') == 'Participant':
+        session['role'] = 'Participant'
+        session['user_id'] = email
+        redirect_url = '/participant/dashboard'
     
-    flash("Invalid Credentials or Role Selection", "danger")
-    return redirect('/login')
+    else:
+        flash("Role mismatch or invalid credentials", "danger")
+        return redirect('/login')
 
-# --- LOGOUT ---
+    # Success Session Set
+    session['email'] = email
+    session['name'] = user_data.get('name')
+    return redirect(redirect_url)
+
 @auth_bp.route('/logout')
 def logout():
     session.clear()
-    flash("Logged out successfully.", "info")
     return redirect('/login')
 
-# --- OTP (MOCK) ---
-@auth_bp.route('/send_otp', methods=['POST'])
-def send_otp():
-    email = request.form.get('email')
-    # In production, send real email here
-    session['registration_otp'] = "123456"
-    session['registration_email'] = email
-    return jsonify({'success': True, 'message': 'OTP Sent (Use 123456)'})
-
-# --- REGISTER (PARTICIPANT) ---
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    user_otp = request.form.get('otp')
-    if user_otp != "123456":
-        return jsonify({'status': 'error', 'message': 'Invalid OTP'})
-
+    # Only for Participants
     email = request.form.get('reg_email')
-    if Participant.query.filter_by(email=email).first():
-        return jsonify({'status': 'error', 'message': 'Email already exists'})
-
-    # Create Participant
-    new_user = Participant(
-        name=request.form.get('reg_name'),
-        email=email,
-        password=request.form.get('reg_password'),
-        phone=request.form.get('phone'),
-        usn=request.form.get('usn'),
-        college=request.form.get('college'),
-        department=request.form.get('department'),
-        year=request.form.get('year')
-    )
     
-    db.session.add(new_user)
-    db.session.commit()
+    # Check if exists
+    if db.collection('users').document(email).get().exists:
+        return jsonify({'status': 'error', 'message': 'Email exists'})
+        
+    data = {
+        'name': request.form.get('reg_name'),
+        'email': email,
+        'password': request.form.get('reg_password'),
+        'phone': request.form.get('phone'),
+        'usn': request.form.get('usn'),
+        'college': request.form.get('college'),
+        'role': 'Participant'
+    }
     
-    flash("Account Created! Please Login.", "success")
+    db.collection('users').document(email).set(data)
+    flash("Account Created", "success")
     return jsonify({'status': 'success', 'redirect': '/login'})

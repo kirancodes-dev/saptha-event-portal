@@ -1,60 +1,95 @@
 from flask import Blueprint, render_template, session, redirect, request, flash
-from models import db, Participant, Event, Team, Announcement
+from models import db
 from datetime import datetime
 
 participant_bp = Blueprint('participant_bp', __name__, url_prefix='/participant')
+
+# Wrapper for Dot Notation compatibility
+class FirebaseWrapper:
+    def __init__(self, id, data):
+        self.id = id
+        self._data = data
+    def __getattr__(self, name):
+        val = self._data.get(name)
+        return val if val is not None else ''
 
 @participant_bp.route('/dashboard')
 def dashboard():
     if session.get('role') != 'Participant': return redirect('/login')
     
-    user_id = session.get('user_id')
-    participant = Participant.query.get(user_id)
+    user_email = session.get('user_id') # In Firebase, we use Email as ID
+    user_doc = db.collection('users').document(user_email).get()
     
-    if not participant:
+    if not user_doc.exists:
         session.clear()
         return redirect('/login')
+    
+    participant = FirebaseWrapper(user_email, user_doc.to_dict())
 
-    # --- 1. BUILD SMART EVENT DATA (Status, Team, Submissions) ---
+    # --- 1. BUILD SMART EVENT DATA ---
     my_events_data = []
-    registered_events = participant.events_attended
     
-    now = datetime.now()
+    # Fetch teams where this user is a member
+    # Note: 'members' in team doc should be list of emails or objects containing email
+    # Assuming 'members' is a list of objects: [{'email': '...', 'name': '...'}]
+    # We query strictly: Does the 'member_emails' array contain this email?
+    teams_query = db.collection('teams').where('member_emails', 'array_contains', user_email).stream()
     
-    for event in registered_events:
-        # Find User's Team for this event
-        my_team = Team.query.filter_by(event_id=event.id).filter(Team.members.any(id=user_id)).first()
-        
-        # Determine Status
-        status = "Registered"
-        status_class = "primary"
-        
-        if my_team and my_team.project_link:
-            status = "Submitted"
-            status_class = "success"
-        elif event.date < now:
-            status = "Completed"
-            status_class = "dark"
-        elif event.date.date() == now.date():
-            status = "Ongoing"
-            status_class = "danger fw-bold blink"
-        
-        my_events_data.append({
-            'event': event,
-            'team': my_team,
-            'status': status,
-            'status_class': status_class,
-            'has_submission': bool(my_team and my_team.project_link)
-        })
+    registered_event_ids = []
 
-    # --- 2. FETCH ANNOUNCEMENTS ---
-    my_event_ids = [e.id for e in registered_events]
-    notifications = Announcement.query.filter(Announcement.event_id.in_(my_event_ids))\
-                                      .order_by(Announcement.timestamp.desc()).limit(5).all()
+    for t_doc in teams_query:
+        team_data = t_doc.to_dict()
+        event_id = team_data.get('event_id')
+        registered_event_ids.append(event_id)
+        
+        # Fetch Event Data
+        event_doc = db.collection('events').document(event_id).get()
+        if event_doc.exists:
+            event_data = event_doc.to_dict()
+            event_obj = FirebaseWrapper(event_id, event_data)
+            team_obj = FirebaseWrapper(t_doc.id, team_data)
+            
+            # Status Logic
+            status = "Registered"
+            status_class = "primary"
+            
+            # Date Comparison (Assuming string YYYY-MM-DD stored)
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            evt_date = event_data.get('date', '3000-01-01')
+            
+            if team_data.get('project_link'):
+                status = "Submitted"
+                status_class = "success"
+            elif evt_date < today_str:
+                status = "Completed"
+                status_class = "dark"
+            
+            my_events_data.append({
+                'event': event_obj,
+                'team': team_obj,
+                'status': status,
+                'status_class': status_class,
+                'has_submission': bool(team_data.get('project_link'))
+            })
+
+    # --- 2. NOTIFICATIONS ---
+    notifications = []
+    ann_query = db.collection('announcements').order_by('timestamp', direction=db.Query.DESCENDING).limit(5).stream()
+    for doc in ann_query:
+        ann = doc.to_dict()
+        if ann.get('event_id') in registered_event_ids:
+            notifications.append(FirebaseWrapper(doc.id, ann))
 
     # --- 3. UPCOMING EVENTS ---
-    all_events = Event.query.filter_by(is_published=True).all()
-    upcoming_events = [e for e in all_events if e not in registered_events and e.date > now]
+    upcoming_events = []
+    all_events = db.collection('events').where('is_published', '==', True).stream()
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    
+    for doc in all_events:
+        if doc.id not in registered_event_ids:
+            data = doc.to_dict()
+            if data.get('date') > today_str:
+                upcoming_events.append(FirebaseWrapper(doc.id, data))
 
     return render_template('dashboard_participant.html', 
                            participant=participant, 
@@ -62,78 +97,65 @@ def dashboard():
                            notifications=notifications,
                            upcoming_events=upcoming_events)
 
-# --- ROBUST REGISTRATION LOGIC ---
 @participant_bp.route('/register_event', methods=['POST'])
 def register_event():
-    if session.get('role') != 'Participant': return redirect('/login')
-    
     try:
-        user_id = session.get('user_id')
+        user_email = session.get('user_id')
         event_id = request.form.get('event_id')
-        participant = Participant.query.get(user_id)
-        event = Event.query.get(event_id)
+        team_name = request.form.get('team_name')
 
         # Check existing registration
-        if event in participant.events_attended:
-            flash("You are already registered for this event.", "info")
+        existing = db.collection('teams').where('event_id', '==', event_id).where('member_emails', 'array_contains', user_email).get()
+        if len(existing) > 0:
+            flash("Already registered!", "warning")
             return redirect('/participant/dashboard')
 
-        # Handle Team Creation
-        if event.event_type == 'Team':
-            team_name = request.form.get('team_name')
-            
-            new_team = Team(
-                name=team_name, 
-                code=f"T-{event.id}-{user_id}-{str(hash(team_name))[-4:]}",
-                event_id=event.id
-            )
-            new_team.members.append(participant)
-            
-            # Add Teammates
-            member_emails = request.form.getlist('member_emails')
-            for email in member_emails:
-                if email and email.strip():
-                    email = email.strip()
-                    mem = Participant.query.filter_by(email=email).first()
-                    
-                    if mem:
-                        # Prevent duplicate errors
-                        if mem.id == participant.id: continue # Don't add self
-                        if mem not in new_team.members:
-                            new_team.members.append(mem)
-                        if event not in mem.events_attended:
-                            mem.events_attended.append(event)
-            
-            db.session.add(new_team)
+        # Prepare Members List
+        members = []
+        member_emails = []
+        
+        # Add Self
+        me = db.collection('users').document(user_email).get().to_dict()
+        members.append({'name': me['name'], 'email': user_email})
+        member_emails.append(user_email)
+        
+        # Add Teammates
+        others = request.form.getlist('member_emails')
+        for email in others:
+            if email and email.strip():
+                clean_email = email.strip()
+                user_doc = db.collection('users').document(clean_email).get()
+                if user_doc.exists:
+                    members.append({'name': user_doc.to_dict()['name'], 'email': clean_email})
+                    member_emails.append(clean_email)
 
-        # Register Self
-        if event not in participant.events_attended:
-            participant.events_attended.append(event)
+        # Create Team
+        team_code = f"T-{str(hash(team_name))[-6:]}"
         
-        db.session.commit()
-        flash("Successfully registered!", "success")
+        team_data = {
+            'name': team_name,
+            'code': team_code,
+            'event_id': event_id,
+            'members': members,
+            'member_emails': member_emails, # Helper field for queries
+            'approval_status': 'Pending',
+            'attendance_status': 'Absent',
+            'project_link': ''
+        }
         
+        db.collection('teams').add(team_data)
+        flash("Registered successfully!", "success")
+
     except Exception as e:
-        db.session.rollback()
-        if "UNIQUE constraint" in str(e):
-            flash("Registration failed: A team member is already registered.", "warning")
-        else:
-            flash(f"Error: {str(e)}", "danger")
+        flash(f"Error: {e}", "danger")
 
     return redirect('/participant/dashboard')
 
-# --- SUBMISSION LOGIC ---
 @participant_bp.route('/submit_project', methods=['POST'])
 def submit_project():
-    if session.get('role') != 'Participant': return redirect('/login')
-    
     team_id = request.form.get('team_id')
     link = request.form.get('project_link')
     
-    team = Team.query.get(team_id)
-    if team:
-        team.project_link = link
-        db.session.commit()
-        flash("Project submitted successfully!", "success")
-    
+    db.collection('teams').document(team_id).update({'project_link': link})
+    flash("Project submitted!", "success")
     return redirect('/participant/dashboard')

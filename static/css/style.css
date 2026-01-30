@@ -1,230 +1,418 @@
-/* =========================================
-   1. VARIABLES & RESET (High Contrast Mode)
-   ========================================= */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* ==========================================================================
+   SAPTHAEVENT ENTERPRISE DESIGN SYSTEM
+   Version: 5.0.0 (Ultimate Edition)
+   ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   1. CORE VARIABLES & THEME CONFIGURATION
+   -------------------------------------------------------------------------- */
 :root {
-    --primary: #0f172a;        /* Deep Navy */
-    --accent: #d97706;         /* Gold */
-    --body-bg: #f1f5f9;        /* Slightly darker white for contrast */
-    --card-bg: #ffffff;        /* Pure White */
-    --text-main: #000000;      /* Jet Black for maximum visibility */
-    --text-secondary: #334155; /* Dark Slate for secondary text */
-    --border: #cbd5e1;         /* Darker border for definition */
-    --sidebar-width: 260px;
+    /* Brand Colors - Deep Navy & Gold */
+    --primary-900: #020617; /* Darkest Navy (Sidebar/Header) */
+    --primary-800: #0f172a; 
+    --primary-700: #1e293b;
+    --primary-600: #334155;
+    
+    --accent-600: #d97706; /* Premium Gold */
+    --accent-500: #f59e0b; /* Bright Amber */
+    --accent-400: #fbbf24;
+    --accent-100: #fef3c7; /* Soft Gold Background */
+
+    /* Neutrals */
+    --light: #f8fafc;
+    --white: #ffffff;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-500: #64748b;
+    --gray-800: #1e293b;
+
+    /* Semantic Colors */
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+
+    /* Dimensions */
+    --sidebar-width: 280px;
+    --header-height: 70px;
+    --border-radius: 12px;
+    
+    /* Effects */
+    --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    --shadow-glow: 0 0 20px rgba(217, 119, 6, 0.3); /* Gold Glow */
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* --------------------------------------------------------------------------
+   2. GLOBAL RESET & TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cinzel:wght@400;700;900&display=swap');
+
+* { box-sizing: border-box; }
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: var(--body-bg) !important;
-    color: var(--text-main) !important;
-    margin: 0;
-    font-size: 1.05rem; /* INCREASED BASE SIZE */
-    overflow-x: hidden; 
-    width: 100%;
+    background-color: var(--gray-100);
+    color: var(--gray-800);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 h1, h2, h3, h4, h5, h6 {
-    color: var(--primary) !important;
-    font-weight: 800 !important; /* Thicker fonts */
-    letter-spacing: -0.5px;
+    color: var(--primary-900);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    margin-bottom: 1rem;
 }
 
-a { text-decoration: none; }
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.875rem; }
+h3 { font-size: 1.5rem; }
 
-/* =========================================
-   2. PUBLIC NAVBAR
-   ========================================= */
-.navbar-public {
-    background: white !important;
-    border-bottom: 1px solid var(--border);
-    min-height: 75px;
-    padding: 10px 0;
-}
+a { text-decoration: none; color: inherit; transition: var(--transition); }
+a:hover { color: var(--accent-600); }
 
-.navbar-public .navbar-brand {
-    color: var(--primary) !important;
-    font-weight: 900;
-    font-size: 1.4rem;
-}
-
-.navbar-public .nav-link {
-    color: var(--text-main) !important;
-    font-weight: 600;
-    font-size: 1.1rem;
-    margin-right: 20px;
-}
-
-.navbar-public .navbar-toggler {
-    border: 2px solid #333;
-    padding: 5px 10px;
-}
-
-/* =========================================
-   3. SIDEBAR & LAYOUT
-   ========================================= */
-.wrapper { display: flex; width: 100%; min-height: 100vh; }
-
+/* --------------------------------------------------------------------------
+   3. SIDEBAR NAVIGATION (Premium Look)
+   -------------------------------------------------------------------------- */
 .sidebar {
     width: var(--sidebar-width);
-    background: var(--primary);
-    color: white;
+    background: linear-gradient(180deg, var(--primary-900) 0%, var(--primary-800) 100%);
     position: fixed;
     top: 0; left: 0; bottom: 0;
-    display: flex; flex-direction: column;
-    z-index: 1000;
-    transition: left 0.3s ease; 
+    z-index: 1050;
+    color: white;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
 }
 
 .sidebar-brand {
-    height: 75px;
-    display: flex; align-items: center; padding-left: 24px;
-    font-size: 1.3rem; font-weight: 700;
-    background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1);
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.2);
 }
 
+.brand-text {
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: white;
+}
+.brand-text span { color: var(--accent-500); }
+
+.sidebar-menu {
+    flex: 1;
+    padding: 1.5rem 0;
+    overflow-y: auto;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    color: #94a3b8;
+    font-weight: 500;
+    border-left: 3px solid transparent;
+    transition: var(--transition);
+}
+
+.nav-link i {
+    width: 24px;
+    font-size: 1.1rem;
+    margin-right: 12px;
+    text-align: center;
+    color: var(--accent-500);
+}
+
+.nav-link:hover, .nav-link.active {
+    background: rgba(255,255,255,0.05);
+    color: white;
+    border-left-color: var(--accent-500);
+    padding-left: 2rem; /* Slide Effect */
+}
+
+.sidebar-footer {
+    padding: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.1);
+}
+
+/* --------------------------------------------------------------------------
+   4. MAIN LAYOUT & HEADERS
+   -------------------------------------------------------------------------- */
 .main-content {
     margin-left: var(--sidebar-width);
-    flex: 1;
-    display: flex; flex-direction: column;
-    width: calc(100% - var(--sidebar-width));
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     transition: margin-left 0.3s ease;
 }
 
+.public-layout .main-content { margin-left: 0; padding: 0; }
+
 .top-header {
-    height: 75px;
+    height: var(--header-height);
     background: white;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 32px;
-    position: sticky; top: 0; z-index: 900;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-sm);
 }
 
-.content-body { padding: 32px; }
-
-/* Sidebar Links */
-.sidebar-menu { list-style: none; padding: 20px 0; margin: 0; }
-.sidebar-menu li a {
-    display: flex; align-items: center;
-    padding: 16px 24px; /* Bigger touch area */
-    color: #cbd5e1;
-    font-size: 1.05rem;
-    font-weight: 500;
-    transition: 0.2s;
-    border-left: 4px solid transparent;
+.content-wrapper {
+    padding: 2rem;
+    flex: 1;
 }
-.sidebar-menu li a:hover, .sidebar-menu li a.active {
-    background: rgba(255,255,255,0.1);
-    color: white;
-    border-left-color: var(--accent);
-}
-.sidebar-menu i { width: 28px; text-align: center; margin-right: 12px; font-size: 1.2rem; }
 
-/* =========================================
-   4. CARDS & STATS (High Visibility)
-   ========================================= */
+/* --------------------------------------------------------------------------
+   5. COMPONENT: CARDS (Glassy & Clean)
+   -------------------------------------------------------------------------- */
 .card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    margin-bottom: 24px;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
 }
 
-/* Stats Card Specifics */
-.hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.hover-lift:hover {
+.card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    box-shadow: var(--shadow-lg);
 }
 
-.icon-square {
-    width: 60px; height: 60px; /* Bigger Icons */
+.card-header {
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    padding: 1.25rem 1.5rem;
+    font-weight: 700;
+    color: var(--primary-900);
+}
+
+/* Widget Styles (Stats) */
+.stat-widget {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--gray-200);
+    transition: var(--transition);
+}
+.stat-widget:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+
+.stat-icon {
+    width: 60px; height: 60px;
+    border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.5rem;
+    margin-right: 1.25rem;
+    flex-shrink: 0;
 }
 
-/* Make numbers HUGE and DARK */
-.display-4, .display-5, .display-6 {
-    color: #000 !important;
-    font-weight: 900 !important;
-}
+.stat-info h3 { margin: 0; font-size: 1.8rem; line-height: 1.2; font-weight: 800; color: var(--primary-900); }
+.stat-info span { color: var(--gray-500); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* =========================================
-   5. TABLES (Spacious & Readable)
-   ========================================= */
-.table-responsive {
+/* --------------------------------------------------------------------------
+   6. COMPONENT: BUTTONS
+   -------------------------------------------------------------------------- */
+.btn {
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
     border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.table thead th {
-    background: #e2e8f0; /* Darker header background */
-    color: #1e293b;      /* Dark text */
     text-transform: uppercase;
-    font-size: 0.85rem;
-    font-weight: 800;
-    padding: 16px 24px;
+    font-size: 0.8rem;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #94a3b8;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
-.table tbody td {
-    padding: 18px 24px; /* More padding */
-    vertical-align: middle;
-    color: #334155;
-    font-size: 1rem;
+.btn-primary {
+    background: var(--primary-900);
+    color: white;
+}
+.btn-primary:hover { background: var(--primary-700); transform: translateY(-2px); color: white; }
+
+.btn-gold {
+    background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+.btn-gold:hover { 
+    box-shadow: var(--shadow-glow); 
+    transform: translateY(-2px); 
+    color: white;
+}
+
+.btn-outline-gold {
+    background: transparent;
+    border: 2px solid var(--accent-600);
+    color: var(--accent-600);
+}
+.btn-outline-gold:hover {
+    background: var(--accent-600);
+    color: white;
+}
+
+.btn-danger { background: #fee2e2; color: #991b1b; }
+.btn-danger:hover { background: #dc2626; color: white; }
+
+/* --------------------------------------------------------------------------
+   7. COMPONENT: TABLES
+   -------------------------------------------------------------------------- */
+.table-responsive {
+    overflow-x: auto;
+    border-radius: var(--border-radius);
+}
+
+.table-custom {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-custom th {
+    background: var(--gray-100);
+    color: var(--primary-900);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 2px solid var(--gray-200);
+    letter-spacing: 0.05em;
+}
+
+.table-custom td {
+    padding: 1rem 1.5rem;
     background: white;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-600);
+    vertical-align: middle;
 }
 
-.table tbody tr:hover td {
-    background-color: #f8fafc;
-    color: #000;
+.table-custom tr:hover td {
+    background: var(--light);
 }
 
-/* Badges */
+.table-custom tr:last-child td { border-bottom: none; }
+
+/* --------------------------------------------------------------------------
+   8. UTILITIES & HELPERS
+   -------------------------------------------------------------------------- */
+.text-gold { color: var(--accent-600) !important; }
+.bg-gold-soft { background: var(--accent-100) !important; color: var(--accent-600) !important; }
+.bg-primary-soft { background: #e0f2fe !important; color: var(--primary-800) !important; }
+
 .badge {
-    padding: 8px 12px;
-    font-size: 0.85rem;
+    padding: 0.5em 1em;
+    border-radius: 30px;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.5px;
+    display: inline-block;
 }
 
-/* Forms */
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Form Elements */
 .form-control, .form-select {
-    padding: 12px 15px;
-    font-size: 1rem;
-    border: 1px solid #94a3b8; /* Darker border */
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--gray-300);
+    font-size: 0.95rem;
 }
-.form-control:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.1);
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-500);
+    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.1);
+    outline: none;
 }
 
-/* =========================================
-   6. RESPONSIVE
-   ========================================= */
-@media (max-width: 991px) {
-    .sidebar { left: -100%; width: 280px; box-shadow: 5px 0 15px rgba(0,0,0,0.1); }
-    .main-content { margin-left: 0; width: 100%; }
-    
-    .top-header { padding: 0 20px; }
-    .content-body { padding: 15px; }
+/* --------------------------------------------------------------------------
+   9. MOBILE OPTIMIZATION (RESPONSIVE)
+   -------------------------------------------------------------------------- */
 
-    .navbar-public { padding: 15px 20px; }
-    .navbar-public .navbar-collapse {
-        position: absolute; top: 100%; left: 0; right: 0;
-        background: white; padding: 25px; 
-        box-shadow: 0 20px 40px rgba(0,0,0,0.2); border-top: 1px solid #e2e8f0; z-index: 9999;
+/* Sidebar Overlay (Dark Background) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1040;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.3s ease;
+}
+
+/* Media Query for Tablets & Mobile */
+@media (max-width: 992px) {
+    /* 1. Sidebar hidden by default */
+    .sidebar {
+        transform: translateX(-100%);
     }
     
-    .navbar-public .nav-link {
-        padding: 18px 0; font-size: 1.2rem;
-        border-bottom: 1px solid #f1f5f9; color: #0f172a !important;
+    /* 2. Sidebar active state */
+    .sidebar.active {
+        transform: translateX(0);
+        box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+    }
+
+    /* 3. Overlay active state */
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    /* 4. Main content expands */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    /* 5. Adjust padding */
+    .top-header, .content-wrapper {
+        padding: 1rem;
     }
     
-    .sidebar.active { left: 0 !important; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+    /* 6. Mobile header visibility */
+    .top-header {
+        height: 60px;
+    }
+    
+    .stat-widget {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 576px) {
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.5rem; }
+    
+    .btn { width: 100%; margin-bottom: 0.5rem; }
+    
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
 }

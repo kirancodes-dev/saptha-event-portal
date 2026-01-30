@@ -1,303 +1,80 @@
 {% extends "base.html" %}
 
-{% block public_content %}
-<div class="d-flex align-items-center justify-content-center py-5" style="min-height: 85vh; background-color: #f4f6f9;">
-    <div class="card border-0 shadow-lg overflow-hidden" style="max-width: 900px; width: 100%; border-radius: 16px;">
+{% block content_home %}
+<div class="container py-5 d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card border-0 shadow-lg overflow-hidden" style="max-width: 900px; width: 100%; border-radius: 20px;">
         <div class="row g-0">
-            
-            <div class="col-lg-5 text-white d-flex flex-column justify-content-center align-items-center p-5 text-center"
-                 style="background: linear-gradient(135deg, #002147 0%, #0f3460 100%);">
+            <div class="col-md-6 bg-white p-5">
+                <h3 class="fw-black text-primary mb-1">Welcome Back</h3>
+                <p class="text-muted mb-4">Login to access your dashboard.</p>
                 
-                <div class="mb-4">
-                    <div class="rounded-3 shadow-sm mb-3 d-inline-block">
-                        <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" 
-                             alt="SNPSU Logo" style="height: 50px; width: auto;">
-                    </div>
-                    
-                    <h2 class="fw-bold mb-1" style="font-family: 'Cinzel', serif; letter-spacing: 2px;">SAPTH EVENT</h2>
-                    <p class="text-white-50 small text-uppercase fw-bold letter-spacing-1">Official Event Portal</p>
-                </div>
-                
-                <p class="small text-white-50 mt-3">
-                    One platform to manage registrations, track events, and view results.
-                </p>
-            </div>
-
-            <div class="col-lg-7 bg-white p-5">
-                <div class="mb-4">
-                    <h3 class="fw-bold text-dark">Welcome Back</h3>
-                    <p class="text-muted small">Please enter your credentials to access the portal.</p>
-                </div>
-
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }} small py-2 rounded-3 fw-bold">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-
                 <form action="/login" method="POST">
-                    
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase text-muted">Select Role</label>
-                        <select name="role" class="form-select py-2" id="roleSelect" onchange="toggleSecretKey()" required>
+                        <label class="form-label small fw-bold">Select Role</label>
+                        <select name="role" class="form-select" id="roleSelect" onchange="toggleKey()">
                             <option value="participant">Student / Participant</option>
                             <option value="club_spoc">Club SPOC</option>
-                            <option value="event_head">Event Coordinator</option>
+                            <option value="event_head">Coordinator</option>
                             <option value="judge">Judge</option>
                             <option value="super_admin">Super Admin</option>
                         </select>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase text-muted">Email Address</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
-                            <input type="email" name="email" class="form-control border-start-0 ps-0" placeholder="name@example.com" required>
-                        </div>
+                        <label class="form-label small fw-bold">Email</label>
+                        <input type="email" name="email" class="form-control" required placeholder="name@example.com">
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase text-muted">Password</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
-                            <input type="password" name="password" class="form-control border-start-0 ps-0" placeholder="••••••••" required>
-                        </div>
+                        <label class="form-label small fw-bold">Password</label>
+                        <input type="password" name="password" class="form-control" required placeholder="••••••••">
                     </div>
-
-                    <div class="mb-4 d-none" id="secretKeyField">
-                        <label class="form-label small fw-bold text-uppercase text-muted">Admin Secret Key</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
-                            <input type="password" name="secret_key" class="form-control border-start-0 ps-0" placeholder="Secret Key">
-                        </div>
+                    <div class="mb-3 d-none" id="secretKey">
+                        <label class="form-label small fw-bold text-danger">Admin Key</label>
+                        <input type="password" name="secret_key" class="form-control border-danger">
                     </div>
-
-                    <button type="submit" class="btn btn-warning w-100 py-2 fw-bold text-uppercase shadow-sm">Login to Portal</button>
-                    
-                    <div class="text-center mt-3 small">
-                        <span class="text-muted">Don't have an account?</span> 
-                        <a href="#" class="text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#studentSignupModal">Register Now</a>
-                    </div>
+                    <button class="btn btn-gold w-100 py-2 mt-2">Login</button>
                 </form>
+                
+                <div class="text-center mt-4 border-top pt-3">
+                    <span class="text-muted small">New Student?</span>
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#regModal" class="fw-bold text-primary">Register Here</a>
+                </div>
+            </div>
+            
+            <div class="col-md-6 d-none d-md-flex align-items-center justify-content-center bg-dark text-white p-5" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+                <div class="text-center">
+                    <h1 class="display-4 fw-black text-white">SAPTHA<span class="text-gold">EVENT</span></h1>
+                    <p class="opacity-75">The official event management portal.</p>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="studentSignupModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
-            <div class="modal-header bg-dark text-white border-0 p-4">
+<div class="modal fade" id="regModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="/register" method="POST" class="modal-content">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title fw-bold">Student Registration</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="regForm">
-                    
-                    <div id="generalError" class="alert alert-danger d-none small fw-bold"></div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">Full Name</label>
-                            <input type="text" name="reg_name" class="form-control" placeholder="John Doe" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">Phone Number</label>
-                            <input type="tel" name="phone" class="form-control" placeholder="9876543210" required>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">USN / Roll No</label>
-                            <input type="text" name="usn" class="form-control" placeholder="1XY21CS001" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">College Name</label>
-                            <input type="text" name="college" class="form-control" placeholder="Sapthagiri College..." required>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-12">
-                            <label class="form-label small fw-bold text-uppercase">Department / Branch</label>
-                            <select name="department" class="form-select" required>
-                                <option value="" disabled selected>Select Branch</option>
-                                <option value="CSE">CSE</option>
-                                <option value="CSE-AIML">CSE-AIML</option>
-                                <option value="CSE-AIDS">CSE-AIDS</option>
-                                <option value="CSE-DS">CSE-DS</option>
-                                <option value="ECE">ECE</option>
-                                <option value="EEE">EEE</option>
-                                <option value="APPLIED SCIENCE">APPLIED SCIENCE</option>
-                                <option value="MANAGEMENT STUDIES">MANAGEMENT STUDIES</option>
-                                <option value="OTHER">Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">Year</label>
-                            <select name="year" class="form-select" required>
-                                <option value="" disabled selected>Select Year</option>
-                                <option value="1">1st Year</option>
-                                <option value="2">2nd Year</option>
-                                <option value="3">3rd Year</option>
-                                <option value="4">4th Year</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">Semester</label>
-                            <select name="semester" class="form-select" required>
-                                <option value="" disabled selected>Select Semester</option>
-                                <option value="1">1st Sem</option>
-                                <option value="2">2nd Sem</option>
-                                <option value="3">3rd Sem</option>
-                                <option value="4">4th Sem</option>
-                                <option value="5">5th Sem</option>
-                                <option value="6">6th Sem</option>
-                                <option value="7">7th Sem</option>
-                                <option value="8">8th Sem</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase">Email (Verification Required)</label>
-                        <div class="input-group">
-                            <input type="email" name="reg_email" id="regEmail" class="form-control" placeholder="student@example.com" required>
-                            <button type="button" class="btn btn-dark" onclick="sendOtp(this)">Get OTP</button>
-                        </div>
-                        <div id="emailError" class="invalid-feedback"></div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-uppercase">Enter OTP</label>
-                        <input type="text" name="otp" id="otpInput" class="form-control" placeholder="123456" required>
-                        <div id="otpError" class="invalid-feedback"></div>
-                    </div>
-
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">Password</label>
-                            <input type="password" name="reg_password" id="regPass" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-uppercase">Confirm Password</label>
-                            <input type="password" name="confirm_password" id="regConfirmPass" class="form-control" required>
-                            <div id="passError" class="invalid-feedback"></div>
-                        </div>
-                    </div>
-
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" required id="terms">
-                        <label class="form-check-label small text-muted" for="terms">
-                            I agree to the Terms & Conditions and Code of Conduct.
-                        </label>
-                    </div>
-
-                    <button type="button" id="regSubmitBtn" class="btn btn-warning w-100 fw-bold py-2 text-uppercase" onclick="handleRegistration()">Register Account</button>
-                </form>
+                <div class="mb-3"><label>Full Name</label><input type="text" name="reg_name" class="form-control" required></div>
+                <div class="mb-3"><label>Email</label><input type="email" name="reg_email" class="form-control" required></div>
+                <div class="mb-3"><label>Password</label><input type="password" name="reg_password" class="form-control" required></div>
+                <input type="hidden" name="phone" value="0000000000"> </div>
+            <div class="modal-footer">
+                <button class="btn btn-gold w-100">Create Account</button>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
 <script>
-    function toggleSecretKey() {
-        const role = document.getElementById('roleSelect').value;
-        const secretField = document.getElementById('secretKeyField');
-        if (role === 'super_admin') {
-            secretField.classList.remove('d-none');
-        } else {
-            secretField.classList.add('d-none');
-        }
-    }
-
-    function sendOtp(btn) {
-        var email = document.getElementById("regEmail").value;
-        if(!email) { alert("Please enter email first"); return; }
-        
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btn.disabled = true;
-
-        fetch('/send_otp', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'email=' + encodeURIComponent(email)
-        })
-        .then(response => response.json())
-        .then(data => {
-            btn.innerHTML = 'Resend';
-            btn.disabled = false;
-            alert("OTP Sent! (Use 123456)");
-            document.getElementById('otpInput').focus();
-        });
-    }
-
-    function handleRegistration() {
-        var form = document.getElementById('regForm');
-        var formData = new FormData(form);
-        var submitBtn = document.getElementById('regSubmitBtn');
-        var passInput = document.getElementById('regPass');
-        var confirmInput = document.getElementById('regConfirmPass');
-        var generalErr = document.getElementById('generalError');
-
-        // Reset
-        document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        document.querySelectorAll('.invalid-feedback').forEach(el => el.innerText = '');
-        generalErr.classList.add('d-none');
-
-        if (!document.getElementById('terms').checked) {
-            alert("Please agree to the Terms & Conditions.");
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-
-        fetch('/register', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Register Account';
-
-            if (data.status === 'success') {
-                window.location.href = data.redirect;
-            } else {
-                if (data.field === 'password') {
-                    passInput.value = ""; 
-                    confirmInput.value = "";
-                    confirmInput.classList.add('is-invalid');
-                    document.getElementById('passError').innerText = data.message;
-                    passInput.focus();
-                } 
-                else if (data.field === 'otp') {
-                    document.getElementById('otpInput').classList.add('is-invalid');
-                    document.getElementById('otpError').innerText = data.message;
-                }
-                else if (data.field === 'email') {
-                    document.getElementById('regEmail').classList.add('is-invalid');
-                    document.getElementById('emailError').innerText = data.message;
-                }
-                else {
-                    generalErr.innerText = data.message || "Registration failed.";
-                    generalErr.classList.remove('d-none');
-                }
-            }
-        })
-        .catch(error => {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Register Account';
-            generalErr.innerText = "Network error. Please try again.";
-            generalErr.classList.remove('d-none');
-        });
-    }
+function toggleKey() {
+    const role = document.getElementById('roleSelect').value;
+    const keyDiv = document.getElementById('secretKey');
+    if(role === 'super_admin') keyDiv.classList.remove('d-none');
+    else keyDiv.classList.add('d-none');
+}
 </script>
 {% endblock %}

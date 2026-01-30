@@ -3,228 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SapthaEvent Portal</title>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{{ app_name }} | {{ organization }}</title>
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     
     <style>
-        :root { 
-            --primary-color: #002147; 
-            --accent-color: #C5A065; 
-            --text-dark: #1e293b;
-            --bg-light: #f4f6f9;
-            --nav-height: 80px; /* Define a fixed height for navbar */
-        }
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--bg-light); 
-            color: var(--text-dark); 
-            overflow-x: hidden; 
-        }
-
-        /* === SIDEBAR (Dashboard) === */
-        .sidebar { 
-            width: 280px; height: 100vh; position: fixed; top: 0; left: 0;
-            background: var(--primary-color); color: white; padding-top: 25px; 
-            z-index: 1050; box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease-in-out;
-        }
-        .brand-container { padding: 0 20px 30px; text-align: center; }
-        
-        /* LOGO STYLES (Cleaned up as requested) */
-        .sidebar-logo { 
-            max-width: 100%; height: auto; max-height: 70px; object-fit: contain; 
-        }
-        .nav-logo-img { 
-            height: 55px; width: auto; object-fit: contain;
-        }
-        
-        .sidebar .nav-link { 
-            color: rgba(255,255,255,0.8); padding: 14px 25px; font-weight: 500; 
-            display: flex; align-items: center; transition: all 0.3s; 
-            border-left: 4px solid transparent; text-decoration: none;
-        }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active { 
-            color: white; background: rgba(255,255,255,0.08); 
-            border-left: 4px solid var(--accent-color); 
-        }
-        .sidebar .nav-link i { width: 25px; margin-right: 10px; color: var(--accent-color); }
-        
-        /* === PUBLIC NAVBAR (FIXED) === */
-        .public-navbar { 
-            background: var(--primary-color); 
-            height: var(--nav-height);
-            padding: 0; /* Remove padding, let flexbox handle alignment */
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            /* CRITICAL FIXES FOR SCREEN FIT: */
-            position: fixed; 
-            top: 0; 
-            left: 0;
-            width: 100%;
-            z-index: 2000; /* Ensure it stays on top of everything */
-            display: flex;
-            align-items: center;
-        }
-        
-        .navbar-brand-text {
-            font-family: 'Cinzel', serif;
-            font-weight: 700;
-            color: white;
-            font-size: 1.5rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            text-decoration: none;
-        }
-
-        /* BUTTONS */
-        .btn-gold {
-            background-color: var(--accent-color); color: #000; font-weight: 700; 
-            text-transform: uppercase; border-radius: 4px; padding: 10px 25px; 
-            border: none; transition: all 0.3s; text-decoration: none; white-space: nowrap;
-        }
-        .btn-gold:hover { background-color: #b08d55; color: white; }
-        
-        .btn-outline-gold {
-            border: 2px solid var(--accent-color); color: var(--accent-color); 
-            font-weight: 700; border-radius: 4px; padding: 8px 20px; 
-            background: transparent; text-decoration: none; white-space: nowrap;
-        }
-        .btn-outline-gold:hover { background: var(--accent-color); color: #000; }
-        
-        /* LAYOUT CONTAINERS */
-        .layout-dashboard { 
-            margin-left: 280px; padding: 30px; min-height: 100vh; 
-            transition: margin-left 0.3s ease-in-out; 
-        }
-        
-        .layout-public { 
-            margin-left: 0; padding: 0; 
-            min-height: 100vh; 
-            display: flex; flex-direction: column; 
-            /* CRITICAL FIX: Push content down so it doesn't hide behind fixed navbar */
-            padding-top: var(--nav-height); 
-        }
-        
-        /* MOBILE */
-        .mobile-toggle { display: none; } 
-        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1040; }
-
-        @media (max-width: 991.98px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); }
-            .layout-dashboard { margin-left: 0; padding: 15px; }
-            .mobile-toggle { 
-                display: flex; align-items: center; justify-content: space-between;
-                background: white; padding: 15px; margin: -15px -15px 20px -15px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-bottom: 1px solid #eee;
-            }
-            .nav-logo-img { height: 45px; }
-            .navbar-brand-text { font-size: 1.1rem; }
-        }
+        .flash-overlay { position: fixed; top: 20px; right: 20px; z-index: 9999; width: 350px; max-width: 90%; }
+        .mobile-nav-toggle { display: none; font-size: 1.5rem; color: #333; background: none; border: none; }
+        @media (max-width: 992px) { .mobile-nav-toggle { display: block; } }
     </style>
 </head>
 <body>
 
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-
-    {% if session.get('role') and request.endpoint != 'auth_bp.login' and request.endpoint != 'home' %}
-        
-        <div class="sidebar" id="sidebarMenu">
-            <div class="brand-container">
-                <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" 
-                     class="sidebar-logo shadow-sm" alt="Sapthagiri Logo">
-            </div>
-            
-            <div class="small text-white-50 text-uppercase px-4 mb-2" style="font-size: 0.7rem; letter-spacing: 1px;">Menu</div>
-            
-            {% if session.get('role') == 'ClubSPOC' %}
-                <a href="/spoc/dashboard" class="nav-link"><i class="fas fa-calendar-check"></i>Manage Events</a>
-                <a href="/" class="nav-link"><i class="fas fa-globe"></i>View Public Site</a>
-            {% elif session.get('role') == 'Coordinator' %}
-                <a href="/event_head/dashboard" class="nav-link"><i class="fas fa-tasks"></i>Event Console</a>
-            {% elif session.get('role') == 'Judge' %}
-                <a href="/judge/dashboard" class="nav-link"><i class="fas fa-gavel"></i>Judge Panel</a>
-            {% elif session.get('role') == 'Participant' %}
-                <a href="/participant/dashboard" class="nav-link"><i class="fas fa-user-graduate"></i>Student Portal</a>
-                <a href="/" class="nav-link"><i class="fas fa-globe"></i>View Public Site</a>
-            {% endif %}
-            
-            <a href="/logout" class="nav-link mt-4"><i class="fas fa-sign-out-alt"></i>Logout</a>
-        </div>
-
-        <div class="layout-dashboard">
-            <div class="mobile-toggle">
-                <div class="d-flex align-items-center">
-                    <button class="btn btn-light border me-3" onclick="toggleSidebar()">
-                        <i class="fas fa-bars fa-lg text-primary"></i>
-                    </button>
-                    <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" 
-                         height="40" alt="Logo" style="object-fit: contain;">
+    <div class="flash-overlay">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show shadow-lg" role="alert">
+                    <small class="fw-bold">{{ message }}</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-            </div>
-            {% block content %}{% endblock %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    {% if session.get('role') and request.endpoint != 'auth_bp.login' and request.endpoint != 'home' and request.endpoint != 'event_details' %}
+        
+        <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+        <div class="wrapper">
+            <nav class="sidebar" id="sidebar">
+                <div class="sidebar-brand">
+                    <a href="/" class="text-white text-decoration-none">
+                        <span class="brand-text">SAPTHA<span>EVENT</span></span>
+                    </a>
+                </div>
+
+                <div class="sidebar-menu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><small class="text-light opacity-50 ms-4 text-uppercase fw-bold" style="font-size: 0.7rem;">Main Menu</small></li>
+                        
+                        {% if session.get('role') == 'SuperAdmin' %}
+                            <li class="nav-item mt-2"><a href="/super_admin/dashboard" class="nav-link {{ 'active' if request.endpoint == 'super_bp.dashboard' }}"><i class="fas fa-shield-alt"></i> Admin Console</a></li>
+                            <li class="nav-item"><a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#createUserModal"><i class="fas fa-user-plus"></i> Create User</a></li>
+                        {% elif session.get('role') == 'ClubSPOC' %}
+                            <li class="nav-item mt-2"><a href="/spoc/dashboard" class="nav-link {{ 'active' if request.endpoint == 'spoc_bp.dashboard' }}"><i class="fas fa-chart-pie"></i> Events Dashboard</a></li>
+                            <li class="nav-item"><a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#createEventModal"><i class="fas fa-plus-circle"></i> Create Event</a></li>
+                        {% elif session.get('role') == 'Coordinator' %}
+                            <li class="nav-item mt-2"><a href="/event_head/dashboard" class="nav-link {{ 'active' if request.endpoint == 'head_bp.dashboard' }}"><i class="fas fa-tasks"></i> Event Console</a></li>
+                        {% elif session.get('role') == 'Judge' %}
+                            <li class="nav-item mt-2"><a href="/judge/dashboard" class="nav-link {{ 'active' if request.endpoint == 'judge_bp.dashboard' }}"><i class="fas fa-gavel"></i> Evaluation Panel</a></li>
+                        {% elif session.get('role') == 'Participant' %}
+                            <li class="nav-item mt-2"><a href="/participant/dashboard" class="nav-link {{ 'active' if request.endpoint == 'participant_bp.dashboard' }}"><i class="fas fa-user-graduate"></i> Student Portal</a></li>
+                            <li class="nav-item"><a href="/" class="nav-link"><i class="fas fa-search"></i> Browse Events</a></li>
+                        {% endif %}
+                        
+                        <li class="nav-item mt-4 pt-3 border-top border-secondary">
+                            <a href="/logout" class="nav-link text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-footer">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center text-dark fw-bold me-3" style="width: 40px; height: 40px;">{{ current_user_name[0] }}</div>
+                        <div class="overflow-hidden">
+                            <h6 class="mb-0 text-white text-truncate" style="font-size: 0.9rem;">{{ current_user_name }}</h6>
+                            <small class="text-light opacity-50">{{ current_user_role }}</small>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <main class="main-content">
+                <div class="top-header d-lg-none">
+                    <span class="brand-text text-dark fs-5">SAPTHA EVENT</span>
+                    <button class="mobile-nav-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <div class="content-wrapper fade-in">
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
         </div>
 
     {% else %}
-        
-        <nav class="public-navbar">
+        <header class="navbar-public p-3 bg-white border-bottom shadow-sm fixed-top">
             <div class="container d-flex justify-content-between align-items-center">
-                <a href="/" class="d-flex align-items-center text-decoration-none">
-                    <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" 
-                         alt="Logo" class="nav-logo-img">
+                <a href="/" class="text-decoration-none d-flex align-items-center gap-2">
+                    <div class="bg-dark rounded text-white d-flex align-items-center justify-content-center fw-bold" style="width: 35px; height: 35px;">S</div>
+                    <span class="brand-text text-dark fs-5">SAPTHA<span class="text-gold">EVENT</span></span>
                 </a>
-                
-                <div class="d-none d-lg-block">
-                    <span class="navbar-brand-text">SAPTH EVENT</span>
-                </div>
-
-                <div>
-                    {% if not session.get('role') %}
-                        <a href="/login" class="btn-gold">Login / Register</a>
+                <div class="d-flex gap-2">
+                    {% if session.get('role') %}
+                        <a href="/login" class="btn btn-outline-gold btn-sm">Dashboard</a>
                     {% else %}
-                        <div class="d-flex gap-2">
-                             <a href="/participant/dashboard" class="btn-outline-gold">Dashboard</a>
-                             <a href="/logout" class="btn btn-danger btn-sm fw-bold px-3 d-flex align-items-center">Logout</a>
-                        </div>
+                        <a href="/login" class="btn btn-primary btn-sm">Login</a>
                     {% endif %}
                 </div>
             </div>
-        </nav>
+        </header>
 
-        <div class="layout-public">
-            {% block public_content %}
-                <div class="container mt-4">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                                    {{ message }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                </div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
-                </div>
-                
-                {% block content_home %}{% endblock %}
-                
-            {% endblock %}
+        <div class="public-wrapper fade-in" style="min-height: 100vh; padding-top: 80px;">
+            {% block content_home %}{% endblock %}
         </div>
-
     {% endif %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Toggle Sidebar Function
         function toggleSidebar() {
-            const sidebar = document.getElementById('sidebarMenu');
-            const overlay = document.querySelector('.sidebar-overlay');
-            sidebar.classList.toggle('active');
-            if (sidebar.classList.contains('active')) overlay.style.display = 'block';
-            else overlay.style.display = 'none';
+            document.getElementById('sidebar').classList.toggle('active');
+            document.querySelector('.sidebar-overlay').classList.toggle('active');
         }
+
+        // Auto Close Alerts
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(a => new bootstrap.Alert(a).close());
+        }, 4000);
     </script>
 </body>
 </html>

@@ -1,331 +1,390 @@
 {% extends "base.html" %}
 
 {% block content %}
-
-<style>
-    :root {
-        --admin-primary: #002147;
-        --admin-accent: #C5A065;
-        --card-bg: #ffffff;
-    }
-
-    /* Hero Banner */
-    .admin-hero {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        color: white;
-        padding: 2.5rem 2rem;
-        border-radius: 16px;
-        margin-bottom: 2rem;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    }
-    .admin-hero::after {
-        content: '';
-        position: absolute;
-        top: -50%; right: -10%;
-        width: 400px; height: 400px;
-        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 70%);
-        border-radius: 50%;
-        pointer-events: none;
-    }
-
-    /* Stats Cards */
-    .stat-card {
-        background: var(--card-bg);
-        border: none;
-        border-radius: 12px;
-        padding: 1.5rem;
-        height: 100%;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border-left: 5px solid transparent;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-    }
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 30px rgba(0,0,0,0.08);
-    }
-    .stat-icon {
-        width: 45px; height: 45px;
-        border-radius: 10px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem;
-        margin-bottom: 1rem;
-    }
-
-    /* Color Variants */
-    .border-users { border-left-color: #4e73df; }
-    .bg-users { background: rgba(78, 115, 223, 0.1); color: #4e73df; }
+<div class="container-fluid fade-in">
     
-    .border-events { border-left-color: #1cc88a; }
-    .bg-events { background: rgba(28, 200, 138, 0.1); color: #1cc88a; }
-    
-    .border-pending { border-left-color: #f6c23e; }
-    .bg-pending { background: rgba(246, 194, 62, 0.1); color: #f6c23e; }
-    
-    .border-status { border-left-color: #e74a3b; }
-    .bg-status { background: rgba(231, 74, 59, 0.1); color: #e74a3b; }
-
-    /* Tables */
-    .admin-table thead th {
-        background-color: #f8f9fc;
-        color: #858796;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        font-weight: 700;
-        border-bottom: 2px solid #eaecf4;
-        padding: 1rem;
-    }
-    .admin-table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-        border-bottom: 1px solid #eaecf4;
-        color: #5a5c69;
-        font-size: 0.9rem;
-    }
-    .admin-table tbody tr:hover { background-color: #fafbfc; }
-
-    /* Nav Tabs */
-    .nav-pills-custom .nav-link {
-        color: #5a5c69;
-        font-weight: 600;
-        border-radius: 50rem;
-        padding: 0.5rem 1.5rem;
-        font-size: 0.9rem;
-    }
-    .nav-pills-custom .nav-link.active {
-        background-color: var(--admin-primary);
-        color: white;
-    }
-</style>
-
-<div class="admin-hero d-flex justify-content-between align-items-center">
-    <div style="z-index: 2;">
-        <h2 class="fw-bold mb-1" style="font-family: 'Cinzel', serif;">Super Admin Console</h2>
-        <p class="mb-0 opacity-75">System Overview & User Management</p>
+    <div class="d-flex justify-content-between align-items-end mb-5">
+        <div>
+            <h6 class="text-gold fw-bold letter-spacing-2 mb-1 text-uppercase small">System Command Center</h6>
+            <h1 class="fw-black text-primary-900 mb-0 display-5">Super Admin</h1>
+        </div>
+        <div class="d-flex gap-3">
+            <span class="text-muted text-end d-none d-md-block small">
+                Server Time<br>
+                <strong class="text-dark">{{ current_time or 'Online' }}</strong>
+            </span>
+            <button class="btn btn-danger shadow-lg px-4" data-bs-toggle="modal" data-bs-target="#resetModal">
+                <i class="fas fa-power-off me-2"></i> Reset
+            </button>
+        </div>
     </div>
-    <div style="z-index: 2;">
-        <span class="badge bg-white text-dark px-3 py-2 rounded-pill shadow-sm">
-            <i class="fas fa-user-shield me-2 text-primary"></i> Admin Access
-        </span>
-    </div>
-</div>
 
-<div class="row g-4 mb-5">
-    <div class="col-md-3">
-        <div class="stat-card border-users">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h6 class="text-uppercase text-muted small fw-bold mb-1">Total Users</h6>
-                    <h2 class="mb-0 fw-bold text-dark">{{ stats.total_users }}</h2>
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-hover h-100 position-relative overflow-hidden">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="icon-square bg-primary-100 text-primary-700 rounded-3 me-3 p-3">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted small fw-bold mb-1">Total Users</h6>
+                        <h2 class="mb-0 fw-black text-primary-900">{{ stats.total_users }}</h2>
+                    </div>
                 </div>
-                <div class="stat-icon bg-users"><i class="fas fa-users"></i></div>
+                <div class="position-absolute bg-primary-50 rounded-circle" style="width: 100px; height: 100px; top: -20px; right: -20px; opacity: 0.5;"></div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card border-events">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h6 class="text-uppercase text-muted small fw-bold mb-1">Total Events</h6>
-                    <h2 class="mb-0 fw-bold text-dark">{{ stats.total_events }}</h2>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-hover h-100 position-relative overflow-hidden">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="icon-square bg-accent-100 text-accent-600 rounded-3 me-3 p-3">
+                        <i class="fas fa-calendar-star fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted small fw-bold mb-1">Active Events</h6>
+                        <h2 class="mb-0 fw-black text-primary-900">{{ stats.total_events }}</h2>
+                    </div>
                 </div>
-                <div class="stat-icon bg-events"><i class="fas fa-calendar-alt"></i></div>
+                <div class="position-absolute bg-accent-50 rounded-circle" style="width: 100px; height: 100px; top: -20px; right: -20px; opacity: 0.5;"></div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card border-pending">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h6 class="text-uppercase text-muted small fw-bold mb-1">Pending</h6>
-                    <h2 class="mb-0 fw-bold text-dark">0</h2>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-hover h-100 position-relative overflow-hidden">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="icon-square bg-success-bg text-success-text rounded-3 me-3 p-3">
+                        <i class="fas fa-user-tie fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-uppercase text-muted small fw-bold mb-1">Club Leads</h6>
+                        <h2 class="mb-0 fw-black text-primary-900">{{ stats.total_spocs }}</h2>
+                    </div>
                 </div>
-                <div class="stat-icon bg-pending"><i class="fas fa-clock"></i></div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card border-status">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h6 class="text-uppercase text-muted small fw-bold mb-1">System Status</h6>
-                    <h5 class="mb-0 fw-bold text-success"><i class="fas fa-check-circle me-1"></i> Online</h5>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-hover h-100 bg-primary-900 text-white cursor-pointer" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                <div class="card-body p-4 d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-1">Quick Action</h6>
+                        <h4 class="mb-0 fw-bold">Create User <i class="fas fa-arrow-right ms-2 fs-6"></i></h4>
+                    </div>
+                    <div class="icon-circle bg-white text-primary-900 rounded-circle p-3 shadow">
+                        <i class="fas fa-plus"></i>
+                    </div>
                 </div>
-                <div class="stat-icon bg-status"><i class="fas fa-server"></i></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card border-0 shadow-sm rounded-4 mb-4">
-    <div class="card-header bg-white border-bottom-0 py-3 px-4">
-        <ul class="nav nav-pills nav-pills-custom" id="adminTabs" role="tablist">
-            <li class="nav-item me-2"><button class="nav-link active" id="tab-spoc" data-bs-toggle="tab" data-bs-target="#content-spoc">Manage SPOCs</button></li>
-            <li class="nav-item me-2"><button class="nav-link" id="tab-students" data-bs-toggle="tab" data-bs-target="#content-students">Manage Students</button></li>
-            <li class="nav-item"><button class="nav-link" id="tab-events" data-bs-toggle="tab" data-bs-target="#content-events">All Events</button></li>
-        </ul>
-    </div>
-</div>
-
-<div class="tab-content">
-    
-    <div class="tab-pane fade show active" id="content-spoc">
-        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-dark">Club SPOCs</h6>
-                <button class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addSpocModal">
-                    <i class="fas fa-plus me-2"></i>Add New SPOC
-                </button>
-            </div>
-            <div class="table-responsive">
-                <table class="table admin-table mb-0">
-                    <thead><tr><th class="ps-4">Name</th><th>Email</th><th>Category</th><th>Actions</th></tr></thead>
-                    <tbody>
-                        {% for spoc in spocs %}
-                        <tr>
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-light text-dark d-flex align-items-center justify-content-center me-3 fw-bold" style="width: 35px; height: 35px;">{{ spoc.name[0] }}</div>
-                                    <span class="fw-bold text-dark">{{ spoc.name }}</span>
-                                </div>
-                            </td>
-                            <td>{{ spoc.email }}</td>
-                            <td><span class="badge bg-light text-primary border border-primary px-3 py-1 rounded-pill">{{ spoc.category }}</span></td>
-                            <td>
-                                <form action="/super_admin/delete_user/spoc/{{ spoc.id }}" method="POST" onsubmit="return confirm('Delete this SPOC?');">
-                                    <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" style="width: 32px; height: 32px;" title="Delete SPOC"><i class="fas fa-trash-alt"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="4" class="text-center py-5 text-muted">No SPOCs created yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
 
-    <div class="tab-pane fade" id="content-students">
-        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-            <div class="card-header bg-white py-3 px-4">
-                <h6 class="fw-bold mb-0 text-dark">Registered Participants</h6>
-            </div>
-            <div class="table-responsive">
-                <table class="table admin-table mb-0">
-                    <thead>
-                        <tr>
-                            <th class="ps-4">Student</th>
-                            <th>USN</th>
-                            <th>Contact</th>
-                            <th>College Info</th>
-                            <th>Registered Events</th>
-                            <th>Actions</th> </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in participants %}
-                        <tr>
-                            <td class="ps-4 fw-bold text-dark">{{ p.name }}</td>
-                            <td class="text-primary fw-bold">{{ p.usn }}</td>
-                            <td>{{ p.email }}</td>
-                            <td>
-                                <div class="small fw-bold">{{ p.college }}</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">{{ p.department }}</div>
-                            </td>
-                            <td>
-                                <span class="badge bg-light text-dark border px-2 py-1">
-                                    {{ p.events_attended|length }} Events
-                                </span>
-                            </td>
-                            <td>
-                                <form action="/super_admin/delete_user/participant/{{ p.id }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this student? This action cannot be undone.');">
-                                    <button class="btn btn-sm btn-light text-danger border-0 rounded-circle" style="width: 32px; height: 32px;" title="Delete Student">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="6" class="text-center py-5 text-muted">No students registered yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="card border-0 shadow-lg overflow-hidden" style="min-height: 500px;">
+        <div class="card-header bg-white border-bottom p-0">
+            <div class="d-flex justify-content-between align-items-center px-4 py-3 bg-light border-bottom">
+                <ul class="nav nav-pills card-header-pills" id="adminTabs" role="tablist">
+                    <li class="nav-item me-2">
+                        <button class="nav-link active fw-bold px-3" data-bs-toggle="tab" data-bs-target="#tab-spocs">
+                            <i class="fas fa-user-shield me-2"></i>Club SPOCs
+                        </button>
+                    </li>
+                    <li class="nav-item me-2">
+                        <button class="nav-link fw-bold px-3" data-bs-toggle="tab" data-bs-target="#tab-events">
+                            <i class="fas fa-calendar me-2"></i>Events
+                        </button>
+                    </li>
+                    <li class="nav-item me-2">
+                        <button class="nav-link fw-bold px-3" data-bs-toggle="tab" data-bs-target="#tab-students">
+                            <i class="fas fa-user-graduate me-2"></i>Students
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold px-3" data-bs-toggle="tab" data-bs-target="#tab-judges">
+                            <i class="fas fa-gavel me-2"></i>Judges
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="input-group" style="width: 250px;">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0" placeholder="Search records...">
+                </div>
             </div>
         </div>
-    </div>
-
-    <div class="tab-pane fade" id="content-events">
-        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-            <div class="card-header bg-white py-3 px-4">
-                <h6 class="fw-bold mb-0 text-dark">System-wide Events</h6>
-            </div>
-            <div class="table-responsive">
-                <table class="table admin-table mb-0">
-                    <thead><tr><th class="ps-4">Event Name</th><th>Date</th><th>Category</th><th>Status</th></tr></thead>
-                    <tbody>
-                        {% for event in events %}
-                        <tr>
-                            <td class="ps-4 fw-bold text-dark">{{ event.name }}</td>
-                            <td>{{ event.date.strftime('%d %b %Y') }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ event.category }}</span></td>
-                            <td>
-                                {% if event.is_published %}
-                                <span class="badge bg-success bg-opacity-10 text-success px-2 py-1"><i class="fas fa-circle me-1" style="font-size: 6px;"></i> Live</span>
+        
+        <div class="card-body p-0">
+            <div class="tab-content">
+                
+                <div class="tab-pane fade show active" id="tab-spocs">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">User Identity</th>
+                                    <th>Login ID</th>
+                                    <th>Assigned Domain</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for spoc in spocs %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-primary-100 text-primary-700 fw-bold me-3">
+                                                {{ spoc.name[0] }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark">{{ spoc.name }}</div>
+                                                <small class="text-muted">Club Lead</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-muted font-monospace small">{{ spoc.email }}</td>
+                                    <td><span class="badge bg-gold-soft border border-warning text-dark">{{ spoc.category }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <form action="/super_admin/delete_entity/user/{{ spoc.id }}" method="POST" class="d-inline" onsubmit="return confirm('Revoke access for {{ spoc.name }}?');">
+                                            <button class="btn btn-icon btn-light text-danger hover-danger"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
                                 {% else %}
-                                <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1">Draft</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="4" class="text-center py-5 text-muted">No events in system.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                <tr><td colspan="4" class="text-center py-5 text-muted">No Club SPOCs found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-events">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Event Details</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in events %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-square-sm bg-light rounded me-3 text-muted">
+                                                <i class="fas fa-calendar"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark">{{ event.name }}</div>
+                                                <small class="text-muted">{{ event.event_type }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ event.date }}</td>
+                                    <td>
+                                        {% if event.is_published %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fas fa-check-circle me-1"></i> Published</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle"><i class="fas fa-pencil-alt me-1"></i> Draft</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <form action="/super_admin/delete_entity/event/{{ event.id }}" method="POST" onsubmit="return confirm('Delete event?');">
+                                            <button class="btn btn-icon btn-light text-danger hover-danger"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="text-center py-5 text-muted">No Events found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-students">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Student</th>
+                                    <th>USN</th>
+                                    <th>Department</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in students %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-secondary-subtle text-dark fw-bold me-3">{{ s.name[0] }}</div>
+                                            <div>
+                                                <div class="fw-bold">{{ s.name }}</div>
+                                                <small class="text-muted">{{ s.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="font-monospace">{{ s.usn }}</td>
+                                    <td>{{ s.department }}</td>
+                                    <td class="text-end pe-4">
+                                        <form action="/super_admin/delete_entity/user/{{ s.id }}" method="POST">
+                                            <button class="btn btn-icon btn-light text-danger hover-danger"><i class="fas fa-ban"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="text-center py-5 text-muted">No Students found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-judges">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Judge</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for j in judges %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-dark text-white fw-bold me-3">{{ j.name[0] }}</div>
+                                            <div class="fw-bold">{{ j.name }}</div>
+                                        </div>
+                                    </td>
+                                    <td>{{ j.email }}</td>
+                                    <td><span class="badge bg-dark">Judge</span></td>
+                                    <td class="text-end pe-4">
+                                        <form action="/super_admin/delete_entity/user/{{ j.id }}" method="POST">
+                                            <button class="btn btn-icon btn-light text-danger hover-danger"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="text-center py-5 text-muted">No Judges found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
-
 </div>
 
-<div class="modal fade" id="addSpocModal" tabindex="-1">
+<div class="modal fade" id="createUserModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title">Create Club SPOC</h5>
+        <form action="/super_admin/create_user" method="POST" class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary-900 text-white">
+                <h5 class="modal-title fw-bold">Create System User</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form action="/super_admin/create_spoc" method="POST">
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-uppercase">Full Name</label>
+            <div class="modal-body p-4 bg-light">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-uppercase">Role Type</label>
+                    <select name="role" class="form-select" id="roleSelect" onchange="toggleFields()">
+                        <option value="ClubSPOC">Club SPOC</option>
+                        <option value="Judge">Judge</option>
+                        <option value="Coordinator">Event Coordinator</option>
+                        <option value="Participant">Student / Participant</option>
+                    </select>
+                </div>
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold text-uppercase">Full Name</label>
                         <input type="text" name="name" class="form-control" required>
                     </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-uppercase">Email Address</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+
+                <div class="mb-3" id="spocField">
+                    <label class="form-label small fw-bold text-uppercase">Club Category</label>
+                    <select name="category" class="form-select">
+                        <option value="Tech">Technical</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Cultural">Cultural</option>
+                    </select>
+                </div>
+
+                <div class="row g-2 mb-3 d-none" id="studentFields">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-uppercase">USN</label>
+                        <input type="text" name="usn" class="form-control" placeholder="1XY...">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-uppercase">Department</label>
+                        <input type="text" name="department" class="form-control" placeholder="CSE">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-uppercase">Default Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fas fa-key text-muted"></i></span>
+                        <input type="text" name="password" class="form-control" value="welcome123">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="resetModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold">⚠️ Emergency Reset</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-danger"><i class="fas fa-radiation fa-4x animate-pulse"></i></div>
+                <h5 class="fw-bold text-danger">Data Wipe Protocol</h5>
+                <p class="text-muted small">This action is irreversible. All Events, Teams, Scores, and Student data will be permanently deleted. Only Admin accounts will be preserved.</p>
+                <form action="/super_admin/system_reset" method="POST">
                     <div class="mb-3">
-                        <label class="form-label fw-bold small text-uppercase">Email (Login ID)</label>
-                        <input type="email" name="email" class="form-control" required>
+                        <label class="small fw-bold">Type "DELETE" to confirm</label>
+                        <input type="text" name="confirm_text" class="form-control text-center font-monospace" placeholder="DELETE">
                     </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-uppercase">Password</label>
-                            <input type="text" name="password" class="form-control" value="spoc123" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-uppercase">Category</label>
-                            <select name="category" class="form-select">
-                                <option value="Tech">Technical</option>
-                                <option value="Sports">Sports</option>
-                                <option value="Cultural">Cultural</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button class="btn btn-primary w-100 fw-bold">Create User</button>
-                </div>
-            </form>
+                    <button class="btn btn-danger w-100 fw-bold">EXECUTE RESET</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
+<script>
+    function toggleFields() {
+        const role = document.getElementById('roleSelect').value;
+        const spocField = document.getElementById('spocField');
+        const studentFields = document.getElementById('studentFields');
+        
+        spocField.style.display = 'none';
+        studentFields.classList.add('d-none');
+        
+        if (role === 'ClubSPOC') {
+            spocField.style.display = 'block';
+        } else if (role === 'Participant') {
+            studentFields.classList.remove('d-none');
+        }
+    }
+</script>
 {% endblock %}

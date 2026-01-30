@@ -1,14 +1,11 @@
-from flask import Flask, render_template, session, abort
+from flask import Flask, render_template, session, redirect, url_for
 from flask_mail import Mail
 from config import Config
+from models import db, FirebaseWrapper
+import logging
 
-# --- IMPORT DATABASE CONNECTION ---
-# We import 'db' from the new models.py we just created
-from models import db 
-
-# --- BLUEPRINT IMPORTS ---
-# NOTE: You must eventually update the code inside these files 
-# to use Firebase logic (db.collection) instead of SQL logic!
+# --- IMPORT BLUEPRINTS ---
+# Ensure these files (routes_*.py) exist in your folder from the previous step
 from routes_auth import auth_bp
 from routes_super import super_bp
 from routes_spoc import spoc_bp
@@ -16,21 +13,17 @@ from routes_head import head_bp
 from routes_participant import participant_bp
 from routes_judge import judge_bp 
 
+# Initialize Extensions
 mail = Mail()
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-
-    # --- EMAIL CONFIGURATION ---
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'sapthhack@gmail.com'  
-    app.config['MAIL_PASSWORD'] = 'oivm qpty tpfs ktjk'  
-    app.config['MAIL_DEFAULT_SENDER'] = ('SapthaEvent Portal', 'sapthhack@gmail.com')
     
-    # Initialize Mail Extension
+    # Initialize Mail
     mail.init_app(app)
     app.extensions['mail'] = mail
 
@@ -42,93 +35,109 @@ def create_app():
     app.register_blueprint(participant_bp)
     app.register_blueprint(judge_bp)
 
+    # --- GLOBAL CONTEXT PROCESSOR ---
+    # This injects variables into ALL HTML templates automatically
+    @app.context_processor
+    def inject_globals():
+        return dict(
+            app_name=Config.APP_NAME,
+            organization=Config.ORGANIZATION,
+            current_user_name=session.get('name', 'User'),
+            current_user_role=session.get('role', 'Guest')
+        )
+
     return app
 
 app = create_app()
 
-# --- HOME ROUTE (FIREBASE VERSION) ---
+# --- GLOBAL ROUTES ---
+
 @app.route('/')
 def home():
+    """Landing Page Logic"""
     featured_events = []
     upcoming = []
+    
     try:
-        events_ref = db.collection('events')
-        
-        # Fetch Events where is_published == True
-        # Note: Firestore queries require an index for complex sorting. 
-        # For now, we fetch and sort in Python if data is small, or use simple .stream()
-        query = events_ref.where('is_published', '==', True).stream()
-        
-        # Convert Firestore documents to a list of dictionaries
-        all_events = []
-        for doc in query:
-            event_data = doc.to_dict()
-            event_data['id'] = doc.id  # IMPORTANT: Attach the ID to the data
-            all_events.append(event_data)
+        if db:
+            events_ref = db.collection('events')
+            # Query: Published events only
+            query = events_ref.where('is_published', '==', True).stream()
+            
+            # Convert to Wrappers
+            all_events = [FirebaseWrapper(doc.id, doc.to_dict()) for doc in query]
+            
+            # Python-side sorting (since Firestore compound queries require indexes)
+            # Sorting by 'date' string (YYYY-MM-DD)
+            all_events.sort(key=lambda x: x.date)
 
-        # Sort by date manually (string sort)
-        all_events.sort(key=lambda x: x.get('date', ''))
-
-        # Split into featured (first 3) and upcoming (rest)
-        featured_events = all_events[:3]
-        upcoming = all_events # Or all_events[3:] if you want to exclude featured
-
+            # Slice lists for UI sections
+            featured_events = all_events[:3] # Top 3 soonest
+            upcoming = all_events            # All events list
+            
     except Exception as e:
-        print(f"Firebase Error: {e}")
+        logger.error(f"Home Page Error: {e}")
+        # Fail gracefully (empty lists)
     
     return render_template('home.html', featured=featured_events, upcoming=upcoming)
 
-# --- EVENT DETAILS ROUTE (FIREBASE VERSION) ---
-@app.route('/event/<event_id>') # Changed from int:event_id to event_id (String)
+@app.route('/event/<event_id>')
 def event_details(event_id):
+    """Public Event Details Page"""
     try:
-        # 1. Fetch Event Document
-        event_ref = db.collection('events').document(event_id)
-        event_doc = event_ref.get()
+        if not db: raise Exception("DB Not Connected")
 
-        if not event_doc.exists:
-            abort(404) # Event not found
-
-        event = event_doc.to_dict()
-        event['id'] = event_doc.id
-
-        # 2. Check Registration Status
+        # Fetch Event
+        doc_ref = db.collection('events').document(event_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            return render_template('404.html'), 404
+        
+        event = FirebaseWrapper(event_id, doc.to_dict())
+        
+        # Check Registration Status for Participants
         is_registered = False
-        if session.get('role') == 'Participant' and session.get('user_id'):
-            user_email = session['user_id']
+        if session.get('role') == 'Participant':
+            user_email = session.get('user_id')
             
-            # Check the sub-collection 'participants' inside the event 
-            # OR check an array inside the user document. 
-            # Here we assume there is a 'participants' sub-collection in the event.
-            participant_doc = event_ref.collection('participants').document(user_email).get()
+            # Check Teams collection for this event + this user
+            # "member_emails" is an array field in the team document
+            teams_q = db.collection('teams')\
+                        .where('event_id', '==', event_id)\
+                        .where('member_emails', 'array_contains', user_email)\
+                        .get()
             
-            if participant_doc.exists:
+            if len(teams_q) > 0:
                 is_registered = True
 
         return render_template('event_details.html', event=event, is_registered=is_registered)
 
     except Exception as e:
-        print(f"Error fetching details: {e}")
-        abort(404)
+        logger.error(f"Event Details Error: {e}")
+        return f"System Error: {e}", 500
+
+# --- ERROR HANDLERS ---
+@app.errorhandler(404)
+def page_not_found(e):
+    # You can create a simple 404.html template if you wish
+    return "<h1>404 - Page Not Found</h1><p>The requested page could not be found.</p><a href='/'>Go Home</a>", 404
 
 if __name__ == '__main__':
-    # --- AUTO-CREATE SUPER ADMIN (FIREBASE) ---
+    # Auto-create Admin on startup (Safety Check)
     try:
         admin_email = 'admin@sapthahack.com'
-        users_ref = db.collection('users')
-        doc = users_ref.document(admin_email).get()
-
-        if not doc.exists:
-            print("\n--- CREATING SUPER ADMIN (FIREBASE) ---")
-            admin_data = {
-                'email': admin_email,
-                'password': 'admin', # Remember to hash this in production!
-                'role': 'SuperAdmin',
-                'name': 'System Administrator'
-            }
-            users_ref.document(admin_email).set(admin_data)
-            print("Super Admin Created in Firestore!")
+        if db:
+            doc = db.collection('users').document(admin_email).get()
+            if not doc.exists:
+                print("--- SYSTEM INIT: Creating Super Admin ---")
+                db.collection('users').document(admin_email).set({
+                    'email': admin_email,
+                    'password': 'admin', # Dev password
+                    'role': 'SuperAdmin',
+                    'name': 'System Administrator'
+                })
     except Exception as e:
-        print(f"Startup Error: {e}")
+        print(f"Startup Init Warning: {e}")
 
     app.run(debug=True, port=5000)

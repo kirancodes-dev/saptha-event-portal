@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin | Sapthagiri NPS University</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #002147;  /* SNPSU Navy Blue */
+            --accent: #FF9900;   /* SNPSU Gold */
+            --light-bg: #f4f7f6;
+            --sidebar-width: 260px;
+        }
+
+        body { 
+            background-color: var(--light-bg); 
+            font-family: 'Poppins', sans-serif; 
+            overflow-x: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background-color: var(--primary);
+            color: white;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 1000;
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        /* LOGO FIX: White Background for Header */
+        .sidebar-header {
+            background-color: #ffffff; /* White background to match logo */
+            padding: 20px;
+            text-align: center;
+            border-bottom: 4px solid var(--accent); /* Gold separator */
+        }
+        
+        .sidebar-logo {
+            max-width: 100%; /* Full width */
+            height: auto;
+            display: block;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 16px 25px;
+            font-size: 0.95rem;
+            border-left: 5px solid transparent;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            padding-left: 30px; /* Slide effect */
+        }
+
+        .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-left-color: var(--accent);
+            font-weight: 600;
+        }
+        
+        .nav-link i { width: 25px; margin-right: 12px; font-size: 1.1rem; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            transition: 0.3s;
+        }
+
+        /* --- CARDS --- */
+        .stat-card {
+            background: white; border-radius: 12px; padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-title { color: #888; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); margin: 5px 0; }
+        .stat-icon {
+            width: 50px; height: 50px; background: #eef2f6; color: var(--primary);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+        .card-gold { border-left-color: var(--accent); }
+        .card-gold .stat-value { color: #e68a00; }
+        .card-gold .stat-icon { background: #fff3e0; color: #e68a00; }
+
+        /* --- TABLE --- */
+        .custom-table-card {
+            background: white; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .table-header {
+            background: var(--primary); color: white; padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* --- MOBILE --- */
+        .mobile-nav { display: none; background: white; padding: 10px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1001; }
+        .mobile-logo { height: 45px; }
+
+        @media (max-width: 991px) {
+            .sidebar { transform: translateX(-100%); width: 280px; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 20px; }
+            .mobile-nav { display: flex; }
+            .sidebar-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); z-index: 999; display: none;
+            }
+            .sidebar-overlay.active { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-nav">
+        <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" alt="Logo" class="mobile-logo">
+        <button class="btn btn-light border" onclick="toggleSidebar()"><i class="fas fa-bars text-primary"></i></button>
+    </div>
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" alt="SNPSU Logo" class="sidebar-logo">
+        </div>
+        
+        <div class="d-flex flex-column flex-grow-1 py-4">
+            <a href="/super_admin/dashboard" class="nav-link active">
+                <i class="fas fa-th-large"></i> Dashboard
+            </a>
+            <a href="/super_admin/events" class="nav-link">
+                <i class="fas fa-calendar-alt"></i> Manage Events
+            </a>
+            <a href="/super_admin/users" class="nav-link">
+                <i class="fas fa-users-cog"></i> User Roles
+            </a>
+            <a href="/super_admin/analytics" class="nav-link">
+                <i class="fas fa-chart-line"></i> Analytics
+            </a>
+            
+            <div class="mt-auto">
+                <a href="/logout" class="nav-link text-warning fw-bold">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark m-0">Admin Console</h2>
+                <p class="text-muted small m-0">System Overview</p>
+            </div>
+            <button class="btn btn-warning text-dark fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#createSpocModal">
+                <i class="fas fa-plus-circle me-2"></i> Appoint Club Lead
+            </button>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} border-0 shadow-sm rounded-3 small">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-title">Club Leads</div>
+                            <div class="stat-value">{{ stats.spocs }}</div>
+                        </div>
+                        <div class="stat-icon"><i class="fas fa-user-tie"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card card-gold">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-title">Active Events</div>
+                            <div class="stat-value">{{ stats.events }}</div>
+                        </div>
+                        <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-title">Students</div>
+                            <div class="stat-value">{{ stats.students }}</div>
+                        </div>
+                        <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="custom-table-card">
+            <div class="table-header">
+                <h5 class="m-0 fw-bold">Registered Club Leads</h5>
+                <span class="badge bg-white text-primary rounded-pill">{{ stats.spocs }} Active</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4 py-3">Name</th>
+                            <th>Club</th>
+                            <th>Category</th>
+                            <th>Email</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for spoc in spocs %}
+                        <tr>
+                            <td class="ps-4 fw-bold text-dark">{{ spoc.name }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ spoc.club_name }}</span></td>
+                            <td><span class="badge bg-warning text-dark bg-opacity-25">{{ spoc.category }}</span></td>
+                            <td class="text-muted small">{{ spoc.email }}</td>
+                            <td class="text-end pe-4">
+                                <a href="/super_admin/delete_user/{{ spoc.id }}" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('Revoke access?')">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center py-4 text-muted">No records found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createSpocModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold">Appoint Club Lead</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/super_admin/create_spoc" method="POST">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Full Name</label>
+                            <input type="text" name="spoc_name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Email Address</label>
+                            <input type="email" name="spoc_email" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Password</label>
+                            <input type="password" name="spoc_password" class="form-control" value="Welcome@123" required>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-7">
+                                <label class="form-label small fw-bold text-secondary">Club Name</label>
+                                <input type="text" name="club_name" class="form-control" placeholder="e.g. Coding Club" required>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small fw-bold text-secondary">Category</label>
+                                <select name="club_category" class="form-select">
+                                    <option value="Technical">Technical</option>
+                                    <option value="Cultural">Cultural</option>
+                                    <option value="Sports">Sports</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-warning fw-bold px-4">Create Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.querySelector('.sidebar-overlay').classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Event | Club Console</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-bottom: 80px; } /* Space for sticky footer */
+        
+        /* HEADER */
+        .page-header {
+            background: white; padding: 15px 20px; border-bottom: 1px solid #eee;
+            position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between;
+        }
+        
+        /* FORM SECTIONS */
+        .form-section { background: white; padding: 20px; margin-bottom: 15px; border-radius: 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .section-title { font-size: 0.8rem; font-weight: 700; color: #002147; text-transform: uppercase; margin-bottom: 15px; opacity: 0.7; }
+        
+        /* STICKY FOOTER ACTION */
+        .bottom-action-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; padding: 15px 20px;
+            border-top: 1px solid #ddd; z-index: 1000;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+            display: flex; gap: 10px;
+        }
+        
+        @media (min-width: 768px) {
+            .container { max-width: 600px; }
+            .form-section { border-radius: 10px; border: 1px solid #eee; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-header">
+        <a href="/spoc/dashboard" class="text-decoration-none text-dark fw-bold">
+            <i class="fas fa-arrow-left me-2"></i> Cancel
+        </a>
+        <span class="fw-bold text-primary">Create Event</span>
+        <div></div>
+    </div>
+
+    <div class="container mt-3">
+        <form action="/spoc/create_event" method="POST" id="publishForm">
+            
+            <div class="form-section">
+                <div class="section-title"><i class="fas fa-info-circle me-1"></i> Basic Details</div>
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Event Title</label>
+                    <input type="text" name="title" class="form-control form-control-lg fw-bold" placeholder="e.g. Hackathon 2026" required>
+                </div>
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Date</label>
+                        <input type="date" name="date" class="form-control" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Time</label>
+                        <input type="time" name="time" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Venue</label>
+                    <input type="text" name="venue" class="form-control" placeholder="Block A, Seminar Hall" required>
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label small text-muted">Description</label>
+                    <textarea name="description" class="form-control" rows="4" placeholder="What is this event about?" required></textarea>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title"><i class="fas fa-users-cog me-1"></i> Rules & Participation</div>
+                
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Participation Type</label>
+                        <select name="participation_type" id="partType" class="form-select" onchange="toggleTeam()" required>
+                            <option value="Individual">Individual</option>
+                            <option value="Team">Team Based</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Max Capacity</label>
+                        <input type="number" name="max_limit" class="form-control" placeholder="0 = Unlimited" value="0">
+                    </div>
+                </div>
+
+                <div id="teamSettings" class="bg-light p-3 rounded mb-3" style="display:none;">
+                    <h6 class="small fw-bold text-dark mb-2">Team Size Limits</h6>
+                    <div class="input-group">
+                        <span class="input-group-text">Min</span>
+                        <input type="number" name="team_min" class="form-control" value="2">
+                        <span class="input-group-text">Max</span>
+                        <input type="number" name="team_max" class="form-control" value="4">
+                    </div>
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label small text-muted">Reg Deadline</label>
+                    <input type="date" name="reg_deadline" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title"><i class="fas fa-trophy me-1"></i> Rewards & Links</div>
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Prizes</label>
+                    <textarea name="prizes" class="form-control" rows="2" placeholder="e.g. 1st Place: ₹5000"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> Group Link</label>
+                    <input type="url" name="group_link" class="form-control" placeholder="https://chat.whatsapp.com/...">
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label small fw-bold text-primary"><i class="fab fa-google-drive me-1"></i> Problem Statement (URL)</label>
+                    <input type="url" name="problem_link" class="form-control" placeholder="https://docs.google.com/...">
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <div class="bottom-action-bar">
+        <a href="/spoc/dashboard" class="btn btn-light border flex-grow-1">Discard</a>
+        <button type="submit" form="publishForm" class="btn btn-warning fw-bold flex-grow-1">Publish Event</button>
+    </div>
+
+    <script>
+        function toggleTeam() {
+            var val = document.getElementById('partType').value;
+            var box = document.getElementById('teamSettings');
+            box.style.display = (val === 'Team') ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

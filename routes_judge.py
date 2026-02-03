@@ -1,90 +1,111 @@
-from flask import Blueprint, render_template, session, redirect, request, flash
-from models import db
+from flask import Blueprint, render_template, request, redirect, session, flash, url_for
+from models import db, FirebaseWrapper
+import datetime
 
-judge_bp = Blueprint('judge_bp', __name__, url_prefix='/judge')
+judge_bp = Blueprint('judge', __name__, url_prefix='/judge')
 
-# Wrapper for Dot Notation
-class FirebaseWrapper:
-    def __init__(self, id, data):
-        self.id = id
-        self._data = data
-    def __getattr__(self, name):
-        return self._data.get(name)
-
+# --- 1. DASHBOARD (List Assigned Events) ---
 @judge_bp.route('/dashboard')
 def dashboard():
-    if session.get('role') != 'Judge': return redirect('/login')
+    if session.get('role') != 'Judge': 
+        return redirect('/login')
     
-    judge_email = session['user_id']
-    # Find events where 'judge_ids' array contains my email
-    query = db.collection('events').where('judge_ids', 'array_contains', judge_email).stream()
+    user_email = session.get('user_id')
     
-    my_events = [FirebaseWrapper(doc.id, doc.to_dict()) for doc in query]
-    return render_template('dashboard_judge.html', events=my_events)
+    # Find events where this user's email is in the 'judge_ids' array
+    # Note: Firestore 'array-contains' query
+    events_ref = db.collection('events')
+    query = events_ref.where('judge_ids', 'array_contains', user_email).stream()
+    
+    my_events = []
+    for doc in query:
+        data = doc.to_dict()
+        my_events.append(FirebaseWrapper(doc.id, data))
+        
+    return render_template('judge/dashboard.html', events=my_events)
 
-@judge_bp.route('/evaluate/<event_id>')
-def evaluate(event_id):
+# --- 2. EVENT VIEW (List Teams) ---
+@judge_bp.route('/event/<event_id>')
+def view_event(event_id):
     if session.get('role') != 'Judge': return redirect('/login')
     
+    # Get Event Details
     event_doc = db.collection('events').document(event_id).get()
-    event_obj = FirebaseWrapper(event_id, event_doc.to_dict())
+    if not event_doc.exists: return redirect('/judge/dashboard')
+    event_data = FirebaseWrapper(event_id, event_doc.to_dict())
     
-    # Get Approved Teams
-    teams_query = db.collection('teams').where('event_id', '==', event_id).where('approval_status', '==', 'Approved').stream()
-    teams = [FirebaseWrapper(doc.id, doc.to_dict()) for doc in teams_query]
+    # Get Teams (Registrations)
+    # We only show teams that have marked attendance as 'Present' (Optional logic)
+    # For now, show all.
+    teams_ref = db.collection('registrations').where('event_id', '==', event_id).stream()
     
-    # Calculate Leaderboard
-    leaderboard = []
-    for team in teams:
-        scores_ref = db.collection('scores').where('team_id', '==', team.id).stream()
-        total = 0
-        count = 0
-        for s in scores_ref:
-            total += s.to_dict().get('total_score', 0)
-            count += 1
+    teams = []
+    for t in teams_ref:
+        data = t.to_dict()
+        # Check if this judge has already scored this team
+        # We look for a sub-collection or a 'scores' field. 
+        # Simple approach: Check a 'scores' map inside the registration doc
+        # Structure: registration.scores = { 'judge_email': 45, ... }
         
-        avg = round(total / count, 1) if count > 0 else 0
-        leaderboard.append({'name': team.name, 'score': avg})
-    
-    leaderboard.sort(key=lambda x: x['score'], reverse=True)
-    return render_template('judge_evaluate.html', event=event_obj, teams=teams, leaderboard=leaderboard)
-
-@judge_bp.route('/submit_score', methods=['POST'])
-def submit_score():
-    try:
-        team_id = request.form.get('team_id')
-        event_id = request.form.get('event_id')
-        judge_id = session['user_id']
-        
-        c1 = int(request.form.get('c1') or 0)
-        c2 = int(request.form.get('c2') or 0)
-        c3 = int(request.form.get('c3') or 0)
-        c4 = int(request.form.get('c4') or 0)
-        total = c1 + c2 + c3 + c4
-        
-        score_data = {
-            'team_id': team_id,
-            'event_id': event_id,
-            'judge_id': judge_id,
-            'criteria_1': c1, 'criteria_2': c2, 'criteria_3': c3, 'criteria_4': c4,
-            'total_score': total,
-            'feedback': request.form.get('feedback')
-        }
-        
-        # Check if score exists
-        query = db.collection('scores').where('team_id', '==', team_id).where('judge_id', '==', judge_id).get()
-        
-        if len(query) > 0:
-            # Update existing
-            doc_id = query[0].id
-            db.collection('scores').document(doc_id).update(score_data)
-            flash("Score Updated", "info")
-        else:
-            # Create new
-            db.collection('scores').add(score_data)
-            flash("Score Submitted", "success")
+        has_scored = False
+        score_val = 0
+        if 'scores' in data and session['user_id'] in data['scores']:
+            has_scored = True
+            score_val = data['scores'][session['user_id']]['total']
             
-    except Exception as e:
-        flash(f"Error: {e}", "danger")
+        data['has_scored'] = has_scored
+        data['my_score'] = score_val
+        teams.append(FirebaseWrapper(t.id, data))
         
-    return redirect(f'/judge/evaluate/{event_id}')
+    return render_template('judge/event_view.html', event=event_data, teams=teams)
+
+# --- 3. SCORE TEAM (Form) ---
+@judge_bp.route('/score/<event_id>/<reg_id>', methods=['GET', 'POST'])
+def score_team(event_id, reg_id):
+    if session.get('role') != 'Judge': return redirect('/login')
+    
+    reg_ref = db.collection('registrations').document(reg_id)
+    reg_doc = reg_ref.get()
+    
+    if request.method == 'POST':
+        try:
+            # Capture Scores
+            criteria = {
+                'innovation': int(request.form.get('innovation')),
+                'feasibility': int(request.form.get('feasibility')),
+                'tech_stack': int(request.form.get('tech_stack')),
+                'presentation': int(request.form.get('presentation')),
+                'impact': int(request.form.get('impact'))
+            }
+            total = sum(criteria.values())
+            
+            # Save Score Object
+            score_entry = {
+                'judge_name': session.get('name'),
+                'judge_email': session.get('user_id'),
+                'criteria': criteria,
+                'total': total,
+                'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Update Firestore using Dot Notation for specific judge key
+            # This prevents overwriting other judges' scores
+            judge_key = session.get('user_id').replace('.', '_') # Firestore keys can't have dots
+            
+            # Note: In a real app, use a subcollection 'judging' for scalability.
+            # Here we use a map field 'scores' for simplicity.
+            # We must fetch, update dict, and set back to avoid "dot in key" issues if using direct update.
+            
+            reg_data = reg_doc.to_dict()
+            current_scores = reg_data.get('scores', {})
+            current_scores[session.get('user_id')] = score_entry
+            
+            reg_ref.update({'scores': current_scores})
+            
+            flash("Score submitted successfully!", "success")
+            return redirect(url_for('judge.view_event', event_id=event_id))
+            
+        except Exception as e:
+            flash(f"Error submitting score: {e}", "danger")
+
+    return render_template('judge/score_sheet.html', team=reg_doc.to_dict(), event_id=event_id, reg_id=reg_id)

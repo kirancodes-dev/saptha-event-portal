@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event.title }} | SapthaEvent</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary: #002147; --accent: #FF9900; }
+        body { background: #f8f9fa; font-family: 'Poppins', sans-serif; padding-bottom: 80px; }
+
+        /* HERO SECTION */
+        .event-hero {
+            position: relative; height: 350px; background: #000; overflow: hidden;
+            color: white; display: flex; align-items: flex-end;
+        }
+        .hero-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; opacity: 0.6; filter: blur(4px); transform: scale(1.1);
+        }
+        .hero-content {
+            position: relative; z-index: 2; padding: 40px; width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+        }
+        .event-poster-thumb {
+            width: 120px; height: 120px; border-radius: 12px; object-fit: cover;
+            border: 4px solid white; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            margin-right: 20px;
+        }
+
+        /* NAVIGATION TABS */
+        .nav-tabs { border-bottom: 2px solid #ddd; margin-bottom: 20px; background: white; padding: 0 20px; }
+        .nav-link {
+            border: none; color: #666; font-weight: 600; padding: 15px 20px;
+            border-bottom: 3px solid transparent; transition: 0.3s;
+        }
+        .nav-link.active {
+            color: var(--primary); border-bottom-color: var(--accent); background: transparent;
+        }
+
+        /* CONTENT CARDS */
+        .info-card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 20px; border: 1px solid #eee; }
+        .feature-icon {
+            width: 40px; height: 40px; background: rgba(255, 153, 0, 0.1);
+            color: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin-right: 15px;
+        }
+
+        /* STICKY BOTTOM BAR (Mobile) */
+        .action-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; padding: 15px 20px; z-index: 1000;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1); border-top: 1px solid #eee;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .btn-register {
+            background: var(--accent); color: white; font-weight: 700;
+            padding: 12px 40px; border-radius: 50px; border: none;
+            box-shadow: 0 5px 15px rgba(255, 153, 0, 0.4); width: 100%;
+        }
+        .btn-register:hover { background: #e68a00; color: white; }
+        .btn-registered {
+            background: #d1e7dd; color: #0f5132; width: 100%; pointer-events: none; border: 1px solid #badbcc;
+        }
+
+        @media (max-width: 768px) {
+            .event-hero { height: auto; display: block; padding-top: 60px; }
+            .hero-bg { display: none; }
+            .hero-content { background: var(--primary); padding: 20px; text-align: center; }
+            .event-poster-thumb { margin: 0 auto 15px; width: 100px; height: 100px; }
+            .nav-link { padding: 10px 15px; font-size: 0.9rem; }
+            .d-desktop { display: none; }
+        }
+        @media (min-width: 769px) {
+            .d-mobile { display: none; }
+            .action-bar { display: none; } /* Hide sticky bar on desktop, use sidebar instead */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="event-hero">
+        <img src="{{ event.banner_url or 'https://snpsu.edu.in/wp-content/uploads/2024/05/SNPSU-Campus.jpg' }}" class="hero-bg" alt="bg">
+        <div class="container">
+            <div class="d-flex align-items-end hero-content">
+                <img src="{{ event.banner_url or 'https://via.placeholder.com/150' }}" class="event-poster-thumb d-none d-md-block" alt="Poster">
+                <div class="text-white">
+                    <span class="badge bg-warning text-dark mb-2">{{ event.category }} Event</span>
+                    <h1 class="fw-bold display-5 mb-2">{{ event.title }}</h1>
+                    <p class="mb-0 opacity-75"><i class="fas fa-map-marker-alt me-2"></i> {{ event.venue }} &bull; <i class="far fa-calendar-alt ms-2 me-2"></i> {{ event.date }} at {{ event.time }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs sticky-top" id="eventTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#about">About</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rules">Rules</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#prizes">Prizes</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#contact">Contact</button></li>
+    </ul>
+
+    <div class="container mt-4">
+        <div class="row">
+            
+            <div class="col-lg-8">
+                <div class="tab-content" id="eventTabContent">
+                    <div class="tab-pane fade show active" id="about">
+                        <div class="info-card">
+                            <h5 class="fw-bold mb-3">Overview</h5>
+                            <p class="text-secondary" style="white-space: pre-line;">{{ event.description }}</p>
+                            
+                            {% if event.problem_statements %}
+                            <h6 class="fw-bold mt-4 mb-3">Themes / Problem Statements</h6>
+                            <ul class="list-group list-group-flush">
+                                {% for ps in event.problem_statements %}
+                                <li class="list-group-item px-0"><i class="fas fa-check-circle text-success me-2"></i> {{ ps }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="rules">
+                        <div class="info-card">
+                            <h5 class="fw-bold mb-3">Participation Rules</h5>
+                            <div class="d-flex mb-3">
+                                <div class="feature-icon"><i class="fas fa-users"></i></div>
+                                <div>
+                                    <h6 class="fw-bold m-0">Team Size</h6>
+                                    <p class="text-muted small m-0">
+                                        {% if event.is_team_event %}
+                                            {{ event.team_min }} - {{ event.team_max }} Members allowed
+                                        {% else %}
+                                            Individual Participation Only
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="d-flex mb-3">
+                                <div class="feature-icon"><i class="fas fa-hourglass-end"></i></div>
+                                <div>
+                                    <h6 class="fw-bold m-0">Registration Deadline</h6>
+                                    <p class="text-muted small m-0">{{ event.reg_deadline }}</p>
+                                </div>
+                            </div>
+                            <hr>
+                            <p class="text-secondary small">
+                                * All participants must carry their college ID cards.<br>
+                                * Decisions of the judges are final and binding.<br>
+                                * {{ event.rules or 'Standard university code of conduct applies.' }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="prizes">
+                        <div class="info-card text-center">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3113/3113054.png" width="80" class="mb-3">
+                            <h5 class="fw-bold">Rewards & Recognition</h5>
+                            <p class="text-muted">{{ event.prizes or 'Exciting cash prizes and certificates for winners!' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="contact">
+                        <div class="info-card">
+                            <h5 class="fw-bold mb-3">Event Coordinators</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded">
+                                        <small class="text-uppercase text-muted fw-bold">Student Lead</small>
+                                        <div class="fw-bold text-dark">{{ event.coord_student_id or 'TBA' }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded">
+                                        <small class="text-uppercase text-muted fw-bold">Faculty Lead</small>
+                                        <div class="fw-bold text-dark">{{ event.coord_staff_id or 'TBA' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 d-none d-lg-block">
+                <div class="card shadow-sm border-0 sticky-top" style="top: 100px;">
+                    <div class="card-body p-4">
+                        {% if is_registered %}
+                            <div class="alert alert-success text-center mb-0">
+                                <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                                <strong>You are Registered!</strong><br>
+                                <small>Check your dashboard for details.</small>
+                            </div>
+                            <a href="/participant/dashboard" class="btn btn-outline-success w-100 mt-3">Go to Dashboard</a>
+                        {% else %}
+                            <h5 class="fw-bold mb-3">Ready to join?</h5>
+                            <p class="text-muted small mb-4">Don't miss out on this opportunity. Slots are filling up fast!</p>
+                            
+                            {% if session.get('user_id') %}
+                                <a href="/participant/register_event/{{ event.id }}" class="btn btn-register">Register Now</a>
+                            {% else %}
+                                <a href="/login" class="btn btn-outline-primary w-100 mb-2">Login to Register</a>
+                                <small class="text-muted d-block text-center">New here? <a href="/register">Sign up</a></small>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="action-bar d-lg-none">
+        <div>
+            <small class="d-block text-muted">Deadline</small>
+            <strong class="text-dark">{{ event.reg_deadline }}</strong>
+        </div>
+        <div style="width: 60%;">
+            {% if is_registered %}
+                <button class="btn btn-registered"><i class="fas fa-check me-1"></i> Registered</button>
+            {% else %}
+                {% if session.get('user_id') %}
+                    <a href="/participant/register_event/{{ event.id }}" class="btn btn-register text-decoration-none text-center d-block">Register</a>
+                {% else %}
+                    <a href="/login" class="btn btn-primary w-100 rounded-pill fw-bold">Login</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

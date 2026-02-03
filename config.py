@@ -2,25 +2,22 @@ import os
 import secrets
 
 class Config:
-    """
-    Base Configuration for SapthaEvent Enterprise.
-    Securely manages environment variables and core settings.
-    """
-    # Security
+    # 1. Strong Secret Key (Generates a new one if not found)
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
-    SESSION_COOKIE_NAME = 'saptha_enterprise_session'
     
-    # Database (Firebase)
-    FIREBASE_CREDENTIALS = os.environ.get('FIREBASE_CREDENTIALS')
+    # 2. Database Config
+    # (We are using Firestore, so no SQL URI needed here, but kept for structure)
+    APP_NAME = "SapthaEvent"
+    ORGANIZATION = "Sapthagiri NPS University"
     
-    # Mail Settings (SMTP)
+    # 3. Security Settings (CRITICAL FOR PHASE 3)
+    SESSION_COOKIE_HTTPONLY = True  # Prevents JavaScript from reading cookies (XSS Protection)
+    SESSION_COOKIE_SAMESITE = 'Lax' # Prevents CSRF attacks
+    PERMANENT_SESSION_LIFETIME = 1800 # Session expires after 30 minutes of inactivity
+    
+    # 4. Mail Settings (For Future OTPs/Emails)
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = 'sapthhack@gmail.com'
-    MAIL_PASSWORD = 'bbcw iimk ghvu pvof' 
-    MAIL_DEFAULT_SENDER = ('SapthaEvent Admin', 'sapthhack@gmail.com')
-    
-    # App Meta
-    APP_NAME = "SapthaEvent Enterprise"
-    ORGANIZATION = "Sapthagiri College of Engineering"
+    MAIL_USERNAME = os.environ.get('MAIL_USER')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASS')

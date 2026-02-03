@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordinator Console | SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .navbar-custom { background: #002147; color: white; }
+        .card-event { border: none; border-top: 5px solid #FF9900; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .table-custom th { background: #e9ecef; }
+        .badge-present { background: #d1e7dd; color: #0f5132; }
+        .badge-absent { background: #f8d7da; color: #842029; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-custom shadow-sm mb-4">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1 fw-bold"><i class="fas fa-clipboard-list me-2"></i> Coordinator Console</span>
+            <div class="d-flex align-items-center">
+                <span class="me-3 small opacity-75">Hi, {{ session.get('name') }}</span>
+                <a href="/logout" class="btn btn-sm btn-outline-warning">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} py-2 small">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if events|length == 0 %}
+        <div class="text-center py-5">
+            <img src="https://cdn-icons-png.flaticon.com/512/7486/7486747.png" width="80" class="opacity-25 mb-3">
+            <h5 class="text-muted">No Active Events Assigned</h5>
+            <p class="small text-muted">Contact your Club Lead (SPOC) to get assigned.</p>
+        </div>
+        {% endif %}
+
+        {% for event in events %}
+        <div class="card card-event mb-5">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h4 class="fw-bold m-0">{{ event.title }}</h4>
+                        <p class="text-muted small m-0"><i class="far fa-calendar me-2"></i> {{ event.date }} | {{ event.venue }}</p>
+                    </div>
+                    <span class="badge bg-primary fs-6">{{ registrations[event.id]|length }} Teams</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle">
+                        <thead>
+                            <tr>
+                                <th>Team Name</th>
+                                <th>Lead Info</th>
+                                <th>Members</th>
+                                <th>Attendance</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reg in registrations[event.id] %}
+                            <tr>
+                                <td class="fw-bold">{{ reg.team_name }}</td>
+                                <td>
+                                    <div class="small fw-bold">{{ reg.members[0].name }}</div>
+                                    <div class="small text-muted">{{ reg.lead_email }}</div>
+                                </td>
+                                <td>
+                                    {% if reg.members|length > 1 %}
+                                        <span class="badge bg-light text-dark border">+{{ reg.members|length - 1 }} Others</span>
+                                    {% else %}
+                                        <span class="text-muted small">Solo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if reg.attendance == 'Present' %}
+                                        <span class="badge badge-present px-3">Present</span>
+                                    {% elif reg.attendance == 'Absent' %}
+                                        <span class="badge badge-absent px-3">Absent</span>
+                                    {% else %}
+                                        <span class="text-muted small">--</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if reg.attendance != 'Present' %}
+                                    <a href="/event_head/mark_attendance/{{ reg.id }}/Present" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    {% else %}
+                                    <a href="/event_head/mark_attendance/{{ reg.id }}/Absent" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No registrations received yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

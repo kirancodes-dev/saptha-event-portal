@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SapthaEvent | Sapthagiri NPS University</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #002147;  /* SNPSU Royal Navy Blue */
+            --accent: #FF9900;   /* SNPSU Gold */
+            --light-bg: #f4f7f6;
+            --text-main: #333;
+        }
+        
+        body { 
+            background-color: var(--light-bg); 
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            background: #ffffff;
+            padding: 15px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border-bottom: 3px solid var(--accent);
+        }
+        .navbar-brand img { height: 55px; width: auto; }
+        .nav-link { color: var(--primary) !important; font-weight: 600; margin-right: 15px; }
+        .btn-custom-login { border: 2px solid var(--primary); color: var(--primary); font-weight: 600; padding: 8px 25px; border-radius: 50px; }
+        .btn-custom-login:hover { background: var(--primary); color: #fff; }
+        .btn-custom-register { background: var(--primary); color: #fff; font-weight: 600; padding: 8px 25px; border-radius: 50px; margin-left: 10px; }
+        .btn-custom-register:hover { background: var(--accent); color: #fff; }
+
+        /* HERO SLIDER */
+        .swiper { width: 100%; height: 500px; margin-bottom: 40px; }
+        .swiper-slide { background-size: cover; background-position: center; position: relative; }
+        .slide-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, rgba(0,33,71,0.9) 0%, rgba(0,33,71,0.4) 60%, transparent 100%);
+            display: flex; align-items: center;
+        }
+        .hero-content { padding: 0 80px; color: white; max-width: 700px; position: relative; z-index: 10; }
+        .hero-badge { background: var(--accent); color: white; padding: 5px 15px; font-size: 0.85rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; margin-bottom: 15px; display: inline-block; }
+        .hero-title { font-size: 3.5rem; font-weight: 700; line-height: 1.1; margin-bottom: 20px; }
+        .btn-hero { background: var(--accent); color: white; padding: 12px 35px; font-weight: 600; border-radius: 5px; text-decoration: none; display: inline-block; position: relative; z-index: 20; }
+        .btn-hero:hover { background: #e68a00; color: white; transform: translateY(-2px); }
+
+        /* CALENDAR */
+        #calendar-wrapper {
+            background: white; padding: 25px; border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-top: 5px solid var(--primary);
+            position: sticky; top: 100px;
+        }
+        .fc-toolbar-title { font-size: 1.5rem !important; font-weight: 800; color: var(--primary); }
+        .fc-button { background-color: transparent !important; border: 1px solid #eee !important; color: var(--primary) !important; }
+        .fc-button:hover, .fc-button-active { background-color: var(--primary) !important; color: white !important; }
+        .date-selected { background-color: var(--accent) !important; color: white !important; border-radius: 8px; }
+
+        /* EVENT CARDS */
+        .section-header { border-left: 5px solid var(--accent); padding-left: 15px; margin-bottom: 30px; }
+        .section-header h2 { color: var(--primary); font-weight: 700; margin: 0; }
+        .event-card {
+            background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-bottom: 25px; transition: all 0.3s ease; display: flex; border: 1px solid #eee;
+        }
+        .event-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); border-color: var(--accent); }
+        .event-img { width: 250px; object-fit: cover; min-height: 200px; }
+        .event-body { padding: 25px; flex: 1; position: relative; }
+        .event-date-box {
+            position: absolute; top: 20px; right: 20px; background: white; border: 1px solid #ddd;
+            border-radius: 8px; text-align: center; padding: 5px 12px; min-width: 60px;
+        }
+        .date-month { display: block; font-size: 0.7rem; text-transform: uppercase; color: #666; font-weight: 700; }
+        .date-day { display: block; font-size: 1.4rem; font-weight: 700; color: var(--primary); line-height: 1; }
+        .empty-state { text-align: center; padding: 50px; background: white; border-radius: 12px; color: #888; }
+
+        @media (max-width: 768px) {
+            .hero-content { padding: 0 20px; text-align: center; }
+            .hero-title { font-size: 2rem; }
+            .event-card { flex-direction: column; }
+            .event-img { width: 100%; height: 180px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" alt="SNPSU Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navContent">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item"><a href="/" class="nav-link">Home</a></li>
+                    
+                    {% if session.get('user_id') %}
+                        <li class="nav-item dropdown ms-3">
+                            <a class="nav-link dropdown-toggle btn btn-light px-3 rounded-pill text-primary fw-bold" href="#" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-circle me-1"></i> {{ session.get('name') }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                {% if session.get('role') == 'Student' %}
+                                    <li><a class="dropdown-item" href="/participant/dashboard">My Tickets</a></li>
+                                {% elif session.get('role') == 'ClubSPOC' %}
+                                    <li><a class="dropdown-item" href="/spoc/dashboard">Club Console</a></li>
+                                {% elif session.get('role') == 'Coordinator' %}
+                                    <li><a class="dropdown-item" href="/event_head/dashboard">Coord Console</a></li>
+                                {% elif session.get('role') == 'Judge' %}
+                                    <li><a class="dropdown-item" href="/judge/dashboard">Judge Console</a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="/logout">Logout</a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item ms-2"><a href="/login" class="btn btn-custom-login">Login</a></li>
+                        <li class="nav-item"><a href="/register" class="btn btn-custom-register">Register Now</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="swiper mySwiper">
+        <div class="swiper-wrapper">
+            {% for event in featured_events %}
+            <div class="swiper-slide" style="background-image: url('{{ event.banner_url }}');">
+                <div class="slide-overlay">
+                    <div class="hero-content">
+                        <span class="hero-badge">Featured Event</span>
+                        <h1 class="hero-title">{{ event.title }}</h1>
+                        <p class="mb-4 lead"><i class="fas fa-calendar-alt me-2"></i> {{ event.date }} | <i class="fas fa-map-marker-alt me-2"></i> {{ event.venue }}</p>
+                        <a href="/event/{{ event.id }}" class="btn-hero">Register Now <i class="fas fa-arrow-right ms-2"></i></a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="swiper-slide" style="background-image: url('https://snpsu.edu.in/wp-content/uploads/2024/05/SNPSU-Campus.jpg');">
+                <div class="slide-overlay">
+                    <div class="hero-content">
+                        <span class="hero-badge">Welcome to SNPSU</span>
+                        <h1 class="hero-title">Official Event Portal</h1>
+                        <p class="mb-4 lead">Discover hackathons, workshops, and cultural fests at Sapthagiri NPS University.</p>
+                        <a href="/register" class="btn-hero">Get Started</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="swiper-pagination"></div>
+    </div>
+
+    <div class="container pb-5">
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <div id="calendar-wrapper">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="d-flex justify-content-between align-items-center mb-4 section-header">
+                    <h2>Upcoming Events</h2>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-dark dropdown-toggle rounded-pill px-3" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-filter me-2"></i>Filter
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">All Events</a></li>
+                            <li><a class="dropdown-item" href="#">Technical</a></li>
+                            <li><a class="dropdown-item" href="#">Cultural</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div id="events-container">
+                    {% for event in events %}
+                    <div class="event-card" data-date="{{ event.date }}">
+                        <img src="{{ event.banner_url or 'https://via.placeholder.com/400x300?text=SapthaEvent' }}" class="event-img" alt="Event">
+                        <div class="event-body">
+                            <div class="event-date-box">
+                                <span class="date-month">{{ event.date[5:7] | replace('01','JAN') | replace('02','FEB') }}</span>
+                                <span class="date-day">{{ event.date[8:10] }}</span>
+                            </div>
+                            <span class="badge bg-light text-primary border mb-2">{{ event.category or 'General' }}</span>
+                            <h3 class="fw-bold mb-2">{{ event.title }}</h3>
+                            <p class="text-muted small mb-3">{{ event.description[:120] }}...</p>
+                            <a href="/event/{{ event.id }}" class="btn btn-outline-primary rounded-pill btn-sm fw-bold px-4">View Details</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <img src="https://cdn-icons-png.flaticon.com/512/7486/7486747.png" width="80" class="mb-3 opacity-50">
+                        <h5>No Events Found</h5>
+                        <p class="small text-muted">Check back later or select a different date on the calendar.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <script>
+        var swiper = new Swiper(".mySwiper", { loop: true, autoplay: { delay: 5000 }, pagination: { el: ".swiper-pagination", clickable: true }, effect: "fade" });
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                initialView: 'dayGridMonth', height: 'auto', headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+                events: '/api/events',
+                dateClick: function(info) {
+                    document.querySelectorAll('.fc-daygrid-day').forEach(el => el.classList.remove('date-selected'));
+                    info.dayEl.classList.add('date-selected');
+                    filterEventsByDate(info.dateStr);
+                }
+            });
+            calendar.render();
+        });
+        function filterEventsByDate(dateStr) {
+            let hasVisible = false;
+            document.querySelectorAll('.event-card').forEach(card => {
+                if (card.dataset.date === dateStr) { card.style.display = 'flex'; hasVisible = true; } else { card.style.display = 'none'; }
+            });
+            document.querySelector('.empty-state').style.display = hasVisible ? 'none' : 'block';
+        }
+    </script>
+    <style>
+    /* Floating Button */
+    .chat-btn {
+        position: fixed; bottom: 30px; right: 30px;
+        width: 60px; height: 60px; background: var(--accent); color: white;
+        border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px; cursor: pointer; z-index: 9999; transition: 0.3s;
+        border: none;
+    }
+    .chat-btn:hover { transform: scale(1.1); background: #e68a00; }
+
+    /* Chat Window */
+    .chat-window {
+        position: fixed; bottom: 100px; right: 30px;
+        width: 350px; height: 450px; background: white;
+        border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        z-index: 9999; display: none; flex-direction: column; overflow: hidden;
+        border: 1px solid #eee;
+    }
+    .chat-header {
+        background: var(--primary); color: white; padding: 15px;
+        font-weight: 700; display: flex; justify-content: space-between; align-items: center;
+    }
+    .chat-body {
+        flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9;
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    .chat-input-area {
+        padding: 10px; border-top: 1px solid #eee; background: white; display: flex;
+    }
+    .chat-input {
+        flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 8px 15px; outline: none;
+    }
+    .chat-send {
+        background: var(--primary); color: white; border: none;
+        width: 35px; height: 35px; border-radius: 50%; margin-left: 10px;
+    }
+
+    /* Messages */
+    .msg { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; }
+    .msg-bot { background: white; color: #333; border: 1px solid #eee; align-self: flex-start; border-bottom-left-radius: 0; }
+    .msg-user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+</style>
+
+<button class="chat-btn" onclick="toggleChat()">
+    <i class="fas fa-comment-dots"></i>
+</button>
+
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <span><i class="fas fa-robot me-2"></i> Event Assistant</span>
+        <button onclick="toggleChat()" class="btn btn-sm text-white"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="msg msg-bot">Hi! I can help you find events, dates, or registration info. What do you need?</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="handleEnter(event)">
+        <button class="chat-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<script>
+    function toggleChat() {
+        var chat = document.getElementById('chatWindow');
+        chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function handleEnter(e) {
+        if (e.key === 'Enter') sendMessage();
+    }
+
+    function sendMessage() {
+        var input = document.getElementById('chatInput');
+        var body = document.getElementById('chatBody');
+        var msg = input.value.trim();
+        if (!msg) return;
+
+        // 1. Add User Message
+        body.innerHTML += `<div class="msg msg-user">${msg}</div>`;
+        input.value = '';
+        body.scrollTop = body.scrollHeight;
+
+        // 2. Fetch Reply
+        fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: msg})
+        })
+        .then(res => res.json())
+        .then(data => {
+            body.innerHTML += `<div class="msg msg-bot">${data.reply}</div>`;
+            body.scrollTop = body.scrollHeight;
+        })
+        .catch(err => {
+            body.innerHTML += `<div class="msg msg-bot text-danger">Error connecting to server.</div>`;
+        });
+    }
+</script>
+</body>
+</html>

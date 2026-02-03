@@ -1,53 +1,54 @@
 from flask import Blueprint, request, jsonify
-from models import db, Team, EventSettings, Judge
+from models import db
+import datetime
 
-chat_bp = Blueprint('chat_bp', __name__)
+chatbot_bp = Blueprint('chatbot', __name__)
 
-@chat_bp.route('/bot/chat', methods=['POST'])
-def chat_response():
+@chatbot_bp.route('/api/chat', methods=['POST'])
+def chat():
+    user_msg = request.json.get('message', '').lower()
+    response_text = "I didn't understand that. Try asking about 'events', 'dates', or 'clubs'."
+
     try:
-        data = request.get_json()
-        user_msg = data.get('message', '').lower()
-        
-        reply = ""
+        # 1. GREETINGS
+        if any(x in user_msg for x in ['hi', 'hello', 'hey']):
+            return jsonify({'reply': "Hello! I am the SapthaEvent Assistant. Ask me about upcoming events or club contacts."})
 
-        # --- QUERY 1: EVENT DETAILS ---
-        if "date" in user_msg or "when" in user_msg:
-            event = EventSettings.query.first()
-            if event and event.date:
-                reply = f"The event is scheduled for {event.date}."
+        # 2. QUERY: "EVENTS" or "HACKATHON"
+        if 'event' in user_msg or 'hackathon' in user_msg or 'show' in user_msg:
+            # Fetch active events from DB
+            events_ref = db.collection('events').where('status', '==', 'active').stream()
+            events = [doc.to_dict()['title'] for doc in events_ref]
+            
+            if events:
+                return jsonify({'reply': f"Here are the active events: {', '.join(events)}. Type an event name to know more!"})
             else:
-                reply = "The event date has not been announced yet."
+                return jsonify({'reply': "There are no active events scheduled right now."})
 
-        # --- QUERY 2: LIVE WINNER ---
-        elif "winning" in user_msg or "leader" in user_msg or "top" in user_msg:
-            # Get the team with the highest score
-            top_team = Team.query.order_by(Team.score.desc()).first()
-            if top_team and top_team.score > 0:
-                reply = f"Currently, the leader is '{top_team.team_name}' with {top_team.score} points!"
-            else:
-                reply = "Scores haven't been updated yet. Check back soon!"
+        # 3. QUERY: SPECIFIC EVENT DETAILS (Search DB for Title)
+        # We check if any active event title is in the user's message
+        all_events = db.collection('events').stream()
+        for doc in all_events:
+            data = doc.to_dict()
+            title = data.get('title', '').lower()
+            
+            if title in user_msg:
+                # Found a match! Return details
+                reply = f"**{data['title']}** is on {data['date']} at {data['venue']}. <br> Deadline: {data['reg_deadline']}."
+                if data.get('group_link'):
+                    reply += f" <a href='{data['group_link']}' target='_blank'>Join Group</a>"
+                return jsonify({'reply': reply})
 
-        # --- QUERY 3: TEAM COUNT ---
-        elif "how many teams" in user_msg or "count" in user_msg:
-            count = Team.query.count()
-            reply = f"There are currently {count} teams registered for the event."
+        # 4. QUERY: CONTACTS / SPOC
+        if 'contact' in user_msg or 'spoc' in user_msg or 'lead' in user_msg:
+            return jsonify({'reply': "You can find Club Leads (SPOCs) listed on the specific Event Details page under the 'Contact' tab."})
 
-        # --- QUERY 4: REGISTRATION ---
-        elif "register" in user_msg or "sign up" in user_msg:
-            reply = "You can register by clicking the 'Participant' button on the home page."
-
-        # --- QUERY 5: JUDGES ---
-        elif "judge" in user_msg or "jury" in user_msg:
-            count = Judge.query.count()
-            reply = f"We have {count} expert judges evaluating the projects."
-
-        # --- DEFAULT FALLBACK ---
-        else:
-            reply = "I can help with Event Dates, Registration info, or tell you who is currently winning!"
-
-        return jsonify({"reply": reply})
+        # 5. QUERY: REGISTRATION
+        if 'register' in user_msg or 'signup' in user_msg:
+            return jsonify({'reply': "To register, login as a Student, go to the event page, and click 'Register Now'. If it's a team event, you'll need your teammates' details."})
 
     except Exception as e:
-        print(f"Bot Error: {e}")
-        return jsonify({"reply": "I'm having trouble connecting to the server database right now."})
+        print(f"Chat Error: {e}")
+        return jsonify({'reply': "Sorry, I'm having trouble connecting to the database."})
+
+    return jsonify({'reply': response_text})

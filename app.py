@@ -1,20 +1,22 @@
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, session, render_template
 from flask_mail import Mail
 from config import Config
-from models import db, FirebaseWrapper
+from models import db
 import logging
 
 # --- IMPORT BLUEPRINTS ---
-# Ensure these files (routes_*.py) exist in your folder from the previous step
-from routes_auth import auth_bp
-from routes_super import super_bp
-from routes_spoc import spoc_bp
-from routes_head import head_bp
-from routes_participant import participant_bp
-from routes_judge import judge_bp 
+from routes_public import public_bp       # Home & Event Poster
+from routes_auth import auth_bp           # Login & Student Sign Up
+from routes_participant import participant_bp # Student Dashboard & Reg
+from routes_super import super_bp         # Super Admin Dashboard
+from routes_spoc import spoc_bp           # Club SPOC Dashboard
+from routes_head import head_bp           # Coordinator Dashboard
+from routes_judge import judge_bp         # Judge Dashboard
+from chatbot_routes import chatbot_bp     # Chatbot API Endpoint
 
 # Initialize Extensions
 mail = Mail()
+
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,16 +29,18 @@ def create_app():
     mail.init_app(app)
     app.extensions['mail'] = mail
 
-    # Register Blueprints
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(super_bp)
-    app.register_blueprint(spoc_bp)
-    app.register_blueprint(head_bp)
-    app.register_blueprint(participant_bp)
-    app.register_blueprint(judge_bp)
+    # --- REGISTER BLUEPRINTS ---
+    app.register_blueprint(public_bp)      # Routes: / (Home), /event/<id>
+    app.register_blueprint(auth_bp)        # Routes: /login, /register
+    app.register_blueprint(participant_bp) # Routes: /participant/*
+    app.register_blueprint(super_bp)       # Routes: /super_admin/*
+    app.register_blueprint(spoc_bp)        # Routes: /spoc/*
+    app.register_blueprint(head_bp)        # Routes: /event_head/*
+    app.register_blueprint(judge_bp)       # Routes: /judge/*
+    app.register_blueprint(chatbot_bp)     # Route: /api/chatbot
 
     # --- GLOBAL CONTEXT PROCESSOR ---
-    # This injects variables into ALL HTML templates automatically
+    # Injects variables into ALL HTML templates automatically
     @app.context_processor
     def inject_globals():
         return dict(
@@ -50,94 +54,32 @@ def create_app():
 
 app = create_app()
 
-# --- GLOBAL ROUTES ---
-
-@app.route('/')
-def home():
-    """Landing Page Logic"""
-    featured_events = []
-    upcoming = []
-    
-    try:
-        if db:
-            events_ref = db.collection('events')
-            # Query: Published events only
-            query = events_ref.where('is_published', '==', True).stream()
-            
-            # Convert to Wrappers
-            all_events = [FirebaseWrapper(doc.id, doc.to_dict()) for doc in query]
-            
-            # Python-side sorting (since Firestore compound queries require indexes)
-            # Sorting by 'date' string (YYYY-MM-DD)
-            all_events.sort(key=lambda x: x.date)
-
-            # Slice lists for UI sections
-            featured_events = all_events[:3] # Top 3 soonest
-            upcoming = all_events            # All events list
-            
-    except Exception as e:
-        logger.error(f"Home Page Error: {e}")
-        # Fail gracefully (empty lists)
-    
-    return render_template('home.html', featured=featured_events, upcoming=upcoming)
-
-@app.route('/event/<event_id>')
-def event_details(event_id):
-    """Public Event Details Page"""
-    try:
-        if not db: raise Exception("DB Not Connected")
-
-        # Fetch Event
-        doc_ref = db.collection('events').document(event_id)
-        doc = doc_ref.get()
-        
-        if not doc.exists:
-            return render_template('404.html'), 404
-        
-        event = FirebaseWrapper(event_id, doc.to_dict())
-        
-        # Check Registration Status for Participants
-        is_registered = False
-        if session.get('role') == 'Participant':
-            user_email = session.get('user_id')
-            
-            # Check Teams collection for this event + this user
-            # "member_emails" is an array field in the team document
-            teams_q = db.collection('teams')\
-                        .where('event_id', '==', event_id)\
-                        .where('member_emails', 'array_contains', user_email)\
-                        .get()
-            
-            if len(teams_q) > 0:
-                is_registered = True
-
-        return render_template('event_details.html', event=event, is_registered=is_registered)
-
-    except Exception as e:
-        logger.error(f"Event Details Error: {e}")
-        return f"System Error: {e}", 500
-
 # --- ERROR HANDLERS ---
 @app.errorhandler(404)
 def page_not_found(e):
-    # You can create a simple 404.html template if you wish
-    return "<h1>404 - Page Not Found</h1><p>The requested page could not be found.</p><a href='/'>Go Home</a>", 404
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('500.html'), 500
 
 if __name__ == '__main__':
-    # Auto-create Admin on startup (Safety Check)
+    # --- SYSTEM INIT ---
+    # Auto-create Super Admin if not exists
     try:
         admin_email = 'admin@sapthahack.com'
         if db:
             doc = db.collection('users').document(admin_email).get()
             if not doc.exists:
-                print("--- SYSTEM INIT: Creating Super Admin ---")
+                logger.info("--- SYSTEM INIT: Creating Default Super Admin ---")
                 db.collection('users').document(admin_email).set({
                     'email': admin_email,
-                    'password': 'admin', # Dev password
+                    'password': 'admin', # Change in Production!
                     'role': 'SuperAdmin',
-                    'name': 'System Administrator'
+                    'name': 'System Administrator',
+                    'created_at': '2026-01-30'
                 })
     except Exception as e:
-        print(f"Startup Init Warning: {e}")
+        logger.warning(f"Startup DB Check Failed: {e}")
 
     app.run(debug=True, port=5000)

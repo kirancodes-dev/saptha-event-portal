@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Crowd | {{ event.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; padding-bottom: 80px; }
+        
+        .header-bg { background: #1e293b; padding: 20px 0; border-bottom: 1px solid #334155; position: sticky; top: 0; z-index: 100; }
+        .search-box {
+            background: #020617; border: 1px solid #334155; color: white;
+            border-radius: 50px; padding: 10px 20px; width: 100%; outline: none;
+        }
+        .search-box:focus { border-color: #3b82f6; }
+
+        /* LIST ITEM */
+        .participant-row {
+            background: #1e293b; border-bottom: 1px solid #334155; padding: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .participant-row:last-child { border-bottom: none; }
+        
+        .p-name { font-weight: 600; font-size: 1rem; margin: 0; }
+        .p-meta { font-size: 0.8rem; color: #94a3b8; }
+        
+        /* ATTENDANCE TOGGLE */
+        .btn-checkin {
+            width: 40px; height: 40px; border-radius: 50%; border: 2px solid #334155;
+            background: transparent; color: #334155; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; cursor: pointer;
+        }
+        .btn-checkin.present {
+            background: #10b981; border-color: #10b981; color: white; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+        .btn-checkin:hover { transform: scale(1.1); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header-bg">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <a href="/event_head/dashboard" class="text-decoration-none text-muted"><i class="fas fa-arrow-left"></i> Back</a>
+                <h5 class="m-0 fw-bold text-truncate" style="max-width: 200px;">{{ event.title }}</h5>
+                <span class="badge bg-primary">{{ participants|length }} Regs</span>
+            </div>
+            <input type="text" id="searchInput" class="search-box" placeholder="Search student name or email..." onkeyup="filterList()">
+        </div>
+    </div>
+
+    <div class="container mt-2">
+        <div class="card bg-dark border-secondary overflow-hidden">
+            <div id="participantList">
+                {% for p in participants %}
+                <div class="participant-row" data-search="{{ p.lead_name.lower() }} {{ p.lead_email.lower() }} {{ p.team_name.lower() }}">
+                    <div>
+                        <h6 class="p-name">{{ p.lead_name }}</h6>
+                        <div class="p-meta">
+                            <span class="text-primary">{{ p.team_name }}</span> • {{ p.lead_email }}
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn-checkin {% if p.attendance == 'Present' %}present{% endif %}" 
+                                onclick="toggleAttendance('{{ p.reg_id }}', this)">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    No registrations found.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterList() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('.participant-row');
+            
+            rows.forEach(row => {
+                const text = row.getAttribute('data-search');
+                row.style.display = text.includes(input) ? 'flex' : 'none';
+            });
+        }
+
+        function toggleAttendance(regId, btn) {
+            // Optimistic UI Update (Instant green)
+            const isPresent = btn.classList.contains('present');
+            const newStatus = isPresent ? 'Absent' : 'Present';
+            
+            if (newStatus === 'Present') btn.classList.add('present');
+            else btn.classList.remove('present');
+
+            // Send to Server
+            fetch('/event_head/mark_attendance', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ reg_id: regId, status: newStatus })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(!data.success) {
+                    alert('Error updating attendance');
+                    // Revert UI on error
+                    btn.classList.toggle('present');
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>

@@ -72,7 +72,10 @@
             margin-bottom: 25px; transition: all 0.3s ease; display: flex; border: 1px solid #eee;
         }
         .event-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); border-color: var(--accent); }
-        .event-img { width: 250px; object-fit: cover; min-height: 200px; }
+        
+        /* FIX FOR IMAGES */
+        .event-img { width: 250px; object-fit: cover; min-height: 200px; background: #eee; }
+        
         .event-body { padding: 25px; flex: 1; position: relative; }
         .event-date-box {
             position: absolute; top: 20px; right: 20px; background: white; border: 1px solid #ddd;
@@ -95,7 +98,9 @@
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" alt="SNPSU Logo">
+                <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue-1536x412.jpg" 
+                     onerror="this.src='https://placehold.co/200x60/002147/FFF?text=SNPSU+Event';"
+                     alt="SNPSU Logo">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
                 <span class="navbar-toggler-icon"></span>
@@ -135,7 +140,8 @@
     <div class="swiper mySwiper">
         <div class="swiper-wrapper">
             {% for event in featured_events %}
-            <div class="swiper-slide" style="background-image: url('{{ event.banner_url }}');">
+            <div class="swiper-slide" 
+                 style="background-image: url(&quot;{{ event.banner_url if event.banner_url else 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1920&q=80' }}&quot;)">
                 <div class="slide-overlay">
                     <div class="hero-content">
                         <span class="hero-badge">Featured Event</span>
@@ -146,7 +152,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="swiper-slide" style="background-image: url('https://snpsu.edu.in/wp-content/uploads/2024/05/SNPSU-Campus.jpg');">
+            <div class="swiper-slide" style="background-image: url('https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=1920&q=80');">
                 <div class="slide-overlay">
                     <div class="hero-content">
                         <span class="hero-badge">Welcome to SNPSU</span>
@@ -185,10 +191,14 @@
                 <div id="events-container">
                     {% for event in events %}
                     <div class="event-card" data-date="{{ event.date }}">
-                        <img src="{{ event.banner_url or 'https://via.placeholder.com/400x300?text=SapthaEvent' }}" class="event-img" alt="Event">
+                        <img src="{{ event.banner_url }}" 
+                             class="event-img" 
+                             alt="Event Image"
+                             onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1505373877741-2d3940e8d689?auto=format&fit=crop&w=500&q=60';">
+                        
                         <div class="event-body">
                             <div class="event-date-box">
-                                <span class="date-month">{{ event.date[5:7] | replace('01','JAN') | replace('02','FEB') }}</span>
+                                <span class="date-month">{{ event.date[5:7] | replace('01','JAN') | replace('02','FEB') | replace('03','MAR') }}</span>
                                 <span class="date-day">{{ event.date[8:10] }}</span>
                             </div>
                             <span class="badge bg-light text-primary border mb-2">{{ event.category or 'General' }}</span>
@@ -207,6 +217,26 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <style>
+        .chat-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; z-index: 9999; transition: 0.3s; border: none; }
+        .chat-btn:hover { transform: scale(1.1); background: #e68a00; }
+        .chat-window { position: fixed; bottom: 100px; right: 30px; width: 350px; height: 450px; background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 9999; display: none; flex-direction: column; overflow: hidden; border: 1px solid #eee; }
+        .chat-header { background: var(--primary); color: white; padding: 15px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+        .chat-body { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; }
+        .chat-input-area { padding: 10px; border-top: 1px solid #eee; background: white; display: flex; }
+        .chat-input { flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 8px 15px; outline: none; }
+        .chat-send { background: var(--primary); color: white; border: none; width: 35px; height: 35px; border-radius: 50%; margin-left: 10px; }
+        .msg { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; }
+        .msg-bot { background: white; color: #333; border: 1px solid #eee; align-self: flex-start; border-bottom-left-radius: 0; }
+        .msg-user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+    </style>
+    <button class="chat-btn" onclick="toggleChat()"><i class="fas fa-comment-dots"></i></button>
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header"><span><i class="fas fa-robot me-2"></i> Event Assistant</span><button onclick="toggleChat()" class="btn btn-sm text-white"><i class="fas fa-times"></i></button></div>
+        <div class="chat-body" id="chatBody"><div class="msg msg-bot">Hi! I can help you find events, dates, or registration info. What do you need?</div></div>
+        <div class="chat-input-area"><input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="handleEnter(event)"><button class="chat-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -233,106 +263,15 @@
             });
             document.querySelector('.empty-state').style.display = hasVisible ? 'none' : 'block';
         }
+        function toggleChat() { var chat = document.getElementById('chatWindow'); chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex'; }
+        function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
+        function sendMessage() {
+            var input = document.getElementById('chatInput'); var body = document.getElementById('chatBody'); var msg = input.value.trim(); if (!msg) return;
+            body.innerHTML += `<div class="msg msg-user">${msg}</div>`; input.value = ''; body.scrollTop = body.scrollHeight;
+            fetch('/api/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({message: msg}) })
+            .then(res => res.json()).then(data => { body.innerHTML += `<div class="msg msg-bot">${data.reply}</div>`; body.scrollTop = body.scrollHeight; })
+            .catch(err => { body.innerHTML += `<div class="msg msg-bot text-danger">Error connecting to server.</div>`; });
+        }
     </script>
-    <style>
-    /* Floating Button */
-    .chat-btn {
-        position: fixed; bottom: 30px; right: 30px;
-        width: 60px; height: 60px; background: var(--accent); color: white;
-        border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 24px; cursor: pointer; z-index: 9999; transition: 0.3s;
-        border: none;
-    }
-    .chat-btn:hover { transform: scale(1.1); background: #e68a00; }
-
-    /* Chat Window */
-    .chat-window {
-        position: fixed; bottom: 100px; right: 30px;
-        width: 350px; height: 450px; background: white;
-        border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        z-index: 9999; display: none; flex-direction: column; overflow: hidden;
-        border: 1px solid #eee;
-    }
-    .chat-header {
-        background: var(--primary); color: white; padding: 15px;
-        font-weight: 700; display: flex; justify-content: space-between; align-items: center;
-    }
-    .chat-body {
-        flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9;
-        display: flex; flex-direction: column; gap: 10px;
-    }
-    .chat-input-area {
-        padding: 10px; border-top: 1px solid #eee; background: white; display: flex;
-    }
-    .chat-input {
-        flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 8px 15px; outline: none;
-    }
-    .chat-send {
-        background: var(--primary); color: white; border: none;
-        width: 35px; height: 35px; border-radius: 50%; margin-left: 10px;
-    }
-
-    /* Messages */
-    .msg { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; }
-    .msg-bot { background: white; color: #333; border: 1px solid #eee; align-self: flex-start; border-bottom-left-radius: 0; }
-    .msg-user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 0; }
-</style>
-
-<button class="chat-btn" onclick="toggleChat()">
-    <i class="fas fa-comment-dots"></i>
-</button>
-
-<div class="chat-window" id="chatWindow">
-    <div class="chat-header">
-        <span><i class="fas fa-robot me-2"></i> Event Assistant</span>
-        <button onclick="toggleChat()" class="btn btn-sm text-white"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="chat-body" id="chatBody">
-        <div class="msg msg-bot">Hi! I can help you find events, dates, or registration info. What do you need?</div>
-    </div>
-    <div class="chat-input-area">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="handleEnter(event)">
-        <button class="chat-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-    </div>
-</div>
-
-<script>
-    function toggleChat() {
-        var chat = document.getElementById('chatWindow');
-        chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
-    }
-
-    function handleEnter(e) {
-        if (e.key === 'Enter') sendMessage();
-    }
-
-    function sendMessage() {
-        var input = document.getElementById('chatInput');
-        var body = document.getElementById('chatBody');
-        var msg = input.value.trim();
-        if (!msg) return;
-
-        // 1. Add User Message
-        body.innerHTML += `<div class="msg msg-user">${msg}</div>`;
-        input.value = '';
-        body.scrollTop = body.scrollHeight;
-
-        // 2. Fetch Reply
-        fetch('/api/chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: msg})
-        })
-        .then(res => res.json())
-        .then(data => {
-            body.innerHTML += `<div class="msg msg-bot">${data.reply}</div>`;
-            body.scrollTop = body.scrollHeight;
-        })
-        .catch(err => {
-            body.innerHTML += `<div class="msg msg-bot text-danger">Error connecting to server.</div>`;
-        });
-    }
-</script>
 </body>
 </html>

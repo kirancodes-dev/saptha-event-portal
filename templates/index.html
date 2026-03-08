@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SapthaEvent | Sapthagiri NPS University</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* --- SNPSU OFFICIAL BRAND COLORS --- */
+        :root { 
+            --snpsu-blue: #0d2d62;       
+            --snpsu-blue-hover: #0a224a; 
+            --snpsu-orange: #f37021;     
+            --snpsu-orange-hover: #d95e1a;
+            --bg-light: #f8f9fa;         
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+        }
+        
+        body { 
+            background-color: var(--bg-light); 
+            color: var(--text-dark); 
+            font-family: 'Inter', sans-serif; 
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        
+        h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; }
+
+        /* --- NAVBAR --- */
+        .navbar { background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 15px 0; transition: all 0.3s ease; }
+        .logo-icon { color: var(--snpsu-orange); font-size: 2rem; }
+        .logo-text span { display: block; line-height: 1.1; }
+        .logo-title { color: var(--snpsu-blue); font-size: 1.3rem; font-weight: 800; letter-spacing: 0.5px; }
+        .logo-subtitle { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 2px; }
+        .navbar-toggler { border: none; color: var(--snpsu-blue); }
+        .navbar-toggler:focus { box-shadow: none; }
+
+        /* --- BUTTONS --- */
+        .btn-snpsu-blue { background-color: var(--snpsu-blue); color: white; border: none; font-weight: 600; border-radius: 8px; transition: 0.3s; }
+        .btn-snpsu-blue:hover { background-color: var(--snpsu-blue-hover); color: white; transform: translateY(-2px); }
+        .btn-snpsu-orange { background-color: var(--snpsu-orange); color: white; border: none; font-weight: 600; border-radius: 8px; transition: 0.3s; }
+        .btn-snpsu-orange:hover { background-color: var(--snpsu-orange-hover); color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(243, 112, 33, 0.3); }
+        .btn-outline-snpsu { border: 2px solid var(--snpsu-blue); color: var(--snpsu-blue); font-weight: 600; border-radius: 8px; transition: 0.3s; }
+        .btn-outline-snpsu:hover { background-color: var(--snpsu-blue); color: white; }
+
+        /* --- HERO CAROUSEL --- */
+        .hero-carousel-wrapper {
+            position: relative;
+            height: 90vh; /* Takes up 90% of screen height */
+            min-height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .carousel, .carousel-inner, .carousel-item {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+        }
+        
+        /* Transparent overlay so the real images pop clearly */
+        .slide-bg {
+            width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+        }
+        .slide-1 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://media.collegedekho.com/media/img/institute/crawled_images/None/view-01_1_-_Photo.jpg?width=1080'); }
+        .slide-2 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0001_WhatsApp-Image-2024-11-12-at-11.16.19-AM-1024x731.jpg'); }
+        .slide-3 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0000_WhatsApp-Image-2024-11-12-at-11.16.18-AM-1024x731.jpg'); }
+        .slide-4 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0003_SAPTHAGIRI-UNIVERSITY-A-BLOCK-reception-AREA_r27-1024x731.jpg'); }
+        .slide-5 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0005_View-1-1024x731.jpg'); }
+        .slide-6 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0008_SAPTHAGIRI-UNIVERSITY-AMPHITHEATRE-1k-1024x731.jpg'); }
+
+        .hero-content {
+            position: relative;
+            z-index: 2; /* Puts text on top of slider */
+            color: white;
+            text-align: center;
+            padding: 0 20px;
+        }
+        .hero-title { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; margin-bottom: 20px; text-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .hero-title span { color: var(--snpsu-orange); }
+        .hero-subtitle { font-size: 1.2rem; color: #e2e8f0; max-width: 750px; margin: 0 auto 40px; line-height: 1.6; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+
+        /* --- EVENT CARDS --- */
+        .event-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: all 0.3s ease; height: 100%; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .event-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(13, 45, 98, 0.1); border-color: var(--snpsu-blue); }
+        .card-img-wrapper { position: relative; height: 200px; overflow: hidden; background: #e2e8f0;}
+        .card-img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .event-card:hover .card-img-wrapper img { transform: scale(1.05); }
+        .badge-category { position: absolute; top: 15px; right: 15px; background: var(--snpsu-orange); color: white; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; padding: 6px 12px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        /* --- MODALS & FORMS --- */
+        .modal-content { border: none; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+        .modal-header { background-color: var(--snpsu-blue); color: white; border-bottom: none; padding: 20px 25px; }
+        .modal-title { font-weight: 700; }
+        .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: 0.8; }
+        .modal-body { padding: 25px; background-color: #ffffff; color: var(--text-dark); }
+        .modal-footer { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; padding: 15px 25px; }
+        
+        .nav-tabs { border-bottom: 2px solid #e2e8f0; }
+        .nav-tabs .nav-link { color: var(--text-muted); font-weight: 600; padding: 10px 20px; border: none; }
+        .nav-tabs .nav-link.active { color: var(--snpsu-blue); border-bottom: 3px solid var(--snpsu-orange); background: transparent; }
+        
+        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .form-control { background-color: #f8f9fa !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; padding: 12px; }
+        .form-control:focus { background-color: #ffffff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 4px rgba(13, 45, 98, 0.1) !important; }
+        
+        .member-row { background: #f1f5f9; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px dashed #cbd5e1; position: relative; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .remove-btn { position: absolute; top: -12px; right: -12px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; transition: 0.2s; }
+        .remove-btn:hover { background: #dc2626; transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <div class="logo-icon me-2"><i class="fas fa-university"></i></div>
+                <div class="logo-text">
+                    <span class="logo-title">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></span>
+                    <span class="logo-subtitle">UNIVERSITY</span>
+                </div>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <i class="fas fa-bars fs-4"></i>
+            </button>
+            
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <div class="d-flex flex-column flex-lg-row gap-3 mt-3 mt-lg-0 align-items-lg-center">
+                    <a href="#events" class="text-decoration-none fw-bold" style="color: var(--snpsu-blue);">Events</a>
+                    {% if session.get('user_id') %}
+                        <a href="/" class="btn btn-snpsu-blue px-4"><i class="fas fa-columns me-2"></i>Dashboard</a>
+                        <a href="/logout" class="btn btn-outline-danger"><i class="fas fa-sign-out-alt"></i></a>
+                    {% else %}
+                        <a href="/login" class="btn btn-outline-snpsu px-4"><i class="fas fa-user me-2"></i>Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-carousel-wrapper">
+        <div id="mainHeroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-pause="false" data-bs-interval="3500">
+            <div class="carousel-inner">
+                <div class="carousel-item active"><div class="slide-bg slide-1"></div></div>
+                <div class="carousel-item"><div class="slide-bg slide-2"></div></div>
+                <div class="carousel-item"><div class="slide-bg slide-3"></div></div>
+                <div class="carousel-item"><div class="slide-bg slide-4"></div></div>
+                <div class="carousel-item"><div class="slide-bg slide-5"></div></div>
+                <div class="carousel-item"><div class="slide-bg slide-6"></div></div>
+            </div>
+        </div>
+
+        <div class="hero-content">
+            <div class="container">
+                <div class="badge bg-white text-dark px-3 py-2 rounded-pill mb-4 fw-bold shadow-sm" style="color: var(--snpsu-blue) !important;">
+                    🏆 Official Event Portal
+                </div>
+                <h1 class="hero-title">Explore. Participate. <br><span>Excel.</span></h1>
+                <p class="hero-subtitle">The centralized platform for all academic, cultural, and technical events at Sapthagiri NPS University. Register your team and secure your spot today.</p>
+                <a href="#events" class="btn btn-snpsu-orange btn-lg px-5 shadow-lg"><i class="fas fa-ticket-alt me-2"></i> Browse Events</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="events" class="container py-5 mt-4">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} fw-bold mb-5 shadow-sm rounded-3"><i class="fas fa-info-circle me-2"></i>{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="d-flex justify-content-between align-items-end mb-5 pb-2 border-bottom">
+            <div>
+                <h2 class="fw-bold m-0" style="color: var(--snpsu-blue);">Upcoming Events</h2>
+                <p class="text-muted m-0 mt-1">Don't miss out on the latest campus activities.</p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            {% for event in events %}
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="event-card">
+                    <div class="card-img-wrapper">
+                        <img src="{{ event.banner_url if event.banner_url else 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80' }}" alt="Banner">
+                        <span class="badge-category">{{ event.category }}</span>
+                    </div>
+
+                    <div class="p-4 d-flex flex-column flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h4 class="fw-bold m-0" style="color: var(--snpsu-blue);">{{ event.title }}</h4>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small fw-bold"><i class="far fa-calendar-alt text-primary me-1"></i> {{ event.date }}</span>
+                            <span class="badge {{ 'bg-success bg-opacity-10 text-success border border-success' if event.entry_fee == 0 else 'bg-primary bg-opacity-10 text-primary border border-primary' }} px-2 py-1">
+                                {% if event.entry_fee == 0 %}FREE{% else %}₹{{ event.entry_fee }}{% endif %}
+                            </span>
+                        </div>
+                        
+                        <p class="text-muted small flex-grow-1">{{ event.description[:100] }}...</p>
+                        
+                        <div class="row g-2 mt-3 pt-3 border-top">
+                            <div class="col-6">
+                                <button class="btn btn-outline-snpsu w-100" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}"><i class="fas fa-info-circle me-1"></i> Details</button>
+                            </div>
+                            <div class="col-6">
+                                {% if event.date < current_date %}
+                                    <button class="btn btn-secondary w-100 fw-bold" disabled><i class="fas fa-lock me-1"></i> Closed</button>
+                                {% else %}
+                                    <button class="btn btn-snpsu-blue w-100" data-bs-toggle="modal" data-bs-target="#registerModal{{ event.id }}">Register</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="detailsModal{{ event.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="modal-title">{{ event.title }}</h4>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-0">
+                            <img src="{{ event.banner_url if event.banner_url else 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80' }}" class="img-fluid w-100" style="height: 250px; object-fit: cover;">
+                            <div class="p-4">
+                                <ul class="nav nav-tabs mb-3" id="tab{{ event.id }}" role="tablist">
+                                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#about{{ event.id }}">Overview</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rules{{ event.id }}">Rules & Info</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#prizes{{ event.id }}">Rewards</button></li>
+                                </ul>
+                                <div class="tab-content">
+                                    <div class="tab-pane fade show active" id="about{{ event.id }}">
+                                        <p class="mb-4" style="font-size: 1.05rem;">{{ event.overview if event.overview else event.description }}</p>
+                                        <div class="row g-3">
+                                            <div class="col-12 col-md-6">
+                                                <div class="p-3 bg-light border rounded d-flex align-items-center h-100">
+                                                    <div class="bg-primary bg-opacity-10 text-primary rounded p-3 me-3"><i class="far fa-calendar-alt fa-2x"></i></div>
+                                                    <div><small class="text-muted d-block fw-bold text-uppercase">Schedule</small><span class="text-dark fw-bold">{{ event.date }}</span></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-md-6">
+                                                <div class="p-3 bg-light border rounded d-flex align-items-center h-100">
+                                                    <div class="bg-danger bg-opacity-10 text-danger rounded p-3 me-3"><i class="fas fa-map-marker-alt fa-2x"></i></div>
+                                                    <div><small class="text-muted d-block fw-bold text-uppercase">Venue</small><span class="text-dark fw-bold">{{ event.venue if event.venue else 'SNPSU Main Campus' }}</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="rules{{ event.id }}">
+                                        <div class="bg-light border rounded p-4">
+                                            <h6 class="fw-bold mb-3" style="color: var(--snpsu-blue);"><i class="fas fa-clipboard-list text-warning me-2"></i> Event Guidelines</h6>
+                                            <p style="white-space: pre-line;">{{ event.rules if event.rules else 'Standard university event rules apply. Bring valid ID.' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade text-center" id="prizes{{ event.id }}">
+                                        <div class="row g-3 justify-content-center mt-2">
+                                            <div class="col-12 col-md-6">
+                                                <div class="p-4 border rounded bg-light h-100" style="border-color: #fbbf24 !important;">
+                                                    <i class="fas fa-trophy fa-3x mb-3" style="color: #fbbf24;"></i>
+                                                    <h5 class="fw-bold text-dark">Rewards & Prizes</h5>
+                                                    <p class="text-muted mt-2">{{ event.prizes if event.prizes else 'Certificates and honors for winners!' }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">Close</button>
+                            {% if event.date < current_date %}
+                                <button class="btn btn-secondary px-5 fw-bold" disabled>Registration Closed</button>
+                            {% else %}
+                                <button class="btn btn-snpsu-orange px-5" data-bs-toggle="modal" data-bs-target="#registerModal{{ event.id }}" data-bs-dismiss="modal">Proceed to Register <i class="fas fa-arrow-right ms-2"></i></button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="registerModal{{ event.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <h4 class="modal-title m-0">Event Registration</h4>
+                                <small class="text-white-50">{{ event.title }}</small>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        
+                        <div class="modal-body p-4 p-md-5">
+                            <form action="/participant/public_register/{{ event.id }}" method="POST">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px; font-weight: bold;">1</div>
+                                    <h5 class="m-0 fw-bold" style="color: var(--snpsu-blue);">Primary Contact Details</h5>
+                                </div>
+                                
+                                <div class="row g-3 mb-5">
+                                    <div class="col-12 col-md-6"><label class="form-label">Full Name *</label><input type="text" name="full_name" class="form-control" required></div>
+                                    <div class="col-12 col-md-6"><label class="form-label">Email Address *</label><input type="email" name="email" class="form-control" required></div>
+                                    <div class="col-12 col-md-6"><label class="form-label">College USN / ID *</label><input type="text" name="usn" class="form-control" required></div>
+                                    <div class="col-12 col-md-6"><label class="form-label">WhatsApp Number *</label><input type="tel" name="phone" class="form-control" required></div>
+                                </div>
+
+                                {% if event.is_team_event %}
+                                <div class="p-4 border rounded bg-light mb-4">
+                                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 border-bottom pb-3 gap-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px; font-weight: bold;">2</div>
+                                            <div>
+                                                <h5 class="m-0 fw-bold" style="color: var(--snpsu-blue);">Team Members</h5>
+                                                <small class="text-muted">Skip this if registering individually.</small>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-snpsu" onclick="addMember('{{ event.id }}')">
+                                            <i class="fas fa-user-plus me-1"></i> Add Member
+                                        </button>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label">Team Name (Optional)</label>
+                                        <input type="text" name="team_name" class="form-control" placeholder="Ex: Tech Titans">
+                                    </div>
+                                    <div id="membersContainer{{ event.id }}"></div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info border-info bg-light d-flex align-items-center mb-4">
+                                    <i class="fas fa-user fa-2x text-primary me-3"></i>
+                                    <div>
+                                        <strong>Individual Event</strong><br>
+                                        <small>This event is for solo participants only. No team members required.</small>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div class="alert alert-primary bg-primary bg-opacity-10 border border-primary text-primary d-flex align-items-center mb-4">
+                                    <i class="fas fa-shield-alt fa-2x me-3"></i>
+                                    <div>
+                                        <strong>New to SapthaEvent?</strong><br>
+                                        <small>We will automatically create an account for you and email the password to your registered email address.</small>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-snpsu-orange btn-lg fw-bold py-3 shadow-sm">
+                                        {% if event.entry_fee == 0 %}Confirm & Get Ticket{% else %}Proceed to Pay ₹{{ event.entry_fee }}{% endif %} <i class="fas fa-arrow-right ms-2"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% else %}
+            <div class="col-12 py-5 text-center">
+                <i class="fas fa-calendar-times fa-4x text-muted mb-3 opacity-25"></i>
+                <h3 class="text-dark fw-bold">No Upcoming Events</h3>
+                <p class="text-muted">We are planning something awesome. Check back soon!</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <footer class="mt-5 py-4 text-center" style="background-color: var(--snpsu-blue); color: white;">
+        <div class="container">
+            <h5 class="fw-bold mb-3">SAPTHAGIRI NPS UNIVERSITY</h5>
+            <div class="d-flex justify-content-center gap-4 mb-3">
+                <a href="https://www.instagram.com/sapthagirinpsuniversity?igsh=MTNoNmdhN3kxYjZ1dw==" target="_blank" class="text-white opacity-75 text-decoration-none"><i class="fab fa-instagram fa-lg"></i></a>
+                <a href="https://www.linkedin.com/school/sapthagiri-nps-university/" target="_blank" class="text-white opacity-75 text-decoration-none"><i class="fab fa-linkedin fa-lg"></i></a>
+                <a href="https://snpsu.edu.in/" target="_blank" class="text-white opacity-75 text-decoration-none"><i class="fas fa-globe fa-lg"></i></a>
+            </div>
+            <small class="opacity-50">&copy; 2026 SapthaEvent Platform. All Rights Reserved.</small>
+        </div>
+    </footer>
+
+    <style>
+        #chatbot-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background-color: #f37021; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; box-shadow: 0 8px 20px rgba(243, 112, 33, 0.4); transition: 0.3s; z-index: 1000; border: none; }
+        #chatbot-btn:hover { transform: scale(1.1); background-color: #d95e1a; }
+        #chatbot-window { position: fixed; bottom: 100px; right: 30px; width: 350px; height: 450px; background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); display: none; flex-direction: column; overflow: hidden; z-index: 1000; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif; }
+        .chat-header { background: #0d2d62; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f37021; }
+        .chat-header h6 { margin: 0; font-weight: 700; font-family: 'Poppins', sans-serif;}
+        .close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+        .chat-body { flex-grow: 1; padding: 15px; overflow-y: auto; background-color: #f8f9fa; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; }
+        .msg-bot { background: #e2e8f0; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 2px;}
+        .msg-user { background: #0d2d62; color: white; align-self: flex-end; border-bottom-right-radius: 2px;}
+        .chat-footer { padding: 15px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
+        .chat-footer input { flex-grow: 1; border: 1px solid #cbd5e1; border-radius: 20px; padding: 10px 15px; outline: none; transition: 0.3s; }
+        .chat-footer input:focus { border-color: #f37021; }
+        .chat-footer button { background: #f37021; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: 0.2s;}
+        .chat-footer button:hover { background: #0d2d62; }
+        .typing { font-size: 0.8rem; color: #64748b; font-style: italic; display: none; margin-left: 10px; }
+    </style>
+
+    <button id="chatbot-btn" onclick="toggleChat()"><i class="fas fa-robot"></i></button>
+
+    <div id="chatbot-window">
+        <div class="chat-header">
+            <h6><i class="fas fa-bolt text-warning me-2"></i> Sparky AI</h6>
+            <button class="close-btn" onclick="toggleChat()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <div class="msg msg-bot">👋 Hi there! I am Sparky, the SNPSU Event AI. Ask me anything about our upcoming events!</div>
+        </div>
+        <span class="typing" id="typing-indicator">Sparky is thinking...</span>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Ask about events..." onkeypress="handleEnter(event)">
+            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // AI Chatbot Logic
+        function toggleChat() {
+            const chat = document.getElementById('chatbot-window');
+            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        }
+        function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
+        async function sendMessage() {
+            const inputField = document.getElementById('chat-input');
+            const message = inputField.value.trim();
+            if (!message) return;
+
+            const chatBody = document.getElementById('chat-body');
+            chatBody.innerHTML += `<div class="msg msg-user">${message}</div>`;
+            inputField.value = '';
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            const typingIndicator = document.getElementById('typing-indicator');
+            typingIndicator.style.display = 'block';
+
+            try {
+                const response = await fetch('/chatbot/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+                typingIndicator.style.display = 'none';
+                chatBody.innerHTML += `<div class="msg msg-bot">${data.reply}</div>`;
+                chatBody.scrollTop = chatBody.scrollHeight;
+            } catch (error) {
+                typingIndicator.style.display = 'none';
+                chatBody.innerHTML += `<div class="msg msg-bot" style="color: red;">Connection lost. Please try again.</div>`;
+            }
+        }
+
+        // Dynamic Team Member Function
+        function addMember(eventId) {
+            const container = document.getElementById('membersContainer' + eventId);
+            if (container.children.length >= 3) {
+                alert("Maximum 4 members allowed per team (including Leader).");
+                return;
+            }
+            const div = document.createElement('div');
+            div.className = 'member-row';
+            div.innerHTML = `
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()" title="Remove Member"><i class="fas fa-times"></i></button>
+                <div class="row g-3">
+                    <div class="col-12 col-md-6"><label class="form-label">Member Name</label><input type="text" name="member_name[]" class="form-control" required></div>
+                    <div class="col-12 col-md-6"><label class="form-label">USN / ID</label><input type="text" name="member_usn[]" class="form-control" required></div>
+                    <div class="col-12 col-md-6"><label class="form-label">Email</label><input type="email" name="member_email[]" class="form-control" required></div>
+                    <div class="col-12 col-md-6"><label class="form-label">WhatsApp Number</label><input type="tel" name="member_whatsapp[]" class="form-control" required></div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPOC HQ | Sapthagiri NPS University</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --snpsu-blue: #0d2d62; --snpsu-orange: #f37021; --bg-light: #f4f7f6; --text-dark: #1e293b; }
+        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5 { font-family: 'Poppins', sans-serif; }
+        
+        .navbar { background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 15px 0; }
+        .logo-title { color: var(--snpsu-blue); font-weight: 800; font-size: 1.3rem; margin: 0; line-height: 1.1; }
+        
+        .stat-card { background: #ffffff; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-top: 4px solid var(--snpsu-blue); }
+        .event-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        
+        /* Modals & Forms */
+        .modal-content { border: none; border-radius: 16px; background-color: #ffffff; }
+        .modal-header { background-color: var(--snpsu-blue); color: white; border-radius: 16px 16px 0 0; }
+        .btn-close { filter: invert(1) brightness(200%); opacity: 0.8; }
+        
+        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
+        .form-control, .form-select { background-color: #f8f9fa !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; padding: 12px; }
+        .form-control:focus, .form-select:focus { background-color: #ffffff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(13, 45, 98, 0.1) !important; }
+        
+        .btn-snpsu-blue { background-color: var(--snpsu-blue); color: white; border: none; font-weight: bold; border-radius: 8px; transition: 0.3s;}
+        .btn-snpsu-blue:hover { background-color: #0a224a; color: white; }
+        .btn-snpsu-orange { background-color: var(--snpsu-orange); color: white; border: none; font-weight: bold; border-radius: 8px; transition: 0.3s;}
+        .btn-snpsu-orange:hover { background-color: #d95e1a; color: white; }
+        
+        /* WIZARD PROGRESS BAR */
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; }
+        .step-indicator::before { content: ''; position: absolute; top: 15px; left: 0; width: 100%; height: 3px; background: #e2e8f0; z-index: 1; }
+        .step-dot { width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 2; position: relative; transition: 0.3s; }
+        .step-dot.active { background: var(--snpsu-orange); color: white; box-shadow: 0 0 0 5px rgba(243, 112, 33, 0.2); }
+        .step-dot.completed { background: var(--snpsu-blue); color: white; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="fas fa-university me-2" style="color: var(--snpsu-orange); font-size: 1.8rem;"></i>
+                <div>
+                    <div class="logo-title">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></div>
+                    <small style="color: #64748b; font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;">CLUB SPOC HQ</small>
+                </div>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge border text-dark px-3 py-2 fs-6" style="border-color: var(--snpsu-blue) !important;"><i class="fas fa-tags me-1" style="color: var(--snpsu-orange);"></i> {{ club_category }} Division</span>
+                <a href="/logout" class="btn btn-sm btn-outline-danger px-4 fw-bold">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        
+        <div class="d-flex justify-content-between align-items-end mb-4 border-bottom pb-4">
+            <div>
+                <h2 class="fw-bold mb-1" style="color: var(--snpsu-blue);">Welcome, {{ user_name }}</h2>
+                <p class="text-muted m-0">Create events, broadcast updates, and appoint staff.</p>
+            </div>
+            <button class="btn btn-snpsu-orange btn-lg px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#createEventWizard">
+                <i class="fas fa-plus-circle me-2"></i> Create New Event
+            </button>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} fw-bold shadow-sm"><i class="fas fa-info-circle me-2"></i>{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4"><div class="stat-card"><p class="text-muted fw-bold text-uppercase mb-2">Events Managed</p><h2>{{ events|length }}</h2></div></div>
+            <div class="col-md-4"><div class="stat-card" style="border-top-color: #10b981;"><p class="text-muted fw-bold text-uppercase mb-2">Total Registrations</p><h2 style="color: #10b981;">{{ total_regs }}</h2></div></div>
+            <div class="col-md-4"><div class="stat-card" style="border-top-color: var(--snpsu-orange);"><p class="text-muted fw-bold text-uppercase mb-2">Staff Appointed</p><h2 style="color: var(--snpsu-orange);">{{ total_staff }}</h2></div></div>
+        </div>
+
+        <h4 class="fw-bold mb-4" style="color: var(--snpsu-blue);"><i class="fas fa-tasks me-2 text-warning"></i> Event Control Center</h4>
+        
+        <div class="row g-4">
+            {% for event in events %}
+            <div class="col-lg-4 col-md-6">
+                <div class="event-card d-flex flex-column h-100">
+                    <div class="p-4 border-bottom bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold m-0" style="color: var(--snpsu-blue);">{{ event.title }}</h5>
+                        {% if event.status == 'active' %}
+                            <span class="badge bg-success">Live</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Closed</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="p-4 d-flex flex-column flex-grow-1">
+                        <p class="text-muted small mb-3"><i class="far fa-clock me-1 text-primary"></i> {{ event.date }}</p>
+                        
+                        <div class="d-flex justify-content-between mb-4 bg-light rounded p-2 border">
+                            <div class="text-center w-50 border-end">
+                                <small class="text-muted d-block fw-bold">Participants</small>
+                                <span class="fw-bold fs-5">{{ event.registration_count }}</span>
+                            </div>
+                            <div class="text-center w-50">
+                                <small class="text-muted d-block fw-bold">Staff</small>
+                                <span class="fw-bold fs-5 text-warning">{{ event.staff|length }}</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-auto d-grid gap-2">
+                            {% if event.status == 'active' %}
+                                <button class="btn btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}"><i class="fas fa-edit me-1"></i> Edit Event</button>
+                                <button class="btn btn-outline-info fw-bold" data-bs-toggle="modal" data-bs-target="#staffModal{{ event.id }}"><i class="fas fa-user-shield me-1"></i> Appoint Staff / Judges</button>
+                                <button class="btn btn-danger fw-bold" data-bs-toggle="modal" data-bs-target="#broadcastModal{{ event.id }}"><i class="fas fa-bullhorn me-1"></i> Broadcast Message</button>
+                                <button class="btn btn-warning fw-bold text-dark mt-2" data-bs-toggle="modal" data-bs-target="#publishModal{{ event.id }}"><i class="fas fa-trophy me-1"></i> End Event & Publish</button>
+                            {% else %}
+                                <button class="btn btn-secondary fw-bold" disabled>Event Concluded</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="editModal{{ event.id }}" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header"><h5 class="modal-title">Edit {{ event.title }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <form action="/coordinator/edit_event/{{ event.id }}" method="POST">
+                            <div class="modal-body p-4">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" value="{{ event.title }}" required></div>
+                                    <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee }}" required></div>
+                                </div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6"><label class="form-label">Date & Time</label><input type="text" name="date" class="form-control" value="{{ event.date }}" required></div>
+                                    <div class="col-md-6"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" value="{{ event.venue }}" required></div>
+                                </div>
+                                <div class="mb-3"><label class="form-label">Banner URL</label><input type="url" name="banner_url" class="form-control" value="{{ event.banner_url }}"></div>
+                                <div class="mb-3"><label class="form-label text-primary">Overview</label><textarea name="overview" class="form-control" rows="3" required>{{ event.overview }}</textarea></div>
+                                <div class="mb-3"><label class="form-label text-danger">Rules</label><textarea name="rules" class="form-control" rows="3">{{ event.rules }}</textarea></div>
+                                <div class="mb-3"><label class="form-label text-warning">Prizes</label><textarea name="prizes" class="form-control" rows="2">{{ event.prizes }}</textarea></div>
+                                <div class="form-check form-switch mt-3"><input class="form-check-input" type="checkbox" name="is_team" {% if event.is_team_event %}checked{% endif %}><label class="form-check-label fw-bold text-dark">Team Event</label></div>
+                            </div>
+                            <div class="modal-footer"><button type="submit" class="btn btn-snpsu-blue px-4">Save Changes</button></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="staffModal{{ event.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header"><h5 class="modal-title">Appoint Staff</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body p-4">
+                            <form action="/coordinator/assign_staff/{{ event.id }}" method="POST">
+                                <div class="mb-3">
+                                    <label class="form-label">Role</label>
+                                    <select name="role" class="form-select">
+                                        <option value="EventCoordinator">Event Coordinator (Scanner)</option>
+                                        <option value="Judge">Event Judge</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3"><label class="form-label">Name</label><input type="text" name="name" class="form-control" required></div>
+                                <div class="mb-4"><label class="form-label">Email</label><input type="email" name="email" class="form-control" required></div>
+                                <button type="submit" class="btn btn-snpsu-blue w-100 py-2">Appoint & Send Login</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="broadcastModal{{ event.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-danger">
+                        <div class="modal-header bg-danger"><h5 class="modal-title text-white"><i class="fas fa-bullhorn me-2"></i> Broadcast Alert</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body p-4">
+                            <p class="text-muted small">Send an emergency email to all registered participants for this event instantly.</p>
+                            <form action="/coordinator/broadcast/{{ event.id }}" method="POST">
+                                <div class="mb-3"><label class="form-label text-danger">Subject</label><input type="text" name="subject" class="form-control" placeholder="URGENT: Venue Change" required></div>
+                                <div class="mb-4"><label class="form-label text-danger">Message</label><textarea name="message" class="form-control" rows="4" placeholder="Type your message here..." required></textarea></div>
+                                <button type="submit" class="btn btn-danger w-100 fw-bold py-2"><i class="fas fa-paper-plane me-2"></i> Send to All Participants</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            <p class="text-muted text-center w-100 py-5">No events found. Start building one!</p>
+            {% endfor %}
+        </div>
+
+        <div class="modal fade" id="createEventWizard" tabindex="-1" data-bs-backdrop="static">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header pb-4 border-0">
+                        <h4 class="modal-title fw-bold">Build Elite Event</h4>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    
+                    <form action="/coordinator/create_event" method="POST">
+                        <div class="modal-body p-4 pt-0">
+                            
+                            <div class="step-indicator px-4">
+                                <div class="step-dot active" id="dot1">1</div>
+                                <div class="step-dot" id="dot2">2</div>
+                                <div class="step-dot" id="dot3">3</div>
+                            </div>
+
+                            <div class="wizard-step active" id="step1">
+                                <h5 class="fw-bold mb-4" style="color: var(--snpsu-blue);">Basic Information</h5>
+                                <div class="mb-3"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" placeholder="Hackathon 2026" required></div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6"><label class="form-label">Date & Time</label><input type="text" name="date" class="form-control" placeholder="Oct 15, 10:00 AM" required></div>
+                                    <div class="col-md-6"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" placeholder="Main Auditorium" required></div>
+                                </div>
+                                <div class="text-end mt-4"><button type="button" class="btn btn-snpsu-blue px-4" onclick="nextStep(1)">Next Step <i class="fas fa-arrow-right ms-2"></i></button></div>
+                            </div>
+
+                            <div class="wizard-step" id="step2">
+                                <h5 class="fw-bold mb-4" style="color: var(--snpsu-blue);">Brochure Content</h5>
+                                <div class="mb-3"><label class="form-label text-primary">Overview / Description</label><textarea name="overview" class="form-control" rows="3" required></textarea></div>
+                                <div class="mb-3"><label class="form-label text-danger">Rules & Guidelines</label><textarea name="rules" class="form-control" rows="3" placeholder="- Rule 1&#10;- Rule 2"></textarea></div>
+                                <div class="mb-3"><label class="form-label text-warning">Prizes</label><textarea name="prizes" class="form-control" rows="2"></textarea></div>
+                                <div class="d-flex justify-content-between mt-4">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="prevStep(2)">Back</button>
+                                    <button type="button" class="btn btn-snpsu-blue px-4" onclick="nextStep(2)">Next Step <i class="fas fa-arrow-right ms-2"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="wizard-step" id="step3">
+                                <h5 class="fw-bold mb-4" style="color: var(--snpsu-blue);">Registration Settings</h5>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="0" required></div>
+                                    <div class="col-md-6"><label class="form-label">Banner Image URL</label><input type="url" name="banner_url" class="form-control" placeholder="https://..."></div>
+                                </div>
+                                
+                                <div class="p-3 bg-light border rounded mb-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input ms-0 me-3" style="width: 40px; height: 20px;" type="checkbox" name="is_team" id="teamCheck">
+                                        <label class="form-check-label fw-bold pt-1" for="teamCheck">This is a Team Event (Allows adding multiple members)</label>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between mt-4">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="prevStep(3)">Back</button>
+                                    <button type="submit" class="btn btn-snpsu-orange px-5 fw-bold fs-5">Publish Event <i class="fas fa-rocket ms-2"></i></button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function nextStep(currentStep) {
+            document.getElementById('step' + currentStep).classList.remove('active');
+            document.getElementById('step' + (currentStep + 1)).classList.add('active');
+            document.getElementById('dot' + currentStep).classList.replace('active', 'completed');
+            document.getElementById('dot' + (currentStep + 1)).classList.add('active');
+        }
+        function prevStep(currentStep) {
+            document.getElementById('step' + currentStep).classList.remove('active');
+            document.getElementById('step' + (currentStep - 1)).classList.add('active');
+            document.getElementById('dot' + currentStep).classList.remove('active');
+            document.getElementById('dot' + (currentStep - 1)).classList.replace('completed', 'active');
+        }
+    </script>
+</body>
+</html>

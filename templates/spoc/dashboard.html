@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club Dashboard | SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        
+        /* Stats Cards */
+        .stat-card {
+            background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            transition: 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-5px); border-color: #3b82f6; }
+        .stat-icon { width: 50px; height: 50px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        
+        /* Table */
+        .table-dark { --bs-table-bg: #1e293b; --bs-table-border-color: #334155; }
+        .table th { font-weight: 600; text-transform: uppercase; font-size: 0.85rem; color: #94a3b8; }
+        .table td { vertical-align: middle; }
+        
+        /* Badges */
+        .badge-status { padding: 6px 12px; border-radius: 50px; font-weight: 600; font-size: 0.75rem; }
+        .bg-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .bg-completed { background: rgba(99, 102, 241, 0.2); color: #6366f1; }
+        
+        /* Action Buttons */
+        .btn-icon { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #334155; color: #94a3b8; transition: 0.2s; background: transparent; }
+        .btn-icon:hover { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .btn-create { background: #3b82f6; color: white; border: none; font-weight: 600; padding: 10px 25px; border-radius: 8px; }
+        .btn-create:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h3 class="fw-bold mb-1">Club Dashboard</h3>
+                <p class="text-muted mb-0">Manage your events and registrations</p>
+            </div>
+            <div class="d-flex gap-3">
+                <a href="/" class="btn btn-outline-light">View Portal</a>
+                <a href="/spoc/create_event" class="btn btn-create shadow-lg">
+                    <i class="fas fa-plus me-2"></i> Create Event
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">Total Events</div>
+                        <div class="fs-2 fw-bold text-white">{{ stats.total_events }}</div>
+                    </div>
+                    <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">Total Registrations</div>
+                        <div class="fs-2 fw-bold text-white">{{ stats.total_regs }}</div>
+                    </div>
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">Club Category</div>
+                        <div class="fs-4 fw-bold text-warning">{{ category }}</div>
+                    </div>
+                    <div class="stat-icon"><i class="fas fa-tag"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-dark border-secondary overflow-hidden">
+            <div class="card-header bg-transparent border-secondary py-3">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2 text-primary"></i> Your Events</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Event Name</th>
+                            <th>Date</th>
+                            <th>Coordinators</th>
+                            <th class="text-center">Registrations</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-white">{{ event.title }}</div>
+                                <small class="text-muted">{{ event.category }}</small>
+                            </td>
+                            <td>{{ event.date }}</td>
+                            <td>
+                                {% if event.coordinators %}
+                                    <span class="text-light small" title="{{ event.coordinators | join(', ') }}">
+                                        {{ event.coordinators|length }} Assigned
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">None</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-dark border border-secondary text-white">{{ event.registration_count }} / {{ event.limits.max_participants or '∞' }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge-status {{ 'bg-completed' if event.status == 'completed' else 'bg-active' }}">
+                                    {{ event.status }}
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="/spoc/export_csv/{{ event.id }}" class="btn-icon" title="Download Data"><i class="fas fa-download"></i></a>
+                                <a href="/spoc/results/{{ event.id }}" class="btn-icon" title="Results"><i class="fas fa-trophy"></i></a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="far fa-folder-open fa-3x mb-3 opacity-50"></i>
+                                <p>No events created yet. Click "Create Event" to start.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

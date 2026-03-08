@@ -1,0 +1,92 @@
+<style>
+    .chat-btn {
+        position: fixed; bottom: 30px; right: 30px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: #3b82f6; color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 28px; cursor: pointer; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
+        transition: transform 0.3s; z-index: 9999;
+    }
+    .chat-btn:hover { transform: scale(1.1); }
+
+    .chat-window {
+        position: fixed; bottom: 100px; right: 30px;
+        width: 350px; height: 450px;
+        background: #1e293b; border: 1px solid #334155;
+        border-radius: 15px; overflow: hidden;
+        display: none; flex-direction: column;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 9999;
+    }
+
+    .chat-header { background: #3b82f6; padding: 15px; color: white; font-weight: bold; display: flex; justify-content: space-between; }
+    .chat-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0f172a; }
+    
+    .msg { max-width: 80%; padding: 10px; border-radius: 10px; font-size: 0.9rem; }
+    .msg-bot { background: #334155; color: white; align-self: flex-start; border-bottom-left-radius: 0; }
+    .msg-user { background: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+
+    .chat-footer { padding: 10px; background: #1e293b; border-top: 1px solid #334155; display: flex; gap: 10px; }
+    .chat-input { flex: 1; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 20px; padding: 8px 15px; outline: none; }
+</style>
+
+<div class="chat-btn" onclick="toggleChat()">
+    <i class="fas fa-comment-dots"></i>
+</div>
+
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <span>🤖 Event Assistant</span>
+        <i class="fas fa-times" style="cursor:pointer;" onclick="toggleChat()"></i>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="msg msg-bot">Hi! Ask me anything about the event.</div>
+    </div>
+    <div class="chat-footer">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="handleEnter(event)">
+        <button class="btn btn-sm btn-primary rounded-circle" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<script>
+    function toggleChat() {
+        const win = document.getElementById('chatWindow');
+        win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function handleEnter(e) {
+        if (e.key === 'Enter') sendMessage();
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text) return;
+
+        // 1. Add User Message
+        addMessage(text, 'user');
+        input.value = '';
+
+        // 2. Call API
+        fetch('/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: text})
+        })
+        .then(res => res.json())
+        .then(data => {
+            addMessage(data.response, 'bot');
+        })
+        .catch(err => {
+            addMessage("Sorry, I'm having trouble connecting.", 'bot');
+        });
+    }
+
+    function addMessage(text, sender) {
+        const body = document.getElementById('chatBody');
+        const div = document.createElement('div');
+        div.className = `msg msg-${sender}`;
+        div.innerText = text;
+        body.appendChild(div);
+        body.scrollTop = body.scrollHeight; // Auto-scroll
+    }
+</script>

@@ -1,143 +1,102 @@
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, session, redirect
 from flask_mail import Mail
-from config import Config
-from models import db, FirebaseWrapper
-import logging
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
+import datetime # <-- ADDED FOR REAL-TIME DATE CHECK
 
-# --- IMPORT BLUEPRINTS ---
-# Ensure these files (routes_*.py) exist in your folder from the previous step
+app = Flask(__name__)
+
+# --- CRITICAL FIX: HARDCODED SECRET KEY ---
+# Do not use os.urandom here, as it clears sessions on server restart
+app.secret_key = "saptha_super_secret_key_2026"
+
+# --- 1. EMAIL CONFIGURATION ---
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'sapthhack@gmail.com' 
+app.config['MAIL_PASSWORD'] = 'yqfk tmdn vxof qvxj' 
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_DEFAULT_SENDER'] = ('SapthaEvent Admin', 'sapthhack@gmail.com')
+
+mail = Mail(app)
+
+# --- 2. FIREBASE SETUP ---
+if not firebase_admin._apps:
+    cred = credentials.Certificate("serviceAccountKey.json")
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+# --- 3. REGISTER BLUEPRINTS ---
 from routes_auth import auth_bp
-from routes_super import super_bp
-from routes_spoc import spoc_bp
-from routes_head import head_bp
+from routes_admin import admin_bp
+from routes_coordinator import coord_bp
 from routes_participant import participant_bp
-from routes_judge import judge_bp 
+from routes_payment import payment_bp
+from routes_judge import judge_bp
+from routes_profile import profile_bp
+from chatbot_routes import chatbot_bp
+from routes_feedback import feedback_bp
 
-# Initialize Extensions
-mail = Mail()
-# Configure Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
+app.register_blueprint(coord_bp)
+app.register_blueprint(participant_bp)
+app.register_blueprint(payment_bp)
+app.register_blueprint(judge_bp)
+app.register_blueprint(profile_bp)
+app.register_blueprint(chatbot_bp)
+app.register_blueprint(feedback_bp)
 
-def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
-    
-    # Initialize Mail
-    mail.init_app(app)
-    app.extensions['mail'] = mail
-
-    # Register Blueprints
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(super_bp)
-    app.register_blueprint(spoc_bp)
-    app.register_blueprint(head_bp)
-    app.register_blueprint(participant_bp)
-    app.register_blueprint(judge_bp)
-
-    # --- GLOBAL CONTEXT PROCESSOR ---
-    # This injects variables into ALL HTML templates automatically
-    @app.context_processor
-    def inject_globals():
-        return dict(
-            app_name=Config.APP_NAME,
-            organization=Config.ORGANIZATION,
-            current_user_name=session.get('name', 'User'),
-            current_user_role=session.get('role', 'Guest')
-        )
-
-    return app
-
-app = create_app()
-
-# --- GLOBAL ROUTES ---
-
+# --- 4. ROOT ROUTE (HOME SCREEN) ---
 @app.route('/')
 def home():
-    """Landing Page Logic"""
-    featured_events = []
-    upcoming = []
+    # Fast-lane routing if someone goes to the home page while logged in
+    if 'user_id' in session:
+        role = session.get('role')
+        if role == 'Student': 
+            return redirect('/participant/dashboard')
+        elif role in ['Admin', 'SuperAdmin']: 
+            return redirect('/admin/dashboard')
+        elif role == 'Coordinator': 
+            return redirect('/coordinator/dashboard')
+        elif role == 'EventCoordinator': 
+            return redirect('/coordinator/scanner')
+        elif role == 'Judge': 
+            return redirect('/judge/dashboard')
     
-    try:
-        if db:
-            events_ref = db.collection('events')
-            # Query: Published events only
-            query = events_ref.where('is_published', '==', True).stream()
-            
-            # Convert to Wrappers
-            all_events = [FirebaseWrapper(doc.id, doc.to_dict()) for doc in query]
-            
-            # Python-side sorting (since Firestore compound queries require indexes)
-            # Sorting by 'date' string (YYYY-MM-DD)
-            all_events.sort(key=lambda x: x.date)
-
-            # Slice lists for UI sections
-            featured_events = all_events[:3] # Top 3 soonest
-            upcoming = all_events            # All events list
-            
-    except Exception as e:
-        logger.error(f"Home Page Error: {e}")
-        # Fail gracefully (empty lists)
+    # --- REAL-TIME DATE LOGIC ---
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
     
-    return render_template('home.html', featured=featured_events, upcoming=upcoming)
+    # Fetch Active Events for Public View
+    events_ref = db.collection('events').where('status', '==', 'active').stream()
+    events = []
+    for e in events_ref:
+        d = e.to_dict()
+        d['id'] = e.id
+        d['description'] = d.get('description', 'No description available.')
+        events.append(d)
+        
+    return render_template('index.html', events=events, current_date=current_date)
 
-@app.route('/event/<event_id>')
-def event_details(event_id):
-    """Public Event Details Page"""
+# --- 5. CERTIFICATE VERIFICATION ROUTE ---
+@app.route('/verify/<reg_id>')
+def verify_certificate(reg_id):
     try:
-        if not db: raise Exception("DB Not Connected")
-
-        # Fetch Event
-        doc_ref = db.collection('events').document(event_id)
-        doc = doc_ref.get()
+        reg_doc = db.collection('registrations').document(reg_id).get()
+        if not reg_doc.exists: 
+            return render_template('public/verify_fail.html', reg_id=reg_id)
         
-        if not doc.exists:
-            return render_template('404.html'), 404
-        
-        event = FirebaseWrapper(event_id, doc.to_dict())
-        
-        # Check Registration Status for Participants
-        is_registered = False
-        if session.get('role') == 'Participant':
-            user_email = session.get('user_id')
+        data = reg_doc.to_dict()
+        if data.get('attendance') != 'Present': 
+            return render_template('public/verify_fail.html', reg_id=reg_id, reason="Absent")
             
-            # Check Teams collection for this event + this user
-            # "member_emails" is an array field in the team document
-            teams_q = db.collection('teams')\
-                        .where('event_id', '==', event_id)\
-                        .where('member_emails', 'array_contains', user_email)\
-                        .get()
-            
-            if len(teams_q) > 0:
-                is_registered = True
-
-        return render_template('event_details.html', event=event, is_registered=is_registered)
-
-    except Exception as e:
-        logger.error(f"Event Details Error: {e}")
-        return f"System Error: {e}", 500
-
-# --- ERROR HANDLERS ---
-@app.errorhandler(404)
-def page_not_found(e):
-    # You can create a simple 404.html template if you wish
-    return "<h1>404 - Page Not Found</h1><p>The requested page could not be found.</p><a href='/'>Go Home</a>", 404
+        event = db.collection('events').document(data['event_id']).get().to_dict()
+        return render_template('public/verify_success.html', data=data, event=event)
+    except: 
+        return "Verification Error", 500
 
 if __name__ == '__main__':
-    # Auto-create Admin on startup (Safety Check)
-    try:
-        admin_email = 'admin@sapthahack.com'
-        if db:
-            doc = db.collection('users').document(admin_email).get()
-            if not doc.exists:
-                print("--- SYSTEM INIT: Creating Super Admin ---")
-                db.collection('users').document(admin_email).set({
-                    'email': admin_email,
-                    'password': 'admin', # Dev password
-                    'role': 'SuperAdmin',
-                    'name': 'System Administrator'
-                })
-    except Exception as e:
-        print(f"Startup Init Warning: {e}")
-
     app.run(debug=True, port=5000)

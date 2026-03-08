@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal | Sapthagiri NPS University</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        :root { --snpsu-blue: #0d2d62; --snpsu-orange: #f37021; --bg-light: #f4f7f6; --text-dark: #1e293b; }
+        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5 { font-family: 'Poppins', sans-serif; }
+        
+        /* Navbar */
+        .navbar { background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 15px 0; }
+        .logo-title { color: var(--snpsu-blue); font-weight: 800; font-size: 1.3rem; margin: 0; line-height: 1.1; }
+        
+        /* Announcements */
+        .announcement-bar { background: linear-gradient(90deg, var(--snpsu-blue), #1a4999); color: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(13, 45, 98, 0.2); border-left: 5px solid var(--snpsu-orange); }
+        
+        /* Ticket Cards */
+        .ticket-card { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04); transition: 0.3s; }
+        .ticket-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(13, 45, 98, 0.1); border-color: var(--snpsu-orange); }
+        .ticket-header { background-color: var(--snpsu-blue); color: white; padding: 20px; border-bottom: 4px solid var(--snpsu-orange); }
+        .qr-wrapper { background: white; padding: 15px; border-radius: 12px; border: 2px dashed #cbd5e1; display: inline-block; }
+        
+        /* Certificate Cards */
+        .cert-card { background: #ffffff; border-left: 6px solid #10b981; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); transition: 0.2s; }
+        .cert-card:hover { transform: translateX(5px); }
+        
+        /* Calendar UI overrides */
+        .fc-toolbar-title { font-family: 'Poppins', sans-serif; color: var(--snpsu-blue); font-weight: 700; }
+        .fc-button-primary { background-color: var(--snpsu-blue) !important; border: none !important; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg sticky-top mb-5">
+        <div class="container px-4">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <i class="fas fa-university me-3" style="color: var(--snpsu-orange); font-size: 2rem;"></i>
+                <div>
+                    <div class="logo-title">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></div>
+                    <small style="color: #64748b; font-size: 0.75rem; font-weight: 700; letter-spacing: 1.5px;">STUDENT PORTAL</small>
+                </div>
+            </a>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <span class="fw-bold text-dark d-none d-md-block"><i class="fas fa-user-circle me-2" style="color: var(--snpsu-blue); font-size: 1.2rem;"></i> {{ user_name }}</span>
+                <a href="/logout" class="btn btn-outline-danger fw-bold px-4 rounded-pill">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} fw-bold shadow-sm rounded-3"><i class="fas fa-info-circle me-2"></i>{{ message }}</div>{% endfor %}{% endif %}
+        {% endwith %}
+
+        {% if announcements %}
+        <div class="announcement-bar p-4 mb-5">
+            <h5 class="fw-bold mb-3" style="color: #fbd38d;"><i class="fas fa-bullhorn me-2"></i> Official Announcements</h5>
+            <ul class="mb-0 ps-3">
+                {% for ann in announcements %}
+                <li class="mb-2">
+                    {% if ann.priority == 'Urgent' %}<span class="badge bg-danger me-2">Urgent</span>{% endif %}
+                    <span class="fw-medium">{{ ann.message }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="row g-5">
+            
+            <div class="col-lg-8">
+                
+                <h4 class="fw-bold mb-4" style="color: var(--snpsu-blue);"><i class="fas fa-ticket-alt me-2 text-warning"></i> My Active Tickets</h4>
+                <div class="row g-4 mb-5">
+                    {% for ticket in active_tickets %}
+                    <div class="col-md-6">
+                        <div class="ticket-card text-center h-100 d-flex flex-column">
+                            <div class="ticket-header">
+                                <h5 class="fw-bold m-0">{{ ticket.event_title }}</h5>
+                            </div>
+                            <div class="p-4 d-flex flex-column flex-grow-1 align-items-center">
+                                <p class="text-muted small fw-bold mb-4">
+                                    <i class="fas fa-calendar-alt me-1" style="color: var(--snpsu-orange);"></i> {{ ticket.event_date }} <br>
+                                    <i class="fas fa-map-marker-alt me-1 mt-2 text-primary"></i> {{ ticket.event_venue }}
+                                </p>
+                                
+                                <div class="qr-wrapper mb-3" id="qrcode-{{ ticket.reg_id }}"></div>
+                                <script>
+                                    new QRCode(document.getElementById("qrcode-{{ ticket.reg_id }}"), {
+                                        text: "{{ ticket.reg_id }}",
+                                        width: 130,
+                                        height: 130,
+                                        colorDark: "#0d2d62",
+                                        colorLight: "#ffffff"
+                                    });
+                                </script>
+                                
+                                <div class="mt-auto w-100">
+                                    <div class="bg-light rounded p-2 border fw-bold" style="color: var(--snpsu-blue); font-family: monospace; font-size: 1.1rem;">{{ ticket.reg_id }}</div>
+                                    {% if ticket.attendance == 'Present' %}
+                                        <div class="mt-3 badge bg-success fs-6 w-100 py-2"><i class="fas fa-check-circle me-1"></i> Check-in Confirmed</div>
+                                    {% else %}
+                                        <div class="mt-3 badge bg-secondary fs-6 w-100 py-2"><i class="fas fa-clock me-1"></i> Awaiting Check-in</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-12"><div class="p-5 bg-white border rounded text-center text-muted shadow-sm">You haven't registered for any upcoming events yet. <a href="/" class="fw-bold" style="color: var(--snpsu-orange);">Browse Events</a></div></div>
+                    {% endfor %}
+                </div>
+
+                <h4 class="fw-bold mb-4" style="color: var(--snpsu-blue);"><i class="fas fa-certificate me-2 text-success"></i> My Certificates & History</h4>
+                <div class="row g-3">
+                    {% for event in completed_events %}
+                    <div class="col-12">
+                        <div class="cert-card p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                            <div class="mb-3 mb-md-0">
+                                <h5 class="fw-bold m-0" style="color: var(--snpsu-blue);">{{ event.event_title }}</h5>
+                                <small class="text-muted fw-bold">ID: {{ event.reg_id }}</small>
+                            </div>
+                            
+                            {% if event.attendance == 'Present' %}
+                                <a href="/participant/certificate/{{ event.reg_id }}" target="_blank" class="btn btn-success fw-bold px-4 py-2 shadow-sm rounded-pill">
+                                    <i class="fas fa-download me-2"></i> Download Certificate
+                                </a>
+                            {% else %}
+                                <span class="badge bg-danger py-2 px-3 rounded-pill">Absent (No Certificate)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-12"><p class="text-muted ps-2">No completed events yet.</p></div>
+                    {% endfor %}
+                </div>
+
+            </div>
+
+            <div class="col-lg-4">
+                <div class="bg-white p-4 rounded-4 shadow-sm border border-light">
+                    <h5 class="fw-bold mb-4 text-center" style="color: var(--snpsu-blue);"><i class="far fa-calendar-alt me-2"></i> Event Calendar</h5>
+                    <div id="calendar"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+  <script id="calendar-data" type="application/json">
+        {{ calendar_events | safe }}
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch the data from the hidden HTML tag
+            var rawData = document.getElementById('calendar-data').textContent;
+            var calendarEventsData = JSON.parse(rawData);
+
+            // Initialize the Calendar
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 450,
+                headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+                events: calendarEventsData,
+                editable: false
+            });
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

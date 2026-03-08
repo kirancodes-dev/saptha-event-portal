@@ -1,142 +1,88 @@
-from flask import Blueprint, render_template, session, redirect, flash, request
-from models import db, FirebaseWrapper
-import logging
+from flask import Blueprint, render_template, request, redirect, session, flash, url_for
+from models import db
+import datetime
 
-super_bp = Blueprint('super_bp', __name__, url_prefix='/super_admin')
-logger = logging.getLogger(__name__)
+super_bp = Blueprint('super_admin', __name__, url_prefix='/super_admin')
 
+# --- 1. DASHBOARD ---
 @super_bp.route('/dashboard')
 def dashboard():
-    """
-    The Ultimate Super Admin Dashboard.
-    Fetches data from ALL collections to provide a complete system overview.
-    """
     if session.get('role') != 'SuperAdmin': return redirect('/login')
-    
+
     try:
-        # 1. Fetch ALL User Types
+        # Stats Logic
         users_ref = db.collection('users')
+        spocs = list(users_ref.where('role', '==', 'ClubSPOC').stream())
         
-        # Stream all users once (More efficient than 4 queries if user base is small < 1000)
-        # For larger apps, use separate queries or Algolia
-        all_users = users_ref.stream()
+        # Safe counts
+        active_events = len(list(db.collection('events').where('status', '==', 'active').stream()))
+        students = len(list(users_ref.where('role', 'in', ['Student', 'Participant']).stream()))
         
-        spocs, students, judges, coords = [], [], [], []
-        
-        for doc in all_users:
-            u = FirebaseWrapper(doc.id, doc.to_dict())
-            role = u.role
-            if role == 'ClubSPOC': spocs.append(u)
-            elif role == 'Participant': students.append(u)
-            elif role == 'Judge': judges.append(u)
-            elif role == 'Coordinator': coords.append(u)
+        spoc_list = [{'id': d.id, **d.to_dict()} for d in spocs]
 
-        # 2. Fetch ALL Events
-        event_docs = db.collection('events').stream()
-        events = [FirebaseWrapper(d.id, d.to_dict()) for d in event_docs]
-        
-        # 3. Stats Calculation
-        stats = {
-            'total_users': len(spocs) + len(students) + len(judges) + len(coords),
-            'total_events': len(events),
-            'total_spocs': len(spocs),
-            'total_students': len(students),
-            'total_judges': len(judges),
-            'active_events': sum(1 for e in events if e.is_published)
-        }
-
-        return render_template('dashboard_super.html', 
-                               spocs=spocs, 
-                               events=events, 
-                               students=students, 
-                               judges=judges,
-                               coords=coords,
-                               stats=stats)
-                               
+        return render_template(
+            'super_admin/dashboard.html', 
+            stats={'spocs': len(spoc_list), 'events': active_events, 'students': students},
+            spocs=spoc_list
+        )
     except Exception as e:
-        logger.error(f"Super Admin Error: {e}")
-        flash("System Error: Unable to load dashboard data.", "danger")
-        return redirect('/')
+        print(f"Dashboard Error: {e}")
+        return "System Error", 500
 
-@super_bp.route('/create_user', methods=['POST'])
-def create_user():
-    """
-    Universal User Creator.
-    Allows Super Admin to create ANY role manually.
-    """
+# --- 2. MANAGE EVENTS (NEW ROUTE) ---
+@super_bp.route('/events')
+def events():
+    # Placeholder: In future, make a 'manage_events.html'
+    flash("Event Management Module loaded.", "info")
+    return redirect(url_for('super_admin.dashboard')) 
+
+# --- 3. USER ROLES (NEW ROUTE) ---
+@super_bp.route('/users')
+def users():
+    flash("User Role Management loaded.", "info")
+    return redirect(url_for('super_admin.dashboard'))
+
+# --- 4. ANALYTICS (NEW ROUTE) ---
+@super_bp.route('/analytics')
+def analytics():
+    flash("Analytics Module loaded.", "info")
+    return redirect(url_for('super_admin.dashboard'))
+
+# --- 5. CREATE SPOC ---
+@super_bp.route('/create_spoc', methods=['POST'])
+def create_spoc():
     if session.get('role') != 'SuperAdmin': return redirect('/login')
-    
+
     try:
-        # Extract Form Data
-        role = request.form.get('role')
-        name = request.form.get('name')
-        email = request.form.get('email')
-        password = request.form.get('password') or "welcome123"
-        
-        # Optional fields based on role
-        category = request.form.get('category') # For SPOCs
-        usn = request.form.get('usn') # For Students
-        dept = request.form.get('department') # For Students
-        
-        # 1. Check Duplicate
+        email = request.form.get('spoc_email')
         if db.collection('users').document(email).get().exists:
-            flash(f"User with email {email} already exists.", "warning")
-            return redirect('/super_admin/dashboard')
-            
-        # 2. Build Data Object
+            flash("User already exists!", "warning")
+            return redirect(url_for('super_admin.dashboard'))
+
         user_data = {
-            'name': name,
+            'name': request.form.get('spoc_name'),
             'email': email,
-            'password': password, # In production, hash this!
-            'role': role,
-            'created_by': 'SuperAdmin'
+            'password': request.form.get('spoc_password'),
+            'role': 'ClubSPOC',
+            'club_name': request.form.get('club_name'),
+            'category': request.form.get('club_category'),
+            'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
         }
-        
-        # Add Role-Specific Data
-        if role == 'ClubSPOC':
-            user_data['category'] = category
-        elif role == 'Participant':
-            user_data['usn'] = usn
-            user_data['department'] = dept
-            
-        # 3. Save to Firestore
         db.collection('users').document(email).set(user_data)
-        flash(f"Successfully created {role}: {name}", "success")
+        flash("Club Lead appointed successfully!", "success")
         
     except Exception as e:
-        logger.error(f"Create User Error: {e}")
-        flash("Failed to create user. Check logs.", "danger")
-        
-    return redirect('/super_admin/dashboard')
+        flash(f"Error: {str(e)}", "danger")
 
-@super_bp.route('/delete_entity/<entity_type>/<entity_id>', methods=['POST'])
-def delete_entity(entity_type, entity_id):
-    """
-    Universal Delete Handler.
-    """
+    return redirect(url_for('super_admin.dashboard'))
+
+# --- 6. DELETE USER ---
+@super_bp.route('/delete_user/<user_id>')
+def delete_user(user_id):
     if session.get('role') != 'SuperAdmin': return redirect('/login')
-    
     try:
-        collection = 'events' if entity_type == 'event' else 'users'
-        db.collection(collection).document(entity_id).delete()
-        flash(f"{entity_type.capitalize()} deleted successfully.", "info")
-    except Exception as e:
-        flash("Delete failed.", "danger")
-        
-    return redirect('/super_admin/dashboard')
-
-@super_bp.route('/system_reset', methods=['POST'])
-def system_reset():
-    """
-    Safe System Reset (Actually just deletes data, keeps Admins).
-    """
-    if session.get('role') != 'SuperAdmin': return redirect('/login')
-    
-    confirm_text = request.form.get('confirm_text')
-    if confirm_text != 'DELETE':
-        flash("Reset cancelled. You must type 'DELETE'.", "warning")
-        return redirect('/super_admin/dashboard')
-        
-    # Logic to delete collections would go here (omitted for safety in demo)
-    flash("System Reset Simulated. (Data protected in demo mode)", "info")
-    return redirect('/super_admin/dashboard')
+        db.collection('users').document(user_id).delete()
+        flash("User removed.", "success")
+    except:
+        flash("Error deleting user.", "danger")
+    return redirect(url_for('super_admin.dashboard'))

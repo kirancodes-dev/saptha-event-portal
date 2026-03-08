@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Scanner | {{ event_title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { background-color: #0f172a; color: white; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column;}
+        .navbar { background-color: #1e293b; border-bottom: 1px solid #334155; }
+        #reader { width: 100%; border-radius: 16px; overflow: hidden; border: 4px solid #3b82f6; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .status-box { border-radius: 12px; padding: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; transition: 0.3s; min-height: 100px; display: flex; align-items: center; justify-content: center; flex-direction: column;}
+        .status-success { background-color: #10b981; color: white; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+        .status-warning { background-color: #f59e0b; color: white; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+        .status-error { background-color: #ef4444; color: white; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+        .status-idle { background-color: #1e293b; color: #94a3b8; border: 2px dashed #475569; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar px-3 py-3">
+        <a href="/coordinator/scanner" class="text-white text-decoration-none fw-bold"><i class="fas fa-arrow-left me-2"></i> Back</a>
+        <span class="badge bg-primary fs-6">{{ event_title }}</span>
+    </nav>
+
+    <div class="container d-flex flex-column justify-content-center align-items-center flex-grow-1 p-3" style="max-width: 600px;">
+        
+        <div id="reader" class="mb-4"></div>
+
+        <div id="statusBox" class="status-box status-idle w-100">
+            <i class="fas fa-qrcode fa-2x mb-2"></i>
+            <span id="statusText">Point camera at a ticket QR code...</span>
+        </div>
+    </div>
+
+    <script>
+        const eventId = "{{ event_id }}";
+        const statusBox = document.getElementById('statusBox');
+        const statusText = document.getElementById('statusText');
+        let isScanning = true;
+
+        function showStatus(type, message, subtext = '') {
+            statusBox.className = `status-box status-${type} w-100`;
+            let icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle';
+            statusBox.innerHTML = `<i class="fas fa-${icon} fa-2x mb-2"></i><span>${message}</span><small class="d-block mt-1 opacity-75">${subtext}</small>`;
+            
+            // Auto-reset after 3 seconds
+            setTimeout(() => {
+                statusBox.className = 'status-box status-idle w-100';
+                statusBox.innerHTML = `<i class="fas fa-qrcode fa-2x mb-2"></i><span>Ready for next ticket...</span>`;
+                isScanning = true;
+            }, 3000);
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (!isScanning) return;
+            isScanning = false; // Pause scanner to prevent double-firing
+
+            fetch('/coordinator/mark_attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reg_id: decodedText, event_id: eventId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') showStatus('success', 'Ticket Verified!', data.message);
+                else if (data.status === 'warning') showStatus('warning', 'Already Scanned', data.message);
+                else showStatus('error', 'Invalid Ticket', data.message);
+            })
+            .catch(error => { showStatus('error', 'Network Error', 'Check connection.'); });
+        }
+
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>

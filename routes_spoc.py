@@ -1,23 +1,19 @@
 from flask import Blueprint, render_template, request, redirect, session, flash, Response, url_for
 from models import db, FirebaseWrapper
-from firebase_admin import firestore
 import datetime
 import csv
 import io
+import json
+from utils import login_required, role_required
 
 spoc_bp = Blueprint('spoc', __name__, url_prefix='/spoc')
 
 # --- 1. SPOC DASHBOARD ---
 @spoc_bp.route('/dashboard')
+@login_required
+@role_required('ClubSPOC')
 def dashboard():
-    # Security Check
-    if session.get('role') != 'ClubSPOC': 
-        flash("Access Denied.", "warning")
-        return redirect('/login')
-    
     spoc_id = session.get('user_id')
-    
-    # Fetch Events created by this SPOC
     query = db.collection('events').where('spoc_id', '==', spoc_id).stream()
     
     events = []
@@ -25,81 +21,95 @@ def dashboard():
 
     for doc in query:
         data = doc.to_dict()
-        # Count registrations for this event
         reg_count = len(list(db.collection('registrations').where('event_id', '==', doc.id).stream()))
         total_regs += reg_count
-        
-        # Add to event object
         data['registration_count'] = reg_count 
         events.append(FirebaseWrapper(doc.id, data))
 
-    # Helper to get Coordinator Names
-    def get_coord_name(email):
-        if not email: return "Not Assigned"
-        doc = db.collection('users').document(email).get()
-        return doc.to_dict().get('name', 'Unknown') if doc.exists else "Not Assigned"
+    return render_template('spoc/dashboard.html', 
+                          events=events, 
+                          stats={'total_events': len(events), 'total_regs': total_regs},
+                          category=session.get('category', 'General'))
 
-    return render_template(
-        'spoc/dashboard.html', 
-        events=events, 
-        stats={'total_events': len(events), 'total_regs': total_regs},
-        get_coord_name=get_coord_name,
-        category=session.get('category', 'General')
-    )
-
-# --- 2. CREATE EVENT (MOBILE COMPACT FORM) ---
+# --- 2. CREATE EVENT (DYNAMIC BUILDER) ---
 @spoc_bp.route('/create_event', methods=['GET', 'POST'])
+@login_required
+@role_required('ClubSPOC')
 def create_event():
-    # 1. Security Check
-    if session.get('role') != 'ClubSPOC': 
-        return redirect('/login')
-
-    # 2. GET: Show the New Mobile-Friendly Page
     if request.method == 'GET':
-        return render_template('spoc/create_event.html')
+        return render_template('spoc/create_event.html') 
 
-    # 3. POST: Save Data
     try:
-        # Determine Team Logic
-        participation_type = request.form.get('participation_type')
-        is_team = True if participation_type == 'Team' else False
+        def get_bool(key): return True if request.form.get(key) == 'on' else False
+        def get_int(key, default=0): 
+            try: return int(request.form.get(key, default))
+            except: return default
         
+        # 1. Capture Multiple Coordinators (Comma separated string -> List)
+        coord_string = request.form.get('coordinators', '')
+        coordinators_list = [email.strip().lower() for email in coord_string.split(',') if email.strip()]
+
+        # 2. Dynamic Form Schema (Strictly defined by SPOC)
+        form_schema = {
+            'require_lead_whatsapp': get_bool('req_lead_whatsapp'),
+            'require_member_usn': get_bool('req_member_usn'),
+            'require_member_email': get_bool('req_member_email'),
+            'require_member_whatsapp': get_bool('req_member_whatsapp'),
+            'submission_type': request.form.get('submission_type', 'none') # 'github', 'drive', 'none'
+        }
+
+        # 3. Allowed Years
+        allowed_years = []
+        if get_bool('year_1'): allowed_years.append(1)
+        if get_bool('year_2'): allowed_years.append(2)
+        if get_bool('year_3'): allowed_years.append(3)
+        if get_bool('year_4'): allowed_years.append(4)
+
         event_data = {
-            # Basic Info
             'title': request.form.get('title'),
-            'category': session.get('category', 'Tech'),
+            'category': request.form.get('category'),
+            'description': request.form.get('description'),
+            'rules': request.form.get('rules'),
+            'banner_url': request.form.get('banner_url') or 'https://placehold.co/800x400?text=Event',
+            'visibility': request.form.get('visibility'),
             'date': request.form.get('date'),
             'time': request.form.get('time'),
-            'venue': request.form.get('venue'),
-            'description': request.form.get('description'),
-            
-            # Rules
             'reg_deadline': request.form.get('reg_deadline'),
-            'max_participants': int(request.form.get('max_limit') or 0),
-            'is_team_event': is_team,
-            'team_min': int(request.form.get('team_min') or 1),
-            'team_max': int(request.form.get('team_max') or 1),
+            'venue': request.form.get('venue'),
+            'participation_type': request.form.get('participation_type'),
+            'is_team_event': request.form.get('participation_type') in ['Team', 'Both'],
             
-            # Resources
-            'prizes': request.form.get('prizes'),
-            'group_link': request.form.get('group_link'),
-            'problem_statement_link': request.form.get('problem_link'),
+            # KEY NEW FIELDS
+            'coordinators': coordinators_list, # Array of emails
+            'form_schema': form_schema,        # The exact form requirements
             
-            # System Metadata
+            'limits': {
+                'team_min': get_int('team_min', 1),
+                'team_max': get_int('team_max', 1),
+                'max_participants': get_int('max_participants', 0),
+                'allowed_years': allowed_years
+            },
+            'fees': {'regular': get_int('reg_fee', 0)},
+            'prizes': {
+                '1st': request.form.get('prize_1'),
+                '2nd': request.form.get('prize_2'),
+                '3rd': request.form.get('prize_3')
+            },
+            
             'spoc_id': session['user_id'],
-            'created_by': session['user_id'],
+            'organizer': {
+                'name': session.get('name'), 
+                'email': session.get('user_id'),
+                'phone': '9999999999', # Placeholder, ideally fetch from profile
+                'group_link': '#'
+            },
             'status': 'active',
-            'is_published': True,
-            'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
-            
-            # Empty Placeholders
-            'coord_student_id': None,
-            'coord_staff_id': None,
-            'judge_ids': []
+            'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'results_published': False
         }
 
         db.collection('events').add(event_data)
-        flash("Event Published Successfully!", "success")
+        flash(f"Event '{event_data['title']}' Published with Custom Rules!", "success")
         return redirect('/spoc/dashboard')
         
     except Exception as e:
@@ -107,77 +117,77 @@ def create_event():
         flash(f"Error creating event: {str(e)}", "danger")
         return redirect('/spoc/create_event')
 
-# --- 3. ASSIGN COORDINATORS ---
-@spoc_bp.route('/assign_coordinators', methods=['POST'])
-def assign_coordinators():
-    try:
-        event_id = request.form.get('event_id')
-        
-        # Helper to create user instantly if they don't exist
-        def ensure_user(name, email, role):
-            if not email: return None
-            user_ref = db.collection('users').document(email)
-            if not user_ref.get().exists:
-                user_ref.set({
-                    'name': name,
-                    'email': email,
-                    'role': 'Coordinator',
-                    'role_type': role,
-                    'password': 'password123',
-                    'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
-                })
-            return email
-
-        stu = ensure_user(request.form.get('stu_name'), request.form.get('stu_email'), 'Student')
-        staff = ensure_user(request.form.get('staff_name'), request.form.get('staff_email'), 'Staff')
-
-        db.collection('events').document(event_id).update({
-            'coord_student_id': stu,
-            'coord_staff_id': staff
-        })
-        flash("Coordinators assigned.", "success")
-    except Exception as e:
-        flash(f"Error: {e}", "danger")
-        
-    return redirect('/spoc/dashboard')
-
-# --- 4. EXPORT CSV (ENHANCED) ---
+# --- 3. EXPORT CSV ---
 @spoc_bp.route('/export_csv/<event_id>')
+@login_required
+@role_required('ClubSPOC')
 def export_csv(event_id):
     try:
         event_doc = db.collection('events').document(event_id).get()
         title = event_doc.to_dict().get('title', 'Event')
-        
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(['Team/Name', 'Lead Email', 'Members', 'Status', 'Attendance', 'Score', 'Date'])
-        
         regs = db.collection('registrations').where('event_id', '==', event_id).stream()
-        
         for doc in regs:
             r = doc.to_dict()
             member_count = len(r.get('members', []))
-            
-            # Get max score from any judge
             scores = r.get('scores', {})
-            final_score = 0
-            if scores:
-                final_score = max([v['total'] for v in scores.values()])
-
-            writer.writerow([
-                r.get('team_name', 'Individual'),
-                r.get('lead_email'),
-                f"{member_count} Members",
-                r.get('status', 'Pending'),
-                r.get('attendance', 'Pending'),
-                final_score,
-                r.get('registered_at')
-            ])
-            
-        return Response(
-            output.getvalue(), 
-            mimetype="text/csv", 
-            headers={"Content-disposition": f"attachment; filename={title}_report.csv"}
-        )
+            final_score = max([v['total'] for v in scores.values()]) if scores else 0
+            writer.writerow([r.get('team_name', 'Individual'), r.get('lead_email'), f"{member_count} Members", r.get('status'), r.get('attendance'), final_score, r.get('registered_at')])
+        return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": f"attachment; filename={title}_report.csv"})
     except:
         return redirect('/spoc/dashboard')
+
+# --- 4. RESULTS DASHBOARD ---
+@spoc_bp.route('/results/<event_id>')
+@login_required
+@role_required('ClubSPOC')
+def event_results(event_id):
+    # 1. Fetch Event
+    event_doc = db.collection('events').document(event_id).get()
+    event = event_doc.to_dict()
+    event['id'] = event_id
+
+    # 2. Fetch Registrations
+    regs_ref = db.collection('registrations').where('event_id', '==', event_id).stream()
+    
+    leaderboard = []
+    
+    for r in regs_ref:
+        data = r.to_dict()
+        data['id'] = r.id
+        
+        # 3. Calculate Scores
+        scores_map = data.get('scores', {})
+        total_score = sum([s.get('total', 0) for s in scores_map.values()])
+        judge_count = len(scores_map)
+        
+        avg_score = round(total_score / judge_count, 2) if judge_count > 0 else 0
+        
+        data['final_score'] = avg_score
+        data['judge_count'] = judge_count
+        
+        leaderboard.append(data)
+
+    # 4. Sort by Highest Score
+    leaderboard.sort(key=lambda x: x['final_score'], reverse=True)
+
+    return render_template('spoc/results.html', event=event, leaderboard=leaderboard)
+
+# --- 5. PUBLISH RESULTS ---
+@spoc_bp.route('/publish_results/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def publish_results(event_id):
+    try:
+        # Mark event as "Ended" and "Results Published"
+        db.collection('events').document(event_id).update({
+            'status': 'completed',
+            'results_published': True
+        })
+        flash("Results have been published to the student portal!", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "danger")
+        
+    return redirect(f'/spoc/results/{event_id}')

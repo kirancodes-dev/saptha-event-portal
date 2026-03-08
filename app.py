@@ -1,85 +1,102 @@
-from flask import Flask, session, render_template
+from flask import Flask, render_template, session, redirect
 from flask_mail import Mail
-from config import Config
-from models import db
-import logging
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
+import datetime # <-- ADDED FOR REAL-TIME DATE CHECK
 
-# --- IMPORT BLUEPRINTS ---
-from routes_public import public_bp       # Home & Event Poster
-from routes_auth import auth_bp           # Login & Student Sign Up
-from routes_participant import participant_bp # Student Dashboard & Reg
-from routes_super import super_bp         # Super Admin Dashboard
-from routes_spoc import spoc_bp           # Club SPOC Dashboard
-from routes_head import head_bp           # Coordinator Dashboard
-from routes_judge import judge_bp         # Judge Dashboard
-from chatbot_routes import chatbot_bp     # Chatbot API Endpoint
+app = Flask(__name__)
 
-# Initialize Extensions
-mail = Mail()
+# --- CRITICAL FIX: HARDCODED SECRET KEY ---
+# Do not use os.urandom here, as it clears sessions on server restart
+app.secret_key = "saptha_super_secret_key_2026"
 
-# Configure Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# --- 1. EMAIL CONFIGURATION ---
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'sapthhack@gmail.com' 
+app.config['MAIL_PASSWORD'] = 'yqfk tmdn vxof qvxj' 
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_DEFAULT_SENDER'] = ('SapthaEvent Admin', 'sapthhack@gmail.com')
 
-def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
+mail = Mail(app)
+
+# --- 2. FIREBASE SETUP ---
+if not firebase_admin._apps:
+    cred = credentials.Certificate("serviceAccountKey.json")
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+# --- 3. REGISTER BLUEPRINTS ---
+from routes_auth import auth_bp
+from routes_admin import admin_bp
+from routes_coordinator import coord_bp
+from routes_participant import participant_bp
+from routes_payment import payment_bp
+from routes_judge import judge_bp
+from routes_profile import profile_bp
+from chatbot_routes import chatbot_bp
+from routes_feedback import feedback_bp
+
+app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
+app.register_blueprint(coord_bp)
+app.register_blueprint(participant_bp)
+app.register_blueprint(payment_bp)
+app.register_blueprint(judge_bp)
+app.register_blueprint(profile_bp)
+app.register_blueprint(chatbot_bp)
+app.register_blueprint(feedback_bp)
+
+# --- 4. ROOT ROUTE (HOME SCREEN) ---
+@app.route('/')
+def home():
+    # Fast-lane routing if someone goes to the home page while logged in
+    if 'user_id' in session:
+        role = session.get('role')
+        if role == 'Student': 
+            return redirect('/participant/dashboard')
+        elif role in ['Admin', 'SuperAdmin']: 
+            return redirect('/admin/dashboard')
+        elif role == 'Coordinator': 
+            return redirect('/coordinator/dashboard')
+        elif role == 'EventCoordinator': 
+            return redirect('/coordinator/scanner')
+        elif role == 'Judge': 
+            return redirect('/judge/dashboard')
     
-    # Initialize Mail
-    mail.init_app(app)
-    app.extensions['mail'] = mail
+    # --- REAL-TIME DATE LOGIC ---
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    
+    # Fetch Active Events for Public View
+    events_ref = db.collection('events').where('status', '==', 'active').stream()
+    events = []
+    for e in events_ref:
+        d = e.to_dict()
+        d['id'] = e.id
+        d['description'] = d.get('description', 'No description available.')
+        events.append(d)
+        
+    return render_template('index.html', events=events, current_date=current_date)
 
-    # --- REGISTER BLUEPRINTS ---
-    app.register_blueprint(public_bp)      # Routes: / (Home), /event/<id>
-    app.register_blueprint(auth_bp)        # Routes: /login, /register
-    app.register_blueprint(participant_bp) # Routes: /participant/*
-    app.register_blueprint(super_bp)       # Routes: /super_admin/*
-    app.register_blueprint(spoc_bp)        # Routes: /spoc/*
-    app.register_blueprint(head_bp)        # Routes: /event_head/*
-    app.register_blueprint(judge_bp)       # Routes: /judge/*
-    app.register_blueprint(chatbot_bp)     # Route: /api/chatbot
-
-    # --- GLOBAL CONTEXT PROCESSOR ---
-    # Injects variables into ALL HTML templates automatically
-    @app.context_processor
-    def inject_globals():
-        return dict(
-            app_name=Config.APP_NAME,
-            organization=Config.ORGANIZATION,
-            current_user_name=session.get('name', 'User'),
-            current_user_role=session.get('role', 'Guest')
-        )
-
-    return app
-
-app = create_app()
-
-# --- ERROR HANDLERS ---
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template('404.html'), 404
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    return render_template('500.html'), 500
+# --- 5. CERTIFICATE VERIFICATION ROUTE ---
+@app.route('/verify/<reg_id>')
+def verify_certificate(reg_id):
+    try:
+        reg_doc = db.collection('registrations').document(reg_id).get()
+        if not reg_doc.exists: 
+            return render_template('public/verify_fail.html', reg_id=reg_id)
+        
+        data = reg_doc.to_dict()
+        if data.get('attendance') != 'Present': 
+            return render_template('public/verify_fail.html', reg_id=reg_id, reason="Absent")
+            
+        event = db.collection('events').document(data['event_id']).get().to_dict()
+        return render_template('public/verify_success.html', data=data, event=event)
+    except: 
+        return "Verification Error", 500
 
 if __name__ == '__main__':
-    # --- SYSTEM INIT ---
-    # Auto-create Super Admin if not exists
-    try:
-        admin_email = 'admin@sapthahack.com'
-        if db:
-            doc = db.collection('users').document(admin_email).get()
-            if not doc.exists:
-                logger.info("--- SYSTEM INIT: Creating Default Super Admin ---")
-                db.collection('users').document(admin_email).set({
-                    'email': admin_email,
-                    'password': 'admin', # Change in Production!
-                    'role': 'SuperAdmin',
-                    'name': 'System Administrator',
-                    'created_at': '2026-01-30'
-                })
-    except Exception as e:
-        logger.warning(f"Startup DB Check Failed: {e}")
-
     app.run(debug=True, port=5000)

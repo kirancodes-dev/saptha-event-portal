@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Profile | SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; padding: 40px 20px; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; max-width: 800px; margin: 0 auto; }
+        .form-control, .form-select { background: #020617; border: 1px solid #334155; color: white; padding: 12px; }
+        .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        label { color: #94a3b8; font-size: 0.9rem; margin-bottom: 5px; font-weight: 500; }
+        .btn-save { background: #3b82f6; color: white; font-weight: 700; padding: 12px; border-radius: 8px; border: none; width: 100%; }
+        .btn-save:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+
+    <div class="card p-4 p-md-5">
+        <div class="d-flex align-items-center mb-4">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                <i class="fas fa-user"></i>
+            </div>
+            <div>
+                <h3 class="fw-bold mb-0">Complete Your Profile</h3>
+                <p class="text-muted mb-0">We need this to verify your eligibility for events.</p>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label>Full Name</label>
+                    <input type="text" class="form-control" value="{{ user.name }}" disabled>
+                </div>
+                <div class="col-md-6">
+                    <label>Email (Official)</label>
+                    <input type="email" class="form-control" value="{{ user.email }}" disabled>
+                </div>
+
+                <div class="col-12 border-top border-secondary my-3"></div>
+
+                <div class="col-md-6">
+                    <label>USN / ID Number *</label>
+                    <input type="text" name="usn" class="form-control" value="{{ user.usn }}" placeholder="1SG..." required>
+                </div>
+                <div class="col-md-6">
+                    <label>Phone Number *</label>
+                    <input type="tel" name="phone" class="form-control" value="{{ user.phone }}" placeholder="+91..." required>
+                </div>
+
+                <div class="col-md-6">
+                    <label>Current Year *</label>
+                    <select name="year" class="form-select" required>
+                        <option value="">Select Year</option>
+                        <option value="1" {% if user.year == 1 %}selected{% endif %}>1st Year</option>
+                        <option value="2" {% if user.year == 2 %}selected{% endif %}>2nd Year</option>
+                        <option value="3" {% if user.year == 3 %}selected{% endif %}>3rd Year</option>
+                        <option value="4" {% if user.year == 4 %}selected{% endif %}>4th Year</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label>Branch / Department *</label>
+                    <select name="branch" class="form-select" required>
+                        <option value="">Select Branch</option>
+                        <option value="CSE" {% if user.branch == 'CSE' %}selected{% endif %}>Computer Science</option>
+                        <option value="ISE" {% if user.branch == 'ISE' %}selected{% endif %}>Information Science</option>
+                        <option value="ECE" {% if user.branch == 'ECE' %}selected{% endif %}>Electronics (ECE)</option>
+                        <option value="MECH" {% if user.branch == 'MECH' %}selected{% endif %}>Mechanical</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label>GitHub / Portfolio Link</label>
+                    <input type="url" name="github" class="form-control" value="{{ user.github }}" placeholder="https://...">
+                </div>
+                
+                <div class="col-12 mt-4">
+                    <button type="submit" class="btn-save">Save & Continue <i class="fas fa-arrow-right ms-2"></i></button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>

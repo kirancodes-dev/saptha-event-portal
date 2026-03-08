@@ -1,37 +1,48 @@
 from functools import wraps
-from flask import session, flash, redirect, url_for, request
+from flask import session, redirect, flash
 
-# 1. Login Required Decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Check if user is logged into the session
         if 'user_id' not in session:
-            flash("Please login to access this page.", "warning")
-            return redirect(url_for('auth.login'))
+            flash('🔒 Session Expired or Not Logged In. Please log in again.', 'danger')
+            return redirect('/login')
         return f(*args, **kwargs)
     return decorated_function
 
-# 2. Role Required Decorator
-def role_required(allowed_roles):
+def role_required(roles):
+    # =========================================================================
+    # 🐛 THE BUG HUNTER: 
+    # If you accidentally type @role_required instead of @role_required(['Admin']),
+    # Flask passes the function itself into 'roles'. This catches that exact typo
+    # and tells you exactly which function is broken so you don't have to guess!
+    # =========================================================================
+    if callable(roles):
+        raise SyntaxError(
+            f"\n\n🚨 CRITICAL TYPO FOUND! 🚨\n"
+            f"You typed '@role_required' without brackets above the function '{roles.__name__}'.\n"
+            f"Please go find the 'def {roles.__name__}():' function in your routes files "
+            f"and change the decorator to something like @role_required(['Admin'])\n\n"
+        )
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if 'user_id' not in session:
-                return redirect(url_for('auth.login'))
+            user_role = session.get('role')
             
-            # Allow single string or list of roles
-            roles_list = [allowed_roles] if isinstance(allowed_roles, str) else allowed_roles
-            
-            if session.get('role') not in roles_list:
-                flash("Access Denied: You do not have permission.", "danger")
-                # Redirect to their respective dashboards based on their actual role
-                role = session.get('role')
-                if role == 'Student': return redirect('/participant/dashboard')
-                if role == 'ClubSPOC': return redirect('/spoc/dashboard')
-                if role == 'Coordinator': return redirect('/event_head/dashboard')
-                if role == 'Judge': return redirect('/judge/dashboard')
-                return redirect('/')
+            # If a single string is passed, convert it to a list safely
+            if isinstance(roles, str):
+                valid_roles = [roles]
+            else:
+                valid_roles = roles
+                
+            # Check if the user's role is allowed
+            if user_role not in valid_roles:
+                flash(f"🛑 Access Denied: You are logged in as '{user_role}', but this page requires {valid_roles}.", "danger")
+                return redirect('/login')
                 
             return f(*args, **kwargs)
-        return decorated_function
+        
+        return decorated_function 
     return decorator

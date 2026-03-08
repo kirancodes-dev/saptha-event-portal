@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Users & SPOCs | Admin HQ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .navbar { background: #1e293b; border-bottom: 1px solid #334155; }
+        .card { background: #1e293b; border: 1px solid #334155; }
+        .form-control, .form-select { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #94a3b8 !important; }
+        .table { color: white; }
+        .table-dark th { background-color: #0f172a; border-bottom: 2px solid #3b82f6; }
+        .table td { border-color: #334155; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark px-4 py-3">
+        <a class="navbar-brand fw-bold" href="/admin/dashboard"><i class="fas fa-arrow-left me-2"></i> Back to Dashboard</a>
+    </nav>
+
+    <div class="container py-5">
+        <h2 class="fw-bold mb-4"><i class="fas fa-users-cog text-primary me-2"></i> SPOC & User Management</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="card p-4 mb-5 shadow-sm">
+            <h5 class="fw-bold text-warning mb-3"><i class="fas fa-user-plus me-2"></i> Onboard New Club SPOC or Admin</h5>
+            <p class="text-muted small">System will auto-generate a password and email it directly to the user.</p>
+            
+            <form action="/admin/add_user" method="POST">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label text-light small fw-bold">Full Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="Ex: Rahul Kumar" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-light small fw-bold">Email Address</label>
+                        <input type="email" name="email" class="form-control" placeholder="staff@college.edu" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-light small fw-bold">Assign Role</label>
+                        <select name="role" class="form-select fw-bold" required>
+                            <option value="Coordinator">🛠️ Club SPOC (Coordinator)</option>
+                            <option value="Judge">⚖️ Event Judge</option>
+                            <option value="Admin">🛡️ Administrator</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-light small fw-bold">Assign Club Category</label>
+                        <select name="category" class="form-select fw-bold text-primary" required>
+                            <option value="Technical">💻 Technical Club</option>
+                            <option value="Cultural">🎭 Cultural Club</option>
+                            <option value="Sports">⚽ Sports Club</option>
+                            <option value="General">🌐 General / All</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4 text-end">
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fas fa-paper-plane me-2"></i> Create & Email Credentials
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3">Existing System Users</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name & Email</th>
+                            <th>Role</th>
+                            <th>Club Category</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ user.name }}</div>
+                                <small class="text-muted">{{ user.email }}</small>
+                            </td>
+                            <td>
+                                {% if user.role == 'SuperAdmin' %}
+                                    <span class="badge bg-danger">Super Admin</span>
+                                {% elif user.role == 'Coordinator' %}
+                                    <span class="badge bg-warning text-dark">Club SPOC</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ user.role }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge border border-info text-info">{{ user.category }}</span>
+                            </td>
+                            <td class="text-end">
+                                {% if user.role != 'SuperAdmin' %}
+                                <a href="/admin/delete_user/{{ user.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this user completely?');">
+                                    <i class="fas fa-trash"></i> Remove
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

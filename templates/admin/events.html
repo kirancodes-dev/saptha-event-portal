@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Events | Admin HQ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; }
+        .table-dark { --bs-table-bg: #1e293b; --bs-table-border-color: #334155; color: #e2e8f0; }
+        .badge-tech { background: #3b82f6; color: white; }
+        .badge-sports { background: #10b981; color: white; }
+        .badge-cult { background: #f59e0b; color: black; }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold">⚡ Global Event Manager</h3>
+            <a href="/admin/dashboard" class="btn btn-outline-light">Back to Dashboard</a>
+        </div>
+
+        <div class="card bg-dark border-secondary">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">Event Title</th>
+                            <th>Category</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th class="text-end pe-3">God Mode Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr>
+                            <td class="ps-3 fw-bold">{{ event.title }}</td>
+                            <td>
+                                {% if event.category == 'Technical' %} <span class="badge badge-tech">Tech</span>
+                                {% elif event.category == 'Sports' %} <span class="badge badge-sports">Sports</span>
+                                {% else %} <span class="badge badge-cult">Cultural</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ event.date }}</td>
+                            <td>{{ event.status }}</td>
+                            <td class="text-end pe-3">
+                                <a href="/admin/delete_event/{{ event.id }}" class="btn btn-sm btn-danger fw-bold" onclick="return confirm('⚠️ WARNING: This will delete the event and ALL student registrations associated with it. This cannot be undone. Proceed?')">
+                                    <i class="fas fa-trash-alt me-1"></i> Force Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

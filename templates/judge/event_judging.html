@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Judging: {{ event.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; }
+        .team-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; transition: 0.2s; position: relative; }
+        .team-card:hover { border-color: #3b82f6; }
+        .score-badge { position: absolute; top: 15px; right: 15px; background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; }
+        .btn-score { background: #3b82f6; border: none; color: white; width: 100%; border-radius: 8px; padding: 10px; font-weight: 600; margin-top: 15px; }
+        .btn-score:hover { background: #2563eb; }
+        .btn-edit { background: #475569; }
+        
+        /* Modal */
+        .modal-content { background: #1e293b; color: white; border: 1px solid #475569; }
+        .form-label { color: #94a3b8; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-range::-webkit-slider-thumb { background: #3b82f6; }
+    </style>
+</head>
+<body>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold">{{ event.title }} <span class="text-muted fw-light">/ Teams</span></h3>
+            <a href="/judge/dashboard" class="btn btn-outline-light btn-sm">Back</a>
+        </div>
+
+        <div class="row g-4">
+            {% for team in teams %}
+            <div class="col-md-6 col-lg-4">
+                <div class="team-card">
+                    {% if team.my_score %}
+                    <div class="score-badge"><i class="fas fa-check-circle me-1"></i> {{ team.my_score.total }}/30</div>
+                    {% endif %}
+                    
+                    <h5 class="fw-bold text-white mb-1">{{ team.team_name }}</h5>
+                    <p class="text-muted small mb-3">Lead: {{ team.lead_name }}</p>
+                    
+                    {% if team.submission_link != 'N/A' %}
+                    <a href="{{ team.submission_link }}" target="_blank" class="btn btn-sm btn-outline-info w-100 mb-2">
+                        <i class="fas fa-external-link-alt me-2"></i> View Project
+                    </a>
+                    {% endif %}
+
+                    <button class="btn btn-score {{ 'btn-edit' if team.my_score else '' }}" 
+                            onclick="openScoreModal('{{ team.reg_id }}', '{{ team.team_name }}')">
+                        {{ 'Edit Score' if team.my_score else 'Rate Team' }}
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center py-5 text-muted">
+                <h4>Waiting for teams to Check-In...</h4>
+                <p>Only teams marked as "Present" by coordinators appear here.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="modal fade" id="scoreModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold">Score: <span id="modalTeamName" class="text-warning"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="currentRegId">
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between">
+                            <label class="form-label">Innovation & Idea</label>
+                            <span class="fw-bold text-primary" id="val1">0</span>
+                        </div>
+                        <input type="range" class="form-range" min="0" max="10" step="1" id="c1" oninput="updateVal('c1','val1')">
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between">
+                            <label class="form-label">Technical Implementation</label>
+                            <span class="fw-bold text-primary" id="val2">0</span>
+                        </div>
+                        <input type="range" class="form-range" min="0" max="10" step="1" id="c2" oninput="updateVal('c2','val2')">
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between">
+                            <label class="form-label">Presentation & Q/A</label>
+                            <span class="fw-bold text-primary" id="val3">0</span>
+                        </div>
+                        <input type="range" class="form-range" min="0" max="10" step="1" id="c3" oninput="updateVal('c3','val3')">
+                    </div>
+
+                    <textarea id="comments" class="form-control bg-dark text-white border-secondary mb-3" rows="2" placeholder="Judge's Remarks (Optional)"></textarea>
+
+                    <button class="btn btn-success w-100 fw-bold py-2" onclick="submitScore()">Submit Score</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const scoreModal = new bootstrap.Modal(document.getElementById('scoreModal'));
+
+        function openScoreModal(regId, teamName) {
+            document.getElementById('currentRegId').value = regId;
+            document.getElementById('modalTeamName').innerText = teamName;
+            
+            // Reset Values
+            ['c1', 'c2', 'c3'].forEach(id => {
+                document.getElementById(id).value = 0;
+                updateVal(id, 'val'+id.charAt(1));
+            });
+            document.getElementById('comments').value = "";
+            
+            scoreModal.show();
+        }
+
+        function updateVal(rangeId, spanId) {
+            document.getElementById(spanId).innerText = document.getElementById(rangeId).value;
+        }
+
+        function submitScore() {
+            const regId = document.getElementById('currentRegId').value;
+            const scores = {
+                'innovation': document.getElementById('c1').value,
+                'technical': document.getElementById('c2').value,
+                'presentation': document.getElementById('c3').value
+            };
+            const comments = document.getElementById('comments').value;
+
+            fetch('/judge/submit_score', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ reg_id: regId, scores: scores, comments: comments })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    location.reload(); // Refresh to update score badge
+                } else {
+                    alert("Error: " + data.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

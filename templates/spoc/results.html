@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; }
+        .table-dark { --bs-table-bg: #1e293b; border-color: #334155; }
+        .rank-1 { color: #fbbf24; font-weight: 800; font-size: 1.2rem; } /* Gold */
+        .rank-2 { color: #94a3b8; font-weight: 700; } /* Silver */
+        .rank-3 { color: #b45309; font-weight: 700; } /* Bronze */
+        
+        .card-header-custom { border-bottom: 1px solid #334155; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <a href="/spoc/dashboard" class="text-decoration-none text-muted mb-2 d-block"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <h2 class="fw-bold">{{ event.title }} <span class="text-primary">Results</span></h2>
+            </div>
+            
+            {% if not event.results_published %}
+            <form action="/spoc/publish_results/{{ event.id }}" method="POST">
+                <button type="submit" class="btn btn-success fw-bold px-4">
+                    <i class="fas fa-bullhorn me-2"></i> Publish Results
+                </button>
+            </form>
+            {% else %}
+                <button class="btn btn-secondary" disabled>Results Published</button>
+            {% endif %}
+        </div>
+
+        <div class="card bg-dark border-secondary overflow-hidden">
+            <div class="card-header-custom">
+                <h5 class="m-0"><i class="fas fa-list-ol text-warning me-2"></i> Final Standings</h5>
+                <span class="badge bg-primary">{{ leaderboard|length }} Teams Evaluated</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Rank</th>
+                            <th>Team / Participant</th>
+                            <th>Lead Email</th>
+                            <th>Judges Evaluated</th>
+                            <th class="text-end pe-4">Final Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in leaderboard %}
+                        <tr>
+                            <td class="ps-4">
+                                {% if loop.index == 1 %}<i class="fas fa-crown rank-1"></i>
+                                {% elif loop.index == 2 %}<span class="rank-2">#2</span>
+                                {% elif loop.index == 3 %}<span class="rank-3">#3</span>
+                                {% else %}<span class="text-muted">#{{ loop.index }}</span>{% endif %}
+                            </td>
+                            <td>
+                                <div class="fw-bold">{{ row.team_name }}</div>
+                                <div class="small text-muted">{{ row.members|length }} Members</div>
+                            </td>
+                            <td class="text-muted small">{{ row.lead_email }}</td>
+                            <td><span class="badge bg-secondary">{{ row.judge_count }} Judges</span></td>
+                            <td class="text-end pe-4">
+                                <span class="fs-5 fw-bold {% if loop.index == 1 %}text-warning{% endif %}">{{ row.final_score }}</span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center py-5 text-muted">No scores available yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

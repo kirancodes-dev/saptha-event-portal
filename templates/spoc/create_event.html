@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Event Wizard | SapthaEvent</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #020617; /* Very dark blue for inputs */
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1; /* Lighter text for readability */
+            --border: #64748b; /* Visible border color */
+            --success: #10b981;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            padding-bottom: 100px;
+        }
+
+        /* --- VISIBILITY FIX FOR INPUTS --- */
+        .form-control, .form-select {
+            background-color: var(--bg-input) !important;
+            border: 1px solid var(--border) !important;
+            color: #ffffff !important; /* Force White Text */
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        /* Visible Placeholders */
+        .form-control::placeholder {
+            color: #94a3b8 !important;
+            opacity: 1;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+            color: white !important;
+            background-color: var(--bg-input) !important;
+        }
+
+        /* Wizard Progress Bar */
+        .wizard-progress {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .step-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            transition: 0.3s;
+        }
+
+        .step.active {
+            opacity: 1;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .step-num {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: white;
+        }
+
+        .step.active .step-num {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Main Container */
+        .wizard-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .wizard-step-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .wizard-step-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+        }
+        .section-title i { color: var(--primary); }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #fbbf24; /* Gold color for labels */
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Dynamic Tables */
+        .dynamic-table { width: 100%; border-collapse: separate; border-spacing: 0 5px; }
+        .dynamic-table td { padding: 5px; }
+        
+        .btn-add-row {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            border: 1px dashed var(--primary);
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+        .btn-add-row:hover { background: var(--primary); color: white; }
+        
+        .btn-remove { color: #ef4444; background: rgba(239, 68, 68, 0.1); border: none; width: 40px; height: 40px; border-radius: 8px; }
+        .btn-remove:hover { background: #ef4444; color: white; }
+
+        /* Footer Action Bar */
+        .action-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .btn-nav {
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            transition: 0.3s;
+        }
+        .btn-prev { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+        .btn-prev:hover { border-color: white; color: white; }
+        .btn-next { background: var(--primary); color: white; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .btn-next:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .btn-publish { background: var(--success); color: white; display: none; }
+        .btn-publish:hover { background: #059669; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+
+    </style>
+</head>
+<body>
+
+    <div class="wizard-progress">
+        <div class="step-indicators">
+            <div class="step active" id="ind-1"><div class="step-num">1</div> Basics</div>
+            <div class="step" id="ind-2"><div class="step-num">2</div> Logistics</div>
+            <div class="step" id="ind-3"><div class="step-num">3</div> Rules</div>
+            <div class="step" id="ind-4"><div class="step-num">4</div> Form</div>
+            <div class="step" id="ind-5"><div class="step-num">5</div> Review</div>
+        </div>
+    </div>
+
+    <form action="/spoc/create_event" method="POST" id="mainForm" class="wizard-container">
+
+        <div class="wizard-step-content active" id="step-1">
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-fingerprint"></i> Core Identity</h3>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Event Title *</label>
+                        <input type="text" name="title" class="form-control form-control-lg" placeholder="e.g. HackOverflow 2026" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Category *</label>
+                        <select name="category" class="form-select" required>
+                            <option value="">Select Category</option>
+                            <option value="Tech">Technical / Hackathon</option>
+                            <option value="Cultural">Cultural / Arts</option>
+                            <option value="Sports">Sports / E-Sports</option>
+                            <option value="Workshop">Workshop / Bootcamp</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Visibility</label>
+                        <select name="visibility" class="form-select">
+                            <option value="Public">Public (Visible to All)</option>
+                            <option value="Private">Private (Link Only)</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Short Description</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="A catchy summary for the event cards..." required></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-step-content" id="step-2">
+            <div class="section-card">
+                <h3 class="section-title"><i class="far fa-calendar-alt"></i> Date & Venue</h3>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Event Date *</label>
+                        <input type="date" name="date" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Start Time *</label>
+                        <input type="time" name="time" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Reg Deadline *</label>
+                        <input type="date" name="reg_deadline" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Venue Name *</label>
+                        <input type="text" name="venue" class="form-control" placeholder="Block A Auditorium" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Maps Link</label>
+                        <input type="url" name="map_link" class="form-control" placeholder="https://goo.gl/maps/...">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Assign Coordinators</label>
+                        <input type="text" name="coordinators" class="form-control" placeholder="comma, separated, emails (e.g. john@edu.in, jane@edu.in)">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-step-content" id="step-3">
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-users-cog"></i> Participation Logic</h3>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Style</label>
+                        <select name="participation_type" id="partType" class="form-select" onchange="toggleTeams()">
+                            <option value="Individual">Individual Only</option>
+                            <option value="Team">Team Based</option>
+                            <option value="Both">Flexible</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 team-field" style="display:none;">
+                        <label class="form-label">Min Members</label>
+                        <input type="number" name="team_min" class="form-control" value="2">
+                    </div>
+                    <div class="col-md-4 team-field" style="display:none;">
+                        <label class="form-label">Max Members</label>
+                        <input type="number" name="team_max" class="form-control" value="4">
+                    </div>
+                    
+                    <div class="col-12 pt-3">
+                        <label class="form-label mb-3">Who can apply?</label>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_1" checked> <label>1st Year</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_2" checked> <label>2nd Year</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_3" checked> <label>3rd Year</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_4" checked> <label>4th Year</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-rupee-sign"></i> Fees & Prizes</h3>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Registration Fee (₹)</label>
+                        <input type="number" name="reg_fee" class="form-control" value="0">
+                        <div class="form-text text-muted">Set to 0 for free events.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Total Prize Pool</label>
+                        <input type="text" name="prize_pool" class="form-control" placeholder="e.g. ₹50,000 Worth">
+                    </div>
+                    <div class="col-12 mt-3">
+                        <label class="form-label">Podium Prizes</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-dark border-secondary text-warning">1st</span>
+                            <input type="text" name="prize_1" class="form-control" placeholder="Winner Reward">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-dark border-secondary text-light">2nd</span>
+                            <input type="text" name="prize_2" class="form-control" placeholder="Runner Up">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-dark border-secondary text-danger">3rd</span>
+                            <input type="text" name="prize_3" class="form-control" placeholder="Second Runner Up">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-step-content" id="step-4">
+            <div class="section-card border-primary" style="border: 2px solid #3b82f6;">
+                <h3 class="section-title text-primary"><i class="fas fa-sliders-h"></i> Registration Form Builder</h3>
+                <p class="text-muted small">Configure exactly what the student sees when they click "Register".</p>
+                
+                <div class="row g-4 mt-1">
+                    <div class="col-12">
+                        <label class="form-label mb-2">Required Submission (At Registration)</label>
+                        <select name="submission_type" class="form-select">
+                            <option value="none">No Submission Required</option>
+                            <option value="github">GitHub / URL Link</option>
+                            <option value="drive">Google Drive Link (Abstracts/PPT)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 team-field pt-3" style="display:none;">
+                        <label class="form-label text-warning mb-3">Strict Member Requirements</label>
+                        <div class="p-3 border border-secondary rounded bg-dark">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_lead_whatsapp" checked>
+                                <label class="form-check-label text-white">Ask Team Leader WhatsApp</label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_member_usn" checked>
+                                <label class="form-check-label text-white">Ask Every Member's USN/SRN</label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_member_email">
+                                <label class="form-check-label text-white">Ask Every Member's Email ID</label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_member_whatsapp">
+                                <label class="form-check-label text-white">Ask Every Member's WhatsApp</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-image"></i> Media & Sponsors</h3>
+                <label class="form-label">Banner Image URL</label>
+                <input type="url" name="banner_url" class="form-control mb-3" placeholder="https://imgur.com/..." oninput="previewBanner(this.value)">
+                <img id="bannerPreview" src="" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; display: none; border: 1px solid #444;">
+                
+                <h5 class="mt-4 mb-2 text-white">Sponsors</h5>
+                <table class="dynamic-table" id="sponsorTable">
+                    <tbody id="sponsorBody"></tbody>
+                </table>
+                <button type="button" class="btn-add-row mt-2" onclick="addSponsorRow()">+ Add Sponsor</button>
+                <input type="hidden" name="sponsors_json" id="sponsorsJson">
+            </div>
+        </div>
+
+        <div class="wizard-step-content" id="step-5">
+            <div class="text-center py-5">
+                <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                <h2 class="mt-4 text-white">Ready to Launch?</h2>
+                <p class="text-muted">You have configured a comprehensive event.</p>
+                
+                <div class="alert alert-warning d-inline-block text-start mt-3" style="max-width: 500px; background:#422006; border-color:#854d0e; color:#fde047;">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Pre-flight Check:</strong><br>
+                    1. Ensure Venue is booked.<br>
+                    2. Verify Registration Deadline.<br>
+                    3. Check if Fees are set correctly.
+                </div>
+            </div>
+        </div>
+
+    </form>
+
+    <div class="action-footer">
+        <button class="btn btn-nav btn-prev" id="btnPrev" onclick="changeStep(-1)">Cancel</button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-nav btn-next" id="btnNext" onclick="changeStep(1)">Next Step <i class="fas fa-arrow-right ms-2"></i></button>
+            <button class="btn btn-nav btn-publish" id="btnPublish" onclick="submitForm()">🚀 Publish Event</button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 5;
+
+        // 1. Wizard Navigation
+        function changeStep(direction) {
+            if(direction === 1 && !validateStep(currentStep)) return;
+
+            if(direction === -1 && currentStep === 1) {
+                window.location.href = '/spoc/dashboard';
+                return;
+            }
+
+            currentStep += direction;
+
+            // UI Update
+            document.querySelectorAll('.wizard-step-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step-${currentStep}`).classList.add('active');
+
+            document.querySelectorAll('.step').forEach((el, index) => {
+                if(index + 1 <= currentStep) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+
+            // Button Logic
+            const btnNext = document.getElementById('btnNext');
+            const btnPrev = document.getElementById('btnPrev');
+            const btnPublish = document.getElementById('btnPublish');
+
+            if(currentStep === 1) btnPrev.innerText = 'Cancel';
+            else btnPrev.innerText = 'Back';
+
+            if(currentStep === totalSteps) {
+                btnNext.style.display = 'none';
+                btnPublish.style.display = 'block';
+            } else {
+                btnNext.style.display = 'block';
+                btnPublish.style.display = 'none';
+            }
+            
+            window.scrollTo(0,0);
+        }
+
+        // 2. Simple Validation
+        function validateStep(step) {
+            const container = document.getElementById(`step-${step}`);
+            const inputs = container.querySelectorAll('input[required], select[required], textarea[required]');
+            let valid = true;
+            inputs.forEach(input => {
+                if(!input.value) {
+                    input.style.borderColor = '#ef4444';
+                    valid = false;
+                } else {
+                    input.style.borderColor = '#64748b';
+                }
+            });
+            if(!valid) alert('Please fill in all required fields marked with *');
+            return valid;
+        }
+
+        // 3. Dynamic Rows: SPONSORS
+        function addSponsorRow() {
+            const tbody = document.getElementById('sponsorBody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="form-control sp-name" placeholder="Company Name"></td>
+                <td><select class="form-select sp-tier"><option>Gold</option><option>Silver</option><option>Bronze</option></select></td>
+                <td><input type="url" class="form-control sp-logo" placeholder="Logo URL"></td>
+                <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        // 4. Data Aggregation & Submit
+        function submitForm() {
+            // Collect Sponsors
+            const sponsors = [];
+            document.querySelectorAll('#sponsorBody tr').forEach(tr => {
+                sponsors.push({
+                    name: tr.querySelector('.sp-name').value,
+                    tier: tr.querySelector('.sp-tier').value,
+                    logo: tr.querySelector('.sp-logo').value
+                });
+            });
+            document.getElementById('sponsorsJson').value = JSON.stringify(sponsors);
+
+            document.getElementById('mainForm').submit();
+        }
+
+        // 5. Helpers
+        function previewBanner(url) {
+            const img = document.getElementById('bannerPreview');
+            if(url.length > 5) { img.src = url; img.style.display = 'block'; }
+            else img.style.display = 'none';
+        }
+
+        function toggleTeams() {
+            const val = document.getElementById('partType').value;
+            const fields = document.querySelectorAll('.team-field');
+            fields.forEach(f => f.style.display = (val === 'Individual') ? 'none' : 'block');
+        }
+        
+        toggleTeams();
+    </script>
+</body>
+</html>

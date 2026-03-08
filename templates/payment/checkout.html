@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Checkout | SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8fafc; font-family: 'Segoe UI', sans-serif; }
+        .checkout-card { max-width: 900px; margin: 50px auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; }
+        .left-panel { background: #0f172a; color: white; padding: 40px; }
+        .right-panel { padding: 40px; }
+        .amount-display { font-size: 2.5rem; font-weight: bold; color: #0f172a; }
+        .secure-badge { background: #e0f2fe; color: #0284c7; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <div class="checkout-card row">
+        <div class="col-md-5 left-panel d-flex flex-column justify-content-between">
+            <div>
+                <h4 class="fw-bold mb-4"><i class="fas fa-shopping-cart me-2"></i> Order Summary</h4>
+                <div class="mb-3">
+                    <p class="text-secondary mb-1">Event</p>
+                    <h5 class="fw-bold">{{ event.title }}</h5>
+                </div>
+                <div class="mb-3">
+                    <p class="text-secondary mb-1">Date</p>
+                    <h6>{{ event.date }}</h6>
+                </div>
+                <div class="mb-3">
+                    <p class="text-secondary mb-1">Participant</p>
+                    <h6>{{ user.name }}</h6>
+                    <small class="text-secondary">{{ user.email }}</small>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-top border-secondary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Total Amount</span>
+                    <span class="fs-4 fw-bold">₹{{ amount }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7 right-panel">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold m-0">Payment Details</h4>
+                <span class="secure-badge"><i class="fas fa-lock me-1"></i> SSL Secure</span>
+            </div>
+
+            <form action="/payment/process" method="POST">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <input type="hidden" name="amount" value="{{ amount }}">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted">Card Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="far fa-credit-card text-primary"></i></span>
+                        <input type="text" class="form-control" placeholder="0000 0000 0000 0000" disabled value="4242 4242 4242 4242 (Simulation)">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <label class="form-label fw-bold text-muted">Expiry</label>
+                        <input type="text" class="form-control" placeholder="MM/YY" disabled value="12/30">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold text-muted">CVV</label>
+                        <input type="password" class="form-control" placeholder="123" disabled value="***">
+                    </div>
+                </div>
+
+                <div class="alert alert-info border-0 d-flex align-items-center mb-4">
+                    <i class="fas fa-info-circle me-3 fs-4"></i>
+                    <small>This is a <strong>Simulation Mode</strong>. No real money will be deducted. Click Pay to complete registration.</small>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 py-3 fw-bold shadow-sm">
+                    Pay ₹{{ amount }} & Register
+                </button>
+                
+                <div class="text-center mt-3">
+                    <a href="/event/{{ event.id }}" class="text-decoration-none text-muted small">Cancel Transaction</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

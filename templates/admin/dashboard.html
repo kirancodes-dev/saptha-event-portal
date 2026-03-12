@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPOC HQ | Sapthagiri NPS University</title>
+    <title>Super Admin HQ | Sapthagiri NPS University</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -41,11 +41,11 @@
                 <i class="fas fa-university me-2" style="color: var(--snpsu-orange); font-size: 1.8rem;"></i>
                 <div>
                     <div class="logo-title">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></div>
-                    <small style="color: #64748b; font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;">SPOC DASHBOARD</small>
+                    <small style="color: #64748b; font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;">ADMIN DASHBOARD</small>
                 </div>
             </a>
             <div class="d-flex align-items-center gap-3">
-                <span class="badge border text-dark px-3 py-2 fs-6" style="border-color: var(--snpsu-blue) !important;"><i class="fas fa-tags me-1" style="color: var(--snpsu-orange);"></i> {{ club_category }} Club</span>
+                <span class="badge border text-dark px-3 py-2 fs-6" style="border-color: var(--snpsu-blue) !important;"><i class="fas fa-crown me-1" style="color: var(--snpsu-orange);"></i> Super Admin</span>
                 <a href="/logout" class="btn btn-sm btn-outline-danger px-4 fw-bold">Logout</a>
             </div>
         </div>
@@ -58,9 +58,14 @@
                 <h2 class="fw-bold mb-1" style="color: var(--snpsu-blue);">Welcome, {{ user_name }}</h2>
                 <p class="text-muted m-0">Manage events, appoint staff, and oversee operations.</p>
             </div>
-            <button class="btn btn-warning btn-lg px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#createEventModal">
-                <i class="fas fa-plus-circle me-2"></i> Create New Event
-            </button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-lg px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#appointSpocModal" style="border-width: 2px;">
+                    <i class="fas fa-user-shield me-2"></i> Appoint SPOC
+                </button>
+                <button class="btn btn-warning btn-lg px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                    <i class="fas fa-plus-circle me-2"></i> Create New Event
+                </button>
+            </div>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -169,7 +174,6 @@
                     </div>
                     <form action="/coordinator/create_event" method="POST">
                         <div class="modal-body p-4 p-md-5">
-                            
                             <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--snpsu-blue);">1. Basic Details</h5>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" placeholder="Ex: Hackathon 2026" required></div>
@@ -180,8 +184,6 @@
                             </div>
 
                             <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--snpsu-blue);">2. Rich Brochure Content</h5>
-                            <div class="alert alert-info small border-info"><i class="fas fa-magic me-2"></i> Use bullet points or paragraphs below. The system will format them beautifully on the website!</div>
-                            
                             <div class="mb-3">
                                 <label class="form-label text-primary">Event Overview & Theme</label>
                                 <textarea name="overview" class="form-control" rows="4" placeholder="What is the objective of this event? What will students learn/do?" required></textarea>
@@ -199,7 +201,6 @@
                                 <input class="form-check-input ms-0 me-3" style="width: 40px; height: 20px;" type="checkbox" name="is_team" id="teamCheck">
                                 <label class="form-check-label fw-bold text-dark pt-1" for="teamCheck">This is a Team Event (Allows students to add members)</label>
                             </div>
-
                         </div>
                         <div class="modal-footer bg-light">
                             <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
@@ -208,6 +209,43 @@
                     </form>
                 </div>
             </div>
+        </div>
+
+        <div class="modal fade" id="appointSpocModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Appoint New Club SPOC</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body p-4">
+                <form action="/admin/appoint_spoc" method="POST">
+                  <div class="mb-3">
+                    <label class="form-label">SPOC Name</label>
+                    <input type="text" class="form-control" name="name" required placeholder="Ex: Kiran Biradar">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Email Address (Login ID)</label>
+                    <input type="email" class="form-control" name="email" required placeholder="tech@snpsu.edu.in">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Assign Password</label>
+                    <input type="password" class="form-control" name="password" required placeholder="Minimum 6 characters">
+                  </div>
+                  <div class="mb-4">
+                    <label class="form-label">Assign Division</label>
+                    <select class="form-select" name="category" required>
+                      <option value="Tech">Technical Division</option>
+                      <option value="Cultural">Cultural Division</option>
+                      <option value="Sports">Sports Division</option>
+                      <option value="General">General Events</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100 py-2 fs-5">Create SPOC Account</button>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
 
     </div>

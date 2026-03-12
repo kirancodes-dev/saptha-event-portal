@@ -2,8 +2,9 @@ from flask import Flask, render_template, session, redirect
 from flask_mail import Mail
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1.base_query import FieldFilter 
 import os
-import datetime # <-- ADDED FOR REAL-TIME DATE CHECK
+import datetime
 
 app = Flask(__name__)
 
@@ -58,7 +59,7 @@ def home():
         role = session.get('role')
         if role == 'Student': 
             return redirect('/participant/dashboard')
-        elif role in ['Admin', 'SuperAdmin']: 
+        elif role in ['Admin', 'SuperAdmin', 'Super Admin']: 
             return redirect('/admin/dashboard')
         elif role == 'Coordinator': 
             return redirect('/coordinator/dashboard')
@@ -71,7 +72,7 @@ def home():
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
     
     # Fetch Active Events for Public View
-    events_ref = db.collection('events').where('status', '==', 'active').stream()
+    events_ref = db.collection('events').where(filter=FieldFilter('status', '==', 'active')).stream()
     events = []
     for e in events_ref:
         d = e.to_dict()
@@ -98,5 +99,13 @@ def verify_certificate(reg_id):
     except: 
         return "Verification Error", 500
 
+# --- 6. PREVENT BROWSER CACHING (BACK BUTTON GHOST FIX) ---
+@app.after_request
+def prevent_caching(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)

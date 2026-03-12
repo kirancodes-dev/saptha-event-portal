@@ -1,23 +1,41 @@
-from app import app, db
-from models import SuperAdmin
+from flask import request, redirect, flash, session, Blueprint
+from werkzeug.security import generate_password_hash
+import datetime
+from models import db # Make sure your database is imported!
 
-# Create the admin user inside the app context
-with app.app_context():
-    # 1. Create Tables if they don't exist
-    db.create_all()
-    
-    # 2. Check if admin exists
-    if not SuperAdmin.query.filter_by(email='admin@portal.com').first():
-        admin = SuperAdmin(
-            email='admin@portal.com',
-            password='admin',        # Simple password for testing
-            secret_key='1234'        # The Secret Key for the login page
-        )
-        db.session.add(admin)
-        db.session.commit()
-        print("✅ Super Admin Created!")
-        print("Email: admin@portal.com")
-        print("Password: admin")
-        print("Secret Key: 1234")
-    else:
-        print("⚠️ Admin already exists.")
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+@admin_bp.route('/appoint_spoc', methods=['POST'])
+def appoint_spoc():
+    # Security check: Only Super Admin can do this!
+    if session.get('role') != 'SuperAdmin':
+        flash("Unauthorized access!", "danger")
+        return redirect('/login')
+
+    name = request.form.get('name')
+    email = request.form.get('email').lower().strip()
+    password = request.form.get('password')
+    category = request.form.get('category') # Tech, Cultural, or Sports
+
+    try:
+        # Check if email is already taken
+        if db.collection('users').document(email).get().exists:
+            flash(f"Account for {email} already exists!", "warning")
+            return redirect('/admin/dashboard')
+
+        # Create the SPOC in Firebase Database
+        db.collection('users').document(email).set({
+            'name': name,
+            'email': email,
+            'role': 'Coordinator',  # Maps directly to your login dashboard logic!
+            'category': category,
+            'password': generate_password_hash(password),
+            'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
+        })
+
+        flash(f"Successfully appointed {name} as the SPOC for {category} Division!", "success")
+        
+    except Exception as e:
+        flash(f"Error creating SPOC: {e}", "danger")
+
+    return redirect('/admin/dashboard')

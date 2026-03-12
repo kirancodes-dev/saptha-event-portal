@@ -3,6 +3,7 @@ from models import db
 from utils import login_required, role_required
 from utils_email import send_ticket_email, send_credentials_email
 from werkzeug.security import generate_password_hash
+from flask_mail import Message # <-- ADDED FOR UNIFIED EMAIL
 import datetime
 import json
 import secrets
@@ -47,7 +48,7 @@ def dashboard():
         e = doc.to_dict()
         calendar_events.append({
             'title': e.get('title'),
-            'start': e.get('date'), # Assumes date is in a parseable format
+            'start': e.get('date'), 
             'color': '#f37021' if e.get('category') == 'Technical' else '#0d2d62'
         })
 
@@ -105,7 +106,11 @@ def public_register(event_id):
 
         # --- SMART USER CHECK (Auto-Create Account) ---
         user_ref = db.collection('users').document(email)
+        is_new_user = False
+        raw_password = ""
+        
         if not user_ref.get().exists:
+            is_new_user = True
             alphabet = string.ascii_letters + string.digits
             raw_password = ''.join(secrets.choice(alphabet) for i in range(8))
             
@@ -113,8 +118,10 @@ def public_register(event_id):
                 'email': email, 'name': full_name, 'role': 'Student', 'category': 'General',
                 'password': generate_password_hash(raw_password), 'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
             })
+            
+            # Send the backup credentials email, but ALSO flash it on screen so they can't miss it!
             send_credentials_email(email, full_name, 'Student', raw_password)
-            flash(f"🆕 Account Created! Password sent to {email}", "info")
+            flash(f"🆕 Account Created! Your login password is: {raw_password} (We also emailed it to you!)", "info")
 
         # 3. Duplicate Check
         existing_email = db.collection('registrations').where('event_id', '==', event_id).where('lead_email', '==', email).stream()
@@ -160,7 +167,32 @@ def public_register(event_id):
             
             db.collection('registrations').document(reg_id).set(reg_data)
             db.collection('events').document(event_id).update({'registration_count': event_data.get('registration_count', 0) + 1})
-            send_ticket_email(email, full_name, event_data.get('title'), reg_id)
+            
+            # --- COMBINED TICKET & PASSWORD EMAIL ---
+            try:
+                from app import mail # Import here to prevent circular dependency
+                msg = Message(f"Ticket Confirmed: {event_data.get('title')}", recipients=[email])
+                
+                email_body = f"Hello {full_name},\n\nYour registration for {event_data.get('title')} is confirmed!\n"
+                email_body += f"Your Ticket ID is: {reg_id}\n\n"
+                
+                # Inject password into the ticket if they are a new user
+                if is_new_user:
+                    email_body += "--- YOUR NEW PORTAL LOGIN DETAILS ---\n"
+                    email_body += "We automatically created a portal account for you to track your events, tickets, and certificates!\n\n"
+                    email_body += f"Login Role: Student / Participant\n"
+                    email_body += f"Login Email: {email}\n"
+                    email_body += f"Login Password: {raw_password}\n\n"
+                    email_body += "Log in here: http://127.0.0.1:5000/login\n\n"
+                
+                email_body += "Please show this ID or your registered Email at the venue.\n\n"
+                email_body += "Best Regards,\nSapthaEvent Admin"
+                
+                msg.body = email_body
+                mail.send(msg)
+            except Exception as e:
+                print(f"Failed to send combined email, falling back to util: {e}")
+                send_ticket_email(email, full_name, event_data.get('title'), reg_id)
             
             return render_template('participant/success.html', event_title=event_data.get('title'))
 

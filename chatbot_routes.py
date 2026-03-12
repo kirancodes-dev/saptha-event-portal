@@ -2,14 +2,16 @@ from flask import Blueprint, request, jsonify
 from google import genai
 from models import db
 from google.cloud.firestore_v1.base_query import FieldFilter
-import datetime # <-- ADDED THIS IMPORT
+import datetime
 
 chatbot_bp = Blueprint('chatbot', __name__, url_prefix='/chatbot')
 
 # =====================================================================
 # 🔑 GEMINI SDK INTEGRATION
 # =====================================================================
-GEMINI_API_KEY = "AIzaSyA16ASGiSsZaMGNct4G8Pd4hFJQDuDfpTk"
+GEMINI_API_KEY = "AIzaSyDPyxj9yfqXtjyX5WJkHUird0cgxp3O5O4"
+
+# Clean initialization using the new SDK
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 @chatbot_bp.route('/ask', methods=['POST'])
@@ -27,7 +29,6 @@ def ask():
         # Fetch Active Events from Firebase
         events_ref = db.collection('events').where(filter=FieldFilter('status', '==', 'active')).stream()
         
-        # Tell the AI what today is!
         context = f"Today's Date is {current_date}.\n\nCurrent Active Events Open for Registration:\n"
         has_events = False
         
@@ -35,8 +36,7 @@ def ask():
             evt = e.to_dict()
             event_date = evt.get('date', '')
             
-            # --- REAL-TIME AI FILTER ---
-            # ONLY feed the event to the AI if the date hasn't passed!
+            # Real-time AI filter: Only feed the event to the AI if it hasn't passed
             if event_date >= current_date:
                 has_events = True
                 context += f"- Event: {evt.get('title')}\n"
@@ -48,7 +48,6 @@ def ask():
         if not has_events:
             context += "There are currently NO upcoming events scheduled. All previous events have closed."
 
-        # Build the Persona
         system_prompt = f"""
         You are 'Sparky', the official AI Helpdesk Assistant for the Sapthagiri NPS University Event Portal.
         Your job is to help students with questions about upcoming events, hackathons, and registrations.
@@ -65,7 +64,7 @@ def ask():
         User's message: {user_message}
         """
 
-        # Call Gemini
+        # Call the newest supported model
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=system_prompt

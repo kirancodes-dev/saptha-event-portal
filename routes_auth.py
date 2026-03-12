@@ -19,6 +19,11 @@ def login():
     if request.method == 'POST':
         # .strip() removes any accidental blank spaces typed by the user
         role = request.form.get('role').strip() 
+        
+        # Normalize the Space for HTML forms
+        if role == 'Super Admin':
+            role = 'SuperAdmin'
+            
         email = request.form.get('email').lower().strip()
         password = request.form.get('password')
         secret_key = request.form.get('secret_key')
@@ -34,8 +39,27 @@ def login():
                 user_data = user_doc.to_dict()
                 db_role = user_data.get('role', '').strip()
                 
+                # Fix space matching from old database entries
+                if db_role == 'Super Admin':
+                    db_role = 'SuperAdmin'
+                
+                # --- NEW: INDESTRUCTIBLE PASSWORD CHECK ---
+                stored_password = user_data.get('password', '')
+                is_valid_password = False
+                
+                # 1. If it's a raw number in Firebase, force it to be a string
+                if isinstance(stored_password, int) or isinstance(stored_password, float):
+                    stored_password = str(int(stored_password))
+                    
+                # 2. Check if it's a secure hash
+                if stored_password.startswith('scrypt:') or stored_password.startswith('pbkdf2:'):
+                    is_valid_password = check_password_hash(stored_password, password)
+                else:
+                    # 3. Fallback for old accounts saved in plain text
+                    is_valid_password = (stored_password == str(password))
+                
                 # Check Password and Match Role
-                if db_role == role and check_password_hash(user_data.get('password'), password):
+                if db_role == role and is_valid_password:
                     
                     # Lock Session Data
                     session['user_id'] = email
@@ -45,14 +69,14 @@ def login():
                     
                     flash(f"Welcome back, {user_data.get('name')}!", "success")
                     
-                    # --- ROBUST ROUTING LOGIC ---
+                    # Routing Logic
                     if role == 'Student': 
                         return redirect('/participant/dashboard')
                     elif role == 'Coordinator': 
                         return redirect('/coordinator/dashboard') 
                     elif role == 'EventCoordinator': 
                         return redirect('/coordinator/scanner') 
-                    elif role in ['Admin', 'SuperAdmin']: 
+                    elif role == 'SuperAdmin': 
                         return redirect('/admin/dashboard')
                     elif role == 'Judge': 
                         return redirect('/judge/dashboard')
@@ -74,7 +98,7 @@ def login():
                     session['role'] = 'SuperAdmin'
                     flash("👑 Super Admin account successfully initialized!", "success")
                     return redirect('/admin/dashboard')
-                    
+                
                 flash('Account not found. Please register.', 'warning')
                 
         except Exception as e:
@@ -82,43 +106,9 @@ def login():
 
     return render_template('login.html')
 
-# --- 2. REGISTER ROUTE ---
-@auth_bp.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email').lower().strip()
-        usn = request.form.get('usn').upper().strip()
-        phone = request.form.get('phone')
-        password = request.form.get('password')
-
-        try:
-            if db.collection('users').document(email).get().exists:
-                flash("Email is already registered! Please login.", "warning")
-                return redirect('/login')
-
-            db.collection('users').document(email).set({
-                'email': email,
-                'name': name,
-                'usn': usn,
-                'phone': phone,
-                'role': 'Student',
-                'category': 'General',
-                'password': generate_password_hash(password),
-                'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
-            })
-
-            flash("Account created successfully! You can now login.", "success")
-            return redirect('/login')
-
-        except Exception as e:
-            flash(f"Registration Error: {e}", "danger")
-
-    return render_template('register.html')
-
-# --- 3. LOGOUT ROUTE ---
+# --- 2. LOGOUT ROUTE ---
 @auth_bp.route('/logout')
 def logout():
     session.clear()
     flash("You have been logged out successfully.", "info")
-    return redirect('/login')
+    return redirect('/')  # <-- Changed from /login to / (Home Page)

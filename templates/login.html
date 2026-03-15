@@ -11,7 +11,7 @@
         :root { --snpsu-blue: #0d2d62; --snpsu-orange: #f37021; --bg-light: #f8f9fa; }
         body { font-family: 'Inter', sans-serif; background: linear-gradient(rgba(13, 45, 98, 0.85), rgba(13, 45, 98, 0.95)), url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop') center/cover fixed; height: 100vh; display: flex; align-items: center; justify-content: center; }
         .login-card { background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); width: 100%; max-width: 450px; padding: 40px; position: relative; }
-        .login-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: var(--snpsu-orange); }
+        .login-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: var(--snpsu-orange); border-radius: 20px 20px 0 0; }
         .logo-title { font-family: 'Poppins', sans-serif; color: var(--snpsu-blue); font-weight: 800; font-size: 1.6rem; letter-spacing: 0.5px; }
         .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
         .form-control, .form-select { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; }
@@ -29,7 +29,7 @@
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} small fw-bold py-2">{{ message }}</div>{% endfor %}{% endif %}
+                {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} small fw-bold py-2"><i class="fas fa-info-circle me-1"></i>{{ message }}</div>{% endfor %}{% endif %}
             {% endwith %}
 
             <form action="/login" method="POST">
@@ -45,27 +45,33 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Email Address</label>
-                    <input type="email" name="email" class="form-control" required>
+                    <input type="email" name="email" class="form-control" required placeholder="name@snpsu.edu.in">
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control" required>
+                    <input type="password" name="password" class="form-control" required placeholder="••••••••">
                 </div>
                 <div class="mb-4" id="secretKeyDiv" style="display: none;">
-                    <label class="form-label text-danger">Master Secret Key</label>
-                    <input type="password" name="secret_key" id="secretKeyInput" class="form-control border-danger">
+                    <label class="form-label text-danger"><i class="fas fa-key me-1"></i>Master Secret Key</label>
+                    <input type="password" name="secret_key" id="secretKeyInput" class="form-control border-danger" placeholder="Required for Super Admins">
                 </div>
-                <button type="submit" class="btn btn-login w-100 mb-3">Login to Portal</button>
-                <div class="text-center mt-3 small text-muted">New Student? <a href="/register" style="color: var(--snpsu-orange); font-weight: bold;">Register Here</a></div>
+                
+                <button type="submit" class="btn btn-login w-100 mb-1 fs-5">Login to Portal <i class="fas fa-sign-in-alt ms-2"></i></button>
             </form>
         </div>
     </div>
+    
     <script>
         document.getElementById('roleSelect').addEventListener('change', function() {
             var secretDiv = document.getElementById('secretKeyDiv');
             var secretInput = document.getElementById('secretKeyInput');
-            if (this.value === 'SuperAdmin') { secretDiv.style.display = 'block'; secretInput.setAttribute('required', 'required'); } 
-            else { secretDiv.style.display = 'none'; secretInput.removeAttribute('required'); }
+            if (this.value === 'SuperAdmin') { 
+                secretDiv.style.display = 'block'; 
+                secretInput.setAttribute('required', 'required'); 
+            } else { 
+                secretDiv.style.display = 'none'; 
+                secretInput.removeAttribute('required'); 
+            }
         });
     </script>
 </body>

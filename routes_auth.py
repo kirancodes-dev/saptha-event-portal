@@ -43,7 +43,7 @@ def login():
                 if db_role == 'Super Admin':
                     db_role = 'SuperAdmin'
                 
-                # --- NEW: INDESTRUCTIBLE PASSWORD CHECK ---
+                # --- INDESTRUCTIBLE PASSWORD CHECK ---
                 stored_password = user_data.get('password', '')
                 is_valid_password = False
                 
@@ -66,6 +66,12 @@ def login():
                     session['name'] = user_data.get('name')
                     session['role'] = role
                     session['category'] = user_data.get('category', 'General')
+                    
+                    # --- 🚀 NEW: FORCE PASSWORD RESET CHECK ---
+                    if user_data.get('needs_password_reset') == True:
+                        session['force_reset'] = True
+                        flash("Welcome! For security, you must change your auto-generated password before continuing.", "warning")
+                        return redirect('/reset_password')
                     
                     flash(f"Welcome back, {user_data.get('name')}!", "success")
                     
@@ -91,7 +97,8 @@ def login():
                     db.collection('users').document(email).set({
                         'email': email, 'name': 'System Super Admin', 'role': 'SuperAdmin',
                         'category': 'All', 'password': generate_password_hash(password),
-                        'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
+                        'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
+                        'needs_password_reset': False
                     })
                     session['user_id'] = email
                     session['name'] = 'System Super Admin'
@@ -106,7 +113,54 @@ def login():
 
     return render_template('login.html')
 
-# --- 2. LOGOUT ROUTE ---
+
+# --- 🚀 2. NEW FORCE RESET PASSWORD ROUTE ---
+@auth_bp.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    # Security check: Make sure they actually need a reset
+    if 'user_id' not in session or not session.get('force_reset'):
+        return redirect('/login')
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        if new_password != confirm_password:
+            flash("Passwords do not match. Please try again.", "danger")
+            return redirect('/reset_password')
+            
+        if len(new_password) < 6:
+            flash("Password must be at least 6 characters long.", "danger")
+            return redirect('/reset_password')
+
+        try:
+            # Update password in Firebase and remove the reset flag
+            email = session['user_id']
+            db.collection('users').document(email).update({
+                'password': generate_password_hash(new_password),
+                'needs_password_reset': False
+            })
+
+            # Clear the lock flag
+            session.pop('force_reset', None)
+            flash("Password updated successfully! Welcome to your dashboard.", "success")
+
+            # Redirect them to their proper home
+            role = session.get('role')
+            if role == 'Student': return redirect('/participant/dashboard')
+            elif role == 'Coordinator': return redirect('/coordinator/dashboard')
+            elif role == 'EventCoordinator': return redirect('/coordinator/scanner')
+            elif role == 'SuperAdmin': return redirect('/admin/dashboard')
+            elif role == 'Judge': return redirect('/judge/dashboard')
+            else: return redirect('/')
+            
+        except Exception as e:
+            flash(f"Error updating password: {e}", "danger")
+
+    return render_template('reset_password.html')
+
+
+# --- 3. LOGOUT ROUTE ---
 @auth_bp.route('/logout')
 def logout():
     session.clear()

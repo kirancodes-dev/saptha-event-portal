@@ -23,7 +23,7 @@ def dashboard():
             
     return render_template('judge/dashboard.html', events=my_events, user_name=session.get('name'))
 
-# --- 2. TEAM SCORING LIST ---
+# --- 2. TEAM SCORING LIST (SMART ALLOCATED) ---
 @judge_bp.route('/event/<event_id>')
 @login_required
 @role_required(['Judge', 'SuperAdmin'])
@@ -34,14 +34,22 @@ def event_teams(event_id):
     event = event_doc.to_dict()
     event['id'] = event_doc.id
 
-    # ONLY fetch teams that are marked "Present" by the scanners
-    regs_ref = db.collection('registrations').where('event_id', '==', event_id).where('attendance', '==', 'Present').stream()
+    judge_email = session.get('user_id')
+
+    # ONLY fetch teams that are marked "Present" AND assigned specifically to THIS Judge!
+    regs_ref = db.collection('registrations')\
+        .where('event_id', '==', event_id)\
+        .where('attendance', '==', 'Present')\
+        .where('assigned_judge_email', '==', judge_email)\
+        .stream()
+        
     teams = []
     for r in regs_ref:
         d = r.to_dict()
         d['id'] = r.id
+        
         # Check if THIS judge has already scored this team
-        my_scores = d.get('scores', {}).get(session.get('user_id'))
+        my_scores = d.get('scores', {}).get(judge_email.replace('.', '_')) # Handle Firebase dot restriction
         d['my_score'] = my_scores
         teams.append(d)
         
@@ -71,12 +79,13 @@ def submit_score(reg_id):
             total_score += val
 
         judge_email = session.get('user_id')
+        safe_email = judge_email.replace('.', '_') # Firebase keys cannot contain periods
         
         # Save score inside the 'scores' map under the Judge's specific email
         # This allows multiple judges to score the same team without overwriting each other!
         reg_ref.set({
             'scores': {
-                judge_email: {
+                safe_email: {
                     'details': score_details,
                     'total': total_score,
                     'judge_name': session.get('name')

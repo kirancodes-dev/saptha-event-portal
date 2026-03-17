@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics | SapthaEvent Admin</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;}
+*{box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;}
+h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
+
+/* Sidebar */
+.sidebar{width:220px;min-height:100vh;background:var(--blue);position:fixed;top:0;left:0;z-index:100;display:flex;flex-direction:column;}
+.sidebar-logo{padding:20px 20px 12px;border-bottom:1px solid rgba(255,255,255,.1);}
+.sidebar-logo .logo-sq{width:38px;height:38px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:15px;color:#fff;}
+.sidebar-logo .brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;margin:0;}
+.sidebar-logo .sub{font-size:9px;color:rgba(255,255,255,.45);letter-spacing:1px;text-transform:uppercase;}
+.nav-item-s{display:flex;align-items:center;gap:10px;padding:10px 20px;color:rgba(255,255,255,.65);font-size:13px;text-decoration:none;border-left:3px solid transparent;transition:.15s;}
+.nav-item-s:hover{color:#fff;background:rgba(255,255,255,.07);}
+.nav-item-s.active{color:#fff;background:rgba(255,255,255,.1);border-left-color:var(--orange);}
+.nav-item-s i{width:16px;text-align:center;font-size:13px;}
+.nav-section-label{font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.3);padding:14px 20px 4px;}
+
+/* Main */
+.main{margin-left:220px;padding:0;}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;color:var(--blue);margin:0;}
+.topbar-user{display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b;}
+.user-av{width:32px;height:32px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;}
+.content{padding:24px 28px;}
+
+/* Stat cards */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:28px;}
+.stat-card{background:#fff;border-radius:14px;padding:18px 20px;border:1px solid #e2e8f0;border-left:4px solid var(--blue);}
+.stat-card.orange{border-left-color:var(--orange);}
+.stat-card.green{border-left-color:#10b981;}
+.stat-card.purple{border-left-color:#7c3aed;}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:4px;}
+.stat-value{font-family:'Poppins',sans-serif;font-size:26px;font-weight:800;color:var(--blue);line-height:1;}
+.stat-card.orange .stat-value{color:var(--orange);}
+.stat-card.green .stat-value{color:#10b981;}
+.stat-card.purple .stat-value{color:#7c3aed;}
+.stat-sub{font-size:11px;color:#94a3b8;margin-top:3px;}
+
+/* Chart cards */
+.chart-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px 24px;margin-bottom:20px;}
+.chart-card-title{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--blue);margin-bottom:4px;}
+.chart-card-sub{font-size:12px;color:#94a3b8;margin-bottom:16px;}
+.chart-wrap{position:relative;}
+.no-data{text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px;}
+.no-data i{font-size:32px;display:block;margin-bottom:8px;opacity:.4;}
+
+/* Flash */
+.flash-box{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;}
+
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .main{margin-left:0;}
+  .content{padding:16px;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo d-flex align-items-center gap-2">
+    <div class="logo-sq">SE</div>
+    <div>
+      <div class="brand">SapthaEvent</div>
+      <div class="sub">SuperAdmin</div>
+    </div>
+  </div>
+
+  <div class="mt-2">
+    <div class="nav-section-label">Main</div>
+    <a href="/admin/dashboard" class="nav-item-s"><i class="fas fa-th-large"></i>Dashboard</a>
+    <a href="/admin/analytics" class="nav-item-s active"><i class="fas fa-chart-bar"></i>Analytics</a>
+    <a href="/admin/audit_log" class="nav-item-s"><i class="fas fa-history"></i>Audit Log</a>
+
+    <div class="nav-section-label">Manage</div>
+    <a href="/coordinator/dashboard" class="nav-item-s"><i class="fas fa-calendar-check"></i>Events</a>
+    <a href="/admin/dashboard" class="nav-item-s"><i class="fas fa-users"></i>Users</a>
+
+    <div style="margin-top:auto;padding:20px 20px 24px;position:absolute;bottom:0;width:100%;">
+      <a href="/logout" class="nav-item-s" style="padding:8px 0;border-left:none;">
+        <i class="fas fa-sign-out-alt"></i>Logout
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <h1 class="topbar-title"><i class="fas fa-chart-line me-2" style="color:var(--orange);"></i>Analytics Dashboard</h1>
+    <div class="topbar-user">
+      <span>{{ user_name }}</span>
+      <div class="user-av">{{ user_name[0].upper() if user_name else 'A' }}</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }} flash-box alert-dismissible fade show mb-3">
+        <i class="fas fa-info-circle"></i>{{ msg|safe }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- ── SUMMARY STATS ── -->
+    {% if stats %}
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Registrations</div>
+        <div class="stat-value">{{ stats.total_regs }}</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-value">₹{{ "{:,}".format(stats.total_revenue) }}</div>
+        <div class="stat-sub">paid registrations</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Active Events</div>
+        <div class="stat-value">{{ stats.active_events }}</div>
+        <div class="stat-sub">of {{ stats.total_events }} total</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Paid Registrations</div>
+        <div class="stat-value">{{ stats.paid_regs }}</div>
+        <div class="stat-sub">{{ stats.free_regs }} free</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── ROW 1: Registrations over time + Category breakdown ── -->
+    <div class="row g-4 mb-0">
+      <div class="col-12 col-xl-8">
+        <div class="chart-card h-100">
+          <div class="chart-card-title">Registrations Over Time</div>
+          <div class="chart-card-sub">Daily registration count — last 30 days</div>
+          <div class="chart-wrap" style="height:260px;">
+            <canvas id="chartRegsTime"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4">
+        <div class="chart-card h-100">
+          <div class="chart-card-title">Category Breakdown</div>
+          <div class="chart-card-sub">Registrations by event category</div>
+          <div class="chart-wrap" style="height:260px;">
+            <canvas id="chartCategory"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROW 2: Revenue per event + Regs per event ── -->
+    <div class="row g-4 mt-0 mb-0">
+      <div class="col-12 col-xl-6">
+        <div class="chart-card">
+          <div class="chart-card-title">Revenue per Event</div>
+          <div class="chart-card-sub">Top 10 events by total collected fees (₹)</div>
+          <div class="chart-wrap" style="height:280px;">
+            <canvas id="chartRevenue"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-6">
+        <div class="chart-card">
+          <div class="chart-card-title">Registrations per Event</div>
+          <div class="chart-card-sub">Top 10 most-registered events</div>
+          <div class="chart-wrap" style="height:280px;">
+            <canvas id="chartRegsEvent"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROW 3: Peak hours ── -->
+    <div class="row g-4 mt-0">
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="chart-card-title">Peak Registration Hours</div>
+          <div class="chart-card-sub">Number of registrations by hour of day (IST) — tells you when students are most active</div>
+          <div class="chart-wrap" style="height:200px;">
+            <canvas id="chartPeakHours"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div id="chart-data"
+  data-regs-over-time='{{ regs_over_time     | safe }}'
+  data-category='{{ category_breakdown | safe }}'
+  data-revenue='{{ revenue_per_event  | safe }}'
+  data-peak-hours='{{ peak_hours         | safe }}'
+  data-regs-per-event='{{ regs_per_event     | safe }}'
+  style="display:none;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Data from Flask (read from data attributes — no Jinja inside JS) ──
+const _d           = document.getElementById('chart-data').dataset;
+const regsOverTime     = JSON.parse(_d.regsOverTime     || '{}');
+const categoryData     = JSON.parse(_d.category         || '{}');
+const revenueData      = JSON.parse(_d.revenue          || '{}');
+const peakHoursData    = JSON.parse(_d.peakHours        || '{}');
+const regsPerEventData = JSON.parse(_d.regsPerEvent     || '{}');
+
+// ── Shared chart defaults ──────────────────────────────────────────
+Chart.defaults.font.family  = "'Inter', sans-serif";
+Chart.defaults.font.size    = 12;
+Chart.defaults.color        = '#64748b';
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+Chart.defaults.plugins.legend.labels.padding  = 14;
+
+// Palette
+const BLUE    = '#0d2d62';
+const ORANGE  = '#f37021';
+const GREEN   = '#10b981';
+const PURPLE  = '#7c3aed';
+const TEAL    = '#0891b2';
+const PIE_COLORS = [ORANGE, BLUE, GREEN, PURPLE, TEAL,
+                    '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16'];
+
+// Helper — abbreviated labels for long event names
+function abbrev(labels, max) {
+  return labels.map(l => l.length > max ? l.slice(0, max) + '…' : l);
+}
+
+// ── 1. Registrations over time (line) ─────────────────────────────
+(function() {
+  const ctx = document.getElementById('chartRegsTime');
+  if (!ctx || !regsOverTime.labels) return;
+  // Show only every 5th label to avoid crowding
+  const thinLabels = regsOverTime.labels.map((l, i) => i % 5 === 0 ? l.slice(5) : '');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: thinLabels,
+      datasets: [{
+        label: 'Registrations',
+        data: regsOverTime.data,
+        borderColor: ORANGE,
+        backgroundColor: 'rgba(243,112,33,.08)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: ORANGE,
+        pointHoverRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 0 } },
+        y: { beginAtZero: true, ticks: { precision: 0 },
+             grid: { color: 'rgba(0,0,0,.05)' } }
+      }
+    }
+  });
+})();
+
+// ── 2. Category breakdown (doughnut) ──────────────────────────────
+(function() {
+  const ctx = document.getElementById('chartCategory');
+  if (!ctx || !categoryData.labels || !categoryData.labels.length) {
+    ctx && (ctx.parentElement.innerHTML = '<div class="no-data"><i class="fas fa-chart-pie"></i>No data yet</div>');
+    return;
+  }
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: categoryData.labels,
+      datasets: [{
+        data: categoryData.data,
+        backgroundColor: PIE_COLORS,
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed} registrations`
+          }
+        }
+      },
+      cutout: '60%',
+    }
+  });
+})();
+
+// ── 3. Revenue per event (horizontal bar) ─────────────────────────
+(function() {
+  const ctx = document.getElementById('chartRevenue');
+  if (!ctx || !revenueData.labels || !revenueData.labels.length) {
+    ctx && (ctx.parentElement.innerHTML = '<div class="no-data"><i class="fas fa-rupee-sign"></i>No paid events yet</div>');
+    return;
+  }
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: abbrev(revenueData.labels, 22),
+      datasets: [{
+        label: 'Revenue (₹)',
+        data: revenueData.data,
+        backgroundColor: revenueData.data.map((_, i) =>
+          i === 0 ? ORANGE : i === 1 ? '#f59e0b' : 'rgba(13,45,98,.18)'),
+        borderColor:  'transparent',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ₹${c.parsed.x.toLocaleString()}` } }
+      },
+      scales: {
+        x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.05)' },
+             ticks: { callback: v => '₹' + (v >= 1000 ? (v/1000)+'k' : v) } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+// ── 4. Registrations per event (horizontal bar) ───────────────────
+(function() {
+  const ctx = document.getElementById('chartRegsEvent');
+  if (!ctx || !regsPerEventData.labels || !regsPerEventData.labels.length) {
+    ctx && (ctx.parentElement.innerHTML = '<div class="no-data"><i class="fas fa-calendar-alt"></i>No registrations yet</div>');
+    return;
+  }
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: abbrev(regsPerEventData.labels, 22),
+      datasets: [{
+        label: 'Registrations',
+        data: regsPerEventData.data,
+        backgroundColor: regsPerEventData.data.map((_, i) =>
+          i === 0 ? BLUE : i === 1 ? '#185fa5' : 'rgba(13,45,98,.18)'),
+        borderColor: 'transparent',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { precision: 0 },
+             grid: { color: 'rgba(0,0,0,.05)' } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+// ── 5. Peak hours (bar) ───────────────────────────────────────────
+(function() {
+  const ctx = document.getElementById('chartPeakHours');
+  if (!ctx || !peakHoursData.labels) return;
+  const maxVal = Math.max(...peakHoursData.data, 1);
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: peakHoursData.labels,
+      datasets: [{
+        label: 'Registrations',
+        data: peakHoursData.data,
+        backgroundColor: peakHoursData.data.map(v => {
+          const ratio = v / maxVal;
+          if (ratio > 0.7) return ORANGE;
+          if (ratio > 0.4) return '#f59e0b';
+          return 'rgba(13,45,98,.15)';
+        }),
+        borderColor: 'transparent',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          title: items => `Hour: ${items[0].label}`,
+          label: c => ` ${c.parsed.y} registration${c.parsed.y !== 1 ? 's' : ''}`
+        }}
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 0, font: { size: 10 } } },
+        y: { beginAtZero: true, ticks: { precision: 0 },
+             grid: { color: 'rgba(0,0,0,.05)' } }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

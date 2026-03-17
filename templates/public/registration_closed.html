@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registration Closed | {{ event.title }}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body{background:#0f172a;min-height:100vh;display:flex;align-items:center;
+  justify-content:center;font-family:'Segoe UI',sans-serif;}
+.card{background:#fff;border-radius:20px;padding:48px 40px;text-align:center;
+  max-width:440px;width:100%;box-shadow:0 32px 64px rgba(0,0,0,.4);}
+.icon{font-size:3.5rem;margin-bottom:16px;}
+</style>
+</head>
+<body>
+<div class="card">
+  {% if reason == 'full' %}
+    <div class="icon">😔</div>
+    <h4 class="fw-bold">Event is Full</h4>
+    <p class="text-muted">Sorry, <strong>{{ event.title }}</strong> has reached its maximum capacity.</p>
+  {% else %}
+    <div class="icon">🔒</div>
+    <h4 class="fw-bold">Registration Closed</h4>
+    <p class="text-muted">The registration deadline for <strong>{{ event.title }}</strong> has passed.</p>
+  {% endif %}
+  <a href="/" class="btn btn-primary rounded-pill px-4 mt-2">Browse Other Events</a>
+</div>
+</body>
+</html>

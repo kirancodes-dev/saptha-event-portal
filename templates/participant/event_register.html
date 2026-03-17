@@ -2,49 +2,204 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register for {{ event.title }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; }
+        :root { --blue: #0d2d62; --orange: #f37021; }
+        body { background: #f8f9fa; font-family: 'Inter', sans-serif; }
+        h1,h2,h3,h4,h5 { font-family: 'Poppins', sans-serif; }
+
         .form-container {
             max-width: 800px; margin: 40px auto; background: white;
-            padding: 40px; border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            border-top: 5px solid #002147; /* University Blue */
+            padding: 40px; border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border-top: 5px solid var(--blue);
         }
+
+        /* Event banner strip */
+        .event-banner {
+            background: linear-gradient(135deg, var(--blue), #1a4fa0);
+            color: white; border-radius: 12px; padding: 20px 24px;
+            margin-bottom: 32px;
+        }
+        .event-banner .category-badge {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+            color: white; border-radius: 20px; padding: 3px 12px;
+            font-size: 11px; font-weight: 600; display: inline-block; margin-bottom: 8px;
+        }
+        .event-banner h3 { margin: 0 0 6px; font-size: 20px; }
+        .event-banner .meta { font-size: 13px; opacity: .85; }
+
+        /* Section headings */
         .section-title {
-            color: #002147; font-weight: 700; border-bottom: 2px solid #f1f1f1;
+            color: var(--blue); font-weight: 700;
+            border-bottom: 2px solid #f1f1f1;
             padding-bottom: 10px; margin-bottom: 20px; margin-top: 30px;
+            display: flex; align-items: center; gap: 8px;
         }
-        .bg-light-custom { background-color: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        .section-title .step-num {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: var(--orange); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700; flex-shrink: 0;
+        }
+
+        /* Inputs */
+        .form-control, .form-select {
+            border-radius: 10px; padding: 11px 14px;
+            border: 1.5px solid #e2e8f0; font-family: 'Inter', sans-serif;
+            font-size: 14px; background: #f8fafc; transition: .15s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--blue); background: #fff;
+            box-shadow: 0 0 0 3px rgba(13,45,98,.1);
+        }
+        .form-control[readonly] { background: #e9ecef; cursor: not-allowed; }
+        .form-label { font-weight: 600; font-size: 13px; color: #334155; margin-bottom: 5px; }
+        .form-label .req { color: #ef4444; }
+
+        /* Member block */
+        .member-block {
+            background: #f8fafc; padding: 16px 18px;
+            border-radius: 12px; border: 1px solid #e2e8f0;
+            margin-bottom: 14px;
+        }
+        .member-block h6 {
+            font-size: 13px; font-weight: 700; color: var(--blue);
+            margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+        }
+        .member-block h6 .num {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: var(--blue); color: white;
+            font-size: 11px; display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+        }
+
+        /* Submit button */
+        .btn-register {
+            width: 100%; padding: 14px; background: var(--blue); color: white;
+            border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+            cursor: pointer; transition: .2s; margin-top: 8px;
+            font-family: 'Poppins', sans-serif;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-register:hover { background: #1a4fa0; transform: translateY(-1px); }
+        .btn-register:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
+        /* Custom form redirect banner */
+        .custom-form-banner {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px solid #38bdf8; border-radius: 14px;
+            padding: 28px 24px; text-align: center;
+        }
+        .custom-form-banner .icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+
+        /* Flash messages */
+        .flash-item {
+            padding: 12px 16px; border-radius: 10px; font-size: 13px;
+            font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+        }
+        .flash-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .flash-danger  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .flash-warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        .flash-success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="form-container">
-        
-        <div class="text-center mb-5">
-            <h2 class="fw-bold text-primary">{{ event.title }}</h2>
-            <p class="text-muted">
-                <span class="badge bg-warning text-dark me-2">{{ 'Team Event' if event.is_team_event else 'Individual Event' }}</span>
-                Fill in the details to secure your spot.
-            </p>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}
+            <div class="flash-item flash-{{ category }}">
+                <i class="fas fa-info-circle"></i>
+                <span>{{ message | safe }}</span>
+            </div>
+            {% endfor %}{% endif %}
+        {% endwith %}
+
+        <!-- Event banner -->
+        <div class="event-banner">
+            {% if event.get('category') %}
+            <div class="category-badge">{{ event.category }}</div>
+            {% endif %}
+            <h3>{{ event.title }}</h3>
+            <div class="meta">
+                {% if event.get('date') %}
+                <i class="fas fa-calendar-alt me-1"></i>{{ event.date }}&nbsp;&nbsp;
+                {% endif %}
+                {% if event.get('venue') %}
+                <i class="fas fa-map-marker-alt me-1"></i>{{ event.venue }}&nbsp;&nbsp;
+                {% endif %}
+                {% if event.get('entry_fee') and event.entry_fee > 0 %}
+                <i class="fas fa-rupee-sign me-1"></i>{{ event.entry_fee }} entry fee
+                {% else %}
+                <i class="fas fa-star me-1"></i>Free event
+                {% endif %}
+                &nbsp;&nbsp;
+                <span class="badge bg-warning text-dark">
+                    {{ 'Team Event' if event.is_team_event else 'Individual Event' }}
+                </span>
+            </div>
         </div>
 
-        <form action="/participant/register_event/{{ event_id }}" method="POST">
-            
-            <h5 class="section-title">1. Participation Details</h5>
-            
+        <!-- ── ROUTE DECISION ──────────────────────────────
+             If the event has a custom form builder form,
+             redirect to the dynamic form page instead.
+             This template handles ONLY the old fallback route
+             for backward compatibility.
+        ──────────────────────────────────────────────── -->
+        {% if event.get('has_custom_form') %}
+
+        <!-- Custom form exists — send user to the proper form page -->
+        <div class="custom-form-banner">
+            <span class="icon">🎨</span>
+            <h5 class="fw-bold mb-2" style="color:var(--blue);">
+                This event uses a custom registration form
+            </h5>
+            <p class="text-muted mb-4" style="font-size:13px;">
+                The organiser has set up a tailored form for this event.
+                Click below to fill it in.
+            </p>
+            <a href="/forms/register/{{ event_id }}"
+               class="btn btn-primary fw-bold rounded-pill px-5 py-2 shadow-sm"
+               style="background:var(--blue);border:none;font-size:15px;">
+                <i class="fas fa-pen me-2"></i> Open Registration Form
+            </a>
+        </div>
+
+        {% else %}
+
+        <!-- ── LEGACY SIMPLE FORM (fallback) ───────────── -->
+        <p class="text-center text-muted" style="font-size:13px;">
+            Fill in the details below to secure your spot.
+        </p>
+
+        <form action="/participant/register_event/{{ event_id }}" method="POST"
+              id="reg-form">
+
+            <!-- SECTION 1: Participation -->
+            <h5 class="section-title">
+                <span class="step-num">1</span> Participation Details
+            </h5>
+
             {% if event.is_team_event %}
             <div class="mb-4">
-                <label class="form-label fw-bold">Team Name <span class="text-danger">*</span></label>
-                <input type="text" name="team_name" class="form-control" placeholder="e.g. Code Warriors" required>
+                <label class="form-label">Team Name <span class="req">*</span></label>
+                <input type="text" name="team_name" class="form-control"
+                       placeholder="e.g. Code Warriors" required>
             </div>
             {% endif %}
 
             <div class="mb-4">
-                <label class="form-label fw-bold">Choose Problem Statement <span class="text-danger">*</span></label>
+                <label class="form-label">
+                    Choose Problem Statement <span class="req">*</span>
+                </label>
                 {% if event.problem_statements and event.problem_statements|length > 0 %}
                     <select name="problem_statement" class="form-select" required>
                         <option value="" selected disabled>-- Select a Topic --</option>
@@ -53,30 +208,39 @@
                         {% endfor %}
                     </select>
                 {% else %}
-                    <input type="text" name="problem_statement" class="form-control" placeholder="Enter your project title / idea" required>
+                    <input type="text" name="problem_statement" class="form-control"
+                           placeholder="Enter your project title / idea" required>
                 {% endif %}
             </div>
 
-            <h5 class="section-title">2. {{ 'Team Lead' if event.is_team_event else 'Participant' }} Details</h5>
+            <!-- SECTION 2: Lead Details -->
+            <h5 class="section-title">
+                <span class="step-num">2</span>
+                {{ 'Team Lead' if event.is_team_event else 'Participant' }} Details
+            </h5>
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label small text-muted">Full Name</label>
-                    <input type="text" class="form-control" value="{{ user.name }}" readonly style="background-color: #e9ecef;">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-control"
+                           value="{{ user.name }}" readonly>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small text-muted">Email ID</label>
-                    <input type="email" class="form-control" value="{{ user.user_id }}" readonly style="background-color: #e9ecef;">
+                    <label class="form-label">Email ID</label>
+                    <input type="email" class="form-control"
+                           value="{{ user.user_id }}" readonly>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small text-muted">USN / ID <span class="text-danger">*</span></label>
-                    <input type="text" name="lead_usn" class="form-control" placeholder="e.g. 1SG23CS001" required>
+                    <label class="form-label">USN / ID <span class="req">*</span></label>
+                    <input type="text" name="lead_usn" class="form-control"
+                           placeholder="e.g. 1SG23CS001" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small text-muted">Contact Number <span class="text-danger">*</span></label>
-                    <input type="tel" name="lead_phone" class="form-control" placeholder="10-digit Mobile" required>
+                    <label class="form-label">Contact Number <span class="req">*</span></label>
+                    <input type="tel" name="lead_phone" class="form-control"
+                           placeholder="10-digit mobile" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small text-muted">Gender <span class="text-danger">*</span></label>
+                    <label class="form-label">Gender <span class="req">*</span></label>
                     <select name="gender" class="form-select" required>
                         <option value="" selected disabled>Select</option>
                         <option value="Male">Male</option>
@@ -86,34 +250,68 @@
                 </div>
             </div>
 
+            <!-- SECTION 3: Team Members (team events only) -->
             {% if event.is_team_event %}
-            <h5 class="section-title">3. Team Members</h5>
-            <p class="small text-muted mb-3">Add details for your team mates (Leave blank if fewer members).</p>
-            
-            <div class="bg-light-custom mb-3">
-                <h6 class="fw-bold mb-3">Member 2</h6>
-                <div class="row g-2">
-                    <div class="col-md-6"><input type="text" name="member_1_name" class="form-control form-control-sm" placeholder="Full Name"></div>
-                    <div class="col-md-6"><input type="text" name="member_1_usn" class="form-control form-control-sm" placeholder="USN"></div>
-                </div>
-            </div>
+            <h5 class="section-title">
+                <span class="step-num">3</span> Team Members
+            </h5>
+            <p class="text-muted small mb-3">
+                Add details for your team mates (leave blank if fewer members).
+            </p>
 
-            <div class="bg-light-custom mb-3">
-                <h6 class="fw-bold mb-3">Member 3</h6>
+            {% for i in range(1, 5) %}
+            <div class="member-block">
+                <h6>
+                    <span class="num">{{ i + 1 }}</span>
+                    Member {{ i + 1 }}
+                </h6>
                 <div class="row g-2">
-                    <div class="col-md-6"><input type="text" name="member_2_name" class="form-control form-control-sm" placeholder="Full Name"></div>
-                    <div class="col-md-6"><input type="text" name="member_2_usn" class="form-control form-control-sm" placeholder="USN"></div>
+                    <div class="col-md-6">
+                        <input type="text" name="member_{{ i }}_name"
+                               class="form-control form-control-sm"
+                               placeholder="Full Name">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="member_{{ i }}_usn"
+                               class="form-control form-control-sm"
+                               placeholder="USN">
+                    </div>
                 </div>
             </div>
+            {% endfor %}
             {% endif %}
 
-            <div class="d-grid mt-5">
-                <button type="submit" class="btn btn-warning btn-lg fw-bold text-dark">Confirm Registration</button>
-            </div>
+            <!-- Submit -->
+            <button type="submit" class="btn-register" id="submit-btn">
+                <i class="fas fa-paper-plane"></i>
+                {% if event.get('entry_fee') and event.entry_fee > 0 %}
+                    Continue to Payment — ₹{{ event.entry_fee }}
+                {% else %}
+                    Confirm Registration — Free
+                {% endif %}
+            </button>
+
+            <p class="text-center text-muted mt-3" style="font-size:12px;">
+                <i class="fas fa-lock me-1"></i>
+                Your information is secure and used only for event management.
+            </p>
 
         </form>
+        {% endif %}
+
     </div>
 </div>
+
+<script>
+document.getElementById('reg-form') && document.getElementById('reg-form')
+    .addEventListener('submit', function() {
+        const btn = document.getElementById('submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        }
+    });
+</script>
 
 </body>
 </html>

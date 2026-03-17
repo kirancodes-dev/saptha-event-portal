@@ -1,77 +1,80 @@
-from flask import Blueprint, request, jsonify
-from google import genai
-from models import db
-from google.cloud.firestore_v1.base_query import FieldFilter
 import datetime
+import logging
 
+from flask import Blueprint, current_app, jsonify, request
+from google import genai
+from google.cloud.firestore_v1.base_query import FieldFilter
+
+from models import db
+
+logger     = logging.getLogger(__name__)
 chatbot_bp = Blueprint('chatbot', __name__, url_prefix='/chatbot')
 
-# =====================================================================
-# 🔑 GEMINI SDK INTEGRATION
-# =====================================================================
-GEMINI_API_KEY = "AIzaSyDPyxj9yfqXtjyX5WJkHUird0cgxp3O5O4"
+_client = None   # initialised lazily so we always read the live config value
 
-# Clean initialization using the new SDK
-client = genai.Client(api_key=GEMINI_API_KEY)
+
+def _get_client():
+    global _client
+    if _client is None:
+        api_key = current_app.config.get('GEMINI_API_KEY', '')
+        if not api_key:
+            raise RuntimeError("GEMINI_API_KEY not set in config / environment.")
+        _client = genai.Client(api_key=api_key)
+    return _client
+
 
 @chatbot_bp.route('/ask', methods=['POST'])
 def ask():
     try:
-        data = request.get_json()
-        user_message = data.get('message')
+        data         = request.get_json() or {}
+        user_message = data.get('message', '').strip()
 
         if not user_message:
-            return jsonify({'reply': "I didn't quite catch that. Could you ask again?"})
+            return jsonify({'reply': "I didn't catch that — please ask again!"})
 
-        # --- GET TODAY'S REAL-TIME DATE ---
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
-        # Fetch Active Events from Firebase
-        events_ref = db.collection('events').where(filter=FieldFilter('status', '==', 'active')).stream()
-        
-        context = f"Today's Date is {current_date}.\n\nCurrent Active Events Open for Registration:\n"
+        # Build live event context
+        events_ref = db.collection('events') \
+                       .where(filter=FieldFilter('status', '==', 'active')) \
+                       .stream()
+        context   = f"Today's date: {current_date}\n\nActive events open for registration:\n"
         has_events = False
-        
+
         for e in events_ref:
-            evt = e.to_dict()
+            evt        = e.to_dict()
             event_date = evt.get('date', '')
-            
-            # Real-time AI filter: Only feed the event to the AI if it hasn't passed
-            if event_date >= current_date:
-                has_events = True
-                context += f"- Event: {evt.get('title')}\n"
-                context += f"  Date: {event_date}\n"
-                context += f"  Venue: {evt.get('venue')}\n"
-                context += f"  Fee: ₹{evt.get('entry_fee', 0)}\n"
-                context += f"  Details: {evt.get('overview', 'No details provided.')}\n\n"
+            if event_date < current_date:
+                continue
+            has_events = True
+            context += (
+                f"\n• {evt.get('title')}\n"
+                f"  Date: {event_date} | Venue: {evt.get('venue')} "
+                f"| Fee: ₹{evt.get('entry_fee', 0)}\n"
+                f"  Details: {evt.get('overview', 'No details provided.')}\n"
+            )
 
         if not has_events:
-            context += "There are currently NO upcoming events scheduled. All previous events have closed."
+            context += "No upcoming events are currently scheduled.\n"
 
-        system_prompt = f"""
-        You are 'Sparky', the official AI Helpdesk Assistant for the Sapthagiri NPS University Event Portal.
-        Your job is to help students with questions about upcoming events, hackathons, and registrations.
-        Be enthusiastic, highly concise (keep answers to 2-3 short sentences), and polite.
-        Use emojis occasionally.
-        
-        Here is the LIVE data from the university database right now:
-        {context}
-        
-        Answer the user's question based strictly on the live data provided above. 
-        If they ask about an event that has already passed, politely inform them that registration is closed.
-        If they ask something not in the data, tell them politely that you don't have that information.
-        
-        User's message: {user_message}
-        """
+        system_prompt = (
+            "You are 'Sparky', the official AI assistant for the Sapthagiri NPS University "
+            "Event Portal. Help students with event questions. Be concise (2–3 sentences), "
+            "enthusiastic, and accurate. Use occasional emojis.\n\n"
+            f"LIVE DATABASE:\n{context}\n\n"
+            "If an event has passed, say registration is closed. "
+            "If the question is not about the listed events, say you don't have that info.\n\n"
+            f"Student's question: {user_message}"
+        )
 
-        # Call the newest supported model
-        response = client.models.generate_content(
+        response = _get_client().models.generate_content(
             model='gemini-2.5-flash',
             contents=system_prompt
         )
-
         return jsonify({'reply': response.text})
 
-    except Exception as e:
-        print(f"Gemini Error: {e}")
-        return jsonify({'reply': "Oops! My AI brain is currently rebooting or the API key limit was reached. Please try again in a moment! 🤖⚡"})
+    except Exception as exc:
+        logger.error("Chatbot error: %s", exc)
+        return jsonify({
+            'reply': "Oops! My AI brain is rebooting. Please try again in a moment! 🤖⚡"
+        })

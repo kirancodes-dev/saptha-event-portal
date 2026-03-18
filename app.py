@@ -102,6 +102,11 @@ def favicon():
 def cdn_cgi_suppress(subpath):
     return Response(status=204)
 
+# Suppress Chrome DevTools / browser well-known 404 noise
+@app.route('/.well-known/<path:subpath>')
+def well_known_suppress(subpath):
+    return Response(status=204)
+
 # =========================================================
 # HOME
 # =========================================================
@@ -190,6 +195,11 @@ def event_details(event_id):
         event.setdefault('status',             'active')
         event.setdefault('organizer',          event.get('created_by', 'SNPSU'))
         event.setdefault('staff',              [])
+        # Aliases — some templates use different field names
+        event.setdefault('fees',               event.get('entry_fee', 0))
+        event.setdefault('fee',                event.get('entry_fee', 0))
+        event.setdefault('price',              event.get('entry_fee', 0))
+        event.setdefault('organiser',          event.get('organizer', 'SNPSU'))
 
         is_registered = False
         if session.get('user_id'):

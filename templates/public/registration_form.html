@@ -1,523 +1,407 @@
-"""
-routes_forms.py  —  Form Builder + Public Registration
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d2d62">
+<title>Register — {{ event.title }}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;}
+*{box-sizing:border-box;}
+html,body{min-height:100%;font-family:'Inter',sans-serif;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
-Flow:
-  SPOC creates event via wizard → form schema saved atomically to event_forms/<id>
-  Participant clicks Register on homepage → /forms/register/<id> renders that schema
-  Participant submits → /forms/submit/<id> validates, saves registration, sends notifications
+body{
+  background:#0f172a;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:24px;padding-bottom:40px;
+}
 
-URL map:
-  GET  /forms/builder/<event_id>          — edit form after creation
-  POST /forms/save/<event_id>             — AJAX save from builder
-  GET  /forms/register/<event_id>         — PUBLIC registration page
-  POST /forms/submit/<event_id>           — PUBLIC form submission
-  GET  /forms/responses/<event_id>        — coordinator sees all submissions
-  GET  /forms/responses/export/<event_id> — CSV export
-  GET  /forms/schema/<event_id>           — JSON API (used by builder)
-"""
-import csv
-import datetime
-import io
-import json
-import re
-import secrets
-import string
-import time
+/* ── Wrapper ─────────────────────────────────────────── */
+.page-wrap{width:100%;max-width:640px;padding:0 16px;}
 
-from flask import (Blueprint, Response, flash, jsonify,
-                   redirect, render_template, request, session)
-from google.cloud import firestore
-from werkzeug.security import generate_password_hash
+/* ── Back link ───────────────────────────────────────── */
+.back-link{color:rgba(255,255,255,.6);font-size:13px;text-decoration:none;
+  display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;}
+.back-link:hover{color:#fff;}
 
-from models import db
-from utils import login_required, role_required, log_action, safe_int
-from utils_email import send_ticket_email
+/* ── Flash messages ──────────────────────────────────── */
+.flash{padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;
+  display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;}
+.flash i{margin-top:2px;flex-shrink:0;}
+.flash-info   {background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+.flash-danger {background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
+.flash-warning{background:#fffbeb;color:#d97706;border:1px solid #fde68a;}
+.flash-success{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
 
-# WhatsApp optional
-try:
-    from utils_whatsapp import send_ticket_whatsapp
-    WA_ENABLED = True
-except ImportError:
-    WA_ENABLED = False
+/* ── Event banner ────────────────────────────────────── */
+.event-banner{
+  background:linear-gradient(135deg,var(--blue) 0%,#1a4fa0 100%);
+  border-radius:16px 16px 0 0;padding:22px 24px 18px;color:#fff;
+}
+.event-banner .cat{font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  opacity:.7;margin-bottom:6px;}
+.event-banner h3{font-size:clamp(16px,4vw,22px);margin:0 0 6px;line-height:1.2;}
+.event-banner .meta{font-size:12px;opacity:.85;display:flex;flex-wrap:wrap;gap:10px;}
+.event-banner .meta span{display:flex;align-items:center;gap:4px;}
+.fee-free{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+  color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;}
 
-forms_bp      = Blueprint('forms', __name__, url_prefix='/forms')
-BUILDER_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
+/* ── Form card ───────────────────────────────────────── */
+.form-card{
+  background:#fff;border-radius:0 0 16px 16px;
+  padding:24px 20px 28px;
+  box-shadow:0 32px 64px rgba(0,0,0,.4);
+}
+@media(min-width:480px){.form-card{padding:28px 28px 32px;}}
 
+/* ── Form meta ───────────────────────────────────────── */
+.form-title{font-size:18px;font-weight:700;color:var(--blue);margin:0 0 4px;}
+.form-desc {font-size:13px;color:#64748b;margin:0 0 20px;}
 
-# =========================================================
-# HELPERS
-# =========================================================
+/* ── Section headings (from heading field type) ──────── */
+.field-heading{
+  font-size:14px;font-weight:700;color:var(--blue);
+  border-left:3px solid var(--orange);padding-left:10px;
+  margin:24px 0 14px;
+}
+.field-paragraph{color:#64748b;font-size:13px;margin-bottom:12px;}
+.field-divider{border:none;border-top:1.5px solid #e2e8f0;margin:20px 0;}
 
-def _get_form(event_id: str) -> dict | None:
-    doc = db.collection('event_forms').document(event_id).get()
-    return doc.to_dict() if doc.exists else None
+/* ── Form groups ─────────────────────────────────────── */
+.form-group{margin-bottom:18px;}
+.form-group label{
+  display:block;font-size:13px;font-weight:600;
+  color:#334155;margin-bottom:5px;
+}
+.form-group label .req{color:#ef4444;margin-left:2px;}
+.help-text{font-size:11px;color:#94a3b8;margin-top:4px;}
 
+/* ── Inputs ──────────────────────────────────────────── */
+.form-control,.form-select{
+  width:100%;padding:11px 14px;font-size:14px;
+  font-family:'Inter',sans-serif;
+  border:1.5px solid #e2e8f0;border-radius:10px;
+  background:#f8fafc;transition:.15s;color:#1e293b;
+  -webkit-appearance:none;appearance:none;
+}
+.form-control:focus,.form-select:focus{
+  outline:none;border-color:var(--blue);background:#fff;
+  box-shadow:0 0 0 3px rgba(13,45,98,.1);
+}
+.form-control.error{border-color:#ef4444;background:#fef2f2;}
+textarea.form-control{resize:vertical;min-height:90px;}
 
-def _validate_submission(schema: dict, form_data: dict) -> list:
-    errors = []
-    for field in schema.get('fields', []):
-        fid      = field.get('id', '')
-        label    = field.get('label', fid)
-        required = field.get('required', False)
-        ftype    = field.get('type', 'text')
+/* ── Select arrow ────────────────────────────────────── */
+.select-wrap{position:relative;}
+.select-wrap::after{
+  content:'\f078';font-family:'Font Awesome 6 Free';font-weight:900;
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  color:#94a3b8;font-size:11px;pointer-events:none;
+}
+.select-wrap select{padding-right:36px;}
 
-        if ftype in ('heading', 'paragraph', 'divider'):
-            continue
+/* ── Radio / Checkbox groups ─────────────────────────── */
+.choice-list{display:flex;flex-direction:column;gap:8px;}
+.choice-item{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+  cursor:pointer;transition:.15s;user-select:none;
+}
+.choice-item:hover{border-color:var(--blue);background:#f8fafc;}
+.choice-item input{
+  width:18px;height:18px;accent-color:var(--orange);
+  flex-shrink:0;cursor:pointer;
+}
+.choice-item span{font-size:14px;color:#334155;}
+.choice-item:has(input:checked){
+  border-color:var(--orange);background:#fff8f4;
+}
+.choice-item:has(input:checked) span{color:var(--blue);font-weight:600;}
 
-        raw = form_data.get(fid)
-        if isinstance(raw, list):
-            value = raw
-        else:
-            value = str(raw or '').strip()
+/* ── Single checkbox ─────────────────────────────────── */
+.single-check{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+  cursor:pointer;transition:.15s;
+}
+.single-check:has(input:checked){border-color:var(--orange);background:#fff8f4;}
+.single-check input{width:18px;height:18px;accent-color:var(--orange);flex-shrink:0;}
+.single-check span{font-size:13px;color:#334155;}
 
-        if required:
-            if not value or value == []:
-                errors.append(f"'{label}' is required.")
-                continue
+/* ── Submit button ───────────────────────────────────── */
+.btn-submit{
+  width:100%;padding:14px;background:var(--blue);color:#fff;
+  border:none;border-radius:12px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:.2s;margin-top:8px;
+  font-family:'Poppins',sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-submit:hover{background:#1a4fa0;transform:translateY(-1px);}
+.btn-submit:active{transform:scale(.98);}
+.btn-submit:disabled{background:#94a3b8;cursor:not-allowed;transform:none;}
 
-        if ftype == 'email' and value:
-            if not re.match(r'^[^@]+@[^@]+\.[^@]+$', str(value)):
-                errors.append(f"'{label}' must be a valid email address.")
+/* ── Already registered ──────────────────────────────── */
+.already-card{
+  background:#fff;border-radius:16px;padding:40px 28px;
+  text-align:center;max-width:440px;width:100%;
+  box-shadow:0 32px 64px rgba(0,0,0,.4);
+}
 
-        if ftype == 'tel' and value:
-            digits = re.sub(r'\D', '', str(value))
-            if len(digits) < 10:
-                errors.append(f"'{label}' must be a valid phone number (min 10 digits).")
+/* ── Security note ───────────────────────────────────── */
+.security-note{
+  text-align:center;color:rgba(255,255,255,.5);
+  font-size:12px;margin-top:16px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
 
-        if ftype == 'number' and value:
-            try:
-                n = float(value)
-                if field.get('min') != '' and field.get('min') is not None:
-                    if n < float(field['min']):
-                        errors.append(f"'{label}' must be at least {field['min']}.")
-                if field.get('max') != '' and field.get('max') is not None:
-                    if n > float(field['max']):
-                        errors.append(f"'{label}' must be at most {field['max']}.")
-            except (ValueError, TypeError):
-                errors.append(f"'{label}' must be a number.")
+/* ── Mobile tweaks ───────────────────────────────────── */
+@media(max-width:400px){
+  .choice-item{padding:10px 12px;}
+  .form-control,.form-select{font-size:16px;} /* prevent iOS zoom */
+  .btn-submit{font-size:14px;padding:13px;}
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
 
-    return errors
+  <!-- Back -->
+  <a href="/event/{{ event.id }}" class="back-link">
+    <i class="fas fa-arrow-left"></i>Back to event
+  </a>
 
+  <!-- Flash -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+      <div class="flash flash-{{ cat }}">
+        <i class="fas fa-info-circle"></i>
+        <span>{{ msg | safe }}</span>
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
-def _extract_core(answers: dict) -> dict:
-    """
-    Pull the standard identity fields out of any form's answers dict.
-    Handles both standard field IDs and common synonyms.
-    """
-    def first(*keys):
-        for k in keys:
-            v = str(answers.get(k) or '').strip()
-            if v:
-                return v
-        return ''
+  {% if is_registered %}
+  <!-- ── Already registered ── -->
+  <div class="already-card">
+    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+    <h4 class="fw-bold">Already Registered!</h4>
+    <p class="text-muted">You have already registered for <strong>{{ event.title }}</strong>.</p>
+    <a href="/participant/dashboard"
+       class="btn btn-primary rounded-pill px-4 mt-2">
+      <i class="fas fa-ticket-alt me-2"></i>View My Tickets
+    </a>
+  </div>
 
-    return {
-        'email':     first('email', 'email_address'),
-        'full_name': first('full_name', 'name', 'participant_name'),
-        'phone':     first('phone', 'phone_number', 'mobile', 'contact'),
-        'usn':       first('usn', 'roll_number', 'roll_no', 'id_number'),
-        'team_name': first('team_name', 'team', 'group_name') or 'Individual',
+  {% else %}
+
+  <!-- ── Event banner ── -->
+  <div class="event-banner">
+    {% if event.get('category') %}
+    <div class="cat">{{ event.category }}</div>
+    {% endif %}
+    <h3>{{ event.title }}</h3>
+    <div class="meta">
+      {% if event.get('date') %}
+      <span><i class="fas fa-calendar-alt"></i>{{ event.date }}</span>
+      {% endif %}
+      {% if event.get('venue') %}
+      <span><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
+      {% endif %}
+      {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+      <span><i class="fas fa-rupee-sign"></i>{{ event.entry_fee }} entry fee</span>
+      {% else %}
+      <span class="fee-free"><i class="fas fa-star me-1"></i>Free event</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Registration form ── -->
+  <div class="form-card">
+
+    <h2 class="form-title">{{ schema.form_title or 'Registration Form' }}</h2>
+    {% if schema.get('form_desc') %}
+    <p class="form-desc">{{ schema.form_desc }}</p>
+    {% endif %}
+
+    <form method="POST" action="/forms/submit/{{ event.id }}"
+          id="reg-form" novalidate>
+
+      {% for field in schema.fields %}
+
+        {# ── Layout fields ── #}
+        {% if field.type == 'divider' %}
+          <hr class="field-divider">
+
+        {% elif field.type == 'heading' %}
+          <div class="field-heading">{{ field.label }}</div>
+
+        {% elif field.type == 'paragraph' %}
+          <p class="field-paragraph">{{ field.label }}</p>
+
+        {# ── Dropdown ── #}
+        {% elif field.type == 'select' %}
+        <div class="form-group">
+          <label for="{{ field.id }}">
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <div class="select-wrap">
+            <select class="form-select" id="{{ field.id }}" name="{{ field.id }}"
+                    {% if field.required %}required{% endif %}>
+              <option value="">{{ field.placeholder or 'Select an option…' }}</option>
+              {% for opt in field.options %}
+              <option value="{{ opt }}">{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        {# ── Multiple choice (radio) ── #}
+        {% elif field.type == 'radio' %}
+        <div class="form-group">
+          <label>
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <div class="choice-list mt-1">
+            {% for opt in field.options %}
+            <label class="choice-item">
+              <input type="radio" name="{{ field.id }}" value="{{ opt }}"
+                     {% if field.required %}required{% endif %}>
+              <span>{{ opt }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# ── Checkbox group ── #}
+        {% elif field.type == 'checkbox_group' %}
+        <div class="form-group">
+          <label>
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <div class="choice-list mt-1">
+            {% for opt in field.options %}
+            <label class="choice-item">
+              <input type="checkbox" name="{{ field.id }}" value="{{ opt }}">
+              <span>{{ opt }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# ── Single checkbox ── #}
+        {% elif field.type == 'checkbox' %}
+        <div class="form-group">
+          <label class="single-check">
+            <input type="checkbox" name="{{ field.id }}" value="yes"
+                   {% if field.required %}required{% endif %}>
+            <span>
+              {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+            </span>
+          </label>
+          {% if field.help_text %}<div class="help-text mt-1">{{ field.help_text }}</div>{% endif %}
+        </div>
+
+        {# ── Textarea ── #}
+        {% elif field.type == 'textarea' %}
+        <div class="form-group">
+          <label for="{{ field.id }}">
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <textarea class="form-control" id="{{ field.id }}" name="{{ field.id }}"
+                    placeholder="{{ field.placeholder }}"
+                    {% if field.required %}required{% endif %}></textarea>
+        </div>
+
+        {# ── All other inputs (text, email, tel, number, date, url) ── #}
+        {% else %}
+        <div class="form-group">
+          <label for="{{ field.id }}">
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <input type="{{ field.type }}"
+                 class="form-control"
+                 id="{{ field.id }}"
+                 name="{{ field.id }}"
+                 placeholder="{{ field.placeholder }}"
+                 {% if field.min is defined and field.min != '' %}min="{{ field.min }}"{% endif %}
+                 {% if field.max is defined and field.max != '' %}max="{{ field.max }}"{% endif %}
+                 {% if field.required %}required{% endif %}
+                 autocomplete="{{ 'email' if field.type == 'email' else 'tel' if field.type == 'tel' else 'off' }}"
+                 inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}">
+        </div>
+        {% endif %}
+
+      {% endfor %}
+
+      <!-- Submit -->
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <i class="fas fa-paper-plane"></i>
+        {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+          Continue to Payment — ₹{{ event.entry_fee }}
+        {% else %}
+          Register Now — Free
+        {% endif %}
+      </button>
+
+    </form>
+  </div>
+
+  <p class="security-note">
+    <i class="fas fa-lock"></i>
+    Your data is secure and used only for event management.
+  </p>
+
+  {% endif %}
+
+</div><!-- /page-wrap -->
+
+<script>
+// Prevent double-submit
+document.getElementById('reg-form') &&
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  // Client-side: mark required radio groups
+  let ok = true;
+  this.querySelectorAll('[data-required-radio]').forEach(function(grp) {
+    const name = grp.dataset.requiredRadio;
+    if(!document.querySelector('[name="'+name+'"]:checked')) {
+      grp.style.borderColor='#ef4444';
+      ok = false;
     }
+  });
+  if(!ok) { e.preventDefault(); return; }
 
+  const btn = document.getElementById('submit-btn');
+  if(btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+  }
+});
 
-def _simple_schema_fallback(is_team: bool = False) -> dict:
-    """Used only when event_forms doc is truly missing (should not happen post-wizard)."""
-    fields = [
-        {'id': 'full_name', 'type': 'text',  'label': 'Full Name',
-         'placeholder': 'Enter your full name', 'required': True,
-         'options': [], 'help_text': ''},
-        {'id': 'email',     'type': 'email', 'label': 'Email Address',
-         'placeholder': 'you@example.com',    'required': True,
-         'options': [], 'help_text': ''},
-        {'id': 'phone',     'type': 'tel',   'label': 'Phone Number',
-         'placeholder': '10-digit mobile',   'required': True,
-         'options': [], 'help_text': ''},
-        {'id': 'usn',       'type': 'text',  'label': 'USN / Roll Number',
-         'placeholder': 'e.g. 1SN21CS001',   'required': False,
-         'options': [], 'help_text': ''},
-    ]
-    if is_team:
-        fields.append({'id': 'team_name', 'type': 'text',
-                        'label': 'Team Name', 'placeholder': 'Leave blank if solo',
-                        'required': False, 'options': [], 'help_text': ''})
-    return {
-        'form_type': 'simple', 'form_title': 'Event Registration',
-        'form_desc': 'Fill in your details to register.', 'fields': fields
+// Highlight selected radio/checkbox visually for accessibility
+document.querySelectorAll('.choice-item input').forEach(function(inp) {
+  inp.addEventListener('change', function() {
+    if(this.type === 'radio') {
+      document.querySelectorAll('[name="'+this.name+'"]').forEach(function(r) {
+        r.closest('.choice-item').style.borderColor='';
+      });
     }
-
-
-# =========================================================
-# 1. FORM BUILDER PAGE  (edit after creation)
-# =========================================================
-@forms_bp.route('/builder/<event_id>')
-@login_required
-@role_required(BUILDER_ROLES)
-def builder(event_id):
-    event_doc = db.collection('events').document(event_id).get()
-    if not event_doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/coordinator/dashboard')
-
-    event       = event_doc.to_dict()
-    event['id'] = event_id
-    existing    = _get_form(event_id)
-
-    return render_template(
-        'coordinator/form_builder.html',
-        event=event,
-        existing_form=existing,
-        form_json=json.dumps(existing) if existing else 'null'
-    )
-
-
-# =========================================================
-# 2. SAVE FORM (AJAX — from builder or wizard)
-# =========================================================
-@forms_bp.route('/save/<event_id>', methods=['POST'])
-@login_required
-@role_required(BUILDER_ROLES)
-def save_form(event_id):
-    try:
-        payload    = request.get_json(force=True) or {}
-        form_type  = payload.get('form_type', 'simple')
-        fields_raw = payload.get('fields', [])
-        form_title = payload.get('form_title', 'Registration Form').strip()
-        form_desc  = payload.get('form_desc', '').strip()
-
-        clean_fields = []
-        for i, f in enumerate(fields_raw):
-            clean_fields.append({
-                'id':          f.get('id') or f"field_{i}",
-                'type':        f.get('type', 'text'),
-                'label':       f.get('label', f'Field {i+1}'),
-                'placeholder': f.get('placeholder', ''),
-                'required':    bool(f.get('required', False)),
-                'options':     f.get('options', []),
-                'min':         f.get('min', ''),
-                'max':         f.get('max', ''),
-                'help_text':   f.get('help_text', ''),
-            })
-
-        schema = {
-            'event_id':   event_id,
-            'form_type':  form_type,
-            'form_title': form_title,
-            'form_desc':  form_desc,
-            'fields':     clean_fields,
-            'created_by': session.get('user_id'),
-            'updated_at': datetime.datetime.utcnow().isoformat(),
-        }
-
-        db.collection('event_forms').document(event_id).set(schema)
-        db.collection('events').document(event_id).update({
-            'has_custom_form': True,
-            'form_type':       form_type
-        })
-
-        log_action(db, "FORM_SAVED",
-                   f"Event {event_id}: {form_type} form saved by {session.get('user_id')}")
-        return jsonify({'status': 'ok', 'message': 'Form saved!'})
-
-    except Exception as exc:
-        return jsonify({'status': 'error', 'message': str(exc)}), 500
-
-
-# =========================================================
-# 3. PUBLIC REGISTRATION PAGE
-# =========================================================
-@forms_bp.route('/register/<event_id>')
-def registration_page(event_id):
-    # Fetch event
-    event_doc = db.collection('events').document(event_id).get()
-    if not event_doc.exists:
-        return render_template('404.html'), 404
-
-    event       = event_doc.to_dict()
-    event['id'] = event_id
-
-    # Deadline check
-    deadline = event.get('deadline') or event.get('reg_deadline', '')
-    today    = datetime.datetime.now().strftime('%Y-%m-%d')
-    if deadline and today > deadline:
-        return render_template('public/registration_closed.html', event=event)
-
-    # Capacity check
-    max_cap = safe_int((event.get('limits') or {}).get('max_participants', 0))
-    if max_cap and event.get('registration_count', 0) >= max_cap:
-        return render_template('public/registration_closed.html',
-                               event=event, reason='full')
-
-    # Already registered?
-    is_registered = False
-    if session.get('user_id'):
-        q = (db.collection('registrations')
-               .where('event_id', '==', event_id)
-               .where('lead_email', '==', session['user_id'])
-               .limit(1).stream())
-        is_registered = any(q)
-
-    # Load schema — always exists after wizard, fallback just in case
-    schema = _get_form(event_id) or _simple_schema_fallback(
-        is_team=event.get('is_team_event', False)
-    )
-
-    return render_template(
-        'public/registration_form.html',
-        event=event,
-        schema=schema,
-        is_registered=is_registered
-    )
-
-
-# =========================================================
-# 4. SUBMIT FORM
-# =========================================================
-@forms_bp.route('/submit/<event_id>', methods=['POST'])
-def submit_form(event_id):
-    try:
-        event_doc = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            flash("Event not found.", "danger")
-            return redirect('/')
-        event_data = event_doc.to_dict()
-
-        schema = _get_form(event_id) or {
-            'fields': _simple_schema_fallback(
-                event_data.get('is_team_event', False))['fields']
-        }
-
-        # Collect all answers
-        answers = {}
-        for field in schema.get('fields', []):
-            fid = field.get('id', '')
-            if not fid or field.get('type') in ('heading', 'paragraph', 'divider'):
-                continue
-            if field['type'] == 'checkbox_group':
-                answers[fid] = request.form.getlist(fid)
-            else:
-                answers[fid] = request.form.get(fid, '').strip()
-
-        # Validate
-        errors = _validate_submission(schema, answers)
-        if errors:
-            for err in errors:
-                flash(err, 'danger')
-            return redirect(f'/forms/register/{event_id}')
-
-        # Extract core fields
-        core = _extract_core(answers)
-        email     = core['email'].lower()
-        full_name = core['full_name']
-        phone     = core['phone']
-        usn       = core['usn'].upper()
-        team_name = core['team_name']
-
-        if not email or not full_name:
-            flash("Name and email are required.", "warning")
-            return redirect(f'/forms/register/{event_id}')
-
-        # Duplicate check
-        existing = list(
-            db.collection('registrations')
-              .where('event_id', '==', event_id)
-              .where('lead_email', '==', email)
-              .limit(1).stream()
-        )
-        if existing:
-            flash("🚫 You have already registered for this event.", "warning")
-            return redirect('/')
-
-        # Auto-create account
-        user_ref     = db.collection('users').document(email)
-        is_new_user  = not user_ref.get().exists
-        raw_password = ''
-        if is_new_user:
-            alphabet     = string.ascii_letters + string.digits
-            raw_password = ''.join(secrets.choice(alphabet) for _ in range(10))
-            user_ref.set({
-                'email':               email,
-                'name':                full_name,
-                'role':                'Student',
-                'category':            'General',
-                'phone':               phone,
-                'password':            generate_password_hash(raw_password),
-                'created_at':          datetime.datetime.now().strftime('%Y-%m-%d'),
-                'needs_password_reset': True
-            })
-            flash(
-                f"🆕 Account created! Temporary password: "
-                f"<strong>{raw_password}</strong> (also emailed to you).",
-                "info"
-            )
-
-        # Build registration
-        reg_id   = f"REG-{int(time.time() * 1000)}"
-        reg_data = {
-            'reg_id':          reg_id,
-            'event_id':        event_id,
-            'event_title':     event_data.get('title'),
-            'lead_email':      email,
-            'lead_name':       full_name,
-            'lead_usn':        usn,
-            'lead_phone':      phone,
-            'team_name':       team_name,
-            'members':         [{'role': 'Lead', 'name': full_name,
-                                  'email': email, 'usn': usn, 'phone': phone}],
-            'member_count':    1,
-            'attendance':      'Pending',
-            'registered_at':   datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'is_eliminated':   False,
-            'current_round':   1,
-            'form_answers':    answers,
-            'form_type':       schema.get('form_type', 'simple'),
-        }
-
-        # Save submission analytics separately
-        db.collection('form_submissions').add({
-            'event_id':     event_id,
-            'reg_id':       reg_id,
-            'email':        email,
-            'name':         full_name,
-            'answers':      answers,
-            'submitted_at': datetime.datetime.utcnow().isoformat(),
-        })
-
-        # Free vs paid
-        fee = safe_int(event_data.get('entry_fee', 0))
-        if fee > 0:
-            reg_data.update({
-                'status':         'Pending Payment',
-                'payment_status': 'Pending',
-                'amount_paid':    0
-            })
-            session['pending_reg_data'] = reg_data
-            return redirect(f'/payment/checkout/{event_id}')
-
-        reg_data.update({
-            'status':         'Confirmed',
-            'payment_status': 'Free',
-            'amount_paid':    0
-        })
-        db.collection('registrations').document(reg_id).set(reg_data)
-        db.collection('events').document(event_id).update({
-            'registration_count': event_data.get('registration_count', 0) + 1
-        })
-
-        # Notifications
-        send_ticket_email(email, full_name, event_data.get('title', ''),
-                          reg_id, is_new_user=is_new_user,
-                          raw_password=raw_password)
-        if phone and WA_ENABLED:
-            try:
-                send_ticket_whatsapp(
-                    phone=phone, name=full_name,
-                    event_title=event_data.get('title', ''),
-                    reg_id=reg_id,
-                    event_date=event_data.get('date', ''),
-                    venue=event_data.get('venue', '')
-                )
-            except Exception:
-                pass
-
-        log_action(db, "FORM_SUBMISSION",
-                   f"{email} registered for event {event_id} via form")
-
-        # Auto-login before redirecting to ticket so @login_required passes
-        session['user_id']  = email
-        session['name']     = full_name
-        session['role']     = 'Student'
-        session['category'] = 'General'
-
-        return redirect(f'/ticket/{reg_id}')
-
-    except Exception as exc:
-        import traceback; traceback.print_exc()
-        flash(f"Submission failed: {exc}", "danger")
-        return redirect(f'/forms/register/{event_id}')
-
-
-# =========================================================
-# 5. VIEW RESPONSES
-# =========================================================
-@forms_bp.route('/responses/<event_id>')
-@login_required
-@role_required(BUILDER_ROLES)
-def view_responses(event_id):
-    event_doc = db.collection('events').document(event_id).get()
-    if not event_doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/coordinator/dashboard')
-
-    event       = event_doc.to_dict()
-    event['id'] = event_id
-    schema      = _get_form(event_id) or {'fields': []}
-
-    submissions = []
-    for doc in (db.collection('form_submissions')
-                  .where('event_id', '==', event_id).stream()):
-        d           = doc.to_dict()
-        d['doc_id'] = doc.id
-        submissions.append(d)
-
-    submissions.sort(key=lambda x: x.get('submitted_at', ''), reverse=True)
-
-    return render_template(
-        'coordinator/form_responses.html',
-        event=event, schema=schema, submissions=submissions
-    )
-
-
-# =========================================================
-# 6. EXPORT CSV
-# =========================================================
-@forms_bp.route('/responses/export/<event_id>')
-@login_required
-@role_required(BUILDER_ROLES)
-def export_responses(event_id):
-    event_doc = db.collection('events').document(event_id).get()
-    event     = event_doc.to_dict() if event_doc.exists else {}
-    schema    = _get_form(event_id) or {'fields': []}
-    fields    = schema.get('fields', [])
-
-    submissions = [doc.to_dict() for doc in
-                   db.collection('form_submissions')
-                     .where('event_id', '==', event_id).stream()]
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    header = ['Submitted At', 'Name', 'Email']
-    header += [f.get('label', f['id']) for f in fields
-               if f['id'] not in ('full_name', 'name', 'email')
-               and f.get('type') not in ('heading', 'paragraph', 'divider')]
-    writer.writerow(header)
-
-    for s in submissions:
-        answers = s.get('answers', {})
-        row     = [s.get('submitted_at', ''), s.get('name', ''), s.get('email', '')]
-        for f in fields:
-            if (f['id'] in ('full_name', 'name', 'email') or
-                    f.get('type') in ('heading', 'paragraph', 'divider')):
-                continue
-            val = answers.get(f['id'], '')
-            row.append(', '.join(val) if isinstance(val, list) else val)
-        writer.writerow(row)
-
-    title = event.get('title', 'Event').replace(' ', '_')
-    return Response(
-        output.getvalue(), mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename={title}_responses.csv'}
-    )
-
-
-# =========================================================
-# 7. SCHEMA JSON API  (used by form_builder.html JS)
-# =========================================================
-@forms_bp.route('/schema/<event_id>')
-def get_schema(event_id):
-    schema = _get_form(event_id)
-    if not schema:
-        event_doc = db.collection('events').document(event_id).get()
-        is_team   = event_doc.to_dict().get('is_team_event', False) if event_doc.exists else False
-        return jsonify(_simple_schema_fallback(is_team))
-    return jsonify(schema)
+    this.closest('.choice-item').style.borderColor='var(--orange)';
+  });
+});
+</script>
+</body>
+</html>

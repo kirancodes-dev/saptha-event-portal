@@ -1,24 +1,32 @@
 import datetime
 import logging
-
 from flask import Blueprint, current_app, jsonify, request
 from google import genai
 from google.cloud.firestore_v1.base_query import FieldFilter
-
 from models import db
 
 logger     = logging.getLogger(__name__)
 chatbot_bp = Blueprint('chatbot', __name__, url_prefix='/chatbot')
 
-_client = None   # initialised lazily so we always read the live config value
+_client = None  # initialised lazily so we always read the live config value
 
 
 def _get_client():
     global _client
     if _client is None:
+        # =====================================================
+        # PASTE YOUR GEMINI API KEY IN .env as:
+        #   GEMINI_API_KEY=your_key_here
+        #
+        # Get it free from: https://aistudio.google.com/app/apikey
+        # Then add GEMINI_API_KEY to Railway Variables too.
+        # =====================================================
         api_key = current_app.config.get('GEMINI_API_KEY', '')
         if not api_key:
-            raise RuntimeError("GEMINI_API_KEY not set in config / environment.")
+            raise RuntimeError(
+                "GEMINI_API_KEY not set. "
+                "Add it to your .env file and Railway Variables."
+            )
         _client = genai.Client(api_key=api_key)
     return _client
 
@@ -28,17 +36,18 @@ def ask():
     try:
         data         = request.get_json() or {}
         user_message = data.get('message', '').strip()
-
         if not user_message:
             return jsonify({'reply': "I didn't catch that — please ask again!"})
 
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
-        # Build live event context
-        events_ref = db.collection('events') \
-                       .where(filter=FieldFilter('status', '==', 'active')) \
-                       .stream()
-        context   = f"Today's date: {current_date}\n\nActive events open for registration:\n"
+        # Build live event context from Firestore
+        events_ref = (
+            db.collection('events')
+              .where(filter=FieldFilter('status', '==', 'active'))
+              .stream()
+        )
+        context    = f"Today's date: {current_date}\n\nActive events open for registration:\n"
         has_events = False
 
         for e in events_ref:

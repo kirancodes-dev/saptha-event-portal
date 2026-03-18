@@ -33,10 +33,19 @@ limiter = Limiter(
 
 # =========================================================
 # FIREBASE
+# Reads credentials from environment variable FIREBASE_CREDENTIALS (JSON string)
+# Falls back to serviceAccountKey.json for local development
 # =========================================================
 if not firebase_admin._apps:
-    key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-    cred = credentials.Certificate(key_path)
+    firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
+    if firebase_creds_json:
+        # Railway / production — credentials stored as env var JSON string
+        cred_dict = json.loads(firebase_creds_json)
+        cred = credentials.Certificate(cred_dict)
+    else:
+        # Local development — use the JSON file
+        key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
+        cred = credentials.Certificate(key_path)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -97,12 +106,10 @@ def favicon():
     except Exception:
         return Response(status=204)
 
-# Suppress Cloudflare email-decode script 404 noise in dev logs
 @app.route('/cdn-cgi/<path:subpath>')
 def cdn_cgi_suppress(subpath):
     return Response(status=204)
 
-# Suppress Chrome DevTools / browser well-known 404 noise
 @app.route('/.well-known/<path:subpath>')
 def well_known_suppress(subpath):
     return Response(status=204)
@@ -112,7 +119,6 @@ def well_known_suppress(subpath):
 # =========================================================
 @app.route('/')
 def home():
-    # Logged-in users go straight to their dashboard
     if 'user_id' in session:
         role = session.get('role', '')
         dest = ROLE_REDIRECTS.get(role, '/')
@@ -176,7 +182,6 @@ def event_details(event_id):
         event       = doc.to_dict()
         event['id'] = event_id
 
-        # Provide safe defaults for every field the template might access
         event.setdefault('title',              'Event')
         event.setdefault('description',        '')
         event.setdefault('overview',           '')
@@ -195,7 +200,6 @@ def event_details(event_id):
         event.setdefault('status',             'active')
         event.setdefault('organizer',          event.get('created_by', 'SNPSU'))
         event.setdefault('staff',              [])
-        # Aliases — some templates use different field names
         event.setdefault('fees',               event.get('entry_fee', 0))
         event.setdefault('fee',                event.get('entry_fee', 0))
         event.setdefault('price',              event.get('entry_fee', 0))
@@ -303,6 +307,5 @@ def server_error(e):
 # =========================================================
 if __name__ == '__main__':
     debug_mode = app.config.get('FLASK_ENV', 'development') != 'production'
-    # Start the 24-hour reminder scheduler (background thread, no UI)
     init_scheduler(app)
     app.run(debug=debug_mode, host='0.0.0.0', port=5000, use_reloader=False)

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate | {{ student_name }}</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            background: #e2e8f0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            font-family: 'Montserrat', sans-serif; 
+        }
+        
+        .cert-container { 
+            background: white; 
+            width: 1000px; 
+            height: 700px; 
+            padding: 50px; 
+            box-sizing: border-box;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
+            position: relative; 
+            border: 15px solid #0d2d62; 
+            outline: 4px solid #f37021; 
+            outline-offset: -25px; 
+            text-align: center; 
+        }
+
+        .logo-area {
+            font-size: 50px;
+            color: #f37021;
+            margin-bottom: 10px;
+            margin-top: 10px;
+        }
+
+        .univ-name { 
+            font-family: 'Cinzel', serif; 
+            font-size: 36px; 
+            color: #0d2d62; 
+            font-weight: 800; 
+            letter-spacing: 2px;
+        }
+        .univ-sub { 
+            color: #f37021; 
+            font-weight: 600; 
+            letter-spacing: 4px; 
+            margin-bottom: 50px; 
+            font-size: 14px;
+        }
+        
+        .cert-title { 
+            font-family: 'Cinzel', serif; 
+            font-size: 52px; 
+            color: #1e293b; 
+            margin-bottom: 30px; 
+            text-transform: uppercase; 
+        }
+        
+        .presented-to { 
+            font-size: 20px; 
+            color: #64748b; 
+            margin-bottom: 20px; 
+            font-style: italic;
+        }
+        
+        .student-name { 
+            font-family: 'Cinzel', serif; 
+            font-size: 48px; 
+            color: #f37021; 
+            border-bottom: 2px solid #cbd5e1; 
+            display: inline-block; 
+            padding: 0 50px 10px; 
+            margin-bottom: 30px; 
+            font-weight: 800; 
+        }
+        
+        .cert-body { 
+            font-size: 20px; 
+            color: #475569; 
+            line-height: 1.8; 
+            padding: 0 100px; 
+            margin-bottom: 60px; 
+        }
+        .cert-body strong {
+            color: #0d2d62;
+            font-size: 24px;
+        }
+        
+        .footer-grid { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 0 100px; 
+            margin-top: 40px; 
+        }
+        
+        .signature { 
+            border-top: 2px solid #0d2d62; 
+            width: 220px; 
+            padding-top: 10px; 
+            font-weight: 600; 
+            color: #0d2d62; 
+            font-family: 'Cinzel', serif;
+            font-size: 18px;
+        }
+
+        /* The floating print button */
+        .print-btn { 
+            position: fixed; 
+            bottom: 40px; 
+            right: 40px; 
+            background: #0d2d62; 
+            color: white; 
+            padding: 15px 30px; 
+            border-radius: 30px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            box-shadow: 0 8px 20px rgba(13, 45, 98, 0.4); 
+            transition: 0.3s;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .print-btn:hover {
+            transform: translateY(-5px);
+            background: #0a224a;
+        }
+
+        /* When the user hits Ctrl+P to print, hide the background and buttons! */
+        @media print {
+            body { background: white; }
+            .cert-container { box-shadow: none; border: 15px solid #0d2d62; margin: 0; }
+            .print-btn { display: none; }
+            @page { size: landscape; margin: 0mm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cert-container">
+        
+        <div class="univ-name">SAPTHAGIRI NPS UNIVERSITY</div>
+        <div class="univ-sub">OFFICIAL EVENT REGISTRY</div>
+        
+        <div class="cert-title">Certificate of Participation</div>
+        
+        <div class="presented-to">This is proudly presented to</div>
+        
+        <div class="student-name">{{ student_name }}</div>
+        
+        <div class="cert-body">
+            For their active and outstanding participation in the prestigious university event<br>
+            <strong>{{ event.title }}</strong><br>
+            held on {{ event.date }} at {{ event.venue }}.
+        </div>
+        
+        <div class="footer-grid">
+            <div class="signature">Event Coordinator</div>
+            <div class="signature">Division SPOC</div>
+        </div>
+        
+    </div>
+
+    <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
+
+</body>
+</html>

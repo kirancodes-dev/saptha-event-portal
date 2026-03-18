@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Verify | SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: background 0.3s;
+        }
+        body.success  { background: #052e16; }
+        body.already  { background: #1c1917; }
+        body.unpaid   { background: #431407; }
+        body.invalid  { background: #1e1b4b; }
+
+        .result-card {
+            width: 100%;
+            max-width: 400px;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+        }
+
+        /* ---- Status strip ---- */
+        .status-strip {
+            padding: 32px 24px 24px;
+            text-align: center;
+        }
+        .status-strip.success  { background: #16a34a; }
+        .status-strip.already  { background: #64748b; }
+        .status-strip.unpaid   { background: #dc2626; }
+        .status-strip.invalid  { background: #7c3aed; }
+
+        .status-icon {
+            font-size: 56px;
+            color: white;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .status-heading {
+            font-size: 26px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 4px;
+        }
+        .status-sub {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* ---- Details ---- */
+        .detail-body {
+            padding: 20px 24px 24px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 9px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .detail-value { font-weight: 600; color: #1e293b; text-align: right; max-width: 60%; }
+
+        /* ---- Members ---- */
+        .members-section {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-top: 12px;
+        }
+        .members-title {
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        .member-item {
+            font-size: 13px;
+            color: #334155;
+            padding: 3px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .usn { font-family: monospace; font-size: 12px; color: #64748b; }
+
+        /* ---- Actions ---- */
+        .action-row {
+            padding: 0 24px 24px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-scan-again {
+            flex: 1;
+            background: #0d2d62;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+            transition: 0.2s;
+        }
+        .btn-scan-again:hover { background: #1a4fa0; color: white; }
+        .btn-dashboard {
+            flex: 1;
+            background: #f1f5f9;
+            color: #334155;
+            border: none;
+            padding: 12px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+            transition: 0.2s;
+        }
+        .btn-dashboard:hover { background: #e2e8f0; color: #1e293b; }
+
+        /* ---- Auto-advance timer ---- */
+        .timer-bar-wrap {
+            height: 4px;
+            background: #e2e8f0;
+            margin: 0 24px 16px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .timer-bar {
+            height: 100%;
+            background: #16a34a;
+            border-radius: 2px;
+            width: 100%;
+            transition: width linear;
+        }
+    </style>
+</head>
+<body class="{{ 'success' if status == 'success' else 'already' if status == 'already_in' else 'unpaid' if status == 'unpaid' else 'invalid' }}">
+
+    <div class="result-card">
+
+        <!-- Status strip -->
+        <div class="status-strip {{ 'success' if status == 'success' else 'already' if status == 'already_in' else 'unpaid' if status == 'unpaid' else 'invalid' }}">
+            {% if status == 'success' %}
+                <i class="fas fa-check-circle status-icon"></i>
+                <div class="status-heading">Entry Granted ✓</div>
+                <div class="status-sub">Attendance marked automatically</div>
+            {% elif status == 'already_in' %}
+                <i class="fas fa-user-check status-icon"></i>
+                <div class="status-heading">Already Checked In</div>
+                <div class="status-sub">This ticket was already scanned</div>
+            {% elif status == 'unpaid' %}
+                <i class="fas fa-times-circle status-icon"></i>
+                <div class="status-heading">Payment Pending</div>
+                <div class="status-sub">Entry not allowed until payment is confirmed</div>
+            {% else %}
+                <i class="fas fa-ban status-icon"></i>
+                <div class="status-heading">Invalid Ticket</div>
+                <div class="status-sub">This QR code is not recognised</div>
+            {% endif %}
+        </div>
+
+        <!-- Details (only shown when reg is valid) -->
+        {% if reg %}
+        <div class="detail-body">
+            <div class="detail-row">
+                <span class="detail-label">Name</span>
+                <span class="detail-value">{{ reg.get('lead_name', 'N/A') }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Team</span>
+                <span class="detail-value">{{ reg.get('team_name', 'Individual') }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Event</span>
+                <span class="detail-value">{{ event.get('title', 'N/A') if event else 'N/A' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Ticket ID</span>
+                <span class="detail-value" style="font-family:monospace;">{{ reg.get('reg_id', 'N/A') }}</span>
+            </div>
+            {% if reg.get('checkin_time') %}
+            <div class="detail-row">
+                <span class="detail-label">Check-in Time</span>
+                <span class="detail-value">{{ reg.get('checkin_time') }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Members -->
+            {% if reg.get('members') and reg.members|length > 1 %}
+            <div class="members-section">
+                <div class="members-title">{{ reg.members|length }} team members</div>
+                {% for m in reg.members %}
+                <div class="member-item">
+                    <span>{{ m.name }}</span>
+                    <span class="usn">{{ m.get('usn', '') }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="detail-body" style="text-align:center;padding:24px;color:#64748b;">
+            No registration data found for this QR code.
+        </div>
+        {% endif %}
+
+        <!-- Timer bar (only on success — auto-closes after 5s) -->
+        {% if status == 'success' %}
+        <div class="timer-bar-wrap">
+            <div class="timer-bar" id="timer-bar"></div>
+        </div>
+        {% endif %}
+
+        <!-- Action buttons -->
+        <div class="action-row">
+            <a href="javascript:history.back()" class="btn-scan-again">
+                <i class="fas fa-qrcode me-1"></i> Scan Next
+            </a>
+            <a href="/coordinator/dashboard" class="btn-dashboard">
+                Dashboard
+            </a>
+        </div>
+
+    </div>
+
+    <script>
+        {% if status == 'success' %}
+        // Auto-shrink timer bar over 5 seconds, then go back to scanner
+        const bar = document.getElementById('timer-bar');
+        const duration = 5000;
+        const start = Date.now();
+        function tick() {
+            const elapsed = Date.now() - start;
+            const pct = Math.max(0, 100 - (elapsed / duration * 100));
+            bar.style.width = pct + '%';
+            if (elapsed < duration) {
+                requestAnimationFrame(tick);
+            } else {
+                history.back();
+            }
+        }
+        requestAnimationFrame(tick);
+        {% endif %}
+    </script>
+
+</body>
+</html>

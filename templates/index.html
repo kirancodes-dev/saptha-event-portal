@@ -1,490 +1,698 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SapthaEvent | Sapthagiri NPS University</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        /* --- SNPSU OFFICIAL BRAND COLORS --- */
-        :root { 
-            --snpsu-blue: #0d2d62;       
-            --snpsu-blue-hover: #0a224a; 
-            --snpsu-orange: #f37021;     
-            --snpsu-orange-hover: #d95e1a;
-            --bg-light: #f8f9fa;         
-            --text-dark: #1e293b;
-            --text-muted: #64748b;
-        }
-        
-        body { 
-            background-color: var(--bg-light); 
-            color: var(--text-dark); 
-            font-family: 'Inter', sans-serif; 
-            overflow-x: hidden;
-            scroll-behavior: smooth;
-        }
-        
-        h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d2d62">
+<title>SapthaEvent | Sapthagiri NPS University</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;}
+*{box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f8f9fa;margin:0;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--orange);border-radius:3px;}
 
-        /* --- NAVBAR --- */
-        .navbar { background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 15px 0; transition: all 0.3s ease; }
-        .logo-icon { color: var(--snpsu-orange); font-size: 2rem; }
-        .logo-text span { display: block; line-height: 1.1; }
-        .logo-title { color: var(--snpsu-blue); font-size: 1.3rem; font-weight: 800; letter-spacing: 0.5px; }
-        .logo-subtitle { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 2px; }
-        .navbar-toggler { border: none; color: var(--snpsu-blue); }
-        .navbar-toggler:focus { box-shadow: none; }
+/* ── TICKER ─────────────────────────────────── */
+.ticker-bar{background:#071929;padding:8px 0;overflow:hidden;white-space:nowrap;}
+.ticker-track{display:inline-flex;gap:64px;animation:tickMove 32s linear infinite;}
+.ticker-track:hover{animation-play-state:paused;}
+.ticker-item{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.78);font-family:'Inter',sans-serif;}
+.ticker-item i{color:var(--orange);font-size:11px;}
+@keyframes tickMove{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
-        /* --- BUTTONS --- */
-        .btn-snpsu-blue { background-color: var(--snpsu-blue); color: white; border: none; font-weight: 600; border-radius: 8px; transition: 0.3s; }
-        .btn-snpsu-blue:hover { background-color: var(--snpsu-blue-hover); color: white; transform: translateY(-2px); }
-        .btn-snpsu-orange { background-color: var(--snpsu-orange); color: white; border: none; font-weight: 600; border-radius: 8px; transition: 0.3s; }
-        .btn-snpsu-orange:hover { background-color: var(--snpsu-orange-hover); color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(243, 112, 33, 0.3); }
-        .btn-outline-snpsu { border: 2px solid var(--snpsu-blue); color: var(--snpsu-blue); font-weight: 600; border-radius: 8px; transition: 0.3s; }
-        .btn-outline-snpsu:hover { background-color: var(--snpsu-blue); color: white; }
+/* ── NAVBAR ──────────────────────────────────── */
+.snav{background:var(--blue);position:sticky;top:0;z-index:1050;box-shadow:0 2px 10px rgba(0,0,0,.25);}
+.snav .navbar-brand{display:flex;align-items:center;gap:10px;text-decoration:none;padding:10px 0;}
+.nav-logo-sq{width:40px;height:40px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;flex-shrink:0;}
+.brand-n{font-family:'Poppins',sans-serif;font-weight:700;font-size:17px;color:#fff;line-height:1.1;display:block;}
+.brand-s{font-size:9px;color:rgba(255,255,255,.48);letter-spacing:1.2px;text-transform:uppercase;display:block;}
+.snav .nav-link{color:rgba(255,255,255,.8)!important;font-size:13.5px;font-weight:500;padding:7px 13px!important;border-radius:7px;transition:.15s;}
+.snav .nav-link:hover{color:#fff!important;background:rgba(255,255,255,.1);}
+.snav .btn-login{background:var(--orange)!important;color:#fff!important;font-weight:600!important;padding:7px 20px!important;border-radius:8px!important;transition:.15s!important;}
+.snav .btn-login:hover{background:#d95f0f!important;}
+.navbar-toggler{border:none;outline:none;color:#fff;font-size:20px;padding:4px 8px;}
+.navbar-toggler:focus{box-shadow:none;}
+.snav .navbar-collapse{background:var(--blue);}
 
-        /* --- HERO CAROUSEL --- */
-        .hero-carousel-wrapper {
-            position: relative;
-            height: 90vh; /* Takes up 90% of screen height */
-            min-height: 600px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        
-        .carousel, .carousel-inner, .carousel-item {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1;
-        }
-        
-        /* Transparent overlay so the real images pop clearly */
-        .slide-bg {
-            width: 100%; height: 100%;
-            background-size: cover; background-position: center;
-        }
-        .slide-1 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://media.collegedekho.com/media/img/institute/crawled_images/None/view-01_1_-_Photo.jpg?width=1080'); }
-        .slide-2 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0001_WhatsApp-Image-2024-11-12-at-11.16.19-AM-1024x731.jpg'); }
-        .slide-3 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0000_WhatsApp-Image-2024-11-12-at-11.16.18-AM-1024x731.jpg'); }
-        .slide-4 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0003_SAPTHAGIRI-UNIVERSITY-A-BLOCK-reception-AREA_r27-1024x731.jpg'); }
-        .slide-5 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0005_View-1-1024x731.jpg'); }
-        .slide-6 { background-image: linear-gradient(rgba(13, 45, 98, 0.6), rgba(13, 45, 98, 0.7)), url('https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0008_SAPTHAGIRI-UNIVERSITY-AMPHITHEATRE-1k-1024x731.jpg'); }
+/* ── HERO CAROUSEL ───────────────────────────── */
+.hero-car{position:relative;}
+.hero-car .carousel-item{height:86vh;min-height:440px;max-height:720px;position:relative;}
+.hero-car .carousel-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.hero-car .carousel-item::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(7,25,41,.6) 0%,rgba(7,25,41,.4) 45%,rgba(7,25,41,.75) 100%);
+}
+.hero-car .carousel-caption{
+  position:absolute;bottom:0;left:0;right:0;top:0;
+  display:flex!important;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px 24px;text-align:center;z-index:5;
+}
+.h-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(243,112,33,.18);border:1px solid rgba(243,112,33,.4);color:#ffb347;font-size:11.5px;font-weight:600;padding:5px 16px;border-radius:100px;margin-bottom:14px;letter-spacing:.5px;}
+.h-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.h-title{font-family:'Poppins',sans-serif;font-size:clamp(26px,5.2vw,58px);font-weight:800;color:#fff;line-height:1.08;margin-bottom:12px;text-shadow:0 2px 16px rgba(0,0,0,.35);}
+.h-title .accent{color:var(--orange);}
+.h-desc{font-size:clamp(13.5px,1.5vw,16.5px);color:rgba(255,255,255,.82);margin-bottom:24px;max-width:560px;line-height:1.65;font-family:'Inter',sans-serif;}
+.h-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.h-btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--orange);color:#fff;font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;padding:10px 26px;border-radius:8px;text-decoration:none;border:none;cursor:pointer;transition:.18s;}
+.h-btn-primary:hover{background:#d95f0f;color:#fff;text-decoration:none;}
+.h-btn-outline{display:inline-flex;align-items:center;gap:8px;background:transparent;color:#fff;font-family:'Poppins',sans-serif;font-size:14px;font-weight:500;padding:10px 26px;border-radius:8px;text-decoration:none;border:1.5px solid rgba(255,255,255,.45);transition:.18s;}
+.h-btn-outline:hover{background:rgba(255,255,255,.1);color:#fff;text-decoration:none;}
+.h-stats{display:flex;gap:clamp(16px,3.5vw,44px);justify-content:center;margin-top:28px;}
+.h-stat{text-align:center;border-left:2px solid rgba(243,112,33,.35);padding-left:12px;}
+.h-stat .snum{font-family:'Poppins',sans-serif;font-size:clamp(18px,2.8vw,28px);font-weight:800;color:var(--orange);line-height:1;}
+.h-stat .slbl{font-size:10.5px;color:rgba(255,255,255,.55);margin-top:2px;letter-spacing:.3px;}
+.carousel-indicators{bottom:20px!important;}
+.carousel-indicators [data-bs-target]{width:8px;height:8px;border-radius:50%!important;border:none!important;opacity:.45;margin:0 4px;}
+.carousel-indicators .active{opacity:1;background:var(--orange)!important;}
+.carousel-control-prev,.carousel-control-next{width:44px;z-index:6;}
+.carousel-control-prev-icon,.carousel-control-next-icon{filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));}
 
-        .hero-content {
-            position: relative;
-            z-index: 2; /* Puts text on top of slider */
-            color: white;
-            text-align: center;
-            padding: 0 20px;
-        }
-        .hero-title { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; margin-bottom: 20px; text-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .hero-title span { color: var(--snpsu-orange); }
-        .hero-subtitle { font-size: 1.2rem; color: #e2e8f0; max-width: 750px; margin: 0 auto 40px; line-height: 1.6; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+/* ── STATS BAND ──────────────────────────────── */
+.sband{background:var(--blue);padding:0;}
+.sband-row{display:flex;flex-wrap:wrap;}
+.sband-item{flex:1;min-width:140px;display:flex;align-items:center;gap:12px;padding:16px 20px;border-right:1px solid rgba(255,255,255,.1);justify-content:center;}
+.sband-item:last-child{border-right:none;}
+.sband-ico{width:38px;height:38px;border-radius:9px;background:rgba(243,112,33,.16);display:flex;align-items:center;justify-content:center;color:var(--orange);font-size:16px;flex-shrink:0;}
+.sband-n{font-family:'Poppins',sans-serif;font-size:19px;font-weight:800;color:#fff;line-height:1;}
+.sband-l{font-size:11px;color:rgba(255,255,255,.52);}
 
-        /* --- EVENT CARDS --- */
-        .event-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: all 0.3s ease; height: 100%; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        .event-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(13, 45, 98, 0.1); border-color: var(--snpsu-blue); }
-        .card-img-wrapper { position: relative; height: 200px; overflow: hidden; background: #e2e8f0;}
-        .card-img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-        .event-card:hover .card-img-wrapper img { transform: scale(1.05); }
-        .badge-category { position: absolute; top: 15px; right: 15px; background: var(--snpsu-orange); color: white; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; padding: 6px 12px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+/* ── SECTION COMMON ──────────────────────────── */
+.sec-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--orange);margin-bottom:6px;}
+.sec-eyebrow::before{content:'';width:18px;height:2px;background:var(--orange);border-radius:1px;display:inline-block;}
+.sec-h{font-family:'Poppins',sans-serif;font-size:clamp(20px,2.8vw,32px);font-weight:800;color:var(--blue);margin-bottom:4px;line-height:1.2;}
+.sec-p{font-size:14.5px;color:#64748b;line-height:1.6;}
+/* scroll-margin so sticky nav doesn't cover anchor targets */
+section[id]{scroll-margin-top:68px;}
 
-        /* --- MODALS & FORMS --- */
-        .modal-content { border: none; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
-        .modal-header { background-color: var(--snpsu-blue); color: white; border-bottom: none; padding: 20px 25px; }
-        .modal-title { font-weight: 700; }
-        .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: 0.8; }
-        .modal-body { padding: 25px; background-color: #ffffff; color: var(--text-dark); }
-        .modal-footer { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; padding: 15px 25px; }
-        
-        .nav-tabs { border-bottom: 2px solid #e2e8f0; }
-        .nav-tabs .nav-link { color: var(--text-muted); font-weight: 600; padding: 10px 20px; border: none; }
-        .nav-tabs .nav-link.active { color: var(--snpsu-blue); border-bottom: 3px solid var(--snpsu-orange); background: transparent; }
-        
-        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .form-control { background-color: #f8f9fa !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; padding: 12px; }
-        .form-control:focus { background-color: #ffffff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 4px rgba(13, 45, 98, 0.1) !important; }
-        
-        .member-row { background: #f1f5f9; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px dashed #cbd5e1; position: relative; animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .remove-btn { position: absolute; top: -12px; right: -12px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; transition: 0.2s; }
-        .remove-btn:hover { background: #dc2626; transform: scale(1.1); }
-    </style>
+/* ── FILTER TABS ─────────────────────────────── */
+.ftabs{display:flex;flex-wrap:wrap;gap:7px;}
+.ftab{padding:6px 16px;border-radius:100px;font-size:12.5px;font-weight:500;border:1.5px solid #dee2e6;background:#fff;color:#64748b;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif;}
+.ftab:hover,.ftab.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+
+/* ── EVENT CARDS ─────────────────────────────── */
+.ev-card{border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff;transition:transform .2s,box-shadow .2s;height:100%;display:flex;flex-direction:column;}
+.ev-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(13,45,98,.11);}
+.ev-banner{height:150px;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--blue),#1a4fa0);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ev-banner img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;transition:transform .35s;}
+.ev-card:hover .ev-banner img{transform:scale(1.05);}
+.ev-banner-icon{font-size:50px;position:relative;z-index:1;}
+.ev-overlay{position:absolute;inset:0;background:rgba(7,25,41,.2);}
+.ev-cat{position:absolute;top:10px;left:10px;font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 10px;border-radius:100px;z-index:3;}
+.cat-technical{background:rgba(99,102,241,.95);color:#fff;}
+.cat-sports{background:rgba(16,185,129,.95);color:#fff;}
+.cat-cultural{background:rgba(243,112,33,.95);color:#fff;}
+.cat-management{background:rgba(8,145,178,.95);color:#fff;}
+.cat-general{background:rgba(13,45,98,.95);color:#fff;}
+.ev-deadline{position:absolute;top:10px;right:10px;font-size:9.5px;font-weight:600;padding:3px 9px;border-radius:100px;background:rgba(0,0,0,.58);color:#fff;z-index:3;display:flex;align-items:center;gap:3px;}
+.ev-body{padding:16px 18px 14px;flex:1;display:flex;flex-direction:column;}
+.ev-title{font-family:'Poppins',sans-serif;font-size:15.5px;font-weight:700;color:var(--blue);margin-bottom:5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;box-orient:vertical;overflow:hidden;}
+.ev-desc{font-size:12.5px;color:#64748b;line-height:1.55;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;box-orient:vertical;overflow:hidden;flex:1;}
+.ev-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.ev-meta span{font-size:11.5px;color:#64748b;display:flex;align-items:center;gap:3px;}
+.ev-meta i{color:var(--orange);font-size:10px;}
+.ev-footer{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid #f1f5f9;margin-top:auto;}
+.ev-fee-free{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--orange);}
+.ev-fee-paid{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--blue);}
+.ev-reg-count{font-size:10.5px;color:#94a3b8;margin-top:2px;}
+.btn-reg{background:var(--blue);color:#fff;border:none;font-size:12.5px;font-weight:600;padding:7px 16px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:.15s;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;}
+.btn-reg:hover{background:var(--orange);color:#fff;text-decoration:none;}
+.no-events-box{text-align:center;padding:60px 24px;background:#fff;border-radius:14px;border:2px dashed #dee2e6;}
+.no-events-box i{font-size:48px;color:#cbd5e1;display:block;margin-bottom:14px;}
+
+/* ── HOW IT WORKS ────────────────────────────── */
+.hiw-section{background:var(--blue);}
+.hiw-section .sec-eyebrow{color:#ffb347;}
+.hiw-section .sec-eyebrow::before{background:#ffb347;}
+.hiw-section .sec-h{color:#fff;}
+.hiw-section .sec-p{color:rgba(255,255,255,.58);}
+.step-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:28px 20px;text-align:center;height:100%;transition:.2s;}
+.step-card:hover{background:rgba(255,255,255,.1);transform:translateY(-3px);}
+.step-ico{width:68px;height:68px;border-radius:50%;background:rgba(243,112,33,.14);border:2px solid rgba(243,112,33,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;color:var(--orange);transition:.2s;}
+.step-card:hover .step-ico{background:var(--orange);color:#fff;border-color:var(--orange);}
+.step-title{font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;color:#fff;margin-bottom:6px;}
+.step-desc{font-size:12.5px;color:rgba(255,255,255,.52);line-height:1.6;margin:0;}
+
+/* ── CHATBOT FAB ─────────────────────────────── */
+.chat-fab{position:fixed;bottom:22px;right:22px;z-index:1040;}
+.chat-btn{width:56px;height:56px;border-radius:50%;background:var(--orange);border:none;color:#fff;font-size:21px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(243,112,33,.38);cursor:pointer;transition:.2s;position:relative;}
+.chat-btn:hover{transform:scale(1.08);}
+.chat-ai-dot{position:absolute;top:-1px;right:-1px;width:16px;height:16px;background:#22c55e;border-radius:50%;border:2px solid #fff;font-size:6.5px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;}
+.chat-win{position:absolute;bottom:64px;right:0;width:310px;background:#fff;border-radius:16px;box-shadow:0 14px 44px rgba(0,0,0,.15);overflow:hidden;display:none;flex-direction:column;max-height:450px;}
+.chat-win.open{display:flex;}
+.chat-head{background:var(--blue);padding:13px 15px;display:flex;align-items:center;gap:9px;}
+.chat-av{width:32px;height:32px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:15px;}
+.chat-head-name{font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#fff;margin:0;}
+.chat-head-sub{font-size:10px;color:rgba(255,255,255,.48);margin:0;}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;background:#f8fafc;}
+.bw{display:flex;gap:7px;}.bw.user{flex-direction:row-reverse;}
+.bb{max-width:82%;padding:8px 12px;border-radius:13px;font-size:12.5px;line-height:1.5;font-family:'Inter',sans-serif;}
+.bb.bot{background:#fff;color:#1e293b;border:1px solid #e9ecef;border-radius:3px 13px 13px 13px;}
+.bb.user{background:var(--blue);color:#fff;border-radius:13px 3px 13px 13px;}
+.chat-row{padding:9px 11px;border-top:1px solid #e9ecef;display:flex;gap:6px;background:#fff;}
+.chat-inp{flex:1;border:1.5px solid #dee2e6;border-radius:8px;padding:7px 11px;font-family:'Inter',sans-serif;font-size:12.5px;outline:none;transition:.15s;}
+.chat-inp:focus{border-color:var(--blue);}
+.chat-send{width:34px;height:34px;background:var(--orange);border:none;border-radius:8px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;}
+.chat-send:hover{background:#d95f0f;}
+.tdots{display:flex;gap:4px;padding:2px 0;}
+.tdots span{width:5px;height:5px;border-radius:50%;background:#94a3b8;animation:td .7s infinite;}
+.tdots span:nth-child(2){animation-delay:.15s}.tdots span:nth-child(3){animation-delay:.3s}
+@keyframes td{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+/* ── FOOTER ──────────────────────────────────── */
+.site-ft{background:#071929;color:rgba(255,255,255,.65);}
+.ft-brand{font-family:'Poppins',sans-serif;font-size:19px;font-weight:800;color:#fff;}
+.ft-lnk{color:rgba(255,255,255,.52);text-decoration:none;font-size:13px;display:block;margin-bottom:8px;transition:.15s;}
+.ft-lnk:hover{color:var(--orange);padding-left:3px;}
+.ft-heading{font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:700;color:#fff;margin-bottom:13px;letter-spacing:.3px;}
+.ft-contact-row{display:flex;gap:9px;margin-bottom:9px;font-size:12.5px;}
+.ft-contact-row i{color:var(--orange);margin-top:2px;flex-shrink:0;font-size:12px;}
+.soc-btn{width:32px;height:32px;border-radius:7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.55);font-size:13px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;transition:.15s;}
+.soc-btn:hover{background:var(--orange);border-color:var(--orange);color:#fff;}
+.ft-divider{border-color:rgba(255,255,255,.07);}
+.ft-bottom{font-size:11.5px;color:rgba(255,255,255,.28);}
+.ft-bottom a{color:rgba(255,255,255,.32);text-decoration:none;}
+.ft-bottom a:hover{color:var(--orange);}
+
+/* ── RESPONSIVE ─────────────────────────────── */
+@media(max-width:991px){
+  .sband-item{border-right:none;border-bottom:1px solid rgba(255,255,255,.08);padding:12px 16px;}
+  .sband-item:last-child{border-bottom:none;}
+}
+@media(max-width:575px){
+  .hero-car .carousel-item{height:72vw;min-height:300px;max-height:560px;}
+  .h-stats{gap:12px;}
+  .chat-fab{bottom:14px;right:14px;}
+  .chat-win{width:285px;right:-6px;}
+}
+</style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg fixed-top">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <div class="logo-icon me-2"><i class="fas fa-university"></i></div>
-                <div class="logo-text">
-                    <span class="logo-title">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></span>
-                    <span class="logo-subtitle">UNIVERSITY</span>
-                </div>
+<!-- TICKER -->
+<div class="ticker-bar" aria-hidden="true">
+  <div class="ticker-track">
+    <span class="ticker-item"><i class="fas fa-calendar-alt"></i>SapthaFest 2026 — Registrations Now Open</span>
+    <span class="ticker-item"><i class="fas fa-trophy"></i>Hackathon 2026 · Prize Pool ₹1,00,000</span>
+    <span class="ticker-item"><i class="fas fa-music"></i>Cultural Night — Limited Seats Available</span>
+    <span class="ticker-item"><i class="fas fa-running"></i>Sports Meet — All Departments Invited</span>
+    <span class="ticker-item"><i class="fas fa-qrcode"></i>Instant QR Ticket on Every Registration</span>
+    <span class="ticker-item"><i class="fas fa-robot"></i>Ask Sparky AI About Any Event</span>
+    <span class="ticker-item"><i class="fas fa-calendar-alt"></i>SapthaFest 2026 — Registrations Now Open</span>
+    <span class="ticker-item"><i class="fas fa-trophy"></i>Hackathon 2026 · Prize Pool ₹1,00,000</span>
+    <span class="ticker-item"><i class="fas fa-music"></i>Cultural Night — Limited Seats Available</span>
+    <span class="ticker-item"><i class="fas fa-running"></i>Sports Meet — All Departments Invited</span>
+    <span class="ticker-item"><i class="fas fa-qrcode"></i>Instant QR Ticket on Every Registration</span>
+    <span class="ticker-item"><i class="fas fa-robot"></i>Ask Sparky AI About Any Event</span>
+  </div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="snav navbar navbar-expand-lg">
+  <div class="container-xl px-3">
+    <a class="navbar-brand" href="/">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+           alt="Sapthagiri NPS University"
+           style="height:42px;width:auto;object-fit:contain;filter:brightness(0) invert(1);"
+           onerror="this.style.display='none';document.getElementById('nav-logo-fallback').style.display='flex';">
+      <div id="nav-logo-fallback" style="display:none;align-items:center;gap:10px;">
+        <div class="nav-logo-sq">SE</div>
+        <div>
+          <span class="brand-n">SapthaEvent</span>
+          <span class="brand-s">Sapthagiri NPS University</span>
+        </div>
+      </div>
+    </a>
+    <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 py-3 py-lg-0">
+        <li class="nav-item"><a class="nav-link" href="#events">Events</a></li>
+        <li class="nav-item"><a class="nav-link" href="#how">How It Works</a></li>
+        {% if session.get('user_id') %}
+          {% set role = session.get('role','') %}
+          {% if role == 'Student' %}
+            <li class="nav-item"><a class="nav-link" href="/participant/dashboard"><i class="fas fa-ticket-alt me-1"></i>My Tickets</a></li>
+          {% elif role in ['ClubSPOC','Coordinator','SuperAdmin','Super Admin'] %}
+            <li class="nav-item"><a class="nav-link" href="/coordinator/dashboard"><i class="fas fa-tasks me-1"></i>Dashboard</a></li>
+          {% elif role == 'Judge' %}
+            <li class="nav-item"><a class="nav-link" href="/judge/dashboard"><i class="fas fa-gavel me-1"></i>Judge Panel</a></li>
+          {% endif %}
+          <li class="nav-item ms-lg-2">
+            <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+          </li>
+        {% else %}
+          <li class="nav-item ms-lg-2">
+            <a class="nav-link btn-login" href="/login">
+              <i class="fas fa-sign-in-alt me-1"></i>Login
             </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <i class="fas fa-bars fs-4"></i>
-            </button>
-            
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <div class="d-flex flex-column flex-lg-row gap-3 mt-3 mt-lg-0 align-items-lg-center">
-                    <a href="#events" class="text-decoration-none fw-bold" style="color: var(--snpsu-blue);">Events</a>
-                    {% if session.get('user_id') %}
-                        <a href="/" class="btn btn-snpsu-blue px-4"><i class="fas fa-columns me-2"></i>Dashboard</a>
-                        <a href="/logout" class="btn btn-outline-danger"><i class="fas fa-sign-out-alt"></i></a>
-                    {% else %}
-                        <a href="/login" class="btn btn-outline-snpsu px-4"><i class="fas fa-user me-2"></i>Login</a>
-                    {% endif %}
-                </div>
-            </div>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- FLASH MESSAGES -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="container-xl px-3 pt-3">
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} d-flex align-items-start gap-2 alert-dismissible fade show mb-2" role="alert">
+      <i class="fas fa-info-circle mt-1"></i><span>{{ msg|safe }}</span>
+      <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ═══ HERO CAROUSEL — SNPSU Campus Images ═══ -->
+<div id="heroCarousel" class="carousel slide hero-car" data-bs-ride="carousel" data-bs-interval="4800">
+  <div class="carousel-indicators">
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="4"></button>
+  </div>
+  <div class="carousel-inner">
+
+    <!-- Slide 1 -->
+    <div class="carousel-item active">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0005_View-1-768x549.jpg"
+           alt="SNPSU Main Campus"
+           onerror="this.src='https://images.unsplash.com/photo-1562774053-701939374585?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Official Event Portal · SNPSU</div>
+        <h1 class="h-title">Your Events.<br><span class="accent">Your Campus.</span><br>Your Portal.</h1>
+        <p class="h-desc">Register for hackathons, cultural fests, and sports meets — all in one place with instant QR tickets.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary"><i class="fas fa-search"></i>Explore Events</a>
+          {% if not session.get('user_id') %}
+          <a href="/login" class="h-btn-outline"><i class="fas fa-sign-in-alt"></i>Login</a>
+          {% else %}
+          <a href="/participant/dashboard" class="h-btn-outline"><i class="fas fa-ticket-alt"></i>My Tickets</a>
+          {% endif %}
         </div>
-    </nav>
-
-    <section class="hero-carousel-wrapper">
-        <div id="mainHeroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-pause="false" data-bs-interval="3500">
-            <div class="carousel-inner">
-                <div class="carousel-item active"><div class="slide-bg slide-1"></div></div>
-                <div class="carousel-item"><div class="slide-bg slide-2"></div></div>
-                <div class="carousel-item"><div class="slide-bg slide-3"></div></div>
-                <div class="carousel-item"><div class="slide-bg slide-4"></div></div>
-                <div class="carousel-item"><div class="slide-bg slide-5"></div></div>
-                <div class="carousel-item"><div class="slide-bg slide-6"></div></div>
-            </div>
+        <div class="h-stats">
+          <div class="h-stat"><div class="snum">{{ events|length }}</div><div class="slbl">Live Events</div></div>
+          <div class="h-stat"><div class="snum">QR</div><div class="slbl">Instant Tickets</div></div>
+          <div class="h-stat"><div class="snum">AI</div><div class="slbl">Smart Assistant</div></div>
         </div>
-
-        <div class="hero-content">
-            <div class="container">
-                <div class="badge bg-white text-dark px-3 py-2 rounded-pill mb-4 fw-bold shadow-sm" style="color: var(--snpsu-blue) !important;">
-                    🏆 Official Event Portal
-                </div>
-                <h1 class="hero-title">Explore. Participate. <br><span>Excel.</span></h1>
-                <p class="hero-subtitle">The centralized platform for all academic, cultural, and technical events at Sapthagiri NPS University. Register your team and secure your spot today.</p>
-                <a href="#events" class="btn btn-snpsu-orange btn-lg px-5 shadow-lg"><i class="fas fa-ticket-alt me-2"></i> Browse Events</a>
-            </div>
-        </div>
-    </section>
-
-    <section id="events" class="container py-5 mt-4">
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} fw-bold mb-5 shadow-sm rounded-3"><i class="fas fa-info-circle me-2"></i>{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="d-flex justify-content-between align-items-end mb-5 pb-2 border-bottom">
-            <div>
-                <h2 class="fw-bold m-0" style="color: var(--snpsu-blue);">Upcoming Events</h2>
-                <p class="text-muted m-0 mt-1">Don't miss out on the latest campus activities.</p>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            {% for event in events %}
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="event-card">
-                    <div class="card-img-wrapper">
-                        <img src="{{ event.banner_url if event.banner_url else 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80' }}" alt="Banner">
-                        <span class="badge-category">{{ event.category }}</span>
-                    </div>
-
-                    <div class="p-4 d-flex flex-column flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h4 class="fw-bold m-0" style="color: var(--snpsu-blue);">{{ event.title }}</h4>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted small fw-bold"><i class="far fa-calendar-alt text-primary me-1"></i> {{ event.date }}</span>
-                            <span class="badge {{ 'bg-success bg-opacity-10 text-success border border-success' if event.entry_fee == 0 else 'bg-primary bg-opacity-10 text-primary border border-primary' }} px-2 py-1">
-                                {% if event.entry_fee == 0 %}FREE{% else %}₹{{ event.entry_fee }}{% endif %}
-                            </span>
-                        </div>
-                        
-                        <p class="text-muted small flex-grow-1">{{ event.description[:100] }}...</p>
-                        
-                        <div class="row g-2 mt-3 pt-3 border-top">
-                            <div class="col-6">
-                                <button class="btn btn-outline-snpsu w-100" data-bs-toggle="modal" data-bs-target="#detailsModal{{ event.id }}"><i class="fas fa-info-circle me-1"></i> Details</button>
-                            </div>
-                            <div class="col-6">
-                                {% if event.date < current_date %}
-                                    <button class="btn btn-secondary w-100 fw-bold" disabled><i class="fas fa-lock me-1"></i> Closed</button>
-                                {% else %}
-                                    <button class="btn btn-snpsu-blue w-100" data-bs-toggle="modal" data-bs-target="#registerModal{{ event.id }}">Register</button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="detailsModal{{ event.id }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h4 class="modal-title">{{ event.title }}</h4>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body p-0">
-                            <img src="{{ event.banner_url if event.banner_url else 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80' }}" class="img-fluid w-100" style="height: 250px; object-fit: cover;">
-                            <div class="p-4">
-                                <ul class="nav nav-tabs mb-3" id="tab{{ event.id }}" role="tablist">
-                                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#about{{ event.id }}">Overview</button></li>
-                                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rules{{ event.id }}">Rules & Info</button></li>
-                                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#prizes{{ event.id }}">Rewards</button></li>
-                                </ul>
-                                <div class="tab-content">
-                                    <div class="tab-pane fade show active" id="about{{ event.id }}">
-                                        <p class="mb-4" style="font-size: 1.05rem;">{{ event.overview if event.overview else event.description }}</p>
-                                        <div class="row g-3">
-                                            <div class="col-12 col-md-6">
-                                                <div class="p-3 bg-light border rounded d-flex align-items-center h-100">
-                                                    <div class="bg-primary bg-opacity-10 text-primary rounded p-3 me-3"><i class="far fa-calendar-alt fa-2x"></i></div>
-                                                    <div><small class="text-muted d-block fw-bold text-uppercase">Schedule</small><span class="text-dark fw-bold">{{ event.date }}</span></div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 col-md-6">
-                                                <div class="p-3 bg-light border rounded d-flex align-items-center h-100">
-                                                    <div class="bg-danger bg-opacity-10 text-danger rounded p-3 me-3"><i class="fas fa-map-marker-alt fa-2x"></i></div>
-                                                    <div><small class="text-muted d-block fw-bold text-uppercase">Venue</small><span class="text-dark fw-bold">{{ event.venue if event.venue else 'SNPSU Main Campus' }}</span></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="tab-pane fade" id="rules{{ event.id }}">
-                                        <div class="bg-light border rounded p-4">
-                                            <h6 class="fw-bold mb-3" style="color: var(--snpsu-blue);"><i class="fas fa-clipboard-list text-warning me-2"></i> Event Guidelines</h6>
-                                            <p style="white-space: pre-line;">{{ event.rules if event.rules else 'Standard university event rules apply. Bring valid ID.' }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="tab-pane fade text-center" id="prizes{{ event.id }}">
-                                        <div class="row g-3 justify-content-center mt-2">
-                                            <div class="col-12 col-md-6">
-                                                <div class="p-4 border rounded bg-light h-100" style="border-color: #fbbf24 !important;">
-                                                    <i class="fas fa-trophy fa-3x mb-3" style="color: #fbbf24;"></i>
-                                                    <h5 class="fw-bold text-dark">Rewards & Prizes</h5>
-                                                    <p class="text-muted mt-2">{{ event.prizes if event.prizes else 'Certificates and honors for winners!' }}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer d-flex justify-content-between">
-                            <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">Close</button>
-                            {% if event.date < current_date %}
-                                <button class="btn btn-secondary px-5 fw-bold" disabled>Registration Closed</button>
-                            {% else %}
-                                <button class="btn btn-snpsu-orange px-5" data-bs-toggle="modal" data-bs-target="#registerModal{{ event.id }}" data-bs-dismiss="modal">Proceed to Register <i class="fas fa-arrow-right ms-2"></i></button>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="registerModal{{ event.id }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <div>
-                                <h4 class="modal-title m-0">Event Registration</h4>
-                                <small class="text-white-50">{{ event.title }}</small>
-                            </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        
-                        <div class="modal-body p-4 p-md-5">
-                            <form action="/participant/public_register/{{ event.id }}" method="POST">
-                                <div class="d-flex align-items-center mb-4">
-                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px; font-weight: bold;">1</div>
-                                    <h5 class="m-0 fw-bold" style="color: var(--snpsu-blue);">Primary Contact Details</h5>
-                                </div>
-                                
-                                <div class="row g-3 mb-5">
-                                    <div class="col-12 col-md-6"><label class="form-label">Full Name *</label><input type="text" name="full_name" class="form-control" required></div>
-                                    <div class="col-12 col-md-6"><label class="form-label">Email Address *</label><input type="email" name="email" class="form-control" required></div>
-                                    <div class="col-12 col-md-6"><label class="form-label">College USN / ID *</label><input type="text" name="usn" class="form-control" required></div>
-                                    <div class="col-12 col-md-6"><label class="form-label">WhatsApp Number *</label><input type="tel" name="phone" class="form-control" required></div>
-                                </div>
-
-                                {% if event.is_team_event %}
-                                <div class="p-4 border rounded bg-light mb-4">
-                                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 border-bottom pb-3 gap-3">
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px; font-weight: bold;">2</div>
-                                            <div>
-                                                <h5 class="m-0 fw-bold" style="color: var(--snpsu-blue);">Team Members</h5>
-                                                <small class="text-muted">Skip this if registering individually.</small>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-outline-snpsu" onclick="addMember('{{ event.id }}')">
-                                            <i class="fas fa-user-plus me-1"></i> Add Member
-                                        </button>
-                                    </div>
-                                    <div class="mb-4">
-                                        <label class="form-label">Team Name (Optional)</label>
-                                        <input type="text" name="team_name" class="form-control" placeholder="Ex: Tech Titans">
-                                    </div>
-                                    <div id="membersContainer{{ event.id }}"></div>
-                                </div>
-                                {% else %}
-                                <div class="alert alert-info border-info bg-light d-flex align-items-center mb-4">
-                                    <i class="fas fa-user fa-2x text-primary me-3"></i>
-                                    <div>
-                                        <strong>Individual Event</strong><br>
-                                        <small>This event is for solo participants only. No team members required.</small>
-                                    </div>
-                                </div>
-                                {% endif %}
-
-                                <div class="alert alert-primary bg-primary bg-opacity-10 border border-primary text-primary d-flex align-items-center mb-4">
-                                    <i class="fas fa-shield-alt fa-2x me-3"></i>
-                                    <div>
-                                        <strong>New to SapthaEvent?</strong><br>
-                                        <small>We will automatically create an account for you and email the password to your registered email address.</small>
-                                    </div>
-                                </div>
-
-                                <div class="d-grid">
-                                    <button type="submit" class="btn btn-snpsu-orange btn-lg fw-bold py-3 shadow-sm">
-                                        {% if event.entry_fee == 0 %}Confirm & Get Ticket{% else %}Proceed to Pay ₹{{ event.entry_fee }}{% endif %} <i class="fas fa-arrow-right ms-2"></i>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            {% else %}
-            <div class="col-12 py-5 text-center">
-                <i class="fas fa-calendar-times fa-4x text-muted mb-3 opacity-25"></i>
-                <h3 class="text-dark fw-bold">No Upcoming Events</h3>
-                <p class="text-muted">We are planning something awesome. Check back soon!</p>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <footer class="mt-5 py-4 text-center" style="background-color: var(--snpsu-blue); color: white;">
-        <div class="container">
-            <h5 class="fw-bold mb-3">SAPTHAGIRI NPS UNIVERSITY</h5>
-            <div class="d-flex justify-content-center gap-4 mb-3">
-                <a href="https://www.instagram.com/sapthagirinpsuniversity?igsh=MTNoNmdhN3kxYjZ1dw==" target="_blank" class="text-white opacity-75 text-decoration-none"><i class="fab fa-instagram fa-lg"></i></a>
-                <a href="https://www.linkedin.com/school/sapthagiri-nps-university/" target="_blank" class="text-white opacity-75 text-decoration-none"><i class="fab fa-linkedin fa-lg"></i></a>
-                <a href="https://snpsu.edu.in/" target="_blank" class="text-white opacity-75 text-decoration-none"><i class="fas fa-globe fa-lg"></i></a>
-            </div>
-            <small class="opacity-50">&copy; 2026 SapthaEvent Platform. All Rights Reserved.</small>
-        </div>
-    </footer>
-
-    <style>
-        #chatbot-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background-color: #f37021; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; box-shadow: 0 8px 20px rgba(243, 112, 33, 0.4); transition: 0.3s; z-index: 1000; border: none; }
-        #chatbot-btn:hover { transform: scale(1.1); background-color: #d95e1a; }
-        #chatbot-window { position: fixed; bottom: 100px; right: 30px; width: 350px; height: 450px; background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); display: none; flex-direction: column; overflow: hidden; z-index: 1000; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif; }
-        .chat-header { background: #0d2d62; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f37021; }
-        .chat-header h6 { margin: 0; font-weight: 700; font-family: 'Poppins', sans-serif;}
-        .close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
-        .chat-body { flex-grow: 1; padding: 15px; overflow-y: auto; background-color: #f8f9fa; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; }
-        .msg-bot { background: #e2e8f0; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 2px;}
-        .msg-user { background: #0d2d62; color: white; align-self: flex-end; border-bottom-right-radius: 2px;}
-        .chat-footer { padding: 15px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
-        .chat-footer input { flex-grow: 1; border: 1px solid #cbd5e1; border-radius: 20px; padding: 10px 15px; outline: none; transition: 0.3s; }
-        .chat-footer input:focus { border-color: #f37021; }
-        .chat-footer button { background: #f37021; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: 0.2s;}
-        .chat-footer button:hover { background: #0d2d62; }
-        .typing { font-size: 0.8rem; color: #64748b; font-style: italic; display: none; margin-left: 10px; }
-    </style>
-
-    <button id="chatbot-btn" onclick="toggleChat()"><i class="fas fa-robot"></i></button>
-
-    <div id="chatbot-window">
-        <div class="chat-header">
-            <h6><i class="fas fa-bolt text-warning me-2"></i> Sparky AI</h6>
-            <button class="close-btn" onclick="toggleChat()"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="chat-body" id="chat-body">
-            <div class="msg msg-bot">👋 Hi there! I am Sparky, the SNPSU Event AI. Ask me anything about our upcoming events!</div>
-        </div>
-        <span class="typing" id="typing-indicator">Sparky is thinking...</span>
-        <div class="chat-footer">
-            <input type="text" id="chat-input" placeholder="Ask about events..." onkeypress="handleEnter(event)">
-            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-        </div>
+      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // AI Chatbot Logic
-        function toggleChat() {
-            const chat = document.getElementById('chatbot-window');
-            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
-        }
-        function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
-        async function sendMessage() {
-            const inputField = document.getElementById('chat-input');
-            const message = inputField.value.trim();
-            if (!message) return;
+    <!-- Slide 2 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0003_SAPTHAGIRI-UNIVERSITY-A-BLOCK-reception-AREA_r27-768x549.jpg"
+           alt="SNPSU Reception Block"
+           onerror="this.src='https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>World Class Infrastructure</div>
+        <h1 class="h-title">World Class<br><span class="accent">Campus.</span><br>World Class Events.</h1>
+        <p class="h-desc">State-of-the-art infrastructure hosting technical, cultural, and sports events year-round at SNPSU.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary"><i class="fas fa-calendar-alt"></i>View All Events</a>
+        </div>
+      </div>
+    </div>
 
-            const chatBody = document.getElementById('chat-body');
-            chatBody.innerHTML += `<div class="msg msg-user">${message}</div>`;
-            inputField.value = '';
-            chatBody.scrollTop = chatBody.scrollHeight;
+    <!-- Slide 3 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0008_SAPTHAGIRI-UNIVERSITY-AMPHITHEATRE-1k-768x549.jpg"
+           alt="SNPSU Amphitheatre"
+           onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Cultural & Arts Events</div>
+        <h1 class="h-title">Showcase<br><span class="accent">Your Talent.</span><br>Win Recognition.</h1>
+        <p class="h-desc">From stage performances to fine arts — the SNPSU amphitheatre is the platform for your talent.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary"><i class="fas fa-music"></i>Cultural Events</a>
+        </div>
+      </div>
+    </div>
 
-            const typingIndicator = document.getElementById('typing-indicator');
-            typingIndicator.style.display = 'block';
+    <!-- Slide 4 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0009_Lab-1-768x549.jpg"
+           alt="SNPSU Computer Lab"
+           onerror="this.src='https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Technical Events</div>
+        <h1 class="h-title">Build.<br><span class="accent">Innovate.</span><br>Compete.</h1>
+        <p class="h-desc">Hackathons, coding contests, and tech fests powered by industry-grade labs and experienced judges.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary"><i class="fas fa-code"></i>Technical Events</a>
+        </div>
+      </div>
+    </div>
 
-            try {
-                const response = await fetch('/chatbot/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
-                });
-                const data = await response.json();
-                typingIndicator.style.display = 'none';
-                chatBody.innerHTML += `<div class="msg msg-bot">${data.reply}</div>`;
-                chatBody.scrollTop = chatBody.scrollHeight;
-            } catch (error) {
-                typingIndicator.style.display = 'none';
-                chatBody.innerHTML += `<div class="msg msg-bot" style="color: red;">Connection lost. Please try again.</div>`;
-            }
-        }
+    <!-- Slide 5 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0001_WhatsApp-Image-2024-11-12-at-11.16.19-AM-768x549.jpg"
+           alt="Sapthagiri NPS University"
+           onerror="this.src='https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Sapthagiri NPS University · Bengaluru</div>
+        <h1 class="h-title">One Portal.<br><span class="accent">All Events.</span><br>Zero Hassle.</h1>
+        <p class="h-desc">Register in seconds, receive your QR ticket instantly, and walk into any campus event with confidence.</p>
+        <div class="h-btns">
+          <a href="/login" class="h-btn-primary"><i class="fas fa-user-plus"></i>Get Started — Free</a>
+        </div>
+      </div>
+    </div>
 
-        // Dynamic Team Member Function
-        function addMember(eventId) {
-            const container = document.getElementById('membersContainer' + eventId);
-            if (container.children.length >= 3) {
-                alert("Maximum 4 members allowed per team (including Leader).");
-                return;
-            }
-            const div = document.createElement('div');
-            div.className = 'member-row';
-            div.innerHTML = `
-                <button type="button" class="remove-btn" onclick="this.parentElement.remove()" title="Remove Member"><i class="fas fa-times"></i></button>
-                <div class="row g-3">
-                    <div class="col-12 col-md-6"><label class="form-label">Member Name</label><input type="text" name="member_name[]" class="form-control" required></div>
-                    <div class="col-12 col-md-6"><label class="form-label">USN / ID</label><input type="text" name="member_usn[]" class="form-control" required></div>
-                    <div class="col-12 col-md-6"><label class="form-label">Email</label><input type="email" name="member_email[]" class="form-control" required></div>
-                    <div class="col-12 col-md-6"><label class="form-label">WhatsApp Number</label><input type="tel" name="member_whatsapp[]" class="form-control" required></div>
-                </div>
-            `;
-            container.appendChild(div);
-        }
-    </script>
+  </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+  </button>
+</div>
+
+<!-- ═══ STATS BAND ═══ -->
+<div class="sband">
+  <div class="container-xl px-3">
+    <div class="sband-row">
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-calendar-check"></i></div>
+        <div><div class="sband-n">{{ events|length }}</div><div class="sband-l">Live Events</div></div>
+      </div>
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-qrcode"></i></div>
+        <div><div class="sband-n">QR</div><div class="sband-l">Instant Digital Tickets</div></div>
+      </div>
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-robot"></i></div>
+        <div><div class="sband-n">AI</div><div class="sband-l">Powered Chatbot</div></div>
+      </div>
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-bell"></i></div>
+        <div><div class="sband-n">2×</div><div class="sband-l">Email + WhatsApp Alerts</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EVENTS ═══ -->
+<section id="events" class="py-5" style="background:#f8f9fa;">
+  <div class="container-xl px-3">
+
+    <!-- Header row -->
+    <div class="row align-items-center mb-4">
+      <div class="col-lg-5 mb-3 mb-lg-0">
+        <div class="sec-eyebrow">Open for Registration</div>
+        <h2 class="sec-h mb-1">Upcoming Events</h2>
+        <p class="sec-p mb-0">Register in seconds and receive your QR ticket instantly.</p>
+      </div>
+      <div class="col-lg-7">
+        <div class="ftabs justify-content-lg-end">
+          <button class="ftab active" onclick="filterEv('all',this)">All Events</button>
+          <button class="ftab" onclick="filterEv('Technical',this)"><i class="fas fa-code me-1"></i>Technical</button>
+          <button class="ftab" onclick="filterEv('Cultural',this)"><i class="fas fa-music me-1"></i>Cultural</button>
+          <button class="ftab" onclick="filterEv('Sports',this)"><i class="fas fa-running me-1"></i>Sports</button>
+          <button class="ftab" onclick="filterEv('Management',this)"><i class="fas fa-briefcase me-1"></i>Management</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="row g-4" id="evGrid">
+      {% for event in events %}
+      <div class="col-12 col-sm-6 col-xl-4 ev-col" data-cat="{{ event.get('category','General') }}">
+        <div class="ev-card">
+          <div class="ev-banner">
+            {% if event.get('banner_url') %}
+              <img src="{{ event.banner_url }}" alt="{{ event.title }}" loading="lazy"
+                   onerror="this.style.display='none'">
+              <div class="ev-overlay"></div>
+            {% endif %}
+            {% set cat = event.get('category','General') %}
+            {% if   cat == 'Technical'  %}<div class="ev-banner-icon">💻</div>
+            {% elif cat == 'Cultural'   %}<div class="ev-banner-icon">🎭</div>
+            {% elif cat == 'Sports'     %}<div class="ev-banner-icon">⚽</div>
+            {% elif cat == 'Management' %}<div class="ev-banner-icon">📊</div>
+            {% else                     %}<div class="ev-banner-icon">🌟</div>{% endif %}
+            <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
+            {% if event.get('deadline') %}
+            <span class="ev-deadline"><i class="fas fa-clock"></i>{{ event.deadline }}</span>
+            {% endif %}
+          </div>
+          <div class="ev-body">
+            <h5 class="ev-title">{{ event.title }}</h5>
+            <p class="ev-desc">{{ event.get('description', 'An exciting event hosted by Sapthagiri NPS University. Click to register.') }}</p>
+            <div class="ev-meta">
+              {% if event.get('date') %}
+              <span><i class="fas fa-calendar-alt"></i>{{ event.date }}</span>
+              {% endif %}
+              {% if event.get('venue') %}
+              <span><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
+              {% endif %}
+              <span><i class="fas fa-users"></i>{{ 'Team' if event.get('is_team_event') else 'Individual' }}</span>
+            </div>
+            <div class="ev-footer">
+              <div>
+                {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+                  <div class="ev-fee-paid">₹{{ event.entry_fee }}</div>
+                {% else %}
+                  <div class="ev-fee-free">Free Entry</div>
+                {% endif %}
+                <div class="ev-reg-count">{{ event.get('registration_count', 0) }} registered</div>
+              </div>
+              <a href="/forms/register/{{ event.id }}" class="btn-reg">
+                <i class="fas fa-arrow-right"></i>Register
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-12">
+        <div class="no-events-box">
+          <i class="far fa-calendar-times"></i>
+          <h5 class="fw-bold text-secondary mb-2">No Events Currently Listed</h5>
+          <p class="text-muted mb-0" style="font-size:14px;">
+            New events are published throughout the semester. Check back soon or contact your Club SPOC.
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="hiw-section py-5" id="how">
+  <div class="container-xl px-3">
+    <div class="text-center mb-5">
+      <div class="sec-eyebrow justify-content-center">Simple Process</div>
+      <h2 class="sec-h">Register in Under 60 Seconds</h2>
+      <p class="sec-p mx-auto" style="max-width:480px;">
+        No queues, no paperwork. Select your event, complete the form, and walk in with your QR ticket.
+      </p>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-6 col-md-3">
+        <div class="step-card">
+          <div class="step-ico"><i class="fas fa-search"></i></div>
+          <div class="step-title">Browse Events</div>
+          <p class="step-desc">Explore all upcoming technical, cultural, and sports events on the portal.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card">
+          <div class="step-ico"><i class="fas fa-pen-to-square"></i></div>
+          <div class="step-title">Complete the Form</div>
+          <p class="step-desc">Each event has a custom registration form — designed by the organiser and takes under a minute.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card">
+          <div class="step-ico"><i class="fas fa-qrcode"></i></div>
+          <div class="step-title">Receive QR Ticket</div>
+          <p class="step-desc">Your digital ticket with QR code is delivered instantly via email and WhatsApp.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card">
+          <div class="step-ico"><i class="fas fa-door-open"></i></div>
+          <div class="step-title">Walk In</div>
+          <p class="step-desc">Show your QR at the venue — the coordinator scans it and your attendance is recorded instantly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="site-ft pt-5 pb-0">
+  <div class="container-xl px-3">
+    <div class="row g-4 pb-5">
+
+      <div class="col-12 col-md-5 col-lg-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="nav-logo-sq">SE</div>
+          <span class="ft-brand">SapthaEvent</span>
+        </div>
+        <p style="font-size:13px;line-height:1.72;margin-bottom:16px;">
+          The official event management portal of Sapthagiri NPS University, Bengaluru.
+          Powering hackathons, cultural fests, sports meets, and more.
+        </p>
+        <div class="d-flex gap-2">
+          <a href="https://snpsu.edu.in" target="_blank" class="soc-btn" title="Official Website"><i class="fas fa-globe"></i></a>
+          <a href="#" class="soc-btn" title="Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="#" class="soc-btn" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+          <a href="#" class="soc-btn" title="YouTube"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3 col-lg-2">
+        <div class="ft-heading">Quick Links</div>
+        <a href="#events" class="ft-lnk">Browse Events</a>
+        <a href="#how"    class="ft-lnk">How it Works</a>
+        <a href="/login"  class="ft-lnk">Login</a>
+        {% if session.get('user_id') %}
+        <a href="/participant/dashboard" class="ft-lnk">My Dashboard</a>
+        <a href="/logout"                class="ft-lnk">Logout</a>
+        {% endif %}
+      </div>
+
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="ft-heading">University</div>
+        <a href="https://snpsu.edu.in/about-us/"   target="_blank" class="ft-lnk">About SNPSU</a>
+        <a href="https://snpsu.edu.in/departments/" target="_blank" class="ft-lnk">Departments</a>
+        <a href="https://snpsu.edu.in/news-events/" target="_blank" class="ft-lnk">News &amp; Events</a>
+        <a href="https://snpsu.edu.in/human-resource-development-hrd/" target="_blank" class="ft-lnk">Placements</a>
+        <a href="https://admission.snpsu.edu.in/"   target="_blank" class="ft-lnk">Admissions</a>
+      </div>
+
+      <div class="col-12 col-lg-3">
+        <div class="ft-heading">Contact</div>
+        <div class="ft-contact-row"><i class="fas fa-map-marker-alt"></i><span>#14/5, Chikkasandra, Hesarghatta Main Road, Bengaluru – 560057</span></div>
+        <div class="ft-contact-row"><i class="fas fa-phone"></i><span>080-28 372800 &nbsp;/&nbsp; 9035922191</span></div>
+        <div class="ft-contact-row"><i class="fas fa-envelope"></i><span>admissions@snpsu.edu.in</span></div>
+      </div>
+
+    </div>
+    <hr class="ft-divider">
+    <div class="ft-bottom d-flex flex-wrap justify-content-between align-items-center py-3 gap-2">
+      <span>© 2026 Sapthagiri NPS University. All rights reserved.</span>
+      <span>
+        <a href="https://snpsu.edu.in/privacy-policy/" target="_blank">Privacy Policy</a>
+        &nbsp;·&nbsp; Built for SNPSU
+      </span>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ AI CHATBOT ═══ -->
+<div class="chat-fab">
+  <div class="chat-win" id="chatWin">
+    <div class="chat-head">
+      <div class="chat-av">🤖</div>
+      <div>
+        <p class="chat-head-name">Sparky — AI Assistant</p>
+        <p class="chat-head-sub">Ask about any SNPSU event</p>
+      </div>
+      <button onclick="toggleChat()" class="ms-auto btn-close btn-close-white" style="opacity:.55;" aria-label="Close chat"></button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="bw">
+        <div class="bb bot">Hello! 👋 I'm Sparky, the SapthaEvent AI assistant. Ask me about upcoming events, registration deadlines, entry fees, or venue details.</div>
+      </div>
+    </div>
+    <div class="chat-row">
+      <input type="text" class="chat-inp" id="chatInp"
+             placeholder="Ask about events…"
+             onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" onclick="sendChat()" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+  <button class="chat-btn" onclick="toggleChat()" aria-label="Open AI Assistant">
+    <i class="fas fa-robot" id="chatIcon"></i>
+    <span class="chat-ai-dot">AI</span>
+  </button>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── SMOOTH SCROLL (fixes anchor buttons) ──────
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click', function(e){
+    var id = this.getAttribute('href').slice(1);
+    if(!id) return;
+    var el = document.getElementById(id);
+    if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth',block:'start'}); }
+  });
+});
+
+// ── EVENT CATEGORY FILTER ─────────────────────
+function filterEv(cat, btn){
+  document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.ev-col').forEach(function(c){
+    c.style.display = (cat==='all' || c.dataset.cat===cat) ? '' : 'none';
+  });
+}
+
+// ── CHATBOT ────────────────────────────────────
+var chatOpen = false;
+function toggleChat(){
+  chatOpen = !chatOpen;
+  document.getElementById('chatWin').classList.toggle('open', chatOpen);
+  document.getElementById('chatIcon').className = chatOpen ? 'fas fa-times' : 'fas fa-robot';
+  if(chatOpen) document.getElementById('chatInp').focus();
+}
+async function sendChat(){
+  var inp = document.getElementById('chatInp');
+  var msg = inp.value.trim();
+  if(!msg) return;
+  inp.value = '';
+  addBubble(msg, 'user');
+  var t = addTyping();
+  try{
+    var r = await fetch('/chatbot/ask', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg})
+    });
+    var d = await r.json();
+    t.remove();
+    addBubble(d.reply || 'Sorry, I could not get a response. Please try again.', 'bot');
+  } catch(err){
+    t.remove();
+    addBubble('Something went wrong. Please try again in a moment.', 'bot');
+  }
+}
+function addBubble(text, role){
+  var msgs = document.getElementById('chatMsgs');
+  var wrap = document.createElement('div');
+  wrap.className = 'bw ' + role;
+  wrap.innerHTML = '<div class="bb ' + role + '">' + text + '</div>';
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+function addTyping(){
+  var msgs = document.getElementById('chatMsgs');
+  var wrap = document.createElement('div');
+  wrap.className = 'bw';
+  wrap.innerHTML = '<div class="bb bot"><div class="tdots"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+</script>
 </body>
 </html>

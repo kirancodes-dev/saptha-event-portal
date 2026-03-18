@@ -27,6 +27,7 @@ import time
 from flask import (Blueprint, Response, flash, jsonify,
                    redirect, render_template, request, session)
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 from werkzeug.security import generate_password_hash
 
 from models import db
@@ -40,6 +41,8 @@ try:
 except ImportError:
     WA_ENABLED = False
 
+from typing import Optional
+
 forms_bp      = Blueprint('forms', __name__, url_prefix='/forms')
 BUILDER_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
 
@@ -48,7 +51,7 @@ BUILDER_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
 # HELPERS
 # =========================================================
 
-def _get_form(event_id: str) -> dict | None:
+def _get_form(event_id: str) -> Optional[dict]:
     doc = db.collection('event_forms').document(event_id).get()
     return doc.to_dict() if doc.exists else None
 
@@ -251,8 +254,8 @@ def registration_page(event_id):
     is_registered = False
     if session.get('user_id'):
         q = (db.collection('registrations')
-               .where('event_id', '==', event_id)
-               .where('lead_email', '==', session['user_id'])
+               .where(filter=FieldFilter('event_id',   '==', event_id))
+               .where(filter=FieldFilter('lead_email', '==', session['user_id']))
                .limit(1).stream())
         is_registered = any(q)
 
@@ -319,8 +322,8 @@ def submit_form(event_id):
         # Duplicate check
         existing = list(
             db.collection('registrations')
-              .where('event_id', '==', event_id)
-              .where('lead_email', '==', email)
+              .where(filter=FieldFilter('event_id',   '==', event_id))
+              .where(filter=FieldFilter('lead_email', '==', email))
               .limit(1).stream()
         )
         if existing:
@@ -454,7 +457,7 @@ def view_responses(event_id):
 
     submissions = []
     for doc in (db.collection('form_submissions')
-                  .where('event_id', '==', event_id).stream()):
+                  .where(filter=FieldFilter('event_id', '==', event_id)).stream()):
         d           = doc.to_dict()
         d['doc_id'] = doc.id
         submissions.append(d)
@@ -481,7 +484,7 @@ def export_responses(event_id):
 
     submissions = [doc.to_dict() for doc in
                    db.collection('form_submissions')
-                     .where('event_id', '==', event_id).stream()]
+                     .where(filter=FieldFilter('event_id', '==', event_id)).stream()]
 
     output = io.StringIO()
     writer = csv.writer(output)

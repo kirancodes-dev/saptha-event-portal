@@ -4,7 +4,7 @@ utils_qr.py
 QR code generation helpers for SapthaEvent.
 
 Two functions:
-  generate_qr_base64(data)  — returns a base64 PNG string for embedding in HTML/email
+  generate_qr_base64(data)   — returns a base64 PNG string for embedding in HTML/email
   generate_qr_response(data) — returns a Flask Response that serves the PNG directly
 
 Usage in a template:
@@ -24,17 +24,20 @@ def generate_qr_base64(data: str, box_size: int = 8, border: int = 2) -> str:
     """
     Generate a QR code for `data` and return it as a base64-encoded PNG string.
     Embed directly in <img src="data:image/png;base64,{{ value }}">
+
+    NOTE: PilImage factory only supports plain color names (black/white),
+          not hex strings. Use fill_color="black" — not "#0d2d62".
     """
     qr = qrcode.QRCode(
-        version=None,                        # auto-size
-        error_correction=qrcode.constants.ERROR_CORRECT_H,  # 30% damage recovery
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
         box_size=box_size,
         border=border,
     )
     qr.add_data(data)
     qr.make(fit=True)
 
-    img = qr.make_image(fill_color="#0d2d62", back_color="white", image_factory=PilImage)
+    img = qr.make_image(fill_color="black", back_color="white", image_factory=PilImage)
 
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
@@ -57,7 +60,7 @@ def generate_qr_response(data: str, box_size: int = 8, border: int = 2) -> Respo
     qr.add_data(data)
     qr.make(fit=True)
 
-    img = qr.make_image(fill_color="#0d2d62", back_color="white", image_factory=PilImage)
+    img = qr.make_image(fill_color="black", back_color="white", image_factory=PilImage)
 
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
@@ -66,5 +69,5 @@ def generate_qr_response(data: str, box_size: int = 8, border: int = 2) -> Respo
     return Response(
         buffer.getvalue(),
         mimetype="image/png",
-        headers={"Cache-Control": "public, max-age=86400"}  # cache 24h — QR never changes
+        headers={"Cache-Control": "public, max-age=86400"}
     )

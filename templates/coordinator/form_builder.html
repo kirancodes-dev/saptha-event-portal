@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Form Builder | {{ event.title }}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;--bg:#f4f7f6;}
+*{box-sizing:border-box;}
+body{background:var(--bg);font-family:'Inter',sans-serif;color:#1e293b;}
+h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
+
+/* Layout */
+.builder-wrap{display:grid;grid-template-columns:260px 1fr 320px;gap:0;min-height:100vh;}
+.panel{background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;}
+.panel-header{background:var(--blue);color:white;padding:16px 20px;position:sticky;top:0;z-index:10;}
+.panel-header h6{margin:0;font-size:14px;font-weight:700;letter-spacing:.5px;}
+
+/* Left — Field palette */
+.field-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 16px;
+  border:none;background:none;text-align:left;font-size:13px;font-weight:500;
+  color:#334155;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:.15s;}
+.field-btn:hover{background:#f8fafc;color:var(--blue);}
+.field-btn .icon{width:28px;height:28px;border-radius:6px;background:#e8f0fe;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:var(--blue);flex-shrink:0;}
+
+/* Centre — Canvas */
+.canvas-wrap{padding:24px;background:var(--bg);}
+.form-meta-card{background:#fff;border-radius:12px;padding:20px 24px;
+  border:1px solid #e2e8f0;margin-bottom:20px;}
+.canvas-drop{min-height:300px;border:2px dashed #cbd5e1;border-radius:12px;
+  padding:16px;background:#fff;transition:.2s;}
+.canvas-drop.drag-over{border-color:var(--orange);background:#fff8f4;}
+.canvas-empty{text-align:center;padding:60px 24px;color:#94a3b8;}
+.canvas-empty i{font-size:3rem;margin-bottom:12px;display:block;opacity:.3;}
+
+/* Field card on canvas */
+.field-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+  padding:14px 16px;margin-bottom:10px;cursor:grab;display:flex;
+  align-items:flex-start;gap:12px;transition:.15s;position:relative;}
+.field-card:hover{border-color:var(--blue);box-shadow:0 2px 8px rgba(13,45,98,.08);}
+.field-card.selected{border-color:var(--orange);box-shadow:0 0 0 3px rgba(243,112,33,.15);}
+.field-card.dragging{opacity:.4;}
+.field-card .drag-handle{color:#cbd5e1;padding-top:2px;cursor:grab;flex-shrink:0;}
+.field-card .field-meta{flex:1;min-width:0;}
+.field-card .field-label{font-weight:600;font-size:14px;color:#1e293b;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.field-card .field-type-badge{font-size:11px;color:#94a3b8;margin-top:2px;}
+.field-card .required-dot{width:6px;height:6px;border-radius:50%;
+  background:#ef4444;position:absolute;top:10px;right:10px;}
+.field-actions{display:flex;gap:6px;margin-top:0;flex-shrink:0;}
+.field-actions button{border:none;background:none;padding:4px 6px;
+  border-radius:4px;cursor:pointer;color:#94a3b8;font-size:13px;transition:.15s;}
+.field-actions button:hover{color:var(--blue);background:#f1f5f9;}
+.field-actions .del:hover{color:#ef4444;background:#fef2f2;}
+
+/* Right — Properties panel */
+.props-panel{padding:0;background:#fff;}
+.props-body{padding:20px;}
+.props-empty{text-align:center;padding:80px 24px;color:#94a3b8;}
+.props-empty i{font-size:2.5rem;display:block;margin-bottom:10px;opacity:.3;}
+.prop-group{margin-bottom:18px;}
+.prop-label{font-size:12px;font-weight:600;color:#64748b;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.prop-input{width:100%;padding:8px 12px;border:1px solid #e2e8f0;
+  border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;
+  background:#f8fafc;transition:.15s;}
+.prop-input:focus{outline:none;border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(13,45,98,.1);background:#fff;}
+.prop-toggle{display:flex;align-items:center;gap:10px;
+  font-size:13px;color:#334155;cursor:pointer;}
+.prop-toggle input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);}
+
+/* Options list */
+.option-list{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;}
+.option-item{display:flex;align-items:center;gap:8px;padding:8px 10px;
+  border-bottom:1px solid #f1f5f9;}
+.option-item:last-child{border-bottom:none;}
+.option-item input{flex:1;border:none;font-size:13px;background:transparent;
+  font-family:'Inter',sans-serif;}
+.option-item input:focus{outline:none;}
+.option-item button{border:none;background:none;color:#94a3b8;cursor:pointer;
+  font-size:12px;padding:2px 4px;}
+.option-item button:hover{color:#ef4444;}
+.btn-add-option{width:100%;padding:8px;border:1px dashed #cbd5e1;
+  border-radius:8px;background:none;font-size:12px;color:#64748b;
+  cursor:pointer;margin-top:6px;transition:.15s;}
+.btn-add-option:hover{border-color:var(--blue);color:var(--blue);}
+
+/* Top bar */
+.topbar{background:var(--blue);color:white;padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;}
+.topbar h5{margin:0;font-size:16px;}
+.topbar .event-sub{font-size:12px;opacity:.7;margin-top:2px;}
+.btn-save{background:var(--orange);color:white;border:none;
+  padding:9px 24px;border-radius:20px;font-weight:700;font-size:13px;
+  cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px;}
+.btn-save:hover{background:#d95f0f;transform:scale(1.03);}
+.btn-save:disabled{background:#94a3b8;cursor:not-allowed;transform:none;}
+
+/* Form type switcher */
+.type-switcher{display:flex;gap:10px;margin-bottom:0;}
+.type-card{flex:1;padding:16px;border:2px solid #e2e8f0;border-radius:12px;
+  cursor:pointer;transition:.2s;text-align:center;background:#fff;}
+.type-card:hover{border-color:var(--blue);}
+.type-card.active{border-color:var(--orange);background:#fff8f4;}
+.type-card .type-icon{font-size:28px;margin-bottom:8px;display:block;}
+.type-card h6{margin:0;font-size:13px;font-weight:700;}
+.type-card p{margin:4px 0 0;font-size:11px;color:#64748b;}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;}
+.toast-msg{background:#1e293b;color:white;padding:12px 20px;border-radius:10px;
+  font-size:13px;margin-top:8px;display:flex;align-items:center;gap:8px;
+  animation:slideIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.2);}
+.toast-msg.success{border-left:4px solid #10b981;}
+.toast-msg.error{border-left:4px solid #ef4444;}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Preview modal */
+.preview-form input,.preview-form select,.preview-form textarea{
+  width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;
+  font-size:13px;font-family:'Inter',sans-serif;margin-top:4px;}
+.preview-form label{font-size:13px;font-weight:600;color:#334155;}
+.preview-form .required-star{color:#ef4444;}
+
+/* Responsive collapse for tablet */
+@media(max-width:1100px){
+  .builder-wrap{grid-template-columns:220px 1fr 280px;}
+}
+@media(max-width:768px){
+  .builder-wrap{grid-template-columns:1fr;}
+  .panel{border-right:none;border-bottom:1px solid #e2e8f0;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div>
+    <h5><i class="fas fa-wpforms me-2"></i>Form Builder</h5>
+    <div class="event-sub">{{ event.title }} &nbsp;·&nbsp; {{ event.get('date','') }}</div>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <button class="btn btn-outline-light btn-sm rounded-pill px-3"
+            onclick="openPreview()">
+      <i class="fas fa-eye me-1"></i> Preview
+    </button>
+    <button class="btn-save" id="btn-save" onclick="saveForm()">
+      <i class="fas fa-save"></i> Save Form
+    </button>
+    <a href="/coordinator/dashboard" class="btn btn-outline-light btn-sm rounded-pill px-3">
+      <i class="fas fa-arrow-left me-1"></i> Back
+    </a>
+  </div>
+</div>
+
+<div class="builder-wrap">
+
+  <!-- ── LEFT: FIELD PALETTE ───────────────────────── -->
+  <div class="panel">
+    <div class="panel-header"><h6><i class="fas fa-plus me-2"></i>Add Field</h6></div>
+
+    <div style="padding:12px 16px 8px;">
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;
+                  text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+        Basic
+      </div>
+    </div>
+    <button class="field-btn" onclick="addField('text')">
+      <span class="icon"><i class="fas fa-font"></i></span> Short Text
+    </button>
+    <button class="field-btn" onclick="addField('textarea')">
+      <span class="icon"><i class="fas fa-align-left"></i></span> Long Text
+    </button>
+    <button class="field-btn" onclick="addField('email')">
+      <span class="icon"><i class="fas fa-envelope"></i></span> Email
+    </button>
+    <button class="field-btn" onclick="addField('tel')">
+      <span class="icon"><i class="fas fa-phone"></i></span> Phone
+    </button>
+    <button class="field-btn" onclick="addField('number')">
+      <span class="icon"><i class="fas fa-hashtag"></i></span> Number
+    </button>
+    <button class="field-btn" onclick="addField('date')">
+      <span class="icon"><i class="fas fa-calendar"></i></span> Date
+    </button>
+    <button class="field-btn" onclick="addField('url')">
+      <span class="icon"><i class="fas fa-link"></i></span> URL / Link
+    </button>
+
+    <div style="padding:12px 16px 8px;">
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;
+                  text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+        Choice
+      </div>
+    </div>
+    <button class="field-btn" onclick="addField('select')">
+      <span class="icon"><i class="fas fa-caret-square-down"></i></span> Dropdown
+    </button>
+    <button class="field-btn" onclick="addField('radio')">
+      <span class="icon"><i class="fas fa-dot-circle"></i></span> Multiple Choice
+    </button>
+    <button class="field-btn" onclick="addField('checkbox_group')">
+      <span class="icon"><i class="fas fa-check-square"></i></span> Checkboxes
+    </button>
+    <button class="field-btn" onclick="addField('checkbox')">
+      <span class="icon"><i class="fas fa-toggle-on"></i></span> Single Checkbox
+    </button>
+
+    <div style="padding:12px 16px 8px;">
+      <div style="font-size:11px;color:#94a3b8;font-weight:600;
+                  text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+        Layout
+      </div>
+    </div>
+    <button class="field-btn" onclick="addField('heading')">
+      <span class="icon"><i class="fas fa-heading"></i></span> Section Heading
+    </button>
+    <button class="field-btn" onclick="addField('paragraph')">
+      <span class="icon"><i class="fas fa-info-circle"></i></span> Info Text
+    </button>
+    <button class="field-btn" onclick="addField('divider')">
+      <span class="icon"><i class="fas fa-minus"></i></span> Divider
+    </button>
+
+    <!-- Simple form reset -->
+    <div style="padding:16px;">
+      <button class="btn btn-outline-secondary btn-sm w-100 rounded-pill"
+              onclick="loadSimpleTemplate()">
+        <i class="fas fa-magic me-1"></i> Load Simple Template
+      </button>
+    </div>
+  </div>
+
+  <!-- ── CENTRE: CANVAS ────────────────────────────── -->
+  <div class="canvas-wrap">
+
+    <!-- Form metadata -->
+    <div class="form-meta-card">
+      <div class="row g-3 align-items-end">
+        <div class="col-12">
+          <!-- Form type switcher -->
+          <div class="prop-label mb-2">Registration Type</div>
+          <div class="type-switcher">
+            <div class="type-card" id="type-simple" onclick="setFormType('simple')">
+              <span class="type-icon">📋</span>
+              <h6>Simple Registration</h6>
+              <p>Pre-built form with standard fields</p>
+            </div>
+            <div class="type-card" id="type-custom" onclick="setFormType('custom')">
+              <span class="type-icon">🎨</span>
+              <h6>Custom Form Builder</h6>
+              <p>Design your own form with any fields</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="prop-label">Form Title</label>
+          <input type="text" id="form-title" class="prop-input"
+                 value="Registration Form" placeholder="e.g. Hackathon 2026 Registration">
+        </div>
+        <div class="col-md-6">
+          <label class="prop-label">Form Description (optional)</label>
+          <input type="text" id="form-desc" class="prop-input"
+                 placeholder="Shown to participants at the top of the form">
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop canvas -->
+    <div id="canvas" class="canvas-drop"
+         ondragover="onDragOver(event)" ondrop="onDrop(event)"
+         ondragleave="onDragLeave(event)">
+      <div class="canvas-empty" id="canvas-empty">
+        <i class="fas fa-mouse-pointer"></i>
+        <p class="fw-bold mb-1">Click a field type on the left to add it</p>
+        <p class="text-muted" style="font-size:13px;">
+          Or click "Load Simple Template" for a ready-made registration form
+        </p>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+      <button class="btn btn-outline-danger btn-sm rounded-pill"
+              onclick="clearAll()">
+        <i class="fas fa-trash me-1"></i> Clear All Fields
+      </button>
+      <a href="/forms/responses/{{ event.id }}"
+         class="btn btn-outline-primary btn-sm rounded-pill ms-auto">
+        <i class="fas fa-table me-1"></i> View Responses
+      </a>
+      <a href="/forms/register/{{ event.id }}" target="_blank"
+         class="btn btn-outline-success btn-sm rounded-pill">
+        <i class="fas fa-external-link-alt me-1"></i> Preview Live Form
+      </a>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: PROPERTIES ─────────────────────────── -->
+  <div class="panel props-panel">
+    <div class="panel-header"><h6><i class="fas fa-sliders-h me-2"></i>Field Properties</h6></div>
+    <div id="props-body">
+      <div class="props-empty">
+        <i class="fas fa-mouse-pointer"></i>
+        <p style="font-size:13px;">Click a field on the canvas to edit its properties</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /builder-wrap -->
+
+<!-- PREVIEW MODAL -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 rounded-4">
+      <div class="modal-header" style="background:var(--blue);color:white;border-radius:16px 16px 0 0;">
+        <h5 class="modal-title fw-bold">
+          <i class="fas fa-eye me-2"></i>Form Preview
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="preview-body"></div>
+      <div class="modal-footer border-0">
+        <small class="text-muted me-auto">
+          This is a preview only — submissions are not saved.
+        </small>
+        <button class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── STATE ──────────────────────────────────────────────
+let fields       = [];
+let selectedId   = null;
+let formType     = 'simple';
+let dragSrcIndex = null;
+
+const EVENT_ID   = "{{ event.id }}";
+const existingForm = {{ form_json | safe }};
+
+// ── INIT ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (existingForm && existingForm.fields) {
+    fields   = existingForm.fields;
+    formType = existingForm.form_type || 'simple';
+    document.getElementById('form-title').value = existingForm.form_title || '';
+    document.getElementById('form-desc').value  = existingForm.form_desc  || '';
+  }
+  setFormType(formType, false);
+  renderCanvas();
+});
+
+// ── FORM TYPE ──────────────────────────────────────────
+function setFormType(type, load = true) {
+  formType = type;
+  document.getElementById('type-simple').classList.toggle('active', type === 'simple');
+  document.getElementById('type-custom').classList.toggle('active', type === 'custom');
+  if (load && type === 'simple' && fields.length === 0) {
+    loadSimpleTemplate();
+  }
+}
+
+function loadSimpleTemplate() {
+  fields = [
+    { id:'full_name', type:'text',  label:'Full Name',    placeholder:'Enter your full name', required:true,  options:[], help_text:'' },
+    { id:'email',     type:'email', label:'Email Address',placeholder:'you@example.com',      required:true,  options:[], help_text:'' },
+    { id:'phone',     type:'tel',   label:'Phone Number', placeholder:'10-digit mobile',      required:true,  options:[], help_text:'' },
+    { id:'usn',       type:'text',  label:'USN / Roll No',placeholder:'e.g. 1SN21CS001',      required:false, options:[], help_text:'' },
+    { id:'team_name', type:'text',  label:'Team Name',    placeholder:'Leave blank if solo',  required:false, options:[], help_text:'Only for team events' },
+  ];
+  renderCanvas();
+  toast('Simple template loaded!', 'success');
+}
+
+// ── ADD FIELD ──────────────────────────────────────────
+function uid() {
+  return 'f_' + Math.random().toString(36).slice(2, 8);
+}
+
+const DEFAULTS = {
+  text:          { label:'Short Answer',    placeholder:'Type your answer' },
+  textarea:      { label:'Long Answer',     placeholder:'Type your answer here...' },
+  email:         { label:'Email Address',   placeholder:'you@example.com' },
+  tel:           { label:'Phone Number',    placeholder:'e.g. 9876543210' },
+  number:        { label:'Number',          placeholder:'Enter a number', min:'', max:'' },
+  date:          { label:'Date',            placeholder:'' },
+  url:           { label:'Website / Link',  placeholder:'https://' },
+  select:        { label:'Dropdown',        placeholder:'Select an option', options:['Option 1','Option 2','Option 3'] },
+  radio:         { label:'Multiple Choice', placeholder:'',                 options:['Option 1','Option 2','Option 3'] },
+  checkbox_group:{ label:'Checkboxes',      placeholder:'',                 options:['Option 1','Option 2','Option 3'] },
+  checkbox:      { label:'I agree to the terms', placeholder:'' },
+  heading:       { label:'Section Heading', placeholder:'' },
+  paragraph:     { label:'Add your info text here.', placeholder:'' },
+  divider:       { label:'',               placeholder:'' },
+};
+
+function addField(type) {
+  const def = DEFAULTS[type] || {};
+  const f = {
+    id:          uid(),
+    type:        type,
+    label:       def.label       || type,
+    placeholder: def.placeholder || '',
+    required:    false,
+    options:     (def.options    || []).slice(),
+    help_text:   '',
+    min:         def.min || '',
+    max:         def.max || '',
+  };
+  fields.push(f);
+  renderCanvas();
+  selectField(f.id);
+  toast(`${def.label || type} field added`, 'success');
+}
+
+// ── RENDER CANVAS ──────────────────────────────────────
+function renderCanvas() {
+  const canvas = document.getElementById('canvas');
+  const empty  = document.getElementById('canvas-empty');
+  empty.style.display = fields.length ? 'none' : 'block';
+
+  // Remove existing field cards
+  canvas.querySelectorAll('.field-card').forEach(el => el.remove());
+
+  fields.forEach((f, idx) => {
+    const card = document.createElement('div');
+    card.className = 'field-card' + (f.id === selectedId ? ' selected' : '');
+    card.dataset.id    = f.id;
+    card.dataset.index = idx;
+    card.draggable     = true;
+
+    card.addEventListener('dragstart', e => {
+      dragSrcIndex = idx;
+      setTimeout(() => card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      card.style.borderColor = 'var(--orange)';
+    });
+    card.addEventListener('dragleave', () => {
+      card.style.borderColor = '';
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      card.style.borderColor = '';
+      if (dragSrcIndex !== null && dragSrcIndex !== idx) {
+        const moved = fields.splice(dragSrcIndex, 1)[0];
+        fields.splice(idx, 0, moved);
+        dragSrcIndex = null;
+        renderCanvas();
+      }
+    });
+
+    card.innerHTML = `
+      <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
+      <div class="field-meta" onclick="selectField('${f.id}')">
+        <div class="field-label">${escHtml(f.label || f.type)}</div>
+        <div class="field-type-badge">${typeLabel(f.type)}${f.help_text ? ' · ' + escHtml(f.help_text) : ''}</div>
+      </div>
+      <div class="field-actions">
+        <button title="Duplicate" onclick="duplicateField('${f.id}')"><i class="fas fa-copy"></i></button>
+        <button title="Move up"   onclick="moveField('${f.id}',-1)"><i class="fas fa-arrow-up"></i></button>
+        <button title="Move down" onclick="moveField('${f.id}',1)"><i class="fas fa-arrow-down"></i></button>
+        <button class="del" title="Delete" onclick="deleteField('${f.id}')"><i class="fas fa-trash"></i></button>
+      </div>
+      ${f.required ? '<span class="required-dot" title="Required"></span>' : ''}
+    `;
+    canvas.appendChild(card);
+  });
+}
+
+function typeLabel(t) {
+  const m = {
+    text:'Short Text', textarea:'Long Text', email:'Email',
+    tel:'Phone', number:'Number', date:'Date', url:'URL',
+    select:'Dropdown', radio:'Multiple Choice',
+    checkbox_group:'Checkboxes', checkbox:'Checkbox',
+    heading:'Heading', paragraph:'Info Text', divider:'Divider'
+  };
+  return m[t] || t;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── CANVAS DRAG/DROP FROM PALETTE ─────────────────────
+function onDragOver(e) { e.preventDefault(); document.getElementById('canvas').classList.add('drag-over'); }
+function onDragLeave()  { document.getElementById('canvas').classList.remove('drag-over'); }
+function onDrop(e)      { e.preventDefault(); document.getElementById('canvas').classList.remove('drag-over'); }
+
+// ── SELECT FIELD ───────────────────────────────────────
+function selectField(id) {
+  selectedId = id;
+  renderCanvas();
+  renderProps();
+}
+
+// ── FIELD OPERATIONS ───────────────────────────────────
+function deleteField(id) {
+  fields = fields.filter(f => f.id !== id);
+  if (selectedId === id) { selectedId = null; renderProps(); }
+  renderCanvas();
+}
+
+function duplicateField(id) {
+  const idx = fields.findIndex(f => f.id === id);
+  if (idx === -1) return;
+  const clone = JSON.parse(JSON.stringify(fields[idx]));
+  clone.id    = uid();
+  clone.label = clone.label + ' (copy)';
+  fields.splice(idx + 1, 0, clone);
+  renderCanvas();
+}
+
+function moveField(id, dir) {
+  const idx = fields.findIndex(f => f.id === id);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= fields.length) return;
+  const tmp = fields[idx]; fields[idx] = fields[newIdx]; fields[newIdx] = tmp;
+  renderCanvas();
+}
+
+function clearAll() {
+  if (!confirm('Remove all fields? This cannot be undone.')) return;
+  fields = []; selectedId = null;
+  renderCanvas(); renderProps();
+}
+
+// ── PROPERTIES PANEL ───────────────────────────────────
+function renderProps() {
+  const body = document.getElementById('props-body');
+  if (!selectedId) {
+    body.innerHTML = `<div class="props-empty"><i class="fas fa-mouse-pointer"></i>
+      <p style="font-size:13px;">Click a field on the canvas to edit its properties</p></div>`;
+    return;
+  }
+  const f = fields.find(x => x.id === selectedId);
+  if (!f) return;
+
+  const needsOptions = ['select','radio','checkbox_group'].includes(f.type);
+  const needsRange   = f.type === 'number';
+  const isLayout     = ['heading','paragraph','divider'].includes(f.type);
+
+  let html = `<div class="props-body">`;
+
+  if (!isLayout) {
+    html += `
+    <div class="prop-group">
+      <div class="prop-label">Field Label</div>
+      <input class="prop-input" id="p-label" value="${escHtml(f.label)}"
+             oninput="updateProp('label',this.value)" placeholder="Label shown to user">
+    </div>`;
+  } else {
+    html += `
+    <div class="prop-group">
+      <div class="prop-label">${f.type === 'heading' ? 'Heading Text' : f.type === 'paragraph' ? 'Info Text' : 'Divider'}</div>
+      ${f.type !== 'divider' ? `<input class="prop-input" id="p-label" value="${escHtml(f.label)}"
+        oninput="updateProp('label',this.value)" placeholder="Text content">` : '<p style="font-size:12px;color:#94a3b8;margin:0;">A horizontal line separator.</p>'}
+    </div>`;
+  }
+
+  if (!isLayout && f.type !== 'checkbox') {
+    html += `
+    <div class="prop-group">
+      <div class="prop-label">Placeholder Text</div>
+      <input class="prop-input" id="p-ph" value="${escHtml(f.placeholder)}"
+             oninput="updateProp('placeholder',this.value)" placeholder="Hint inside the field">
+    </div>`;
+  }
+
+  if (!isLayout) {
+    html += `
+    <div class="prop-group">
+      <div class="prop-label">Help Text</div>
+      <input class="prop-input" id="p-help" value="${escHtml(f.help_text)}"
+             oninput="updateProp('help_text',this.value)" placeholder="Small description below field">
+    </div>
+    <div class="prop-group">
+      <label class="prop-toggle">
+        <input type="checkbox" ${f.required ? 'checked' : ''}
+               onchange="updateProp('required',this.checked)">
+        Required field
+      </label>
+    </div>`;
+  }
+
+  if (needsRange) {
+    html += `
+    <div class="prop-group">
+      <div class="prop-label">Min Value</div>
+      <input class="prop-input" type="number" value="${f.min}"
+             oninput="updateProp('min',this.value)" placeholder="No minimum">
+    </div>
+    <div class="prop-group">
+      <div class="prop-label">Max Value</div>
+      <input class="prop-input" type="number" value="${f.max}"
+             oninput="updateProp('max',this.value)" placeholder="No maximum">
+    </div>`;
+  }
+
+  if (needsOptions) {
+    html += `
+    <div class="prop-group">
+      <div class="prop-label">Options</div>
+      <div class="option-list" id="option-list">`;
+    f.options.forEach((opt, i) => {
+      html += `<div class="option-item">
+        <input value="${escHtml(opt)}" oninput="updateOption(${i},this.value)"
+               placeholder="Option ${i+1}">
+        <button onclick="removeOption(${i})"><i class="fas fa-times"></i></button>
+      </div>`;
+    });
+    html += `</div>
+      <button class="btn-add-option" onclick="addOption()">
+        <i class="fas fa-plus me-1"></i> Add Option
+      </button>
+    </div>`;
+  }
+
+  html += `
+  <div class="prop-group mt-3">
+    <div class="prop-label">Field ID (internal)</div>
+    <input class="prop-input" style="font-family:monospace;font-size:12px;"
+           value="${escHtml(f.id)}" readonly>
+    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+      Used in CSV exports and the submissions database.
+    </div>
+  </div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+function updateProp(key, val) {
+  const f = fields.find(x => x.id === selectedId);
+  if (!f) return;
+  f[key] = val;
+  renderCanvas();
+}
+
+function addOption() {
+  const f = fields.find(x => x.id === selectedId);
+  if (!f) return;
+  f.options.push('New option');
+  renderProps();
+}
+
+function removeOption(idx) {
+  const f = fields.find(x => x.id === selectedId);
+  if (!f) return;
+  f.options.splice(idx, 1);
+  renderProps();
+}
+
+function updateOption(idx, val) {
+  const f = fields.find(x => x.id === selectedId);
+  if (!f) return;
+  f.options[idx] = val;
+}
+
+// ── PREVIEW ────────────────────────────────────────────
+function openPreview() {
+  const title = document.getElementById('form-title').value || 'Registration Form';
+  const desc  = document.getElementById('form-desc').value  || '';
+  let html    = `<div class="preview-form">
+    <h5 class="fw-bold mb-1" style="color:var(--blue);">${escHtml(title)}</h5>
+    ${desc ? `<p class="text-muted mb-4" style="font-size:13px;">${escHtml(desc)}</p>` : '<div class="mb-4"></div>'}`;
+
+  fields.forEach(f => {
+    if (f.type === 'divider') {
+      html += `<hr>`;
+      return;
+    }
+    if (f.type === 'heading') {
+      html += `<h6 class="fw-bold mt-4 mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;">${escHtml(f.label)}</h6>`;
+      return;
+    }
+    if (f.type === 'paragraph') {
+      html += `<p class="text-muted mb-3" style="font-size:13px;">${escHtml(f.label)}</p>`;
+      return;
+    }
+
+    html += `<div class="mb-3"><label>${escHtml(f.label)}${f.required ? ' <span class="required-star">*</span>' : ''}</label>`;
+    if (f.help_text) html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${escHtml(f.help_text)}</div>`;
+
+    if (f.type === 'textarea') {
+      html += `<textarea placeholder="${escHtml(f.placeholder)}" rows="3"></textarea>`;
+    } else if (f.type === 'select') {
+      html += `<select><option value="">Select...</option>` +
+        f.options.map(o => `<option>${escHtml(o)}</option>`).join('') + `</select>`;
+    } else if (f.type === 'radio') {
+      html += f.options.map(o =>
+        `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
+          <input type="radio" name="${f.id}"> ${escHtml(o)}</label></div>`
+      ).join('');
+    } else if (f.type === 'checkbox_group') {
+      html += f.options.map(o =>
+        `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
+          <input type="checkbox"> ${escHtml(o)}</label></div>`
+      ).join('');
+    } else if (f.type === 'checkbox') {
+      html += `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
+        <input type="checkbox"> ${escHtml(f.label)}</label></div>`;
+    } else {
+      html += `<input type="${f.type}" placeholder="${escHtml(f.placeholder)}">`;
+    }
+    html += `</div>`;
+  });
+
+  html += `<button class="btn btn-primary rounded-pill px-4 mt-2" disabled>Submit (preview only)</button></div>`;
+  document.getElementById('preview-body').innerHTML = html;
+  new bootstrap.Modal(document.getElementById('previewModal')).show();
+}
+
+// ── SAVE ───────────────────────────────────────────────
+async function saveForm() {
+  const btn   = document.getElementById('btn-save');
+  const title = document.getElementById('form-title').value.trim();
+  const desc  = document.getElementById('form-desc').value.trim();
+
+  if (!title) { toast('Please enter a form title.', 'error'); return; }
+  if (fields.length === 0) { toast('Add at least one field before saving.', 'error'); return; }
+
+  // Validate: simple type must have email field
+  const hasEmail = fields.some(f => f.id === 'email' || f.type === 'email');
+  if (!hasEmail) { toast('Every form needs an Email field for registration.', 'error'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+  try {
+    const res = await fetch(`/forms/save/${EVENT_ID}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        form_type:  formType,
+        form_title: title,
+        form_desc:  desc,
+        fields:     fields
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      toast('Form saved successfully! ✓', 'success');
+    } else {
+      toast('Error: ' + data.message, 'error');
+    }
+  } catch(e) {
+    toast('Network error — please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Save Form';
+  }
+}
+
+// ── TOAST ──────────────────────────────────────────────
+function toast(msg, type='success') {
+  const wrap = document.getElementById('toast-wrap');
+  const el   = document.createElement('div');
+  el.className = `toast-msg ${type}`;
+  el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+</script>
+</body>
+</html>

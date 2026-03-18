@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: #0f172a; /* Matches your dashboard theme */
+            background: #0f172a;
             color: #f8fafc;
             height: 100vh;
             display: flex;
@@ -39,11 +39,27 @@
             text-decoration: none;
             font-weight: 600;
             transition: 0.3s;
+            margin: 0 6px;
         }
         .btn-home:hover {
             background: #2563eb;
             color: white;
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        .btn-back {
+            background: transparent;
+            color: #94a3b8;
+            padding: 12px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid #334155;
+            transition: 0.3s;
+            margin: 0 6px;
+        }
+        .btn-back:hover {
+            background: #1e293b;
+            color: #f8fafc;
         }
     </style>
 </head>
@@ -52,7 +68,8 @@
         <div class="error-code">404</div>
         <h2 class="mb-3">Oops! Lost in Cyberspace?</h2>
         <p class="error-message">The page you are looking for doesn't exist or has been moved.</p>
-        <a href="/" class="btn-home"><i class="fas fa-home me-2"></i> Return Home</a>
+        <a href="/" class="btn-home"><i class="fas fa-home me-2"></i>Return Home</a>
+        <a href="javascript:history.back()" class="btn-back"><i class="fas fa-arrow-left me-2"></i>Go Back</a>
     </div>
 </body>
 </html>

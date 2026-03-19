@@ -1,0 +1,208 @@
+{% extends "coordinator/base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 class="fw-bold mb-0" style="color:#0d2d62;">
+        <i class="fas fa-chart-bar me-2" style="color:#f37021;"></i>
+        Score Summary — {{ event.title }}
+      </h4>
+      <small class="text-muted">Review all judges' scores before publishing final results</small>
+    </div>
+    <a href="/coordinator/dashboard" class="btn btn-outline-secondary btn-sm rounded-pill">
+      <i class="fas fa-arrow-left me-1"></i> Back
+    </a>
+  </div>
+
+  <!-- Stats row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fs-3 fw-bold" style="color:#0d2d62;">{{ leaderboard|length }}</div>
+        <div class="text-muted small">Teams Scored</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fs-3 fw-bold" style="color:#f37021;">{{ unscored|length }}</div>
+        <div class="text-muted small">Not Yet Scored</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fs-3 fw-bold" style="color:#10b981;">{{ judges|length }}</div>
+        <div class="text-muted small">Total Judges</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fs-3 fw-bold" style="color:#7c3aed;">
+          {% if leaderboard %}{{ leaderboard[0].avg_score }}{% else %}—{% endif %}
+        </div>
+        <div class="text-muted small">Highest Avg Score</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Warning if not all scored -->
+  {% if unscored %}
+  <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <div>
+      <strong>{{ unscored|length }} team(s) have not been scored yet.</strong>
+      They will be excluded from results. You can still publish for the scored teams.
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Leaderboard table -->
+  {% if leaderboard %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-3" style="background:#0d2d62;">
+      <h6 class="mb-0 text-white fw-bold">
+        <i class="fas fa-trophy me-2" style="color:#f37021;"></i>
+        Leaderboard Preview (Average of All Judges)
+      </h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th class="ps-3">Rank</th>
+              <th>Team / Participant</th>
+              {% for judge in judges %}
+              <th class="text-center">{{ judge.name }}<br><small class="text-muted fw-normal">Judge</small></th>
+              {% endfor %}
+              <th class="text-center fw-bold" style="color:#0d2d62;">Avg Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for team in leaderboard %}
+            <tr {% if team.rank <= 3 %}style="background: {% if team.rank == 1 %}#fffbeb{% elif team.rank == 2 %}#f0f9ff{% else %}#f0fff4{% endif %};"{% endif %}>
+              <td class="ps-3">
+                {% if team.rank == 1 %}
+                  <span class="badge" style="background:#f59e0b;font-size:14px;">🥇 1st</span>
+                {% elif team.rank == 2 %}
+                  <span class="badge" style="background:#6b7280;font-size:14px;">🥈 2nd</span>
+                {% elif team.rank == 3 %}
+                  <span class="badge" style="background:#b45309;font-size:14px;">🥉 3rd</span>
+                {% else %}
+                  <span class="text-muted">#{{ team.rank }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="fw-semibold">{{ team.team_name }}</div>
+                <small class="text-muted">{{ team.lead_name }}</small>
+              </td>
+              {% for judge in judges %}
+                {% set js = team.judge_scores.get(judge.name) %}
+                <td class="text-center">
+                  {% if js %}
+                    <span class="badge bg-success-subtle text-success rounded-pill px-3">
+                      {{ js.total }}
+                    </span>
+                    <!-- Criteria breakdown tooltip -->
+                    {% if js.details %}
+                    <br>
+                    <small class="text-muted" style="font-size:10px;">
+                      {% for k, v in js.details.items() %}{{ k }}: {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </small>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3">—</span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+              <td class="text-center">
+                <span class="fw-bold fs-5" style="color:#0d2d62;">{{ team.avg_score }}</span>
+                <br>
+                <small class="text-muted">{{ team.scores_count }}/{{ team.judges_count }} judges</small>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Publish button -->
+  <div class="card border-0 shadow-sm p-4 text-center">
+    <h5 class="fw-bold mb-2" style="color:#0d2d62;">Ready to Publish?</h5>
+    <p class="text-muted mb-3">
+      This will calculate the final average score for each team, rank them,
+      notify the top 3 winners by email and WhatsApp, and mark the event as completed.
+      <strong>This action cannot be undone.</strong>
+    </p>
+    {% if not scoring_complete %}
+    <div class="alert alert-info mb-3">
+      <i class="fas fa-info-circle me-1"></i>
+      {{ unscored|length }} team(s) have no scores and will be excluded from results.
+    </div>
+    {% endif %}
+    <form method="POST" action="/coordinator/publish_results/{{ event.id }}"
+          onsubmit="return confirm('Publish final results for {{ event.title }}? This cannot be undone.');">
+      <button type="submit" class="btn btn-lg px-5 fw-bold text-white rounded-pill"
+              style="background:#0d2d62;">
+        <i class="fas fa-trophy me-2"></i>
+        Publish Final Results
+      </button>
+    </form>
+  </div>
+
+  {% else %}
+  <div class="card border-0 shadow-sm p-5 text-center">
+    <i class="fas fa-clipboard-list fa-3x mb-3 text-muted opacity-50"></i>
+    <h5 class="text-muted">No scores submitted yet</h5>
+    <p class="text-muted">Judges need to submit scores before you can publish results.</p>
+    <a href="/coordinator/dashboard" class="btn btn-outline-primary rounded-pill">
+      Back to Dashboard
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Unscored teams -->
+  {% if unscored %}
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header py-3 bg-warning-subtle">
+      <h6 class="mb-0 fw-bold text-warning-emphasis">
+        <i class="fas fa-clock me-2"></i>Teams Awaiting Scores
+      </h6>
+    </div>
+    <div class="card-body p-0">
+      <table class="table mb-0 align-middle">
+        <thead style="background:#f8f9fa;">
+          <tr>
+            <th class="ps-3">Team</th>
+            <th>Lead</th>
+            <th>Judges who scored</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for team in unscored %}
+          <tr>
+            <td class="ps-3 fw-semibold">{{ team.team_name }}</td>
+            <td class="text-muted">{{ team.lead_name }}</td>
+            <td>
+              {% for judge in judges %}
+                {% set js = team.judge_scores.get(judge.name) %}
+                {% if js %}
+                  <span class="badge bg-success-subtle text-success me-1">{{ judge.name }} ✓</span>
+                {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary me-1">{{ judge.name }} pending</span>
+                {% endif %}
+              {% endfor %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

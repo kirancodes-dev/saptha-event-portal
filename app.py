@@ -39,8 +39,9 @@ limiter = Limiter(
 if not firebase_admin._apps:
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
     if firebase_creds_json:
-        # Railway / production — credentials stored as env var JSON string
         cred_dict = json.loads(firebase_creds_json)
+        if isinstance(cred_dict, str):
+            cred_dict = json.loads(cred_dict)
         cred = credentials.Certificate(cred_dict)
     else:
         # Local development — use the JSON file

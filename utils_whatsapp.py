@@ -1,378 +1,242 @@
 """
-utils_whatsapp.py  —  WhatsApp Notifications via Twilio
+utils_whatsapp.py — SapthaEvent WhatsApp Notifications via Twilio
 
-Setup (one time):
-  1. Create a free Twilio account at https://twilio.com
-  2. Enable the WhatsApp Sandbox:
-       Console → Messaging → Try it out → Send a WhatsApp message
-  3. Your sandbox number will look like: +14155238886
-  4. Students must send "join <your-sandbox-word>" to that number once
-     to opt in (sandbox only — production removes this requirement)
-  5. Set these 3 environment variables on Render and in your .env:
-       TWILIO_ACCOUNT_SID   = ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-       TWILIO_AUTH_TOKEN    = your_auth_token
-       TWILIO_WHATSAPP_FROM = whatsapp:+14155238886
+HOW TO ENABLE:
+  Add these 3 variables in Railway → Variables:
+    TWILIO_ACCOUNT_SID   = ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    TWILIO_AUTH_TOKEN    = your_auth_token_here
+    TWILIO_WHATSAPP_FROM = whatsapp:+14155238886
 
-Production upgrade path:
-  - Apply for a Twilio WhatsApp Business number (takes ~1 week approval)
-  - Once approved, remove the sandbox opt-in requirement
-  - Update TWILIO_WHATSAPP_FROM to your approved number
-  - All message functions below work identically — no code changes needed
+HOW TO GET THEM (free Twilio trial, no credit card):
+  1. Go to twilio.com → Sign up free
+  2. Dashboard → Account SID + Auth Token are shown on homepage
+  3. Messaging → Try it Out → Send a WhatsApp message
+     → Follow sandbox instructions (student texts "join <word>" to +1 415 523 8886)
+  4. Sandbox number = whatsapp:+14155238886
 
-Phone number format:
-  All numbers must include the country code without spaces or dashes.
-  India: 9876543210  →  +919876543210  (we handle the + prefix below)
+IMPORTANT — Sandbox restriction:
+  Each recipient must opt in by texting the join code ONCE.
+  After that they receive all messages from your portal.
+  This restriction is removed when you upgrade to a paid Twilio number.
 
-Message templates:
-  Twilio sandbox accepts freeform messages.
-  Twilio production requires pre-approved templates for outbound messages.
-  This file uses freeform format — works immediately on sandbox.
+PHONE NUMBER FORMAT:
+  Store phone numbers in Firestore as: 9876543210  (10 digits, no country code)
+  This file automatically prepends +91 (India).
+  Change _fmt_phone() below if your students are outside India.
+
+GRACEFUL DEGRADATION:
+  All functions return False silently if Twilio is not configured.
+  The app never crashes — WhatsApp is always optional.
 """
 
 import os
 import logging
-import re
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# =========================================================
-# TWILIO CLIENT (lazy-loaded so app starts even if not configured)
-# =========================================================
+# ─────────────────────────────────────────────────────────────
+# INTERNAL HELPERS
+# ─────────────────────────────────────────────────────────────
 
-_client = None
-
-
-def _get_client():
-    """Return a Twilio REST client, initialised once."""
-    global _client
-    if _client is not None:
-        return _client
-
+def _client():
+    """Return a Twilio REST client, or None if not configured."""
+    sid   = os.environ.get('TWILIO_ACCOUNT_SID',   '').strip()
+    token = os.environ.get('TWILIO_AUTH_TOKEN',    '').strip()
+    if not sid or not token:
+        return None
     try:
         from twilio.rest import Client
-        sid   = os.environ.get('TWILIO_ACCOUNT_SID',   '').strip()
-        token = os.environ.get('TWILIO_AUTH_TOKEN',    '').strip()
-        if not sid or not token:
-            raise RuntimeError(
-                "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set "
-                "as environment variables."
-            )
-        _client = Client(sid, token)
-        return _client
+        return Client(sid, token)
     except ImportError:
-        raise RuntimeError(
-            "twilio package is not installed. "
-            "Run: pip install twilio"
-        )
+        logger.warning("Twilio not installed. Run: pip install twilio")
+        return None
+    except Exception as exc:
+        logger.error("Twilio client init failed: %s", exc)
+        return None
 
 
 def _from_number() -> str:
-    """WhatsApp-prefixed sender number from env."""
-    raw = os.environ.get('TWILIO_WHATSAPP_FROM', '').strip()
-    if not raw:
-        raise RuntimeError("TWILIO_WHATSAPP_FROM environment variable is not set.")
-    return raw if raw.startswith('whatsapp:') else f'whatsapp:{raw}'
+    return os.environ.get('TWILIO_WHATSAPP_FROM', 'whatsapp:+14155238886')
 
 
-def _format_phone(phone: str) -> Optional[str]:
+def _fmt_phone(phone: str) -> str:
     """
-    Normalise an Indian mobile number to E.164 format.
-    Accepts:  9876543210 / 09876543210 / +919876543210 / 91-9876543210
-    Returns:  whatsapp:+919876543210  or None if invalid
+    Normalise a phone number to WhatsApp E.164 format.
+    Assumes +91 (India) if no country code is present.
     """
     if not phone:
-        return None
-
-    # Strip all non-digit characters
-    digits = re.sub(r'\D', '', str(phone))
-
-    # Indian numbers: 10 digits → prepend 91
-    if len(digits) == 10:
-        digits = '91' + digits
-    # Already has country code prefix
-    elif len(digits) == 12 and digits.startswith('91'):
-        pass
-    elif len(digits) == 11 and digits.startswith('0'):
-        digits = '91' + digits[1:]
-    else:
-        logger.warning("Could not normalise phone number: %s", phone)
-        return None
-
-    return f'whatsapp:+{digits}'
+        return ''
+    # Strip spaces, dashes, brackets
+    p = ''.join(c for c in str(phone) if c.isdigit() or c == '+')
+    if p.startswith('+'):
+        return f'whatsapp:{p}'
+    if len(p) == 10:          # bare Indian mobile number
+        return f'whatsapp:+91{p}'
+    if len(p) == 12 and p.startswith('91'):
+        return f'whatsapp:+{p}'
+    return f'whatsapp:+{p}'   # best-effort
 
 
 def _send(to_phone: str, body: str) -> bool:
     """
-    Core send function. Returns True on success, False on any error.
-    Never raises — always safe to call from a route without try/except.
+    Core send function. Returns True on success, False on any failure.
+    Never raises.
     """
-    try:
-        to = _format_phone(to_phone)
-        if not to:
-            logger.error("WhatsApp send skipped — invalid phone: %s", to_phone)
-            return False
+    client = _client()
+    if not client:
+        return False
 
-        client = _get_client()
+    to_wa = _fmt_phone(to_phone)
+    if not to_wa or len(to_wa) < 15:
+        logger.warning("WhatsApp: invalid phone '%s' — skipped", to_phone)
+        return False
+
+    try:
         msg = client.messages.create(
             from_=_from_number(),
-            to=to,
-            body=body
+            to=to_wa,
+            body=body,
         )
-        logger.info("WhatsApp sent to %s — SID: %s", to_phone, msg.sid)
+        logger.info("WhatsApp sent → %s | SID: %s", to_wa, msg.sid)
         return True
-
     except Exception as exc:
-        logger.error("WhatsApp send failed to %s — %s", to_phone, exc)
+        logger.error("WhatsApp failed → %s | %s", to_wa, exc)
         return False
 
 
-def _send_bulk(phone_list: list, body: str) -> dict:
-    """
-    Send the same message to multiple numbers.
-    Returns {'sent': N, 'failed': N}
-    """
-    sent = failed = 0
-    for phone in phone_list:
-        if _send(phone, body):
-            sent += 1
-        else:
-            failed += 1
-    return {'sent': sent, 'failed': failed}
-
-
-# =========================================================
-# 1. REGISTRATION TICKET CONFIRMATION
-#    Sent immediately after a student registers (free or paid).
-# =========================================================
+# ─────────────────────────────────────────────────────────────
+# PUBLIC SEND FUNCTIONS — called from routes
+# ─────────────────────────────────────────────────────────────
 
 def send_ticket_whatsapp(phone: str, name: str, event_title: str,
-                          reg_id: str, event_date: str = '',
-                          venue: str = '',
-                          base_url: str = '') -> bool:
+                         reg_id: str, base_url: str = '') -> bool:
     """
-    Sends a compact ticket confirmation to the participant's WhatsApp.
-    Called from routes_participant.py and routes_payment.py after
-    a successful registration.
+    Sent when a participant registers for a free event
+    or after payment confirmation for a paid event.
     """
-    base_url = base_url or os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
-
-    lines = [
-        f"🎟️ *Registration Confirmed!*",
-        f"",
-        f"Hello {name}! You're in for *{event_title}*.",
-        f"",
-        f"📋 *Ticket ID:* `{reg_id}`",
-    ]
-    if event_date:
-        lines.append(f"📅 *Date:* {event_date}")
-    if venue:
-        lines.append(f"📍 *Venue:* {venue}")
-
-    lines += [
-        f"",
-        f"🔗 View your ticket & QR code:",
-        f"{base_url}/ticket/{reg_id}",
-        f"",
-        f"Show this QR at the venue entrance.",
-        f"_— SapthaEvent, Sapthagiri NPS University_",
-    ]
-
-    return _send(phone, '\n'.join(lines))
-
-
-# =========================================================
-# 2. ROOM & JUDGE ASSIGNMENT ALERT
-#    Sent after the coordinator runs room allocation.
-# =========================================================
-
-def send_room_assignment_whatsapp(phone: str, name: str, event_title: str,
-                                   round_num: int, room: str,
-                                   judge_name: str) -> bool:
-    """
-    Notifies a team lead about their room and judge assignment.
-    Called from routes_coordinator.py → trigger_reminders().
-    """
+    base = base_url or os.environ.get(
+        'BASE_URL', 'https://saptha-event-portal-production.up.railway.app')
     body = (
-        f"⚡ *Round {round_num} Assignment — {event_title}*\n\n"
-        f"Hello {name}!\n\n"
-        f"🏠 *Your Room:* {room}\n"
-        f"👨‍⚖️ *Your Judge:* {judge_name}\n\n"
-        f"Please report to your room immediately.\n"
-        f"*All the best! 🚀*\n\n"
-        f"_— SapthaEvent_"
+        f"🎟️ *Registration Confirmed!*\n\n"
+        f"Hi {name},\n"
+        f"You're registered for *{event_title}*.\n\n"
+        f"📌 *Ticket ID:* `{reg_id}`\n\n"
+        f"Show this ID at the venue for check-in.\n"
+        f"👉 Dashboard: {base}/participant/dashboard"
     )
     return _send(phone, body)
 
-
-# =========================================================
-# 3. RESULT / WINNER ANNOUNCEMENT
-#    Sent when the coordinator publishes final results.
-# =========================================================
-
-def send_result_whatsapp(phone: str, name: str, event_title: str,
-                          rank: int, score: float) -> bool:
-    """
-    Notifies a winner their rank and score.
-    Called from routes_coordinator.py → publish_results().
-    """
-    medals = {1: "🥇 1st Place", 2: "🥈 2nd Place", 3: "🥉 3rd Place"}
-    rank_text = medals.get(rank, f"🏅 Top {rank}")
-
-    body = (
-        f"🏆 *Results Published — {event_title}*\n\n"
-        f"Congratulations {name}!\n\n"
-        f"{rank_text}\n"
-        f"📊 *Final Score:* {score}\n\n"
-        f"Log in to the portal to view the full leaderboard "
-        f"and download your certificate.\n\n"
-        f"_— SapthaEvent, Sapthagiri NPS University_"
-    )
-    return _send(phone, body)
-
-
-# =========================================================
-# 4. ELIMINATION NOTIFICATION
-#    Sent to teams that did not advance to the next round.
-# =========================================================
-
-def send_elimination_whatsapp(phone: str, name: str,
-                               event_title: str, round_num: int) -> bool:
-    """
-    Gently notifies a team they were eliminated.
-    Called from routes_coordinator.py → promote_round().
-    """
-    body = (
-        f"📋 *{event_title} — Round {round_num} Results*\n\n"
-        f"Hello {name},\n\n"
-        f"Thank you for participating in Round {round_num}. "
-        f"Unfortunately your team did not advance to the next round.\n\n"
-        f"Your participation certificate will be available in the portal shortly.\n\n"
-        f"Keep building! 💪\n"
-        f"_— SapthaEvent_"
-    )
-    return _send(phone, body)
-
-
-# =========================================================
-# 5. BROADCAST MESSAGE
-#    Send a custom message from coordinator to all participants.
-#    Called from routes_coordinator.py → broadcast_message().
-# =========================================================
-
-def send_broadcast_whatsapp(phone_list: list, event_title: str,
-                              subject: str, message: str) -> dict:
-    """
-    Sends a custom broadcast to a list of phone numbers.
-    Returns {'sent': N, 'failed': N}
-    """
-    body = (
-        f"📢 *[{event_title}] {subject}*\n\n"
-        f"{message}\n\n"
-        f"_— Event Organizers_"
-    )
-    return _send_bulk(phone_list, body)
-
-
-# =========================================================
-# 6. PAYMENT RECEIPT
-#    Sent after a successful payment via Razorpay / simulation.
-# =========================================================
 
 def send_payment_receipt_whatsapp(phone: str, name: str, event_title: str,
-                                   reg_id: str, amount: int) -> bool:
+                                  amount: float, payment_id: str) -> bool:
     """
-    Sends a payment confirmation receipt.
-    Called from routes_payment.py after payment is confirmed.
+    Sent after successful Razorpay payment.
     """
     body = (
-        f"✅ *Payment Confirmed — {event_title}*\n\n"
-        f"Hello {name},\n\n"
-        f"💰 *Amount Paid:* ₹{amount}\n"
-        f"🎟️ *Ticket ID:* `{reg_id}`\n\n"
-        f"Your registration is confirmed. "
-        f"Keep your Ticket ID handy for entry.\n\n"
-        f"_— SapthaEvent_"
+        f"✅ *Payment Received!*\n\n"
+        f"Hi {name},\n"
+        f"Your payment of *₹{amount}* for *{event_title}* is confirmed.\n\n"
+        f"🧾 *Payment ID:* `{payment_id}`\n\n"
+        f"Keep this for your records. Your ticket will arrive by email."
     )
     return _send(phone, body)
 
-
-# =========================================================
-# 7. STAFF CREDENTIALS
-#    Sent when a Judge or EventCoordinator account is created.
-# =========================================================
 
 def send_staff_credentials_whatsapp(phone: str, name: str, role: str,
-                                      event_title: str, email: str,
-                                      password: str) -> bool:
+                                     event_title: str, email: str,
+                                     password: str) -> bool:
     """
-    Sends login credentials to a newly appointed staff member.
-    Called from routes_coordinator.py → assign_staff().
+    Sent when SPOC appoints a Judge or Coordinator.
     """
+    base = os.environ.get(
+        'BASE_URL', 'https://saptha-event-portal-production.up.railway.app')
     body = (
-        f"👋 *Welcome to SapthaEvent, {name}!*\n\n"
-        f"You have been appointed as *{role}* for:\n"
-        f"📌 *{event_title}*\n\n"
-        f"🔑 *Your Login Credentials:*\n"
-        f"Email: {email}\n"
-        f"Password: `{password}`\n\n"
-        f"⚠️ You will be asked to change this on first login.\n\n"
-        f"_— SapthaEvent Admin_"
+        f"🔐 *Your SapthaEvent Login*\n\n"
+        f"Hi {name},\n"
+        f"You've been appointed as *{role}* for *{event_title}*.\n\n"
+        f"📧 Email:    {email}\n"
+        f"🔑 Password: `{password}`\n\n"
+        f"👉 Login at: {base}/login\n\n"
+        f"⚠️ Change your password after first login."
     )
     return _send(phone, body)
 
 
-# =========================================================
-# 8. EVENT REMINDER  (can be triggered manually or via cron)
-# =========================================================
-
-def send_event_reminder_whatsapp(phone: str, name: str, event_title: str,
-                                   event_date: str, venue: str,
-                                   reg_id: str) -> bool:
+def send_room_assignment_whatsapp(phone: str, lead_name: str,
+                                   event_title: str, room: str,
+                                   judge_name: str, report_time: str = '') -> bool:
     """
-    24-hour reminder before an event starts.
-    Can be triggered manually from coordinator dashboard or via a cron job.
+    Sent to team lead when room/judge assignment is done by SPOC.
     """
+    time_line = f"\n⏰ Report by: {report_time}" if report_time else ''
     body = (
-        f"⏰ *Event Reminder — Tomorrow!*\n\n"
-        f"Hello {name},\n\n"
-        f"*{event_title}* is happening tomorrow!\n\n"
-        f"📅 *Date:* {event_date}\n"
-        f"📍 *Venue:* {venue}\n"
-        f"🎟️ *Ticket ID:* `{reg_id}`\n\n"
-        f"Don't forget to bring your Ticket ID for entry.\n"
-        f"See you there! 🎉\n\n"
-        f"_— SapthaEvent_"
+        f"📍 *Room Assignment — {event_title}*\n\n"
+        f"Hi {lead_name},\n"
+        f"Your team has been assigned:\n\n"
+        f"🏠 *Room:* {room}\n"
+        f"👨‍⚖️ *Judge:* {judge_name}"
+        f"{time_line}\n\n"
+        f"Please report on time. Good luck! 🍀"
     )
     return _send(phone, body)
 
 
-# =========================================================
-# 9. WHATSAPP STATUS CHECK (for admin testing)
-# =========================================================
-
-def check_whatsapp_config() -> dict:
+def send_elimination_whatsapp(phone: str, lead_name: str,
+                               event_title: str, round_name: str = '') -> bool:
     """
-    Returns a dict with config status. Call from admin panel to verify setup.
-    Example: GET /admin/whatsapp_status
+    Sent to a team that has been eliminated from the event.
     """
-    status = {
-        'account_sid_set':   bool(os.environ.get('TWILIO_ACCOUNT_SID')),
-        'auth_token_set':    bool(os.environ.get('TWILIO_AUTH_TOKEN')),
-        'from_number_set':   bool(os.environ.get('TWILIO_WHATSAPP_FROM')),
-        'twilio_installed':  False,
-        'ready':             False,
-    }
-    try:
-        import twilio  # noqa
-        status['twilio_installed'] = True
-    except ImportError:
-        pass
+    round_line = f" after *{round_name}*" if round_name else ''
+    body = (
+        f"📋 *Event Update — {event_title}*\n\n"
+        f"Hi {lead_name},\n"
+        f"Your team has been eliminated{round_line}.\n\n"
+        f"Thank you for participating! 🙏\n"
+        f"Better luck next time. Stay tuned for future events on the portal."
+    )
+    return _send(phone, body)
 
-    status['ready'] = all([
-        status['account_sid_set'],
-        status['auth_token_set'],
-        status['from_number_set'],
-        status['twilio_installed'],
-    ])
-    return status
+
+def send_result_whatsapp(phone: str, lead_name: str, event_title: str,
+                          rank: int, score: float) -> bool:
+    """
+    Sent to top-3 winners when SPOC publishes final results.
+    """
+    rank_emojis = {1: '🥇', 2: '🥈', 3: '🥉'}
+    emoji = rank_emojis.get(rank, '🏅')
+    base  = os.environ.get(
+        'BASE_URL', 'https://saptha-event-portal-production.up.railway.app')
+    body = (
+        f"{emoji} *Congratulations, {lead_name}!*\n\n"
+        f"Results are out for *{event_title}*.\n\n"
+        f"🏆 *Your Rank:* {rank}\n"
+        f"📊 *Score:*     {score}\n\n"
+        f"Your certificate has been emailed to you.\n"
+        f"👉 View at: {base}/participant/dashboard"
+    )
+    return _send(phone, body)
+
+
+def send_broadcast_whatsapp(phone_list: list, event_title: str,
+                             subject: str, message: str) -> dict:
+    """
+    Sends a broadcast message to a list of phone numbers.
+    Returns {"sent": N, "failed": M}.
+    Used by SPOC from the broadcast panel on the dashboard.
+    """
+    body = (
+        f"📢 *{subject}*\n\n"
+        f"Event: *{event_title}*\n\n"
+        f"{message}\n\n"
+        f"— SapthaEvent Portal"
+    )
+    sent   = 0
+    failed = 0
+    for phone in phone_list:
+        if phone:
+            if _send(phone, body):
+                sent += 1
+            else:
+                failed += 1
+    logger.info("Broadcast done — sent: %d, failed: %d", sent, failed)
+    return {"sent": sent, "failed": failed}

@@ -1,266 +1,388 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Portal | Sapthagiri NPS University</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Events | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;--bg:#f4f7f6;}
+*{box-sizing:border-box;}
+body{background:var(--bg);color:#1e293b;font-family:'Inter',sans-serif;min-height:100vh;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
-    <style>
-        :root { --snpsu-blue: #0d2d62; --snpsu-orange: #f37021; --bg-light: #f4f7f6; --text-dark: #1e293b; }
-        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; }
-        h1,h2,h3,h4,h5 { font-family: 'Poppins', sans-serif; }
+/* Navbar */
+.navbar{background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:10px 0;border-bottom:3px solid var(--orange);}
 
-        .navbar { background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 15px 0; }
-        .logo-title { color: var(--snpsu-blue); font-weight: 800; font-size: 1.3rem; margin: 0; line-height: 1.1; }
+/* Hero */
+.hero{background:var(--blue);padding:36px 0 48px;position:relative;overflow:hidden;}
+.hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+.hero-content{position:relative;z-index:1;}
 
-        .announcement-bar { background: linear-gradient(90deg, var(--snpsu-blue), #1a4999); color: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(13,45,98,0.2); border-left: 5px solid var(--snpsu-orange); }
+/* Stat cards */
+.stat-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px 20px;text-align:center;color:#fff;}
+.stat-pill .num{font-family:'Poppins',sans-serif;font-size:1.8rem;font-weight:800;line-height:1;}
+.stat-pill .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-top:4px;}
 
-        .ticket-card { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04); transition: 0.3s; }
-        .ticket-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(13,45,98,0.1); border-color: var(--snpsu-orange); }
-        .ticket-header { background-color: var(--snpsu-blue); color: white; padding: 20px; border-bottom: 4px solid var(--snpsu-orange); }
-        .qr-wrapper { background: white; padding: 15px; border-radius: 12px; border: 2px dashed #cbd5e1; display: inline-block; }
+/* Event cards */
+.event-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.04);transition:.2s;}
+.event-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);}
+.event-card .card-accent{height:4px;}
 
-        .cert-card { background: #ffffff; border-left: 6px solid #10b981; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); transition: 0.2s; }
-        .cert-card:hover { transform: translateX(5px); }
+/* Category colors */
+.cat-technical{background:#f37021;}
+.cat-cultural{background:#7c3aed;}
+.cat-sports{background:#10b981;}
+.cat-management{background:#0891b2;}
+.cat-general{background:#64748b;}
 
-        /* ★ NEW: Full ticket button */
-        .btn-full-ticket {
-            background: var(--snpsu-orange);
-            color: white;
-            border-radius: 20px;
-            padding: 8px 20px;
-            font-size: 12px;
-            font-weight: 700;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: 0.2s;
-            letter-spacing: 0.3px;
-        }
-        .btn-full-ticket:hover { background: #d95f0f; color: white; transform: scale(1.04); }
+/* Status badges */
+.status-live{background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.status-done{background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.status-elim{background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
 
-        .team-badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 600; display: inline-block; margin-top: 6px; }
+/* Rank badges */
+.rank-1{background:#fef3c7;color:#92400e;border:1px solid #fbbf24;}
+.rank-2{background:#f1f5f9;color:#334155;border:1px solid #94a3b8;}
+.rank-3{background:#fff7ed;color:#9a3412;border:1px solid #f97316;}
+.rank-other{background:#ede9fe;color:#5b21b6;border:1px solid #a78bfa;}
+.rank-badge{font-size:13px;font-weight:700;padding:4px 14px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;}
 
-        .fc-toolbar-title { font-family: 'Poppins', sans-serif; color: var(--snpsu-blue); font-weight: 700; }
-        .fc-button-primary { background-color: var(--snpsu-blue) !important; border: none !important; }
-    </style>
+/* QR modal */
+.qr-img{border:2px solid #e2e8f0;border-radius:12px;padding:8px;background:#fff;}
+
+/* Action buttons */
+.btn-action{border-radius:8px;font-weight:700;font-size:13px;padding:8px 16px;border:none;transition:.15s;}
+.btn-qr{background:#0d2d62;color:#fff;}
+.btn-qr:hover{background:#0a224a;color:#fff;}
+.btn-cert{background:#f37021;color:#fff;}
+.btn-cert:hover{background:#d95e1a;color:#fff;}
+.btn-brochure{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;}
+.btn-brochure:hover{background:#e2e8f0;color:#0d2d62;}
+
+/* Score display */
+.score-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;}
+.score-num{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:800;color:var(--blue);line-height:1;}
+.score-lbl{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
+
+/* Empty state */
+.empty-state{text-align:center;padding:60px 20px;}
+.empty-icon{width:80px;height:80px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+
+@media(max-width:576px){.stat-pill .num{font-size:1.4rem;}.score-num{font-size:1.5rem;}}
+</style>
 </head>
 <body>
 
-    <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg sticky-top mb-5">
-        <div class="container px-4">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <i class="fas fa-university me-3" style="color: var(--snpsu-orange); font-size: 2rem;"></i>
-                <div>
-                    <div class="logo-title">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></div>
-                    <small style="color: #64748b; font-size: 0.75rem; font-weight: 700; letter-spacing: 1.5px;">STUDENT PORTAL</small>
-                </div>
-            </a>
-            <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="fw-bold text-dark d-none d-md-block">
-                    <i class="fas fa-user-circle me-2" style="color: var(--snpsu-blue); font-size: 1.2rem;"></i>{{ user_name }}
+<!-- NAVBAR -->
+<nav class="navbar sticky-top">
+  <div class="container-fluid px-3 px-md-4">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+           alt="SNPSU" height="34" style="max-height:34px;width:auto;object-fit:contain;"
+           onerror="this.style.display='none'">
+    </a>
+    <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
+      <span class="d-none d-sm-inline text-muted small fw-bold">{{ email }}</span>
+      <a href="/profile" class="btn btn-sm btn-outline-secondary px-3">
+        <i class="fas fa-user me-1"></i>Profile
+      </a>
+      <a href="/logout" class="btn btn-sm btn-outline-danger px-3 fw-bold">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO HEADER -->
+<div class="hero">
+  <div class="container hero-content">
+    <div class="row align-items-center g-4">
+      <div class="col-md-6">
+        <p class="text-warning fw-bold mb-1" style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">
+          Student Dashboard
+        </p>
+        <h2 class="fw-bold text-white mb-1" style="font-size:clamp(1.4rem,4vw,2rem);">
+          Welcome back, {{ name }}!
+        </h2>
+        <p class="mb-0" style="color:rgba(255,255,255,.7);font-size:14px;">
+          Your registered events, tickets, scores and certificates — all in one place.
+        </p>
+      </div>
+      <div class="col-md-6">
+        <div class="row g-2">
+          <div class="col-4">
+            <div class="stat-pill">
+              <div class="num">{{ total }}</div>
+              <div class="lbl">Registered</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="stat-pill">
+              <div class="num">{{ active_count }}</div>
+              <div class="lbl">Active</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="stat-pill">
+              <div class="num">{{ present_count }}</div>
+              <div class="lbl">Attended</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FLASH MESSAGES -->
+<div class="container mt-3">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} fw-bold rounded-3 shadow-sm">
+      <i class="fas fa-info-circle me-2"></i>{{ msg | safe }}
+    </div>
+    {% endfor %}{% endif %}
+  {% endwith %}
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="container py-4">
+
+  {% if not registrations %}
+  <!-- Empty state -->
+  <div class="empty-state">
+    <div class="empty-icon">
+      <i class="fas fa-calendar-times fa-2x text-muted"></i>
+    </div>
+    <h4 class="fw-bold mb-2" style="color:var(--blue);">No events yet</h4>
+    <p class="text-muted mb-4">You haven't registered for any events. Browse upcoming events and register!</p>
+    <a href="/" class="btn btn-orange px-5 py-2 fw-bold rounded-pill">
+      <i class="fas fa-search me-2"></i>Browse Events
+    </a>
+  </div>
+
+  {% else %}
+
+  <!-- Section header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0" style="color:var(--blue);">
+      <i class="fas fa-ticket-alt me-2" style="color:var(--orange);"></i>My Events
+    </h4>
+    <a href="/" class="btn btn-outline-primary btn-sm fw-bold px-3 rounded-pill">
+      <i class="fas fa-plus me-1"></i>Register for more
+    </a>
+  </div>
+
+  <div class="row g-4">
+    {% for reg in registrations %}
+
+    {% set cat = reg.event_category | lower %}
+    {% set cat_class = 'cat-technical' if 'tech' in cat else
+                       'cat-cultural'  if 'cult' in cat else
+                       'cat-sports'    if 'sport' in cat else
+                       'cat-management' if 'manage' in cat else
+                       'cat-general' %}
+
+    <div class="col-12 col-lg-6">
+      <div class="event-card h-100">
+
+        <!-- Accent bar -->
+        <div class="card-accent {{ cat_class }}"></div>
+
+        <div class="p-4">
+
+          <!-- Card header row -->
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+            <div style="min-width:0;">
+              <h5 class="fw-bold mb-1 text-truncate" style="color:var(--blue);">
+                {{ reg.event_title }}
+              </h5>
+              <div class="d-flex flex-wrap gap-1 align-items-center">
+                {% if reg.is_eliminated %}
+                  <span class="status-elim"><i class="fas fa-times me-1"></i>Eliminated</span>
+                {% elif reg.event_status == 'active' %}
+                  <span class="status-live"><i class="fas fa-circle me-1" style="font-size:7px;"></i>Live</span>
+                {% else %}
+                  <span class="status-done"><i class="fas fa-check me-1"></i>Concluded</span>
+                {% endif %}
+
+                <span class="badge bg-light text-secondary border" style="font-size:10px;">
+                  {{ reg.event_category }}
                 </span>
-                <a href="/profile/" class="btn btn-outline-secondary btn-sm rounded-pill px-3 d-none d-md-inline-block">
-                    <i class="fas fa-cog me-1"></i> Profile
-                </a>
-                <a href="/logout" class="btn btn-outline-danger fw-bold px-4 rounded-pill">Logout</a>
+
+                {% if reg.attendance == 'Present' %}
+                  <span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;
+                               padding:2px 8px;border-radius:20px;">
+                    <i class="fas fa-check-circle me-1"></i>Attended
+                  </span>
+                {% endif %}
+              </div>
             </div>
+
+            <!-- Rank badge (if results published) -->
+            {% if reg.final_rank %}
+              {% if reg.final_rank == 1 %}
+                <span class="rank-badge rank-1"><span>🥇</span> 1st</span>
+              {% elif reg.final_rank == 2 %}
+                <span class="rank-badge rank-2"><span>🥈</span> 2nd</span>
+              {% elif reg.final_rank == 3 %}
+                <span class="rank-badge rank-3"><span>🥉</span> 3rd</span>
+              {% else %}
+                <span class="rank-badge rank-other">#{{ reg.final_rank }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+
+          <!-- Event details row -->
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Date</div>
+              <div style="font-size:13px;font-weight:600;color:#334155;">{{ reg.event_date }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Venue</div>
+              <div style="font-size:13px;font-weight:600;color:#334155;" class="text-truncate">{{ reg.event_venue }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Ticket ID</div>
+              <div style="font-size:12px;font-family:monospace;font-weight:700;color:var(--blue);">{{ reg.reg_id }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Round</div>
+              <div style="font-size:13px;font-weight:600;color:#334155;">
+                {% if reg.is_eliminated %}Eliminated
+                {% else %}Round {{ reg.current_round }}{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Score box (if results published) -->
+          {% if reg.final_score %}
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="score-box">
+                <div class="score-num">{{ reg.final_score }}</div>
+                <div class="score-lbl">Final Score</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="score-box">
+                <div class="score-num">
+                  {% if reg.final_rank == 1 %}🥇
+                  {% elif reg.final_rank == 2 %}🥈
+                  {% elif reg.final_rank == 3 %}🥉
+                  {% elif reg.final_rank %}#{{ reg.final_rank }}
+                  {% else %}—{% endif %}
+                </div>
+                <div class="score-lbl">Rank</div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Action buttons -->
+          <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
+
+            <!-- QR Ticket button -->
+            <button class="btn-action btn-qr"
+                    data-bs-toggle="modal"
+                    data-bs-target="#qrModal{{ loop.index }}">
+              <i class="fas fa-qrcode me-1"></i>QR Ticket
+            </button>
+
+            <!-- Certificate download (only if attended) -->
+            {% if reg.attendance == 'Present' and reg.event_status != 'active' %}
+            <a href="/participant/certificate/{{ reg.id }}"
+               class="btn-action btn-cert text-decoration-none">
+              <i class="fas fa-certificate me-1"></i>Download Certificate
+            </a>
+            {% endif %}
+
+            <!-- Brochure link -->
+            <a href="/event/{{ reg.event_id }}/brochure" target="_blank"
+               class="btn-action btn-brochure text-decoration-none">
+              <i class="fas fa-file-alt me-1"></i>Brochure
+            </a>
+
+          </div>
+
+          {% if reg.attendance == 'Present' and reg.event_status == 'active' %}
+          <p class="text-muted mt-2 mb-0" style="font-size:11px;">
+            <i class="fas fa-clock me-1"></i>Certificate available after results are published.
+          </p>
+          {% elif reg.attendance != 'Present' and reg.event_status != 'active' %}
+          <p class="text-muted mt-2 mb-0" style="font-size:11px;">
+            <i class="fas fa-info-circle me-1"></i>Certificate requires attendance.
+          </p>
+          {% endif %}
+
         </div>
-    </nav>
+      </div>
+    </div>
 
-    <div class="container pb-5">
-
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}{% for category, message in messages %}
-            <div class="alert alert-{{ category }} fw-bold shadow-sm rounded-3">
-                <i class="fas fa-info-circle me-2"></i>{{ message | safe }}
+    <!-- QR MODAL for this registration -->
+    <div class="modal fade" id="qrModal{{ loop.index }}" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0" style="border-radius:16px;overflow:hidden;">
+          <div class="modal-header border-0" style="background:var(--blue);padding:20px 24px 16px;">
+            <div>
+              <h5 class="modal-title text-white fw-bold mb-0">Entry QR Code</h5>
+              <p class="text-white-50 mb-0" style="font-size:12px;">{{ reg.event_title }}</p>
             </div>
-            {% endfor %}{% endif %}
-        {% endwith %}
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
+                    style="filter:invert(1) brightness(200%);opacity:.8;"></button>
+          </div>
+          <div class="modal-body text-center p-4">
 
-        <!-- Announcements -->
-        {% if announcements %}
-        <div class="announcement-bar p-4 mb-5">
-            <h5 class="fw-bold mb-3" style="color: #fbd38d;"><i class="fas fa-bullhorn me-2"></i> Official Announcements</h5>
-            <ul class="mb-0 ps-3">
-                {% for ann in announcements %}
-                <li class="mb-2">
-                    {% if ann.priority == 'Urgent' %}<span class="badge bg-danger me-2">Urgent</span>{% endif %}
-                    <span class="fw-medium">{{ ann.message }}</span>
-                </li>
-                {% endfor %}
-            </ul>
+            <!-- QR code image from the route -->
+            <div class="mb-3">
+              <img src="/participant/qr/{{ reg.id }}"
+                   class="qr-img" width="200" height="200"
+                   alt="QR Ticket"
+                   onerror="this.src='';this.alt='QR not available';">
+            </div>
+
+            <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:12px;">
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
+                Ticket ID
+              </div>
+              <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--blue);margin-top:4px;">
+                {{ reg.reg_id }}
+              </div>
+            </div>
+
+            <p class="text-muted mb-3" style="font-size:12px;">
+              Show this QR or your Ticket ID at the venue entrance for check-in.
+            </p>
+
+            <a href="/participant/qr/{{ reg.id }}" download="QR_{{ reg.reg_id }}.png"
+               class="btn btn-sm fw-bold w-100 rounded-pill"
+               style="background:var(--blue);color:#fff;padding:10px;">
+              <i class="fas fa-download me-2"></i>Download QR
+            </a>
+          </div>
         </div>
-        {% endif %}
+      </div>
+    </div>
 
-        <div class="row g-5">
+    {% endfor %}
+  </div>
 
-            <!-- LEFT COLUMN -->
-            <div class="col-lg-8">
+  {% endif %}
 
-                <!-- ── ACTIVE TICKETS ───────────────────── -->
-                <h4 class="fw-bold mb-4" style="color: var(--snpsu-blue);">
-                    <i class="fas fa-ticket-alt me-2 text-warning"></i> My Active Tickets
-                </h4>
+</div>
 
-                <div class="row g-4 mb-5">
-                    {% for ticket in active_tickets %}
-                    <div class="col-md-6">
-                        <div class="ticket-card text-center h-100 d-flex flex-column">
+<!-- FOOTER -->
+<footer style="background:#0d2d62;padding:20px 0;margin-top:60px;text-align:center;">
+  <p style="color:rgba(255,255,255,.5);font-size:12px;margin:0;">
+    <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+         height="20" style="opacity:.5;vertical-align:middle;margin-right:8px;"
+         onerror="this.style.display='none'">
+    SapthaEvent Portal · Sapthagiri NPS University
+  </p>
+</footer>
 
-                            <div class="ticket-header">
-                                <h5 class="fw-bold m-0">{{ ticket.event_title }}</h5>
-                                {% if ticket.get('team_name') and ticket.team_name != 'Individual' %}
-                                <span class="team-badge">
-                                    <i class="fas fa-users me-1"></i>{{ ticket.team_name }}
-                                    &nbsp;·&nbsp;{{ ticket.get('member_count',1) }} member{{ 's' if ticket.get('member_count',1) > 1 else '' }}
-                                </span>
-                                {% endif %}
-                            </div>
-
-                            <div class="p-4 d-flex flex-column flex-grow-1 align-items-center">
-
-                                <p class="text-muted small fw-bold mb-4">
-                                    <i class="fas fa-calendar-alt me-1" style="color: var(--snpsu-orange);"></i> {{ ticket.event_date }}<br>
-                                    <i class="fas fa-map-marker-alt me-1 mt-2 text-primary"></i> {{ ticket.event_venue }}
-                                </p>
-
-                                <!-- Preview QR (client-side, for quick viewing on dashboard) -->
-                                <div class="qr-wrapper mb-3" id="qrcode-{{ loop.index }}"></div>
-
-                                <!-- Ticket ID -->
-                                <div class="bg-light rounded p-2 border fw-bold w-100 mb-3"
-                                     style="color:var(--snpsu-blue);font-family:monospace;font-size:1rem;letter-spacing:1px;">
-                                    {{ ticket.get('reg_id', ticket.id) }}
-                                </div>
-
-                                <!-- Attendance status -->
-                                {% if ticket.attendance == 'Present' %}
-                                    <div class="badge bg-success fs-6 w-100 py-2 mb-3">
-                                        <i class="fas fa-check-circle me-1"></i> Check-in Confirmed
-                                    </div>
-                                {% else %}
-                                    <div class="badge bg-secondary fs-6 w-100 py-2 mb-3">
-                                        <i class="fas fa-clock me-1"></i> Awaiting Check-in
-                                    </div>
-                                {% endif %}
-
-                                <!-- ★ VIEW FULL TICKET & QR ★
-                                     This goes to the dedicated ticket page
-                                     with the server-generated scannable QR.
-                                     Coordinator scans this QR to mark attendance. -->
-                                <a href="/ticket/{{ ticket.id }}" class="btn-full-ticket mt-auto">
-                                    <i class="fas fa-qrcode"></i> View Full Ticket &amp; QR
-                                </a>
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Generate preview QR for this card -->
-                    <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            new QRCode(document.getElementById("qrcode-{{ loop.index }}"), {
-                                text: "{{ ticket.get('reg_id', ticket.id) }}",
-                                width: 130, height: 130,
-                                colorDark: "#0d2d62", colorLight: "#ffffff"
-                            });
-                        });
-                    </script>
-
-                    {% else %}
-                    <div class="col-12">
-                        <div class="p-5 bg-white border rounded text-center text-muted shadow-sm">
-                            <i class="fas fa-ticket-alt fa-3x mb-3 opacity-25 d-block"></i>
-                            You haven't registered for any upcoming events yet.
-                            <a href="/" class="fw-bold d-block mt-2" style="color:var(--snpsu-orange);">Browse Events</a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- ── CERTIFICATES & HISTORY ───────────── -->
-                <h4 class="fw-bold mb-4" style="color: var(--snpsu-blue);">
-                    <i class="fas fa-certificate me-2 text-success"></i> My Certificates &amp; History
-                </h4>
-
-                <div class="row g-3">
-                    {% for event in completed_events %}
-                    <div class="col-12">
-                        <div class="cert-card p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-                            <div class="mb-3 mb-md-0">
-                                <h5 class="fw-bold m-0" style="color: var(--snpsu-blue);">{{ event.event_title }}</h5>
-                                <small class="text-muted fw-bold">ID: {{ event.get('reg_id', event.id) }}</small>
-                            </div>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <a href="/ticket/{{ event.id }}"
-                                   class="btn btn-outline-secondary btn-sm rounded-pill px-3">
-                                    <i class="fas fa-ticket-alt me-1"></i> Ticket
-                                </a>
-                                {% if event.attendance == 'Present' %}
-                                    <a href="/participant/certificate/{{ event.id }}" target="_blank"
-                                       class="btn btn-success fw-bold px-4 py-2 shadow-sm rounded-pill">
-                                        <i class="fas fa-download me-2"></i> Download Certificate
-                                    </a>
-                                {% else %}
-                                    <span class="badge bg-danger py-2 px-3 rounded-pill align-self-center">
-                                        Absent — No Certificate
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="col-12"><p class="text-muted ps-2">No completed events yet.</p></div>
-                    {% endfor %}
-                </div>
-
-            </div><!-- /col-lg-8 -->
-
-            <!-- RIGHT COLUMN — CALENDAR -->
-            <div class="col-lg-4">
-                <div class="bg-white p-4 rounded-4 shadow-sm border border-light">
-                    <h5 class="fw-bold mb-4 text-center" style="color: var(--snpsu-blue);">
-                        <i class="far fa-calendar-alt me-2"></i> Event Calendar
-                    </h5>
-                    <div id="calendar"></div>
-                </div>
-            </div>
-
-        </div><!-- /row -->
-    </div><!-- /container -->
-
-    <!-- Calendar data -->
-    <script id="calendar-data" type="application/json">{{ calendar_events | safe }}</script>
-
-    <!-- qrcode.js for dashboard card previews -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendar');
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                height: 450,
-                headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-                events: JSON.parse(document.getElementById('calendar-data').textContent),
-                editable: false,
-                eventClick: function(info) {
-                    window.location.href = info.event.url;
-                    info.jsEvent.preventDefault();
-                }
-            });
-            calendar.render();
-        });
-    </script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ event.title }} | SapthaEvent</title>
+<meta property="og:title"       content="{{ event.title }}">
+<meta property="og:description" content="{{ event.description }}">
+<meta property="og:image"       content="{{ event.banner_url or '' }}">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;--gold:#f59e0b;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
+
+/* HERO */
+.hero{position:relative;min-height:480px;display:flex;align-items:flex-end;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.45);}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(13,45,98,.95) 0%,rgba(13,45,98,.4) 60%,transparent 100%);}
+.hero-content{position:relative;z-index:2;padding:40px 32px 36px;width:100%;}
+.event-category-badge{display:inline-block;background:var(--orange);color:#fff;
+  font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  padding:4px 14px;border-radius:20px;margin-bottom:14px;}
+.hero-title{font-family:'Poppins',sans-serif;font-size:clamp(2rem,5vw,3.2rem);
+  font-weight:900;color:#fff;line-height:1.1;margin-bottom:16px;
+  text-shadow:0 2px 20px rgba(0,0,0,.3);}
+.hero-meta{display:flex;flex-wrap:wrap;gap:16px;}
+.hero-meta-item{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.85);font-size:14px;}
+.hero-meta-item i{color:var(--orange);font-size:16px;}
+
+/* COUNTDOWN */
+.countdown-bar{background:var(--blue);padding:18px 0;}
+.countdown-box{text-align:center;color:#fff;}
+.countdown-num{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:800;color:var(--orange);line-height:1;}
+.countdown-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-top:4px;}
+.countdown-sep{font-size:2rem;color:rgba(255,255,255,.3);font-weight:300;align-self:flex-start;padding-top:4px;}
+
+/* CONTENT */
+.section-title{font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;
+  color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:2px;background:linear-gradient(to right,var(--orange),transparent);}
+.info-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.05);margin-bottom:24px;}
+
+/* PRIZES */
+.prize-card{border-radius:12px;padding:20px;text-align:center;position:relative;overflow:hidden;}
+.prize-1{background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;}
+.prize-2{background:linear-gradient(135deg,#f1f5f9,#e2e8f0);border:2px solid #94a3b8;}
+.prize-3{background:linear-gradient(135deg,#fef4ee,#fed7aa);border:2px solid #f97316;}
+.prize-icon{font-size:2.5rem;display:block;margin-bottom:8px;}
+.prize-rank{font-family:'Poppins',sans-serif;font-size:.85rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:.7;}
+.prize-amount{font-family:'Poppins',sans-serif;font-size:1.6rem;font-weight:900;margin-top:4px;}
+
+/* CRITERIA */
+.criteria-pill{display:inline-flex;align-items:center;gap:6px;background:#e8f0fe;
+  color:#1d4ed8;border-radius:20px;padding:6px 16px;font-size:13px;font-weight:600;margin:4px;}
+
+/* RULES */
+.rule-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;}
+.rule-item:last-child{border-bottom:none;}
+.rule-num{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;}
+
+/* REGISTER CTA */
+.cta-section{background:linear-gradient(135deg,var(--blue),#1a4fa0);padding:48px 0;}
+.cta-title{font-family:'Poppins',sans-serif;font-size:clamp(1.4rem,4vw,2rem);font-weight:800;color:#fff;}
+.btn-register{background:var(--orange);color:#fff;font-weight:800;font-size:1rem;
+  padding:14px 40px;border-radius:50px;border:none;transition:.2s;text-decoration:none;
+  display:inline-block;}
+.btn-register:hover{background:#d95e1a;color:#fff;transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(243,112,33,.4);}
+.btn-register.disabled-reg{background:#64748b;cursor:not-allowed;}
+
+/* QR */
+.qr-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  border-radius:16px;padding:20px;text-align:center;backdrop-filter:blur(4px);}
+.qr-box img{border-radius:10px;background:#fff;padding:8px;}
+
+/* GALLERY */
+.gallery-img{width:100%;height:180px;object-fit:cover;border-radius:10px;cursor:pointer;transition:.2s;}
+.gallery-img:hover{transform:scale(1.03);box-shadow:0 8px 24px rgba(0,0,0,.15);}
+
+/* SHARE */
+.share-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;
+  border-radius:50px;font-weight:600;font-size:13px;text-decoration:none;transition:.2s;}
+.share-wa{background:#25d366;color:#fff;}
+.share-wa:hover{background:#1ebe5d;color:#fff;}
+.share-copy{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;}
+.share-copy:hover{background:#e2e8f0;color:#334155;}
+
+/* NAVBAR */
+.top-bar{background:var(--blue);padding:12px 0;}
+
+/* RESPONSIVE */
+@media(max-width:576px){
+  .hero-content{padding:24px 16px 28px;}
+  .prize-card{padding:14px;}
+  .info-card{padding:20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="container d-flex justify-content-between align-items-center">
+    <span style="color:rgba(255,255,255,.8);font-size:13px;font-weight:600;">
+      <i class="fas fa-university me-2" style="color:var(--orange);"></i>
+      Sapthagiri NPS University — Event Portal
+    </span>
+    <a href="/" style="color:rgba(255,255,255,.7);font-size:12px;text-decoration:none;">
+      <i class="fas fa-home me-1"></i>Home
+    </a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  {% if event.banner_url %}
+  <div class="hero-bg" style="background-image:url('{{ event.banner_url }}');"></div>
+  {% else %}
+  <div class="hero-bg" style="background:linear-gradient(135deg,#0d2d62,#1a4fa0);"></div>
+  {% endif %}
+  <div class="hero-overlay"></div>
+  <div class="hero-content container">
+    <div class="event-category-badge">
+      {% if event.category == 'Technical' %}⚡{% elif event.category == 'Cultural' %}🎭
+      {% elif event.category == 'Sports' %}🏆{% else %}📌{% endif %}
+      {{ event.category }}
+    </div>
+    <h1 class="hero-title">{{ event.title }}</h1>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <i class="fas fa-calendar-alt"></i>
+        <span>{{ event.date }}</span>
+      </div>
+      <div class="hero-meta-item">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>{{ event.venue }}</span>
+      </div>
+      {% if event.entry_fee and event.entry_fee > 0 %}
+      <div class="hero-meta-item">
+        <i class="fas fa-ticket-alt"></i>
+        <span>₹{{ event.entry_fee }} entry fee</span>
+      </div>
+      {% else %}
+      <div class="hero-meta-item">
+        <i class="fas fa-ticket-alt"></i>
+        <span>Free Entry</span>
+      </div>
+      {% endif %}
+      {% if event.is_team_event %}
+      <div class="hero-meta-item">
+        <i class="fas fa-users"></i>
+        <span>Team Event</span>
+      </div>
+      {% else %}
+      <div class="hero-meta-item">
+        <i class="fas fa-user"></i>
+        <span>Individual</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- COUNTDOWN BAR -->
+{% if event.deadline %}
+<div class="countdown-bar">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+      <i class="fas fa-hourglass-half text-warning"></i>
+      <span style="color:rgba(255,255,255,.7);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
+        Registration closes
+      </span>
+    </div>
+    <div class="d-flex justify-content-center align-items-center gap-2 gap-md-4" id="countdown">
+      <div class="countdown-box"><div class="countdown-num" id="cd-days">--</div><div class="countdown-label">Days</div></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-box"><div class="countdown-num" id="cd-hours">--</div><div class="countdown-label">Hours</div></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-box"><div class="countdown-num" id="cd-mins">--</div><div class="countdown-label">Mins</div></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-box"><div class="countdown-num" id="cd-secs">--</div><div class="countdown-label">Secs</div></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="container py-4 py-md-5">
+  <div class="row g-4">
+
+    <!-- LEFT COLUMN -->
+    <div class="col-lg-8">
+
+      <!-- About -->
+      {% if event.overview %}
+      <div class="info-card">
+        <div class="section-title"><i class="fas fa-info-circle" style="color:var(--orange);"></i>About This Event</div>
+        <p style="line-height:1.8;color:#475569;">{{ event.overview }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Prizes -->
+      {% if event.prizes %}
+      <div class="info-card">
+        <div class="section-title"><i class="fas fa-trophy" style="color:var(--gold);"></i>Prizes &amp; Awards</div>
+        {% set prize_lines = event.prizes.split('\n') if '\n' in event.prizes else event.prizes.split('·') %}
+        {% if prize_lines|length >= 3 %}
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="prize-card prize-1">
+              <span class="prize-icon">🥇</span>
+              <div class="prize-rank">1st Place</div>
+              <div class="prize-amount">{{ prize_lines[0]|replace('1st:','') |replace('1st ','') | trim }}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="prize-card prize-2">
+              <span class="prize-icon">🥈</span>
+              <div class="prize-rank">2nd Place</div>
+              <div class="prize-amount">{{ prize_lines[1]|replace('2nd:','') |replace('2nd ','') | trim }}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="prize-card prize-3">
+              <span class="prize-icon">🥉</span>
+              <div class="prize-rank">3rd Place</div>
+              <div class="prize-amount">{{ prize_lines[2]|replace('3rd:','') |replace('3rd ','') | trim }}</div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <p style="color:#475569;line-height:1.8;">{{ event.prizes }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Rules -->
+      {% if event.rules %}
+      <div class="info-card">
+        <div class="section-title"><i class="fas fa-gavel" style="color:var(--blue);"></i>Rules &amp; Guidelines</div>
+        {% set rules = event.rules.split('\n') %}
+        {% for rule in rules %}
+          {% if rule.strip() %}
+          <div class="rule-item">
+            <div class="rule-num">{{ loop.index }}</div>
+            <div style="color:#475569;font-size:14px;line-height:1.6;">{{ rule | replace('-','') | replace('•','') | trim }}</div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Judging Criteria -->
+      {% if event.judging_criteria %}
+      <div class="info-card">
+        <div class="section-title"><i class="fas fa-balance-scale" style="color:var(--blue);"></i>Judging Criteria</div>
+        <div>
+          {% for c in event.judging_criteria %}
+          <span class="criteria-pill">
+            <i class="fas fa-check-circle" style="color:#1d4ed8;font-size:11px;"></i>{{ c }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Media Gallery -->
+      {% if event.media_urls and event.media_urls|length > 1 %}
+      <div class="info-card">
+        <div class="section-title"><i class="fas fa-images" style="color:var(--orange);"></i>Gallery</div>
+        <div class="row g-2">
+          {% for url in event.media_urls[1:] %}
+          {% if url %}
+          <div class="col-6 col-md-4">
+            <img src="{{ url }}" class="gallery-img" alt="Event image" onerror="this.style.display='none'">
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col-lg-4">
+
+      <!-- Quick Info Card -->
+      <div class="info-card mb-4" style="border-top:4px solid var(--orange);">
+        <div class="section-title"><i class="fas fa-calendar-check" style="color:var(--orange);"></i>Event Details</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-calendar" style="color:var(--blue);"></i>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Date &amp; Time</div>
+              <div style="font-weight:600;color:#1e293b;">{{ event.date }}</div>
+            </div>
+          </div>
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-map-marker-alt" style="color:var(--gold);"></i>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Venue</div>
+              <div style="font-weight:600;color:#1e293b;">{{ event.venue }}</div>
+            </div>
+          </div>
+          {% if event.deadline %}
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-clock" style="color:#ef4444;"></i>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Registration Deadline</div>
+              <div style="font-weight:600;color:#ef4444;">{{ event.deadline }}</div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-ticket-alt" style="color:#16a34a;"></i>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Entry Fee</div>
+              <div style="font-weight:600;color:#1e293b;">
+                {% if event.entry_fee and event.entry_fee > 0 %}₹{{ event.entry_fee }}{% else %}Free{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-users" style="color:#7c3aed;"></i>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Format</div>
+              <div style="font-weight:600;color:#1e293b;">{{ 'Team Event' if event.is_team_event else 'Individual' }}</div>
+            </div>
+          </div>
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-user-tie" style="color:#16a34a;"></i>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Organised By</div>
+              <div style="font-weight:600;color:#1e293b;">{{ event.created_by or 'SNPSU' }}</div>
+            </div>
+          </div>
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-users" style="color:#64748b;"></i>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Registered</div>
+              <div style="font-weight:600;color:#1e293b;">{{ event.registration_count }} participant{{ 's' if event.registration_count != 1 else '' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Register Button -->
+      <div class="info-card text-center mb-4" style="border-top:4px solid #10b981;">
+        {% if event.status == 'active' %}
+          <i class="fas fa-bolt fa-2x mb-3" style="color:var(--orange);"></i>
+          <h5 class="fw-bold mb-2" style="color:var(--blue);">Ready to participate?</h5>
+          <p class="text-muted small mb-3">Registrations are open. Secure your spot now!</p>
+          <a href="/forms/register/{{ event.id }}"
+             class="btn-register w-100 text-center d-block">
+            <i class="fas fa-pen-nib me-2"></i>Register Now
+          </a>
+        {% else %}
+          <i class="fas fa-lock fa-2x mb-3 text-muted"></i>
+          <h5 class="fw-bold mb-2 text-muted">Registrations Closed</h5>
+          <p class="text-muted small">This event has concluded.</p>
+        {% endif %}
+      </div>
+
+      <!-- QR Code -->
+      <div class="info-card text-center mb-4">
+        <div class="section-title justify-content-center"><i class="fas fa-qrcode" style="color:var(--blue);"></i>Share This Event</div>
+        <div class="mb-3">
+          <img src="/event/{{ event.id }}/qr" width="160" height="160" alt="Event QR" style="border-radius:10px;border:1px solid #e2e8f0;padding:6px;">
+        </div>
+        <p class="text-muted small mb-3">Scan to open this brochure on any device</p>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+          <a href="https://wa.me/?text={{ ('Check out this event: ' + event.title + ' at SNPSU! ' + base_url + '/event/' + event.id + '/brochure') | urlencode }}"
+             class="share-btn share-wa" target="_blank">
+            <i class="fab fa-whatsapp"></i> WhatsApp
+          </a>
+          <button class="share-btn share-copy" onclick="copyLink()">
+            <i class="fas fa-copy"></i> <span id="copy-txt">Copy Link</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER CTA BANNER -->
+{% if event.status == 'active' %}
+<div class="cta-section">
+  <div class="container text-center">
+    <div class="cta-title mb-2">Don't miss out on {{ event.title }}!</div>
+    <p style="color:rgba(255,255,255,.7);margin-bottom:28px;">
+      Join {{ event.registration_count }} participants who have already registered.
+    </p>
+    <a href="/forms/register/{{ event.id }}" class="btn-register me-3">
+      <i class="fas fa-pen-nib me-2"></i>Register Now — {% if event.entry_fee and event.entry_fee > 0 %}₹{{ event.entry_fee }}{% else %}Free{% endif %}
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- FOOTER -->
+<footer style="background:#0d2d62;padding:24px 0;text-align:center;">
+  <p style="color:rgba(255,255,255,.5);font-size:12px;margin:0;">
+    Powered by <strong style="color:var(--orange);">SapthaEvent Portal</strong> —
+    Sapthagiri NPS University &nbsp;·&nbsp;
+    <a href="/" style="color:rgba(255,255,255,.5);">Home</a>
+  </p>
+</footer>
+
+<script>
+// Countdown timer
+{% if event.deadline %}
+const deadline = new Date('{{ event.deadline }}T23:59:59');
+function updateCountdown() {
+  const now  = new Date();
+  const diff = deadline - now;
+  if (diff <= 0) {
+    document.getElementById('countdown').innerHTML =
+      '<span style="color:#ef4444;font-weight:700;font-size:1.1rem;">Registration Closed</span>';
+    return;
+  }
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000)  / 60000);
+  const s = Math.floor((diff % 60000)    / 1000);
+  document.getElementById('cd-days').textContent  = String(d).padStart(2,'0');
+  document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
+  document.getElementById('cd-mins').textContent  = String(m).padStart(2,'0');
+  document.getElementById('cd-secs').textContent  = String(s).padStart(2,'0');
+}
+updateCountdown();
+setInterval(updateCountdown, 1000);
+{% endif %}
+
+// Copy link
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const el = document.getElementById('copy-txt');
+    el.textContent = 'Copied!';
+    setTimeout(() => el.textContent = 'Copy Link', 2000);
+  });
+}
+</script>
+</body>
+</html>

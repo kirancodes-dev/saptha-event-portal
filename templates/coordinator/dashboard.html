@@ -12,8 +12,7 @@
 *{box-sizing:border-box;}
 body{background:var(--bg);color:#1e293b;font-family:'Inter',sans-serif;}
 h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
-.navbar{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:14px 0;}
-.logo-title{color:var(--blue);font-weight:800;font-size:1.3rem;margin:0;line-height:1.1;}
+.navbar{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.06);padding:10px 0;border-bottom:3px solid var(--orange);}
 .stat-card{background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 15px rgba(0,0,0,.04);border-top:4px solid var(--blue);}
 .event-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.03);}
 .modal-content{border:none;border-radius:16px;}
@@ -57,19 +56,41 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .form-badge{display:inline-flex;align-items:center;gap:5px;background:#e8f0fe;color:#1d4ed8;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;}
 .form-badge.custom{background:#fff3e0;color:#c2410c;}
 .form-badge.none{background:#f1f5f9;color:#94a3b8;}
+.open-hall-badge{display:inline-flex;align-items:center;gap:5px;background:#ede9fe;color:#7c3aed;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;}
+.cert-tpl-card{border:2px solid #e2e8f0;border-radius:10px;padding:12px 10px;cursor:pointer;text-align:center;background:#fff;transition:.2s;}
+.cert-tpl-card:hover{border-color:var(--blue);}
+.cert-tpl-card.selected{border-color:var(--orange)!important;background:#fff8f4!important;}
+/* Success screen */
+.success-screen{text-align:center;padding:20px 10px;}
+.success-circle{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#0d2d62,#1a4fa0);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.action-tile{border:1.5px solid #e2e8f0;border-radius:12px;padding:18px;text-align:center;cursor:pointer;transition:.2s;text-decoration:none;display:block;color:#1e293b;}
+.action-tile:hover{border-color:var(--orange);background:#fff8f4;color:var(--blue);}
+.action-tile .tile-icon{font-size:1.8rem;display:block;margin-bottom:8px;}
 @media(max-width:576px){.modal-dialog{margin:.5rem;}.step-indicator{gap:4px;}.step-dot{width:26px;height:26px;font-size:11px;}}
 </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- NAVBAR — official SNPSU logo -->
 <nav class="navbar navbar-expand-lg sticky-top">
   <div class="container-fluid px-3 px-md-4">
-    <a class="navbar-brand d-flex align-items-center" href="#">
-      <i class="fas fa-university me-2" style="color:var(--orange);font-size:1.8rem;"></i>
-      <div>
-        <div class="logo-title">SAPTHAGIRI <span style="color:var(--orange);">NPS</span></div>
-        <small style="color:#64748b;font-size:.7rem;font-weight:700;letter-spacing:1.5px;">CLUB SPOC HQ</small>
+    <a class="navbar-brand d-flex align-items-center gap-3" href="#">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+           alt="Sapthagiri NPS University" height="38"
+           style="max-height:38px;width:auto;object-fit:contain;"
+           onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex';">
+      <!-- Fallback if logo URL fails -->
+      <div id="logo-fallback" style="display:none;align-items:center;gap:8px;">
+        <i class="fas fa-university" style="color:var(--orange);font-size:1.8rem;"></i>
+        <div>
+          <div style="color:var(--blue);font-weight:800;font-size:1.2rem;font-family:'Poppins',sans-serif;line-height:1.1;">
+            SAPTHAGIRI <span style="color:var(--orange);">NPS</span>
+          </div>
+          <small style="color:#64748b;font-size:.65rem;font-weight:700;letter-spacing:1.5px;">UNIVERSITY</small>
+        </div>
+      </div>
+      <div style="border-left:2px solid #e2e8f0;padding-left:12px;">
+        <small style="color:#64748b;font-size:.65rem;font-weight:700;letter-spacing:2px;display:block;">CLUB SPOC HQ</small>
       </div>
     </a>
     <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
@@ -140,13 +161,26 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
         <div class="p-3 p-md-4 border-bottom bg-light d-flex justify-content-between align-items-start gap-2">
           <div style="min-width:0;">
             <h5 class="fw-bold mb-1 text-truncate" style="color:var(--blue);">{{ event.title }}</h5>
-            {% if event.get('form_type') == 'custom' %}
-              <span class="form-badge custom"><i class="fas fa-paint-brush"></i> Custom Form</span>
-            {% elif event.get('has_custom_form') %}
-              <span class="form-badge"><i class="fas fa-wpforms"></i> Simple Form</span>
-            {% else %}
-              <span class="form-badge none"><i class="fas fa-exclamation-circle"></i> No Form</span>
-            {% endif %}
+            <div class="d-flex flex-wrap gap-1 mt-1">
+              {% if event.get('form_type') == 'custom' %}
+                <span class="form-badge custom"><i class="fas fa-paint-brush"></i> Custom Form</span>
+              {% elif event.get('has_custom_form') %}
+                <span class="form-badge"><i class="fas fa-wpforms"></i> Simple Form</span>
+              {% else %}
+                <span class="form-badge none"><i class="fas fa-exclamation-circle"></i> No Form</span>
+              {% endif %}
+              {% if event.get('open_hall_mode') %}
+                <span class="open-hall-badge"><i class="fas fa-door-open"></i> Open Hall</span>
+              {% endif %}
+              {% if event.get('cert_template') and event.cert_template != 1 %}
+                {% set tpl_names = {2:'Tech Blue',3:'Cultural Gold',4:'Sports Green',5:'Management'} %}
+                <span style="display:inline-flex;align-items:center;gap:4px;background:#f5f3ff;
+                             color:#5b21b6;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">
+                  <i class="fas fa-certificate" style="font-size:9px;"></i>
+                  {{ tpl_names.get(event.cert_template, 'Custom') }}
+                </span>
+              {% endif %}
+            </div>
           </div>
           {% if event.status == 'active' %}
             <span class="badge bg-success flex-shrink-0">Live R{{ event.active_round|default(1) }}</span>
@@ -178,7 +212,6 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
           <div class="mt-auto d-grid gap-2">
             {% if event.status == 'active' %}
 
-              <!-- Form builder / responses -->
               <div class="btn-group w-100">
                 <a href="/forms/builder/{{ event.id }}"
                    class="btn btn-blue fw-bold w-50" style="border-radius:8px 0 0 8px;">
@@ -196,8 +229,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
               <div class="btn-group w-100">
                 <button class="btn btn-outline-dark fw-bold w-50"
-                        data-bs-toggle="modal"
-                        data-bs-target="#editModal{{ event.id }}">
+                        data-bs-toggle="modal" data-bs-target="#editModal{{ event.id }}">
                   <i class="fas fa-edit"></i> Edit
                 </button>
                 <a href="/coordinator/export_registrations/{{ event.id }}"
@@ -206,41 +238,70 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                 </a>
               </div>
 
+              <a href="/event/{{ event.id }}/brochure" target="_blank"
+                 class="btn btn-outline-info fw-bold w-100">
+                <i class="fas fa-file-alt me-2"></i>View / Share Brochure
+              </a>
+
               <button class="btn btn-outline-primary fw-bold"
-                      data-bs-toggle="modal"
-                      data-bs-target="#staffModal{{ event.id }}">
+                      data-bs-toggle="modal" data-bs-target="#staffModal{{ event.id }}">
                 <i class="fas fa-user-shield me-1"></i>Appoint Staff / Judges
               </button>
 
+              <!-- Register for this event (quick link) -->
+              <a href="/forms/register/{{ event.id }}" target="_blank"
+                 class="btn fw-bold w-100"
+                 style="background:#10b981;color:#fff;border:none;">
+                <i class="fas fa-pen-nib me-2"></i>Register / Share Registration Link
+              </a>
+
+              <form method="POST" action="/coordinator/toggle_open_hall/{{ event.id }}">
+                {% if event.get('open_hall_mode') %}
+                <button type="submit" class="btn fw-bold w-100"
+                        style="background:#7c3aed;color:#fff;"
+                        onclick="return confirm('Turn OFF Open Hall Mode?');">
+                  <i class="fas fa-door-open me-2"></i>Open Hall Mode: ON
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-outline-secondary fw-bold w-100"
+                        onclick="return confirm('Enable Open Hall Mode? All judges will see ALL teams.');">
+                  <i class="fas fa-door-closed me-2"></i>Enable Open Hall Mode
+                </button>
+                {% endif %}
+              </form>
+
+              {% if not event.get('open_hall_mode') %}
               <div class="btn-group w-100">
                 <button class="btn btn-dark fw-bold text-white w-50"
-                        data-bs-toggle="modal"
-                        data-bs-target="#allocateModal{{ event.id }}">
+                        data-bs-toggle="modal" data-bs-target="#allocateModal{{ event.id }}">
                   <i class="fas fa-network-wired"></i> Allocate
                 </button>
                 <a href="/coordinator/trigger_reminders/{{ event.id }}"
                    class="btn btn-info fw-bold text-dark w-50"
-                   onclick="return confirm('Email & WhatsApp room details to all teams. Proceed?');">
+                   onclick="return confirm('Send room details to all teams. Proceed?');">
                   <i class="fas fa-paper-plane"></i> Remind
                 </a>
               </div>
+              {% else %}
+              <a href="/coordinator/trigger_reminders/{{ event.id }}"
+                 class="btn btn-info fw-bold text-dark w-100"
+                 onclick="return confirm('Send event reminders to all teams. Proceed?');">
+                <i class="fas fa-paper-plane me-2"></i>Send Reminders to All Teams
+              </a>
+              {% endif %}
 
               <button class="btn btn-danger fw-bold"
-                      data-bs-toggle="modal"
-                      data-bs-target="#eliminateModal{{ event.id }}">
+                      data-bs-toggle="modal" data-bs-target="#eliminateModal{{ event.id }}">
                 <i class="fas fa-filter me-1"></i>Next Round / Eliminate
               </button>
 
               <button class="btn btn-danger fw-bold"
-                      data-bs-toggle="modal"
-                      data-bs-target="#broadcastModal{{ event.id }}">
+                      data-bs-toggle="modal" data-bs-target="#broadcastModal{{ event.id }}">
                 <i class="fas fa-bullhorn me-1"></i>Broadcast Message
               </button>
 
-              <!-- VIEW SCORES & PUBLISH — replaces old publish modal -->
               <a href="/coordinator/view_scores/{{ event.id }}"
-                 class="btn fw-bold text-white w-100"
-                 style="background:#7c3aed;">
+                 class="btn fw-bold text-white w-100" style="background:#7c3aed;">
                 <i class="fas fa-chart-bar me-2"></i>View Scores &amp; Publish Results
               </a>
 
@@ -248,6 +309,10 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
               <a href="/coordinator/export_registrations/{{ event.id }}"
                  class="btn btn-success fw-bold w-100">
                 <i class="fas fa-file-excel me-1"></i>Export Final Data
+              </a>
+              <a href="/event/{{ event.id }}/brochure" target="_blank"
+                 class="btn btn-outline-info fw-bold w-100">
+                <i class="fas fa-file-alt me-1"></i>View Brochure
               </a>
               <a href="/forms/responses/{{ event.id }}"
                  class="btn btn-outline-secondary fw-bold w-100">
@@ -458,19 +523,29 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   </div>
 </div>
 
-<!-- CREATE EVENT WIZARD -->
+<!-- ══════════════════════════════════════════════════
+     CREATE EVENT WIZARD  (5 steps)
+     Step 5 = success screen with Register + Brochure
+     Form submitted via fetch() so we get event_id back
+     ══════════════════════════════════════════════════ -->
 <div class="modal fade" id="createEventWizard" tabindex="-1" data-bs-backdrop="static">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
+
       <div class="modal-header pb-3 border-0">
-        <h4 class="modal-title fw-bold">
-          <i class="fas fa-rocket me-2" style="color:var(--orange);"></i>Create New Event
-        </h4>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                onclick="resetWizard()"></button>
+        <div class="d-flex align-items-center gap-3">
+          <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+               alt="SNPSU" height="32" style="max-height:32px;width:auto;object-fit:contain;"
+               onerror="this.style.display='none'">
+          <h4 class="modal-title fw-bold mb-0">
+            <i class="fas fa-rocket me-2" style="color:var(--orange);"></i>Create New Event
+          </h4>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="resetWizard()"></button>
       </div>
 
-      <form action="/coordinator/create_event" method="POST" id="create-form">
+      <!-- Steps 1-4 are in the form; Step 5 is outside the form -->
+      <form id="create-form" novalidate>
         <input type="hidden" name="form_type"        id="f_form_type"   value="simple">
         <input type="hidden" name="form_schema_json" id="f_schema_json" value="[]">
         <input type="hidden" name="form_title"       id="f_form_title"  value="Event Registration">
@@ -478,14 +553,15 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
         <div class="modal-body p-4 pt-0">
 
-          <div class="step-indicator px-2 px-md-4">
+          <!-- Step indicator — dots 1-4 (step 5 is success, no dot needed) -->
+          <div class="step-indicator px-2 px-md-4" id="step-indicator">
             <div class="step-dot active" id="dot1">1</div>
             <div class="step-dot"        id="dot2">2</div>
             <div class="step-dot"        id="dot3">3</div>
             <div class="step-dot"        id="dot4">4</div>
           </div>
 
-          <!-- STEP 1 -->
+          <!-- STEP 1 — Basic Info -->
           <div class="wizard-step active" id="step1">
             <h5 class="fw-bold mb-4" style="color:var(--blue);">
               <i class="fas fa-info-circle me-2 text-primary"></i>Basic Information
@@ -493,11 +569,13 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
             <div class="row g-3">
               <div class="col-12">
                 <label class="form-label">Event Title *</label>
-                <input type="text" name="title" class="form-control" placeholder="e.g. Hackathon 2026" required>
+                <input type="text" name="title" id="w_title" class="form-control"
+                       placeholder="e.g. Hackathon 2026" required>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Event Date &amp; Time *</label>
-                <input type="text" name="date" class="form-control" placeholder="Oct 15, 10:00 AM" required>
+                <input type="text" name="date" class="form-control"
+                       placeholder="Oct 15, 10:00 AM" required>
               </div>
               <div class="col-md-6">
                 <label class="form-label text-danger">Registration Deadline *</label>
@@ -505,7 +583,8 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
               </div>
               <div class="col-12">
                 <label class="form-label">Venue *</label>
-                <input type="text" name="venue" class="form-control" placeholder="Main Auditorium, Block A" required>
+                <input type="text" name="venue" class="form-control"
+                       placeholder="Main Auditorium, Block A" required>
               </div>
             </div>
             <div class="text-end mt-4">
@@ -515,22 +594,25 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
             </div>
           </div>
 
-          <!-- STEP 2 -->
+          <!-- STEP 2 — Brochure Content -->
           <div class="wizard-step" id="step2">
             <h5 class="fw-bold mb-4" style="color:var(--blue);">
               <i class="fas fa-file-alt me-2 text-primary"></i>Brochure Content
             </h5>
             <div class="mb-3">
               <label class="form-label text-primary">Overview *</label>
-              <textarea name="overview" class="form-control" rows="3" placeholder="What is this event about?" required></textarea>
+              <textarea name="overview" class="form-control" rows="3"
+                        placeholder="What is this event about?" required></textarea>
             </div>
             <div class="mb-3">
               <label class="form-label text-danger">Rules &amp; Guidelines</label>
-              <textarea name="rules" class="form-control" rows="3" placeholder="- Rule 1&#10;- Rule 2"></textarea>
+              <textarea name="rules" class="form-control" rows="3"
+                        placeholder="- Rule 1&#10;- Rule 2"></textarea>
             </div>
             <div class="mb-3">
               <label class="form-label text-warning">Prizes</label>
-              <textarea name="prizes" class="form-control" rows="2" placeholder="1st: ₹10,000 · 2nd: ₹5,000"></textarea>
+              <textarea name="prizes" class="form-control" rows="2"
+                        placeholder="1st: ₹10,000 · 2nd: ₹5,000 · 3rd: ₹2,500"></textarea>
             </div>
             <div class="mb-3 p-3 bg-light border border-success rounded">
               <label class="form-label text-success">
@@ -547,11 +629,12 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
             </div>
           </div>
 
-          <!-- STEP 3 -->
+          <!-- STEP 3 — Settings + Template -->
           <div class="wizard-step" id="step3">
             <h5 class="fw-bold mb-4" style="color:var(--blue);">
               <i class="fas fa-cog me-2 text-primary"></i>Event Settings
             </h5>
+
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <label class="form-label">Entry Fee (₹)</label>
@@ -565,22 +648,124 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                   <label class="form-check-label fw-bold" for="teamCheck">Team Event</label>
                 </div>
               </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label text-primary">
-                <i class="fas fa-images me-2"></i>Media Gallery URLs
-              </label>
-              <div id="createMedia">
-                <div class="input-group mb-2">
-                  <input type="url" name="media_urls[]" class="form-control border-primary"
-                         placeholder="Image or video URL (.mp4)">
-                  <button class="btn btn-primary" type="button" onclick="addMedia('createMedia')">
-                    <i class="fas fa-plus"></i>
-                  </button>
+
+              <!-- Open Hall Mode -->
+              <div class="col-12">
+                <div class="p-3 rounded-3" style="background:#f5f3ff;border:1px solid #ddd6fe;">
+                  <div class="form-check form-switch mb-1">
+                    <input class="form-check-input me-2" style="width:40px;height:20px;"
+                           type="checkbox" name="open_hall_mode" id="openHallCheck">
+                    <label class="form-check-label fw-bold" for="openHallCheck"
+                           style="color:#7c3aed;">
+                      <i class="fas fa-door-open me-2"></i>Open Hall Mode
+                    </label>
+                  </div>
+                  <p class="text-muted mb-0" style="font-size:12px;padding-left:52px;">
+                    Enable for big hall events — all judges score all teams. No room allocation needed. Final score = average of all judges.
+                  </p>
                 </div>
               </div>
-              <div class="form-text">First URL becomes the event banner.</div>
+
+              <!-- Media URLs -->
+              <div class="col-12">
+                <label class="form-label text-primary">
+                  <i class="fas fa-images me-2"></i>Media Gallery URLs
+                </label>
+                <div id="createMedia">
+                  <div class="input-group mb-2">
+                    <input type="url" name="media_urls[]" class="form-control border-primary"
+                           placeholder="Image or video URL (.mp4)">
+                    <button class="btn btn-primary" type="button" onclick="addMedia('createMedia')">
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="form-text">First URL becomes the event banner on the brochure.</div>
+              </div>
             </div>
+
+            <!-- ── Certificate Template Picker ── -->
+            <hr class="my-3">
+            <label class="form-label" style="color:var(--blue);">
+              <i class="fas fa-certificate me-2" style="color:var(--orange);"></i>
+              Certificate Template
+            </label>
+            <p class="text-muted mb-3" style="font-size:12px;">
+              Automatically applied to both winner and participation certificates for this event.
+            </p>
+            <div class="row g-2">
+              <div class="col-6 col-md-4 col-lg" style="min-width:100px;">
+                <label class="d-block h-100">
+                  <input type="radio" name="cert_template" value="1" checked
+                         class="cert-radio" style="display:none;">
+                  <div class="cert-tpl-card selected h-100">
+                    <div style="width:100%;height:24px;background:#0d2d62;border-radius:5px;
+                                margin-bottom:6px;display:flex;align-items:center;justify-content:center;">
+                      <div style="width:55%;height:3px;background:#f37021;border-radius:2px;"></div>
+                    </div>
+                    <div style="font-size:11px;font-weight:700;color:#0d2d62;">Classic Navy</div>
+                    <div style="font-size:10px;color:#64748b;">Default SNPSU</div>
+                  </div>
+                </label>
+              </div>
+              <div class="col-6 col-md-4 col-lg" style="min-width:100px;">
+                <label class="d-block h-100">
+                  <input type="radio" name="cert_template" value="2"
+                         class="cert-radio" style="display:none;">
+                  <div class="cert-tpl-card h-100">
+                    <div style="width:100%;height:24px;background:#0f172a;border-radius:5px;
+                                margin-bottom:6px;display:flex;align-items:center;justify-content:center;">
+                      <div style="width:55%;height:3px;background:#06b6d4;border-radius:2px;"></div>
+                    </div>
+                    <div style="font-size:11px;font-weight:700;color:#0f172a;">Tech Blue</div>
+                    <div style="font-size:10px;color:#64748b;">Hackathons</div>
+                  </div>
+                </label>
+              </div>
+              <div class="col-6 col-md-4 col-lg" style="min-width:100px;">
+                <label class="d-block h-100">
+                  <input type="radio" name="cert_template" value="3"
+                         class="cert-radio" style="display:none;">
+                  <div class="cert-tpl-card h-100">
+                    <div style="width:100%;height:24px;background:#7f1d1d;border-radius:5px;
+                                margin-bottom:6px;display:flex;align-items:center;justify-content:center;">
+                      <div style="width:55%;height:3px;background:#d97706;border-radius:2px;"></div>
+                    </div>
+                    <div style="font-size:11px;font-weight:700;color:#7f1d1d;">Cultural Gold</div>
+                    <div style="font-size:10px;color:#64748b;">Cultural</div>
+                  </div>
+                </label>
+              </div>
+              <div class="col-6 col-md-4 col-lg" style="min-width:100px;">
+                <label class="d-block h-100">
+                  <input type="radio" name="cert_template" value="4"
+                         class="cert-radio" style="display:none;">
+                  <div class="cert-tpl-card h-100">
+                    <div style="width:100%;height:24px;background:#14532d;border-radius:5px;
+                                margin-bottom:6px;display:flex;align-items:center;justify-content:center;">
+                      <div style="width:55%;height:3px;background:#16a34a;border-radius:2px;"></div>
+                    </div>
+                    <div style="font-size:11px;font-weight:700;color:#14532d;">Sports Green</div>
+                    <div style="font-size:10px;color:#64748b;">Sports</div>
+                  </div>
+                </label>
+              </div>
+              <div class="col-6 col-md-4 col-lg" style="min-width:100px;">
+                <label class="d-block h-100">
+                  <input type="radio" name="cert_template" value="5"
+                         class="cert-radio" style="display:none;">
+                  <div class="cert-tpl-card h-100">
+                    <div style="width:100%;height:24px;background:#3b0764;border-radius:5px;
+                                margin-bottom:6px;display:flex;align-items:center;justify-content:center;">
+                      <div style="width:55%;height:3px;background:#7c3aed;border-radius:2px;"></div>
+                    </div>
+                    <div style="font-size:11px;font-weight:700;color:#3b0764;">Management</div>
+                    <div style="font-size:10px;color:#64748b;">Business</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <div class="d-flex justify-content-between mt-4">
               <button type="button" class="btn btn-outline-secondary" onclick="prevStep(3)">Back</button>
               <button type="button" class="btn btn-blue px-4" onclick="nextStep(3)">
@@ -589,13 +774,13 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
             </div>
           </div>
 
-          <!-- STEP 4 -->
+          <!-- STEP 4 — Registration Form -->
           <div class="wizard-step" id="step4">
             <h5 class="fw-bold mb-1" style="color:var(--blue);">
               <i class="fas fa-wpforms me-2 text-primary"></i>Registration Form
             </h5>
             <p class="text-muted mb-4" style="font-size:13px;">
-              Design the form participants will fill when they click "Register" on your event page.
+              Design the form participants fill when they click "Register" on the event page.
             </p>
 
             <div class="row g-3 mb-4">
@@ -627,8 +812,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
             <div id="simple-info" class="alert alert-info border-info mb-3" style="font-size:13px;">
               <i class="fas fa-bolt me-2 text-primary"></i>
-              <strong>Ready instantly.</strong>
-              The standard form (Name, Email, Phone, USN) will be live as soon as you publish.
+              <strong>Ready instantly.</strong> The standard form (Name, Email, Phone, USN) will be live as soon as you publish.
             </div>
 
             <div id="custom-builder" style="display:none;">
@@ -642,7 +826,6 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                   <input type="text" id="w_form_desc" class="form-control" placeholder="Short intro for participants">
                 </div>
               </div>
-
               <div class="mini-builder">
                 <div class="mini-builder-toolbar">
                   <span style="font-size:11px;color:#64748b;font-weight:700;align-self:center;margin-right:4px;">Add:</span>
@@ -666,7 +849,6 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                   </div>
                 </div>
               </div>
-
               <div class="d-flex gap-2 mt-2">
                 <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="wLoadSimple()">
                   <i class="fas fa-magic me-1"></i>Load Simple Template
@@ -676,7 +858,6 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                 </button>
                 <span id="field-count-badge" class="badge bg-light text-dark border align-self-center ms-auto">0 fields</span>
               </div>
-
               <div id="field-editor" class="mt-3" style="display:none;">
                 <div class="p-3 border rounded-3 bg-light">
                   <h6 class="fw-bold mb-3" style="font-size:13px;color:var(--blue);">
@@ -714,11 +895,71 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
               </div>
             </div>
 
-            <div class="d-flex justify-content-between mt-4">
-              <button type="button" class="btn btn-outline-secondary" onclick="prevStep(4)">Back</button>
-              <button type="submit" class="btn btn-orange px-5 fw-bold" onclick="return prepareFormSubmit()">
-                Publish Event <i class="fas fa-rocket ms-2"></i>
+            <!-- Divider before final action -->
+            <hr class="my-4">
+
+            <div class="d-flex justify-content-between align-items-center">
+              <button type="button" class="btn btn-outline-secondary" onclick="prevStep(4)">
+                <i class="fas fa-arrow-left me-1"></i>Back
               </button>
+              <button type="button" id="publishBtn"
+                      class="btn btn-orange px-5 fw-bold"
+                      onclick="submitEventForm()">
+                <span id="publishBtnText">
+                  Publish Event <i class="fas fa-rocket ms-2"></i>
+                </span>
+                <span id="publishBtnSpinner" style="display:none;">
+                  <span class="spinner-border spinner-border-sm me-2"></span>Creating...
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- STEP 5 — Success screen with Register + Brochure buttons -->
+          <div class="wizard-step" id="step5">
+            <div class="success-screen">
+              <div class="success-circle">
+                <i class="fas fa-check fa-2x text-white"></i>
+              </div>
+              <h4 class="fw-bold mb-1" style="color:var(--blue);">Event Created!</h4>
+              <p class="text-muted mb-4" id="success-event-title" style="font-size:14px;"></p>
+
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-sm-4">
+                  <a id="btn-register-now" href="#" target="_blank" class="action-tile">
+                    <span class="tile-icon">📝</span>
+                    <div style="font-size:13px;font-weight:700;color:var(--blue);">Register Now</div>
+                    <div style="font-size:11px;color:#64748b;">Open registration form</div>
+                  </a>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <a id="btn-share-brochure" href="#" target="_blank" class="action-tile">
+                    <span class="tile-icon">📄</span>
+                    <div style="font-size:13px;font-weight:700;color:var(--blue);">View Brochure</div>
+                    <div style="font-size:11px;color:#64748b;">Share the event page</div>
+                  </a>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <a id="btn-copy-link" href="#"
+                     onclick="copyRegLink(event)"
+                     class="action-tile">
+                    <span class="tile-icon">🔗</span>
+                    <div style="font-size:13px;font-weight:700;color:var(--blue);" id="copy-link-txt">Copy Reg Link</div>
+                    <div style="font-size:11px;color:#64748b;">Share with participants</div>
+                  </a>
+                </div>
+              </div>
+
+              <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <button type="button" class="btn btn-blue px-4"
+                        data-bs-dismiss="modal" onclick="resetWizard()">
+                  <i class="fas fa-th-large me-2"></i>Back to Dashboard
+                </button>
+                <button type="button" class="btn btn-outline-secondary px-4"
+                        onclick="createAnother()">
+                  <i class="fas fa-plus me-2"></i>Create Another Event
+                </button>
+              </div>
             </div>
           </div>
 
@@ -730,26 +971,197 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function nextStep(cur){document.getElementById('step'+cur).classList.remove('active');document.getElementById('step'+(cur+1)).classList.add('active');document.getElementById('dot'+cur).classList.replace('active','done');document.getElementById('dot'+(cur+1)).classList.add('active');}
-function prevStep(cur){document.getElementById('step'+cur).classList.remove('active');document.getElementById('step'+(cur-1)).classList.add('active');document.getElementById('dot'+cur).classList.remove('active');document.getElementById('dot'+(cur-1)).classList.replace('done','active');}
-function resetWizard(){for(let i=1;i<=4;i++){document.getElementById('step'+i).classList.remove('active');document.getElementById('dot'+i).classList.remove('active','done');}document.getElementById('step1').classList.add('active');document.getElementById('dot1').classList.add('active');wFields=[];wSelectedId=null;wRenderCanvas();selectFormType('simple');}
+// ── Wizard navigation ───────────────────────────────────────
+function nextStep(cur){
+  document.getElementById('step'+cur).classList.remove('active');
+  document.getElementById('step'+(cur+1)).classList.add('active');
+  document.getElementById('dot'+cur).classList.replace('active','done');
+  if(cur+1<=4) document.getElementById('dot'+(cur+1)).classList.add('active');
+}
+function prevStep(cur){
+  document.getElementById('step'+cur).classList.remove('active');
+  document.getElementById('step'+(cur-1)).classList.add('active');
+  document.getElementById('dot'+cur).classList.remove('active');
+  document.getElementById('dot'+(cur-1)).classList.replace('done','active');
+}
+function resetWizard(){
+  for(let i=1;i<=5;i++){
+    const s=document.getElementById('step'+i);
+    if(s) s.classList.remove('active');
+  }
+  for(let i=1;i<=4;i++){
+    const d=document.getElementById('dot'+i);
+    if(d) d.classList.remove('active','done');
+  }
+  document.getElementById('step1').classList.add('active');
+  document.getElementById('dot1').classList.add('active');
+  document.getElementById('step-indicator').style.display='flex';
+  document.getElementById('create-form').reset();
+  wFields=[]; wSelectedId=null; wRenderCanvas();
+  selectFormType('simple');
+  // Reset cert template
+  document.querySelectorAll('.cert-radio').forEach(r=>{r.checked=r.value==='1';});
+  document.querySelectorAll('.cert-tpl-card').forEach(c=>{c.classList.remove('selected');});
+  document.querySelectorAll('.cert-radio')[0]?.closest('label')
+    ?.querySelector('.cert-tpl-card')?.classList.add('selected');
+}
+function createAnother(){
+  resetWizard();
+  // Refresh page so new event appears in the list
+  location.reload();
+}
+
+// ── Certificate template picker ─────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.cert-radio').forEach(radio=>{
+    radio.addEventListener('change',function(){
+      document.querySelectorAll('.cert-tpl-card').forEach(c=>c.classList.remove('selected'));
+      this.closest('label').querySelector('.cert-tpl-card').classList.add('selected');
+    });
+  });
+});
+
+// ── AJAX form submission ─────────────────────────────────────
+let _createdEventId = '';
+let _createdEventTitle = '';
+let _createdRegLink = '';
+
+function submitEventForm(){
+  if(!prepareFormSubmit()) return;
+  const btn      = document.getElementById('publishBtn');
+  const txtEl    = document.getElementById('publishBtnText');
+  const spinEl   = document.getElementById('publishBtnSpinner');
+  btn.disabled   = true;
+  txtEl.style.display  = 'none';
+  spinEl.style.display = '';
+
+  const form = document.getElementById('create-form');
+  const fd   = new FormData(form);
+
+  fetch('/coordinator/create_event', {
+    method: 'POST',
+    headers: {'X-Requested-With': 'XMLHttpRequest'},
+    body: fd,
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.disabled  = false;
+    txtEl.style.display  = '';
+    spinEl.style.display = 'none';
+
+    if(data.status === 'ok'){
+      _createdEventId    = data.event_id;
+      _createdEventTitle = data.event_title;
+      _createdRegLink    = '/forms/register/' + data.event_id;
+
+      document.getElementById('success-event-title').textContent =
+        '"' + data.event_title + '" is live and ready!';
+      document.getElementById('btn-register-now').href =
+        '/forms/register/' + data.event_id;
+      document.getElementById('btn-share-brochure').href =
+        '/event/' + data.event_id + '/brochure';
+
+      // Hide step indicator on success screen
+      document.getElementById('step-indicator').style.display = 'none';
+
+      // Transition to step 5
+      document.getElementById('step4').classList.remove('active');
+      document.getElementById('step5').classList.add('active');
+    } else {
+      alert('Error: ' + (data.message || 'Could not create event. Please try again.'));
+    }
+  })
+  .catch(err => {
+    btn.disabled  = false;
+    txtEl.style.display  = '';
+    spinEl.style.display = 'none';
+    alert('Network error. Please try again.\n' + err);
+  });
+}
+
+function copyRegLink(e){
+  e.preventDefault();
+  const base = window.location.origin;
+  navigator.clipboard.writeText(base + _createdRegLink).then(()=>{
+    const el = document.getElementById('copy-link-txt');
+    el.textContent = '✅ Copied!';
+    setTimeout(()=> el.textContent = 'Copy Reg Link', 2000);
+  });
+}
+
+// ── Form type / builder ─────────────────────────────────────
 let wFormType='simple';
-function selectFormType(type){wFormType=type;document.getElementById('card-simple').classList.toggle('selected',type==='simple');document.getElementById('card-custom').classList.toggle('selected',type==='custom');document.getElementById('simple-info').style.display=type==='simple'?'':'none';document.getElementById('custom-builder').style.display=type==='custom'?'':'none';if(type==='custom'&&wFields.length===0)wLoadSimple();}
-function updateTeamField(){const isTeam=document.getElementById('teamCheck').checked;const idx=wFields.findIndex(f=>f.id==='team_name');if(isTeam&&idx===-1){wFields.push({id:'team_name',type:'text',label:'Team Name',placeholder:'Leave blank for solo',required:false,options:[],help_text:''});wRenderCanvas();}else if(!isTeam&&idx!==-1){wFields.splice(idx,1);wRenderCanvas();}}
+function selectFormType(type){
+  wFormType=type;
+  document.getElementById('card-simple').classList.toggle('selected',type==='simple');
+  document.getElementById('card-custom').classList.toggle('selected',type==='custom');
+  document.getElementById('simple-info').style.display=type==='simple'?'':'none';
+  document.getElementById('custom-builder').style.display=type==='custom'?'':'none';
+  if(type==='custom'&&wFields.length===0)wLoadSimple();
+}
+function updateTeamField(){
+  const isTeam=document.getElementById('teamCheck').checked;
+  const idx=wFields.findIndex(f=>f.id==='team_name');
+  if(isTeam&&idx===-1){wFields.push({id:'team_name',type:'text',label:'Team Name',placeholder:'Leave blank for solo',required:false,options:[],help_text:''});wRenderCanvas();}
+  else if(!isTeam&&idx!==-1){wFields.splice(idx,1);wRenderCanvas();}
+}
+
 let wFields=[],wSelectedId=null,wDragIdx=null;
-const W_DEFAULTS={text:{label:'Short Answer',placeholder:'Type here'},textarea:{label:'Long Answer',placeholder:'Type here...'},email:{label:'Email Address',placeholder:'you@example.com'},tel:{label:'Phone Number',placeholder:'10-digit mobile'},number:{label:'Number',placeholder:'Enter a number'},date:{label:'Date',placeholder:''},url:{label:'Website / Link',placeholder:'https://'},select:{label:'Dropdown',placeholder:'Select...',options:['Option 1','Option 2','Option 3']},radio:{label:'Multiple Choice',placeholder:'',options:['Option 1','Option 2','Option 3']},checkbox_group:{label:'Checkboxes',placeholder:'',options:['Option 1','Option 2','Option 3']},heading:{label:'Section Heading',placeholder:''},divider:{label:'',placeholder:''}};
+const W_DEFAULTS={
+  text:{label:'Short Answer',placeholder:'Type here'},
+  textarea:{label:'Long Answer',placeholder:'Type here...'},
+  email:{label:'Email Address',placeholder:'you@example.com'},
+  tel:{label:'Phone Number',placeholder:'10-digit mobile'},
+  number:{label:'Number',placeholder:'Enter a number'},
+  date:{label:'Date',placeholder:''},
+  url:{label:'Website / Link',placeholder:'https://'},
+  select:{label:'Dropdown',placeholder:'Select...',options:['Option 1','Option 2','Option 3']},
+  radio:{label:'Multiple Choice',placeholder:'',options:['Option 1','Option 2','Option 3']},
+  checkbox_group:{label:'Checkboxes',placeholder:'',options:['Option 1','Option 2','Option 3']},
+  heading:{label:'Section Heading',placeholder:''},
+  divider:{label:'',placeholder:''}
+};
 const TYPE_LABELS={text:'Short Text',textarea:'Long Text',email:'Email',tel:'Phone',number:'Number',date:'Date',url:'URL',select:'Dropdown',radio:'Multi-choice',checkbox_group:'Checkboxes',checkbox:'Checkbox',heading:'Heading',divider:'Divider'};
 function wUid(){return 'f_'+Math.random().toString(36).slice(2,8);}
-function wAddField(type){const def=W_DEFAULTS[type]||{};wFields.push({id:wUid(),type:type,label:def.label||type,placeholder:def.placeholder||'',required:false,options:(def.options||[]).slice(),help_text:''});wRenderCanvas();wSelectField(wFields[wFields.length-1].id);}
+function wAddField(type){const def=W_DEFAULTS[type]||{};wFields.push({id:wUid(),type,label:def.label||type,placeholder:def.placeholder||'',required:false,options:(def.options||[]).slice(),help_text:''});wRenderCanvas();wSelectField(wFields[wFields.length-1].id);}
 function wLoadSimple(){const isTeam=document.getElementById('teamCheck').checked;wFields=[{id:'full_name',type:'text',label:'Full Name',placeholder:'Enter your full name',required:true,options:[],help_text:''},{id:'email',type:'email',label:'Email',placeholder:'you@example.com',required:true,options:[],help_text:''},{id:'phone',type:'tel',label:'Phone Number',placeholder:'10-digit mobile',required:true,options:[],help_text:''},{id:'usn',type:'text',label:'USN / Roll No',placeholder:'e.g. 1SN21CS001',required:false,options:[],help_text:''}];if(isTeam)wFields.push({id:'team_name',type:'text',label:'Team Name',placeholder:'Leave blank for solo',required:false,options:[],help_text:''});wRenderCanvas();}
 function wClearAll(){if(!confirm('Remove all fields?'))return;wFields=[];wSelectedId=null;wRenderCanvas();document.getElementById('field-editor').style.display='none';}
-function wRenderCanvas(){const canvas=document.getElementById('mini-canvas');const empty=document.getElementById('mini-empty');const badge=document.getElementById('field-count-badge');empty.style.display=wFields.length?'none':'block';badge.textContent=wFields.length+' field'+(wFields.length!==1?'s':'');canvas.querySelectorAll('.mini-field-row').forEach(el=>el.remove());wFields.forEach((f,idx)=>{const row=document.createElement('div');row.className='mini-field-row';row.draggable=true;row.dataset.id=f.id;row.innerHTML=`<span class="drag-dots"><i class="fas fa-grip-vertical"></i></span><span class="label-text">${esc(f.label||f.type)}</span><span class="type-pill">${TYPE_LABELS[f.type]||f.type}</span>${f.required?'<span class="req-star">*</span>':''}<div class="row-actions"><button type="button" onclick="wSelectField('${f.id}')"><i class="fas fa-edit"></i></button><button type="button" onclick="wMove('${f.id}',-1)"><i class="fas fa-arrow-up"></i></button><button type="button" onclick="wMove('${f.id}',1)"><i class="fas fa-arrow-down"></i></button><button type="button" class="del" onclick="wDelete('${f.id}')"><i class="fas fa-trash"></i></button></div>`;row.addEventListener('dragstart',()=>{wDragIdx=idx;setTimeout(()=>row.style.opacity='.4',0);});row.addEventListener('dragend',()=>{row.style.opacity='';});row.addEventListener('dragover',e=>{e.preventDefault();row.style.borderColor='var(--orange)';});row.addEventListener('dragleave',()=>{row.style.borderColor='';});row.addEventListener('drop',e=>{e.preventDefault();row.style.borderColor='';if(wDragIdx!==null&&wDragIdx!==idx){const moved=wFields.splice(wDragIdx,1)[0];wFields.splice(idx,0,moved);wDragIdx=null;wRenderCanvas();}});canvas.appendChild(row);});}
+function wRenderCanvas(){
+  const canvas=document.getElementById('mini-canvas');
+  const empty=document.getElementById('mini-empty');
+  const badge=document.getElementById('field-count-badge');
+  empty.style.display=wFields.length?'none':'block';
+  badge.textContent=wFields.length+' field'+(wFields.length!==1?'s':'');
+  canvas.querySelectorAll('.mini-field-row').forEach(el=>el.remove());
+  wFields.forEach((f,idx)=>{
+    const row=document.createElement('div');
+    row.className='mini-field-row';row.draggable=true;row.dataset.id=f.id;
+    row.innerHTML=`<span class="drag-dots"><i class="fas fa-grip-vertical"></i></span><span class="label-text">${esc(f.label||f.type)}</span><span class="type-pill">${TYPE_LABELS[f.type]||f.type}</span>${f.required?'<span class="req-star">*</span>':''}<div class="row-actions"><button type="button" onclick="wSelectField('${f.id}')"><i class="fas fa-edit"></i></button><button type="button" onclick="wMove('${f.id}',-1)"><i class="fas fa-arrow-up"></i></button><button type="button" onclick="wMove('${f.id}',1)"><i class="fas fa-arrow-down"></i></button><button type="button" class="del" onclick="wDelete('${f.id}')"><i class="fas fa-trash"></i></button></div>`;
+    row.addEventListener('dragstart',()=>{wDragIdx=idx;setTimeout(()=>row.style.opacity='.4',0);});
+    row.addEventListener('dragend',()=>{row.style.opacity='';});
+    row.addEventListener('dragover',e=>{e.preventDefault();row.style.borderColor='var(--orange)';});
+    row.addEventListener('dragleave',()=>{row.style.borderColor='';});
+    row.addEventListener('drop',e=>{e.preventDefault();row.style.borderColor='';if(wDragIdx!==null&&wDragIdx!==idx){const moved=wFields.splice(wDragIdx,1)[0];wFields.splice(idx,0,moved);wDragIdx=null;wRenderCanvas();}});
+    canvas.appendChild(row);
+  });
+}
 function wSelectField(id){wSelectedId=id;const f=wFields.find(x=>x.id===id);if(!f)return;document.getElementById('field-editor').style.display='';document.getElementById('edit-field-label-display').textContent=f.label||f.type;document.getElementById('edit-label').value=f.label||'';document.getElementById('edit-ph').value=f.placeholder||'';document.getElementById('edit-help').value=f.help_text||'';document.getElementById('edit-required').checked=f.required||false;const needsOpts=['select','radio','checkbox_group'].includes(f.type);document.getElementById('options-editor').style.display=needsOpts?'':'none';if(needsOpts)document.getElementById('edit-options').value=(f.options||[]).join('\n');}
-function wUpdateProp(key,val){const f=wFields.find(x=>x.id===wSelectedId);if(!f)return;f[key]=val;if(key==='label'){document.getElementById('edit-field-label-display').textContent=val;}wRenderCanvas();}
+function wUpdateProp(key,val){const f=wFields.find(x=>x.id===wSelectedId);if(!f)return;f[key]=val;if(key==='label')document.getElementById('edit-field-label-display').textContent=val;wRenderCanvas();}
 function wUpdateOptions(text){const f=wFields.find(x=>x.id===wSelectedId);if(!f)return;f.options=text.split('\n').map(s=>s.trim()).filter(Boolean);}
 function wDelete(id){wFields=wFields.filter(f=>f.id!==id);wSelectedId=null;wRenderCanvas();document.getElementById('field-editor').style.display='none';}
 function wMove(id,dir){const i=wFields.findIndex(f=>f.id===id);const n=i+dir;if(n<0||n>=wFields.length)return;const t=wFields[i];wFields[i]=wFields[n];wFields[n]=t;wRenderCanvas();}
-function prepareFormSubmit(){document.getElementById('f_form_type').value=wFormType;if(wFormType==='custom'){if(wFields.length===0){alert('Please add at least one field to your custom form, or switch to Simple.');return false;}const hasEmail=wFields.some(f=>f.id==='email'||f.type==='email');if(!hasEmail){alert('Your custom form needs an Email field so participants can be identified.');return false;}document.getElementById('f_schema_json').value=JSON.stringify(wFields);document.getElementById('f_form_title').value=document.getElementById('w_form_title').value||'Event Registration';document.getElementById('f_form_desc').value=document.getElementById('w_form_desc').value||'';}return true;}
+function prepareFormSubmit(){
+  document.getElementById('f_form_type').value=wFormType;
+  if(wFormType==='custom'){
+    if(wFields.length===0){alert('Please add at least one field to your custom form, or switch to Simple.');return false;}
+    const hasEmail=wFields.some(f=>f.id==='email'||f.type==='email');
+    if(!hasEmail){alert('Your custom form needs an Email field so participants can be identified.');return false;}
+    document.getElementById('f_schema_json').value=JSON.stringify(wFields);
+    document.getElementById('f_form_title').value=document.getElementById('w_form_title').value||'Event Registration';
+    document.getElementById('f_form_desc').value=document.getElementById('w_form_desc').value||'';
+  }
+  return true;
+}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function addMedia(containerId){const c=document.getElementById(containerId);const d=document.createElement('div');d.className='input-group mb-2';d.innerHTML=`<input type="url" name="media_urls[]" class="form-control" placeholder="Image or video URL"><button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>`;c.appendChild(d);}
 function addRoom(containerId){const c=document.getElementById(containerId);const d=document.createElement('div');d.className='row g-2 mb-3 align-items-end';d.innerHTML=`<div class="col-7"><input type="text" name="room_name[]" class="form-control" placeholder="Room 102" required></div><div class="col-4"><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div><div class="col-1 pb-1"><button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-trash"></i></button></div>`;c.appendChild(d);}

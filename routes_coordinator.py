@@ -3,7 +3,7 @@ from io import StringIO
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from flask import (Blueprint, Response, flash, jsonify,
+from flask import (Blueprint, Response, current_app, flash, jsonify,
                    redirect, render_template, request, session)
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -36,18 +36,7 @@ def _phone(reg):
 def _ff(f, op, v):
     return FieldFilter(f, op, v)
 
-
-# =========================================================
-# HELPER — calculate average score across all judges
-# =========================================================
 def _calculate_avg_score(scores: dict) -> float:
-    """
-    scores = {
-      'judge1_at_gmail_com': {'total': 85, 'details': {...}, 'judge_name': 'John'},
-      'judge2_at_gmail_com': {'total': 90, 'details': {...}, 'judge_name': 'Jane'},
-    }
-    Returns average of all judges' total scores, rounded to 2 decimal places.
-    """
     if not scores:
         return 0.0
     totals = [safe_int(s.get('total', 0)) for s in scores.values()]
@@ -59,9 +48,9 @@ def _calculate_avg_score(scores: dict) -> float:
 @login_required
 @role_required(COORD_ROLES)
 def dashboard():
-    user_role      = session.get('role', '')
-    user_email     = session.get('user_id')
-    club_category  = session.get('category', 'General')
+    user_role     = session.get('role', '')
+    user_email    = session.get('user_id')
+    club_category = session.get('category', 'General')
     try:
         is_super = user_role in ('SuperAdmin', 'Super Admin') or club_category == 'All'
         if is_super:
@@ -115,19 +104,29 @@ def view_registrations(event_id):
         return redirect('/coordinator/dashboard')
 
 
+# =========================================================
 # 3. CREATE EVENT
+# Supports both:
+#   - Regular POST (old flow) → redirect to dashboard
+#   - AJAX POST (X-Requested-With header) → returns JSON
+#     { status: 'ok', event_id: '...', event_title: '...' }
+# =========================================================
 @coord_bp.route('/create_event', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
 def create_event():
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     try:
-        overview = request.form.get('overview', '').strip()
+        overview      = request.form.get('overview', '').strip()
         criteria_list = [c.strip() for c in
             request.form.get('criteria', 'Overall Score').split(',') if c.strip()] or ['Overall Score']
-        media_urls = [u.strip() for u in request.form.getlist('media_urls[]') if u.strip()]
-        category = (session.get('category') if session.get('category') not in (None, 'All')
-                    else request.form.get('category', 'General'))
-        db.collection('events').add({
+        media_urls    = [u.strip() for u in request.form.getlist('media_urls[]') if u.strip()]
+        category      = (session.get('category') if session.get('category') not in (None, 'All')
+                         else request.form.get('category', 'General'))
+        open_hall     = request.form.get('open_hall_mode') == 'on'
+        cert_template = safe_int(request.form.get('cert_template', 1))
+
+        _, doc_ref = db.collection('events').add({
             'title':              request.form.get('title', '').strip(),
             'date':               request.form.get('date'),
             'deadline':           request.form.get('deadline'),
@@ -142,6 +141,8 @@ def create_event():
             'entry_fee':          safe_int(request.form.get('entry_fee', 0)),
             'is_team_event':      request.form.get('is_team') == 'on',
             'judging_criteria':   criteria_list,
+            'open_hall_mode':     open_hall,
+            'cert_template':      cert_template,
             'status':             'active',
             'active_round':       1,
             'registration_count': 0,
@@ -150,10 +151,23 @@ def create_event():
             'created_by_email':   session.get('user_id'),
             'created_at':         datetime.datetime.utcnow(),
         })
+
+        event_title = request.form.get('title', '').strip()
         log_action(db, "EVENT_CREATED",
-                   f"{session.get('user_id')} created '{request.form.get('title')}'")
+                   f"{session.get('user_id')} created '{event_title}' "
+                   f"open_hall={open_hall} cert_template={cert_template}")
+
+        if is_ajax:
+            return jsonify({
+                'status':      'ok',
+                'event_id':    doc_ref.id,
+                'event_title': event_title,
+            })
+
         flash("Event created successfully!", "success")
     except Exception as exc:
+        if is_ajax:
+            return jsonify({'status': 'error', 'message': str(exc)}), 500
         flash(f"Error creating event: {exc}", "danger")
     return redirect('/coordinator/dashboard')
 
@@ -164,7 +178,7 @@ def create_event():
 @role_required(COORD_ROLES)
 def edit_event(event_id):
     try:
-        overview = request.form.get('overview', '').strip()
+        overview      = request.form.get('overview', '').strip()
         criteria_list = [c.strip() for c in
             request.form.get('criteria', 'Overall Score').split(',') if c.strip()] or ['Overall Score']
         media_urls = [u.strip() for u in request.form.getlist('media_urls[]') if u.strip()]
@@ -190,7 +204,29 @@ def edit_event(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# 5. DELETE EVENT
+# 5. TOGGLE OPEN HALL MODE
+@coord_bp.route('/toggle_open_hall/<event_id>', methods=['POST'])
+@login_required
+@role_required(COORD_ROLES)
+def toggle_open_hall(event_id):
+    try:
+        event_ref  = db.collection('events').document(event_id)
+        event_data = event_ref.get().to_dict() or {}
+        new_val    = not event_data.get('open_hall_mode', False)
+        event_ref.update({'open_hall_mode': new_val})
+        log_action(db, "OPEN_HALL_TOGGLED",
+                   f"Event {event_id}: open_hall_mode={new_val} by {session.get('user_id')}")
+        if new_val:
+            flash("✅ Open Hall Mode ON — all judges will see all teams. "
+                  "No room allocation needed.", "success")
+        else:
+            flash("Open Hall Mode OFF — judges will only see assigned teams.", "info")
+    except Exception as exc:
+        flash(f"Toggle error: {exc}", "danger")
+    return redirect('/coordinator/dashboard')
+
+
+# 6. DELETE EVENT
 @coord_bp.route('/delete_event/<event_id>')
 @login_required
 @role_required(COORD_ROLES)
@@ -211,7 +247,7 @@ def delete_event(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# 6. ASSIGN STAFF
+# 7. ASSIGN STAFF
 @coord_bp.route('/assign_staff/<event_id>', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
@@ -252,7 +288,7 @@ def assign_staff(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# 7. ALLOCATE ROOMS
+# 8. ALLOCATE ROOMS
 @coord_bp.route('/allocate_rooms/<event_id>', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
@@ -261,7 +297,10 @@ def allocate_rooms(event_id):
         room_names = request.form.getlist('room_name[]')
         capacities = [safe_int(c) for c in request.form.getlist('capacity[]')]
         event_data = db.collection('events').document(event_id).get().to_dict()
-        judges     = [s for s in event_data.get('staff', []) if s.get('role') == 'Judge']
+        if event_data.get('open_hall_mode'):
+            flash("Open Hall Mode is ON — room allocation is not needed.", "info")
+            return redirect('/coordinator/dashboard')
+        judges = [s for s in event_data.get('staff', []) if s.get('role') == 'Judge']
         if len(judges) < len(room_names):
             flash(f"Need {len(room_names)} judges but only {len(judges)} assigned.", "warning")
             return redirect('/coordinator/dashboard')
@@ -288,7 +327,7 @@ def allocate_rooms(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# 8. TRIGGER REMINDERS
+# 9. TRIGGER REMINDERS
 @coord_bp.route('/trigger_reminders/<event_id>')
 @login_required
 @role_required(COORD_ROLES)
@@ -296,30 +335,42 @@ def trigger_reminders(event_id):
     try:
         event_data  = db.collection('events').document(event_id).get().to_dict()
         round_num   = event_data.get('active_round', 1)
+        open_hall   = event_data.get('open_hall_mode', False)
         email_count = wa_count = 0
         for r in (db.collection('registrations')
                     .where(filter=_ff('event_id', '==', event_id)).stream()):
             d = r.to_dict()
-            if d.get('is_eliminated') or not d.get('assigned_room'): continue
-            lead_email = d.get('lead_email', ''); lead_name = d.get('lead_name', 'Participant')
-            room = d.get('assigned_room', 'TBD'); judge = d.get('assigned_judge_name', 'TBD')
-            phone = _phone(d)
-            body = (f"ROUND {round_num} ALERT\n\nHello {lead_name},\n\n"
-                    f"You are in Round {round_num} of '{event_data['title']}'.\n"
-                    f"Room: {room}\nJudge: {judge}\n\nBest of luck!")
+            if d.get('is_eliminated'): continue
+            lead_email = d.get('lead_email', '')
+            lead_name  = d.get('lead_name', 'Participant')
+            phone      = _phone(d)
+            if open_hall:
+                body = (f"ROUND {round_num} ALERT\n\nHello {lead_name},\n\n"
+                        f"You are in Round {round_num} of '{event_data['title']}'.\n"
+                        f"Venue: {event_data.get('venue', 'Main Hall')}\n\n"
+                        f"All judges will evaluate all teams. Best of luck!")
+            else:
+                if not d.get('assigned_room'): continue
+                room  = d.get('assigned_room', 'TBD')
+                judge = d.get('assigned_judge_name', 'TBD')
+                body  = (f"ROUND {round_num} ALERT\n\nHello {lead_name},\n\n"
+                         f"Room: {room}\nJudge: {judge}\n\nBest of luck!")
             send_broadcast_email([lead_email], f"Round {round_num} Details",
                                   body, event_data['title'])
             email_count += 1
-            if phone and _wa(send_room_assignment_whatsapp, phone, lead_name,
-                             event_data['title'], round_num, room, judge):
-                wa_count += 1
+            if phone and not open_hall:
+                room  = d.get('assigned_room', 'TBD')
+                judge = d.get('assigned_judge_name', 'TBD')
+                if _wa(send_room_assignment_whatsapp, phone, lead_name,
+                       event_data['title'], round_num, room, judge):
+                    wa_count += 1
         flash(f"Round {round_num} alerts — {email_count} emails, {wa_count} WhatsApp.", "success")
     except Exception as exc:
         flash(f"Reminder error: {exc}", "danger")
     return redirect('/coordinator/dashboard')
 
 
-# 9. PROMOTE ROUND / ELIMINATION
+# 10. PROMOTE ROUND / ELIMINATION
 @coord_bp.route('/promote_round/<event_id>', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
@@ -330,10 +381,10 @@ def promote_round(event_id):
         event_d   = event_ref.get().to_dict()
         cur_round = event_d.get('active_round', 1)
         nxt_round = cur_round + 1
-        promoted = eliminated = 0
+        promoted  = eliminated = 0
         for reg in (db.collection('registrations')
                       .where(filter=_ff('event_id', '==', event_id)).stream()):
-            rd = reg.to_dict()
+            rd  = reg.to_dict()
             if rd.get('is_eliminated'): continue
             avg = _calculate_avg_score(rd.get('scores', {}))
             rr  = db.collection('registrations').document(reg.id)
@@ -356,15 +407,15 @@ def promote_round(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# 10. BROADCAST
+# 11. BROADCAST
 @coord_bp.route('/broadcast/<event_id>', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
 def broadcast_message(event_id):
     try:
-        subject   = request.form.get('subject', '').strip()
-        message   = request.form.get('message', '').strip()
-        event_doc = db.collection('events').document(event_id).get()
+        subject     = request.form.get('subject', '').strip()
+        message     = request.form.get('message', '').strip()
+        event_doc   = db.collection('events').document(event_id).get()
         if not event_doc.exists: return redirect('/coordinator/dashboard')
         event_title = event_doc.to_dict().get('title', 'Event')
         regs        = list(db.collection('registrations')
@@ -376,7 +427,7 @@ def broadcast_message(event_id):
         wa_sent = 0
         if _WA:
             try:
-                res = send_broadcast_whatsapp(phone_list, event_title, subject, message)
+                res     = send_broadcast_whatsapp(phone_list, event_title, subject, message)
                 wa_sent = res.get('sent', 0)
             except Exception: pass
         flash(f"Sent to {len(email_list)} emails, {wa_sent} WhatsApp.", "success")
@@ -385,45 +436,28 @@ def broadcast_message(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# =========================================================
-# 11. VIEW SCORES — preview all judges' scores before publish
-# =========================================================
+# 12. VIEW SCORES
 @coord_bp.route('/view_scores/<event_id>')
 @login_required
 @role_required(COORD_ROLES)
 def view_scores(event_id):
-    """
-    Shows a table of all teams with:
-    - Each judge's individual score
-    - Calculated average across all judges
-    - Rank preview
-    SPOC/Admin can review this before clicking Publish Results.
-    """
     try:
         event_doc = db.collection('events').document(event_id).get()
         if not event_doc.exists:
             flash("Event not found.", "danger")
             return redirect('/coordinator/dashboard')
-
         event       = event_doc.to_dict()
         event['id'] = event_id
-
-        # Get all judges assigned to this event
-        judges = [s for s in event.get('staff', []) if s.get('role') == 'Judge']
-
+        judges      = [s for s in event.get('staff', []) if s.get('role') == 'Judge']
+        open_hall   = event.get('open_hall_mode', False)
         leaderboard = []
         unscored    = []
-
         for r in (db.collection('registrations')
                     .where(filter=_ff('event_id', '==', event_id)).stream()):
             d = r.to_dict()
-            if d.get('is_eliminated'):
-                continue
-
-            scores     = d.get('scores', {})
-            avg_score  = _calculate_avg_score(scores)
-
-            # Build per-judge breakdown
+            if d.get('is_eliminated'): continue
+            scores    = d.get('scores', {})
+            avg_score = _calculate_avg_score(scores)
             judge_scores = {}
             for judge in judges:
                 safe_key = judge['email'].replace('.', '_')
@@ -433,8 +467,7 @@ def view_scores(event_id):
                         'details': scores[safe_key].get('details', {}),
                     }
                 else:
-                    judge_scores[judge['name']] = None  # not yet scored
-
+                    judge_scores[judge['name']] = None
             team = {
                 'id':           r.id,
                 'team_name':    d.get('team_name', 'Individual'),
@@ -446,81 +479,65 @@ def view_scores(event_id):
                 'scores_count': len(scores),
                 'judges_count': len(judges),
             }
-
-            if scores:
-                leaderboard.append(team)
-            else:
-                unscored.append(team)
-
-        # Sort by average score descending
+            if scores: leaderboard.append(team)
+            else:      unscored.append(team)
         leaderboard.sort(key=lambda x: x['avg_score'], reverse=True)
-
-        # Add rank
         for idx, team in enumerate(leaderboard, 1):
             team['rank'] = idx
-
-        total_judges  = len(judges)
-        all_scored    = all(t['scores_count'] == total_judges for t in leaderboard)
+        total_judges     = len(judges)
+        all_scored       = all(t['scores_count'] == total_judges for t in leaderboard)
         scoring_complete = len(unscored) == 0 and len(leaderboard) > 0
-
-        return render_template(
-            'coordinator/view_scores.html',
-            event=event,
-            leaderboard=leaderboard,
-            unscored=unscored,
-            judges=judges,
-            all_scored=all_scored,
-            scoring_complete=scoring_complete,
-        )
-
+        return render_template('coordinator/view_scores.html',
+            event=event, leaderboard=leaderboard, unscored=unscored,
+            judges=judges, open_hall=open_hall,
+            all_scored=all_scored, scoring_complete=scoring_complete)
     except Exception as exc:
         flash(f"Error loading scores: {exc}", "danger")
         return redirect('/coordinator/dashboard')
 
 
 # =========================================================
-# 12. PUBLISH RESULTS — calculates average, ranks, notifies
+# 13. PUBLISH RESULTS — sends ALL certificates at once
 # =========================================================
 @coord_bp.route('/publish_results/<event_id>', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
 def publish_results(event_id):
     """
-    1. Reads all judges' scores for each team
-    2. Calculates average score per team
-    3. Ranks teams by average
-    4. Saves final_score and rank to each registration
-    5. Saves winners to event document
-    6. Sends result emails + WhatsApp to top 3
-    7. Marks event as completed
+    1. Calculates average score across all judges per team
+    2. Ranks teams by average
+    3. Saves final_score + rank to each registration
+    4. Sends result email + WhatsApp to top 3
+    5. Generates + emails PDF winner certificates (top 3)
+    6. Generates + emails PDF participation certificates (all present)
+    7. Marks event completed
     """
     try:
-        event_ref   = db.collection('events').document(event_id)
-        event_data  = event_ref.get().to_dict() or {}
-        event_title = event_data.get('title', 'Event')
-        judges      = [s for s in event_data.get('staff', []) if s.get('role') == 'Judge']
+        from utils_certificate import generate_and_send_all_certificates
+
+        event_ref    = db.collection('events').document(event_id)
+        event_data   = event_ref.get().to_dict() or {}
+        event_title  = event_data.get('title', 'Event')
+        event_date   = event_data.get('date', '')
+        judges       = [s for s in event_data.get('staff', []) if s.get('role') == 'Judge']
         total_judges = len(judges)
+        base_url     = current_app.config.get('BASE_URL', '')
+        template_id  = int(event_data.get('cert_template', 1))
 
+        # Build leaderboard
         leaderboard = []
-
         for r in (db.collection('registrations')
                     .where(filter=_ff('event_id', '==', event_id)).stream()):
             d = r.to_dict()
-            if d.get('is_eliminated'):
-                continue
+            if d.get('is_eliminated'): continue
             scores = d.get('scores', {})
-            if not scores:
-                continue
-
+            if not scores: continue
             avg_score = _calculate_avg_score(scores)
-
-            # Build per-judge breakdown for the record
             judge_breakdown = {}
             for judge in judges:
                 safe_key = judge['email'].replace('.', '_')
                 if safe_key in scores:
                     judge_breakdown[judge['name']] = scores[safe_key].get('total', 0)
-
             leaderboard.append({
                 'reg_id':          r.id,
                 'team_name':       d.get('team_name', 'Individual'),
@@ -532,10 +549,9 @@ def publish_results(event_id):
                 'judge_breakdown': judge_breakdown,
             })
 
-        # Sort by average score descending
         leaderboard.sort(key=lambda x: x['avg_score'], reverse=True)
 
-        # Save final_score and rank back to each registration
+        # Save final ranks
         for idx, team in enumerate(leaderboard, 1):
             db.collection('registrations').document(team['reg_id']).update({
                 'final_score':     team['avg_score'],
@@ -545,35 +561,63 @@ def publish_results(event_id):
                 'total_judges':    total_judges,
             })
 
-        # Notify top 3
+        # Result notifications (email + WhatsApp)
         for idx, winner in enumerate(leaderboard[:3], start=1):
-            send_result_email(
-                winner['email'], winner['lead_name'],
-                event_title, idx, winner['avg_score']
-            )
+            send_result_email(winner['email'], winner['lead_name'],
+                              event_title, idx, winner['avg_score'])
             if winner.get('phone'):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
                     event_title, idx, winner['avg_score'])
 
-        # Save winners summary to event document
+        # Fetch ALL registrations for participation certs
+        all_regs = [
+            dict(r.to_dict(), id=r.id,
+                 reg_id=r.to_dict().get('reg_id', r.id))
+            for r in db.collection('registrations')
+                       .where(filter=_ff('event_id', '==', event_id)).stream()
+        ]
+
+        # Generate + email ALL certificates simultaneously
+        cert_res = generate_and_send_all_certificates(
+            leaderboard=leaderboard,
+            registrations=all_regs,
+            event_title=event_title,
+            event_date=event_date,
+            base_url=base_url,
+            template_id=template_id,
+            top_n=3,
+        )
+
         event_ref.update({
-            'status':       'completed',
-            'winners':      leaderboard[:3],
-            'completed_at': datetime.datetime.utcnow(),
-            'total_teams_scored': len(leaderboard),
+            'status':                    'completed',
+            'winners':                   leaderboard[:3],
+            'completed_at':              datetime.datetime.utcnow(),
+            'total_teams_scored':        len(leaderboard),
+            'participation_certs_sent':  True,
+            'participation_certs_count': cert_res['participation_sent'],
         })
 
         log_action(db, "RESULTS_PUBLISHED",
                    f"Event {event_id} by {session.get('user_id')} — "
-                   f"{len(leaderboard)} teams, avg scores used")
-        flash(f"Results published! {len(leaderboard)} teams ranked. Top 3 notified.", "success")
+                   f"{len(leaderboard)} teams, template={template_id}, "
+                   f"winner_certs={cert_res['winner_sent']}, "
+                   f"participation_certs={cert_res['participation_sent']}")
+
+        flash(
+            f"✅ Results published! "
+            f"{len(leaderboard)} teams ranked. "
+            f"🏆 {cert_res['winner_sent']} winner certificate(s) emailed. "
+            f"🎓 {cert_res['participation_sent']} participation certificate(s) emailed "
+            f"({cert_res['participation_skipped']} absent/skipped).",
+            "success"
+        )
 
     except Exception as exc:
         flash(f"Publish error: {exc}", "danger")
     return redirect('/coordinator/dashboard')
 
 
-# 13. EXPORT CSV
+# 14. EXPORT CSV
 @coord_bp.route('/export_registrations/<event_id>')
 @login_required
 @role_required(COORD_ROLES)
@@ -586,34 +630,32 @@ def export_registrations(event_id):
                           .where(filter=_ff('event_id', '==', event_id)).stream())
         output = StringIO()
         writer = csv.writer(output)
-        header = ['Ticket ID', 'Lead Name', 'Email', 'Phone', 'USN', 'Team Name',
-                  'Payment Status', 'Amount (Rs)', 'Room', 'Judge', 'Round',
-                  'Status', 'Attendance', 'Check-in Time', 'Registered At',
-                  'Final Score', 'Final Rank']
+        header = ['Ticket ID','Lead Name','Email','Phone','USN','Team Name',
+                  'Payment Status','Amount (Rs)','Room','Judge','Round',
+                  'Status','Attendance','Check-in Time','Registered At',
+                  'Final Score','Final Rank']
         if is_team:
             for i in range(2, 6):
-                header += [f'M{i} Name', f'M{i} Email', f'M{i} Phone', f'M{i} USN']
+                header += [f'M{i} Name',f'M{i} Email',f'M{i} Phone',f'M{i} USN']
         writer.writerow(header)
         for r in regs:
             d      = r.to_dict()
             status = 'Eliminated' if d.get('is_eliminated') else 'Active'
-            row    = [d.get('reg_id', r.id), d.get('lead_name', ''), d.get('lead_email', ''),
-                      d.get('lead_phone', ''), d.get('lead_usn', ''),
-                      d.get('team_name', 'Individual'), d.get('payment_status', 'Free'),
-                      d.get('amount_paid', 0), d.get('assigned_room', ''),
-                      d.get('assigned_judge_name', ''), d.get('current_round', 1),
-                      status, d.get('attendance', 'Pending'),
-                      d.get('checkin_time', ''), d.get('registered_at', ''),
-                      d.get('final_score', ''), d.get('final_rank', '')]
+            row    = [d.get('reg_id', r.id),d.get('lead_name',''),d.get('lead_email',''),
+                      d.get('lead_phone',''),d.get('lead_usn',''),
+                      d.get('team_name','Individual'),d.get('payment_status','Free'),
+                      d.get('amount_paid',0),d.get('assigned_room',''),
+                      d.get('assigned_judge_name',''),d.get('current_round',1),
+                      status,d.get('attendance','Pending'),
+                      d.get('checkin_time',''),d.get('registered_at',''),
+                      d.get('final_score',''),d.get('final_rank','')]
             if is_team:
-                mems = [m for m in d.get('members', [])
-                        if m.get('email', '') != d.get('lead_email', '')]
+                mems = [m for m in d.get('members',[]) if m.get('email','')!=d.get('lead_email','')]
                 for i in range(4):
                     m = mems[i] if i < len(mems) else {}
-                    row += [m.get('name', ''), m.get('email', ''),
-                             m.get('phone', ''), m.get('usn', '')]
+                    row += [m.get('name',''),m.get('email',''),m.get('phone',''),m.get('usn','')]
             writer.writerow(row)
-        title = event_data.get('title', 'Event').replace(' ', '_')
+        title = event_data.get('title','Event').replace(' ','_')
         return Response(output.getvalue(), mimetype='text/csv',
             headers={"Content-Disposition": f"attachment; filename={title}_Registrations.csv"})
     except Exception as exc:
@@ -621,7 +663,7 @@ def export_registrations(event_id):
         return redirect('/coordinator/dashboard')
 
 
-# 14. EXPORT EXCEL
+# 15. EXPORT EXCEL
 @coord_bp.route('/export_excel/<event_id>')
 @login_required
 @role_required(COORD_ROLES)
@@ -656,19 +698,19 @@ def export_excel(event_id):
         c2 = ws['A2']
         c2.value = (f"Date: {event_data.get('date','TBD')}  |  "
                     f"Venue: {event_data.get('venue','SNPSU')}  |  "
-                    f"Total Registrations: {len(regs)}  |  "
+                    f"Total: {len(regs)}  |  "
                     f"Exported: {datetime.datetime.now().strftime('%d %b %Y %H:%M')}")
         c2.font  = Font(italic=True, color="FFFFFF", size=9)
         c2.fill  = PatternFill("solid", fgColor="1A3A6B")
         c2.alignment = Alignment(horizontal="center", vertical="center")
         ws.row_dimensions[2].height = 16
-        headers = ['S.No', 'Ticket ID', 'Lead Name', 'Email', 'Phone', 'USN',
-                   'Team Name', 'Payment', 'Amount (Rs)', 'Room', 'Round',
-                   'Status', 'Attendance', 'Check-in', 'Registered At',
-                   'Final Score', 'Rank']
+        headers = ['S.No','Ticket ID','Lead Name','Email','Phone','USN',
+                   'Team Name','Payment','Amount (Rs)','Room','Round',
+                   'Status','Attendance','Check-in','Registered At',
+                   'Final Score','Rank']
         if is_team:
             for i in range(2, 6):
-                headers += [f'M{i} Name', f'M{i} Email', f'M{i} Phone', f'M{i} USN']
+                headers += [f'M{i} Name',f'M{i} Email',f'M{i} Phone',f'M{i} USN']
         for ci, h in enumerate(headers, 1):
             cell = ws.cell(row=3, column=ci, value=h)
             cell.font = hfont; cell.fill = hf; cell.alignment = haln; cell.border = bdr
@@ -677,29 +719,27 @@ def export_excel(event_id):
             d      = r.to_dict()
             status = 'Eliminated' if d.get('is_eliminated') else 'Active'
             fill   = afill if ri % 2 == 0 else PatternFill()
-            row    = [ri, d.get('reg_id', r.id), d.get('lead_name', ''),
-                      d.get('lead_email', ''), d.get('lead_phone', ''),
-                      d.get('lead_usn', ''), d.get('team_name', 'Individual'),
-                      d.get('payment_status', 'Free'), d.get('amount_paid', 0),
-                      d.get('assigned_room', ''), d.get('current_round', 1),
-                      status, d.get('attendance', 'Pending'),
-                      d.get('checkin_time', ''), d.get('registered_at', ''),
-                      d.get('final_score', ''), d.get('final_rank', '')]
+            row    = [ri,d.get('reg_id',r.id),d.get('lead_name',''),
+                      d.get('lead_email',''),d.get('lead_phone',''),
+                      d.get('lead_usn',''),d.get('team_name','Individual'),
+                      d.get('payment_status','Free'),d.get('amount_paid',0),
+                      d.get('assigned_room',''),d.get('current_round',1),
+                      status,d.get('attendance','Pending'),
+                      d.get('checkin_time',''),d.get('registered_at',''),
+                      d.get('final_score',''),d.get('final_rank','')]
             if is_team:
-                mems = [m for m in d.get('members', [])
-                        if m.get('email', '') != d.get('lead_email', '')]
+                mems = [m for m in d.get('members',[]) if m.get('email','')!=d.get('lead_email','')]
                 for i in range(4):
                     m = mems[i] if i < len(mems) else {}
-                    row += [m.get('name', ''), m.get('email', ''),
-                             m.get('phone', ''), m.get('usn', '')]
+                    row += [m.get('name',''),m.get('email',''),m.get('phone',''),m.get('usn','')]
             xlsx_row = ri + 3
             for ci, val in enumerate(row, 1):
                 cell = ws.cell(row=xlsx_row, column=ci, value=val)
                 cell.font = dfont; cell.alignment = daln; cell.border = bdr
                 if fill.fill_type: cell.fill = fill
             ws.row_dimensions[xlsx_row].height = 17
-        widths = [5, 22, 20, 28, 14, 15, 20, 12, 10, 12, 7, 12, 12, 10, 20, 12, 7]
-        if is_team: widths += [18, 26, 13, 13] * 4
+        widths = [5,22,20,28,14,15,20,12,10,12,7,12,12,10,20,12,7]
+        if is_team: widths += [18,26,13,13]*4
         for i, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(i)].width = w
         ws.freeze_panes = 'A4'
@@ -713,7 +753,7 @@ def export_excel(event_id):
         return redirect('/coordinator/dashboard')
 
 
-# 15. WALK-IN
+# 16. WALK-IN
 @coord_bp.route('/on_spot')
 @login_required
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
@@ -768,7 +808,7 @@ def process_walkin():
     return redirect('/coordinator/on_spot')
 
 
-# 16. QR SCANNER
+# 17. QR SCANNER
 @coord_bp.route('/scanner')
 @login_required
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
@@ -786,8 +826,8 @@ def scan_page(event_id):
     doc = db.collection('events').document(event_id).get()
     if not doc.exists: return redirect('/coordinator/scanner')
     return render_template('coordinator/scan.html',
-                            event_id=event_id,
-                            event_title=doc.to_dict().get('title'))
+                           event_id=event_id,
+                           event_title=doc.to_dict().get('title'))
 
 
 @coord_bp.route('/get_ticket/<reg_id>')
@@ -828,12 +868,12 @@ def mark_attendance_granular():
         return jsonify({'status': 'error', 'message': str(exc)})
 
 
-# 17. CERTIFICATE
+# 18. CERTIFICATE DOWNLOAD
 @coord_bp.route('/certificate/<reg_id>/<usn>')
 def generate_certificate(reg_id, usn):
     reg_doc = db.collection('registrations').document(reg_id).get()
     if not reg_doc.exists: return "Registration not found.", 404
-    data = reg_doc.to_dict()
+    data         = reg_doc.to_dict()
     student_name = None
     if data.get('lead_usn') == usn:
         if data.get('attendance') != 'Present':
@@ -850,4 +890,4 @@ def generate_certificate(reg_id, usn):
         return "Student not found in this registration.", 404
     event_data = db.collection('events').document(data['event_id']).get().to_dict()
     return render_template('participant/certificate.html',
-                            student_name=student_name, event=event_data)
+                           student_name=student_name, event=event_data)

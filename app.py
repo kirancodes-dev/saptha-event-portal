@@ -12,6 +12,7 @@ from config import Config
 from dotenv import load_dotenv
 from scheduler import init_scheduler
 
+
 load_dotenv()
 
 # =========================================================
@@ -33,7 +34,7 @@ limiter = Limiter(
 
 # =========================================================
 # FIREBASE
-# Reads credentials from environment variable FIREBASE_CREDENTIALS (JSON string)
+# Reads credentials from FIREBASE_CREDENTIALS env var (JSON string)
 # Falls back to serviceAccountKey.json for local development
 # =========================================================
 if not firebase_admin._apps:
@@ -44,7 +45,6 @@ if not firebase_admin._apps:
             cred_dict = json.loads(cred_dict)
         cred = credentials.Certificate(cred_dict)
     else:
-        # Local development — use the JSON file
         key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
         cred = credentials.Certificate(key_path)
     firebase_admin.initialize_app(cred)
@@ -220,6 +220,62 @@ def event_details(event_id):
     except Exception as exc:
         app.logger.error("Event details error: %s", exc)
         return render_template('500.html'), 500
+
+
+# =========================================================
+# EVENT BROCHURE — public shareable page
+# =========================================================
+@app.route('/event/<event_id>/brochure')
+def event_brochure(event_id):
+    """Public shareable event brochure — no login required."""
+    try:
+        doc = db.collection('events').document(event_id).get()
+        if not doc.exists:
+            return render_template('404.html'), 404
+
+        event       = doc.to_dict()
+        event['id'] = event_id
+
+        event.setdefault('title',              'Event')
+        event.setdefault('description',        '')
+        event.setdefault('overview',           '')
+        event.setdefault('rules',              '')
+        event.setdefault('prizes',             '')
+        event.setdefault('date',               'TBD')
+        event.setdefault('deadline',           '')
+        event.setdefault('venue',              'SNPSU Campus')
+        event.setdefault('category',           'General')
+        event.setdefault('entry_fee',          0)
+        event.setdefault('is_team_event',      False)
+        event.setdefault('registration_count', 0)
+        event.setdefault('judging_criteria',   [])
+        event.setdefault('media_urls',         [])
+        event.setdefault('banner_url',         '')
+        event.setdefault('status',             'active')
+        event.setdefault('created_by',         'SNPSU')
+
+        base_url = app.config.get('BASE_URL', 'http://127.0.0.1:5000')
+        return render_template('public/brochure.html', event=event, base_url=base_url)
+
+    except Exception as exc:
+        app.logger.error("Brochure error: %s", exc)
+        return render_template('500.html'), 500
+
+
+# =========================================================
+# EVENT QR CODE — returns PNG of brochure URL
+# =========================================================
+@app.route('/event/<event_id>/qr')
+def event_qr(event_id):
+    """Returns a QR code PNG pointing to the event brochure URL."""
+    try:
+        from utils_qr import generate_qr_response
+        base_url = app.config.get('BASE_URL', 'http://127.0.0.1:5000')
+        url      = f"{base_url}/event/{event_id}/brochure"
+        return generate_qr_response(url, box_size=8)
+    except Exception as exc:
+        app.logger.error("Event QR error: %s", exc)
+        return Response(status=204)
 
 
 # =========================================================

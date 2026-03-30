@@ -1,218 +1,360 @@
-import io
+"""
+routes_participant.py  —  Student Dashboard & Actions
+======================================================
+Fixes & additions in this version
+  - All .where() → filter=FieldFilter()
+  - /participant/dashboard   enriched: countdown days, score badge,
+    certificate eligibility flag, feedback submitted flag
+  - /participant/leaderboard/<event_id>  — public live leaderboard
+  - /participant/feedback/<reg_id>       — submit feedback (moved here from feedback_bp)
+"""
 import datetime
-from flask import (Blueprint, Response, flash, redirect,
-                   render_template, request, session, send_file)
+import json
+import secrets
+import string
+import time
+
+from flask import (Blueprint, flash, jsonify, redirect, render_template,
+                   request, session)
+from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+from werkzeug.security import generate_password_hash
+
 from models import db
-from utils import login_required
+from utils import login_required, role_required, log_action, safe_int
+from utils_email import send_ticket_email
 
 participant_bp = Blueprint('participant', __name__, url_prefix='/participant')
+
 
 def _ff(f, op, v):
     return FieldFilter(f, op, v)
 
 
+def _days_until(date_str: str) -> int | None:
+    """Returns days until event date, or None if unparseable."""
+    try:
+        event_date = datetime.datetime.strptime(date_str[:10], '%Y-%m-%d').date()
+        delta      = (event_date - datetime.date.today()).days
+        return delta
+    except Exception:
+        return None
+
+
 # =========================================================
-# DASHBOARD
+# 1. STUDENT DASHBOARD  (fully enriched)
 # =========================================================
 @participant_bp.route('/dashboard')
 @login_required
+@role_required('Student')
 def dashboard():
-    email = session.get('user_id')
-    name  = session.get('name', 'Student')
+    user_email       = session.get('user_id')
+    active_tickets   = []
+    completed_events = []
 
-    try:
-        regs_raw = list(
-            db.collection('registrations')
-              .where(filter=_ff('lead_email', '==', email))
-              .stream()
+    for reg in (db.collection('registrations')
+                  .where(filter=_ff('lead_email', '==', user_email))
+                  .stream()):
+        r = reg.to_dict()
+        r['id'] = reg.id
+
+        event_doc = db.collection('events').document(r.get('event_id', '')).get()
+        if not event_doc.exists:
+            continue
+        evt = event_doc.to_dict()
+
+        # Enrich registration with event info
+        r['event_banner'] = evt.get('banner_url', '')
+        r['event_date']   = evt.get('date', '')
+        r['event_title']  = evt.get('title', r.get('event_title', ''))
+        r['event_venue']  = evt.get('venue', 'SNPSU Campus')
+        r['event_cat']    = evt.get('category', 'General')
+        r['days_until']   = _days_until(evt.get('date', ''))
+
+        # Score & rank (from published results)
+        scores = r.get('scores', {})
+        if scores:
+            all_avgs = []
+            for s in scores.values():
+                all_avgs.append(safe_int(s.get('total', 0)))
+            r['my_avg_score'] = round(sum(all_avgs) / len(all_avgs), 1) if all_avgs else None
+        else:
+            r['my_avg_score'] = None
+
+        r['final_rank']   = r.get('final_rank')   # set by publish_results
+        r['final_score']  = r.get('final_score')  # set by publish_results
+
+        # Certificate eligible: attended + event completed
+        r['cert_eligible'] = (
+            r.get('attendance') == 'Present' and
+            evt.get('status') == 'completed'
         )
-    except Exception as exc:
-        flash(f"Error loading your registrations: {exc}", "danger")
-        regs_raw = []
 
-    registrations = []
-    for r in regs_raw:
-        d         = r.to_dict()
-        d['id']   = r.id
-        d['reg_id'] = d.get('reg_id', r.id)
-        event_id  = d.get('event_id', '')
+        # Feedback already submitted?
+        r['feedback_done'] = bool(r.get('feedback'))
 
-        # Fetch event details
-        try:
-            ev_doc  = db.collection('events').document(event_id).get()
-            ev_data = ev_doc.to_dict() if ev_doc.exists else {}
-        except Exception:
-            ev_data = {}
+        if evt.get('status') == 'active':
+            active_tickets.append(r)
+        else:
+            completed_events.append(r)
 
-        d['event']          = ev_data
-        d['event_title']    = ev_data.get('title',  d.get('event_title', 'Event'))
-        d['event_date']     = ev_data.get('date',   'TBD')
-        d['event_venue']    = ev_data.get('venue',  'SNPSU Campus')
-        d['event_status']   = ev_data.get('status', 'active')
-        d['event_category'] = ev_data.get('category', 'General')
+    # Sort active by soonest date
+    active_tickets.sort(key=lambda x: x.get('event_date', ''))
 
-        # Score / rank
-        d['final_score'] = d.get('final_score', '')
-        d['final_rank']  = d.get('final_rank',  '')
+    # Calendar feed
+    calendar_events = []
+    for e in (db.collection('events')
+                .where(filter=_ff('status', '==', 'active'))
+                .stream()):
+        d = e.to_dict()
+        calendar_events.append({
+            'title': d.get('title'),
+            'start': d.get('date'),
+            'color': '#f37021' if d.get('category') == 'Technical' else '#0d2d62'
+        })
 
-        # Attendance
-        d['attendance']   = d.get('attendance', 'Pending')
-        d['checkin_time'] = d.get('checkin_time', '')
-
-        # Status flags
-        d['is_eliminated']   = d.get('is_eliminated', False)
-        d['payment_status']  = d.get('payment_status', 'Free')
-        d['current_round']   = d.get('current_round', 1)
-
-        registrations.append(d)
-
-    # Sort: active events first, then by registration date descending
-    registrations.sort(
-        key=lambda x: (
-            0 if x['event_status'] == 'active' else 1,
-            x.get('registered_at', ''),
-        ),
-        reverse=False
-    )
-    registrations.sort(key=lambda x: x.get('registered_at', ''), reverse=True)
-
-    active_count    = sum(1 for r in registrations if r['event_status'] == 'active')
-    completed_count = sum(1 for r in registrations if r['event_status'] != 'active')
-    present_count   = sum(1 for r in registrations if r['attendance'] == 'Present')
+    # Announcements
+    announcements = []
+    try:
+        for a in (db.collection('announcements')
+                    .order_by('timestamp', direction=firestore.Query.DESCENDING)
+                    .limit(5).stream()):
+            ad = a.to_dict()
+            announcements.append({
+                'message':  ad.get('message', ''),
+                'priority': ad.get('priority', 'info')
+            })
+    except Exception:
+        pass
 
     return render_template(
         'participant/dashboard.html',
-        registrations=registrations,
-        name=name,
-        email=email,
-        active_count=active_count,
-        completed_count=completed_count,
-        present_count=present_count,
-        total=len(registrations),
+        active_tickets   = active_tickets,
+        completed_events = completed_events,
+        calendar_events  = json.dumps(calendar_events),
+        user_name        = session.get('name'),
+        announcements    = announcements,
     )
 
 
 # =========================================================
-# QR TICKET DOWNLOAD
-# =========================================================
-@participant_bp.route('/qr/<reg_id>')
-@login_required
-def download_qr(reg_id):
-    """Generate and return QR code PNG for a registration."""
-    try:
-        reg_doc = db.collection('registrations').document(reg_id).get()
-        if not reg_doc.exists:
-            flash("Registration not found.", "danger")
-            return redirect('/participant/dashboard')
-
-        reg_data = reg_doc.to_dict()
-        # Security: only the owner can download
-        if reg_data.get('lead_email') != session.get('user_id'):
-            flash("Access denied.", "danger")
-            return redirect('/participant/dashboard')
-
-        from utils_qr import generate_qr_bytes
-        from flask import current_app
-        base_url   = current_app.config.get('BASE_URL', '')
-        verify_url = f"{base_url}/ticket/verify/{reg_id}" if base_url else reg_id
-        qr_bytes   = generate_qr_bytes(verify_url)
-
-        return send_file(
-            io.BytesIO(qr_bytes),
-            mimetype='image/png',
-            as_attachment=True,
-            download_name=f"QR_{reg_id}.png"
-        )
-    except Exception as exc:
-        flash(f"QR generation failed: {exc}", "danger")
-        return redirect('/participant/dashboard')
-
-
-# =========================================================
-# CERTIFICATE DOWNLOAD — regenerate PDF on demand
+# 2. CERTIFICATE VIEWER
 # =========================================================
 @participant_bp.route('/certificate/<reg_id>')
 @login_required
-def download_certificate(reg_id):
-    """Regenerate and download the participant's certificate PDF."""
-    try:
-        reg_doc = db.collection('registrations').document(reg_id).get()
-        if not reg_doc.exists:
-            flash("Registration not found.", "danger")
-            return redirect('/participant/dashboard')
-
-        reg_data = reg_doc.to_dict()
-
-        # Security: only owner
-        if reg_data.get('lead_email') != session.get('user_id'):
-            flash("Access denied.", "danger")
-            return redirect('/participant/dashboard')
-
-        if reg_data.get('attendance') != 'Present':
-            flash("Certificate only available for participants who attended.", "warning")
-            return redirect('/participant/dashboard')
-
-        event_id  = reg_data.get('event_id', '')
-        ev_doc    = db.collection('events').document(event_id).get()
-        ev_data   = ev_doc.to_dict() if ev_doc.exists else {}
-
-        from utils_certificate import generate_certificate_pdf
-        from flask import current_app
-
-        base_url    = current_app.config.get('BASE_URL', '')
-        final_rank  = reg_data.get('final_rank', 0)
-        final_score = reg_data.get('final_score', 0)
-        cert_type   = 'winner' if final_rank and int(final_rank) <= 3 else 'participation'
-        template_id = int(ev_data.get('cert_template', 1))
-
-        pdf_bytes = generate_certificate_pdf(
-            student_name=reg_data.get('lead_name', session.get('name', '')),
-            event_title=ev_data.get('title', 'Event'),
-            reg_id=reg_id,
-            cert_type=cert_type,
-            rank=int(final_rank) if final_rank else 0,
-            score=float(final_score) if final_score else 0.0,
-            event_date=ev_data.get('date', ''),
-            base_url=base_url,
-            template_id=template_id,
-        )
-
-        safe_title = ev_data.get('title', 'Event').replace(' ', '_')[:30]
-        label      = 'Achievement' if cert_type == 'winner' else 'Participation'
-        filename   = f"Certificate_{label}_{safe_title}.pdf"
-
-        return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=filename
-        )
-
-    except Exception as exc:
-        flash(f"Certificate download failed: {exc}", "danger")
+@role_required('Student')
+def view_certificate(reg_id):
+    reg_doc = db.collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        flash("Registration not found.", "danger")
         return redirect('/participant/dashboard')
 
+    reg_data = reg_doc.to_dict()
+    if reg_data.get('lead_email') != session.get('user_id'):
+        flash("Unauthorised access.", "danger")
+        return redirect('/participant/dashboard')
+    if reg_data.get('attendance') != 'Present':
+        flash("Certificates are only issued to students who attended.", "warning")
+        return redirect('/participant/dashboard')
+
+    event_data = db.collection('events').document(reg_data['event_id']).get().to_dict()
+    return render_template('participant/certificate.html',
+                            student_name=reg_data.get('lead_name'),
+                            event=event_data)
+
 
 # =========================================================
-# TICKET VIEW PAGE  (keep existing if present)
+# 3. LIVE LEADERBOARD (public JSON — no login needed)
 # =========================================================
-@participant_bp.route('/ticket/<reg_id>')
+@participant_bp.route('/leaderboard/<event_id>')
+def leaderboard(event_id):
+    """
+    Public JSON leaderboard — participants open this on the projector.
+    GET /participant/leaderboard/<event_id>
+    """
+    regs = (db.collection('registrations')
+              .where(filter=_ff('event_id', '==', event_id))
+              .stream())
+
+    board = []
+    for r in regs:
+        d = r.to_dict()
+        if d.get('is_eliminated'):
+            continue
+        scores = d.get('scores', {})
+        if not scores:
+            continue
+        avg = round(
+            sum(safe_int(s.get('total', 0)) for s in scores.values()) / len(scores), 1
+        )
+        board.append({
+            'team_name': d.get('team_name', '—'),
+            'lead_name': d.get('lead_name', ''),
+            'score':     avg,
+            'room':      d.get('assigned_room', ''),
+            'round':     d.get('current_round', 1),
+            'judges_count': len(scores),
+        })
+
+    board.sort(key=lambda x: x['score'], reverse=True)
+    for i, row in enumerate(board):
+        row['rank'] = i + 1
+
+    # Also render a nice HTML page for projector display
+    if request.headers.get('Accept', '').startswith('text/html'):
+        event = db.collection('events').document(event_id).get().to_dict() or {}
+        return render_template('public/leaderboard.html',
+                                board=board, event=event, event_id=event_id)
+
+    return jsonify({'status': 'ok', 'data': board, 'total': len(board)})
+
+
+# =========================================================
+# 4. SUBMIT FEEDBACK (student rates event after attending)
+# =========================================================
+@participant_bp.route('/feedback/<reg_id>', methods=['GET', 'POST'])
 @login_required
-def view_ticket(reg_id):
-    try:
-        reg_doc = db.collection('registrations').document(reg_id).get()
-        if not reg_doc.exists:
-            flash("Ticket not found.", "danger")
-            return redirect('/participant/dashboard')
-        d = reg_doc.to_dict()
-        if d.get('lead_email') != session.get('user_id'):
-            flash("Access denied.", "danger")
-            return redirect('/participant/dashboard')
-        ev = db.collection('events').document(d.get('event_id','')).get()
-        ev_data = ev.to_dict() if ev.exists else {}
-        return render_template('participant/ticket.html',
-                               reg=d, event=ev_data, reg_id=reg_id)
-    except Exception as exc:
-        flash(f"Error loading ticket: {exc}", "danger")
+@role_required('Student')
+def submit_feedback(reg_id):
+    reg_ref = db.collection('registrations').document(reg_id)
+    reg     = reg_ref.get()
+
+    if not reg.exists or reg.to_dict().get('lead_email') != session.get('user_id'):
+        flash("Unauthorised access.", "danger")
         return redirect('/participant/dashboard')
+
+    reg_data = reg.to_dict()
+
+    if request.method == 'POST':
+        rating   = request.form.get('rating', '0')
+        comments = request.form.get('comments', '').strip()
+        tags     = request.form.getlist('tags')      # e.g. ['Well organised', 'Good venue']
+
+        if not rating.isdigit() or not (1 <= int(rating) <= 5):
+            flash("Please select a valid rating (1–5).", "warning")
+            return redirect(f'/participant/feedback/{reg_id}')
+
+        reg_ref.update({
+            'feedback': {
+                'rating':    int(rating),
+                'comments':  comments,
+                'tags':      tags,
+                'timestamp': datetime.datetime.utcnow(),
+            }
+        })
+        flash("Thank you for your feedback!", "success")
+        return redirect('/participant/dashboard')
+
+    event = db.collection('events').document(reg_data.get('event_id', '')).get().to_dict() or {}
+    return render_template('participant/feedback_form.html',
+                            reg=reg_data, reg_id=reg_id, event=event)
+
+
+# =========================================================
+# 5. PUBLIC REGISTRATION (legacy — kept for back-compat)
+# =========================================================
+@participant_bp.route('/public_register/<event_id>', methods=['POST'])
+def public_register(event_id):
+    try:
+        event_doc  = db.collection('events').document(event_id).get()
+        if not event_doc.exists:
+            flash("Event not found.", "danger")
+            return redirect('/')
+
+        event_data = event_doc.to_dict()
+        email      = request.form.get('email', '').lower().strip()
+        full_name  = request.form.get('full_name', '').strip()
+        usn        = request.form.get('usn', '').upper().strip()
+        phone      = request.form.get('phone', '').strip()
+        team_name  = request.form.get('team_name', 'Individual').strip() or 'Individual'
+        sub_link   = request.form.get('submission_link', '').strip()
+
+        if not email or not full_name:
+            flash("Name and email are required.", "warning")
+            return redirect(f'/forms/register/{event_id}')
+
+        # Duplicate check
+        existing = list(
+            db.collection('registrations')
+              .where(filter=_ff('event_id',   '==', event_id))
+              .where(filter=_ff('lead_email', '==', email))
+              .limit(1).stream()
+        )
+        if existing:
+            flash("You have already registered for this event.", "warning")
+            return redirect('/')
+
+        # Auto-create account
+        user_ref     = db.collection('users').document(email)
+        is_new_user  = not user_ref.get().exists
+        raw_password = ''
+        if is_new_user:
+            alphabet     = string.ascii_letters + string.digits
+            raw_password = ''.join(secrets.choice(alphabet) for _ in range(10))
+            user_ref.set({
+                'email':               email,
+                'name':                full_name,
+                'role':                'Student',
+                'category':            'General',
+                'password':            generate_password_hash(raw_password),
+                'created_at':          datetime.datetime.now().strftime('%Y-%m-%d'),
+                'needs_password_reset': True,
+            })
+
+        reg_id   = f"REG-{int(time.time() * 1000)}"
+        members  = [{'role': 'Team Leader', 'name': full_name,
+                      'email': email, 'usn': usn, 'phone': phone}]
+        for i, m_name in enumerate(request.form.getlist('member_name[]')):
+            if m_name.strip():
+                m_usns  = request.form.getlist('member_usn[]')
+                m_emails= request.form.getlist('member_email[]')
+                m_wapps = request.form.getlist('member_whatsapp[]')
+                members.append({
+                    'role':     'Member',
+                    'name':     m_name.strip(),
+                    'usn':      m_usns[i].strip().upper()    if i < len(m_usns)   else '',
+                    'email':    m_emails[i].strip().lower()  if i < len(m_emails) else '',
+                    'whatsapp': m_wapps[i].strip()           if i < len(m_wapps)  else '',
+                })
+
+        reg_data = {
+            'reg_id':          reg_id,
+            'event_id':        event_id,
+            'event_title':     event_data.get('title'),
+            'lead_email':      email,
+            'lead_name':       full_name,
+            'lead_usn':        usn,
+            'lead_phone':      phone,
+            'team_name':       team_name,
+            'submission_link': sub_link,
+            'members':         members,
+            'member_count':    len(members),
+            'attendance':      'Pending',
+            'registered_at':   datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'is_eliminated':   False,
+            'current_round':   1,
+        }
+
+        fee = safe_int(event_data.get('entry_fee', 0))
+        if fee > 0:
+            session['pending_reg_data'] = reg_data
+            return redirect(f'/payment/checkout/{event_id}')
+
+        reg_data.update({'status': 'Confirmed', 'payment_status': 'Free', 'amount_paid': 0})
+        db.collection('registrations').document(reg_id).set(reg_data)
+        db.collection('events').document(event_id).update({
+            'registration_count': event_data.get('registration_count', 0) + 1
+        })
+        send_ticket_email(email, full_name, event_data.get('title', ''),
+                          reg_id, is_new_user=is_new_user, raw_password=raw_password)
+        session['user_id']  = email
+        session['name']     = full_name
+        session['role']     = 'Student'
+        session['category'] = 'General'
+        log_action(db, "REGISTRATION_CONFIRMED", f"{email} registered for {event_id}")
+        return redirect(f'/ticket/{reg_id}')
+
+    except Exception as exc:
+        import traceback; traceback.print_exc()
+        flash(f"Registration failed: {exc}", "danger")
+        return redirect('/')

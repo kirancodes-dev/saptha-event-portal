@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Leaderboard — {{ event.get('title','Event') }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--blue:#0d2d62;--orange:#f37021;}
+body{background:#f1f5f9;font-family:'Inter',sans-serif;min-height:100vh;}
+.header{background:var(--blue);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-sq{width:40px;height:40px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;}
+.event-name{font-family:'Poppins',sans-serif;font-size:18px;font-weight:700;color:#fff;}
+.live-badge{display:flex;align-items:center;gap:6px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;font-size:12px;font-weight:600;padding:5px 14px;border-radius:100px;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:blink 1.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.board{padding:24px 32px;}
+.top-three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;}
+.podium-card{background:#fff;border-radius:16px;padding:20px;text-align:center;border:2px solid #e2e8f0;position:relative;}
+.podium-card.first{border-color:#fbbf24;background:#fffbeb;}
+.podium-card.second{border-color:#94a3b8;background:#f8fafc;}
+.podium-card.third{border-color:#f87171;background:#fff5f5;}
+.medal{font-size:32px;display:block;margin-bottom:6px;}
+.podium-name{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);}
+.podium-score{font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;color:var(--orange);margin-top:4px;}
+.podium-lead{font-size:12px;color:#64748b;margin-top:2px;}
+.table-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;}
+.lb-table{width:100%;border-collapse:collapse;}
+.lb-table th{background:var(--blue);color:#fff;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;padding:12px 16px;text-align:left;letter-spacing:.3px;}
+.lb-table td{padding:12px 16px;font-size:14px;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.lb-table tr:last-child td{border-bottom:none;}
+.lb-table tr:hover td{background:#fafbfc;}
+.rank-no{font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;color:#94a3b8;width:40px;}
+.score-cell{font-family:'Poppins',sans-serif;font-size:18px;font-weight:800;color:var(--orange);}
+.judges-pill{background:#eff6ff;color:#1e40af;font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;}
+.updated{font-size:11px;color:rgba(255,255,255,.5);text-align:right;padding:0 32px 12px;}
+.empty{text-align:center;padding:60px 24px;}
+.empty p{font-size:14px;color:#94a3b8;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-sq">SE</div>
+    <div>
+      <div class="event-name">{{ event.get('title','Event') }}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.55);">
+        Sapthagiri NPS University &nbsp;·&nbsp; Live Leaderboard
+      </div>
+    </div>
+  </div>
+  <div class="live-badge"><span class="live-dot"></span>Live</div>
+</div>
+
+<div class="board">
+  {% if board %}
+
+  <!-- Top 3 podium -->
+  {% if board|length >= 1 %}
+  <div class="top-three">
+    <!-- 2nd place (left) -->
+    <div class="podium-card second">
+      {% if board|length >= 2 %}
+      <span class="medal">🥈</span>
+      <div class="podium-name">{{ board[1].team_name }}</div>
+      <div class="podium-score">{{ board[1].score }}</div>
+      <div class="podium-lead">{{ board[1].lead_name }}</div>
+      {% endif %}
+    </div>
+    <!-- 1st place (centre) -->
+    <div class="podium-card first">
+      <span class="medal">🥇</span>
+      <div class="podium-name">{{ board[0].team_name }}</div>
+      <div class="podium-score">{{ board[0].score }}</div>
+      <div class="podium-lead">{{ board[0].lead_name }}</div>
+    </div>
+    <!-- 3rd place (right) -->
+    <div class="podium-card third">
+      {% if board|length >= 3 %}
+      <span class="medal">🥉</span>
+      <div class="podium-name">{{ board[2].team_name }}</div>
+      <div class="podium-score">{{ board[2].score }}</div>
+      <div class="podium-lead">{{ board[2].lead_name }}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Full table -->
+  {% if board|length > 3 %}
+  <div class="table-card">
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th style="width:50px;">Rank</th>
+          <th>Team</th>
+          <th>Lead</th>
+          <th>Room</th>
+          <th>Judges</th>
+          <th style="text-align:right;">Score</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body">
+        {% for row in board %}
+        {% if row.rank > 3 %}
+        <tr>
+          <td class="rank-no">{{ row.rank }}</td>
+          <td style="font-weight:600;color:var(--blue);">{{ row.team_name }}</td>
+          <td style="color:#64748b;">{{ row.lead_name }}</td>
+          <td style="color:#94a3b8;font-size:13px;">{{ row.room or '—' }}</td>
+          <td><span class="judges-pill">{{ row.judges_count }}</span></td>
+          <td class="score-cell" style="text-align:right;">{{ row.score }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty">
+    <i class="fas fa-hourglass-half" style="font-size:48px;color:#cbd5e1;"></i>
+    <p>Scores will appear here as judges submit them.</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="updated" id="updated-ts">Last updated: loading...</div>
+
+<script>
+async function refresh() {
+  try {
+    const res  = await fetch(window.location.href, {
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await res.json();
+    // Simple auto-reload approach — full page refresh every 15s
+    document.getElementById('updated-ts').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  } catch(e){}
+}
+// Full reload every 15 seconds for simplicity — projector use
+setTimeout(() => window.location.reload(), 15000);
+document.getElementById('updated-ts').textContent =
+  'Auto-refreshes every 15 seconds · ' + new Date().toLocaleTimeString();
+</script>
+</body>
+</html>

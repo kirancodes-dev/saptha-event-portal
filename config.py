@@ -36,7 +36,7 @@ class Config:
     MAIL_USE_SSL        = False
     MAIL_TIMEOUT        = 10   # ← THE FIX: 10s timeout, never blocks gunicorn
     MAIL_USERNAME       = os.environ.get('MAIL_USER', 'sapthhack@gmail.com')
-    MAIL_PASSWORD       = os.environ.get('MAIL_PASS', 'yqfk tmdn vxof qvxj')
+    MAIL_PASSWORD       = os.environ.get('MAIL_PASS', 'yqfktmdnvxofqvxj')
     MAIL_DEFAULT_SENDER = (
         'SapthaEvent Team',
         os.environ.get('MAIL_USER', 'sapthhack@gmail.com')

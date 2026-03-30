@@ -1,130 +1,333 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evaluate | {{ event.title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { background-color: #f4f7f6; font-family: 'Inter', sans-serif; }
-        .navbar { background-color: #0d2d62; padding: 15px; }
-        .team-card { background: white; border-radius: 12px; border-top: 5px solid #0d2d62; box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: 0.3s; }
-        .team-card:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(13, 45, 98, 0.1); }
-        .team-card.scored { border-top-color: #10b981; opacity: 0.8; }
-        
-        .score-slider { width: 100%; cursor: pointer; accent-color: #f37021; }
-        .score-display { font-size: 1.5rem; font-weight: 800; color: #0d2d62; width: 50px; text-align: center; }
-        .room-badge { background-color: #e0e7ff; color: #0d2d62; font-weight: bold; border: 1px solid #c7d2fe; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Score Teams — {{ event.title }} | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+.topbar{background:var(--blue);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo-sq{width:36px;height:36px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:14px;color:#fff;}
+.brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;color:#fff;}
+.content{padding:24px;}
+.team-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px 18px;transition:border-color .15s;}
+.team-card:hover{border-color:var(--orange);}
+.team-card.scored{border-left:4px solid #22c55e;}
+.team-card.unscored{border-left:4px solid #e2e8f0;}
+.team-name{font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;color:var(--blue);}
+.lead-name{font-size:12.5px;color:#64748b;}
+.room-tag{font-size:11.5px;color:#94a3b8;}
+.score-badge{background:var(--orange);color:#fff;font-family:'Poppins',sans-serif;font-size:16px;font-weight:800;padding:6px 14px;border-radius:9px;}
+.score-badge.done{background:#22c55e;}
+.btn-score-sm{background:var(--orange);color:#fff;border:none;font-size:12.5px;font-weight:600;padding:7px 18px;border-radius:8px;cursor:pointer;transition:.15s;}
+.btn-score-sm:hover{background:#d95f0f;}
+.btn-edit-sm{background:transparent;color:var(--blue);border:1.5px solid var(--blue);font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;cursor:pointer;transition:.15s;}
+.btn-edit-sm:hover{background:var(--blue);color:#fff;}
+.criteria-slider{-webkit-appearance:none;height:5px;border-radius:3px;background:#e2e8f0;outline:none;width:100%;}
+.criteria-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--orange);cursor:pointer;}
+.score-input{width:70px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:14px;font-weight:600;color:var(--blue);text-align:center;}
+.score-input:focus{border-color:var(--orange);outline:none;}
+.leaderboard-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;}
+.rank-badge{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.rank-1{background:#fef9c3;color:#854d0e;}
+.rank-2{background:#e2e8f0;color:#334155;}
+.rank-3{background:#fef2f2;color:#991b1b;}
+.rank-other{background:#f1f5f9;color:#64748b;}
+</style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark sticky-top">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="/judge/dashboard"><i class="fas fa-arrow-left me-2"></i> Back to Dashboard</a>
-            <span class="text-white fw-bold d-none d-md-block">{{ event.title }}</span>
+<div class="topbar">
+  <div class="d-flex align-items-center gap-2">
+    <div class="logo-sq">SE</div>
+    <span class="brand">{{ event.title }}</span>
+  </div>
+  <a href="/judge/dashboard" style="color:rgba(255,255,255,.7);font-size:13px;text-decoration:none;">
+    <i class="fas fa-arrow-left me-1"></i> Dashboard
+  </a>
+</div>
+
+<div class="content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show mb-3">
+      {{ msg|safe }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}{% endif %}
+  {% endwith %}
+
+  <div class="row g-4">
+    <!-- Left: teams list -->
+    <div class="col-12 col-xl-8">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h4 style="color:var(--blue);margin:0;">Teams to Score</h4>
+          <p style="font-size:13px;color:#64748b;margin:0;">
+            Round {{ event.active_round or 1 }}
+            {% if open_hall %}&nbsp;·&nbsp;<span style="color:#7c3aed;font-weight:600;">Open Hall Mode</span>{% endif %}
+          </p>
         </div>
-    </nav>
+        <span style="font-size:13px;color:#94a3b8;">
+          {{ teams|selectattr('my_score')|list|length }} / {{ teams|length }} scored
+        </span>
+      </div>
 
-    <div class="container py-5">
-        <div class="d-flex justify-content-between align-items-end mb-4">
-            <div>
-                <h3 class="fw-bold mb-1" style="color: #0d2d62;">Allocated Teams</h3>
-                <p class="text-muted m-0">You are evaluating the teams assigned to your specific room.</p>
+      {% if teams %}
+      <div class="d-flex flex-column gap-3" id="teamsList">
+        {% for team in teams %}
+        <div class="team-card {{ 'scored' if team.my_score else 'unscored' }}" id="card-{{ team.id }}">
+          <div class="d-flex align-items-start justify-content-between gap-3">
+            <div class="flex-grow-1">
+              <div class="team-name">{{ team.team_name }}</div>
+              <div class="lead-name">{{ team.lead_name }}</div>
+              <div class="room-tag mt-1">
+                <i class="fas fa-door-open me-1"></i>{{ team.assigned_room or 'No room' }}
+                &nbsp;·&nbsp; Round {{ team.current_round or 1 }}
+                {% if team.members|length > 1 %}
+                &nbsp;·&nbsp; {{ team.members|length }} members
+                {% endif %}
+              </div>
+              {% if team.my_score and team.my_score.remarks %}
+              <div style="font-size:11.5px;color:#64748b;margin-top:4px;font-style:italic;">
+                "{{ team.my_score.remarks }}"
+              </div>
+              {% endif %}
             </div>
-            <span class="badge bg-warning text-dark px-3 py-2 fs-6 rounded-pill shadow-sm"><i class="fas fa-users me-1"></i> {{ teams|length }} Teams</span>
+            <div class="d-flex flex-column align-items-end gap-2">
+              {% if team.my_score %}
+              <div class="score-badge done">{{ team.my_score.total }}</div>
+              <button class="btn-edit-sm" onclick="openScoreModal('{{ team.id }}', {{ team | tojson | safe }})">
+                Edit
+              </button>
+              {% else %}
+              <button class="btn-score-sm" onclick="openScoreModal('{{ team.id }}', {{ team | tojson | safe }})">
+                <i class="fas fa-star me-1"></i> Score
+              </button>
+              {% endif %}
+            </div>
+          </div>
         </div>
+        {% endfor %}
+      </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} fw-bold"><i class="fas fa-check-circle me-2"></i>{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
-        <div class="row g-4">
-            {% for team in teams %}
-            <div class="col-md-6 col-lg-4">
-                <div class="team-card p-4 d-flex flex-column h-100 {% if team.my_score %}scored{% endif %}">
-                    
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="fw-bold mb-1" style="color: #0d2d62;">{{ team.team_name if team.team_name and team.team_name != 'Individual' else team.lead_name }}</h5>
-                            <small class="text-muted d-block"><i class="fas fa-id-badge me-1"></i> Lead: {{ team.lead_name }} ({{ team.lead_usn }})</small>
-                        </div>
-                        
-                        <div class="text-center px-3 py-2 rounded room-badge shadow-sm">
-                            <small class="d-block text-uppercase" style="font-size: 0.65rem;">Location</small>
-                            <span class="fs-5">{{ team.assigned_room if team.assigned_room else 'TBD' }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-auto pt-3 border-top">
-                        {% if team.my_score %}
-                            <div class="d-flex justify-content-between align-items-center bg-success bg-opacity-10 p-2 rounded border border-success text-success">
-                                <span class="fw-bold"><i class="fas fa-check me-1"></i> Evaluated</span>
-                                <h5 class="m-0 fw-bold">{{ team.my_score.total }} <small style="font-size: 0.7rem;">pts</small></h5>
-                            </div>
-                        {% else %}
-                            <button class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #f37021;" data-bs-toggle="modal" data-bs-target="#scoreModal{{ team.id }}">
-                                <i class="fas fa-star me-2"></i> Evaluate Team
-                            </button>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            {% if not team.my_score %}
-            <div class="modal fade" id="scoreModal{{ team.id }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header bg-dark text-white">
-                            <h5 class="modal-title">Evaluate: {{ team.team_name if team.team_name and team.team_name != 'Individual' else team.lead_name }}</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
-                        <form action="/judge/submit_score/{{ team.id }}" method="POST">
-                            <div class="modal-body p-4">
-                                <div class="alert alert-light border mb-4">
-                                    <i class="fas fa-info-circle text-primary me-2"></i> Score each metric from 1 to 10 based on the event's official criteria.
-                                </div>
-                                
-                                {% for criteria in event.judging_criteria %}
-                                {% set safe_c_name = criteria.replace(' ', '_') | lower %}
-                                <div class="mb-4">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="form-label text-dark fw-bold m-0 text-uppercase">{{ criteria }}</label>
-                                        <span class="score-display" id="val_{{ team.id }}_{{ loop.index }}">5</span>
-                                    </div>
-                                    <input type="range" class="form-range score-slider" name="score_{{ safe_c_name }}" min="1" max="10" value="5" oninput="document.getElementById('val_{{ team.id }}_{{ loop.index }}').innerText = this.value">
-                                    <div class="d-flex justify-content-between text-muted" style="font-size: 0.7rem; font-weight: bold;">
-                                        <span>Poor (1)</span><span>Excellent (10)</span>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                                
-                            </div>
-                            <div class="modal-footer bg-light">
-                                <button type="submit" class="btn btn-warning w-100 fw-bold py-2 fs-5 text-dark shadow">Submit Final Score <i class="fas fa-check-circle ms-2"></i></button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            {% else %}
-            <div class="text-center py-5 w-100">
-                <i class="fas fa-clipboard-check fa-4x text-muted opacity-25 mb-3"></i>
-                <h4 class="fw-bold text-dark">No Teams In Your Room Yet</h4>
-                <p class="text-muted">Once students are scanned in and allocated to your room, they will appear here.</p>
-            </div>
-            {% endfor %}
-        </div>
+      {% else %}
+      <div style="text-align:center;padding:48px 24px;background:#fff;border-radius:14px;border:1px solid #e2e8f0;">
+        <i class="fas fa-users fa-3x" style="color:#cbd5e1;display:block;margin-bottom:12px;"></i>
+        <h5 class="fw-bold text-secondary mb-2">No Teams Assigned</h5>
+        <p class="text-muted mb-0" style="font-size:14px;">
+          Teams appear here once they check in and are assigned to you.
+        </p>
+      </div>
+      {% endif %}
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Right: live leaderboard -->
+    <div class="col-12 col-xl-4">
+      <div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:18px;position:sticky;top:72px;">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 style="font-family:'Poppins',sans-serif;font-weight:700;color:var(--blue);margin:0;">
+            <i class="fas fa-trophy me-2" style="color:var(--orange);"></i>Live Leaderboard
+          </h6>
+          <span id="lb-updated" style="font-size:10.5px;color:#94a3b8;"></span>
+        </div>
+        <div id="leaderboard-container">
+          <p style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0;">
+            Loading scores...
+          </p>
+        </div>
+        <button onclick="fetchLeaderboard()" class="btn-edit-sm w-100 mt-2">
+          <i class="fas fa-sync-alt me-1"></i> Refresh
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCORING MODAL -->
+<div class="modal fade" id="scoreModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <div class="modal-header" style="background:var(--blue);border-radius:16px 16px 0 0;">
+        <h5 class="modal-title text-white" id="scoreModalTitle">Score Team</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="scoreModalBody">
+        <!-- Dynamically filled by JS -->
+      </div>
+      <div class="modal-footer border-0 pb-4 px-4 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn text-white fw-bold px-4"
+                style="background:var(--orange);border-radius:9px;"
+                id="submitScoreBtn" onclick="submitScore()">
+          <i class="fas fa-check me-1"></i> Save Score
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const EVENT_ID    = "{{ event.id }}";
+const CRITERIA    = {{ (event.judging_criteria or ['Overall Score']) | tojson | safe }};
+let   currentRegId = null;
+const scoreModal    = new bootstrap.Modal(document.getElementById('scoreModal'));
+
+function openScoreModal(regId, team) {
+  currentRegId = regId;
+  document.getElementById('scoreModalTitle').textContent =
+    'Score: ' + (team.team_name || regId);
+
+  const existing = team.my_score || {};
+  const existing_scores = existing.details || {};
+
+  let html = '';
+  CRITERIA.forEach(c => {
+    const val = existing_scores[c] || 0;
+    html += `
+      <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <label style="font-size:12px;font-weight:700;color:#64748b;
+                        text-transform:uppercase;letter-spacing:.6px;">${c}</label>
+          <input type="number" class="score-input" id="score-${c.replace(/\s/g,'_')}"
+                 min="0" max="100" value="${val}"
+                 oninput="updateTotal()">
+        </div>
+        <input type="range" class="criteria-slider" min="0" max="100" value="${val}"
+               oninput="syncSlider(this,'score-${c.replace(/\s/g,'_')}')">
+      </div>`;
+  });
+
+  html += `
+    <div style="background:#f8fafc;border-radius:10px;padding:12px 14px;
+                display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+      <span style="font-size:13px;color:#64748b;font-weight:600;">Average</span>
+      <span id="totalDisplay" style="font-family:'Poppins',sans-serif;font-size:22px;
+            font-weight:800;color:var(--orange);">${existing.total || 0}</span>
+    </div>
+    <div class="mt-3">
+      <label style="font-size:12px;font-weight:700;color:#64748b;
+                    text-transform:uppercase;letter-spacing:.6px;">Remarks (optional)</label>
+      <textarea class="form-control mt-1" id="remarksField" rows="2"
+                placeholder="Optional feedback for this team..."
+                style="border-radius:9px;font-size:13px;">${existing.remarks || ''}</textarea>
+    </div>`;
+
+  document.getElementById('scoreModalBody').innerHTML = html;
+  scoreModal.show();
+}
+
+function syncSlider(slider, inputId) {
+  document.getElementById(inputId).value = slider.value;
+  updateTotal();
+}
+
+function updateTotal() {
+  let total = 0;
+  CRITERIA.forEach(c => {
+    const el = document.getElementById('score-' + c.replace(/\s/g,'_'));
+    if (el) {
+      const v = parseInt(el.value) || 0;
+      // Sync slider
+      const sliders = document.querySelectorAll('.criteria-slider');
+      sliders.forEach(s => {
+        const label = s.previousElementSibling?.querySelector('label');
+        if (label && label.textContent.trim() === c) s.value = v;
+      });
+      total += v;
+    }
+  });
+  const avg = CRITERIA.length > 0 ? (total / CRITERIA.length).toFixed(1) : 0;
+  const disp = document.getElementById('totalDisplay');
+  if (disp) disp.textContent = avg;
+}
+
+async function submitScore() {
+  if (!currentRegId) return;
+  const btn = document.getElementById('submitScoreBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+  const scores = {};
+  CRITERIA.forEach(c => {
+    const el = document.getElementById('score-' + c.replace(/\s/g,'_'));
+    scores[c] = el ? parseInt(el.value) || 0 : 0;
+  });
+  const remarks = document.getElementById('remarksField')?.value || '';
+
+  try {
+    const res = await fetch(`/judge/score_inline/${currentRegId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scores, remarks })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      scoreModal.hide();
+      // Update card UI without reload
+      const card = document.getElementById('card-' + currentRegId);
+      if (card) {
+        card.classList.remove('unscored');
+        card.classList.add('scored');
+        const badge = card.querySelector('.score-badge, .btn-score-sm');
+        if (badge) {
+          badge.outerHTML = `<div class="score-badge done">${data.avg}</div>`;
+        }
+      }
+      fetchLeaderboard();
+    } else {
+      alert('Error: ' + data.message);
+    }
+  } catch (e) {
+    alert('Network error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check me-1"></i> Save Score';
+  }
+}
+
+async function fetchLeaderboard() {
+  try {
+    const res  = await fetch(`/judge/leaderboard/${EVENT_ID}`);
+    const data = await res.json();
+    const el   = document.getElementById('leaderboard-container');
+    if (!data.data || data.data.length === 0) {
+      el.innerHTML = '<p style="font-size:13px;color:#94a3b8;text-align:center;padding:16px 0;">No scores yet.</p>';
+      return;
+    }
+    let html = '';
+    data.data.slice(0, 10).forEach(row => {
+      const rankClass = row.rank <= 3 ? `rank-${row.rank}` : 'rank-other';
+      html += `
+        <div class="leaderboard-row">
+          <div class="rank-badge ${rankClass}">${row.rank}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:#1e293b;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              ${row.team_name}
+            </div>
+            <div style="font-size:11px;color:#94a3b8;">${row.judges} judge${row.judges !== 1 ? 's' : ''}</div>
+          </div>
+          <div style="font-family:'Poppins',sans-serif;font-size:16px;font-weight:800;
+                      color:var(--orange);">${row.score}</div>
+        </div>`;
+    });
+    el.innerHTML = html;
+    document.getElementById('lb-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch (e) {
+    console.error('Leaderboard fetch failed', e);
+  }
+}
+
+// Auto-refresh leaderboard every 20 seconds
+fetchLeaderboard();
+setInterval(fetchLeaderboard, 20000);
+</script>
 </body>
 </html>

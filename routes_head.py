@@ -69,3 +69,5 @@ def mark_attendance(reg_id, status):
         flash(f"Error: {e}", "danger")
         
     return redirect('/event_head/dashboard')
+
+

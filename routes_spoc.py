@@ -191,3 +191,6 @@ def publish_results(event_id):
         flash(f"Error: {e}", "danger")
         
     return redirect(f'/spoc/results/{event_id}')
+
+
+

@@ -523,4 +523,4 @@ def get_schema(event_id):
         event_doc = db.collection('events').document(event_id).get()
         is_team   = event_doc.to_dict().get('is_team_event', False) if event_doc.exists else False
         return jsonify(_simple_schema_fallback(is_team))
-    return jsonify(schema)
+    return jsonify(schema) 

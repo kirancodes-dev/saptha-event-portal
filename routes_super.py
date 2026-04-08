@@ -86,3 +86,5 @@ def delete_user(user_id):
     except:
         flash("Error deleting user.", "danger")
     return redirect(url_for('super_admin.dashboard'))
+
+

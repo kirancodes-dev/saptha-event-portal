@@ -81,3 +81,5 @@ def get_events_json():
         return jsonify(events_list)
     except Exception:
         return jsonify([])
+    
+    

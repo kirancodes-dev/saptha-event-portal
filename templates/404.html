@@ -1,75 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page Not Found | SapthaEvent</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: #0f172a;
-            color: #f8fafc;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .error-code {
-            font-size: 8rem;
-            font-weight: 800;
-            background: linear-gradient(to right, #3b82f6, #8b5cf6);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            line-height: 1;
-        }
-        .error-message {
-            font-size: 1.5rem;
-            margin-bottom: 30px;
-            color: #94a3b8;
-        }
-        .btn-home {
-            background: #3b82f6;
-            color: white;
-            padding: 12px 30px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: 0.3s;
-            margin: 0 6px;
-        }
-        .btn-home:hover {
-            background: #2563eb;
-            color: white;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
-        }
-        .btn-back {
-            background: transparent;
-            color: #94a3b8;
-            padding: 12px 30px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 600;
-            border: 1px solid #334155;
-            transition: 0.3s;
-            margin: 0 6px;
-        }
-        .btn-back:hover {
-            background: #1e293b;
-            color: #f8fafc;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page Not Found | SapthaEvent</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.card{background:#fff;border-radius:20px;border:1px solid #e2e8f0;padding:48px 36px;max-width:480px;width:100%;text-align:center;}
+.logo-sq{width:56px;height:56px;background:var(--orange);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:22px;color:#fff;margin:0 auto 20px;}
+.code{font-family:'Poppins',sans-serif;font-size:72px;font-weight:800;color:var(--blue);line-height:1;margin-bottom:8px;}
+.title{font-family:'Poppins',sans-serif;font-size:20px;font-weight:700;color:#1e293b;margin-bottom:8px;}
+.desc{font-size:14px;color:#64748b;line-height:1.65;margin-bottom:28px;}
+.divider{border:none;border-top:1px solid #e2e8f0;margin:24px 0;}
+.btn-home{display:inline-flex;align-items:center;gap:8px;background:var(--orange);color:#fff;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;transition:.15s;margin:4px;}
+.btn-home:hover{background:#d95f0f;color:#fff;}
+.btn-back{display:inline-flex;align-items:center;gap:8px;background:#f1f5f9;color:#334155;font-size:14px;font-weight:500;padding:12px 24px;border-radius:10px;text-decoration:none;transition:.15s;margin:4px;border:1px solid #e2e8f0;}
+.btn-back:hover{background:#e2e8f0;color:#0f172a;}
+.uni{font-size:11.5px;color:#94a3b8;margin-top:20px;}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="error-code">404</div>
-        <h2 class="mb-3">Oops! Lost in Cyberspace?</h2>
-        <p class="error-message">The page you are looking for doesn't exist or has been moved.</p>
-        <a href="/" class="btn-home"><i class="fas fa-home me-2"></i>Return Home</a>
-        <a href="javascript:history.back()" class="btn-back"><i class="fas fa-arrow-left me-2"></i>Go Back</a>
-    </div>
+<div class="card">
+  <div class="logo-sq">SE</div>
+  <div class="code">404</div>
+  <h1 class="title">Page Not Found</h1>
+  <p class="desc">
+    The page you're looking for doesn't exist or may have been moved.<br>
+    Check the URL or head back to the portal homepage.
+  </p>
+  <div>
+    <a href="/" class="btn-home"><i class="fas fa-home" style="font-family:'Font Awesome 6 Free';font-weight:900;"></i> Go to Homepage</a>
+    <a href="javascript:history.back()" class="btn-back">← Go Back</a>
+  </div>
+  <div class="divider"></div>
+  <p class="uni">SapthaEvent · Sapthagiri NPS University, Bengaluru</p>
+</div>
 </body>
 </html>

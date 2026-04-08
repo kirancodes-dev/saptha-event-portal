@@ -21,3 +21,5 @@ with app.app_context():
         print("⚠️ Student 'student@test.com' already exists.")
 
     print("\nSystem ready for login testing.")
+
+    

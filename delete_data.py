@@ -32,3 +32,4 @@ print("\n🗑️  Deleting Events...")
 delete_collection(db.collection('events'), 10)
 
 print("\n✅ All sample data has been successfully wiped.")
+

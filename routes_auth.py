@@ -188,3 +188,4 @@ def _set_session(email: str, name: str, role: str, category: str):
     session['name']     = name
     session['role']     = role
     session['category'] = category
+   

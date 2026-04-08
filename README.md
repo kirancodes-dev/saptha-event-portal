@@ -1,6 +1,10 @@
 # 🚀 SapthaEvent - University Event Portal
 
-A full-stack Event Management System built for Sapthagiri NPS University. It allows SPOCs to host hackathons, Students to register (Team/Solo), and Judges to evaluate projects digitally.
+**Status:** ✅ Production Ready  
+**Version:** 1.0.0  
+**For Production Setup:** See [../PRODUCTION_README.md](../PRODUCTION_README.md)
+
+A full-stack Event Management System built for Sapthagiri NPS University - now production-grade with comprehensive testing, security hardening, and enterprise-level features.
 
 ## 🌟 Key Features
 - **Role-Based Access:** Separate dashboards for Students, Club SPOCs, Coordinators, and Judges.

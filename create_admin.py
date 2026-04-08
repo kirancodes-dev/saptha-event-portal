@@ -39,3 +39,5 @@ def appoint_spoc():
         flash(f"Error creating SPOC: {e}", "danger")
 
     return redirect('/admin/dashboard')
+
+

@@ -3,386 +3,360 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Events | SapthaEvent</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+<title>My Dashboard | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--blue:#0d2d62;--orange:#f37021;--bg:#f4f7f6;}
+:root{--blue:#0d2d62;--orange:#f37021;}
 *{box-sizing:border-box;}
-body{background:var(--bg);color:#1e293b;font-family:'Inter',sans-serif;min-height:100vh;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;}
 h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
-
-/* Navbar */
-.navbar{background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:10px 0;border-bottom:3px solid var(--orange);}
-
-/* Hero */
-.hero{background:var(--blue);padding:36px 0 48px;position:relative;overflow:hidden;}
-.hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
-.hero-content{position:relative;z-index:1;}
-
-/* Stat cards */
-.stat-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px 20px;text-align:center;color:#fff;}
-.stat-pill .num{font-family:'Poppins',sans-serif;font-size:1.8rem;font-weight:800;line-height:1;}
-.stat-pill .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-top:4px;}
-
-/* Event cards */
-.event-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.04);transition:.2s;}
-.event-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.08);}
-.event-card .card-accent{height:4px;}
-
-/* Category colors */
-.cat-technical{background:#f37021;}
-.cat-cultural{background:#7c3aed;}
-.cat-sports{background:#10b981;}
-.cat-management{background:#0891b2;}
-.cat-general{background:#64748b;}
-
-/* Status badges */
-.status-live{background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
-.status-done{background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
-.status-elim{background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
-
-/* Rank badges */
-.rank-1{background:#fef3c7;color:#92400e;border:1px solid #fbbf24;}
-.rank-2{background:#f1f5f9;color:#334155;border:1px solid #94a3b8;}
-.rank-3{background:#fff7ed;color:#9a3412;border:1px solid #f97316;}
-.rank-other{background:#ede9fe;color:#5b21b6;border:1px solid #a78bfa;}
-.rank-badge{font-size:13px;font-weight:700;padding:4px 14px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;}
-
-/* QR modal */
-.qr-img{border:2px solid #e2e8f0;border-radius:12px;padding:8px;background:#fff;}
-
+/* NAV */
+.topnav{background:var(--blue);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.logo-sq{width:34px;height:34px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:13px;color:#fff;}
+.brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;}
+.nav-links{display:flex;align-items:center;gap:6px;}
+.nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+.nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
+/* HERO */
+.hero-band{background:var(--blue);padding:20px 24px 28px;}
+.hero-name{font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;color:#fff;margin:0;}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.6);margin:3px 0 0;}
+/* STAT PILLS */
+.stat-pills{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.stat-pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:100px;padding:6px 16px;display:flex;align-items:center;gap:7px;}
+.stat-pill-n{font-family:'Poppins',sans-serif;font-size:16px;font-weight:800;color:#fff;}
+.stat-pill-l{font-size:11.5px;color:rgba(255,255,255,.6);}
+/* ANNOUNCEMENTS */
+.ann-bar{background:#fffbeb;border-left:4px solid var(--orange);padding:10px 16px;font-size:13px;color:#78350f;display:flex;align-items:center;gap:8px;}
+/* CONTENT */
+.content{padding:20px 24px;}
+.section-title{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);margin-bottom:12px;}
+/* TICKET CARD */
+.ticket-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:14px;}
+.tc-header{background:var(--blue);padding:14px 18px;display:flex;align-items:flex-start;justify-content:space-between;}
+.tc-title{font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;color:#fff;margin:0;line-height:1.3;}
+.tc-meta{font-size:11.5px;color:rgba(255,255,255,.6);margin-top:3px;}
+.tc-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:100px;white-space:nowrap;flex-shrink:0;margin-left:8px;}
+.badge-confirmed{background:rgba(34,197,94,.2);color:#4ade80;}
+.badge-pending{background:rgba(251,191,36,.2);color:#fbbf24;}
+.badge-free{background:rgba(96,165,250,.2);color:#93c5fd;}
+.tc-body{padding:14px 18px;}
+.tc-info-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;}
+.tc-info{font-size:12px;color:#64748b;display:flex;align-items:center;gap:4px;}
+.tc-info i{color:var(--orange);font-size:11px;}
+/* QR embed */
+.qr-box{background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:10px;padding:12px;display:inline-flex;flex-direction:column;align-items:center;gap:6px;}
+.qr-img{width:100px;height:100px;border-radius:6px;}
+.qr-id{font-family:monospace;font-size:10.5px;color:#64748b;text-align:center;}
+/* Countdown */
+.countdown{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#1e40af;}
+.countdown.today{background:#fef9c3;color:#854d0e;}
+.countdown.past{background:#f1f5f9;color:#94a3b8;}
+.countdown.soon{background:#fef2f2;color:#991b1b;}
+/* Score & rank */
+.score-row{background:#f0fdf4;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.score-val{font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:#16a34a;}
+.rank-val{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--blue);}
 /* Action buttons */
-.btn-action{border-radius:8px;font-weight:700;font-size:13px;padding:8px 16px;border:none;transition:.15s;}
-.btn-qr{background:#0d2d62;color:#fff;}
-.btn-qr:hover{background:#0a224a;color:#fff;}
-.btn-cert{background:#f37021;color:#fff;}
-.btn-cert:hover{background:#d95e1a;color:#fff;}
-.btn-brochure{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;}
-.btn-brochure:hover{background:#e2e8f0;color:#0d2d62;}
-
-/* Score display */
-.score-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;}
-.score-num{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:800;color:var(--blue);line-height:1;}
-.score-lbl{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
-
-/* Empty state */
-.empty-state{text-align:center;padding:60px 20px;}
-.empty-icon{width:80px;height:80px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
-
-@media(max-width:576px){.stat-pill .num{font-size:1.4rem;}.score-num{font-size:1.5rem;}}
+.action-strip{display:flex;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid #f1f5f9;}
+.btn-action{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:8px;text-decoration:none;border:none;cursor:pointer;transition:.15s;}
+.btn-primary-action{background:var(--orange);color:#fff;}
+.btn-primary-action:hover{background:#d95f0f;color:#fff;}
+.btn-secondary-action{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;}
+.btn-secondary-action:hover{background:#e2e8f0;color:#0f172a;}
+.btn-green-action{background:#dcfce7;color:#166534;}
+.btn-green-action:hover{background:#bbf7d0;color:#14532d;}
+/* Empty */
+.empty-card{text-align:center;padding:48px 24px;background:#fff;border-radius:14px;border:1px solid #e2e8f0;}
+.empty-card i{font-size:40px;color:#cbd5e1;display:block;margin-bottom:12px;}
+/* Completed events */
+.comp-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:14px;}
+.comp-icon{width:38px;height:38px;border-radius:9px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.comp-title{font-size:13.5px;font-weight:600;color:var(--blue);}
+.comp-meta{font-size:12px;color:#94a3b8;margin-top:2px;}
+.comp-actions{margin-left:auto;display:flex;gap:6px;flex-shrink:0;}
+/* Feedback prompt */
+.fb-prompt{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.fb-prompt i{color:#f59e0b;font-size:16px;}
+@media(max-width:576px){
+  .stat-pills{gap:7px;}
+  .stat-pill{padding:5px 12px;}
+  .content{padding:14px 16px;}
+}
 </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
-<nav class="navbar sticky-top">
-  <div class="container-fluid px-3 px-md-4">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-      <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
-           alt="SNPSU" height="34" style="max-height:34px;width:auto;object-fit:contain;"
-           onerror="this.style.display='none'">
-    </a>
-    <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
-      <span class="d-none d-sm-inline text-muted small fw-bold">{{ email }}</span>
-      <a href="/profile" class="btn btn-sm btn-outline-secondary px-3">
-        <i class="fas fa-user me-1"></i>Profile
-      </a>
-      <a href="/logout" class="btn btn-sm btn-outline-danger px-3 fw-bold">Logout</a>
-    </div>
+<!-- NAV -->
+<nav class="topnav">
+  <div class="d-flex align-items-center gap-2">
+    <div class="logo-sq">SE</div>
+    <span class="brand">SapthaEvent</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Events</a>
+    <a href="/profile/" class="nav-link-item"><i class="fas fa-user me-1"></i>Profile</a>
+    <a href="/logout" class="nav-link-item"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
   </div>
 </nav>
 
-<!-- HERO HEADER -->
-<div class="hero">
-  <div class="container hero-content">
-    <div class="row align-items-center g-4">
-      <div class="col-md-6">
-        <p class="text-warning fw-bold mb-1" style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;">
-          Student Dashboard
-        </p>
-        <h2 class="fw-bold text-white mb-1" style="font-size:clamp(1.4rem,4vw,2rem);">
-          Welcome back, {{ name }}!
-        </h2>
-        <p class="mb-0" style="color:rgba(255,255,255,.7);font-size:14px;">
-          Your registered events, tickets, scores and certificates — all in one place.
-        </p>
-      </div>
-      <div class="col-md-6">
-        <div class="row g-2">
-          <div class="col-4">
-            <div class="stat-pill">
-              <div class="num">{{ total }}</div>
-              <div class="lbl">Registered</div>
-            </div>
-          </div>
-          <div class="col-4">
-            <div class="stat-pill">
-              <div class="num">{{ active_count }}</div>
-              <div class="lbl">Active</div>
-            </div>
-          </div>
-          <div class="col-4">
-            <div class="stat-pill">
-              <div class="num">{{ present_count }}</div>
-              <div class="lbl">Attended</div>
-            </div>
-          </div>
-        </div>
-      </div>
+<!-- HERO -->
+<div class="hero-band">
+  <p class="hero-name">Hello, {{ user_name }} 👋</p>
+  <p class="hero-sub">Sapthagiri NPS University — Student Portal</p>
+  <div class="stat-pills">
+    <div class="stat-pill">
+      <span class="stat-pill-n">{{ active_tickets|length }}</span>
+      <span class="stat-pill-l">Active events</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-pill-n">{{ completed_events|length }}</span>
+      <span class="stat-pill-l">Completed</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-pill-n">
+        {{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}
+      </span>
+      <span class="stat-pill-l">Events attended</span>
     </div>
   </div>
 </div>
 
-<!-- FLASH MESSAGES -->
-<div class="container mt-3">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div class="alert alert-{{ cat }} fw-bold rounded-3 shadow-sm">
-      <i class="fas fa-info-circle me-2"></i>{{ msg | safe }}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div style="padding:12px 24px;">
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show mb-2" style="border-radius:10px;font-size:13.5px;">
+      {{ msg|safe }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
-    {% endfor %}{% endif %}
-  {% endwith %}
-</div>
-
-<!-- MAIN CONTENT -->
-<div class="container py-4">
-
-  {% if not registrations %}
-  <!-- Empty state -->
-  <div class="empty-state">
-    <div class="empty-icon">
-      <i class="fas fa-calendar-times fa-2x text-muted"></i>
-    </div>
-    <h4 class="fw-bold mb-2" style="color:var(--blue);">No events yet</h4>
-    <p class="text-muted mb-4">You haven't registered for any events. Browse upcoming events and register!</p>
-    <a href="/" class="btn btn-orange px-5 py-2 fw-bold rounded-pill">
-      <i class="fas fa-search me-2"></i>Browse Events
-    </a>
-  </div>
-
-  {% else %}
-
-  <!-- Section header -->
-  <div class="d-flex align-items-center justify-content-between mb-4">
-    <h4 class="fw-bold mb-0" style="color:var(--blue);">
-      <i class="fas fa-ticket-alt me-2" style="color:var(--orange);"></i>My Events
-    </h4>
-    <a href="/" class="btn btn-outline-primary btn-sm fw-bold px-3 rounded-pill">
-      <i class="fas fa-plus me-1"></i>Register for more
-    </a>
-  </div>
-
-  <div class="row g-4">
-    {% for reg in registrations %}
-
-    {% set cat = reg.event_category | lower %}
-    {% set cat_class = 'cat-technical' if 'tech' in cat else
-                       'cat-cultural'  if 'cult' in cat else
-                       'cat-sports'    if 'sport' in cat else
-                       'cat-management' if 'manage' in cat else
-                       'cat-general' %}
-
-    <div class="col-12 col-lg-6">
-      <div class="event-card h-100">
-
-        <!-- Accent bar -->
-        <div class="card-accent {{ cat_class }}"></div>
-
-        <div class="p-4">
-
-          <!-- Card header row -->
-          <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-            <div style="min-width:0;">
-              <h5 class="fw-bold mb-1 text-truncate" style="color:var(--blue);">
-                {{ reg.event_title }}
-              </h5>
-              <div class="d-flex flex-wrap gap-1 align-items-center">
-                {% if reg.is_eliminated %}
-                  <span class="status-elim"><i class="fas fa-times me-1"></i>Eliminated</span>
-                {% elif reg.event_status == 'active' %}
-                  <span class="status-live"><i class="fas fa-circle me-1" style="font-size:7px;"></i>Live</span>
-                {% else %}
-                  <span class="status-done"><i class="fas fa-check me-1"></i>Concluded</span>
-                {% endif %}
-
-                <span class="badge bg-light text-secondary border" style="font-size:10px;">
-                  {{ reg.event_category }}
-                </span>
-
-                {% if reg.attendance == 'Present' %}
-                  <span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;
-                               padding:2px 8px;border-radius:20px;">
-                    <i class="fas fa-check-circle me-1"></i>Attended
-                  </span>
-                {% endif %}
-              </div>
-            </div>
-
-            <!-- Rank badge (if results published) -->
-            {% if reg.final_rank %}
-              {% if reg.final_rank == 1 %}
-                <span class="rank-badge rank-1"><span>🥇</span> 1st</span>
-              {% elif reg.final_rank == 2 %}
-                <span class="rank-badge rank-2"><span>🥈</span> 2nd</span>
-              {% elif reg.final_rank == 3 %}
-                <span class="rank-badge rank-3"><span>🥉</span> 3rd</span>
-              {% else %}
-                <span class="rank-badge rank-other">#{{ reg.final_rank }}</span>
-              {% endif %}
-            {% endif %}
-          </div>
-
-          <!-- Event details row -->
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Date</div>
-              <div style="font-size:13px;font-weight:600;color:#334155;">{{ reg.event_date }}</div>
-            </div>
-            <div class="col-6">
-              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Venue</div>
-              <div style="font-size:13px;font-weight:600;color:#334155;" class="text-truncate">{{ reg.event_venue }}</div>
-            </div>
-            <div class="col-6">
-              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Ticket ID</div>
-              <div style="font-size:12px;font-family:monospace;font-weight:700;color:var(--blue);">{{ reg.reg_id }}</div>
-            </div>
-            <div class="col-6">
-              <div style="font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Round</div>
-              <div style="font-size:13px;font-weight:600;color:#334155;">
-                {% if reg.is_eliminated %}Eliminated
-                {% else %}Round {{ reg.current_round }}{% endif %}
-              </div>
-            </div>
-          </div>
-
-          <!-- Score box (if results published) -->
-          {% if reg.final_score %}
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              <div class="score-box">
-                <div class="score-num">{{ reg.final_score }}</div>
-                <div class="score-lbl">Final Score</div>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="score-box">
-                <div class="score-num">
-                  {% if reg.final_rank == 1 %}🥇
-                  {% elif reg.final_rank == 2 %}🥈
-                  {% elif reg.final_rank == 3 %}🥉
-                  {% elif reg.final_rank %}#{{ reg.final_rank }}
-                  {% else %}—{% endif %}
-                </div>
-                <div class="score-lbl">Rank</div>
-              </div>
-            </div>
-          </div>
-          {% endif %}
-
-          <!-- Action buttons -->
-          <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
-
-            <!-- QR Ticket button -->
-            <button class="btn-action btn-qr"
-                    data-bs-toggle="modal"
-                    data-bs-target="#qrModal{{ loop.index }}">
-              <i class="fas fa-qrcode me-1"></i>QR Ticket
-            </button>
-
-            <!-- Certificate download (only if attended) -->
-            {% if reg.attendance == 'Present' and reg.event_status != 'active' %}
-            <a href="/participant/certificate/{{ reg.id }}"
-               class="btn-action btn-cert text-decoration-none">
-              <i class="fas fa-certificate me-1"></i>Download Certificate
-            </a>
-            {% endif %}
-
-            <!-- Brochure link -->
-            <a href="/event/{{ reg.event_id }}/brochure" target="_blank"
-               class="btn-action btn-brochure text-decoration-none">
-              <i class="fas fa-file-alt me-1"></i>Brochure
-            </a>
-
-          </div>
-
-          {% if reg.attendance == 'Present' and reg.event_status == 'active' %}
-          <p class="text-muted mt-2 mb-0" style="font-size:11px;">
-            <i class="fas fa-clock me-1"></i>Certificate available after results are published.
-          </p>
-          {% elif reg.attendance != 'Present' and reg.event_status != 'active' %}
-          <p class="text-muted mt-2 mb-0" style="font-size:11px;">
-            <i class="fas fa-info-circle me-1"></i>Certificate requires attendance.
-          </p>
-          {% endif %}
-
-        </div>
-      </div>
-    </div>
-
-    <!-- QR MODAL for this registration -->
-    <div class="modal fade" id="qrModal{{ loop.index }}" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0" style="border-radius:16px;overflow:hidden;">
-          <div class="modal-header border-0" style="background:var(--blue);padding:20px 24px 16px;">
-            <div>
-              <h5 class="modal-title text-white fw-bold mb-0">Entry QR Code</h5>
-              <p class="text-white-50 mb-0" style="font-size:12px;">{{ reg.event_title }}</p>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"
-                    style="filter:invert(1) brightness(200%);opacity:.8;"></button>
-          </div>
-          <div class="modal-body text-center p-4">
-
-            <!-- QR code image from the route -->
-            <div class="mb-3">
-              <img src="/participant/qr/{{ reg.id }}"
-                   class="qr-img" width="200" height="200"
-                   alt="QR Ticket"
-                   onerror="this.src='';this.alt='QR not available';">
-            </div>
-
-            <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:12px;">
-              <div style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
-                Ticket ID
-              </div>
-              <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--blue);margin-top:4px;">
-                {{ reg.reg_id }}
-              </div>
-            </div>
-
-            <p class="text-muted mb-3" style="font-size:12px;">
-              Show this QR or your Ticket ID at the venue entrance for check-in.
-            </p>
-
-            <a href="/participant/qr/{{ reg.id }}" download="QR_{{ reg.reg_id }}.png"
-               class="btn btn-sm fw-bold w-100 rounded-pill"
-               style="background:var(--blue);color:#fff;padding:10px;">
-              <i class="fas fa-download me-2"></i>Download QR
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-
     {% endfor %}
   </div>
+  {% endif %}
+{% endwith %}
 
+<!-- ANNOUNCEMENTS -->
+{% if announcements %}
+{% for ann in announcements %}
+<div class="ann-bar">
+  <i class="fas fa-bullhorn" style="color:var(--orange);flex-shrink:0;"></i>
+  {{ ann.message }}
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="content">
+
+  <!-- ── ACTIVE TICKETS ── -->
+  <div class="section-title">
+    <i class="fas fa-ticket-alt me-2" style="color:var(--orange);"></i>My Tickets
+  </div>
+
+  {% if active_tickets %}
+  {% for reg in active_tickets %}
+  <div class="ticket-card">
+    <div class="tc-header">
+      <div style="flex:1;min-width:0;">
+        <h5 class="tc-title">{{ reg.event_title }}</h5>
+        <div class="tc-meta">
+          <i class="fas fa-calendar-alt me-1"></i>{{ reg.event_date or 'TBD' }}
+          &nbsp;·&nbsp;
+          <i class="fas fa-map-marker-alt me-1"></i>{{ reg.event_venue or 'SNPSU' }}
+        </div>
+      </div>
+      {% set ps = reg.get('payment_status','Free') %}
+      <span class="tc-badge {{ 'badge-confirmed' if ps == 'Paid' else 'badge-pending' if ps == 'Pending' else 'badge-free' }}">
+        {{ ps }}
+      </span>
+    </div>
+
+    <div class="tc-body">
+      <div class="tc-info-row">
+        <!-- Countdown badge -->
+        {% if reg.days_until is not none %}
+          {% if reg.days_until == 0 %}
+            <span class="countdown today"><i class="fas fa-star"></i>Today!</span>
+          {% elif reg.days_until < 0 %}
+            <span class="countdown past"><i class="fas fa-check"></i>Completed</span>
+          {% elif reg.days_until <= 3 %}
+            <span class="countdown soon"><i class="fas fa-fire"></i>{{ reg.days_until }} day{{ 's' if reg.days_until != 1 }} away</span>
+          {% else %}
+            <span class="countdown"><i class="fas fa-clock"></i>{{ reg.days_until }} days away</span>
+          {% endif %}
+        {% endif %}
+
+        <!-- Attendance -->
+        {% if reg.attendance == 'Present' %}
+        <span style="background:#dcfce7;color:#166534;font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:100px;">
+          <i class="fas fa-check me-1"></i>Attended
+        </span>
+        {% elif reg.attendance == 'Absent' %}
+        <span style="background:#fee2e2;color:#991b1b;font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:100px;">
+          <i class="fas fa-times me-1"></i>Absent
+        </span>
+        {% endif %}
+
+        <!-- Room assignment -->
+        {% if reg.assigned_room %}
+        <span style="background:#eff6ff;color:#1e40af;font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:100px;">
+          <i class="fas fa-door-open me-1"></i>Room {{ reg.assigned_room }}
+        </span>
+        {% endif %}
+      </div>
+
+      <div class="d-flex flex-wrap align-items-start gap-4">
+        <!-- QR code -->
+        <div class="qr-box">
+          <img src="/ticket/qr/{{ reg.id }}" alt="QR Code" class="qr-img"
+               onerror="this.style.display='none'">
+          <div class="qr-id">{{ reg.get('reg_id', reg.id)[:20] }}</div>
+        </div>
+
+        <!-- Score if available -->
+        {% if reg.my_avg_score is not none %}
+        <div style="flex:1;min-width:180px;">
+          <div class="score-row">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Your Score</div>
+              <div class="score-val">{{ reg.my_avg_score }}<span style="font-size:14px;color:#94a3b8;">/100</span></div>
+            </div>
+            {% if reg.final_rank %}
+            <div class="rank-val">
+              {% if reg.final_rank == 1 %}🥇 1st
+              {% elif reg.final_rank == 2 %}🥈 2nd
+              {% elif reg.final_rank == 3 %}🥉 3rd
+              {% else %}#{{ reg.final_rank }}
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Feedback prompt -->
+      {% if reg.attendance == 'Present' and not reg.feedback_done %}
+      <div class="fb-prompt mt-2">
+        <i class="fas fa-star"></i>
+        <div style="flex:1;">
+          <div style="font-size:12.5px;font-weight:600;color:#78350f;">Rate this event</div>
+          <div style="font-size:11.5px;color:#92400e;">Your feedback helps improve future events.</div>
+        </div>
+        <a href="/participant/feedback/{{ reg.id }}" class="btn-action btn-primary-action" style="font-size:11.5px;padding:5px 12px;">
+          Give Feedback
+        </a>
+      </div>
+      {% endif %}
+
+      <!-- AI summary (shown after results published) -->
+      {% if reg.get('ai_summary') %}
+      {% set s = reg.ai_summary %}
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-top:10px;">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7c3aed;margin-bottom:7px;display:flex;align-items:center;gap:5px;">
+          <i class="fas fa-brain" style="font-size:11px;"></i> AI Performance Summary
+        </div>
+        {% if s.headline %}
+        <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">
+          {{ s.headline }}
+        </div>
+        {% endif %}
+        {% if s.student_message %}
+        <div style="font-size:12.5px;color:#334155;font-style:italic;line-height:1.6;margin-bottom:8px;padding:8px 12px;background:#fff;border-radius:7px;border-left:3px solid #7c3aed;">
+          {{ s.student_message }}
+        </div>
+        {% endif %}
+        {% if s.strengths %}
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          {% for strength in s.strengths[:2] %}
+          <span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;">✓ {{ strength }}</span>
+          {% endfor %}
+          {% for imp in s.improvements[:1] %}
+          <span style="background:#fef9c3;color:#854d0e;font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;">→ {{ imp }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Actions -->
+      <div class="action-strip">
+        <a href="/ticket/{{ reg.id }}" class="btn-action btn-primary-action">
+          <i class="fas fa-qrcode"></i> Full Ticket
+        </a>
+        <a href="/event/{{ reg.event_id }}" class="btn-action btn-secondary-action">
+          <i class="fas fa-info-circle"></i> Event Info
+        </a>
+        <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn-action btn-secondary-action">
+          <i class="fas fa-trophy"></i> Leaderboard
+        </a>
+        {% if reg.cert_eligible %}
+        <a href="/participant/certificate/{{ reg.id }}" class="btn-action btn-green-action">
+          <i class="fas fa-certificate"></i> Certificate
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="empty-card mb-4">
+    <i class="fas fa-ticket-alt"></i>
+    <h5 class="fw-bold text-secondary mb-2">No Active Tickets</h5>
+    <p class="text-muted mb-3" style="font-size:13.5px;">Register for an upcoming event to get your QR ticket here.</p>
+    <a href="/" class="btn-action btn-primary-action" style="margin:0 auto;">
+      <i class="fas fa-compass"></i> Browse Events
+    </a>
+  </div>
   {% endif %}
 
-</div>
+  <!-- ── COMPLETED EVENTS ── -->
+  {% if completed_events %}
+  <div class="section-title mt-4">
+    <i class="fas fa-history me-2" style="color:var(--orange);"></i>Past Events
+  </div>
 
-<!-- FOOTER -->
-<footer style="background:#0d2d62;padding:20px 0;margin-top:60px;text-align:center;">
-  <p style="color:rgba(255,255,255,.5);font-size:12px;margin:0;">
-    <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
-         height="20" style="opacity:.5;vertical-align:middle;margin-right:8px;"
-         onerror="this.style.display='none'">
-    SapthaEvent Portal · Sapthagiri NPS University
-  </p>
-</footer>
+  {% for reg in completed_events %}
+  <div class="comp-card">
+    <div class="comp-icon">
+      {% if reg.attendance == 'Present' %}🎓{% else %}📅{% endif %}
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="comp-title">{{ reg.event_title }}</div>
+      <div class="comp-meta">
+        {{ reg.event_date or '' }}
+        {% if reg.final_rank %}&nbsp;·&nbsp;
+          {% if reg.final_rank == 1 %}🥇 1st Place
+          {% elif reg.final_rank == 2 %}🥈 2nd Place
+          {% elif reg.final_rank == 3 %}🥉 3rd Place
+          {% else %}Rank #{{ reg.final_rank }}
+          {% endif %}
+        {% endif %}
+        {% if reg.my_avg_score is not none %}&nbsp;·&nbsp;Score: {{ reg.my_avg_score }}{% endif %}
+      </div>
+      {% if not reg.feedback_done and reg.attendance == 'Present' %}
+      <a href="/participant/feedback/{{ reg.id }}" style="font-size:11.5px;color:var(--orange);text-decoration:none;">
+        <i class="fas fa-star me-1"></i>Rate this event
+      </a>
+      {% endif %}
+    </div>
+    <div class="comp-actions">
+      {% if reg.cert_eligible %}
+      <a href="/participant/certificate/{{ reg.id }}" class="btn-action btn-green-action" style="font-size:11.5px;padding:5px 11px;">
+        <i class="fas fa-certificate"></i>
+      </a>
+      {% endif %}
+      <a href="/ticket/{{ reg.id }}" class="btn-action btn-secondary-action" style="font-size:11.5px;padding:5px 11px;">
+        <i class="fas fa-qrcode"></i>
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</div><!-- /content -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

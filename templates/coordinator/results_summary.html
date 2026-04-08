@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Results — {{ event.title }} | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0d2d62;--orange:#f37021;--purple:#7c3aed;--green:#16a34a;}
+*{box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+
+.topbar{background:var(--blue);padding:0 24px;display:flex;align-items:center;
+  justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;}
+.logo-sq{width:32px;height:32px;background:var(--orange);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Poppins',sans-serif;font-weight:800;font-size:12px;color:#fff;}
+.brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;}
+.back-link{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;
+  display:flex;align-items:center;gap:5px;}
+.back-link:hover{color:#fff;}
+
+/* Hero */
+.hero{background:var(--blue);padding:20px 28px 24px;
+  display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+.hero-left{}
+.hero-title{font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;color:#fff;margin:0 0 3px;}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.6);}
+.ai-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(124,58,237,.3);
+  border:1px solid rgba(124,58,237,.5);color:#c4b5fd;font-size:11px;font-weight:600;
+  padding:3px 11px;border-radius:100px;margin-top:8px;}
+
+/* Stats bar */
+.stats-bar{background:#fff;border-bottom:1px solid #e2e8f0;
+  padding:12px 28px;display:flex;gap:24px;flex-wrap:wrap;}
+.stat-item{text-align:center;}
+.stat-n{font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;color:var(--blue);}
+.stat-l{font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+
+/* Content */
+.content{padding:20px 24px;max-width:1100px;margin:0 auto;}
+
+/* Generate button area */
+.gen-card{background:#fff;border-radius:13px;border:1px solid #e2e8f0;padding:18px 20px;
+  margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.btn-gen{background:var(--purple);color:#fff;font-family:'Poppins',sans-serif;font-weight:700;
+  font-size:13.5px;padding:10px 22px;border-radius:10px;border:none;cursor:pointer;
+  display:flex;align-items:center;gap:7px;transition:.15s;}
+.btn-gen:hover{background:#6d28d9;}
+.btn-gen:disabled{opacity:.6;cursor:not-allowed;}
+.btn-regen{background:transparent;color:var(--purple);border:1.5px solid var(--purple);
+  font-size:12px;font-weight:600;padding:5px 12px;border-radius:7px;cursor:pointer;transition:.15s;}
+.btn-regen:hover{background:var(--purple);color:#fff;}
+.btn-regen:disabled{opacity:.5;}
+
+/* Podium */
+.podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;}
+@media(max-width:640px){.podium{grid-template-columns:1fr;}}
+.podium-card{border-radius:14px;padding:18px 16px;text-align:center;border:2px solid transparent;}
+.podium-card.p1{background:#fffbeb;border-color:#fcd34d;}
+.podium-card.p2{background:#f8fafc;border-color:#cbd5e1;}
+.podium-card.p3{background:#fff5f5;border-color:#fca5a5;}
+.podium-medal{font-size:32px;display:block;margin-bottom:6px;}
+.podium-team{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--blue);margin:0 0 2px;}
+.podium-lead{font-size:12px;color:#64748b;margin:0 0 6px;}
+.podium-score{font-family:'Poppins',sans-serif;font-size:26px;font-weight:800;color:var(--orange);}
+.podium-score span{font-size:13px;color:#94a3b8;}
+
+/* Section title */
+.sec-title{font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;
+  color:var(--blue);margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+
+/* Summary card */
+.summary-card{background:#fff;border-radius:13px;border:1px solid #e2e8f0;
+  margin-bottom:14px;overflow:hidden;transition:box-shadow .15s;}
+.summary-card:hover{box-shadow:0 4px 16px rgba(13,45,98,.07);}
+.sc-header{padding:13px 18px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid #f1f5f9;cursor:pointer;user-select:none;}
+.sc-rank{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:'Poppins',sans-serif;font-size:13px;font-weight:800;flex-shrink:0;}
+.rank-1{background:#fef9c3;color:#854d0e;}
+.rank-2{background:#f1f5f9;color:#475569;}
+.rank-3{background:#fee2e2;color:#991b1b;}
+.rank-other{background:#f1f5f9;color:#94a3b8;}
+.sc-team-name{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;
+  color:var(--blue);margin:0 0 1px;}
+.sc-lead{font-size:12px;color:#94a3b8;margin:0;}
+.sc-score-badge{font-family:'Poppins',sans-serif;font-size:18px;font-weight:800;color:var(--orange);}
+.sc-body{padding:16px 18px;display:none;}
+.sc-body.open{display:block;}
+.headline-pill{display:inline-flex;align-items:center;gap:7px;background:#eff6ff;
+  border:1px solid #bfdbfe;border-radius:9px;padding:7px 13px;margin-bottom:14px;}
+.headline-text{font-size:13px;font-weight:600;color:#1e40af;}
+.sub-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:#94a3b8;margin-bottom:6px;display:block;}
+.strength-item{display:flex;align-items:flex-start;gap:7px;font-size:13px;color:#166534;
+  margin-bottom:4px;line-height:1.5;}
+.strength-item::before{content:'✓';font-weight:700;flex-shrink:0;margin-top:1px;}
+.improve-item{display:flex;align-items:flex-start;gap:7px;font-size:13px;color:#92400e;
+  margin-bottom:4px;line-height:1.5;}
+.improve-item::before{content:'→';font-weight:700;flex-shrink:0;margin-top:1px;}
+.narrative-box{background:#f8fafc;border-radius:9px;padding:12px 14px;
+  font-size:13px;color:#334155;line-height:1.65;margin-bottom:12px;}
+.student-msg-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;
+  padding:10px 14px;font-size:12.5px;color:#166534;font-style:italic;line-height:1.6;}
+.crit-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.crit-label{font-size:12px;color:#64748b;min-width:130px;flex-shrink:0;}
+.crit-bar{flex:1;background:#f1f5f9;border-radius:100px;height:7px;}
+.crit-fill{border-radius:100px;height:7px;background:var(--orange);transition:width .4s;}
+.crit-val{font-size:12px;font-weight:600;color:var(--blue);min-width:36px;text-align:right;}
+.chevron{transition:transform .2s;flex-shrink:0;}
+.chevron.open{transform:rotate(180deg);}
+
+/* No summary placeholder */
+.no-summary{background:#fffbeb;border:1px solid #fcd34d;border-radius:9px;
+  padding:10px 14px;font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:8px;}
+
+/* Loading overlay */
+#genOverlay{display:none;position:fixed;inset:0;background:rgba(13,45,98,.7);
+  z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.gen-spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);
+  border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+.gen-msg{font-family:'Poppins',sans-serif;font-size:16px;color:#fff;font-weight:600;}
+.gen-sub{font-size:13px;color:rgba(255,255,255,.7);}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;
+  padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;
+  transform:translateY(80px);opacity:0;transition:.3s;z-index:9998;max-width:320px;}
+#toast.show{transform:translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="genOverlay">
+  <div class="gen-spinner"></div>
+  <div class="gen-msg" id="genMsg">Generating AI summaries...</div>
+  <div class="gen-sub" id="genSub">Gemini is analysing {{ results|length }} teams</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Nav -->
+<nav class="topbar">
+  <div class="d-flex align-items-center gap-2">
+    <div class="logo-sq">SE</div>
+    <span class="brand d-none d-sm-inline">SapthaEvent</span>
+  </div>
+  <a href="/coordinator/dashboard" class="back-link">
+    <i class="fas fa-arrow-left"></i> Dashboard
+  </a>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-left">
+    <p class="hero-title"><i class="fas fa-trophy me-2" style="color:var(--orange);"></i>{{ event.title }}</p>
+    <p class="hero-sub">AI Result Summaries · {{ event.category or 'Event' }}</p>
+    <div class="ai-pill"><i class="fas fa-brain" style="font-size:10px;"></i> Gemini 2.5 Flash</div>
+  </div>
+</div>
+
+<!-- Stats bar -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-n">{{ results|length }}</div>
+    <div class="stat-l">Teams scored</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-n">{{ criteria|length }}</div>
+    <div class="stat-l">Criteria</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-n">{{ results|selectattr('ai_summary')|list|length }}</div>
+    <div class="stat-l">Summaries ready</div>
+  </div>
+  {% if results %}
+  <div class="stat-item">
+    <div class="stat-n">
+      {{ ((results|map(attribute='avg_score')|list|sum) / results|length)|round(1) }}
+    </div>
+    <div class="stat-l">Avg score</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="content">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show mb-3" style="border-radius:10px;font-size:13.5px;">
+      {{ msg|safe }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}{% endif %}
+  {% endwith %}
+
+  <!-- Generate bar -->
+  <div class="gen-card">
+    <div>
+      {% if summaries_generated %}
+      <div style="font-size:13.5px;font-weight:600;color:var(--green);">
+        <i class="fas fa-check-circle me-1"></i>AI summaries generated
+      </div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px;">
+        Click Re-generate to refresh all summaries with the latest scores.
+      </div>
+      {% else %}
+      <div style="font-size:13.5px;font-weight:600;color:var(--blue);">
+        AI summaries not yet generated
+      </div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px;">
+        Gemini will write a strength/weakness summary for every scored team.
+      </div>
+      {% endif %}
+    </div>
+    <button class="btn-gen" id="genBtn" onclick="generateAll()">
+      <i class="fas fa-brain"></i>
+      {{ 'Re-generate All Summaries' if summaries_generated else 'Generate AI Summaries' }}
+    </button>
+  </div>
+
+  {% if results %}
+
+  <!-- Podium — top 3 -->
+  {% set top3 = results[:3] %}
+  {% if top3|length >= 1 %}
+  <div class="sec-title"><i class="fas fa-crown" style="color:var(--orange);font-size:16px;"></i>Top 3</div>
+  <div class="podium mb-4">
+    <div class="podium-card p2">
+      {% if top3|length >= 2 %}
+      <span class="podium-medal">🥈</span>
+      <p class="podium-team">{{ top3[1].team_name }}</p>
+      <p class="podium-lead">{{ top3[1].lead_name }}</p>
+      <div class="podium-score">{{ top3[1].avg_score }}<span>/100</span></div>
+      {% endif %}
+    </div>
+    <div class="podium-card p1">
+      <span class="podium-medal">🥇</span>
+      <p class="podium-team">{{ top3[0].team_name }}</p>
+      <p class="podium-lead">{{ top3[0].lead_name }}</p>
+      <div class="podium-score">{{ top3[0].avg_score }}<span>/100</span></div>
+    </div>
+    <div class="podium-card p3">
+      {% if top3|length >= 3 %}
+      <span class="podium-medal">🥉</span>
+      <p class="podium-team">{{ top3[2].team_name }}</p>
+      <p class="podium-lead">{{ top3[2].lead_name }}</p>
+      <div class="podium-score">{{ top3[2].avg_score }}<span>/100</span></div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- All teams -->
+  <div class="sec-title" style="margin-top:8px;">
+    <i class="fas fa-list-ol" style="color:var(--blue);font-size:15px;"></i>
+    All Teams · Click to expand
+  </div>
+
+  {% for r in results %}
+  {% set s = r.ai_summary %}
+  {% set rank = r.final_rank or loop.index %}
+  <div class="summary-card" id="card-{{ r.reg_id }}">
+    <div class="sc-header" onclick="toggleCard('{{ r.reg_id }}')">
+      <div class="d-flex align-items-center gap-3 flex-grow-1 min-width-0">
+        <div class="sc-rank {{ 'rank-1' if rank == 1 else 'rank-2' if rank == 2 else 'rank-3' if rank == 3 else 'rank-other' }}">
+          {{ rank }}
+        </div>
+        <div style="min-width:0;flex:1;">
+          <p class="sc-team-name">{{ r.team_name }}</p>
+          <p class="sc-lead">{{ r.lead_name }}</p>
+        </div>
+        {% if s and s.headline %}
+        <div style="font-size:12px;color:#64748b;flex:2;min-width:0;
+                    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+                    display:none;" class="d-md-block">
+          {{ s.headline }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="d-flex align-items-center gap-12px" style="gap:12px;flex-shrink:0;">
+        <div class="sc-score-badge">{{ r.avg_score }}<span style="font-size:12px;color:#94a3b8;">/100</span></div>
+        <button class="btn-regen" title="Re-generate this team's summary"
+                onclick="regenOne(event,'{{ r.reg_id }}','{{ r.team_name|replace("'","\\'")|e }}')">
+          <i class="fas fa-redo"></i>
+        </button>
+        <i class="fas fa-chevron-down chevron" id="chev-{{ r.reg_id }}" style="color:#94a3b8;font-size:12px;"></i>
+      </div>
+    </div>
+
+    <div class="sc-body" id="body-{{ r.reg_id }}">
+      {% if s %}
+
+      <!-- Headline -->
+      <div class="headline-pill">
+        <i class="fas fa-lightbulb" style="color:#3b82f6;font-size:13px;flex-shrink:0;"></i>
+        <span class="headline-text">{{ s.headline }}</span>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <!-- Strengths -->
+        <div class="col-12 col-md-6">
+          <span class="sub-label"><i class="fas fa-check me-1" style="color:var(--green);"></i>Strengths</span>
+          {% for strength in s.get('strengths', []) %}
+          <div class="strength-item">{{ strength }}</div>
+          {% endfor %}
+        </div>
+        <!-- Improvements -->
+        <div class="col-12 col-md-6">
+          <span class="sub-label"><i class="fas fa-arrow-up me-1" style="color:var(--orange);"></i>Areas to improve</span>
+          {% for imp in s.get('improvements', []) %}
+          <div class="improve-item">{{ imp }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Criteria bars -->
+      {% if r.crit_avgs %}
+      <span class="sub-label" style="margin-bottom:8px;"><i class="fas fa-chart-bar me-1"></i>Criterion scores</span>
+      {% for c in criteria %}
+      <div class="crit-row">
+        <div class="crit-label">{{ c }}</div>
+        <div class="crit-bar">
+          <div class="crit-fill" style="width:{{ r.crit_avgs.get(c, 0) }}%;"></div>
+        </div>
+        <div class="crit-val">{{ r.crit_avgs.get(c, 0) }}</div>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      <!-- Narrative -->
+      <div style="margin-top:12px;">
+        <span class="sub-label"><i class="fas fa-align-left me-1"></i>Coordinator's view</span>
+        <div class="narrative-box">{{ s.narrative }}</div>
+      </div>
+
+      <!-- Student message -->
+      {% if s.student_message %}
+      <span class="sub-label"><i class="fas fa-user me-1"></i>Shown to student</span>
+      <div class="student-msg-box">
+        <i class="fas fa-quote-left me-1" style="opacity:.4;"></i>
+        {{ s.student_message }}
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="no-summary">
+        <i class="fas fa-clock" style="flex-shrink:0;"></i>
+        Summary not generated yet. Click "Generate AI Summaries" above or the ↻ button on this card.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div style="text-align:center;padding:60px 24px;background:#fff;border-radius:14px;border:1px solid #e2e8f0;">
+    <i class="fas fa-hourglass-half" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:12px;"></i>
+    <h5 class="fw-bold text-secondary mb-2">No scored teams yet</h5>
+    <p class="text-muted" style="font-size:14px;">Judges need to submit scores before summaries can be generated.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const EVENT_ID = "{{ event.id }}";
+
+function toggleCard(regId) {
+  const body  = document.getElementById('body-' + regId);
+  const chev  = document.getElementById('chev-' + regId);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+function showToast(msg, ok) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = ok ? '#166534' : '#991b1b';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function showOverlay(msg, sub) {
+  document.getElementById('genMsg').textContent = msg;
+  document.getElementById('genSub').textContent  = sub;
+  document.getElementById('genOverlay').style.display = 'flex';
+}
+function hideOverlay() {
+  document.getElementById('genOverlay').style.display = 'none';
+}
+
+async function generateAll() {
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  showOverlay('Gemini is thinking…',
+    'Analysing scores and remarks for {{ results|length }} teams. This takes ~15 seconds.');
+
+  try {
+    const res  = await fetch(`/ai/generate_summaries/${EVENT_ID}`, {method: 'POST'});
+    const data = await res.json();
+    hideOverlay();
+    if (data.status === 'ok') {
+      showToast(`✓ ${data.count} summaries generated — refreshing page...`, true);
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      showToast('Error: ' + data.message, false);
+      btn.disabled = false;
+    }
+  } catch(e) {
+    hideOverlay();
+    showToast('Network error: ' + e.message, false);
+    btn.disabled = false;
+  }
+}
+
+async function regenOne(evt, regId, teamName) {
+  evt.stopPropagation();
+  const btn = evt.target.closest('button');
+  btn.disabled = true;
+  btn.innerHTML = '<div style="width:12px;height:12px;border:2px solid var(--purple);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;"></div>';
+
+  try {
+    const res  = await fetch(`/ai/regenerate_summary/${regId}`, {method: 'POST'});
+    const data = await res.json();
+    if (data.status === 'ok') {
+      showToast(`✓ Summary for "${teamName}" refreshed`, true);
+      // Patch the card body inline
+      const s      = data.summary;
+      const body   = document.getElementById('body-' + regId);
+      const isOpen = body.classList.contains('open');
+      renderSummaryInline(body, s);
+      if (isOpen) body.classList.add('open');
+    } else {
+      showToast('Error: ' + data.message, false);
+    }
+  } catch(e) {
+    showToast('Network error: ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-redo"></i>';
+  }
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderSummaryInline(bodyEl, s) {
+  const criteria = {{ criteria | tojson | safe }};
+  const critAvgs = s.crit_avgs || {};
+
+  const strengthsHtml = (s.strengths||[])
+    .map(x => `<div class="strength-item">${esc(x)}</div>`).join('');
+  const improvesHtml  = (s.improvements||[])
+    .map(x => `<div class="improve-item">${esc(x)}</div>`).join('');
+  const critHtml = criteria.map(c => {
+    const v = critAvgs[c] || 0;
+    return `<div class="crit-row">
+      <div class="crit-label">${esc(c)}</div>
+      <div class="crit-bar"><div class="crit-fill" style="width:${v}%;"></div></div>
+      <div class="crit-val">${v}</div>
+    </div>`;
+  }).join('');
+
+  bodyEl.innerHTML = `
+    <div class="headline-pill">
+      <i class="fas fa-lightbulb" style="color:#3b82f6;font-size:13px;flex-shrink:0;"></i>
+      <span class="headline-text">${esc(s.headline||'')}</span>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6">
+        <span class="sub-label"><i class="fas fa-check me-1" style="color:var(--green);"></i>Strengths</span>
+        ${strengthsHtml}
+      </div>
+      <div class="col-12 col-md-6">
+        <span class="sub-label"><i class="fas fa-arrow-up me-1" style="color:var(--orange);"></i>Areas to improve</span>
+        ${improvesHtml}
+      </div>
+    </div>
+    ${critHtml ? `<span class="sub-label" style="margin-bottom:8px;"><i class="fas fa-chart-bar me-1"></i>Criterion scores</span>${critHtml}` : ''}
+    <div style="margin-top:12px;">
+      <span class="sub-label"><i class="fas fa-align-left me-1"></i>Coordinator's view</span>
+      <div class="narrative-box">${esc(s.narrative||'')}</div>
+    </div>
+    ${s.student_message ? `<span class="sub-label"><i class="fas fa-user me-1"></i>Shown to student</span>
+    <div class="student-msg-box"><i class="fas fa-quote-left me-1" style="opacity:.4;"></i>${esc(s.student_message)}</div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>

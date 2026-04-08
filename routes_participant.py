@@ -81,8 +81,9 @@ def dashboard():
         else:
             r['my_avg_score'] = None
 
-        r['final_rank']   = r.get('final_rank')   # set by publish_results
-        r['final_score']  = r.get('final_score')  # set by publish_results
+        r['final_rank']   = r.get('final_rank')
+        r['final_score']  = r.get('final_score')
+        r['ai_summary']   = r.get('ai_summary')   # Gemini performance summary
 
         # Certificate eligible: attended + event completed
         r['cert_eligible'] = (

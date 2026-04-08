@@ -1,5 +1,9 @@
 import os
+import sys
 import secrets
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Config:
     # =========================================================
@@ -22,24 +26,33 @@ class Config:
     # 3. EMAIL — Gmail SMTP
     # ─────────────────────────────────────────────────────────
     # CRITICAL: MAIL_TIMEOUT = 10 prevents gunicorn worker from
-    # hanging forever when Gmail is unreachable, which was causing
-    # the "Internal Server Error" on /admin/appoint_spoc and
-    # /coordinator/assign_staff.
+    # hanging forever when Gmail is unreachable.
     #
     # MAIL_PASS must be a 16-char Gmail App Password, NOT your
     # regular Gmail login password. Generate one at:
     #   myaccount.google.com/apppasswords
+    #
+    # ⚠️  PRODUCTION: These MUST be set via environment variables!
     # =========================================================
     MAIL_SERVER         = 'smtp.gmail.com'
     MAIL_PORT           = 587
     MAIL_USE_TLS        = True
     MAIL_USE_SSL        = False
-    MAIL_TIMEOUT        = 10   # ← THE FIX: 10s timeout, never blocks gunicorn
-    MAIL_USERNAME       = os.environ.get('MAIL_USER', 'sapthhack@gmail.com')
-    MAIL_PASSWORD       = os.environ.get('MAIL_PASS', 'yqfktmdnvxofqvxj')
+    MAIL_TIMEOUT        = os.environ.get('MAIL_TIMEOUT', 10)
+    _mail_user_raw      = os.environ.get('MAIL_USER')
+    _mail_pass_raw      = os.environ.get('MAIL_PASS')
+    
+    # Validation: warn if production but no email configured
+    if os.environ.get('FLASK_ENV') == 'production':
+        if not _mail_user_raw or not _mail_pass_raw:
+            logger.warning("⚠️  PRODUCTION MODE: MAIL_USER and MAIL_PASS must be set!")
+    
+    # Use defaults only for development
+    MAIL_USERNAME = _mail_user_raw or 'sapthhack@gmail.com'
+    MAIL_PASSWORD = _mail_pass_raw or 'SET_THIS_IN_ENV'
     MAIL_DEFAULT_SENDER = (
         'SapthaEvent Team',
-        os.environ.get('MAIL_USER', 'sapthhack@gmail.com')
+        MAIL_USERNAME
     )
 
     # =========================================================
@@ -51,9 +64,19 @@ class Config:
 
     # =========================================================
     # 5. SUPER ADMIN
+    # ─────────────────────────────────────────────────────────
+    # ⚠️  PRODUCTION: These MUST be set via environment variables!
+    # Use init_superadmin.py to initialize on first deployment
     # =========================================================
-    SUPER_ADMIN_EMAIL        = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@snpsu.edu.in')
-    SUPER_ADMIN_DEFAULT_PASS = os.environ.get('SUPER_ADMIN_PASS',  'Saptha@Admin2026')
+    _super_admin_email = os.environ.get('SUPER_ADMIN_EMAIL')
+    _super_admin_pass = os.environ.get('SUPER_ADMIN_PASS')
+    
+    if os.environ.get('FLASK_ENV') == 'production':
+        if not _super_admin_email or not _super_admin_pass:
+            logger.warning("⚠️  PRODUCTION: SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASS must be set!")
+    
+    SUPER_ADMIN_EMAIL        = _super_admin_email or 'admin@snpsu.edu.in'
+    SUPER_ADMIN_DEFAULT_PASS = _super_admin_pass or 'SET_THIS_IN_ENV'
     MASTER_SECRET_KEY        = os.environ.get('MASTER_SECRET_KEY', 'SAPTHA@2026')
 
     # =========================================================

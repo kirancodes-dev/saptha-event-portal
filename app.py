@@ -48,21 +48,48 @@ limiter = Limiter(
 # =========================================================
 if not firebase_admin._apps:
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
+    
     if firebase_creds_json:
+        # Production: Use environment variable
         try:
             cred_dict = json.loads(firebase_creds_json)
-            if isinstance(cred_dict, str):          # double-encoded guard
+            if isinstance(cred_dict, str):  # double-encoded guard
                 cred_dict = json.loads(cred_dict)
             cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            logger.info("Firebase: Initialized with FIREBASE_CREDENTIALS env var")
         except Exception as exc:
-            app.logger.error("FIREBASE_CREDENTIALS parse error: %s", exc)
+            logger.error("FIREBASE_CREDENTIALS parse error: %s", exc)
             raise
     else:
-        key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-        cred = credentials.Certificate(key_path)
-    firebase_admin.initialize_app(cred)
+        # Development: Try local file, skip if not available
+        key_path = 'serviceAccountKey.json'
+        if os.path.exists(key_path):
+            try:
+                cred = credentials.Certificate(key_path)
+                firebase_admin.initialize_app(cred)
+                logger.info("Firebase: Initialized with local serviceAccountKey.json")
+            except Exception as exc:
+                logger.error("Firebase: Failed to initialize with %s: %s", key_path, exc)
+                raise
+        else:
+            if os.environ.get('ENVIRONMENT') == 'production':
+                logger.critical("ERROR: FIREBASE_CREDENTIALS env var not set in production!")
+                raise EnvironmentError(
+                    "FIREBASE_CREDENTIALS environment variable is required in production. "
+                    "Set it in Railway Variables with your Firebase service account JSON."
+                )
+            else:
+                logger.warning("Firebase: serviceAccountKey.json not found - running in dev mode without Firebase")
+                # For development without Firebase, you can disable it or use mock credentials
 
-db = firestore.client()
+# Initialize Firestore database (only if Firebase was initialized)
+try:
+    db = firestore.client()
+    logger.info("Firestore: Connected successfully")
+except Exception as exc:
+    logger.error("Firestore: Failed to connect: %s", exc)
+    db = None  # Use None and handle in routes
 
 # =========================================================
 # BLUEPRINTS

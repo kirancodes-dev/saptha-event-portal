@@ -3,8 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1a2332">
-    <title>Login | Sapthagiri Event Portal</title>
+    <meta name="theme-color" content="#0d2d62">
+    <!-- ═══ SEO Meta Tags ═══ -->
+    <meta name="description" content="Login to SapthaEvent: Official event management portal for Sapthagiri NPS University. Access your event registrations, manage tickets, and sign up for campus events.">
+    <meta name="keywords" content="login, event registration, SNPSU, Sapthagiri NPS University, event tickets, campus events">
+    <meta name="author" content="Sapthagiri NPS University">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <!-- ═══ Open Graph (Social Media) ═══ -->
+    <meta property="og:title" content="SapthaEvent Login - Sapthagiri NPS University">
+    <meta property="og:description" content="Sign in to your SapthaEvent account. Manage event registrations and instant QR tickets.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://events.snpsu.edu.in/login">
+    <!-- ═══ Twitter Card ═══ -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="SapthaEvent Login">
+    <meta name="twitter:description" content="Sign in to manage your SNPSU event registrations">
+    <!-- ═══ Canonical & Favicon ═══ -->
+    <link rel="canonical" href="https://events.snpsu.edu.in/login">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <title>Login | SapthaEvent - Sapthagiri NPS University</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
     <style>
@@ -232,14 +250,31 @@
                 font-size: 1.4rem;
             }
         }
+
+        /* ── SKELETON LOADERS ────────────────────── */
+        @keyframes skeletonPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+        .skeleton{animation:skeletonPulse 1.5s ease-in-out infinite;background:#e0e0e0;border-radius:4px;}
+        .skeleton-form-group{margin-bottom:1.25rem;}
+        .skeleton-form-label{height:14px;width:120px;margin-bottom:8px;}
+        .skeleton-form-input{height:40px;width:100%;}
+        .skeleton-button{height:48px;width:100%;margin-top:1.5rem;border-radius:6px;}
+
+        /* ── ACCESSIBILITY STYLES ────────────────────── */
+        .skip-link{position:absolute;top:-40px;left:0;background:var(--primary-900);color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
+        .skip-link:focus{top:0;}
+        *:focus-visible{outline:3px solid var(--accent-600);outline-offset:2px;}
+        @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
+        @media(prefers-contrast:more){body{font-weight:600;}button,.btn{border-width:2px;}}
+        @media(prefers-color-scheme:dark){.login-card{background:#1a1a1a;color:#e0e0e0;}.login-header{background:#0d2d62;}.form-label{color:#e0e0e0;}.form-control{background:#2a2a2a;color:#e0e0e0;border-color:#444;}}
     </style>
 </head>
 <body class="login-page">
+    <a href="#main-content" class="skip-link">Skip to Login Form</a>
     <div class="login-container">
         <div class="login-card">
             <!-- Header -->
             <div class="login-header">
-                <i class="fas fa-graduation-cap"></i>
+                <i class="fas fa-graduation-cap" aria-hidden="true"></i>
                 <h1>SAPTHAGIRI<span>NPS</span></h1>
                 <p>Event Portal</p>
             </div>
@@ -258,27 +293,46 @@
                 {% endif %}
             {% endwith %}
 
+            <!-- Skeleton Loading State -->
+            <div class="login-form" id="formSkeleton" role="status" aria-live="polite" aria-label="Loading login form">
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton skeleton-button"></div>
+            </div>
+
             <!-- Form -->
-            <form action="/login" method="POST" class="login-form">
+            <form action="/login" method="POST" class="login-form" id="main-content" role="main" aria-label="Login form" style="display:none;">
                 <div class="form-group">
-                    <label class="form-label">
-                        Select Role <span class="required">*</span>
+                    <label class="form-label" for="roleSelect">
+                        Select Role <span class="required" aria-label="required">*</span>
                     </label>
-                    <select name="role" id="roleSelect" class="form-select" required>
+                    <select name="role" id="roleSelect" class="form-select" required aria-required="true" aria-describedby="roleHint">
                         <option value="">Choose your role...</option>
-                        <option value="Student"><span class="role-icon">🎓</span>Student / Participant</option>
-                        <option value="EventCoordinator"><span class="role-icon">📱</span>Event Coordinator</option>
-                        <option value="ClubSPOC"><span class="role-icon">👥</span>Club SPOC (Manager)</option>
-                        <option value="Judge"><span class="role-icon">⚖️</span>Event Judge</option>
-                        <option value="SuperAdmin"><span class="role-icon">👑</span>Super Admin</option>
+                        <option value="Student">🎓 Student / Participant</option>
+                        <option value="EventCoordinator">📱 Event Coordinator</option>
+                        <option value="ClubSPOC">👥 Club SPOC (Manager)</option>
+                        <option value="Judge">⚖️ Event Judge</option>
+                        <option value="SuperAdmin">👑 Super Admin</option>
                     </select>
+                    <span id="roleHint" class="visually-hidden">Select your role in the Sapthagiri event portal</span>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">
-                        Email Address <span class="required">*</span>
+                    <label class="form-label" for="emailInput">
+                        Email Address <span class="required" aria-label="required">*</span>
                     </label>
-                    <input type="email" name="email" class="form-control" required placeholder="your.email@university.edu">
+                    <input type="email" id="emailInput" name="email" class="form-control" required aria-required="true" aria-describedby="emailHint" placeholder="your.email@university.edu">
+                    <span id="emailHint" class="visually-hidden">Enter your registered email address</span>
                 </div>
 
                 <div class="form-group">
@@ -311,6 +365,17 @@
     </div>
 
     <script>
+        // ── SKELETON LOADER INITIALIZATION ────
+        document.addEventListener('DOMContentLoaded',function(){
+            setTimeout(function(){
+                const skeleton = document.getElementById('formSkeleton');
+                const form = document.getElementById('main-content');
+                if(skeleton) skeleton.style.display = 'none';
+                if(form) form.style.display = '';
+            }, 250);
+        });
+
+        // ── ROLE SELECTION HANDLER ────
         document.getElementById('roleSelect').addEventListener('change', function() {
             const secretDiv = document.getElementById('secretKeyDiv');
             const secretInput = document.getElementById('secretKeyInput');

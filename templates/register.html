@@ -3,7 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Registration | SapthaEvent</title>
+    <!-- ═══ SEO Meta Tags ═══ -->
+    <meta name="description" content="Register for SapthaEvent: Create your account for Sapthagiri NPS University event portal. Register for technical, cultural, and sports events with instant QR ticket generation.">
+    <meta name="keywords" content="register, sign up, event portal, SNPSU, Sapthagiri NPS University, student registration">
+    <meta name="author" content="Sapthagiri NPS University">
+    <meta name="robots" content="index, follow">
+    <!-- ═══ Open Graph ═══ -->
+    <meta property="og:title" content="SapthaEvent Registration - Sapthagiri NPS University">
+    <meta property="og:description" content="Create your account and start registering for SNPSU campus events instantly.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://events.snpsu.edu.in/register">
+    <!-- ═══ Canonical & Favicon ═══ -->
+    <link rel="canonical" href="https://events.snpsu.edu.in/register">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <title>Student Registration | SapthaEvent - Sapthagiri NPS University</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -25,16 +38,56 @@
         .form-control:focus { background-color: #fff; border-color: var(--snpsu-blue); box-shadow: 0 0 0 4px rgba(13, 45, 98, 0.1); }
         .btn-register { background-color: var(--snpsu-orange); color: white; font-weight: 700; padding: 12px; border-radius: 8px; transition: 0.3s; border: none;}
         .btn-register:hover { background-color: #d95e1a; transform: translateY(-2px); color: white;}
+        /* ── SKELETON LOADERS ────────────────────── */
+        @keyframes skeletonPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+        .skeleton{animation:skeletonPulse 1.5s ease-in-out infinite;background:#e0e0e0;border-radius:4px;}
+        .skeleton-form-group{margin-bottom:1.25rem;}
+        .skeleton-form-label{height:14px;width:120px;margin-bottom:8px;}
+        .skeleton-form-input{height:40px;width:100%;}
+        .skeleton-button{height:48px;width:100%;margin-top:1.5rem;border-radius:6px;}
+        /* ── ACCESSIBILITY STYLES ────────────────────── */
+        .skip-link{position:absolute;top:-40px;left:0;background:var(--snpsu-blue);color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
+        .skip-link:focus{top:0;}
+        *:focus-visible{outline:3px solid var(--snpsu-orange);outline-offset:2px;}
+        @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
+        @media(prefers-contrast:more){body{font-weight:600;}label{font-weight:700;}}
+        @media(prefers-color-scheme:dark){.register-card{background:#1a1a1a;color:#e0e0e0;}.form-label{color:#e0e0e0;}.form-control{background:#2a2a2a;color:#e0e0e0;border-color:#444;}}
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to Registration Form</a>
 
     <div class="container px-3 d-flex justify-content-center">
         <div class="register-card">
             
             <div class="text-center mb-4 pb-3 border-bottom">
-                <i class="fas fa-university mb-2" style="font-size: 2rem; color: var(--snpsu-orange);"></i>
+                <i class="fas fa-university mb-2" style="font-size: 2rem; color: var(--snpsu-orange);" aria-hidden="true"></i>
                 <div class="logo-title m-0">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></div>
+                <p class="text-muted small mt-1">Official Event Portal</p>
+            </div>
+
+            <h1 class="h5 mb-2 text-center" style="color: var(--snpsu-blue); font-weight: 700;">Create Your Account</h1>
+            <p class="text-muted text-center mb-4 small">Register to access exclusive campus events and instant QR tickets</p>
+
+            <!-- Skeleton Loading State -->
+            <div id="formSkeleton" role="status" aria-live="polite" aria-label="Loading registration form" style="padding: 2rem 1.75rem;">
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton skeleton-button"></div>
+            </div>
+
+            <!-- Registration Form -->
+            <form method="POST" class="needs-validation" id="main-content" role="main" aria-label="Student registration form" novalidate style="display:none;">
                 <small style="letter-spacing: 2px; font-weight: 600; color: #64748b; font-size: 0.7rem;">STUDENT REGISTRATION</small>
             </div>
 
@@ -61,5 +114,17 @@
             </form>
         </div>
     </div>
+
+    <script>
+        // ── SKELETON LOADER INITIALIZATION ────
+        document.addEventListener('DOMContentLoaded',function(){
+            setTimeout(function(){
+                const skeleton = document.getElementById('formSkeleton');
+                const form = document.getElementById('main-content');
+                if(skeleton) skeleton.style.display = 'none';
+                if(form) form.style.display = '';
+            }, 250);
+        });
+    </script>
 </body>
 </html>

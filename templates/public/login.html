@@ -5,21 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | SapthaEvent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { background: #f4f7f6; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        .brand-text { color: #002147; font-weight: 700; margin-bottom: 20px; }
-        .brand-accent { color: #FF9900; }
-        .btn-primary { background-color: #002147; border: none; padding: 10px; font-weight: 600; width: 100%; }
-        .btn-primary:hover { background-color: #FF9900; }
-        .form-control { background: #f8f9fa; border: 1px solid #ddd; padding: 12px; margin-bottom: 15px; }
+        :root{--blue:#0d2d62;--orange:#f37021;}
+        body { background: linear-gradient(135deg, var(--blue), #1a4fa0); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; font-family:'Inter',sans-serif; }
+        .login-card { background: white; padding: 40px; border-radius: 14px; box-shadow: 0 10px 40px rgba(13,45,98,0.2); width: 100%; max-width: 400px; }
+        .brand-text { color: var(--blue); font-weight: 800; margin-bottom: 20px; font-family:'Poppins',sans-serif; font-size: 28px; }
+        .brand-accent { color: var(--orange); }
+        .btn-primary { background-color: var(--blue); border: none; padding: 12px; font-weight: 600; width: 100%; font-family:'Poppins',sans-serif; border-radius: 8px; transition: all .3s ease; }
+        .btn-primary:hover { background-color: var(--orange); }
+        .form-control { background: #f8f9fa; border: 1.5px solid #e2e8f0; padding: 12px; margin-bottom: 15px; border-radius: 8px; font-family:'Inter',sans-serif; }
+        .form-control:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(13,45,98,0.1); }
         #admin-key-group { display: none; } 
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <h3 class="text-center brand-text">SAPTHA<span class="brand-accent">EVENT</span></h3>
+    <div style="text-align:center;margin-bottom:20px;">
+        <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+             alt="Sapthagiri NPS University"
+             style="height:45px;width:auto;object-fit:contain;filter:brightness(0)invert(1);"
+             onerror="this.style.display='none'">
+    </div>
     <p class="text-center text-muted small mb-4">Official Event Management Portal</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -50,7 +58,7 @@
     </form>
 
     <div class="text-center mt-4">
-        <small class="text-muted">New Student? <a href="/register" class="fw-bold text-decoration-none" style="color: #FF9900;">Register Here</a></small>
+        <small class="text-muted">New Student? <a href="/register" class="fw-bold text-decoration-none" style="color: var(--orange);">Register Here</a></small>
     </div>
 </div>
 

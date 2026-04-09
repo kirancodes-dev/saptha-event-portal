@@ -11,15 +11,17 @@
     
     <style>
         :root {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --bg-input: #020617; /* Very dark blue for inputs */
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --text-main: #f8fafc;
-            --text-muted: #cbd5e1; /* Lighter text for readability */
-            --border: #64748b; /* Visible border color */
+            --bg-body: #f8f9fa;
+            --bg-card: #ffffff;
+            --bg-input: #ffffff;
+            --primary: var(--blue);
+            --primary-hover: #0a2352;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
             --success: #10b981;
+            --blue: #0d2d62;
+            --orange: #f37021;
         }
 
         body {
@@ -359,7 +361,7 @@
         </div>
 
         <div class="wizard-step-content" id="step-4">
-            <div class="section-card border-primary" style="border: 2px solid #3b82f6;">
+            <div class="section-card border-primary" style="border: 2px solid var(--blue);">
                 <h3 class="section-title text-primary"><i class="fas fa-sliders-h"></i> Registration Form Builder</h3>
                 <p class="text-muted small">Configure exactly what the student sees when they click "Register".</p>
                 

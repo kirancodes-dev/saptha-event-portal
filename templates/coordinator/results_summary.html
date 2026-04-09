@@ -128,7 +128,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* Toast */
-#toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;
+#toast{position:fixed;bottom:24px;right:24px;background:#f8f9fa;color:#1e293b;
   padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;
   transform:translateY(80px);opacity:0;transition:.3s;z-index:9998;max-width:320px;}
 #toast.show{transform:translateY(0);opacity:1;}
@@ -149,7 +149,12 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <!-- Nav -->
 <nav class="topbar">
   <div class="d-flex align-items-center gap-2">
-    <div class="logo-sq">SE</div>
+    <div class="logo-sq" style="background:var(--orange);">
+        <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+             alt="SNPSU"
+             style="height:22px;width:auto;filter:brightness(0)invert(1);"
+             onerror="this.style.display='none'">
+    </div>
     <span class="brand d-none d-sm-inline">SapthaEvent</span>
   </div>
   <a href="/coordinator/dashboard" class="back-link">
@@ -299,7 +304,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
       <!-- Headline -->
       <div class="headline-pill">
-        <i class="fas fa-lightbulb" style="color:#3b82f6;font-size:13px;flex-shrink:0;"></i>
+        <i class="fas fa-lightbulb" style="color:var(--orange);font-size:13px;flex-shrink:0;"></i>
         <span class="headline-text">{{ s.headline }}</span>
       </div>
 
@@ -474,7 +479,7 @@ function renderSummaryInline(bodyEl, s) {
 
   bodyEl.innerHTML = `
     <div class="headline-pill">
-      <i class="fas fa-lightbulb" style="color:#3b82f6;font-size:13px;flex-shrink:0;"></i>
+      <i class="fas fa-lightbulb" style="color:var(--orange);font-size:13px;flex-shrink:0;"></i>
       <span class="headline-text">${esc(s.headline||'')}</span>
     </div>
     <div class="row g-3 mb-3">

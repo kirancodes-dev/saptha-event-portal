@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a2332">
+    <meta name="description" content="Sapthagiri NPS University Event Portal - Discover and participate in amazing events">
+    <title>Sapthagiri Event Portal | University Events</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        /* Homepage Specific Styles */
+        .navbar-classic {
+            background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 100%);
+            padding: 1rem 0;
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand-classic {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: white;
+            font-weight: 700;
+        }
+
+        .navbar-brand-classic i {
+            font-size: 1.75rem;
+            color: var(--accent-500);
+        }
+
+        .navbar-brand-text h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: white;
+            font-family: 'Crimson Text', serif;
+            letter-spacing: 0.5px;
+        }
+
+        .navbar-brand-text small {
+            display: block;
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            transition: var(--transition-fast);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-links .btn-primary {
+            background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 6px;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 100%);
+            padding: 5rem 2rem;
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at top right, rgba(218, 165, 32, 0.1), transparent 50%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(218, 165, 32, 0.2);
+            border: 1px solid rgba(218, 165, 32, 0.4);
+            color: var(--accent-500);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .hero-section h1 {
+            font-family: 'Lora', serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .hero-section h1 .accent {
+            color: var(--accent-500);
+        }
+
+        .hero-section p {
+            font-size: clamp(1rem, 1.5vw, 1.2rem);
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 2rem;
+            line-height: 1.7;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-cta .btn {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            background: white;
+            padding: 3rem 2rem;
+            border-bottom: 2px solid var(--accent-600);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .stat-item .number {
+            font-family: 'Lora', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-600);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item .label {
+            font-size: 0.95rem;
+            color: var(--gray-600);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Events Section */
+        .events-section {
+            padding: 4rem 2rem;
+            background: var(--light);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .section-header .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--accent-600);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .section-header .eyebrow::before {
+            content: '';
+            width: 20px;
+            height: 2px;
+            background: var(--accent-600);
+            border-radius: 1px;
+        }
+
+        .section-header h2 {
+            font-family: 'Lora', serif;
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            color: var(--primary-900);
+            margin-bottom: 0.75rem;
+        }
+
+        .section-header p {
+            color: var(--gray-600);
+            font-size: 1rem;
+        }
+
+        .filter-tabs {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .filter-btn {
+            padding: 0.6rem 1.5rem;
+            border-radius: 20px;
+            border: 2px solid var(--gray-300);
+            background: white;
+            color: var(--gray-600);
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition-fast);
+            font-size: 0.9rem;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: var(--primary-900);
+            color: white;
+            border-color: var(--primary-900);
+        }
+
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .event-header {
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, var(--primary-900), var(--primary-800));
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: var(--accent-500);
+        }
+
+        .event-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .event-category {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: var(--accent-600);
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 1;
+        }
+
+        .event-body {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .event-title {
+            font-family: 'Lora', serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--primary-900);
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .event-description {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+            flex: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+
+        .event-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .event-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }
+
+        .event-meta-item i {
+            color: var(--accent-600);
+            width: 16px;
+        }
+
+        .event-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .event-fee {
+            font-family: 'Lora', serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--accent-600);
+        }
+
+        .event-fee.paid {
+            color: var(--primary-900);
+        }
+
+        .register-btn {
+            background: linear-gradient(135deg, var(--primary-900), var(--primary-800));
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: var(--transition-fast);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .register-btn:hover {
+            background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+            color: white;
+        }
+
+        /* How It Works */
+        .how-works-section {
+            background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 100%);
+            color: white;
+            padding: 4rem 2rem;
+        }
+
+        .how-works-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .step-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(218, 165, 32, 0.3);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .step-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-500);
+            transform: translateY(-3px);
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--accent-600);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 auto 1rem;
+        }
+
+        .step-title {
+            font-family: 'Lora', serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .step-description {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        .footer-section {
+            background: var(--primary-900);
+            color: white;
+            padding: 3rem 2rem 1rem;
+            border-top: 3px solid var(--accent-600);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-block h3 {
+            font-family: 'Lora', serif;
+            color: var(--accent-500);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .footer-block a {
+            display: block;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.75rem;
+            transition: var(--transition-fast);
+            text-decoration: none;
+        }
+
+        .footer-block a:hover {
+            color: var(--accent-500);
+            margin-left: 0.25rem;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .navbar-classic {
+                flex-direction: column;
+            }
+
+            .nav-links {
+                margin-top: 1rem;
+            }
+
+            .hero-section {
+                padding: 3rem 1.5rem;
+            }
+
+            .events-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar-classic">
+        <div style="max-width: 1400px; margin: 0 auto; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%;">
+            <a href="/" class="navbar-brand-classic">
+                <i class="fas fa-calendar-star"></i>
+                <div class="navbar-brand-text">
+                    <h2>SapthaEvent</h2>
+                    <small>University Events</small>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="#events">Events</a></li>
+                <li><a href="#how-it-works">How it Works</a></li>
+                <li><a href="/login" class="btn-primary">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-sparkles"></i>
+                Welcome to SapthaEvent
+            </div>
+            <h1>Discover & Participate in <span class="accent">Amazing Events</span></h1>
+            <p>From technical competitions to cultural performances, find events that match your interests and showcase your talents.</p>
+            <div class="hero-cta">
+                <a href="/login" class="btn btn-gold">
+                    <i class="fas fa-arrow-right"></i> Browse Events
+                </a>
+                <a href="#how-it-works" class="btn btn-outline">
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="number">150+</div>
+                <div class="label">Events</div>
+            </div>
+            <div class="stat-item">
+                <div class="number">5000+</div>
+                <div class="label">Participants</div>
+            </div>
+            <div class="stat-item">
+                <div class="number">₹25L+</div>
+                <div class="label">Prize Pool</div>
+            </div>
+            <div class="stat-item">
+                <div class="number">50+</div>
+                <div class="label">Organizations</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Events Section -->
+    <section id="events" class="events-section">
+        <div class="section-header">
+            <div class="eyebrow">
+                Featured Events
+            </div>
+            <h2>Explore Our Events</h2>
+            <p>Browse through all the amazing events organized across campus and participate to win exciting prizes.</p>
+        </div>
+
+        <div class="filter-tabs">
+            <button class="filter-btn active">All Events</button>
+            <button class="filter-btn">Technical</button>
+            <button class="filter-btn">Cultural</button>
+            <button class="filter-btn">Sports</button>
+            <button class="filter-btn">Management</button>
+        </div>
+
+        <div class="events-grid">
+            <!-- Event Card 1 -->
+            <div class="event-card">
+                <div class="event-header">
+                    <span class="event-category">Technical</span>
+                    <i class="fas fa-code"></i>
+                </div>
+                <div class="event-body">
+                    <h3 class="event-title">Web Development Sprint</h3>
+                    <p class="event-description">Create a fully functional web application in 4 hours and compete with other developers.</p>
+                    <div class="event-meta">
+                        <div class="event-meta-item">
+                            <i class="fas fa-calendar"></i>
+                            March 15, 2024
+                        </div>
+                        <div class="event-meta-item">
+                            <i class="fas fa-users"></i>
+                            120 Participants
+                        </div>
+                    </div>
+                    <div class="event-footer">
+                        <span class="event-fee">Free</span>
+                        <button class="register-btn">Register</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Card 2 -->
+            <div class="event-card">
+                <div class="event-header">
+                    <span class="event-category" style="background: var(--success);">Cultural</span>
+                    <i class="fas fa-music"></i>
+                </div>
+                <div class="event-body">
+                    <h3 class="event-title">Battle of Bands</h3>
+                    <p class="event-description">Showcase your musical talent and perform live on the main stage for an enthusiastic audience.</p>
+                    <div class="event-meta">
+                        <div class="event-meta-item">
+                            <i class="fas fa-calendar"></i>
+                            March 20, 2024
+                        </div>
+                        <div class="event-meta-item">
+                            <i class="fas fa-users"></i>
+                            45 Teams
+                        </div>
+                    </div>
+                    <div class="event-footer">
+                        <span class="event-fee paid">₹500</span>
+                        <button class="register-btn">Register</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Card 3 -->
+            <div class="event-card">
+                <div class="event-header">
+                    <span class="event-category" style="background: var(--warning);">Sports</span>
+                    <i class="fas fa-basketball"></i>
+                </div>
+                <div class="event-body">
+                    <h3 class="event-title">Basketball Tournament</h3>
+                    <p class="event-description">Compete in an exciting 3-on-3 basketball tournament with cash prizes and trophies.</p>
+                    <div class="event-meta">
+                        <div class="event-meta-item">
+                            <i class="fas fa-calendar"></i>
+                            March 25, 2024
+                        </div>
+                        <div class="event-meta-item">
+                            <i class="fas fa-users"></i>
+                            32 Teams
+                        </div>
+                    </div>
+                    <div class="event-footer">
+                        <span class="event-fee">Free</span>
+                        <button class="register-btn">Register</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-works-section">
+        <div class="section-header" style="color: white;">
+            <div class="eyebrow" style="color: var(--accent-500);">How It Works</div>
+            <h2 style="color: white;">Get Started in 3 Steps</h2>
+        </div>
+
+        <div class="how-works-grid">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h3 class="step-title">Create Account</h3>
+                <p class="step-description">Sign up with your university email and set up your profile in minutes.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h3 class="step-title">Explore Events</h3>
+                <p class="step-description">Browse through hundreds of amazing events and find ones that interest you.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h3 class="step-title">Participate & Win</h3>
+                <p class="step-description">Register for events, participate, and compete to win amazing prizes and recognition.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-section">
+        <div class="footer-content">
+            <div class="footer-block">
+                <h3><i class="fas fa-info-circle"></i> About</h3>
+                <p>Sapthagiri Event Portal is your gateway to discovering and participating in amazing university events.</p>
+            </div>
+            <div class="footer-block">
+                <h3><i class="fas fa-link"></i> Quick Links</h3>
+                <a href="#events">Events</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="/login">Login</a>
+                <a href="#">Contact</a>
+            </div>
+            <div class="footer-block">
+                <h3><i class="fas fa-headset"></i> Support</h3>
+                <a href="#">Help Center</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact Us</a>
+                <a href="#">Report Issue</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Sapthagiri NPS University. All rights reserved. | <a href="#" style="color: var(--accent-500);">Privacy Policy</a> | <a href="#" style="color: var(--accent-500);">Terms of Service</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Filter functionality
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

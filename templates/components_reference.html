@@ -1,0 +1,391 @@
+<!-- Form Component Examples - Reference for all forms -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Components | Design System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        .component-section {
+            background: white;
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .component-title {
+            font-family: 'Lora', serif;
+            font-size: 1.5rem;
+            color: var(--primary-900);
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .code-block {
+            background: var(--gray-900);
+            color: #e8f5e9;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body style="background: var(--light); padding: 2rem;">
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <h1 style="color: var(--primary-900); margin-bottom: 3rem; font-family: 'Lora', serif;">Form & UI Components</h1>
+
+        <!-- INPUT FORMS -->
+        <div class="component-section">
+            <h2 class="component-title">Text Input Fields</h2>
+            <div class="component-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Full Name <span class="required">*</span></label>
+                        <input type="text" class="form-control" placeholder="Enter your full name">
+                        <div class="form-help">Your legal name as per ID</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Email Address <span class="required">*</span></label>
+                        <input type="email" class="form-control" placeholder="your.email@university.edu">
+                        <div class="form-help">We'll never share your email</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" placeholder="+91 98765 43210">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SELECT DROPDOWNS -->
+        <div class="component-section">
+            <h2 class="component-title">Select Dropdowns</h2>
+            <div class="component-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Event Category <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option>Choose a category...</option>
+                            <option>Technical</option>
+                            <option>Cultural</option>
+                            <option>Sports</option>
+                            <option>Management</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Department <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option>Select department...</option>
+                            <option>Computer Science</option>
+                            <option>Mechanical</option>
+                            <option>Electronics</option>
+                            <option>Civil</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEXTAREA -->
+        <div class="component-section">
+            <h2 class="component-title">Text Area</h2>
+            <div class="form-group">
+                <label class="form-label">Event Description</label>
+                <textarea class="form-control" rows="5" placeholder="Describe your event in detail..."></textarea>
+                <div class="form-help">Maximum 500 characters</div>
+            </div>
+        </div>
+
+        <!-- BUTTONS -->
+        <div class="component-section">
+            <h2 class="component-title">Button Styles</h2>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                <button class="btn btn-primary">
+                    <i class="fas fa-check"></i> Primary Action
+                </button>
+                <button class="btn btn-gold">
+                    <i class="fas fa-star"></i> Featured Action
+                </button>
+                <button class="btn btn-outline">
+                    <i class="fas fa-eye"></i> Secondary Action
+                </button>
+                <button class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm">Small</button>
+                <button class="btn btn-primary">Regular</button>
+                <button class="btn btn-primary btn-lg">Large</button>
+                <button class="btn btn-primary btn-block" style="width: 100%;">Full Width</button>
+            </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div class="component-section">
+            <h2 class="component-title">Alert Messages</h2>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Success!</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">Your form has been submitted successfully.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>
+                        <strong>Error!</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">Please fix the errors below before proceeding.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <strong>Warning!</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">This action cannot be undone.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Information</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">Important updates about the upcoming event.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BADGES -->
+        <div class="component-section">
+            <h2 class="component-title">Status Badges</h2>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <span class="badge badge-success">Active</span>
+                <span class="badge badge-primary">Registered</span>
+                <span class="badge badge-warning">Pending</span>
+                <span class="badge badge-danger">Cancelled</span>
+                <span class="badge badge-info">Closed</span>
+            </div>
+        </div>
+
+        <!-- INFO BOXES -->
+        <div class="component-section">
+            <h2 class="component-title">Info Boxes</h2>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="info-box">
+                    <i class="fas fa-lightbulb"></i>
+                    <div>
+                        <strong>Tip:</strong> Don't forget to upload all required documents before the deadline.
+                    </div>
+                </div>
+
+                <div class="info-box warning">
+                    <i class="fas fa-exclamation"></i>
+                    <div>
+                        <strong>Important:</strong> Registration closes on March 31st, 2024.
+                    </div>
+                </div>
+
+                <div class="info-box success">
+                    <i class="fas fa-check"></i>
+                    <div>
+                        <strong>Great!</strong> Your payment has been verified successfully.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FORM ROW LAYOUT -->
+        <div class="component-section">
+            <h2 class="component-title">Multi-Column Form Layout</h2>
+            <form style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">First Name <span class="required">*</span></label>
+                    <input type="text" class="form-control" placeholder="First name">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Last Name <span class="required">*</span></label>
+                    <input type="text" class="form-control" placeholder="Last name">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Date of Birth <span class="required">*</span></label>
+                    <input type="date" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Gender <span class="required">*</span></label>
+                    <select class="form-select">
+                        <option>Select...</option>
+                        <option>Male</option>
+                        <option>Female</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div style="grid-column: 1 / -1; display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-gold" style="flex: 1;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="reset" class="btn btn-outline" style="flex: 1;">
+                        <i class="fas fa-redo"></i> Reset Form
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- STAT WIDGETS -->
+        <div class="component-section">
+            <h2 class="component-title">Stat Widgets</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                <div class="stat-widget">
+                    <div class="stat-icon" style="background: rgba(45, 106, 62, 0.1); color: var(--success);">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Events Registered</div>
+                        <div class="stat-value">12</div>
+                        <div class="stat-change positive">+3 this month</div>
+                    </div>
+                </div>
+
+                <div class="stat-widget">
+                    <div class="stat-icon" style="background: rgba(184, 134, 11, 0.1); color: var(--accent-600);">
+                        <i class="fas fa-award"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Awards Won</div>
+                        <div class="stat-value">5</div>
+                        <div class="stat-change">2 Gold, 2 Silver, 1 Bronze</div>
+                    </div>
+                </div>
+
+                <div class="stat-widget">
+                    <div class="stat-icon" style="background: rgba(139, 62, 46, 0.1); color: var(--danger);">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Pending Events</div>
+                        <div class="stat-value">3</div>
+                        <div class="stat-change negative">Deadline approaching</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARDS -->
+        <div class="component-section">
+            <h2 class="component-title">Card Components</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                <div class="card hover-lift">
+                    <div class="card-header">
+                        <i class="fas fa-code"></i> Web Development
+                    </div>
+                    <div class="card-body">
+                        <p>Compete in this exciting web development competition with amazing prizes.</p>
+                    </div>
+                    <div class="card-footer">
+                        <span class="badge badge-info">Technical</span>
+                        <button class="btn btn-primary btn-sm">Learn More</button>
+                    </div>
+                </div>
+
+                <div class="card hover-lift">
+                    <div class="card-header" style="background: linear-gradient(to right, rgba(45, 106, 62, 0.1), rgba(45, 106, 62, 0.05)); border-bottom: none;">
+                        <i class="fas fa-music"></i> Cultural Event
+                    </div>
+                    <div class="card-body">
+                        <p>Showcase your talents on stage with performances from various domains.</p>
+                    </div>
+                    <div class="card-footer">
+                        <span class="badge badge-success">Cultural</span>
+                        <button class="btn btn-gold btn-sm">Join Now</button>
+                    </div>
+                </div>
+
+                <div class="card hover-lift">
+                    <div class="card-header" style="background: linear-gradient(to right, rgba(193, 126, 60, 0.1), rgba(193, 126, 60, 0.05)); border-bottom: none;">
+                        <i class="fas fa-basketball"></i> Sports Event
+                    </div>
+                    <div class="card-body">
+                        <p>Team competitions with exciting tournaments and amazing prizes.</p>
+                    </div>
+                    <div class="card-footer">
+                        <span class="badge badge-warning">Sports</span>
+                        <button class="btn btn-outline btn-sm">Register</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLES -->
+        <div class="component-section">
+            <h2 class="component-title">Table Component</h2>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>Event Name</th>
+                            <th>Category</th>
+                            <th>Participants</th>
+                            <th>Prize Pool</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Web Development Sprint</strong></td>
+                            <td><span class="badge badge-info">Technical</span></td>
+                            <td>120</td>
+                            <td>₹50,000</td>
+                            <td><span class="badge badge-success">Active</span></td>
+                            <td><button class="btn btn-primary btn-sm">Edit</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Battle of Bands</strong></td>
+                            <td><span class="badge badge-success">Cultural</span></td>
+                            <td>45</td>
+                            <td>₹25,000</td>
+                            <td><span class="badge badge-warning">Pending</span></td>
+                            <td><button class="btn btn-primary btn-sm">Edit</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Basketball Tournament</strong></td>
+                            <td><span class="badge badge-warning">Sports</span></td>
+                            <td>32</td>
+                            <td>₹15,000</td>
+                            <td><span class="badge badge-danger">Closed</span></td>
+                            <td><button class="btn btn-primary btn-sm">View</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Too Many Requests | SapthaEvent</title>
+<!-- ═══ SEO Meta Tags ═══ -->
+<meta name="description" content="Rate limit exceeded on SapthaEvent. Too many requests detected. Please wait a moment and try again.">
+<meta name="robots" content="noindex, nofollow">
+<!-- ═══ Canonical ═══ -->
+<link rel="canonical" href="https://events.snpsu.edu.in">
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<title>429 - Too Many Requests | SapthaEvent</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{--blue:#0d2d62;--orange:#f37021;}
@@ -20,12 +26,17 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:
 .btn-home{display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:#fff;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;transition:.15s;}
 .btn-home:hover{background:#0a2352;color:#fff;}
 .uni{font-size:11.5px;color:#94a3b8;margin-top:20px;}
+/* ── ACCESSIBILITY ────────── */
+*:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+@media(prefers-contrast:more){.title,.code{font-weight:900;}.btn-home{border:2px solid;font-weight:700;}}
+@media(prefers-color-scheme:dark){body{background:#1a1a1a;}.card{background:#2a2a2a;color:#e0e0e0;border-color:#444;}.title{color:#e0e0e0;}.desc{color:#a0a0a0;}.countdown-box{background:#2d1f00;border-color:#665200;color:#ddd;}}
 </style>
 </head>
-<body>
-<div class="card">
-  <div class="logo-sq" style="background:var(--orange);"><img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png" alt="SNPSU" style="height:24px;width:auto;filter:brightness(0)invert(1);" onerror="this.style.display='none';"></div>
-  <div class="code">429</div>
+<body role="main" aria-label="429 Rate Limit Error">
+<div class="card" role="region" aria-live="polite" aria-label="Rate limit error message">
+  <div class="logo-sq" style="background:var(--orange);" aria-hidden="true"><img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png" alt="" style="height:24px;width:auto;filter:brightness(0)invert(1);" onerror="this.style.display='none';"></div>
+  <div class="code" aria-label="Error code">429</div>
   <h1 class="title">Slow Down!</h1>
   <p class="desc">You've made too many requests in a short time. Please wait a moment before trying again.</p>
   <div class="countdown-box">

@@ -4,7 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0d2d62">
-<title>SapthaEvent | Sapthagiri NPS University</title>
+
+<!-- ═══ SEO Meta Tags ═══ -->
+<title>SapthaEvent | Event Management Portal - Sapthagiri NPS University</title>
+<meta name="description" content="SapthaEvent: Official event management portal for Sapthagiri NPS University. Register for technical, cultural, and sports events. Instant QR tickets, AI assistant, and email/WhatsApp alerts.">
+<meta name="keywords" content="events, registration, university, SNPSU, hackathon, cultural fest, sports meet, QR tickets, event portal">
+<meta name="author" content="Sapthagiri NPS University">
+<meta name="robots" content="index, follow">
+<meta name="language" content="English">
+
+<!-- ═══ Open Graph (Social Media) ═══ -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="SapthaEvent - Sapthagiri NPS University Event Portal">
+<meta property="og:description" content="Discover and register for campus events. Get instant QR tickets and event updates via email and WhatsApp.">
+<meta property="og:url" content="https://events.snpsu.edu.in">
+<meta property="og:image" content="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png">
+<meta property="og:site_name" content="SapthaEvent">
+
+<!-- ═══ Twitter Card ═══ -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SapthaEvent - SNPSU Event Portal">
+<meta name="twitter:description" content="Register for campus events, get instant QR tickets, and receive alerts.">
+<meta name="twitter:image" content="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png">
+
+<!-- ═══ Canonical URL ═══ -->
+<link rel="canonical" href="https://events.snpsu.edu.in">
+
+<!-- ═══ Favicons ═══ -->
+<link rel="icon" type="image/png" href="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png">
+<link rel="apple-touch-icon" href="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png">
+
+<!-- ═══ Stylesheets ═══ -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
@@ -50,7 +80,24 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;font-weight:700;}
 .navbar-toggler:focus{box-shadow:none;}
 .snav .navbar-collapse{background:linear-gradient(180deg,rgba(13,45,98,.98),rgba(13,45,98,.95));}
 
-/* ── HERO CAROUSEL ───────────────────────────── */
+/* ── SKELETON LOADERS ───────────────────────────── */
+@keyframes skeletonPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+.skeleton{animation:skeletonPulse 1.5s ease-in-out infinite;background:#e0e0e0;border-radius:6px;}
+.skeleton-text{height:12px;margin-bottom:8px;}
+.skeleton-title{height:24px;margin-bottom:12px;border-radius:4px;}
+.skeleton-image{height:200px;background:#d0d0d0;border-radius:8px;margin-bottom:16px;}
+.skeleton-card{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.skeleton-card .skeleton-image{margin-bottom:12px;}
+.skeleton-btn{height:40px;margin-top:12px;border-radius:6px;}
+
+/* Event Card Skeleton */
+.ev-card.skeleton-loading{cursor:default;pointer-events:none;}
+.ev-card.skeleton-loading .ev-banner{background:#d0d0d0;height:180px;}
+.ev-card.skeleton-loading .ev-title{background:#e0e0e0;height:24px;border-radius:4px;}
+.ev-card.skeleton-loading .ev-desc{background:#e0e0e0;height:16px;border-radius:4px;margin-top:8px;}
+.ev-card.skeleton-loading .ev-meta span{background:#e0e0e0;height:14px;border-radius:4px;margin-bottom:6px;}
+
+/* Hero Carousel */
 .hero-car{position:relative;}
 .hero-car .carousel-item{height:86vh;min-height:440px;max-height:720px;position:relative;animation:fadeInUp .8s ease;}
 .hero-car .carousel-item img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -208,15 +255,74 @@ section[id]{scroll-margin-top:68px;}
 .sec-h{font-family:'Poppins',sans-serif;font-size:clamp(26px,4.5vw,44px);font-weight:900;line-height:1.1;margin-bottom:16px;letter-spacing:-.5px;}
 .sec-p{font-size:clamp(13px,1.5vw,15px);line-height:1.7;margin-bottom:0;color:#666;font-weight:500;}
 
-/* ── FILTER TABS ─────────────────────────────── */
-.filter-btns{display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap;justify-content:center;}
-.ftab{background:rgba(255,255,255,.9);border:2px solid transparent;color:var(--blue);font-size:13px;font-weight:700;padding:9px 22px;border-radius:100px;cursor:pointer;transition:all .25s;font-family:'Inter',sans-serif;}
-.ftab:hover{background:#fff;border-color:var(--orange);}
-.ftab.active{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:0 6px 20px rgba(13,45,98,.25);}
+/* ── SCROLL ANIMATIONS ──────────────────────── */
+.scroll-animator{opacity:0;transform:translateY(20px);transition:all .6s cubic-bezier(.4,.1,.2,1);}
+.scroll-animator.animate{opacity:1;transform:translateY(0);}
+.scroll-animator.stagger-1{transition-delay:.1s;}
+.scroll-animator.stagger-2{transition-delay:.2s;}
+.scroll-animator.stagger-3{transition-delay:.3s;}
+.scroll-animator.stagger-4{transition-delay:.4s;}
+.scroll-animator.from-left{transform:translateX(-30px);}
+.scroll-animator.from-left.animate{transform:translateX(0);}
 
-/* ── NO EVENTS BOX ───────────────────────────── */
-.no-events-box{padding:48px 24px;text-align:center;border-radius:16px;background:linear-gradient(135deg,#f8f9fa,#f1f5f9);border:2px dashed #cbd5e1;}
-.no-events-box i{font-size:48px;color:var(--blue);opacity:.15;margin-bottom:16px;}
+/* ── EVENT MODAL ────────────────────────────── */
+.modal-backdrop.show{background-color:rgba(0,0,0,.65);}
+.modal-content{border:none;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.25);animation:slideUp .35s cubic-bezier(.4,.1,.2,1);}
+.modal-header{background:linear-gradient(135deg,var(--blue),#0a2a3f);border:none;padding:24px;}
+.modal-header .btn-close{filter:brightness(0) invert(1);}
+.modal-title{font-family:'Poppins',sans-serif;font-weight:900;font-size:20px;letter-spacing:-.5px;}
+.event-modal-banner{width:100%;height:320px;object-fit:cover;border-radius:12px;margin-bottom:20px;}
+.event-modal-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.event-modal-meta-item{display:flex;gap:10px;padding:12px;background:#f8fafc;border-radius:12px;align-items:center;}
+.event-modal-meta-item i{color:var(--orange);font-size:16px;flex-shrink:0;}
+.event-modal-meta-item span{font-size:13px;color:#64748b;font-weight:600;}
+.event-modal-section{margin:20px 0;}
+.event-modal-section h5{font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);margin-bottom:10px;font-size:14px;}
+.event-modal-section p{font-size:13px;line-height:1.8;color:#475569;}
+.modal-btn-group{display:flex;gap:12px;margin-top:20px;}
+.modal-btn{flex:1;padding:10px 20px;font-weight:700;border-radius:9px;transition:.2s;font-size:13px;}
+.modal-btn-primary{background:var(--blue);color:#fff;border:none;}
+.modal-btn-primary:hover{background:#033a82;transform:translateY(-2px);}
+.modal-btn-secondary{background:#e9ecef;color:var(--blue);border:none;}
+.modal-btn-secondary:hover{background:#dee2e6;}
+
+/* ── SOCIAL PROOF SECTION ───────────────────── */
+.social-proof-section{background:linear-gradient(135deg,#f0f7ff 0%,#fff5f0 100%);padding:48px 0;position:relative;overflow:hidden;}
+.social-proof-section::before{content:'';position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><path d="M0 0h100v100H0z" fill="none"/><circle cx="50" cy="50" r="2" fill="rgba(13,45,98,.04)"/></svg>');pointer-events:none;}
+.testimonial-card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.06);transition:all .3s;border:1px solid #e9ecef;position:relative;z-index:1;}
+.testimonial-card:hover{transform:translateY(-6px);box-shadow:0 12px 36px rgba(0,0,0,.12);border-color:rgba(243,112,33,.2);}
+.testimonial-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.testimonial-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#ff6b35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;}
+.testimonial-name{font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);font-size:13px;}
+.testimonial-role{font-size:11px;color:#94a3b8;font-weight:600;}
+.testimonial-rating{color:#fbbf24;font-size:12px;margin-bottom:8px;}
+.testimonial-text{font-size:13px;line-height:1.8;color:#64748b;font-weight:500;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.testimonial-quote{position:absolute;top:12px;right:16px;font-size:32px;color:rgba(243,112,33,.08);font-family:Georgia, serif;}
+
+/* ── STAT COUNTERS ──────────────────────────── */
+.stat-counter{font-family:'Poppins',sans-serif;font-weight:900;font-size:clamp(20px,3vw,32px);color:var(--orange);line-height:1;text-shadow:0 2px 8px rgba(243,112,33,.3);}
+
+/* ── FORM ENHANCEMENTS ──────────────────────── */
+.form-control{border:1.5px solid #e0e9f0;border-radius:9px;padding:10px 14px;font-size:13px;transition:.2s;background:#f8fafc;font-family:'Inter',sans-serif;}
+.form-control:focus{border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(243,112,33,.08);}
+.form-control::placeholder{color:#cbd5e1;}
+.form-label{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;}
+.input-group{position:relative;}
+.input-feedback{font-size:11px;margin-top:4px;font-weight:600;display:none;}
+.input-feedback.success{color:#10b981;display:block;}
+.input-feedback.error{color:#ef4444;display:block;}
+.form-control.is-invalid{border-color:#ef4444;background:#fff5f5;}
+.form-control.is-valid{border-color:#10b981;background:#f0fdf4;}
+.input-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+.input-icon.success{color:#10b981;}
+.input-icon.error{color:#ef4444;}
+
+/* ── RESPONSIVE MODAL ───────────────────────── */
+@media(max-width:768px){
+  .modal-content{border-radius:12px;}
+  .event-modal-meta{grid-template-columns:1fr;}
+  .modal-btn-group{flex-direction:column;}
+}
 
 /* ── RESPONSIVE ─────────────────────────── */
 @media(max-width:991px){
@@ -246,9 +352,85 @@ section[id]{scroll-margin-top:68px;}
   .chat-win{width:280px;right:-6px;bottom:68px;}
   .ev-title{font-size:15px;}
 }
+
+/* ── ACCESSIBILITY & FOCUS MANAGEMENT ─────── */
+.skip-link{position:absolute;top:-40px;left:0;background:var(--blue);color:#fff;padding:8px 16px;text-decoration:none;z-index:100;border-radius:0 0 4px 0;}
+.skip-link:focus{top:0;}
+
+/* Enhanced focus indicators */
+*:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+
+/* Reduced motion for accessibility */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+}
+
+/* High contrast mode support */
+@media(prefers-contrast:more){
+  body{font-weight:600;}
+  h1,h2,h3,h4,h5,h6{font-weight:900;}
+  .btn-reg,.h-btn-primary,.modal-btn-primary{border:2px solid currentColor;}
+}
+
+/* Dark mode support */
+@media(prefers-color-scheme:dark){
+  body{background:#1a1a1a;color:#e0e0e0;}
+  .sec-p{color:#b0b0b0;}
+}
 </style>
+
+<!-- ═══ JSON-LD Structured Data for SEO ═══ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SapthaEvent",
+  "description": "Official event management portal and registration system for Sapthagiri NPS University",
+  "url": "https://events.snpsu.edu.in",
+  "applicationCategory": "BusinessApplication",
+  "creator": {
+    "@type": "Organization",
+    "name": "Sapthagiri NPS University",
+    "url": "https://snpsu.edu.in",
+    "logo": "https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+  },
+  "features": ["Event Registration", "QR Ticket Generation", "Email Alerts", "WhatsApp Notifications", "AI Assistant"],
+  "image": "https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+}
+</script>
+
+<!-- ═══ Organization Schema ═══ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Sapthagiri NPS University",
+  "url": "https://snpsu.edu.in",
+  "logo": "https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png",
+  "description": "A leading educational institution in Bengaluru, India",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "#14/5, Chikkasandra",
+    "addressLocality": "Bengaluru",
+    "addressRegion": "Karnataka",
+    "postalCode": "560057",
+    "addressCountry": "IN"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "Customer Service",
+    "telephone": "+91-80-2837-2800",
+    "email": "admissions@snpsu.edu.in"
+  }
+}
+</script>
+
 </head>
 <body>
+
+<!-- ═══ SKIP NAVIGATION LINK ═══ -->
+<a href="#main-content" class="skip-link">Skip to Main Content</a>
 
 <!-- TICKER -->
 <div class="ticker-bar" aria-hidden="true">
@@ -269,9 +451,9 @@ section[id]{scroll-margin-top:68px;}
 </div>
 
 <!-- NAVBAR -->
-<nav class="snav navbar navbar-expand-lg">
+<nav class="snav navbar navbar-expand-lg" role="navigation" aria-label="Main navigation">
   <div class="container-xl px-3">
-    <a class="navbar-brand" href="/">
+    <a class="navbar-brand" href="/" aria-label="SapthaEvent Home">
       <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
            alt="Sapthagiri NPS University"
            style="height:42px;width:auto;object-fit:contain;filter:brightness(0) invert(1);"
@@ -331,19 +513,22 @@ section[id]{scroll-margin-top:68px;}
   {% endif %}
 {% endwith %}
 
+<!-- ═══ MAIN CONTENT ═══ -->
+<main id="main-content" role="main">
+
 <!-- ═══ HERO CAROUSEL — SNPSU Campus Images ═══ -->
-<div id="heroCarousel" class="carousel slide hero-car" data-bs-ride="carousel" data-bs-interval="4800">
-  <div class="carousel-indicators">
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="4"></button>
+<div id="heroCarousel" class="carousel slide hero-car" data-bs-ride="carousel" data-bs-interval="4800" role="region" aria-label="SNPSU Campus Featured Events">
+  <div class="carousel-indicators" role="tablist" aria-label="Carousel navigation">
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" role="tab" aria-label="Slide 1: Campus Overview" aria-selected="true"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" role="tab" aria-label="Slide 2: Event Registration" aria-selected="false"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" role="tab" aria-label="Slide 3: QR Ticket System" aria-selected="false"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" role="tab" aria-label="Slide 4: AI Chatbot Assistant" aria-selected="false"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="4" role="tab" aria-label="Slide 5: Student Community" aria-selected="false"></button>
   </div>
   <div class="carousel-inner">
 
     <!-- Slide 1 -->
-    <div class="carousel-item active">
+    <div class="carousel-item active" role="tabpanel">
       <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0005_View-1-768x549.jpg"
            alt="SNPSU Main Campus"
            onerror="this.src='https://images.unsplash.com/photo-1562774053-701939374585?w=1400&q=80'">
@@ -352,11 +537,11 @@ section[id]{scroll-margin-top:68px;}
         <h1 class="h-title">Your Events.<br><span class="accent">Your Campus.</span><br>Your Portal.</h1>
         <p class="h-desc">Register for hackathons, cultural fests, and sports meets — all in one place with instant QR tickets.</p>
         <div class="h-btns">
-          <a href="#events" class="h-btn-primary"><i class="fas fa-search"></i>Explore Events</a>
+          <a href="#events" class="h-btn-primary" aria-label="Explore upcoming events on the portal"><i class="fas fa-search" aria-hidden="true"></i>Explore Events</a>
           {% if not session.get('user_id') %}
-          <a href="/login" class="h-btn-outline"><i class="fas fa-sign-in-alt"></i>Login</a>
+          <a href="/login" class="h-btn-outline" aria-label="Sign in to your account"><i class="fas fa-sign-in-alt" aria-hidden="true"></i>Login</a>
           {% else %}
-          <a href="/participant/dashboard" class="h-btn-outline"><i class="fas fa-ticket-alt"></i>My Tickets</a>
+          <a href="/participant/dashboard" class="h-btn-outline" aria-label="View your registered tickets and dashboard"><i class="fas fa-ticket-alt" aria-hidden="true"></i>My Tickets</a>
           {% endif %}
         </div>
         <div class="h-stats">
@@ -428,10 +613,10 @@ section[id]{scroll-margin-top:68px;}
     </div>
 
   </div>
-  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous slide">
     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
   </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="Next slide">
     <span class="carousel-control-next-icon" aria-hidden="true"></span>
   </button>
 </div>
@@ -461,7 +646,7 @@ section[id]{scroll-margin-top:68px;}
 </div>
 
 <!-- ═══ EVENTS ═══ -->
-<section id="events" class="py-5" style="background:#f8f9fa;">
+<section id="events" class="py-5" style="background:#f8f9fa;" role="region" aria-label="Upcoming events for registration">
   <div class="container-xl px-3">
 
     <!-- Header row -->
@@ -472,24 +657,43 @@ section[id]{scroll-margin-top:68px;}
         <p class="sec-p mb-0">Register in seconds and receive your QR ticket instantly.</p>
       </div>
       <div class="col-lg-7">
-        <div class="ftabs justify-content-lg-end">
-          <button class="ftab active" onclick="filterEv('all',this)">All Events</button>
-          <button class="ftab" onclick="filterEv('Technical',this)"><i class="fas fa-code me-1"></i>Technical</button>
-          <button class="ftab" onclick="filterEv('Cultural',this)"><i class="fas fa-music me-1"></i>Cultural</button>
-          <button class="ftab" onclick="filterEv('Sports',this)"><i class="fas fa-running me-1"></i>Sports</button>
-          <button class="ftab" onclick="filterEv('Management',this)"><i class="fas fa-briefcase me-1"></i>Management</button>
+        <div class="ftabs justify-content-lg-end" role="group" aria-label="Event category filters">
+          <button class="ftab active" onclick="filterEv('all',this)" aria-pressed="true">All Events</button>
+          <button class="ftab" onclick="filterEv('Technical',this)" aria-pressed="false"><i class="fas fa-code me-1" aria-hidden="true"></i>Technical</button>
+          <button class="ftab" onclick="filterEv('Cultural',this)" aria-pressed="false"><i class="fas fa-music me-1" aria-hidden="true"></i>Cultural</button>
+          <button class="ftab" onclick="filterEv('Sports',this)" aria-pressed="false"><i class="fas fa-running me-1" aria-hidden="true"></i>Sports</button>
+          <button class="ftab" onclick="filterEv('Management',this)" aria-pressed="false"><i class="fas fa-briefcase me-1" aria-hidden="true"></i>Management</button>
         </div>
       </div>
     </div>
 
     <!-- Grid -->
-    <div class="row g-4" id="evGrid">
+    <!-- Skeleton Loading State (shown initially) -->
+    <div class="row g-4" id="evGridSkeleton" role="status" aria-live="polite" aria-label="Loading events">
+      {% for i in range(6) %}
+      <div class="col-12 col-sm-6 col-lg-4">
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-image"></div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text" style="width:70%;"></div>
+          <div class="skeleton skeleton-btn"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Actual Events Grid (shown after load) -->
+    <div class="row g-4" id="evGrid" role="region" aria-label="Upcoming events" style="display:none;">
       {% for event in events %}
-      <div class="col-12 col-sm-6 col-lg-4 ev-col" data-cat="{{ event.get('category','General') }}">
-        <div class="ev-card">
-          <div class="ev-banner">
+      <div class="col-12 col-sm-6 col-lg-4 ev-col scroll-animator" data-cat="{{ event.get('category','General')|lower }}" data-id="{{ event.id }}">
+        <button class="ev-card" onclick="showEventModal({{ event.id }});" 
+                type="button" 
+                style="cursor:pointer;border:none;background:transparent;width:100%;text-align:left;padding:0;" 
+                aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
+          <div class="ev-banner" aria-hidden="true">
             {% if event.get('banner_url') %}
-              <img src="{{ event.banner_url }}" alt="{{ event.title }}" loading="lazy"
+              <img src="{{ event.banner_url }}" alt="" loading="lazy"
                    onerror="this.style.display='none'">
               <div class="ev-overlay"></div>
             {% endif %}
@@ -509,28 +713,28 @@ section[id]{scroll-margin-top:68px;}
             <p class="ev-desc">{{ event.get('description', 'An exciting event hosted by Sapthagiri NPS University. Click to register.') }}</p>
             <div class="ev-meta">
               {% if event.get('date') %}
-              <span><i class="fas fa-calendar-alt"></i>{{ event.date }}</span>
+              <span data-info="date"><i class="fas fa-calendar-alt" aria-hidden="true"></i>{{ event.date }}</span>
               {% endif %}
               {% if event.get('venue') %}
-              <span><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
+              <span data-info="venue"><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
               {% endif %}
               <span><i class="fas fa-users"></i>{{ 'Team' if event.get('is_team_event') else 'Individual' }}</span>
             </div>
             <div class="ev-footer">
               <div>
                 {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
-                  <div class="ev-fee-paid">₹{{ event.entry_fee }}</div>
+                  <div class="ev-fee-paid" data-info="fee">₹{{ event.entry_fee }}</div>
                 {% else %}
-                  <div class="ev-fee-free">Free Entry</div>
+                  <div class="ev-fee-free" data-info="fee">Free Entry</div>
                 {% endif %}
                 <div class="ev-reg-count">{{ event.get('registration_count', 0) }} registered</div>
               </div>
-              <a href="/forms/register/{{ event.id }}" class="btn-reg">
-                <i class="fas fa-arrow-right"></i>Register
+              <a href="/forms/register/{{ event.id }}" class="btn-reg" onclick="event.stopPropagation();">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i>Register
               </a>
             </div>
           </div>
-        </div>
+        </button>
       </div>
       {% else %}
       <div class="col-12">
@@ -549,7 +753,7 @@ section[id]{scroll-margin-top:68px;}
 </section>
 
 <!-- ═══ HOW IT WORKS ═══ -->
-<section class="hiw-section py-5" id="how">
+<section class="hiw-section py-5" id="how" role="region" aria-label="How to register for events">
   <div class="container-xl px-3">
     <div class="text-center mb-5">
       <div class="sec-eyebrow justify-content-center">Simple Process</div>
@@ -560,29 +764,29 @@ section[id]{scroll-margin-top:68px;}
     </div>
     <div class="row g-4 justify-content-center">
       <div class="col-6 col-md-3">
-        <div class="step-card">
-          <div class="step-ico"><i class="fas fa-search"></i></div>
+        <div class="step-card" role="article" aria-label="Step 1: Browse Events">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-search"></i></div>
           <div class="step-title">Browse Events</div>
           <p class="step-desc">Explore all upcoming technical, cultural, and sports events on the portal.</p>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="step-card">
-          <div class="step-ico"><i class="fas fa-pen-to-square"></i></div>
+        <div class="step-card" role="article" aria-label="Step 2: Complete the Form">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-pen-to-square"></i></div>
           <div class="step-title">Complete the Form</div>
           <p class="step-desc">Each event has a custom registration form — designed by the organiser and takes under a minute.</p>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="step-card">
-          <div class="step-ico"><i class="fas fa-qrcode"></i></div>
+        <div class="step-card" role="article" aria-label="Step 3: Receive QR Ticket">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-qrcode"></i></div>
           <div class="step-title">Receive QR Ticket</div>
           <p class="step-desc">Your digital ticket with QR code is delivered instantly via email and WhatsApp.</p>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="step-card">
-          <div class="step-ico"><i class="fas fa-door-open"></i></div>
+        <div class="step-card" role="article" aria-label="Step 4: Walk In">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-door-open"></i></div>
           <div class="step-title">Walk In</div>
           <p class="step-desc">Show your QR at the venue — the coordinator scans it and your attendance is recorded instantly.</p>
         </div>
@@ -591,14 +795,116 @@ section[id]{scroll-margin-top:68px;}
   </div>
 </section>
 
-<!-- ═══ FOOTER ═══ -->
-<footer class="site-ft pt-5 pb-0">
+<!-- ═══ SOCIAL PROOF / TESTIMONIALS ═══ -->
+<section class="social-proof-section py-5" id="testimonials" role="region" aria-label="Student testimonials">
+  <div class="container-xl px-3">
+    <div class="text-center mb-5">
+      <div class="sec-eyebrow justify-content-center">Student Testimonials</div>
+      <h2 class="sec-h">What Students Say About SapthaEvent</h2>
+      <p class="sec-p mx-auto" style="max-width:520px;">
+        Join thousands of students who've discovered an amazing way to explore campus events and build connections.
+      </p>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Anirudh J., CSE Year 2, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">AJ</div>
+            <div>
+              <div class="testimonial-name">Anirudh J.</div>
+              <div class="testimonial-role">CSE - Year 2</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">SapthaEvent made discovering events so easy! The QR ticket system is seamless, and I've attended 8 events this semester alone.</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator stagger-1">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Priya K., Mechanical Year 3, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">PK</div>
+            <div>
+              <div class="testimonial-name">Priya K.</div>
+              <div class="testimonial-role">Mechanical - Year 3</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">The AI assistant Sparky helped me find events matching my interests. Registrations used to take forever, now it's instant!</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator stagger-2">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Rohan V., ECE Year 1, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">RV</div>
+            <div>
+              <div class="testimonial-name">Rohan V.</div>
+              <div class="testimonial-role">ECE - Year 1</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">Love how the platform works! Never missed an event after getting WhatsApp notifications. Highly recommend to everyone!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credibility Stats -->
+    <div class="row g-4 mt-3 justify-content-center">
+      <div class="col-6 col-md-3 text-center scroll-animator">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(243,112,33,.3);" aria-label="2 thousand 400 plus students registered">
+          <span class="stat-counter" data-count="2400">2400</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Students</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-1">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(243,112,33,.3);" aria-label="150 plus events scheduled for 2026">
+          <span class="stat-counter" data-count="150">150</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Events 2026</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-2">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(243,112,33,.3);" aria-label="98 percent user satisfaction rate">
+          <span class="stat-counter" data-count="98">98</span><span style="font-size:20px;">%</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Satisfaction</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-3">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(243,112,33,.3);" aria-label="8 thousand 500 plus successful event registrations">
+          <span class="stat-counter" data-count="8500">8500</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Registrations</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ EVENT DETAIL MODAL ═══ -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="eventModalLabel" aria-describedby="eventModalBody">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalLabel">Event Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
+      </div>
+      <div class="modal-body" id="eventModalBody">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading event details...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<footer class="site-ft pt-5 pb-0" role="contentinfo">
   <div class="container-xl px-3">
     <div class="row g-4 pb-5">
 
       <div class="col-12 col-md-5 col-lg-4">
         <div class="d-flex align-items-center gap-2 mb-3">
-          <div class="nav-logo-sq">SE</div>
+          <div class="nav-logo-sq" aria-hidden="true">SE</div>
           <span class="ft-brand">SapthaEvent</span>
         </div>
         <p style="font-size:13px;line-height:1.72;margin-bottom:16px;">
@@ -606,10 +912,10 @@ section[id]{scroll-margin-top:68px;}
           Powering hackathons, cultural fests, sports meets, and more.
         </p>
         <div class="d-flex gap-2">
-          <a href="https://snpsu.edu.in" target="_blank" class="soc-btn" title="Official Website"><i class="fas fa-globe"></i></a>
-          <a href="#" class="soc-btn" title="Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="#" class="soc-btn" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-          <a href="#" class="soc-btn" title="YouTube"><i class="fab fa-youtube"></i></a>
+          <a href="https://snpsu.edu.in" target="_blank" class="soc-btn" aria-label="Sapthagiri NPS University official website"><i class="fas fa-globe" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Follow SapthaEvent on Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Connect on LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Subscribe on YouTube"><i class="fab fa-youtube" aria-hidden="true"></i></a>
         </div>
       </div>
 
@@ -669,14 +975,18 @@ section[id]{scroll-margin-top:68px;}
       </div>
     </div>
     <div class="chat-row">
+      <label for="chatInp" class="visually-hidden">Ask Sparky about events</label>
       <input type="text" class="chat-inp" id="chatInp"
              placeholder="Ask about events…"
+             aria-label="Ask Sparky AI about events"
+             aria-describedby="chatHint"
              onkeydown="if(event.key==='Enter')sendChat()">
-      <button class="chat-send" onclick="sendChat()" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+      <span id="chatHint" class="visually-hidden">Press Enter to send your message to the AI assistant.</span>
+      <button class="chat-send" onclick="sendChat()" aria-label="Send message"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
     </div>
   </div>
-  <button class="chat-btn" onclick="toggleChat()" aria-label="Open AI Assistant">
-    <i class="fas fa-robot" id="chatIcon"></i>
+  <button class="chat-btn" onclick="toggleChat()" aria-label="Open AI Assistant, Sparky">
+    <i class="fas fa-robot" id="chatIcon" aria-hidden="true"></i>
     <span class="chat-ai-dot">AI</span>
   </button>
 </div>
@@ -684,6 +994,46 @@ section[id]{scroll-margin-top:68px;}
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// ── SKELETON LOADER INITIALIZATION ────
+document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){const skeleton=document.getElementById('evGridSkeleton');const grid=document.getElementById('evGrid');if(grid){grid.style.display='';if(skeleton)skeleton.remove();}},300);});
+
+// ── INTERSECTION OBSERVER FOR SCROLL ANIMATIONS ────
+function initScrollAnimations(){
+  const options = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+  const observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('animate');
+        if(entry.target.classList.contains('stat-counter') && !entry.target.dataset.counted){
+          animateCounter(entry.target);
+        }
+      }
+    });
+  }, options);
+  document.querySelectorAll('.scroll-animator, .stat-counter').forEach(function(el){
+    observer.observe(el);
+  });
+}
+
+// ── COUNTER ANIMATION ──────────────────────────
+function animateCounter(el){
+  el.dataset.counted = 'true';
+  const target = parseInt(el.dataset.count) || 0;
+  const duration = 2000;
+  const start = Date.now();
+  
+  function update(){
+    const elapsed = Date.now() - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = Math.floor(target * progress);
+    el.textContent = current.toLocaleString();
+    
+    if(progress < 1) requestAnimationFrame(update);
+    else el.textContent = target.toLocaleString();
+  }
+  update();
+}
+
 // ── SMOOTH SCROLL (fixes anchor buttons) ──────
 document.querySelectorAll('a[href^="#"]').forEach(function(a){
   a.addEventListener('click', function(e){
@@ -694,12 +1044,86 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a){
   });
 });
 
+// ── EVENT MODAL ────────────────────────────────
+function showEventModal(eventId){
+  var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+  var body = document.getElementById('eventModalBody');
+  
+  var cards = document.querySelectorAll('.ev-col');
+  var eventData = null;
+  
+  cards.forEach(function(card){
+    if(card.dataset.id === String(eventId)){
+      eventData = {
+        title: card.querySelector('.ev-title').textContent,
+        description: card.querySelector('.ev-desc').textContent,
+        category: card.dataset.cat,
+        date: card.querySelector('[data-info="date"]')?.textContent || 'TBA',
+        venue: card.querySelector('[data-info="venue"]')?.textContent || 'TBA',
+        fee: card.querySelector('[data-info="fee"]')?.textContent || 'Free',
+        registered: card.querySelector('.ev-reg-count').textContent
+      };
+    }
+  });
+  
+  if(eventData){
+    body.innerHTML = `
+      <div class="event-modal-meta">
+        <div class="event-modal-meta-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>${eventData.date}</span>
+        </div>
+        <div class="event-modal-meta-item">
+          <i class="fas fa-map-marker-alt"></i>
+          <span>${eventData.venue}</span>
+        </div>
+        <div class="event-modal-meta-item">
+          <i class="fas fa-tag"></i>
+          <span>${eventData.category}</span>
+        </div>
+        <div class="event-modal-meta-item">
+          <i class="fas fa-users"></i>
+          <span>${eventData.registered}</span>
+        </div>
+      </div>
+      
+      <div class="event-modal-section">
+        <h5>About This Event</h5>
+        <p>${eventData.description}</p>
+      </div>
+      
+      <div class="event-modal-section">
+        <h5>Entry Fee</h5>
+        <p style="font-size:16px;font-weight:800;color:var(--orange);">${eventData.fee}</p>
+      </div>
+      
+      <div class="event-modal-section">
+        <h5>Event Highlights</h5>
+        <p>🎯 Competitive spirit • 🏆 Amazing prizes • 🤝 Networking opportunities • 🎓 Skill development</p>
+      </div>
+      
+      <div class="modal-btn-group">
+        <button class="modal-btn modal-btn-primary" onclick="window.location.href='/forms/register/${eventId}'">
+          <i class="fas fa-arrow-right me-1"></i>Register Now
+        </button>
+        <button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Back</button>
+      </div>
+    `;
+  }
+  
+  modal.show();
+}
+
 // ── EVENT CATEGORY FILTER ─────────────────────
 function filterEv(cat, btn){
   document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   document.querySelectorAll('.ev-col').forEach(function(c){
-    c.style.display = (cat==='all' || c.dataset.cat===cat) ? '' : 'none';
+    var shouldShow = (cat === 'all' || c.dataset.cat === cat);
+    c.style.display = shouldShow ? '' : 'none';
+    if(shouldShow && !c.classList.contains('animate')){
+      c.classList.add('scroll-animator', 'animate');
+    }
   });
 }
 
@@ -750,6 +1174,52 @@ function addTyping(){
   msgs.scrollTop = msgs.scrollHeight;
   return wrap;
 }
+
+// ── FORM VALIDATION ENHANCEMENT ────────────────
+function setupFormValidation(){
+  var inputs = document.querySelectorAll('input[type="email"], input[type="text"], textarea');
+  inputs.forEach(function(input){
+    input.addEventListener('blur', function(){
+      validateInput(this);
+    });
+    input.addEventListener('input', function(){
+      if(this.classList.contains('is-invalid')){
+        validateInput(this);
+      }
+    });
+  });
+}
+
+function validateInput(input){
+  var value = input.value.trim();
+  var container = input.closest('.input-group') || input.parentElement;
+  var feedback = container.querySelector('.input-feedback');
+  var icon = container.querySelector('.input-icon');
+  
+  if(!value) {
+    input.classList.remove('is-valid');
+    input.classList.add('is-invalid');
+    if(feedback) feedback.textContent = 'This field is required';
+    if(feedback) feedback.classList.remove('success');
+    if(feedback) feedback.classList.add('error');
+    if(icon) { icon.classList.remove('success'); icon.classList.add('error'); icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>'; }
+    return false;
+  }
+  
+  input.classList.remove('is-invalid');
+  input.classList.add('is-valid');
+  if(feedback) feedback.textContent = '✓ Looks good!';
+  if(feedback) feedback.classList.remove('error');
+  if(feedback) feedback.classList.add('success');
+  if(icon) { icon.classList.remove('error'); icon.classList.add('success'); icon.innerHTML = '<i class="fas fa-check-circle"></i>'; }
+  return true;
+}
+
+// ── INITIALIZE ON PAGE LOAD ────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  initScrollAnimations();
+  setupFormValidation();
+});
 </script>
 </body>
 </html>

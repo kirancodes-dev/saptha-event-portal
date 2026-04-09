@@ -10,11 +10,12 @@
     
     <style>
         :root { 
-            --bg: #0f172a; 
-            --card: #1e293b; 
-            --accent: #3b82f6; 
-            --text-main: #ffffff; 
-            --text-muted: #cbd5e1; 
+            --blue: #0d2d62; 
+            --orange: #f37021;
+            --bg: #f8f9fa; 
+            --card: #ffffff; 
+            --text-main: #1e293b; 
+            --text-muted: #64748b; 
         }
         body { background-color: var(--bg); color: var(--text-main); font-family: 'Inter', sans-serif; padding-bottom: 120px; }
         
@@ -23,51 +24,51 @@
             height: 450px; background-size: cover; background-position: center; position: relative;
         }
         .hero-overlay {
-            position: absolute; inset: 0; background: linear-gradient(to top, var(--bg) 10%, rgba(15,23,42,0.7) 100%);
+            position: absolute; inset: 0; background: linear-gradient(to top, rgba(13,45,98,0.9) 10%, rgba(13,45,98,0.7) 100%);
         }
         
         /* Content Cards */
         .content-card { 
             background: var(--card); border-radius: 16px; padding: 30px; margin-bottom: 25px; 
-            border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(13,45,98,0.1);
         }
         .section-title { 
-            font-weight: 800; font-size: 1.25rem; margin-bottom: 20px; color: #3b82f6; 
-            border-left: 4px solid var(--accent); padding-left: 15px; text-transform: uppercase; letter-spacing: 0.5px;
+            font-weight: 800; font-size: 1.25rem; margin-bottom: 20px; color: var(--blue); 
+            border-left: 4px solid var(--orange); padding-left: 15px; text-transform: uppercase; letter-spacing: 0.5px;
         }
         
         /* Sticky Footer */
         .action-bar {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(15, 23, 42, 0.98); 
-            border-top: 1px solid #475569; padding: 20px 0; z-index: 1050;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            background: rgba(255,255,255,0.98); 
+            border-top: 1px solid #e2e8f0; padding: 20px 0; z-index: 1050;
+            box-shadow: 0 -10px 40px rgba(13,45,98,0.1);
         }
-        .action-label { color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-        .action-value { color: white; font-weight: 800; font-size: 1.8rem; }
+        .action-label { color: #64748b; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .action-value { color: var(--blue); font-weight: 800; font-size: 1.8rem; }
 
         .btn-register-lg {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); 
+            background: linear-gradient(135deg, var(--blue) 0%, #1a4fa0 100%); 
             color: white; font-weight: 800; padding: 16px 50px; border-radius: 50px; 
-            border: 2px solid #3b82f6; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 0.5px;
-            box-shadow: 0 0 20px rgba(37, 99, 235, 0.5); transition: all 0.2s; width: 100%;
+            border: 2px solid var(--blue); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 0.5px;
+            box-shadow: 0 0 20px rgba(13,45,98,0.3); transition: all 0.2s; width: 100%;
         }
-        .btn-register-lg:hover { transform: translateY(-3px); box-shadow: 0 0 30px rgba(37, 99, 235, 0.7); background: #3b82f6; }
+        .btn-register-lg:hover { transform: translateY(-3px); box-shadow: 0 0 30px rgba(243,112,33,0.5); background: var(--orange); border-color: var(--orange); }
         
         /* --- HIGH VISIBILITY FORM STYLES --- */
-        .modal-content { background: #1e293b; border: 1px solid #64748b; color: white; }
-        .modal-header { border-bottom: 1px solid #475569; }
+        .modal-content { background: white; border: 1px solid #e2e8f0; color: var(--text-main); }
+        .modal-header { border-bottom: 1px solid #e2e8f0; background: var(--blue); color: white; }
         
-        /* Input Fields: Dark background, Light Border, White Text */
+        /* Input Fields */
         .form-control { 
-            background-color: #020617 !important; 
-            border: 1px solid #64748b !important; 
-            color: #ffffff !important; 
+            background-color: #f8f9fa !important; 
+            border: 1.5px solid #e2e8f0 !important; 
+            color: var(--text-main) !important; 
             padding: 12px;
-            font-weight: 500;
+            font-weight: 500; border-radius: 8px;
         }
         
-        /* Placeholders: Light Gray to ensure they are visible */
+        /* Placeholders */
         .form-control::placeholder {
             color: #94a3b8 !important; 
             opacity: 1; 
@@ -75,10 +76,10 @@
         
         /* Focus State */
         .form-control:focus { 
-            border-color: #3b82f6 !important; 
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important; 
-            background-color: #020617 !important;
-            color: white !important;
+            border-color: var(--blue) !important; 
+            box-shadow: 0 0 0 3px rgba(13,45,98,0.1) !important; 
+            background-color: #ffffff !important;
+            color: var(--text-main) !important;
         }
         
         /* Field Labels */
@@ -86,18 +87,18 @@
             font-size: 0.75rem; 
             text-transform: uppercase; 
             letter-spacing: 1px; 
-            color: #fbbf24; /* Gold Color */
+            color: var(--blue);
             font-weight: 700; 
             margin-bottom: 8px; 
             display: block; 
         }
         
         /* Text Fixes */
-        p, .text-secondary { color: #cbd5e1 !important; }
+        p, .text-secondary { color: var(--text-muted) !important; }
         .text-muted { color: #94a3b8 !important; }
         
         /* Prizes Box */
-        .prize-box { background: rgba(255,255,255,0.03); border: 1px solid #475569; border-radius: 12px; padding: 15px; }
+        .prize-box { background: rgba(13,45,98,0.05); border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; }
         .prize-title { font-weight: 700; margin-bottom: 5px; color: white; }
         .prize-amount { font-weight: 600; font-size: 0.9rem; }
     </style>

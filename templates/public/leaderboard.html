@@ -44,7 +44,12 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;min-height:100vh;}
 
 <div class="header">
   <div class="logo">
-    <div class="logo-sq">SE</div>
+    <div class="logo-sq" style="background:var(--orange);">
+        <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+             alt="SNPSU"
+             style="height:18px;width:auto;filter:brightness(0)invert(1);"
+             onerror="this.style.display='none'">
+    </div>
     <div>
       <div class="event-name">{{ event.get('title','Event') }}</div>
       <div style="font-size:11px;color:rgba(255,255,255,.55);">

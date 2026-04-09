@@ -9,13 +9,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
+        :root{--blue:#0d2d62;--orange:#f37021;}
         body { 
             background: #000000; 
             color: #ffffff; 
             font-family: 'Inter', sans-serif; 
             height: 100vh;
             overflow: hidden; /* Hide scrollbars for projector */
-            background-image: radial-gradient(circle at 50% 50%, #1e293b 0%, #000000 100%);
+            background-image: radial-gradient(circle at 50% 50%, #1a2a3f 0%, #000000 100%);
         }
         
         /* Neon Header */
@@ -23,7 +24,7 @@
             font-family: 'Orbitron', sans-serif;
             text-transform: uppercase;
             letter-spacing: 3px;
-            text-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+            text-shadow: 0 0 20px rgba(243, 112, 33, 0.8);
             margin-bottom: 10px;
         }
 
@@ -41,9 +42,9 @@
         }
 
         /* Top 3 Highlighting */
-        .rank-1 { background: linear-gradient(90deg, rgba(234, 179, 8, 0.2), transparent); border-color: #eab308; transform: scale(1.02); }
+        .rank-1 { background: linear-gradient(90deg, rgba(243, 112, 33, 0.2), transparent); border-color: var(--orange); transform: scale(1.02); }
         .rank-2 { background: linear-gradient(90deg, rgba(148, 163, 184, 0.2), transparent); border-color: #94a3b8; }
-        .rank-3 { background: linear-gradient(90deg, rgba(180, 83, 9, 0.2), transparent); border-color: #b45309; }
+        .rank-3 { background: linear-gradient(90deg, rgba(13, 45, 98, 0.2), transparent); border-color: var(--blue); }
 
         .rank-num { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; width: 60px; font-weight: bold; }
         .team-info { flex-grow: 1; padding-left: 20px; }
@@ -51,11 +52,11 @@
         .lead-name { color: #94a3b8; font-size: 1.1rem; }
         
         .score-display { text-align: right; }
-        .score-val { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; font-weight: bold; color: #3b82f6; }
+        .score-val { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; font-weight: bold; color: var(--orange); }
         .judge-count { font-size: 0.9rem; color: #64748b; }
 
         /* Crown Icons */
-        .fa-crown { color: #eab308; margin-right: 10px; }
+        .fa-crown { color: var(--orange); margin-right: 10px; }
     </style>
 </head>
 <body>

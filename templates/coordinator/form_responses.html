@@ -141,7 +141,7 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
               {{ sub.get('submitted_at','')[:16] | replace('T',' ') }}
             </td>
             <td class="fw-bold">{{ sub.get('name','—') }}</td>
-            <td style="color:#3b82f6;">{{ sub.get('email','—') }}</td>
+            <td style="color:var(--blue);">{{ sub.get('email','—') }}</td>
             {% for field in schema.fields %}
               {% if field.id not in ('full_name','name','email') and field.type not in ('heading','paragraph','divider') %}
               <td class="answer-cell" title="{{ sub.get('answers',{}).get(field.id, '') }}">

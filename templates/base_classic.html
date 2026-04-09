@@ -1,0 +1,122 @@
+<!-- Base Template - Use as foundation for all pages -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a2332">
+    <title>{% block title %}Page Title{% endblock %} | Sapthagiri Event</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    {% if not public_layout %}
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-text">Saptha<span>Event</span></div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <!-- Dashboard Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Navigation</div>
+                    <a href="/dashboard" class="nav-link {% if current_page == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/events" class="nav-link {% if current_page == 'events' %}active{% endif %}">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Events</span>
+                    </a>
+                </div>
+
+                <!-- Management Section (Admin Only) -->
+                {% if user_role == 'admin' %}
+                    <div class="nav-section">
+                        <div class="nav-section-title">Management</div>
+                        <a href="/admin/events" class="nav-link">
+                            <i class="fas fa-cog"></i>
+                            <span>Manage Events</span>
+                        </a>
+                        <a href="/admin/users" class="nav-link">
+                            <i class="fas fa-users"></i>
+                            <span>Users</span>
+                        </a>
+                    </div>
+                {% endif %}
+
+                <!-- Account Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Account</div>
+                    <a href="/profile" class="nav-link">
+                        <i class="fas fa-user-circle"></i>
+                        <span>Profile</span>
+                    </a>
+                    <a href="/settings" class="nav-link">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Settings</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p>© 2024 Sapthagiri</p>
+            </div>
+        </aside>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="main-content {% if public_layout %}public-layout{% endif %}">
+        <!-- Top Header (if not public) -->
+        {% if not public_layout %}
+            <header class="top-header">
+                <div class="header-left">
+                    <h2 class="header-title">{% block page_title %}Dashboard{% endblock %}</h2>
+                </div>
+                <div class="header-right">
+                    <div class="user-menu">
+                        <div class="user-avatar">{{ user_initials | default('U') }}</div>
+                    </div>
+                </div>
+            </header>
+        {% endif %}
+
+        <!-- Page Content -->
+        <div class="content-wrapper">
+            {% block content %}
+                <div class="card">
+                    <div class="card-body">
+                        <p>Welcome to Sapthagiri Event Portal</p>
+                    </div>
+                </div>
+            {% endblock %}
+        </div>
+    </div>
+
+    <script>
+        // Mobile sidebar toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuToggle = document.querySelector('.menu-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    overlay.classList.toggle('active');
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

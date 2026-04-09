@@ -18,14 +18,14 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:
 .btn-home{display:inline-flex;align-items:center;gap:8px;background:var(--orange);color:#fff;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;transition:.15s;margin:4px;}
 .btn-home:hover{background:#d95f0f;color:#fff;}
 .btn-back{display:inline-flex;align-items:center;gap:8px;background:#f1f5f9;color:#334155;font-size:14px;font-weight:500;padding:12px 24px;border-radius:10px;text-decoration:none;transition:.15s;margin:4px;border:1px solid #e2e8f0;}
-.btn-back:hover{background:#e2e8f0;color:#0f172a;}
+.btn-back:hover{background:#e2e8f0;color:#1e293b;}
 .uni{font-size:11.5px;color:#94a3b8;margin-top:20px;}
 .ref{font-size:11px;color:#cbd5e1;margin-top:8px;font-family:monospace;}
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="logo-sq">SE</div>
+  <div class="logo-sq" style="background:var(--orange);"><img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png" alt="SNPSU" style="height:24px;width:auto;filter:brightness(0)invert(1);" onerror="this.style.display='none';"></div>
   <div class="code">500</div>
   <h1 class="title">Something Went Wrong</h1>
   <p class="desc">
@@ -38,7 +38,13 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:
     <a href="javascript:history.back()" class="btn-back">← Go Back</a>
   </div>
   <div class="divider"></div>
-  <p class="uni">SapthaEvent · Sapthagiri NPS University, Bengaluru</p>
+  <div style="text-align:center;margin-bottom:8px;">
+    <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+         alt="Sapthagiri NPS University"
+         style="height:24px;width:auto;object-fit:contain;filter:brightness(0)invert(1);"
+         onerror="this.style.display='none'">
+  </div>
+  <p class="uni">Sapthagiri NPS University, Bengaluru</p>
   <p class="ref">Error reference: {{ request.url if request else '' }}</p>
 </div>
 </body>

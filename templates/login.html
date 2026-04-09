@@ -3,74 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | SapthaEvent Portal</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#1a2332">
+    <title>Login | Sapthagiri Event Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
     <style>
-        :root { --snpsu-blue: #0d2d62; --snpsu-orange: #f37021; --bg-light: #f8f9fa; }
-        body { font-family: 'Inter', sans-serif; background: linear-gradient(rgba(13, 45, 98, 0.85), rgba(13, 45, 98, 0.95)), url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop') center/cover fixed; height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-card { background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); width: 100%; max-width: 450px; padding: 40px; position: relative; }
-        .login-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: var(--snpsu-orange); border-radius: 20px 20px 0 0; }
-        .logo-title { font-family: 'Poppins', sans-serif; color: var(--snpsu-blue); font-weight: 800; font-size: 1.6rem; letter-spacing: 0.5px; }
-        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
-        .form-control, .form-select { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; }
-        .btn-login { background-color: var(--snpsu-blue); color: white; font-weight: 700; padding: 12px; border-radius: 8px; transition: 0.3s; }
-        .btn-login:hover { background-color: #0a224a; color: white; }
+        /* Login Page Specific */
+        body.login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 100%);
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, var(--primary-900), var(--primary-800));
+            color: white;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            border-bottom: 4px solid var(--accent-600);
+        }
+
+        .login-header i {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            display: block;
+            color: var(--accent-500);
+        }
+
+        .login-header h1 {
+            font-family: 'Crimson Text', serif;
+            font-size: 1.6rem;
+            margin: 0 0 0.25rem 0;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: white;
+        }
+
+        .login-header h1 span {
+            color: var(--accent-500);
+        }
+
+        .login-header p {
+            margin: 0.5rem 0 0 0;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .login-form {
+            padding: 2rem 1.75rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--primary-900);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+        }
+
+        .form-label .required {
+            color: var(--danger);
+            margin-left: 0.25rem;
+        }
+
+        .form-control,
+        .form-select {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border-radius: 6px;
+            border: 1.5px solid var(--gray-300);
+            font-size: 0.95rem;
+            font-family: 'Source Sans Pro', sans-serif;
+            transition: var(--transition-fast);
+            color: var(--gray-700);
+            background: white;
+        }
+
+        .form-control::placeholder {
+            color: var(--gray-400);
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--accent-600);
+            box-shadow: 0 0 0 4px rgba(184, 134, 11, 0.1);
+            outline: none;
+        }
+
+        .form-select {
+            cursor: pointer;
+        }
+
+        .alert {
+            border-radius: 6px;
+            padding: 0.85rem 1rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            border-left: 4px solid var(--success);
+            color: var(--success);
+        }
+
+        .alert-danger {
+            background: #ffebee;
+            border-left: 4px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .alert-warning {
+            background: #fff5e1;
+            border-left: 4px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .secret-key-group {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .secret-key-group.show {
+            display: block;
+        }
+
+        .secret-key-group .form-label {
+            color: var(--danger);
+        }
+
+        .login-submit {
+            background: linear-gradient(135deg, var(--primary-900), var(--primary-800));
+            color: white;
+            width: 100%;
+            padding: 1rem;
+            border-radius: 6px;
+            border: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .login-submit:hover {
+            background: linear-gradient(135deg, var(--primary-800), var(--primary-700));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            color: white;
+        }
+
+        .login-submit:active {
+            transform: translateY(0);
+        }
+
+        .login-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .login-footer {
+            padding: 1rem 1.75rem;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-200);
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .role-icon {
+            margin-right: 0.5rem;
+        }
+
+        @media (max-width: 576px) {
+            .login-container {
+                max-width: 100%;
+            }
+
+            .login-header {
+                padding: 2rem 1rem;
+            }
+
+            .login-form {
+                padding: 1.5rem 1.25rem;
+            }
+
+            .login-header h1 {
+                font-size: 1.4rem;
+            }
+        }
     </style>
 </head>
-<body>
-    <div class="container px-3 d-flex justify-content-center">
+<body class="login-page">
+    <div class="login-container">
         <div class="login-card">
-            <div class="text-center mb-4 pb-3 border-bottom">
-                <i class="fas fa-university mb-2" style="font-size: 2.5rem; color: var(--snpsu-orange);"></i>
-                <div class="logo-title">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></div>
-                <div style="color: #64748b; font-size: 0.8rem; font-weight: 600; letter-spacing: 2px;">UNIVERSITY</div>
+            <!-- Header -->
+            <div class="login-header">
+                <i class="fas fa-graduation-cap"></i>
+                <h1>SAPTHAGIRI<span>NPS</span></h1>
+                <p>Event Portal</p>
             </div>
 
+            <!-- Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} small fw-bold py-2"><i class="fas fa-info-circle me-1"></i>{{ message }}</div>{% endfor %}{% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="login-form">
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-info-circle"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
 
-            <form action="/login" method="POST">
-                <div class="mb-3">
-                    <label class="form-label">Select Role</label>
-                    <select name="role" id="roleSelect" class="form-select fw-bold text-secondary" required>
-                        <option value="Student">🎓 Student / Participant</option>
-                        <option value="EventCoordinator">📱 Event Coordinator</option>
-                        <option value="ClubSPOC">Club SPOC (Manager)</option>
-                        <option value="Judge">⚖️ Event Judge</option>
-                        <option value="SuperAdmin">👑 Super Admin</option>
+            <!-- Form -->
+            <form action="/login" method="POST" class="login-form">
+                <div class="form-group">
+                    <label class="form-label">
+                        Select Role <span class="required">*</span>
+                    </label>
+                    <select name="role" id="roleSelect" class="form-select" required>
+                        <option value="">Choose your role...</option>
+                        <option value="Student"><span class="role-icon">🎓</span>Student / Participant</option>
+                        <option value="EventCoordinator"><span class="role-icon">📱</span>Event Coordinator</option>
+                        <option value="ClubSPOC"><span class="role-icon">👥</span>Club SPOC (Manager)</option>
+                        <option value="Judge"><span class="role-icon">⚖️</span>Event Judge</option>
+                        <option value="SuperAdmin"><span class="role-icon">👑</span>Super Admin</option>
                     </select>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" name="email" class="form-control" required placeholder="name@snpsu.edu.in">
+
+                <div class="form-group">
+                    <label class="form-label">
+                        Email Address <span class="required">*</span>
+                    </label>
+                    <input type="email" name="email" class="form-control" required placeholder="your.email@university.edu">
                 </div>
-                <div class="mb-4">
-                    <label class="form-label">Password</label>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        Password <span class="required">*</span>
+                    </label>
                     <input type="password" name="password" class="form-control" required placeholder="••••••••">
                 </div>
-                <div class="mb-4" id="secretKeyDiv" style="display: none;">
-                    <label class="form-label text-danger"><i class="fas fa-key me-1"></i>Master Secret Key</label>
-                    <input type="password" name="secret_key" id="secretKeyInput" class="form-control border-danger" placeholder="Required for Super Admins">
+
+                <div class="secret-key-group" id="secretKeyDiv">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-key"></i> Master Secret Key <span class="required">*</span>
+                        </label>
+                        <input type="password" name="secret_key" id="secretKeyInput" class="form-control" placeholder="Required for Super Admin access">
+                    </div>
                 </div>
-                
-                <button type="submit" class="btn btn-login w-100 mb-1 fs-5">Login to Portal <i class="fas fa-sign-in-alt ms-2"></i></button>
+
+                <button type="submit" class="login-submit">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Login to Portal
+                </button>
             </form>
+
+            <!-- Footer -->
+            <div class="login-footer">
+                <p>Sapthagiri Event Management System © 2024</p>
+            </div>
         </div>
     </div>
-    
+
     <script>
         document.getElementById('roleSelect').addEventListener('change', function() {
-            var secretDiv = document.getElementById('secretKeyDiv');
-            var secretInput = document.getElementById('secretKeyInput');
-            if (this.value === 'SuperAdmin') { 
-                secretDiv.style.display = 'block'; 
-                secretInput.setAttribute('required', 'required'); 
-            } else { 
-                secretDiv.style.display = 'none'; 
-                secretInput.removeAttribute('required'); 
+            const secretDiv = document.getElementById('secretKeyDiv');
+            const secretInput = document.getElementById('secretKeyInput');
+            
+            if (this.value === 'SuperAdmin') {
+                secretDiv.classList.add('show');
+                secretInput.setAttribute('required', 'required');
+            } else {
+                secretDiv.classList.remove('show');
+                secretInput.removeAttribute('required');
             }
         });
     </script>

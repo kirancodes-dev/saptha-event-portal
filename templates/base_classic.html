@@ -4,30 +4,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1a2332">
-    <title>{% block title %}Page Title{% endblock %} | Sapthagiri Event</title>
+    <meta name="theme-color" content="#0d2d62">
+    <!-- ═══ SEO Meta Tags ═══ -->
+    <meta name="description" content="{% block meta_description %}SapthaEvent: Official event management portal for Sapthagiri NPS University. Manage events, register participants, and track event attendance.{% endblock %}">
+    <meta name="keywords" content="events, management, SNPSU, Sapthagiri, university, portal">
+    <meta name="author" content="Sapthagiri NPS University">
+    <meta name="robots" content="noindex, follow">
+    <meta name="language" content="English">
+    <!-- ═══ Canonical URL ═══ -->
+    <link rel="canonical" href="https://events.snpsu.edu.in">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <title>{% block title %}Page Title{% endblock %} | SapthaEvent Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        /* ── ACCESSIBILITY STYLES ────────────────────── */
+        .skip-link{position:absolute;top:-40px;left:0;background:#0d2d62;color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
+        .skip-link:focus{top:0;}
+        *:focus-visible{outline:3px solid #f37021;outline-offset:2px;}
+        @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
+        @media(prefers-contrast:more){*{font-weight:600;}}
+        @media(prefers-color-scheme:dark){body{background:#1a1a1a;color:#e0e0e0;}.sidebar{background:#0d0d0d;}.main-content{background:#1a1a1a;}}
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to Main Content</a>
     <!-- Sidebar Navigation -->
     {% if not public_layout %}
-        <aside class="sidebar">
+        <aside class="sidebar" role="complementary" aria-label="Navigation sidebar">
             <div class="sidebar-brand">
-                <div class="brand-text">Saptha<span>Event</span></div>
+                <div class="brand-text" aria-label="SapthaEvent Dashboard">Saptha<span>Event</span></div>
             </div>
 
-            <nav class="sidebar-menu">
+            <nav class="sidebar-menu" role="navigation" aria-label="Main navigation">
                 <!-- Dashboard Section -->
                 <div class="nav-section">
-                    <div class="nav-section-title">Navigation</div>
-                    <a href="/dashboard" class="nav-link {% if current_page == 'dashboard' %}active{% endif %}">
-                        <i class="fas fa-chart-line"></i>
+                    <div class="nav-section-title" id="dash-section">Dashboard</div>
+                    <a href="/dashboard" class="nav-link {% if current_page == 'dashboard' %}active{% endif %}" aria-current="{% if current_page == 'dashboard' %}page{% else %}false{% endif %}">
+                        <i class="fas fa-chart-line" aria-hidden="true"></i>
                         <span>Dashboard</span>
                     </a>
-                    <a href="/events" class="nav-link {% if current_page == 'events' %}active{% endif %}">
-                        <i class="fas fa-calendar-alt"></i>
+                    <a href="/events" class="nav-link {% if current_page == 'events' %}active{% endif %}" aria-current="{% if current_page == 'events' %}page{% else %}false{% endif %}">
+                        <i class="fas fa-calendar-alt" aria-hidden="true"></i>
                         <span>Events</span>
                     </a>
                 </div>
@@ -35,13 +54,13 @@
                 <!-- Management Section (Admin Only) -->
                 {% if user_role == 'admin' %}
                     <div class="nav-section">
-                        <div class="nav-section-title">Management</div>
+                        <div class="nav-section-title" id="mgmt-section">Management</div>
                         <a href="/admin/events" class="nav-link">
-                            <i class="fas fa-cog"></i>
+                            <i class="fas fa-cog" aria-hidden="true"></i>
                             <span>Manage Events</span>
                         </a>
                         <a href="/admin/users" class="nav-link">
-                            <i class="fas fa-users"></i>
+                            <i class="fas fa-users" aria-hidden="true"></i>
                             <span>Users</span>
                         </a>
                     </div>
@@ -49,9 +68,9 @@
 
                 <!-- Account Section -->
                 <div class="nav-section">
-                    <div class="nav-section-title">Account</div>
+                    <div class="nav-section-title" id="acct-section">Account</div>
                     <a href="/profile" class="nav-link">
-                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-user-circle" aria-hidden="true"></i>
                         <span>Profile</span>
                     </a>
                     <a href="/settings" class="nav-link">
@@ -71,24 +90,24 @@
     <div class="main-content {% if public_layout %}public-layout{% endif %}">
         <!-- Top Header (if not public) -->
         {% if not public_layout %}
-            <header class="top-header">
+            <header class="top-header" role="banner">
                 <div class="header-left">
-                    <h2 class="header-title">{% block page_title %}Dashboard{% endblock %}</h2>
+                    <h1 class="header-title" id="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
                 </div>
                 <div class="header-right">
-                    <div class="user-menu">
-                        <div class="user-avatar">{{ user_initials | default('U') }}</div>
+                    <div class="user-menu" role="region" aria-label="User menu">
+                        <div class="user-avatar" aria-label="User profile avatar with initials">{{ user_initials | default('U') }}</div>
                     </div>
                 </div>
             </header>
         {% endif %}
 
         <!-- Page Content -->
-        <div class="content-wrapper">
+        <main class="content-wrapper" id="main-content" role="main" aria-labelledby="page-title">
             {% block content %}
                 <div class="card">
                     <div class="card-body">
-                        <p>Welcome to Sapthagiri Event Portal</p>
+                        <p>Welcome to SapthaEvent Portal</p>
                     </div>
                 </div>
             {% endblock %}

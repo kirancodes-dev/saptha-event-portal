@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:snpsu.edu.in)",
+      "Bash(curl -sSL -o /Users/kiranbiradar/Desktop/Event_Portel/saptha-event-portal/static/snpsu-logo.jpg \"https://snpsu.edu.in/wp-content/uploads/2024/03/Logo-blue.jpg\")",
+      "Bash(curl -sS -o /dev/null -w \"HTTP %{http_code} — %{url_effective}\\\\n\" http://localhost:5001/)",
+      "Bash(curl -sS -o /dev/null -w \"HTTP %{http_code} — %{url_effective}\\\\n\" http://localhost:5001/login)",
+      "Bash(curl -sS -o /dev/null -w \"HTTP %{http_code} — %{url_effective}\\\\n\" http://localhost:5001/register)",
+      "Bash(curl -sS -o /dev/null -w \"HTTP %{http_code} — %{url_effective}\\\\n\" http://localhost:5001/static/snpsu-logo.jpg)",
+      "Bash(lsof -ti:5001)",
+      "Bash(curl -sS http://localhost:5001/login)",
+      "Bash(curl -sS http://localhost:5001/)",
+      "Bash(curl -sSL -o /dev/null -w \"%{http_code} %{url_effective}\\\\n\" http://localhost:5001/)",
+      "Bash(curl -sSL -o /dev/null -w \"%{http_code} %{url_effective}\\\\n\" http://localhost:5001/login)",
+      "Bash(curl -sSL -o /dev/null -w \"%{http_code} %{url_effective}\\\\n\" http://localhost:5001/auth/register)",
+      "Bash(curl -sSL -o /dev/null -w \"%{http_code} %{url_effective}\\\\n\" http://localhost:5001/static/css/global.css)",
+      "Bash(curl -sS http://localhost:5001/static/css/global.css)"
+    ]
+  }
+}

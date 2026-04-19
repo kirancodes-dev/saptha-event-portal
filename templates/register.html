@@ -16,17 +16,19 @@
     <!-- ═══ Canonical & Favicon ═══ -->
     <link rel="canonical" href="https://events.snpsu.edu.in/register">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    {% include 'includes/pwa_head.html' %}
     <title>Student Registration | SapthaEvent - Sapthagiri NPS University</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --snpsu-blue: #0d2d62; --snpsu-orange: #f37021; }
+        :root { --snpsu-blue: #1a2557; --snpsu-orange: #c9a45e; }
         body { 
             font-family: 'Inter', sans-serif; 
-            background: linear-gradient(rgba(13, 45, 98, 0.85), rgba(13, 45, 98, 0.95)), 
+            background: linear-gradient(rgba(26, 37, 87, 0.85), rgba(26, 37, 87, 0.95)), 
                         url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop') center/cover fixed;
             min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 0;
         }
@@ -35,7 +37,7 @@
         .logo-title { font-family: 'Poppins', sans-serif; color: var(--snpsu-blue); font-weight: 800; font-size: 1.4rem; letter-spacing: 0.5px; }
         .form-label { font-size: 0.8rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
         .form-control { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 15px; }
-        .form-control:focus { background-color: #fff; border-color: var(--snpsu-blue); box-shadow: 0 0 0 4px rgba(13, 45, 98, 0.1); }
+        .form-control:focus { background-color: #fff; border-color: var(--snpsu-blue); box-shadow: 0 0 0 4px rgba(26, 37, 87, 0.1); }
         .btn-register { background-color: var(--snpsu-orange); color: white; font-weight: 700; padding: 12px; border-radius: 8px; transition: 0.3s; border: none;}
         .btn-register:hover { background-color: #d95e1a; transform: translateY(-2px); color: white;}
         /* ── SKELETON LOADERS ────────────────────── */
@@ -61,8 +63,7 @@
         <div class="register-card">
             
             <div class="text-center mb-4 pb-3 border-bottom">
-                <i class="fas fa-university mb-2" style="font-size: 2rem; color: var(--snpsu-orange);" aria-hidden="true"></i>
-                <div class="logo-title m-0">SAPTHAGIRI <span style="color: var(--snpsu-orange);">NPS</span></div>
+                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="width:100%;max-width:320px;height:auto;object-fit:contain;border-radius:6px;margin-bottom:8px;">
                 <p class="text-muted small mt-1">Official Event Portal</p>
             </div>
 
@@ -88,6 +89,7 @@
 
             <!-- Registration Form -->
             <form method="POST" class="needs-validation" id="main-content" role="main" aria-label="Student registration form" novalidate style="display:none;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <small style="letter-spacing: 2px; font-weight: 600; color: #64748b; font-size: 0.7rem;">STUDENT REGISTRATION</small>
             </div>
 
@@ -96,6 +98,7 @@
             {% endwith %}
 
             <form action="/register" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3 mb-3">
                     <div class="col-12 col-md-6"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div>
                     <div class="col-12 col-md-6"><label class="form-label">USN / ID</label><input type="text" name="usn" class="form-control" required></div>

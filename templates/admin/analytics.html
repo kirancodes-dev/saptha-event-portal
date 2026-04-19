@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Analytics | SapthaEvent Admin</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-:root{--blue:#0d2d62;--orange:#f37021;}
+:root{--blue:#1a2557;--orange:#c9a45e;}
 *{box-sizing:border-box;}
 body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;}
 h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
@@ -73,9 +74,9 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 <nav class="sidebar">
   <div class="sidebar-logo d-flex align-items-center gap-2">
     <div class="logo-sq" style="background:var(--orange);">
-        <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+        <img src="/static/snpsu-logo.png"
              alt="SNPSU"
-             style="height:19px;width:auto;filter:brightness(0)invert(1);"
+             style="height:19px;width:auto;"
              onerror="this.style.display='none'">
     </div>
     <div>
@@ -209,6 +210,97 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
       </div>
     </div>
 
+    <!-- ── ROW 4: Funnel + No-show rate ── -->
+    <div class="row g-4 mt-0">
+      <div class="col-lg-6">
+        <div class="chart-card">
+          <div class="chart-card-title">Conversion Funnel</div>
+          <div class="chart-card-sub">
+            Registered → Confirmed → Attended → Certified.
+            Overall conversion: <strong>{{ stats.get('conv_pct', 0) }}%</strong> ·
+            No-show: <strong>{{ stats.get('no_show_pct', 0) }}%</strong>
+          </div>
+          <div class="chart-wrap" style="height:260px;">
+            <canvas id="chartFunnel"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="chart-card">
+          <div class="chart-card-title">No-Show Rate (completed events)</div>
+          <div class="chart-card-sub">% of confirmed registrations that didn't attend. Flag events over 30%.</div>
+          <div class="chart-wrap" style="height:260px;">
+            <canvas id="chartNoShow"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROW 5: CSV Exports ── -->
+    <div class="row g-4 mt-0">
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="chart-card-title">Data Exports</div>
+          <div class="chart-card-sub">Download operational data as CSV for spreadsheets / reporting.</div>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <a href="/admin/analytics/export/registrations" class="btn btn-sm"
+               style="background:#1a2557;color:#fff;font-weight:600;">
+              <i class="fas fa-file-csv me-1"></i> Registrations CSV
+            </a>
+            <a href="/admin/analytics/export/events" class="btn btn-sm"
+               style="background:#c9a45e;color:#fff;font-weight:600;">
+              <i class="fas fa-file-csv me-1"></i> Events CSV
+            </a>
+            <a href="/admin/analytics/export/revenue" class="btn btn-sm"
+               style="background:#10b981;color:#fff;font-weight:600;">
+              <i class="fas fa-file-csv me-1"></i> Revenue CSV
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if no_show_rows %}
+    <!-- ── ROW 6: No-show table ── -->
+    <div class="row g-4 mt-0">
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="chart-card-title">No-Show Breakdown</div>
+          <div class="chart-card-sub">Completed events ranked by no-show rate.</div>
+          <div class="table-responsive mt-2">
+            <table class="table align-middle mb-0">
+              <thead style="background:#f1f5f9;">
+                <tr>
+                  <th>Event</th>
+                  <th class="text-end">Registered</th>
+                  <th class="text-end">Attended</th>
+                  <th class="text-end">No-Show</th>
+                  <th class="text-end">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in no_show_rows %}
+                <tr>
+                  <td>{{ row.title }}</td>
+                  <td class="text-end">{{ row.total }}</td>
+                  <td class="text-end text-success fw-bold">{{ row.attended }}</td>
+                  <td class="text-end text-danger fw-bold">{{ row.no_show }}</td>
+                  <td class="text-end">
+                    <span class="badge"
+                          style="background:{% if row.rate > 30 %}#fee2e2;color:#991b1b{% elif row.rate > 15 %}#fef3c7;color:#92400e{% else %}#dcfce7;color:#166534{% endif %};">
+                      {{ row.rate }}%
+                    </span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -218,6 +310,8 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
   data-revenue='{{ revenue_per_event  | safe }}'
   data-peak-hours='{{ peak_hours         | safe }}'
   data-regs-per-event='{{ regs_per_event     | safe }}'
+  data-funnel='{{ funnel              | safe }}'
+  data-no-show='{{ no_show_chart      | safe }}'
   style="display:none;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -229,6 +323,8 @@ const categoryData     = JSON.parse(_d.category         || '{}');
 const revenueData      = JSON.parse(_d.revenue          || '{}');
 const peakHoursData    = JSON.parse(_d.peakHours        || '{}');
 const regsPerEventData = JSON.parse(_d.regsPerEvent     || '{}');
+const funnelData       = JSON.parse(_d.funnel           || '{}');
+const noShowData       = JSON.parse(_d.noShow           || '{}');
 
 // ── Shared chart defaults ──────────────────────────────────────────
 Chart.defaults.font.family  = "'Inter', sans-serif";
@@ -238,8 +334,8 @@ Chart.defaults.plugins.legend.labels.boxWidth = 12;
 Chart.defaults.plugins.legend.labels.padding  = 14;
 
 // Palette
-const BLUE    = '#0d2d62';
-const ORANGE  = '#f37021';
+const BLUE    = '#1a2557';
+const ORANGE  = '#c9a45e';
 const GREEN   = '#10b981';
 const PURPLE  = '#7c3aed';
 const TEAL    = '#0891b2';
@@ -265,7 +361,7 @@ function abbrev(labels, max) {
         label: 'Registrations',
         data: regsOverTime.data,
         borderColor: ORANGE,
-        backgroundColor: 'rgba(243,112,33,.08)',
+        backgroundColor: 'rgba(201,164,94,.08)',
         borderWidth: 2.5,
         fill: true,
         tension: 0.4,
@@ -335,7 +431,7 @@ function abbrev(labels, max) {
         label: 'Revenue (₹)',
         data: revenueData.data,
         backgroundColor: revenueData.data.map((_, i) =>
-          i === 0 ? ORANGE : i === 1 ? '#f59e0b' : 'rgba(13,45,98,.18)'),
+          i === 0 ? ORANGE : i === 1 ? '#f59e0b' : 'rgba(26, 37, 87,.18)'),
         borderColor:  'transparent',
         borderRadius: 6,
       }]
@@ -371,7 +467,7 @@ function abbrev(labels, max) {
         label: 'Registrations',
         data: regsPerEventData.data,
         backgroundColor: regsPerEventData.data.map((_, i) =>
-          i === 0 ? BLUE : i === 1 ? '#185fa5' : 'rgba(13,45,98,.18)'),
+          i === 0 ? BLUE : i === 1 ? '#185fa5' : 'rgba(26, 37, 87,.18)'),
         borderColor: 'transparent',
         borderRadius: 6,
       }]
@@ -405,7 +501,7 @@ function abbrev(labels, max) {
           const ratio = v / maxVal;
           if (ratio > 0.7) return ORANGE;
           if (ratio > 0.4) return '#f59e0b';
-          return 'rgba(13,45,98,.15)';
+          return 'rgba(26, 37, 87,.15)';
         }),
         borderColor: 'transparent',
         borderRadius: 4,
@@ -423,6 +519,74 @@ function abbrev(labels, max) {
       scales: {
         x: { grid: { display: false }, ticks: { maxRotation: 0, font: { size: 10 } } },
         y: { beginAtZero: true, ticks: { precision: 0 },
+             grid: { color: 'rgba(0,0,0,.05)' } }
+      }
+    }
+  });
+})();
+
+// ── 6. Conversion funnel (horizontal bar) ─────────────────────────
+(function() {
+  const ctx = document.getElementById('chartFunnel');
+  if (!ctx || !funnelData.labels) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: funnelData.labels,
+      datasets: [{
+        label: 'Count',
+        data: funnelData.data,
+        backgroundColor: [BLUE, '#1a4fa0', GREEN, ORANGE],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: c => {
+            const total = funnelData.data[0] || 1;
+            const pct = ((c.parsed.x / total) * 100).toFixed(1);
+            return ` ${c.parsed.x} (${pct}%)`;
+          }
+        }}
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { precision: 0 },
+             grid: { color: 'rgba(0,0,0,.05)' } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+})();
+
+// ── 7. No-show rate (bar) ─────────────────────────────────────────
+(function() {
+  const ctx = document.getElementById('chartNoShow');
+  if (!ctx || !noShowData.labels || !noShowData.labels.length) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: noShowData.labels,
+      datasets: [{
+        label: 'No-show %',
+        data: noShowData.data,
+        backgroundColor: noShowData.data.map(v =>
+          v > 30 ? '#ef4444' : v > 15 ? '#f59e0b' : GREEN),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${c.parsed.y}%` } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 35, minRotation: 25 } },
+        y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' },
              grid: { color: 'rgba(0,0,0,.05)' } }
       }
     }

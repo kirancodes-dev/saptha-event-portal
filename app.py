@@ -2,12 +2,16 @@ import os
 import json
 import datetime
 import logging
+import uuid
 import firebase_admin
 from firebase_admin import credentials, firestore
-from flask import Flask, render_template, session, redirect, request, jsonify, Response
+from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
 from flask_mail import Mail
 from flask_limiter import Limiter
 import flask_limiter.util
+from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask_session import Session
+from flask_talisman import Talisman
 from google.cloud.firestore_v1.base_query import FieldFilter
 from config import Config
 from dotenv import load_dotenv
@@ -16,13 +20,55 @@ from scheduler import init_scheduler
 load_dotenv()
 
 # =========================================================
-# LOGGING CONFIGURATION
+# LOGGING CONFIGURATION — structured JSON in production
 # =========================================================
-logging.basicConfig(
-    level=os.environ.get('LOG_LEVEL', 'INFO'),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+def _configure_logging():
+    log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+    root = logging.getLogger()
+    root.setLevel(log_level)
+    # Clear pre-existing handlers so reloaders don't double-log
+    for h in list(root.handlers):
+        root.removeHandler(h)
+    handler = logging.StreamHandler()
+    if os.environ.get('FLASK_ENV') == 'production':
+        try:
+            from pythonjsonlogger import jsonlogger
+            fmt = jsonlogger.JsonFormatter(
+                '%(asctime)s %(levelname)s %(name)s %(message)s %(pathname)s %(lineno)d'
+            )
+            handler.setFormatter(fmt)
+        except Exception:
+            handler.setFormatter(logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            ))
+    else:
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        ))
+    root.addHandler(handler)
+
+_configure_logging()
 logger = logging.getLogger(__name__)
+
+# =========================================================
+# SENTRY — initialized before app creation so errors during
+# boot are captured too
+# =========================================================
+_SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            integrations=[FlaskIntegration()],
+            environment=os.environ.get('FLASK_ENV', 'development'),
+            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+            send_default_pii=False,
+        )
+        logger.info("Sentry: initialized")
+    except Exception as exc:
+        logger.warning("Sentry: failed to initialize: %s", exc)
 
 # =========================================================
 # APP FACTORY
@@ -35,12 +81,76 @@ app.config.from_object(Config)
 # =========================================================
 mail = Mail(app)
 
+# ── CSRF ─────────────────────────────────────────────────
+csrf = CSRFProtect(app)
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    logger.warning("CSRF validation failed: %s path=%s ip=%s",
+                   e.description, request.path, request.remote_addr)
+    if request.accept_mimetypes.best == 'application/json' or request.is_json:
+        return jsonify({'error': 'csrf_validation_failed', 'detail': e.description}), 400
+    return render_template('429.html'), 400
+
+# Expose csrf_token() in Jinja globals (Flask-WTF does this automatically,
+# but make it explicit for clarity)
+app.jinja_env.globals['csrf_token'] = lambda: (
+    __import__('flask_wtf.csrf', fromlist=['generate_csrf']).generate_csrf()
+)
+
+# ── Server-side session (Redis in prod, filesystem in dev) ──
+if app.config.get('SESSION_TYPE') == 'redis':
+    try:
+        import redis as _redis
+        redis_url = os.environ.get('REDIS_URL') or app.config.get('RATELIMIT_STORAGE_URL')
+        if redis_url and redis_url.startswith('redis'):
+            app.config['SESSION_REDIS'] = _redis.from_url(redis_url)
+            logger.info("Session: using Redis backend")
+        else:
+            logger.warning("SESSION_TYPE=redis but no REDIS_URL — falling back to filesystem")
+            app.config['SESSION_TYPE'] = 'filesystem'
+    except Exception as exc:
+        logger.warning("Redis session init failed (%s) — using filesystem", exc)
+        app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
+
+# ── Security headers via Talisman ────────────────────────
+_csp = {
+    'default-src': ["'self'"],
+    'img-src':     ["'self'", 'data:', 'https:'],
+    'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
+                    'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
+    'font-src':    ["'self'", 'https://cdnjs.cloudflare.com',
+                    'https://fonts.gstatic.com', 'data:'],
+    'script-src':  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
+                    'https://cdn.jsdelivr.net', 'https://www.gstatic.com'],
+    'connect-src': ["'self'", 'https://firestore.googleapis.com',
+                    'https://identitytoolkit.googleapis.com'],
+    'frame-ancestors': ["'self'"],
+}
+Talisman(
+    app,
+    force_https=app.config.get('FORCE_HTTPS', False),
+    strict_transport_security=app.config.get('FORCE_HTTPS', False),
+    strict_transport_security_max_age=31536000,
+    content_security_policy=_csp,
+    content_security_policy_nonce_in=[],
+    session_cookie_secure=app.config.get('SESSION_COOKIE_SECURE', False),
+    referrer_policy='strict-origin-when-cross-origin',
+    frame_options='SAMEORIGIN',
+    x_content_type_options=True,
+)
+
+# ── Rate limiter ─────────────────────────────────────────
 limiter = Limiter(
     key_func=flask_limiter.util.get_remote_address,
     app=app,
     default_limits=app.config.get('RATELIMIT_DEFAULT', '5000 per day;500 per hour').split(';'),
     storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://')
 )
+
+# Expose limiter on app so blueprints can attach route-specific limits
+app.extensions['limiter'] = limiter
 
 # =========================================================
 # FIREBASE  —  reads FIREBASE_CREDENTIALS env var on Railway
@@ -107,6 +217,9 @@ from routes_feedback    import feedback_bp
 from chatbot_routes     import chatbot_bp
 from routes_ticket      import ticket_bp
 from routes_forms       import forms_bp
+from routes_portfolio   import portfolio_bp
+from routes_sponsors    import sponsors_bp
+from routes_teams       import teams_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(api_bp)
@@ -121,6 +234,24 @@ app.register_blueprint(feedback_bp)
 app.register_blueprint(chatbot_bp)
 app.register_blueprint(ticket_bp)
 app.register_blueprint(forms_bp)
+app.register_blueprint(portfolio_bp)
+app.register_blueprint(sponsors_bp)
+app.register_blueprint(teams_bp)
+
+# CSRF exemption for JSON-API blueprints hit via fetch()/XHR.
+# HTML form-serving blueprints (auth, admin, coordinator, judge, payment,
+# participant, profile, feedback) remain CSRF-protected.
+for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp):
+    try:
+        csrf.exempt(_json_bp)
+    except Exception as exc:
+        logger.warning("CSRF exempt failed for %s: %s", _json_bp.name, exc)
+
+# Tighten /login to mitigate brute-force and credential-stuffing
+try:
+    limiter.limit("5 per minute; 20 per hour")(app.view_functions['auth.login'])
+except Exception as exc:  # never block boot on rate-limit wiring
+    logger.warning("Could not attach limiter to auth.login: %s", exc)
 
 # =========================================================
 # ROLE → DASHBOARD MAP
@@ -152,6 +283,30 @@ def favicon():
 @app.route('/cdn-cgi/<path:subpath>')
 def cdn_cgi_suppress(subpath):
     return Response(status=204)
+
+# =========================================================
+# PWA: service worker served from root scope + offline page
+# =========================================================
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory, make_response
+    resp = make_response(send_from_directory(
+        os.path.join(app.root_path, 'static'), 'sw.js', mimetype='application/javascript'))
+    # Service worker needs to be controlled at the root — never cache it long.
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
+@app.route('/manifest.webmanifest')
+def pwa_manifest():
+    from flask import send_from_directory
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'manifest.webmanifest', mimetype='application/manifest+json')
+
+@app.route('/offline')
+def offline_page():
+    return render_template('offline.html')
 
 @app.route('/.well-known/<path:subpath>')
 def well_known_suppress(subpath):
@@ -321,6 +476,16 @@ def get_calendar_json():
 # =========================================================
 # CERTIFICATE VERIFICATION
 # =========================================================
+@app.route('/verify', methods=['GET', 'POST'])
+def verify_lookup():
+    """Public lookup form: paste a certificate ID and redirect to verifier."""
+    if request.method == 'POST':
+        cert_id = (request.form.get('cert_id') or '').strip()
+        if cert_id:
+            return redirect(f'/verify/{cert_id}')
+    return render_template('public/verify_lookup.html')
+
+
 @app.route('/verify/<reg_id>')
 def verify_certificate(reg_id):
     try:
@@ -331,8 +496,19 @@ def verify_certificate(reg_id):
         if data.get('attendance') != 'Present':
             return render_template('public/verify_fail.html',
                                    reg_id=reg_id, reason='Absent')
-        event = db.collection('events').document(data['event_id']).get().to_dict()
-        return render_template('public/verify_success.html', data=data, event=event)
+        event = db.collection('events').document(data['event_id']).get().to_dict() or {}
+
+        # Resolve student portfolio link (USN) for the cert recipient
+        student_usn = None
+        lead_email = data.get('lead_email')
+        if lead_email:
+            user_doc = db.collection('users').document(lead_email).get()
+            if user_doc.exists:
+                student_usn = (user_doc.to_dict() or {}).get('usn')
+
+        return render_template(
+            'public/verify_success.html',
+            data=data, event=event, student_usn=student_usn)
     except Exception as exc:
         app.logger.error("Certificate verify error: %s", exc)
         return render_template('500.html'), 500
@@ -403,4 +579,4 @@ if os.environ.get('FLASK_ENV') == 'production':
 if __name__ == '__main__':
     debug_mode = app.config.get('FLASK_ENV', 'development') != 'production'
     init_scheduler(app)
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000, use_reloader=False)
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)), use_reloader=False)

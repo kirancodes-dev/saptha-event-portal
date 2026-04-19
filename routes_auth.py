@@ -1,9 +1,11 @@
 import datetime
+import logging
 from flask import Blueprint, render_template, request, redirect, session, flash, current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
 from utils import log_action
 
+logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 
 # Role → dashboard URL map (single source of truth)
@@ -83,20 +85,21 @@ def login():
             if db_role == 'Super Admin':
                 db_role = 'SuperAdmin'
 
-            # Password verification — handles hashed and legacy plain-text
+            # Password verification — hashed only. Legacy plaintext rows are
+            # rejected and flagged for admin-triggered password reset.
             stored_pw = user_data.get('password', '')
             if isinstance(stored_pw, (int, float)):
                 stored_pw = str(int(stored_pw))
 
-            if stored_pw.startswith(('scrypt:', 'pbkdf2:')):
+            if stored_pw.startswith(('scrypt:', 'pbkdf2:', 'argon2:')):
                 valid = check_password_hash(stored_pw, password)
             else:
-                # Legacy plain-text fallback — migrate on successful login
-                valid = (stored_pw == str(password))
-                if valid:
-                    db.collection('users').document(email).update({
-                        'password': generate_password_hash(password)
-                    })
+                valid = False
+                logger.warning(
+                    "Login blocked — legacy unhashed password on %s. "
+                    "Admin must trigger password reset.", email)
+                log_action(db, "LOGIN_BLOCKED_LEGACY_HASH",
+                           f"Unhashed password on account {email}")
 
             if not valid or db_role != role:
                 flash('Incorrect password or wrong role selected.', 'danger')

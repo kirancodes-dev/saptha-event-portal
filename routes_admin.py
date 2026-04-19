@@ -162,6 +162,45 @@ def analytics():
         paid_regs = sum(1 for r in all_regs if int(r.get('amount_paid', 0) or 0) > 0)
         free_regs = len(all_regs) - paid_regs
 
+        # ── 7. Conversion funnel ─────────────────────────────
+        f_registered = len(all_regs)
+        f_confirmed  = sum(1 for r in all_regs if r.get('status') == 'Confirmed')
+        f_attended   = sum(1 for r in all_regs if r.get('attendance') == 'Present')
+        f_certified  = sum(
+            1 for r in all_regs
+            if r.get('attendance') == 'Present'
+            and events_map.get(r.get('event_id', ''), {}).get('status') == 'completed'
+        )
+        funnel = {
+            'labels': ['Registered', 'Confirmed', 'Attended', 'Certified'],
+            'data':   [f_registered, f_confirmed, f_attended, f_certified],
+        }
+
+        # ── 8. No-show rate per completed event (top 10) ─────
+        no_show_rows = []
+        for eid, evt in events_map.items():
+            if evt.get('status') != 'completed':
+                continue
+            evt_regs = [r for r in all_regs if r.get('event_id') == eid]
+            if not evt_regs:
+                continue
+            attended = sum(1 for r in evt_regs if r.get('attendance') == 'Present')
+            total    = len(evt_regs)
+            rate     = round((total - attended) * 100 / total, 1) if total else 0
+            no_show_rows.append({
+                'title':       evt.get('title', eid[:14]),
+                'total':       total,
+                'attended':    attended,
+                'no_show':     total - attended,
+                'rate':        rate,
+            })
+        no_show_rows.sort(key=lambda x: x['rate'], reverse=True)
+        no_show_rows = no_show_rows[:10]
+        no_show_chart = {
+            'labels': [row['title'] for row in no_show_rows],
+            'data':   [row['rate']  for row in no_show_rows],
+        }
+
         stats = {
             'total_regs':    len(all_regs),
             'total_revenue': sum(int(r.get('amount_paid', 0) or 0) for r in all_regs),
@@ -169,12 +208,16 @@ def analytics():
             'total_events':  len(events_map),
             'paid_regs':     paid_regs,
             'free_regs':     free_regs,
+            'attended':      f_attended,
+            'no_show_pct':   round((f_confirmed - f_attended) * 100 / f_confirmed, 1) if f_confirmed else 0,
+            'conv_pct':      round(f_attended * 100 / f_registered, 1) if f_registered else 0,
         }
 
     except Exception as exc:
         flash(f"Analytics error: {exc}", "danger")
         regs_over_time = category_breakdown = revenue_per_event = {}
-        peak_hours = regs_per_event = {}
+        peak_hours = regs_per_event = funnel = no_show_chart = {}
+        no_show_rows = []
         stats = {}
 
     return render_template(
@@ -186,6 +229,97 @@ def analytics():
         revenue_per_event  = json.dumps(revenue_per_event),
         peak_hours         = json.dumps(peak_hours),
         regs_per_event     = json.dumps(regs_per_event),
+        funnel             = json.dumps(funnel),
+        no_show_chart      = json.dumps(no_show_chart),
+        no_show_rows       = no_show_rows,
+    )
+
+
+# =========================================================
+# 2b. CSV EXPORT — analytics / registrations
+# =========================================================
+@admin_bp.route('/analytics/export/<kind>')
+@login_required
+@role_required(SUPER_ROLES)
+def analytics_export(kind):
+    import csv, io
+    from flask import Response
+
+    if kind not in ('registrations', 'events', 'revenue'):
+        flash("Unknown export type.", "warning")
+        return redirect('/admin/analytics')
+
+    events_map = {}
+    for e in db.collection('events').stream():
+        d = e.to_dict() or {}
+        d['id'] = e.id
+        events_map[e.id] = d
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+
+    if kind == 'registrations':
+        writer.writerow([
+            'reg_id', 'event_title', 'lead_name', 'lead_email', 'lead_usn',
+            'team_name', 'member_count', 'status', 'payment_status',
+            'amount_paid', 'attendance', 'final_rank', 'final_score', 'registered_at'
+        ])
+        for r in db.collection('registrations').stream():
+            d = r.to_dict() or {}
+            writer.writerow([
+                d.get('reg_id', r.id),
+                d.get('event_title', events_map.get(d.get('event_id', ''), {}).get('title', '')),
+                d.get('lead_name', ''),
+                d.get('lead_email', ''),
+                d.get('lead_usn', ''),
+                d.get('team_name', ''),
+                d.get('member_count', 1),
+                d.get('status', ''),
+                d.get('payment_status', ''),
+                d.get('amount_paid', 0),
+                d.get('attendance', ''),
+                d.get('final_rank', ''),
+                d.get('final_score', ''),
+                d.get('registered_at', ''),
+            ])
+        filename = 'registrations.csv'
+
+    elif kind == 'events':
+        writer.writerow(['event_id', 'title', 'category', 'date', 'venue',
+                         'status', 'entry_fee', 'registration_count'])
+        for eid, e in events_map.items():
+            writer.writerow([
+                eid, e.get('title', ''), e.get('category', ''),
+                e.get('date', ''), e.get('venue', ''), e.get('status', ''),
+                e.get('entry_fee', 0), e.get('registration_count', 0),
+            ])
+        filename = 'events.csv'
+
+    else:  # revenue
+        by_event = collections.defaultdict(lambda: {'count': 0, 'revenue': 0})
+        for r in db.collection('registrations').stream():
+            d = r.to_dict() or {}
+            amt = int(d.get('amount_paid', 0) or 0)
+            if amt <= 0:
+                continue
+            eid = d.get('event_id', '')
+            by_event[eid]['count']   += 1
+            by_event[eid]['revenue'] += amt
+        writer.writerow(['event_id', 'title', 'paid_registrations', 'revenue_inr'])
+        for eid, row in sorted(by_event.items(), key=lambda x: x[1]['revenue'], reverse=True):
+            writer.writerow([
+                eid,
+                events_map.get(eid, {}).get('title', eid),
+                row['count'],
+                row['revenue'],
+            ])
+        filename = 'revenue.csv'
+
+    log_action(session.get('user_id'), 'analytics_export', kind)
+    return Response(
+        buf.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
     )
 
 

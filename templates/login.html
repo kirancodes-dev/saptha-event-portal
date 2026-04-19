@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0d2d62">
+    <meta name="theme-color" content="#1a2557">
     <!-- ═══ SEO Meta Tags ═══ -->
     <meta name="description" content="Login to SapthaEvent: Official event management portal for Sapthagiri NPS University. Access your event registrations, manage tickets, and sign up for campus events.">
     <meta name="keywords" content="login, event registration, SNPSU, Sapthagiri NPS University, event tickets, campus events">
@@ -22,6 +22,7 @@
     <!-- ═══ Canonical & Favicon ═══ -->
     <link rel="canonical" href="https://events.snpsu.edu.in/login">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    {% include 'includes/pwa_head.html' %}
     <title>Login | SapthaEvent - Sapthagiri NPS University</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
@@ -265,8 +266,9 @@
         *:focus-visible{outline:3px solid var(--accent-600);outline-offset:2px;}
         @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
         @media(prefers-contrast:more){body{font-weight:600;}button,.btn{border-width:2px;}}
-        @media(prefers-color-scheme:dark){.login-card{background:#1a1a1a;color:#e0e0e0;}.login-header{background:#0d2d62;}.form-label{color:#e0e0e0;}.form-control{background:#2a2a2a;color:#e0e0e0;border-color:#444;}}
+        @media(prefers-color-scheme:dark){.login-card{background:#1a1a1a;color:#e0e0e0;}.login-header{background:#1a2557;}.form-label{color:#e0e0e0;}.form-control{background:#2a2a2a;color:#e0e0e0;border-color:#444;}}
     </style>
+    <link href="/static/css/global.css" rel="stylesheet">
 </head>
 <body class="login-page">
     <a href="#main-content" class="skip-link">Skip to Login Form</a>
@@ -274,8 +276,7 @@
         <div class="login-card">
             <!-- Header -->
             <div class="login-header">
-                <i class="fas fa-graduation-cap" aria-hidden="true"></i>
-                <h1>SAPTHAGIRI<span>NPS</span></h1>
+                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="width:100%;max-width:280px;height:auto;object-fit:contain;border-radius:6px;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;">
                 <p>Event Portal</p>
             </div>
 
@@ -312,6 +313,7 @@
 
             <!-- Form -->
             <form action="/login" method="POST" class="login-form" id="main-content" role="main" aria-label="Login form" style="display:none;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label class="form-label" for="roleSelect">
                         Select Role <span class="required" aria-label="required">*</span>

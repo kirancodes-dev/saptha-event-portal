@@ -9,11 +9,27 @@ class Config:
     # =========================================================
     # 1. SECURITY & SESSION
     # =========================================================
+    _is_production = os.environ.get('FLASK_ENV') == 'production'
+
     SECRET_KEY              = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE   = os.environ.get('FLASK_ENV') == 'production'
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE   = _is_production
+    SESSION_COOKIE_SAMESITE = 'Strict' if _is_production else 'Lax'
     PERMANENT_SESSION_LIFETIME = 3600
+
+    # Server-side session storage — use Redis in production for multi-worker safety
+    SESSION_TYPE           = os.environ.get('SESSION_TYPE', 'filesystem')
+    SESSION_PERMANENT      = True
+    SESSION_USE_SIGNER     = True
+    SESSION_KEY_PREFIX     = 'saptha_sess:'
+
+    # CSRF protection (Flask-WTF)
+    WTF_CSRF_ENABLED       = True
+    WTF_CSRF_SECRET_KEY    = os.environ.get('WTF_CSRF_SECRET_KEY') or SECRET_KEY
+    WTF_CSRF_TIME_LIMIT    = 3600  # 1 hour
+
+    # Enforce HTTPS via Talisman when explicitly set, otherwise production-only
+    FORCE_HTTPS            = os.environ.get('FORCE_HTTPS', 'false').lower() == 'true' or _is_production
 
     # =========================================================
     # 2. APPLICATION INFO
@@ -70,14 +86,22 @@ class Config:
     # =========================================================
     _super_admin_email = os.environ.get('SUPER_ADMIN_EMAIL')
     _super_admin_pass = os.environ.get('SUPER_ADMIN_PASS')
-    
-    if os.environ.get('FLASK_ENV') == 'production':
-        if not _super_admin_email or not _super_admin_pass:
-            logger.warning("⚠️  PRODUCTION: SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASS must be set!")
-    
+    _master_key       = os.environ.get('MASTER_SECRET_KEY')
+
+    if _is_production:
+        missing = [k for k, v in {
+            'SUPER_ADMIN_EMAIL': _super_admin_email,
+            'SUPER_ADMIN_PASS':  _super_admin_pass,
+            'MASTER_SECRET_KEY': _master_key,
+        }.items() if not v]
+        if missing:
+            logger.critical("PRODUCTION: required env vars missing: %s", ', '.join(missing))
+            # Fail fast — refuse to boot with insecure defaults in prod
+            raise RuntimeError(f"Missing required production env vars: {missing}")
+
     SUPER_ADMIN_EMAIL        = _super_admin_email or 'admin@snpsu.edu.in'
     SUPER_ADMIN_DEFAULT_PASS = _super_admin_pass or 'SET_THIS_IN_ENV'
-    MASTER_SECRET_KEY        = os.environ.get('MASTER_SECRET_KEY', 'SAPTHA@2026')
+    MASTER_SECRET_KEY        = _master_key or secrets.token_urlsafe(32)
 
     # =========================================================
     # 6. GEMINI AI
@@ -127,3 +151,18 @@ class Config:
     # =========================================================
     FIREBASE_CREDENTIALS = os.environ.get('FIREBASE_CREDENTIALS', '')
     FIREBASE_KEY_PATH    = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
+
+    # =========================================================
+    # 11. OBSERVABILITY — Sentry error tracking
+    # =========================================================
+    SENTRY_DSN       = os.environ.get('SENTRY_DSN', '')
+    SENTRY_ENV       = os.environ.get('FLASK_ENV', 'development')
+    SENTRY_SAMPLE    = float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1'))
+
+    # =========================================================
+    # 12. CELERY — Async task queue (optional)
+    # =========================================================
+    # If CELERY_BROKER_URL is unset, tasks fall back to synchronous execution.
+    CELERY_BROKER_URL     = os.environ.get('CELERY_BROKER_URL', '')
+    CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND',
+                                            os.environ.get('CELERY_BROKER_URL', ''))

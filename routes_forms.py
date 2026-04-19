@@ -24,7 +24,7 @@ import secrets
 import string
 import time
 
-from flask import (Blueprint, Response, flash, jsonify,
+from flask import (Blueprint, Response, current_app, flash, jsonify,
                    redirect, render_template, request, session)
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -523,4 +523,225 @@ def get_schema(event_id):
         event_doc = db.collection('events').document(event_id).get()
         is_team   = event_doc.to_dict().get('is_team_event', False) if event_doc.exists else False
         return jsonify(_simple_schema_fallback(is_team))
-    return jsonify(schema) 
+    return jsonify(schema)
+
+
+# =========================================================
+# 8. AI FORM GENERATION  (Gemini + keyword fallback)
+# =========================================================
+SUPPORTED_FIELD_TYPES = {
+    'text', 'textarea', 'email', 'tel', 'number', 'date', 'url',
+    'select', 'radio', 'checkbox_group', 'checkbox',
+    'heading', 'paragraph', 'divider'
+}
+
+
+def _slug(label: str, used: set) -> str:
+    base = re.sub(r'[^a-z0-9]+', '_', (label or 'field').lower()).strip('_') or 'field'
+    fid, n = base, 2
+    while fid in used:
+        fid = f"{base}_{n}"
+        n += 1
+    used.add(fid)
+    return fid
+
+
+def _normalize_fields(raw_fields) -> list:
+    """Sanitise LLM/keyword output into valid form_builder schema fields."""
+    if not isinstance(raw_fields, list):
+        return []
+    used, clean = set(), []
+    for i, f in enumerate(raw_fields):
+        if not isinstance(f, dict):
+            continue
+        ftype = str(f.get('type', 'text')).lower().strip()
+        if ftype not in SUPPORTED_FIELD_TYPES:
+            ftype = 'text'
+        label = str(f.get('label') or f'Field {i+1}').strip()[:120]
+        fid   = str(f.get('id') or '').strip() or _slug(label, used)
+        if fid in used:
+            fid = _slug(label, used)
+        else:
+            used.add(fid)
+        opts = f.get('options') or []
+        if not isinstance(opts, list):
+            opts = []
+        opts = [str(o).strip()[:80] for o in opts if str(o).strip()]
+        clean.append({
+            'id':          fid,
+            'type':        ftype,
+            'label':       label,
+            'placeholder': str(f.get('placeholder') or '')[:120],
+            'required':    bool(f.get('required', False)),
+            'options':     opts,
+            'min':         f.get('min', ''),
+            'max':         f.get('max', ''),
+            'help_text':   str(f.get('help_text') or '')[:200],
+        })
+    return clean
+
+
+def _keyword_generate(description: str, is_team: bool = False) -> list:
+    """Dumb keyword matcher — always works, no API needed."""
+    text = (description or '').lower()
+    fields, used = [], set()
+
+    def add(label, ftype, **extra):
+        fid = _slug(label, used)
+        fields.append({
+            'id': fid, 'type': ftype, 'label': label,
+            'placeholder': extra.get('placeholder', ''),
+            'required':    extra.get('required', False),
+            'options':     extra.get('options', []),
+            'min': extra.get('min', ''), 'max': extra.get('max', ''),
+            'help_text': '',
+        })
+
+    # Always: name + email
+    add('Full Name',     'text',  placeholder='Enter your full name', required=True)
+    add('Email Address', 'email', placeholder='you@example.com',      required=True)
+
+    if re.search(r'\b(phone|mobile|whatsapp|contact|number)\b', text):
+        add('Phone Number', 'tel', placeholder='10-digit mobile', required=True)
+
+    if re.search(r'\b(usn|srn|roll|registration no|reg no|student id)\b', text):
+        add('USN / Roll Number', 'text', placeholder='e.g. 1SN21CS001', required=True)
+
+    if re.search(r'\b(college|institution|university|school)\b', text):
+        add('College / Institution', 'text', placeholder='Your college name', required=True)
+
+    if re.search(r'\b(branch|department|stream|course)\b', text):
+        add('Branch / Department', 'text', placeholder='e.g. CSE, ECE', required=False)
+
+    if re.search(r'\b(year|semester|sem)\b', text):
+        add('Year of Study', 'select',
+            options=['1st Year', '2nd Year', '3rd Year', '4th Year'], required=True)
+
+    if re.search(r'\bgender\b', text):
+        add('Gender', 'radio', options=['Male', 'Female', 'Prefer not to say'])
+
+    if re.search(r'\b(t[- ]?shirt|tshirt|tee|size)\b', text):
+        add('T-Shirt Size', 'select', options=['S', 'M', 'L', 'XL', 'XXL'])
+
+    if re.search(r'\b(diet|food|veg|meal)\b', text):
+        add('Dietary Preference', 'radio', options=['Veg', 'Non-Veg', 'Jain', 'Vegan'])
+
+    if re.search(r'\b(github|portfolio|link|url|website)\b', text):
+        add('GitHub / Portfolio URL', 'url', placeholder='https://github.com/you')
+
+    if re.search(r'\b(linkedin)\b', text):
+        add('LinkedIn Profile', 'url', placeholder='https://linkedin.com/in/you')
+
+    if re.search(r'\b(resume|cv)\b', text):
+        add('Resume / CV Link', 'url', placeholder='Google Drive or link')
+
+    if re.search(r'\b(abstract|pitch|idea|proposal|description)\b', text):
+        add('Project / Idea Description', 'textarea',
+            placeholder='Tell us about your idea (100–300 words)')
+
+    if re.search(r'\b(experience|skill)\b', text):
+        add('Relevant Skills / Experience', 'textarea',
+            placeholder='Languages, frameworks, past projects')
+
+    if re.search(r'\b(allerg|medical|health)\b', text):
+        add('Allergies / Medical Notes', 'textarea', placeholder='Leave blank if none')
+
+    if re.search(r'\b(emergency|guardian|parent)\b', text):
+        add('Emergency Contact Number', 'tel', placeholder='10-digit number')
+
+    if re.search(r'\b(dob|date of birth|birthday)\b', text):
+        add('Date of Birth', 'date')
+
+    if re.search(r'\b(accommodation|stay|hostel|outstation)\b', text):
+        add('Need Accommodation?', 'radio', options=['Yes', 'No'])
+
+    if re.search(r'\b(hear|source|how did you)\b', text):
+        add('How did you hear about this event?', 'select',
+            options=['Instagram', 'WhatsApp', 'College Notice', 'Friend', 'Other'])
+
+    if is_team or re.search(r'\b(team|group|squad)\b', text):
+        add('Team Name', 'text', placeholder='Your team name', required=True)
+        add('Team Size', 'number', placeholder='e.g. 4', min=1, max=10)
+
+    # De-dupe by label
+    seen, deduped = set(), []
+    for f in fields:
+        key = f['label'].lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(f)
+    return deduped
+
+
+def _gemini_generate(description: str, is_team: bool) -> list:
+    """Ask Gemini for a structured schema. Returns [] on any failure."""
+    api_key = current_app.config.get('GEMINI_API_KEY', '')
+    if not api_key:
+        return []
+    try:
+        from google import genai  # already in requirements
+        client = genai.Client(api_key=api_key)
+        prompt = (
+            "You are a form-schema generator for a college event registration system.\n"
+            "Given the SPOC's plain-English description, output ONLY a JSON array of "
+            "form fields (no prose, no markdown fences). Each field must match this shape:\n"
+            '{"id": "snake_case_id", "type": "<type>", "label": "Human label", '
+            '"placeholder": "", "required": true/false, "options": ["..."], '
+            '"min": "", "max": "", "help_text": ""}\n\n'
+            f"Allowed types: {', '.join(sorted(SUPPORTED_FIELD_TYPES))}.\n"
+            "Rules:\n"
+            "- Always include Full Name (text, required) and Email (email, required) "
+            "as the first two fields.\n"
+            "- Use 'select' or 'radio' whenever the description implies a fixed set of "
+            "choices (e.g. sizes, year, gender, veg/non-veg).\n"
+            "- Use 'tel' for phone/whatsapp, 'url' for links, 'textarea' for long answers, "
+            "'number' for counts.\n"
+            "- Mark a field required only if clearly essential.\n"
+            "- Keep it under 15 fields. Omit 'options' when not applicable.\n"
+            f"- Team event: {is_team}. If true, include Team Name.\n\n"
+            f"Description:\n{description}\n\n"
+            "Output: JSON array only."
+        )
+        resp = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        raw = (resp.text or '').strip()
+        # strip markdown fences if the model added them anyway
+        raw = re.sub(r'^```(?:json)?\s*|\s*```$', '', raw, flags=re.IGNORECASE).strip()
+        # trim to the outermost JSON array
+        first, last = raw.find('['), raw.rfind(']')
+        if first == -1 or last == -1 or last < first:
+            return []
+        parsed = json.loads(raw[first:last + 1])
+        return parsed if isinstance(parsed, list) else []
+    except Exception as exc:
+        current_app.logger.warning("Gemini form-gen failed: %s", exc)
+        return []
+
+
+@forms_bp.route('/ai_generate', methods=['POST'])
+@login_required
+@role_required(BUILDER_ROLES)
+def ai_generate():
+    """
+    Request:  { description: str, is_team: bool }
+    Response: { source: 'ai' | 'keyword', fields: [...] }
+    """
+    try:
+        payload     = request.get_json(force=True) or {}
+        description = str(payload.get('description', '')).strip()
+        is_team     = bool(payload.get('is_team', False))
+
+        if not description:
+            return jsonify({'status': 'error', 'message': 'Please describe your form.'}), 400
+
+        fields = _normalize_fields(_gemini_generate(description, is_team))
+        source = 'ai' if fields else 'keyword'
+        if not fields:
+            fields = _normalize_fields(_keyword_generate(description, is_team))
+
+        return jsonify({'status': 'ok', 'source': source, 'fields': fields})
+    except Exception as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 500

@@ -58,10 +58,11 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;font-weight:700;}
 
 
 /* ── TICKER ─────────────────────────────────── */
-html,body{margin:0;padding:0;}
-.ticker-bar{background:linear-gradient(90deg,#071929 0%,#0a2a3f 100%);padding:10px 0;overflow:hidden;white-space:nowrap;position:relative;margin:0;}
-.ticker-bar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,#071929,transparent);z-index:10;}
-.ticker-bar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,transparent,#071929);z-index:10;}
+html,body{margin:0!important;padding:0!important;background:#1a2557;}
+body{background:#f8f9fa;}
+.ticker-bar{background:#1a2557;padding:10px 0;overflow:hidden;white-space:nowrap;position:relative;margin:0;border:0;}
+.ticker-bar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,#1a2557,transparent);z-index:10;}
+.ticker-bar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,transparent,#1a2557);z-index:10;}
 .ticker-track{display:inline-flex;gap:64px;animation:tickMove 40s linear infinite;}
 .ticker-track:hover{animation-play-state:paused;}
 .ticker-item{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:rgba(255,255,255,.85);font-family:'Inter',sans-serif;font-weight:500;}
@@ -70,7 +71,7 @@ html,body{margin:0;padding:0;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* ── NAVBAR ──────────────────────────────────── */
-.snav{background:#0f1a3d;background:linear-gradient(135deg,#1a2557 0%,#0a2a3f 100%);position:sticky;top:0;z-index:1050;box-shadow:0 4px 20px rgba(26, 37, 87,.25);margin:0;padding:6px 0;border:0;}
+.snav{background:#1a2557!important;position:sticky;top:0;z-index:1050;box-shadow:0 4px 20px rgba(26, 37, 87,.25);margin:0!important;padding:6px 0;border:0;}
 .snav .navbar-brand{display:flex;align-items:center;gap:12px;text-decoration:none;padding:2px 0;margin:0;animation:slideInLeft .6s ease;}
 .snav .navbar-brand img{background:transparent;}
 .nav-logo-sq{width:42px;height:42px;background:linear-gradient(135deg,var(--orange),#c9a45e);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(201,164,94,.3);}
@@ -86,7 +87,7 @@ html,body{margin:0;padding:0;}
 .btn-login-mini:hover{background:#d95f0f;color:#fff;text-decoration:none;transform:translateY(-1px);}
 .navbar-toggler{border:1.5px solid rgba(255,255,255,.25)!important;outline:none;color:#fff;font-size:16px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);}
 .navbar-toggler:focus{box-shadow:none;}
-.snav .navbar-collapse{background:linear-gradient(180deg,#1a2557,#0a2a3f);}
+.snav .navbar-collapse{background:#1a2557;}
 @media(max-width:991px){
   .snav .navbar-collapse{margin-top:8px;border-radius:10px;padding:6px 10px;}
   .snav .navbar-brand img{height:36px!important;}

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner | {{ event_title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body { background-color: #1a2557; color: white; font-family: sans-serif; }
+        #reader { width: 100%; border-radius: 15px; overflow: hidden; border: 4px solid #c9a45e; background: white;}
+        .member-row { background: white; color: #1e293b; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #10b981;}
+        .form-check-input { width: 25px; height: 25px; cursor: pointer; accent-color: #10b981; border: 2px solid #cbd5e1; }
+    </style>
+</head>
+<body class="d-flex flex-column align-items-center justify-content-center min-vh-100 p-3">
+
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-warning"><i class="fas fa-qrcode me-2"></i>Entry Scanner</h2>
+        <p class="fs-5">{{ event_title }}</p>
+    </div>
+
+    <div id="scanner-view" class="w-100" style="max-width: 500px;">
+        <div id="reader" class="shadow-lg"></div>
+        <div class="mt-4 text-center">
+            <p>Or manually enter Ticket ID:</p>
+            <div class="input-group">
+                <input type="text" id="manual_id" class="form-control form-control-lg" placeholder="REG-123456789">
+                <button class="btn btn-warning fw-bold px-4" onclick="fetchTicket(document.getElementById('manual_id').value)">Fetch</button>
+            </div>
+            <a href="/coordinator/scanner" class="btn btn-outline-light mt-4"><i class="fas fa-arrow-left me-2"></i>Back to Scanner Menu</a>
+        </div>
+    </div>
+
+    <div id="attendance-view" class="w-100 d-none" style="max-width: 600px;">
+        <div class="bg-white text-dark p-4 rounded-4 shadow-lg">
+            <h4 class="fw-bold mb-1 text-primary" id="t_team">Team Name</h4>
+            <p class="text-muted border-bottom pb-3 mb-3">Ticket ID: <span id="t_id" class="fw-bold"></span></p>
+            
+            <div class="alert alert-warning border-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i> Only leave checkboxes checked for students physically present. <strong>Absent students will not receive certificates.</strong>
+            </div>
+            
+            <form id="attendanceForm">
+                <input type="hidden" id="submit_reg_id">
+                <div id="members-list"></div>
+                
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-danger px-4 fw-bold" onclick="resetScanner()">Cancel</button>
+                    <button type="button" class="btn btn-success px-5 fw-bold fs-5 shadow" onclick="submitGranularAttendance()">Confirm Entry <i class="fas fa-check-circle ms-2"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+        
+        function onScanSuccess(decodedText, decodedResult) {
+            html5QrcodeScanner.pause();
+            fetchTicket(decodedText);
+        }
+        html5QrcodeScanner.render(onScanSuccess);
+
+        async function fetchTicket(regId) {
+            if(!regId) return;
+            const response = await fetch(`/coordinator/get_ticket/${regId}`);
+            const data = await response.json();
+            
+            if(data.status === 'success') {
+                const reg = data.data;
+                document.getElementById('scanner-view').classList.add('d-none');
+                document.getElementById('attendance-view').classList.remove('d-none');
+                
+                document.getElementById('t_team').innerText = (reg.team_name && reg.team_name !== 'Individual') ? reg.team_name : reg.lead_name;
+                document.getElementById('t_id').innerText = reg.reg_id;
+                document.getElementById('submit_reg_id').value = reg.reg_id;
+                
+                let html = '';
+                // Leader
+                html += `<label class="member-row shadow-sm">
+                            <div><strong class="d-block">${reg.lead_name} (Team Lead)</strong><small class="text-muted">${reg.lead_usn}</small></div>
+                            <input type="checkbox" class="form-check-input" name="present_usn" value="${reg.lead_usn}" checked>
+                         </label>`;
+                // Members
+                if(reg.members) {
+                    reg.members.forEach(m => {
+                        if(m.usn && m.usn !== reg.lead_usn) {
+                            html += `<label class="member-row shadow-sm">
+                                        <div><strong class="d-block">${m.name}</strong><small class="text-muted">${m.usn}</small></div>
+                                        <input type="checkbox" class="form-check-input" name="present_usn" value="${m.usn}" checked>
+                                     </label>`;
+                        }
+                    });
+                }
+                document.getElementById('members-list').innerHTML = html;
+            } else {
+                alert("❌ " + data.message);
+                html5QrcodeScanner.resume();
+            }
+        }
+
+        async function submitGranularAttendance() {
+            const checkboxes = document.querySelectorAll('input[name="present_usn"]:checked');
+            const present_usns = Array.from(checkboxes).map(cb => cb.value);
+            const reg_id = document.getElementById('submit_reg_id').value;
+
+            const response = await fetch('/coordinator/mark_attendance_granular', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ reg_id: reg_id, present_usns: present_usns })
+            });
+            const data = await response.json();
+            
+            alert(data.message);
+            resetScanner();
+        }
+
+        function resetScanner() {
+            document.getElementById('attendance-view').classList.add('d-none');
+            document.getElementById('scanner-view').classList.remove('d-none');
+            document.getElementById('manual_id').value = '';
+            html5QrcodeScanner.resume();
+        }
+    </script>
+<script>
+(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
+if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
+var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
+if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
+var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
+var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
+if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
+</script>
+</body>
+</html>

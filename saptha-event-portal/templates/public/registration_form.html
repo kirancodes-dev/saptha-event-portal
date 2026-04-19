@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a2557">
+<title>Register — {{ event.title }}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;}
+*{box-sizing:border-box;}
+html,body{min-height:100%;font-family:'Inter',sans-serif;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+
+body{
+  background:#f8f9fa;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:24px;padding-bottom:40px;
+}
+
+/* ── Wrapper ─────────────────────────────────────────── */
+.page-wrap{width:100%;max-width:640px;padding:0 16px;}
+
+/* ── Back link ───────────────────────────────────────── */
+.back-link{color:rgba(255,255,255,.6);font-size:13px;text-decoration:none;
+  display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;}
+.back-link:hover{color:#fff;}
+
+/* ── Flash messages ──────────────────────────────────── */
+.flash{padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;
+  display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;}
+.flash i{margin-top:2px;flex-shrink:0;}
+.flash-info   {background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+.flash-danger {background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
+.flash-warning{background:#fffbeb;color:#d97706;border:1px solid #fde68a;}
+.flash-success{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
+
+/* ── Event banner ────────────────────────────────────── */
+.event-banner{
+  background:linear-gradient(135deg,var(--blue) 0%,#1a4fa0 100%);
+  border-radius:16px 16px 0 0;padding:22px 24px 18px;color:#fff;
+}
+.event-banner .cat{font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  opacity:.7;margin-bottom:6px;}
+.event-banner h3{font-size:clamp(16px,4vw,22px);margin:0 0 6px;line-height:1.2;}
+.event-banner .meta{font-size:12px;opacity:.85;display:flex;flex-wrap:wrap;gap:10px;}
+.event-banner .meta span{display:flex;align-items:center;gap:4px;}
+.fee-free{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+  color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;}
+
+/* ── Form card ───────────────────────────────────────── */
+.form-card{
+  background:#fff;border-radius:0 0 16px 16px;
+  padding:24px 20px 28px;
+  box-shadow:0 32px 64px rgba(0,0,0,.4);
+}
+@media(min-width:480px){.form-card{padding:28px 28px 32px;}}
+
+/* ── Form meta ───────────────────────────────────────── */
+.form-title{font-size:18px;font-weight:700;color:var(--blue);margin:0 0 4px;}
+.form-desc {font-size:13px;color:#64748b;margin:0 0 20px;}
+
+/* ── Section headings (from heading field type) ──────── */
+.field-heading{
+  font-size:14px;font-weight:700;color:var(--blue);
+  border-left:3px solid var(--orange);padding-left:10px;
+  margin:24px 0 14px;
+}
+.field-paragraph{color:#64748b;font-size:13px;margin-bottom:12px;}
+.field-divider{border:none;border-top:1.5px solid #e2e8f0;margin:20px 0;}
+
+/* ── Form groups ─────────────────────────────────────── */
+.form-group{margin-bottom:18px;}
+.form-group label{
+  display:block;font-size:13px;font-weight:600;
+  color:#334155;margin-bottom:5px;
+}
+.form-group label .req{color:#ef4444;margin-left:2px;}
+.help-text{font-size:11px;color:#94a3b8;margin-top:4px;}
+
+/* ── Inputs ──────────────────────────────────────────── */
+.form-control,.form-select{
+  width:100%;padding:11px 14px;font-size:14px;
+  font-family:'Inter',sans-serif;
+  border:1.5px solid #e2e8f0;border-radius:10px;
+  background:#f8fafc;transition:.15s;color:#1e293b;
+  -webkit-appearance:none;appearance:none;
+}
+.form-control:focus,.form-select:focus{
+  outline:none;border-color:var(--blue);background:#fff;
+  box-shadow:0 0 0 3px rgba(26, 37, 87,.1);
+}
+.form-control.error{border-color:#ef4444;background:#fef2f2;}
+textarea.form-control{resize:vertical;min-height:90px;}
+
+/* ── Select arrow ────────────────────────────────────── */
+.select-wrap{position:relative;}
+.select-wrap::after{
+  content:'\f078';font-family:'Font Awesome 6 Free';font-weight:900;
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  color:#94a3b8;font-size:11px;pointer-events:none;
+}
+.select-wrap select{padding-right:36px;}
+
+/* ── Radio / Checkbox groups ─────────────────────────── */
+.choice-list{display:flex;flex-direction:column;gap:8px;}
+.choice-item{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+  cursor:pointer;transition:.15s;user-select:none;
+}
+.choice-item:hover{border-color:var(--blue);background:#f8fafc;}
+.choice-item input{
+  width:18px;height:18px;accent-color:var(--orange);
+  flex-shrink:0;cursor:pointer;
+}
+.choice-item span{font-size:14px;color:#334155;}
+.choice-item:has(input:checked){
+  border-color:var(--orange);background:#fff8f4;
+}
+.choice-item:has(input:checked) span{color:var(--blue);font-weight:600;}
+
+/* ── Single checkbox ─────────────────────────────────── */
+.single-check{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+  cursor:pointer;transition:.15s;
+}
+.single-check:has(input:checked){border-color:var(--orange);background:#fff8f4;}
+.single-check input{width:18px;height:18px;accent-color:var(--orange);flex-shrink:0;}
+.single-check span{font-size:13px;color:#334155;}
+
+/* ── Submit button ───────────────────────────────────── */
+.btn-submit{
+  width:100%;padding:14px;background:var(--blue);color:#fff;
+  border:none;border-radius:12px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:.2s;margin-top:8px;
+  font-family:'Poppins',sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-submit:hover{background:#1a4fa0;transform:translateY(-1px);}
+.btn-submit:active{transform:scale(.98);}
+.btn-submit:disabled{background:#94a3b8;cursor:not-allowed;transform:none;}
+
+/* ── Already registered ──────────────────────────────── */
+.already-card{
+  background:#fff;border-radius:16px;padding:40px 28px;
+  text-align:center;max-width:440px;width:100%;
+  box-shadow:0 32px 64px rgba(0,0,0,.4);
+}
+
+/* ── Security note ───────────────────────────────────── */
+.security-note{
+  text-align:center;color:rgba(255,255,255,.5);
+  font-size:12px;margin-top:16px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+
+/* ── Mobile tweaks ───────────────────────────────────── */
+@media(max-width:400px){
+  .choice-item{padding:10px 12px;}
+  .form-control,.form-select{font-size:16px;} /* prevent iOS zoom */
+  .btn-submit{font-size:14px;padding:13px;}
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Back -->
+  <a href="/event/{{ event.id }}" class="back-link">
+    <i class="fas fa-arrow-left"></i>Back to event
+  </a>
+
+  <!-- Flash -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+      <div class="flash flash-{{ cat }}">
+        <i class="fas fa-info-circle"></i>
+        <span>{{ msg | safe }}</span>
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if is_registered %}
+  <!-- ── Already registered ── -->
+  <div class="already-card">
+    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+    <h4 class="fw-bold">Already Registered!</h4>
+    <p class="text-muted">You have already registered for <strong>{{ event.title }}</strong>.</p>
+    <a href="/participant/dashboard"
+       class="btn btn-primary rounded-pill px-4 mt-2">
+      <i class="fas fa-ticket-alt me-2"></i>View My Tickets
+    </a>
+  </div>
+
+  {% else %}
+
+  <!-- ── Event banner ── -->
+  <div class="event-banner">
+    {% if event.get('category') %}
+    <div class="cat">{{ event.category }}</div>
+    {% endif %}
+    <h3>{{ event.title }}</h3>
+    <div class="meta">
+      {% if event.get('date') %}
+      <span><i class="fas fa-calendar-alt"></i>{{ event.date }}</span>
+      {% endif %}
+      {% if event.get('venue') %}
+      <span><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
+      {% endif %}
+      {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+      <span><i class="fas fa-rupee-sign"></i>{{ event.entry_fee }} entry fee</span>
+      {% else %}
+      <span class="fee-free"><i class="fas fa-star me-1"></i>Free event</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Registration form ── -->
+  <div class="form-card">
+
+    <h2 class="form-title">{{ schema.form_title or 'Registration Form' }}</h2>
+    {% if schema.get('form_desc') %}
+    <p class="form-desc">{{ schema.form_desc }}</p>
+    {% endif %}
+
+    <form method="POST" action="/forms/submit/{{ event.id }}"
+          id="reg-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      {% for field in schema.fields %}
+
+        {# ── Layout fields ── #}
+        {% if field.type == 'divider' %}
+          <hr class="field-divider">
+
+        {% elif field.type == 'heading' %}
+          <div class="field-heading">{{ field.label }}</div>
+
+        {% elif field.type == 'paragraph' %}
+          <p class="field-paragraph">{{ field.label }}</p>
+
+        {# ── Dropdown ── #}
+        {% elif field.type == 'select' %}
+        <div class="form-group">
+          <label for="{{ field.id }}">
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <div class="select-wrap">
+            <select class="form-select" id="{{ field.id }}" name="{{ field.id }}"
+                    {% if field.required %}required{% endif %}>
+              <option value="">{{ field.placeholder or 'Select an option…' }}</option>
+              {% for opt in field.options %}
+              <option value="{{ opt }}">{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        {# ── Multiple choice (radio) ── #}
+        {% elif field.type == 'radio' %}
+        <div class="form-group">
+          <label>
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <div class="choice-list mt-1">
+            {% for opt in field.options %}
+            <label class="choice-item">
+              <input type="radio" name="{{ field.id }}" value="{{ opt }}"
+                     {% if field.required %}required{% endif %}>
+              <span>{{ opt }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# ── Checkbox group ── #}
+        {% elif field.type == 'checkbox_group' %}
+        <div class="form-group">
+          <label>
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <div class="choice-list mt-1">
+            {% for opt in field.options %}
+            <label class="choice-item">
+              <input type="checkbox" name="{{ field.id }}" value="{{ opt }}">
+              <span>{{ opt }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# ── Single checkbox ── #}
+        {% elif field.type == 'checkbox' %}
+        <div class="form-group">
+          <label class="single-check">
+            <input type="checkbox" name="{{ field.id }}" value="yes"
+                   {% if field.required %}required{% endif %}>
+            <span>
+              {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+            </span>
+          </label>
+          {% if field.help_text %}<div class="help-text mt-1">{{ field.help_text }}</div>{% endif %}
+        </div>
+
+        {# ── Textarea ── #}
+        {% elif field.type == 'textarea' %}
+        <div class="form-group">
+          <label for="{{ field.id }}">
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <textarea class="form-control" id="{{ field.id }}" name="{{ field.id }}"
+                    placeholder="{{ field.placeholder }}"
+                    {% if field.required %}required{% endif %}></textarea>
+        </div>
+
+        {# ── All other inputs (text, email, tel, number, date, url) ── #}
+        {% else %}
+        <div class="form-group">
+          <label for="{{ field.id }}">
+            {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
+          <input type="{{ field.type }}"
+                 class="form-control"
+                 id="{{ field.id }}"
+                 name="{{ field.id }}"
+                 placeholder="{{ field.placeholder }}"
+                 {% if field.min is defined and field.min != '' %}min="{{ field.min }}"{% endif %}
+                 {% if field.max is defined and field.max != '' %}max="{{ field.max }}"{% endif %}
+                 {% if field.required %}required{% endif %}
+                 autocomplete="{{ 'email' if field.type == 'email' else 'tel' if field.type == 'tel' else 'off' }}"
+                 inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}">
+        </div>
+        {% endif %}
+
+      {% endfor %}
+
+      <!-- Submit -->
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <i class="fas fa-paper-plane"></i>
+        {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+          Continue to Payment — ₹{{ event.entry_fee }}
+        {% else %}
+          Register Now — Free
+        {% endif %}
+      </button>
+
+    </form>
+  </div>
+
+  <p class="security-note">
+    <i class="fas fa-lock"></i>
+    Your data is secure and used only for event management.
+  </p>
+
+  {% endif %}
+
+</div><!-- /page-wrap -->
+
+<script>
+// Prevent double-submit
+document.getElementById('reg-form') &&
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  // Client-side: mark required radio groups
+  let ok = true;
+  this.querySelectorAll('[data-required-radio]').forEach(function(grp) {
+    const name = grp.dataset.requiredRadio;
+    if(!document.querySelector('[name="'+name+'"]:checked')) {
+      grp.style.borderColor='#ef4444';
+      ok = false;
+    }
+  });
+  if(!ok) { e.preventDefault(); return; }
+
+  const btn = document.getElementById('submit-btn');
+  if(btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+  }
+});
+
+// Highlight selected radio/checkbox visually for accessibility
+document.querySelectorAll('.choice-item input').forEach(function(inp) {
+  inp.addEventListener('change', function() {
+    if(this.type === 'radio') {
+      document.querySelectorAll('[name="'+this.name+'"]').forEach(function(r) {
+        r.closest('.choice-item').style.borderColor='';
+      });
+    }
+    this.closest('.choice-item').style.borderColor='var(--orange)';
+  });
+});
+</script>
+</body>
+</html>

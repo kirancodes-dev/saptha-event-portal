@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a2557">
+
+<!-- ═══ SEO Meta Tags ═══ -->
+<title>SapthaEvent | Event Management Portal - Sapthagiri NPS University</title>
+<meta name="description" content="SapthaEvent: Official event management portal for Sapthagiri NPS University. Register for technical, cultural, and sports events. Instant QR tickets, AI assistant, and email/WhatsApp alerts.">
+<meta name="keywords" content="events, registration, university, SNPSU, hackathon, cultural fest, sports meet, QR tickets, event portal">
+<meta name="author" content="Sapthagiri NPS University">
+<meta name="robots" content="index, follow">
+<meta name="language" content="English">
+
+<!-- ═══ Open Graph (Social Media) ═══ -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="SapthaEvent - Sapthagiri NPS University Event Portal">
+<meta property="og:description" content="Discover and register for campus events. Get instant QR tickets and event updates via email and WhatsApp.">
+<meta property="og:url" content="https://events.snpsu.edu.in">
+<meta property="og:image" content="/static/snpsu-logo.png">
+<meta property="og:site_name" content="SapthaEvent">
+
+<!-- ═══ Twitter Card ═══ -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SapthaEvent - SNPSU Event Portal">
+<meta name="twitter:description" content="Register for campus events, get instant QR tickets, and receive alerts.">
+<meta name="twitter:image" content="/static/snpsu-logo.png">
+
+<!-- ═══ Canonical URL ═══ -->
+<link rel="canonical" href="https://events.snpsu.edu.in">
+
+<!-- ═══ Favicons ═══ -->
+<link rel="icon" type="image/png" href="/static/snpsu-logo.png">
+<link rel="apple-touch-icon" href="/static/snpsu-logo.png">
+
+{% include 'includes/pwa_head.html' %}
+
+<!-- ═══ Stylesheets ═══ -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;}
+*{box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f8f9fa;margin:0;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;font-weight:700;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--orange);border-radius:3px;}
+::-webkit-scrollbar-track{background:#f1f5f9;}
+
+/* ── ANIMATIONS ─────────────────────────────── */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse-glow{0%{box-shadow:0 0 10px rgba(201,164,94,.3)}50%{box-shadow:0 0 20px rgba(201,164,94,.5)}100%{box-shadow:0 0 10px rgba(201,164,94,.3)}}
+
+
+/* ── TICKER ─────────────────────────────────── */
+.ticker-bar{background:linear-gradient(90deg,#071929 0%,#0a2a3f 100%);padding:10px 0;overflow:hidden;white-space:nowrap;position:relative;}
+.ticker-bar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,#071929,transparent);z-index:10;}
+.ticker-bar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,transparent,#071929);z-index:10;}
+.ticker-track{display:inline-flex;gap:64px;animation:tickMove 40s linear infinite;}
+.ticker-track:hover{animation-play-state:paused;}
+.ticker-item{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:rgba(255,255,255,.85);font-family:'Inter',sans-serif;font-weight:500;}
+.ticker-item i{color:var(--orange);font-size:12px;animation:pulse 2s ease-in-out infinite;}
+@keyframes tickMove{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ── NAVBAR ──────────────────────────────────── */
+.snav{background:linear-gradient(135deg,var(--blue) 0%,#0a2a3f 100%);position:sticky;top:0;z-index:1050;box-shadow:0 4px 20px rgba(26, 37, 87,.15);backdrop-filter:blur(10px);background-color:rgba(26, 37, 87,.98);}
+.snav .navbar-brand{display:flex;align-items:center;gap:12px;text-decoration:none;padding:8px 0;animation:slideInLeft .6s ease;}
+.nav-logo-sq{width:42px;height:42px;background:linear-gradient(135deg,var(--orange),#c9a45e);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(201,164,94,.3);}
+.brand-n{font-family:'Poppins',sans-serif;font-weight:800;font-size:18px;color:#fff;line-height:1.1;display:block;letter-spacing:-.5px;}
+.brand-s{font-size:8.5px;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;display:block;font-weight:600;}
+.snav .nav-link{color:rgba(255,255,255,.8)!important;font-size:13.5px;font-weight:500;padding:8px 14px!important;border-radius:8px;transition:.2s;position:relative;}
+.snav .nav-link::after{content:'';position:absolute;bottom:0;left:50%;width:0;height:2px;background:var(--orange);transition:.3s;transform:translateX(-50%);}
+.snav .nav-link:hover{color:#fff!important;background:rgba(255,255,255,.08);}
+.snav .nav-link:hover::after{width:20px;}
+.snav .btn-login{background:var(--orange)!important;color:#fff!important;font-weight:700!important;padding:8px 22px!important;border-radius:8px!important;transition:.2s!important;box-shadow:0 4px 12px rgba(201,164,94,.3)!important;}
+.snav .btn-login:hover{background:#d95f0f!important;transform:translateY(-2px);box-shadow:0 6px 16px rgba(201,164,94,.4)!important;}
+.navbar-toggler{border:none;outline:none;color:#fff;font-size:20px;padding:6px 10px;}
+.navbar-toggler:focus{box-shadow:none;}
+.snav .navbar-collapse{background:linear-gradient(180deg,rgba(26, 37, 87,.98),rgba(26, 37, 87,.95));}
+
+/* ── SKELETON LOADERS ───────────────────────────── */
+@keyframes skeletonPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+.skeleton{animation:skeletonPulse 1.5s ease-in-out infinite;background:#e0e0e0;border-radius:6px;}
+.skeleton-text{height:12px;margin-bottom:8px;}
+.skeleton-title{height:24px;margin-bottom:12px;border-radius:4px;}
+.skeleton-image{height:200px;background:#d0d0d0;border-radius:8px;margin-bottom:16px;}
+.skeleton-card{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.skeleton-card .skeleton-image{margin-bottom:12px;}
+.skeleton-btn{height:40px;margin-top:12px;border-radius:6px;}
+
+/* Event Card Skeleton */
+.ev-card.skeleton-loading{cursor:default;pointer-events:none;}
+.ev-card.skeleton-loading .ev-banner{background:#d0d0d0;height:180px;}
+.ev-card.skeleton-loading .ev-title{background:#e0e0e0;height:24px;border-radius:4px;}
+.ev-card.skeleton-loading .ev-desc{background:#e0e0e0;height:16px;border-radius:4px;margin-top:8px;}
+.ev-card.skeleton-loading .ev-meta span{background:#e0e0e0;height:14px;border-radius:4px;margin-bottom:6px;}
+
+/* Hero Carousel */
+.hero-car{position:relative;}
+.hero-car .carousel-item{height:86vh;min-height:440px;max-height:720px;position:relative;animation:fadeInUp .8s ease;}
+.hero-car .carousel-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.hero-car .carousel-item::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(7,25,41,.5) 0%,rgba(7,25,41,.3) 45%,rgba(7,25,41,.8) 100%);
+  animation:fadeInUp .8s ease;
+}
+.hero-car .carousel-caption{
+  position:absolute;bottom:0;left:0;right:0;top:0;
+  display:flex!important;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px 24px;text-align:center;z-index:5;
+}
+.h-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(201,164,94,.22);border:1.5px solid rgba(201,164,94,.5);color:#ffb347;font-size:12px;font-weight:700;padding:6px 18px;border-radius:100px;margin-bottom:16px;letter-spacing:.6px;text-transform:uppercase;animation:slideInLeft .6s ease .2s both;}
+.h-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);animation:blink 2s ease-in-out infinite;box-shadow:0 0 8px rgba(201,164,94,.6);}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.h-title{font-family:'Poppins',sans-serif;font-size:clamp(28px,5.5vw,62px);font-weight:900;color:#fff;line-height:1.05;margin-bottom:14px;text-shadow:0 4px 20px rgba(0,0,0,.4);letter-spacing:-1px;animation:slideInLeft .6s ease .3s both;}
+.h-title .accent{color:var(--orange);text-shadow:0 4px 16px rgba(201,164,94,.4);}
+.h-desc{font-size:clamp(14px,1.6vw,17px);color:rgba(255,255,255,.88);margin-bottom:26px;max-width:580px;line-height:1.7;font-family:'Inter',sans-serif;font-weight:500;animation:slideInLeft .6s ease .4s both;}
+.h-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;animation:slideInLeft .6s ease .5s both;}
+.h-btn-primary{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--orange),#c9a45e);color:#fff;font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;padding:11px 28px;border-radius:9px;text-decoration:none;border:none;cursor:pointer;transition:.3s;box-shadow:0 6px 20px rgba(201,164,94,.3);}
+.h-btn-primary:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(201,164,94,.45);background:linear-gradient(135deg,#c9a45e,#f95e1f);color:#fff;text-decoration:none;}
+.h-btn-outline{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);color:#fff;font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;padding:11px 28px;border-radius:9px;text-decoration:none;border:2px solid rgba(255,255,255,.35);transition:.3s;backdrop-filter:blur(10px);}
+.h-btn-outline:hover{background:rgba(255,255,255,.2);border-color:#fff;color:#fff;text-decoration:none;transform:translateY(-3px);}
+.h-stats{display:flex;gap:clamp(18px,4vw,48px);justify-content:center;margin-top:32px;animation:fadeInUp .8s ease .6s both;}
+.h-stat{text-align:center;border-left:3px solid rgba(201,164,94,.4);padding-left:14px;}
+.h-stat .snum{font-family:'Poppins',sans-serif;font-size:clamp(20px,3vw,32px);font-weight:900;color:var(--orange);line-height:1;text-shadow:0 2px 8px rgba(201,164,94,.3);}
+.h-stat .slbl{font-size:11px;color:rgba(255,255,255,.62);margin-top:4px;letter-spacing:.4px;font-weight:600;}
+.carousel-indicators{bottom:24px!important;}
+.carousel-indicators [data-bs-target]{width:10px;height:10px;border-radius:50%!important;border:none!important;opacity:.4;margin:0 5px;transition:.3s;}
+.carousel-indicators .active{opacity:1;background:var(--orange)!important;box-shadow:0 0 12px rgba(201,164,94,.5);}
+.carousel-control-prev,.carousel-control-next{width:48px;z-index:6;transition:.3s;}
+.carousel-control-prev:hover,.carousel-control-next:hover{opacity:1;}  
+.carousel-control-prev-icon,.carousel-control-next-icon{filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));}
+
+/* ── STATS BAND ──────────────────────────────── */
+.sband{background:var(--blue);padding:0;}
+.sband-row{display:flex;flex-wrap:wrap;}
+.sband-item{flex:1;min-width:140px;display:flex;align-items:center;gap:12px;padding:16px 20px;border-right:1px solid rgba(255,255,255,.1);justify-content:center;}
+.sband-item:last-child{border-right:none;}
+.sband-ico{width:38px;height:38px;border-radius:9px;background:rgba(201,164,94,.16);display:flex;align-items:center;justify-content:center;color:var(--orange);font-size:16px;flex-shrink:0;}
+.sband-n{font-family:'Poppins',sans-serif;font-size:19px;font-weight:800;color:#fff;line-height:1;}
+.sband-l{font-size:11px;color:rgba(255,255,255,.52);}
+
+/* ── SECTION COMMON ──────────────────────────── */
+.sec-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--orange);margin-bottom:6px;}
+.sec-eyebrow::before{content:'';width:18px;height:2px;background:var(--orange);border-radius:1px;display:inline-block;}
+.sec-h{font-family:'Poppins',sans-serif;font-size:clamp(20px,2.8vw,32px);font-weight:800;color:var(--blue);margin-bottom:4px;line-height:1.2;}
+.sec-p{font-size:14.5px;color:#64748b;line-height:1.6;}
+/* scroll-margin so sticky nav doesn't cover anchor targets */
+section[id]{scroll-margin-top:68px;}
+
+/* ── FILTER TABS ─────────────────────────────── */
+.ftabs{display:flex;flex-wrap:wrap;gap:7px;}
+.ftab{padding:6px 16px;border-radius:100px;font-size:12.5px;font-weight:500;border:1.5px solid #dee2e6;background:#fff;color:#64748b;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif;}
+.ftab:hover,.ftab.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+
+/* ── EVENT CARDS ─────────────────────────────── */
+.ev-card{border:1.5px solid #e0e9f0;border-radius:16px;overflow:hidden;background:#fff;transition:all .35s cubic-bezier(.4,.1,.2,1);height:100%;display:flex;flex-direction:column;box-shadow:0 4px 12px rgba(0,0,0,.04);}
+.ev-card:hover{transform:translateY(-8px);box-shadow:0 20px 40px rgba(26, 37, 87,.15);border-color:var(--orange);}
+.ev-banner{height:160px;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--blue),#1a4fa0);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ev-banner img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;transition:transform .4s cubic-bezier(.2,.5,.3,1);}
+.ev-card:hover .ev-banner img{transform:scale(1.1);}
+.ev-banner-icon{font-size:56px;position:relative;z-index:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.2));}
+.ev-overlay{position:absolute;inset:0;background:rgba(7,25,41,.15);}
+.ev-cat{position:absolute;top:12px;left:12px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:4px 12px;border-radius:8px;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+.cat-technical{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;}
+.cat-sports{background:linear-gradient(135deg,#10b981,#059669);color:#fff;}
+.cat-cultural{background:linear-gradient(135deg,#c9a45e,#d95f0f);color:#fff;}
+.cat-management{background:linear-gradient(135deg,#0891b2,#06b6d4);color:#fff;}
+.cat-general{background:linear-gradient(135deg,#1a2557,#1a4fa0);color:#fff;}
+.ev-deadline{position:absolute;top:12px;right:12px;font-size:10px;font-weight:700;padding:4px 11px;border-radius:8px;background:rgba(0,0,0,.65);color:#ffb347;z-index:3;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.ev-body{padding:18px 20px 16px;flex:1;display:flex;flex-direction:column;}
+.ev-title{font-family:'Poppins',sans-serif;font-size:16px;font-weight:800;color:var(--blue);margin-bottom:6px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;box-orient:vertical;overflow:hidden;}
+.ev-desc{font-size:13px;color:#64748b;line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;box-orient:vertical;overflow:hidden;flex:1;font-weight:500;}
+.ev-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+.ev-meta span{font-size:12px;color:#64748b;display:flex;align-items:center;gap:4px;font-weight:600;}
+.ev-meta i{color:var(--orange);font-size:11px;}
+.ev-footer{display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1.5px solid #f1f5f9;margin-top:auto;}
+.ev-fee-free{font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;color:var(--orange);}
+.ev-fee-paid{font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;color:var(--blue);}
+.ev-reg-count{font-size:11px;color:#94a3b8;margin-top:2px;font-weight:600;}
+.btn-reg{background:linear-gradient(135deg,var(--blue),#1a4fa0);color:#fff;border:none;font-size:13px;font-weight:700;padding:8px 18px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:.3s;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 4px 12px rgba(26, 37, 87,.2);}
+.btn-reg:hover{background:linear-gradient(135deg,var(--orange),#c9a45e);color:#fff;text-decoration:none;transform:translateY(-2px);box-shadow:0 6px 16px rgba(201,164,94,.3);}
+.no-events-box{text-align:center;padding:60px 24px;background:#fff;border-radius:14px;border:2px dashed #dee2e6;}
+.no-events-box i{font-size:48px;color:#cbd5e1;display:block;margin-bottom:14px;}
+
+/* ── HOW IT WORKS ────────────────────────────── */
+.hiw-section{background:linear-gradient(135deg,var(--blue) 0%,#0a2a3f 100%);position:relative;overflow:hidden;}
+.hiw-section::before{content:'';position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M0 0h60v60H0z" fill="none"/><circle cx="30" cy="30" r="2" fill="rgba(255,179,71,.1)"/></svg>');opacity:.5;}
+.hiw-section .sec-eyebrow{color:#ffb347;}
+.hiw-section .sec-eyebrow::before{background:#ffb347;}
+.hiw-section .sec-h{color:#fff;}
+.hiw-section .sec-p{color:rgba(255,255,255,.65);}
+.step-card{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:16px;padding:32px 24px;text-align:center;height:100%;transition:all .35s cubic-bezier(.4,.1,.2,1);position:relative;backdrop-filter:blur(10px);}
+.step-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(201,164,94,.05),transparent);border-radius:16px;pointer-events:none;}
+.step-card:hover{background:rgba(255,255,255,.12);border-color:rgba(201,164,94,.4);transform:translateY(-6px);box-shadow:0 12px 32px rgba(0,0,0,.15);}
+.step-ico{width:76px;height:76px;border-radius:50%;background:rgba(201,164,94,.18);border:2.5px solid rgba(201,164,94,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px;color:var(--orange);transition:all .3s;position:relative;z-index:1;box-shadow:0 8px 24px rgba(201,164,94,.15);}
+.step-card:hover .step-ico{background:var(--orange);color:#fff;border-color:var(--orange);transform:scale(1.1);box-shadow:0 12px 32px rgba(201,164,94,.3);}
+.step-title{font-family:'Poppins',sans-serif;font-size:16px;font-weight:800;color:#fff;margin-bottom:8px;position:relative;z-index:1;}
+.step-desc{font-size:13.5px;color:rgba(255,255,255,.58);line-height:1.7;margin:0;position:relative;z-index:1;font-weight:500;}
+
+/* ── CHATBOT FAB ─────────────────────────────── */
+.chat-fab{position:fixed;bottom:22px;right:22px;z-index:1040;}
+.chat-btn{width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#c9a45e);border:none;color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(201,164,94,.35);cursor:pointer;transition:all .3s cubic-bezier(.4,.1,.2,1);position:relative;animation:float 3s ease-in-out infinite;}
+.chat-btn:hover{transform:scale(1.12) translateY(-4px);box-shadow:0 12px 36px rgba(201,164,94,.45);}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.chat-ai-dot{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;border:3px solid #fff;font-size:7px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(16,185,129,.4);animation:pulse-dot 2s ease-in-out infinite;}
+@keyframes pulse-dot{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.chat-win{position:absolute;bottom:76px;right:0;width:330px;background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;display:none;flex-direction:column;max-height:480px;animation:slideUp .35s cubic-bezier(.4,.1,.2,1);}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.chat-win.open{display:flex;}
+.chat-head{background:linear-gradient(135deg,var(--blue),#0a2a3f);padding:16px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 12px rgba(26, 37, 87,.1);}
+.chat-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#c9a45e);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(201,164,94,.3);}
+.chat-head-name{font-family:'Poppins',sans-serif;font-size:13.5px;font-weight:800;color:#fff;margin:0;}
+.chat-head-sub{font-size:11px;color:rgba(255,255,255,.55);margin:0;font-weight:500;}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f8fafc;}
+.bw{display:flex;gap:8px;animation:fadeInUp .3s ease;}.bw.user{flex-direction:row-reverse;}
+.bb{max-width:80%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;font-family:'Inter',sans-serif;word-wrap:break-word;}
+.bb.bot{background:#fff;color:#1e293b;border:1.5px solid #e2e8f0;border-radius:4px 14px 14px 14px;box-shadow:0 2px 6px rgba(0,0,0,.04);}
+.bb.user{background:linear-gradient(135deg,var(--blue),#1a4fa0);color:#fff;border-radius:14px 4px 14px 14px;}
+.chat-row{padding:11px 13px;border-top:1.5px solid #e9ecef;display:flex;gap:7px;background:#fff;}
+.chat-inp{flex:1;border:1.5px solid #e0e9f0;border-radius:9px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:.2s;background:#f8fafc;}
+.chat-inp:focus{border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(201,164,94,.08);}
+.chat-inp::placeholder{color:#cbd5e1;}
+.chat-send{width:38px;height:38px;background:linear-gradient(135deg,var(--orange),#c9a45e);border:none;border-radius:9px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;font-size:14px;box-shadow:0 4px 10px rgba(201,164,94,.2);}
+.chat-send:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(201,164,94,.3);}
+.chat-send:active{transform:scale(.95);}
+.tdots{display:flex;gap:5px;padding:3px 0;}
+.tdots span{width:6px;height:6px;border-radius:50%;background:var(--orange);animation:td .7s infinite;}
+.tdots span:nth-child(2){animation-delay:.15s}.tdots span:nth-child(3){animation-delay:.3s}
+@keyframes td{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+
+/* ── FOOTER ──────────────────────────────────── */
+.site-ft{background:linear-gradient(135deg,#071929 0%,#0a2a3f 100%);color:rgba(255,255,255,.65);border-top:2px solid rgba(201,164,94,.2);position:relative;}
+.site-ft::before{content:'';position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M0 0h40v40H0z" fill="none"/><circle cx="20" cy="20" r="1.5" fill="rgba(201,164,94,.05)"/></svg>');pointer-events:none;}
+.ft-brand{font-family:'Poppins',sans-serif;font-size:20px;font-weight:900;color:#fff;letter-spacing:-.5px;}
+.ft-lnk{color:rgba(255,255,255,.55);text-decoration:none;font-size:13px;display:block;margin-bottom:9px;transition:.25s;position:relative;font-weight:500;}
+.ft-lnk::before{content:'';position:absolute;left:0;bottom:1px;width:0;height:2px;background:var(--orange);transition:.25s;}
+.ft-lnk:hover{color:var(--orange);padding-left:8px;}
+.ft-lnk:hover::before{width:3px;}
+.ft-heading{font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:800;color:#fff;margin-bottom:14px;letter-spacing:.5px;text-transform:uppercase;opacity:.9;}
+.ft-contact-row{display:flex;gap:10px;margin-bottom:10px;font-size:12.5px;align-items:flex-start;}
+.ft-contact-row i{color:var(--orange);margin-top:3px;flex-shrink:0;font-size:13px;}
+.soc-btn{width:36px;height:36px;border-radius:10px;background:rgba(201,164,94,.12);border:1.5px solid rgba(201,164,94,.25);color:var(--orange);font-size:14px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;transition:.25s;font-weight:600;}
+.soc-btn:hover{background:var(--orange);border-color:var(--orange);color:#fff;transform:translateY(-3px);box-shadow:0 6px 16px rgba(201,164,94,.3);}
+.ft-divider{border-color:rgba(201,164,94,.15);margin:24px 0 !important;}
+.ft-bottom{font-size:11.5px;color:rgba(255,255,255,.35);font-weight:500;}
+.ft-bottom a{color:rgba(255,255,255,.4);text-decoration:none;transition:.25s;}
+.ft-bottom a:hover{color:var(--orange);}
+
+/* ── SECTION HEADERS ─────────────────────────── */
+.sec-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#d16f25;margin-bottom:8px;position:relative;}
+.sec-eyebrow::before{content:'';display:inline-block;width:3px;height:3px;background:currentColor;border-radius:50%;}
+.sec-h{font-family:'Poppins',sans-serif;font-size:clamp(26px,4.5vw,44px);font-weight:900;line-height:1.1;margin-bottom:16px;letter-spacing:-.5px;}
+.sec-p{font-size:clamp(13px,1.5vw,15px);line-height:1.7;margin-bottom:0;color:#666;font-weight:500;}
+
+/* ── SCROLL ANIMATIONS ──────────────────────── */
+.scroll-animator{opacity:0;transform:translateY(20px);transition:all .6s cubic-bezier(.4,.1,.2,1);}
+.scroll-animator.animate{opacity:1;transform:translateY(0);}
+.scroll-animator.stagger-1{transition-delay:.1s;}
+.scroll-animator.stagger-2{transition-delay:.2s;}
+.scroll-animator.stagger-3{transition-delay:.3s;}
+.scroll-animator.stagger-4{transition-delay:.4s;}
+.scroll-animator.from-left{transform:translateX(-30px);}
+.scroll-animator.from-left.animate{transform:translateX(0);}
+
+/* ── EVENT MODAL ────────────────────────────── */
+.modal-backdrop.show{background-color:rgba(0,0,0,.65);}
+.modal-content{border:none;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.25);animation:slideUp .35s cubic-bezier(.4,.1,.2,1);}
+.modal-header{background:linear-gradient(135deg,var(--blue),#0a2a3f);border:none;padding:24px;}
+.modal-header .btn-close{}
+.modal-title{font-family:'Poppins',sans-serif;font-weight:900;font-size:20px;letter-spacing:-.5px;}
+.event-modal-banner{width:100%;height:320px;object-fit:cover;border-radius:12px;margin-bottom:20px;}
+.event-modal-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.event-modal-meta-item{display:flex;gap:10px;padding:12px;background:#f8fafc;border-radius:12px;align-items:center;}
+.event-modal-meta-item i{color:var(--orange);font-size:16px;flex-shrink:0;}
+.event-modal-meta-item span{font-size:13px;color:#64748b;font-weight:600;}
+.event-modal-section{margin:20px 0;}
+.event-modal-section h5{font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);margin-bottom:10px;font-size:14px;}
+.event-modal-section p{font-size:13px;line-height:1.8;color:#475569;}
+.modal-btn-group{display:flex;gap:12px;margin-top:20px;}
+.modal-btn{flex:1;padding:10px 20px;font-weight:700;border-radius:9px;transition:.2s;font-size:13px;}
+.modal-btn-primary{background:var(--blue);color:#fff;border:none;}
+.modal-btn-primary:hover{background:#033a82;transform:translateY(-2px);}
+.modal-btn-secondary{background:#e9ecef;color:var(--blue);border:none;}
+.modal-btn-secondary:hover{background:#dee2e6;}
+
+/* ── SOCIAL PROOF SECTION ───────────────────── */
+.social-proof-section{background:linear-gradient(135deg,#f0f7ff 0%,#fff5f0 100%);padding:48px 0;position:relative;overflow:hidden;}
+.social-proof-section::before{content:'';position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><path d="M0 0h100v100H0z" fill="none"/><circle cx="50" cy="50" r="2" fill="rgba(26, 37, 87,.04)"/></svg>');pointer-events:none;}
+.testimonial-card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.06);transition:all .3s;border:1px solid #e9ecef;position:relative;z-index:1;}
+.testimonial-card:hover{transform:translateY(-6px);box-shadow:0 12px 36px rgba(0,0,0,.12);border-color:rgba(201,164,94,.2);}
+.testimonial-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.testimonial-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--orange),#c9a45e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;}
+.testimonial-name{font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);font-size:13px;}
+.testimonial-role{font-size:11px;color:#94a3b8;font-weight:600;}
+.testimonial-rating{color:#fbbf24;font-size:12px;margin-bottom:8px;}
+.testimonial-text{font-size:13px;line-height:1.8;color:#64748b;font-weight:500;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.testimonial-quote{position:absolute;top:12px;right:16px;font-size:32px;color:rgba(201,164,94,.08);font-family:Georgia, serif;}
+
+/* ── STAT COUNTERS ──────────────────────────── */
+.stat-counter{font-family:'Poppins',sans-serif;font-weight:900;font-size:clamp(20px,3vw,32px);color:var(--orange);line-height:1;text-shadow:0 2px 8px rgba(201,164,94,.3);}
+
+/* ── FORM ENHANCEMENTS ──────────────────────── */
+.form-control{border:1.5px solid #e0e9f0;border-radius:9px;padding:10px 14px;font-size:13px;transition:.2s;background:#f8fafc;font-family:'Inter',sans-serif;}
+.form-control:focus{border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(201,164,94,.08);}
+.form-control::placeholder{color:#cbd5e1;}
+.form-label{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;}
+.input-group{position:relative;}
+.input-feedback{font-size:11px;margin-top:4px;font-weight:600;display:none;}
+.input-feedback.success{color:#10b981;display:block;}
+.input-feedback.error{color:#ef4444;display:block;}
+.form-control.is-invalid{border-color:#ef4444;background:#fff5f5;}
+.form-control.is-valid{border-color:#10b981;background:#f0fdf4;}
+.input-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+.input-icon.success{color:#10b981;}
+.input-icon.error{color:#ef4444;}
+
+/* ── RESPONSIVE MODAL ───────────────────────── */
+@media(max-width:768px){
+  .modal-content{border-radius:12px;}
+  .event-modal-meta{grid-template-columns:1fr;}
+  .modal-btn-group{flex-direction:column;}
+}
+
+/* ── RESPONSIVE ─────────────────────────── */
+@media(max-width:991px){
+  .sband-item{border-right:none;border-bottom:1px solid rgba(255,255,255,.08);padding:12px 16px;}
+  .sband-item:last-child{border-bottom:none;}
+}
+@media(max-width:768px){
+  .h-title{font-size:32px;}
+  .h-desc{font-size:14px;}
+  .h-btn-primary,.h-btn-outline{padding:9px 20px;font-size:13px;}
+  .ev-card{}
+  .filter-btns{gap:7px;}
+  .ftab{font-size:12px;padding:8px 18px;}
+}
+@media(max-width:575px){
+  .hero-car .carousel-item{height:72vw;min-height:300px;max-height:560px;}
+  .h-title{font-size:24px;}
+  .h-desc{font-size:13px;}
+  .h-btns{gap:8px;}
+  .h-btn-primary,.h-btn-outline{padding:8px 18px;font-size:12px;}
+  .h-stats{gap:12px;flex-direction:row;margin-top:20px;}
+  .h-stat{border-left:2px solid rgba(201,164,94,.3);padding-left:10px;}
+  .h-stat .snum{font-size:18px;}
+  .h-stat .slbl{font-size:9px;}
+  .chat-fab{bottom:14px;right:14px;}
+  .chat-btn{width:56px;height:56px;font-size:20px;}
+  .chat-win{width:280px;right:-6px;bottom:68px;}
+  .ev-title{font-size:15px;}
+}
+
+/* ── ACCESSIBILITY & FOCUS MANAGEMENT ─────── */
+.skip-link{position:absolute;top:-40px;left:0;background:var(--blue);color:#fff;padding:8px 16px;text-decoration:none;z-index:100;border-radius:0 0 4px 0;}
+.skip-link:focus{top:0;}
+
+/* Enhanced focus indicators */
+*:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+
+/* Reduced motion for accessibility */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+}
+
+/* High contrast mode support */
+@media(prefers-contrast:more){
+  body{font-weight:600;}
+  h1,h2,h3,h4,h5,h6{font-weight:900;}
+  .btn-reg,.h-btn-primary,.modal-btn-primary{border:2px solid currentColor;}
+}
+
+/* Dark mode support */
+@media(prefers-color-scheme:dark){
+  body{background:#1a1a1a;color:#e0e0e0;}
+  .sec-p{color:#b0b0b0;}
+}
+</style>
+
+<!-- ═══ JSON-LD Structured Data for SEO ═══ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SapthaEvent",
+  "description": "Official event management portal and registration system for Sapthagiri NPS University",
+  "url": "https://events.snpsu.edu.in",
+  "applicationCategory": "BusinessApplication",
+  "creator": {
+    "@type": "Organization",
+    "name": "Sapthagiri NPS University",
+    "url": "https://snpsu.edu.in",
+    "logo": "/static/snpsu-logo.png"
+  },
+  "features": ["Event Registration", "QR Ticket Generation", "Email Alerts", "WhatsApp Notifications", "AI Assistant"],
+  "image": "/static/snpsu-logo.png"
+}
+</script>
+
+<!-- ═══ Organization Schema ═══ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Sapthagiri NPS University",
+  "url": "https://snpsu.edu.in",
+  "logo": "/static/snpsu-logo.png",
+  "description": "A leading educational institution in Bengaluru, India",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "#14/5, Chikkasandra",
+    "addressLocality": "Bengaluru",
+    "addressRegion": "Karnataka",
+    "postalCode": "560057",
+    "addressCountry": "IN"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "Customer Service",
+    "telephone": "+91-80-2837-2800",
+    "email": "admissions@snpsu.edu.in"
+  }
+}
+</script>
+
+</head>
+<body>
+
+<!-- ═══ SKIP NAVIGATION LINK ═══ -->
+<a href="#main-content" class="skip-link">Skip to Main Content</a>
+
+<!-- TICKER -->
+<div class="ticker-bar" aria-hidden="true">
+  <div class="ticker-track">
+    <span class="ticker-item"><i class="fas fa-calendar-alt"></i>SapthaFest 2026 — Registrations Now Open</span>
+    <span class="ticker-item"><i class="fas fa-trophy"></i>Hackathon 2026 · Prize Pool ₹1,00,000</span>
+    <span class="ticker-item"><i class="fas fa-music"></i>Cultural Night — Limited Seats Available</span>
+    <span class="ticker-item"><i class="fas fa-running"></i>Sports Meet — All Departments Invited</span>
+    <span class="ticker-item"><i class="fas fa-qrcode"></i>Instant QR Ticket on Every Registration</span>
+    <span class="ticker-item"><i class="fas fa-robot"></i>Ask Sparky AI About Any Event</span>
+    <span class="ticker-item"><i class="fas fa-calendar-alt"></i>SapthaFest 2026 — Registrations Now Open</span>
+    <span class="ticker-item"><i class="fas fa-trophy"></i>Hackathon 2026 · Prize Pool ₹1,00,000</span>
+    <span class="ticker-item"><i class="fas fa-music"></i>Cultural Night — Limited Seats Available</span>
+    <span class="ticker-item"><i class="fas fa-running"></i>Sports Meet — All Departments Invited</span>
+    <span class="ticker-item"><i class="fas fa-qrcode"></i>Instant QR Ticket on Every Registration</span>
+    <span class="ticker-item"><i class="fas fa-robot"></i>Ask Sparky AI About Any Event</span>
+  </div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="snav navbar navbar-expand-lg" role="navigation" aria-label="Main navigation">
+  <div class="container-xl px-3">
+    <a class="navbar-brand" href="/" aria-label="SapthaEvent Home">
+      <img src="/static/snpsu-logo.png"
+           alt="Sapthagiri NPS University"
+           style="height:42px;width:auto;object-fit:contain;"
+           onerror="this.style.display='none';document.getElementById('nav-logo-fallback').style.display='flex';">
+      <div id="nav-logo-fallback" style="display:none;align-items:center;gap:10px;">
+        <div class="nav-logo-sq">SE</div>
+        <div>
+          <span class="brand-n">SapthaEvent</span>
+          <span class="brand-s">Sapthagiri NPS University</span>
+        </div>
+      </div>
+    </a>
+    <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 py-3 py-lg-0">
+        <li class="nav-item"><a class="nav-link" href="#events">Events</a></li>
+        <li class="nav-item"><a class="nav-link" href="#how">How It Works</a></li>
+        {% if session.get('user_id') %}
+          {% set role = session.get('role','') %}
+          {% if role == 'Student' %}
+            <li class="nav-item"><a class="nav-link" href="/participant/dashboard"><i class="fas fa-ticket-alt me-1"></i>My Tickets</a></li>
+          {% elif role in ['ClubSPOC','Coordinator','SuperAdmin','Super Admin'] %}
+            <li class="nav-item"><a class="nav-link" href="/coordinator/dashboard"><i class="fas fa-tasks me-1"></i>Dashboard</a></li>
+          {% elif role == 'Judge' %}
+            <li class="nav-item"><a class="nav-link" href="/judge/dashboard"><i class="fas fa-gavel me-1"></i>Judge Panel</a></li>
+          {% endif %}
+          <li class="nav-item ms-lg-2">
+            <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+          </li>
+        {% else %}
+          <li class="nav-item ms-lg-2">
+            <a class="nav-link btn-login" href="/login">
+              <i class="fas fa-sign-in-alt me-1"></i>Login
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- FLASH MESSAGES -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="container-xl px-3 pt-3">
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} d-flex align-items-start gap-2 alert-dismissible fade show mb-2" role="alert">
+      <i class="fas fa-info-circle mt-1"></i><span>{{ msg|safe }}</span>
+      <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<main id="main-content" role="main">
+
+<!-- ═══ HERO CAROUSEL — SNPSU Campus Images ═══ -->
+<div id="heroCarousel" class="carousel slide hero-car" data-bs-ride="carousel" data-bs-interval="4800" role="region" aria-label="SNPSU Campus Featured Events">
+  <div class="carousel-indicators" role="tablist" aria-label="Carousel navigation">
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" role="tab" aria-label="Slide 1: Campus Overview" aria-selected="true"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" role="tab" aria-label="Slide 2: Event Registration" aria-selected="false"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" role="tab" aria-label="Slide 3: QR Ticket System" aria-selected="false"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" role="tab" aria-label="Slide 4: AI Chatbot Assistant" aria-selected="false"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="4" role="tab" aria-label="Slide 5: Student Community" aria-selected="false"></button>
+  </div>
+  <div class="carousel-inner">
+
+    <!-- Slide 1 -->
+    <div class="carousel-item active" role="tabpanel">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0005_View-1-768x549.jpg"
+           alt="SNPSU Main Campus"
+           onerror="this.src='https://images.unsplash.com/photo-1562774053-701939374585?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Official Event Portal · SNPSU</div>
+        <h1 class="h-title">Your Events.<br><span class="accent">Your Campus.</span><br>Your Portal.</h1>
+        <p class="h-desc">Register for hackathons, cultural fests, and sports meets — all in one place with instant QR tickets.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary" aria-label="Explore upcoming events on the portal"><i class="fas fa-search" aria-hidden="true"></i>Explore Events</a>
+          {% if not session.get('user_id') %}
+          <a href="/login" class="h-btn-outline" aria-label="Sign in to your account"><i class="fas fa-sign-in-alt" aria-hidden="true"></i>Login</a>
+          {% else %}
+          <a href="/participant/dashboard" class="h-btn-outline" aria-label="View your registered tickets and dashboard"><i class="fas fa-ticket-alt" aria-hidden="true"></i>My Tickets</a>
+          {% endif %}
+        </div>
+        <div class="h-stats">
+          <div class="h-stat"><div class="snum">{{ events|length }}</div><div class="slbl">Live Events</div></div>
+          <div class="h-stat"><div class="snum">QR</div><div class="slbl">Instant Tickets</div></div>
+          <div class="h-stat"><div class="snum">AI</div><div class="slbl">Smart Assistant</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 2 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0003_SAPTHAGIRI-UNIVERSITY-A-BLOCK-reception-AREA_r27-768x549.jpg"
+           alt="SNPSU Reception Block"
+           onerror="this.src='https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>World Class Infrastructure</div>
+        <h1 class="h-title">World Class<br><span class="accent">Campus.</span><br>World Class Events.</h1>
+        <p class="h-desc">State-of-the-art infrastructure hosting technical, cultural, and sports events year-round at SNPSU.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary"><i class="fas fa-calendar-alt"></i>View All Events</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0008_SAPTHAGIRI-UNIVERSITY-AMPHITHEATRE-1k-768x549.jpg"
+           alt="SNPSU Amphitheatre"
+           onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Cultural & Arts Events</div>
+        <h1 class="h-title">Showcase<br><span class="accent">Your Talent.</span><br>Win Recognition.</h1>
+        <p class="h-desc">From stage performances to fine arts — the SNPSU amphitheatre is the platform for your talent.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary"><i class="fas fa-music"></i>Cultural Events</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0009_Lab-1-768x549.jpg"
+           alt="SNPSU Computer Lab"
+           onerror="this.src='https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Technical Events</div>
+        <h1 class="h-title">Build.<br><span class="accent">Innovate.</span><br>Compete.</h1>
+        <p class="h-desc">Hackathons, coding contests, and tech fests powered by industry-grade labs and experienced judges.</p>
+        <div class="h-btns">
+          <a href="#events" class="h-btn-primary"><i class="fas fa-code"></i>Technical Events</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5 -->
+    <div class="carousel-item">
+      <img src="https://snpsu.edu.in/wp-content/uploads/2025/05/Website-5-7_0001_WhatsApp-Image-2024-11-12-at-11.16.19-AM-768x549.jpg"
+           alt="Sapthagiri NPS University"
+           onerror="this.src='https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1400&q=80'">
+      <div class="carousel-caption">
+        <div class="h-pill"><span class="h-dot"></span>Sapthagiri NPS University · Bengaluru</div>
+        <h1 class="h-title">One Portal.<br><span class="accent">All Events.</span><br>Zero Hassle.</h1>
+        <p class="h-desc">Register in seconds, receive your QR ticket instantly, and walk into any campus event with confidence.</p>
+        <div class="h-btns">
+          <a href="/login" class="h-btn-primary"><i class="fas fa-user-plus"></i>Get Started — Free</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous slide">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="Next slide">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+  </button>
+</div>
+
+<!-- ═══ STATS BAND ═══ -->
+<div class="sband">
+  <div class="container-xl px-3">
+    <div class="sband-row">
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-calendar-check"></i></div>
+        <div><div class="sband-n">{{ events|length }}</div><div class="sband-l">Live Events</div></div>
+      </div>
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-qrcode"></i></div>
+        <div><div class="sband-n">QR</div><div class="sband-l">Instant Digital Tickets</div></div>
+      </div>
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-robot"></i></div>
+        <div><div class="sband-n">AI</div><div class="sband-l">Powered Chatbot</div></div>
+      </div>
+      <div class="sband-item">
+        <div class="sband-ico"><i class="fas fa-bell"></i></div>
+        <div><div class="sband-n">2×</div><div class="sband-l">Email + WhatsApp Alerts</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EVENTS ═══ -->
+<section id="events" class="py-5" style="background:#f8f9fa;" role="region" aria-label="Upcoming events for registration">
+  <div class="container-xl px-3">
+
+    <!-- Header row -->
+    <div class="row align-items-center mb-4">
+      <div class="col-lg-5 mb-3 mb-lg-0">
+        <div class="sec-eyebrow">Open for Registration</div>
+        <h2 class="sec-h mb-1">Upcoming Events</h2>
+        <p class="sec-p mb-0">Register in seconds and receive your QR ticket instantly.</p>
+      </div>
+      <div class="col-lg-7">
+        <div class="ftabs justify-content-lg-end" role="group" aria-label="Event category filters">
+          <button class="ftab active" onclick="filterEv('all',this)" aria-pressed="true">All Events</button>
+          <button class="ftab" onclick="filterEv('Technical',this)" aria-pressed="false"><i class="fas fa-code me-1" aria-hidden="true"></i>Technical</button>
+          <button class="ftab" onclick="filterEv('Cultural',this)" aria-pressed="false"><i class="fas fa-music me-1" aria-hidden="true"></i>Cultural</button>
+          <button class="ftab" onclick="filterEv('Sports',this)" aria-pressed="false"><i class="fas fa-running me-1" aria-hidden="true"></i>Sports</button>
+          <button class="ftab" onclick="filterEv('Management',this)" aria-pressed="false"><i class="fas fa-briefcase me-1" aria-hidden="true"></i>Management</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <!-- Skeleton Loading State (shown initially) -->
+    <div class="row g-4" id="evGridSkeleton" role="status" aria-live="polite" aria-label="Loading events">
+      {% for i in range(6) %}
+      <div class="col-12 col-sm-6 col-lg-4">
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-image"></div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text" style="width:70%;"></div>
+          <div class="skeleton skeleton-btn"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Actual Events Grid (shown after load) -->
+    <div class="row g-4" id="evGrid" role="region" aria-label="Upcoming events" style="display:none;">
+      {% for event in events %}
+      <div class="col-12 col-sm-6 col-lg-4 ev-col scroll-animator" data-cat="{{ event.get('category','General')|lower }}" data-id="{{ event.id }}">
+        <button class="ev-card" onclick="showEventModal({{ event.id }});" 
+                type="button" 
+                style="cursor:pointer;border:none;background:transparent;width:100%;text-align:left;padding:0;" 
+                aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
+          <div class="ev-banner" aria-hidden="true">
+            {% if event.get('banner_url') %}
+              <img src="{{ event.banner_url }}" alt="" loading="lazy"
+                   onerror="this.style.display='none'">
+              <div class="ev-overlay"></div>
+            {% endif %}
+            {% set cat = event.get('category','General') %}
+            {% if   cat == 'Technical'  %}<div class="ev-banner-icon">💻</div>
+            {% elif cat == 'Cultural'   %}<div class="ev-banner-icon">🎭</div>
+            {% elif cat == 'Sports'     %}<div class="ev-banner-icon">⚽</div>
+            {% elif cat == 'Management' %}<div class="ev-banner-icon">📊</div>
+            {% else                     %}<div class="ev-banner-icon">🌟</div>{% endif %}
+            <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
+            {% if event.get('deadline') %}
+            <span class="ev-deadline"><i class="fas fa-clock"></i>{{ event.deadline }}</span>
+            {% endif %}
+          </div>
+          <div class="ev-body">
+            <h5 class="ev-title">{{ event.title }}</h5>
+            <p class="ev-desc">{{ event.get('description', 'An exciting event hosted by Sapthagiri NPS University. Click to register.') }}</p>
+            <div class="ev-meta">
+              {% if event.get('date') %}
+              <span data-info="date"><i class="fas fa-calendar-alt" aria-hidden="true"></i>{{ event.date }}</span>
+              {% endif %}
+              {% if event.get('venue') %}
+              <span data-info="venue"><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
+              {% endif %}
+              <span><i class="fas fa-users"></i>{{ 'Team' if event.get('is_team_event') else 'Individual' }}</span>
+            </div>
+            <div class="ev-footer">
+              <div>
+                {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+                  <div class="ev-fee-paid" data-info="fee">₹{{ event.entry_fee }}</div>
+                {% else %}
+                  <div class="ev-fee-free" data-info="fee">Free Entry</div>
+                {% endif %}
+                <div class="ev-reg-count">{{ event.get('registration_count', 0) }} registered</div>
+              </div>
+              <a href="/forms/register/{{ event.id }}" class="btn-reg" onclick="event.stopPropagation();">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i>Register
+              </a>
+            </div>
+          </div>
+        </button>
+      </div>
+      {% else %}
+      <div class="col-12">
+        <div class="no-events-box">
+          <i class="far fa-calendar-times"></i>
+          <h5 class="fw-bold text-secondary mb-2">No Events Currently Listed</h5>
+          <p class="text-muted mb-0" style="font-size:14px;">
+            New events are published throughout the semester. Check back soon or contact your Club SPOC.
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="hiw-section py-5" id="how" role="region" aria-label="How to register for events">
+  <div class="container-xl px-3">
+    <div class="text-center mb-5">
+      <div class="sec-eyebrow justify-content-center">Simple Process</div>
+      <h2 class="sec-h">Register in Under 60 Seconds</h2>
+      <p class="sec-p mx-auto" style="max-width:480px;">
+        No queues, no paperwork. Select your event, complete the form, and walk in with your QR ticket.
+      </p>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 1: Browse Events">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-search"></i></div>
+          <div class="step-title">Browse Events</div>
+          <p class="step-desc">Explore all upcoming technical, cultural, and sports events on the portal.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 2: Complete the Form">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-pen-to-square"></i></div>
+          <div class="step-title">Complete the Form</div>
+          <p class="step-desc">Each event has a custom registration form — designed by the organiser and takes under a minute.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 3: Receive QR Ticket">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-qrcode"></i></div>
+          <div class="step-title">Receive QR Ticket</div>
+          <p class="step-desc">Your digital ticket with QR code is delivered instantly via email and WhatsApp.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 4: Walk In">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-door-open"></i></div>
+          <div class="step-title">Walk In</div>
+          <p class="step-desc">Show your QR at the venue — the coordinator scans it and your attendance is recorded instantly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SOCIAL PROOF / TESTIMONIALS ═══ -->
+<section class="social-proof-section py-5" id="testimonials" role="region" aria-label="Student testimonials">
+  <div class="container-xl px-3">
+    <div class="text-center mb-5">
+      <div class="sec-eyebrow justify-content-center">Student Testimonials</div>
+      <h2 class="sec-h">What Students Say About SapthaEvent</h2>
+      <p class="sec-p mx-auto" style="max-width:520px;">
+        Join thousands of students who've discovered an amazing way to explore campus events and build connections.
+      </p>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Anirudh J., CSE Year 2, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">AJ</div>
+            <div>
+              <div class="testimonial-name">Anirudh J.</div>
+              <div class="testimonial-role">CSE - Year 2</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">SapthaEvent made discovering events so easy! The QR ticket system is seamless, and I've attended 8 events this semester alone.</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator stagger-1">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Priya K., Mechanical Year 3, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">PK</div>
+            <div>
+              <div class="testimonial-name">Priya K.</div>
+              <div class="testimonial-role">Mechanical - Year 3</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">The AI assistant Sparky helped me find events matching my interests. Registrations used to take forever, now it's instant!</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator stagger-2">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Rohan V., ECE Year 1, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">RV</div>
+            <div>
+              <div class="testimonial-name">Rohan V.</div>
+              <div class="testimonial-role">ECE - Year 1</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">Love how the platform works! Never missed an event after getting WhatsApp notifications. Highly recommend to everyone!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credibility Stats -->
+    <div class="row g-4 mt-3 justify-content-center">
+      <div class="col-6 col-md-3 text-center scroll-animator">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="2 thousand 400 plus students registered">
+          <span class="stat-counter" data-count="2400">2400</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Students</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-1">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="150 plus events scheduled for 2026">
+          <span class="stat-counter" data-count="150">150</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Events 2026</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-2">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="98 percent user satisfaction rate">
+          <span class="stat-counter" data-count="98">98</span><span style="font-size:20px;">%</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Satisfaction</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-3">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="8 thousand 500 plus successful event registrations">
+          <span class="stat-counter" data-count="8500">8500</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Registrations</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ EVENT DETAIL MODAL ═══ -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="eventModalLabel" aria-describedby="eventModalBody">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalLabel">Event Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
+      </div>
+      <div class="modal-body" id="eventModalBody">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading event details...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<footer class="site-ft pt-5 pb-0" role="contentinfo">
+  <div class="container-xl px-3">
+    <div class="row g-4 pb-5">
+
+      <div class="col-12 col-md-5 col-lg-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="nav-logo-sq" aria-hidden="true">SE</div>
+          <span class="ft-brand">SapthaEvent</span>
+        </div>
+        <p style="font-size:13px;line-height:1.72;margin-bottom:16px;">
+          The official event management portal of Sapthagiri NPS University, Bengaluru.
+          Powering hackathons, cultural fests, sports meets, and more.
+        </p>
+        <div class="d-flex gap-2">
+          <a href="https://snpsu.edu.in" target="_blank" class="soc-btn" aria-label="Sapthagiri NPS University official website"><i class="fas fa-globe" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Follow SapthaEvent on Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Connect on LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Subscribe on YouTube"><i class="fab fa-youtube" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3 col-lg-2">
+        <div class="ft-heading">Quick Links</div>
+        <a href="#events" class="ft-lnk">Browse Events</a>
+        <a href="#how"    class="ft-lnk">How it Works</a>
+        <a href="/login"  class="ft-lnk">Login</a>
+        {% if session.get('user_id') %}
+        <a href="/participant/dashboard" class="ft-lnk">My Dashboard</a>
+        <a href="/logout"                class="ft-lnk">Logout</a>
+        {% endif %}
+      </div>
+
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="ft-heading">University</div>
+        <a href="https://snpsu.edu.in/about-us/"   target="_blank" class="ft-lnk">About SNPSU</a>
+        <a href="https://snpsu.edu.in/departments/" target="_blank" class="ft-lnk">Departments</a>
+        <a href="https://snpsu.edu.in/news-events/" target="_blank" class="ft-lnk">News &amp; Events</a>
+        <a href="https://snpsu.edu.in/human-resource-development-hrd/" target="_blank" class="ft-lnk">Placements</a>
+        <a href="https://admission.snpsu.edu.in/"   target="_blank" class="ft-lnk">Admissions</a>
+      </div>
+
+      <div class="col-12 col-lg-3">
+        <div class="ft-heading">Contact</div>
+        <div class="ft-contact-row"><i class="fas fa-map-marker-alt"></i><span>#14/5, Chikkasandra, Hesarghatta Main Road, Bengaluru – 560057</span></div>
+        <div class="ft-contact-row"><i class="fas fa-phone"></i><span>080-28 372800 &nbsp;/&nbsp; 9035922191</span></div>
+        <div class="ft-contact-row"><i class="fas fa-envelope"></i><span>admissions@snpsu.edu.in</span></div>
+      </div>
+
+    </div>
+    <hr class="ft-divider">
+    <div class="ft-bottom d-flex flex-wrap justify-content-between align-items-center py-3 gap-2">
+      <span>© 2026 Sapthagiri NPS University. All rights reserved.</span>
+      <span>
+        <a href="https://snpsu.edu.in/privacy-policy/" target="_blank">Privacy Policy</a>
+        &nbsp;·&nbsp; Built for SNPSU
+      </span>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ AI CHATBOT ═══ -->
+<div class="chat-fab">
+  <div class="chat-win" id="chatWin">
+    <div class="chat-head">
+      <div class="chat-av">🤖</div>
+      <div>
+        <p class="chat-head-name">Sparky — AI Assistant</p>
+        <p class="chat-head-sub">Ask about any SNPSU event</p>
+      </div>
+      <button onclick="toggleChat()" class="ms-auto btn-close btn-close-white" style="opacity:.55;" aria-label="Close chat"></button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="bw">
+        <div class="bb bot">Hello! 👋 I'm Sparky, the SapthaEvent AI assistant. Ask me about upcoming events, registration deadlines, entry fees, or venue details.</div>
+      </div>
+    </div>
+    <div class="chat-row">
+      <label for="chatInp" class="visually-hidden">Ask Sparky about events</label>
+      <input type="text" class="chat-inp" id="chatInp"
+             placeholder="Ask about events…"
+             aria-label="Ask Sparky AI about events"
+             aria-describedby="chatHint"
+             onkeydown="if(event.key==='Enter')sendChat()">
+      <span id="chatHint" class="visually-hidden">Press Enter to send your message to the AI assistant.</span>
+      <button class="chat-send" onclick="sendChat()" aria-label="Send message"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
+    </div>
+  </div>
+  <button class="chat-btn" onclick="toggleChat()" aria-label="Open AI Assistant, Sparky">
+    <i class="fas fa-robot" id="chatIcon" aria-hidden="true"></i>
+    <span class="chat-ai-dot">AI</span>
+  </button>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── SKELETON LOADER INITIALIZATION ────
+document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){const skeleton=document.getElementById('evGridSkeleton');const grid=document.getElementById('evGrid');if(grid){grid.style.display='';if(skeleton)skeleton.remove();}},300);});
+
+// ── INTERSECTION OBSERVER FOR SCROLL ANIMATIONS ────
+function initScrollAnimations(){
+  const options = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+  const observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('animate');
+        if(entry.target.classList.contains('stat-counter') && !entry.target.dataset.counted){
+          animateCounter(entry.target);
+        }
+      }
+    });
+  }, options);
+  document.querySelectorAll('.scroll-animator, .stat-counter').forEach(function(el){
+    observer.observe(el);
+  });
+}
+
+// ── COUNTER ANIMATION ──────────────────────────
+function animateCounter(el){
+  el.dataset.counted = 'true';
+  const target = parseInt(el.dataset.count) || 0;
+  const duration = 2000;
+  const start = Date.now();
+  
+  function update(){
+    const elapsed = Date.now() - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = Math.floor(target * progress);
+    el.textContent = current.toLocaleString();
+    
+    if(progress < 1) requestAnimationFrame(update);
+    else el.textContent = target.toLocaleString();
+  }
+  update();
+}
+
+// ── SMOOTH SCROLL (fixes anchor buttons) ──────
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click', function(e){
+    var id = this.getAttribute('href').slice(1);
+    if(!id) return;
+    var el = document.getElementById(id);
+    if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth',block:'start'}); }
+  });
+});
+
+// ── EVENT MODAL ────────────────────────────────
+function showEventModal(eventId){
+  var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+  var body = document.getElementById('eventModalBody');
+  
+  var cards = document.querySelectorAll('.ev-col');
+  var eventData = null;
+  
+  cards.forEach(function(card){
+    if(card.dataset.id === String(eventId)){
+      eventData = {
+        title: card.querySelector('.ev-title').textContent,
+        description: card.querySelector('.ev-desc').textContent,
+        category: card.dataset.cat,
+        date: card.querySelector('[data-info="date"]')?.textContent || 'TBA',
+        venue: card.querySelector('[data-info="venue"]')?.textContent || 'TBA',
+        fee: card.querySelector('[data-info="fee"]')?.textContent || 'Free',
+        registered: card.querySelector('.ev-reg-count').textContent
+      };
+    }
+  });
+  
+  if(eventData){
+    body.innerHTML = `
+      <div class="event-modal-meta">
+        <div class="event-modal-meta-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>${eventData.date}</span>
+        </div>
+        <div class="event-modal-meta-item">
+          <i class="fas fa-map-marker-alt"></i>
+          <span>${eventData.venue}</span>
+        </div>
+        <div class="event-modal-meta-item">
+          <i class="fas fa-tag"></i>
+          <span>${eventData.category}</span>
+        </div>
+        <div class="event-modal-meta-item">
+          <i class="fas fa-users"></i>
+          <span>${eventData.registered}</span>
+        </div>
+      </div>
+      
+      <div class="event-modal-section">
+        <h5>About This Event</h5>
+        <p>${eventData.description}</p>
+      </div>
+      
+      <div class="event-modal-section">
+        <h5>Entry Fee</h5>
+        <p style="font-size:16px;font-weight:800;color:var(--orange);">${eventData.fee}</p>
+      </div>
+      
+      <div class="event-modal-section">
+        <h5>Event Highlights</h5>
+        <p>🎯 Competitive spirit • 🏆 Amazing prizes • 🤝 Networking opportunities • 🎓 Skill development</p>
+      </div>
+      
+      <div class="modal-btn-group">
+        <button class="modal-btn modal-btn-primary" onclick="window.location.href='/forms/register/${eventId}'">
+          <i class="fas fa-arrow-right me-1"></i>Register Now
+        </button>
+        <button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Back</button>
+      </div>
+    `;
+  }
+  
+  modal.show();
+}
+
+// ── EVENT CATEGORY FILTER ─────────────────────
+function filterEv(cat, btn){
+  document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.ev-col').forEach(function(c){
+    var shouldShow = (cat === 'all' || c.dataset.cat === cat);
+    c.style.display = shouldShow ? '' : 'none';
+    if(shouldShow && !c.classList.contains('animate')){
+      c.classList.add('scroll-animator', 'animate');
+    }
+  });
+}
+
+// ── CHATBOT ────────────────────────────────────
+var chatOpen = false;
+function toggleChat(){
+  chatOpen = !chatOpen;
+  document.getElementById('chatWin').classList.toggle('open', chatOpen);
+  document.getElementById('chatIcon').className = chatOpen ? 'fas fa-times' : 'fas fa-robot';
+  if(chatOpen) document.getElementById('chatInp').focus();
+}
+async function sendChat(){
+  var inp = document.getElementById('chatInp');
+  var msg = inp.value.trim();
+  if(!msg) return;
+  inp.value = '';
+  addBubble(msg, 'user');
+  var t = addTyping();
+  try{
+    var r = await fetch('/chatbot/ask', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg})
+    });
+    var d = await r.json();
+    t.remove();
+    addBubble(d.reply || 'Sorry, I could not get a response. Please try again.', 'bot');
+  } catch(err){
+    t.remove();
+    addBubble('Something went wrong. Please try again in a moment.', 'bot');
+  }
+}
+function addBubble(text, role){
+  var msgs = document.getElementById('chatMsgs');
+  var wrap = document.createElement('div');
+  wrap.className = 'bw ' + role;
+  wrap.innerHTML = '<div class="bb ' + role + '">' + text + '</div>';
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+function addTyping(){
+  var msgs = document.getElementById('chatMsgs');
+  var wrap = document.createElement('div');
+  wrap.className = 'bw';
+  wrap.innerHTML = '<div class="bb bot"><div class="tdots"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+
+// ── FORM VALIDATION ENHANCEMENT ────────────────
+function setupFormValidation(){
+  var inputs = document.querySelectorAll('input[type="email"], input[type="text"], textarea');
+  inputs.forEach(function(input){
+    input.addEventListener('blur', function(){
+      validateInput(this);
+    });
+    input.addEventListener('input', function(){
+      if(this.classList.contains('is-invalid')){
+        validateInput(this);
+      }
+    });
+  });
+}
+
+function validateInput(input){
+  var value = input.value.trim();
+  var container = input.closest('.input-group') || input.parentElement;
+  var feedback = container.querySelector('.input-feedback');
+  var icon = container.querySelector('.input-icon');
+  
+  if(!value) {
+    input.classList.remove('is-valid');
+    input.classList.add('is-invalid');
+    if(feedback) feedback.textContent = 'This field is required';
+    if(feedback) feedback.classList.remove('success');
+    if(feedback) feedback.classList.add('error');
+    if(icon) { icon.classList.remove('success'); icon.classList.add('error'); icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>'; }
+    return false;
+  }
+  
+  input.classList.remove('is-invalid');
+  input.classList.add('is-valid');
+  if(feedback) feedback.textContent = '✓ Looks good!';
+  if(feedback) feedback.classList.remove('error');
+  if(feedback) feedback.classList.add('success');
+  if(icon) { icon.classList.remove('error'); icon.classList.add('success'); icon.innerHTML = '<i class="fas fa-check-circle"></i>'; }
+  return true;
+}
+
+// ── INITIALIZE ON PAGE LOAD ────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  initScrollAnimations();
+  setupFormValidation();
+});
+</script>
+<script>
+(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
+if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
+var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
+if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
+var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
+var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
+if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
+</script>
+</body>
+</html>

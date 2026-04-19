@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ═══ SEO Meta Tags ═══ -->
+    <meta name="description" content="Register for SapthaEvent: Create your account for Sapthagiri NPS University event portal. Register for technical, cultural, and sports events with instant QR ticket generation.">
+    <meta name="keywords" content="register, sign up, event portal, SNPSU, Sapthagiri NPS University, student registration">
+    <meta name="author" content="Sapthagiri NPS University">
+    <meta name="robots" content="index, follow">
+    <!-- ═══ Open Graph ═══ -->
+    <meta property="og:title" content="SapthaEvent Registration - Sapthagiri NPS University">
+    <meta property="og:description" content="Create your account and start registering for SNPSU campus events instantly.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://events.snpsu.edu.in/register">
+    <!-- ═══ Canonical & Favicon ═══ -->
+    <link rel="canonical" href="https://events.snpsu.edu.in/register">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    {% include 'includes/pwa_head.html' %}
+    <title>Student Registration | SapthaEvent - Sapthagiri NPS University</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --snpsu-blue: #1a2557; --snpsu-orange: #c9a45e; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(rgba(26, 37, 87, 0.85), rgba(26, 37, 87, 0.95)), 
+                        url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop') center/cover fixed;
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 0;
+        }
+        .register-card { background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); width: 100%; max-width: 550px; padding: 40px; position: relative; }
+        .register-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: var(--snpsu-orange); }
+        .logo-title { font-family: 'Poppins', sans-serif; color: var(--snpsu-blue); font-weight: 800; font-size: 1.4rem; letter-spacing: 0.5px; }
+        .form-label { font-size: 0.8rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
+        .form-control { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 15px; }
+        .form-control:focus { background-color: #fff; border-color: var(--snpsu-blue); box-shadow: 0 0 0 4px rgba(26, 37, 87, 0.1); }
+        .btn-register { background-color: var(--snpsu-orange); color: white; font-weight: 700; padding: 12px; border-radius: 8px; transition: 0.3s; border: none;}
+        .btn-register:hover { background-color: #d95e1a; transform: translateY(-2px); color: white;}
+        /* ── SKELETON LOADERS ────────────────────── */
+        @keyframes skeletonPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+        .skeleton{animation:skeletonPulse 1.5s ease-in-out infinite;background:#e0e0e0;border-radius:4px;}
+        .skeleton-form-group{margin-bottom:1.25rem;}
+        .skeleton-form-label{height:14px;width:120px;margin-bottom:8px;}
+        .skeleton-form-input{height:40px;width:100%;}
+        .skeleton-button{height:48px;width:100%;margin-top:1.5rem;border-radius:6px;}
+        /* ── ACCESSIBILITY STYLES ────────────────────── */
+        .skip-link{position:absolute;top:-40px;left:0;background:var(--snpsu-blue);color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
+        .skip-link:focus{top:0;}
+        *:focus-visible{outline:3px solid var(--snpsu-orange);outline-offset:2px;}
+        @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
+        @media(prefers-contrast:more){body{font-weight:600;}label{font-weight:700;}}
+        @media(prefers-color-scheme:dark){.register-card{background:#1a1a1a;color:#e0e0e0;}.form-label{color:#e0e0e0;}.form-control{background:#2a2a2a;color:#e0e0e0;border-color:#444;}}
+    </style>
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to Registration Form</a>
+
+    <div class="container px-3 d-flex justify-content-center">
+        <div class="register-card">
+            
+            <div class="text-center mb-4 pb-3 border-bottom">
+                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="width:100%;max-width:320px;height:auto;object-fit:contain;border-radius:6px;margin-bottom:8px;">
+                <p class="text-muted small mt-1">Official Event Portal</p>
+            </div>
+
+            <h1 class="h5 mb-2 text-center" style="color: var(--snpsu-blue); font-weight: 700;">Create Your Account</h1>
+            <p class="text-muted text-center mb-4 small">Register to access exclusive campus events and instant QR tickets</p>
+
+            <!-- Skeleton Loading State -->
+            <div id="formSkeleton" role="status" aria-live="polite" aria-label="Loading registration form" style="padding: 2rem 1.75rem;">
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton-form-group">
+                    <div class="skeleton skeleton-form-label"></div>
+                    <div class="skeleton skeleton-form-input"></div>
+                </div>
+                <div class="skeleton skeleton-button"></div>
+            </div>
+
+            <!-- Registration Form -->
+            <form method="POST" class="needs-validation" id="main-content" role="main" aria-label="Student registration form" novalidate style="display:none;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <small style="letter-spacing: 2px; font-weight: 600; color: #64748b; font-size: 0.7rem;">STUDENT REGISTRATION</small>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} small fw-bold py-2">{{ message }}</div>{% endfor %}{% endif %}
+            {% endwith %}
+
+            <form action="/register" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-6"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div>
+                    <div class="col-12 col-md-6"><label class="form-label">USN / ID</label><input type="text" name="usn" class="form-control" required></div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-6"><label class="form-label">Email Address</label><input type="email" name="email" class="form-control" required></div>
+                    <div class="col-12 col-md-6"><label class="form-label">Phone Number</label><input type="tel" name="phone" class="form-control" required></div>
+                </div>
+                <div class="mb-4"><label class="form-label">Create Password</label><input type="password" name="password" class="form-control" required minlength="6"></div>
+
+                <button type="submit" class="btn btn-register w-100 mb-3">Create Account</button>
+
+                <div class="text-center mt-3 small text-muted">
+                    Already have an account? <a href="/login" style="color: var(--snpsu-blue); font-weight: bold; text-decoration: none;">Login Here</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ── SKELETON LOADER INITIALIZATION ────
+        document.addEventListener('DOMContentLoaded',function(){
+            setTimeout(function(){
+                const skeleton = document.getElementById('formSkeleton');
+                const form = document.getElementById('main-content');
+                if(skeleton) skeleton.style.display = 'none';
+                if(form) form.style.display = '';
+            }, 250);
+        });
+    </script>
+</body>
+</html>

@@ -233,7 +233,7 @@ def enhanced_init_scheduler(flask_app, enable_threading: bool = True):
         max_instances=1
     )
     
-    scheduler.start()
+    #scheduler.start()
     logger.info("✅ Enhanced scheduler started with retry logic and monitoring")
     
     return scheduler

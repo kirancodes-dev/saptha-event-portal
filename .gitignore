@@ -1,1 +1,35 @@
+# Secrets — NEVER commit
+.env
+.env.local
+.env.*.local
 serviceAccountKey.json
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Flask
+instance/
+flask_session/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Logs & local DBs
+*.log
+*.sqlite
+*.sqlite3
+*.db

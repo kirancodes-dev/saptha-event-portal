@@ -171,7 +171,60 @@ def reset_password():
 
 
 # =========================================================
-# 3. LOGOUT
+# 3. STUDENT SELF-REGISTRATION
+# =========================================================
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'user_id' in session:
+        return _redirect_by_role(session.get('role', ''))
+
+    if request.method == 'POST':
+        name     = request.form.get('name', '').strip()
+        usn      = request.form.get('usn', '').strip().upper()
+        email    = request.form.get('email', '').lower().strip()
+        phone    = request.form.get('phone', '').strip()
+        password = request.form.get('password', '')
+
+        if not name or not email or not password:
+            flash('Name, email, and password are required.', 'warning')
+            return redirect('/register')
+
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'warning')
+            return redirect('/register')
+
+        try:
+            existing = db.collection('users').document(email).get()
+            if existing.exists:
+                flash('An account with this email already exists. Please log in.', 'warning')
+                return redirect('/login')
+
+            db.collection('users').document(email).set({
+                'email':               email,
+                'name':                name,
+                'usn':                 usn,
+                'phone':               phone,
+                'role':                'Student',
+                'category':            'General',
+                'password':            generate_password_hash(password),
+                'created_at':          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'needs_password_reset': False
+            })
+            _set_session(email, name, 'Student', 'General')
+            log_action(db, "USER_REGISTERED", f"New student self-registered: {email}")
+            flash(f"🎉 Welcome, {name}! Your account is ready.", "success")
+            return redirect('/participant/dashboard')
+
+        except Exception as exc:
+            current_app.logger.error("Registration exception: %s", exc)
+            flash(f"Could not create account: {exc}", "danger")
+            return redirect('/register')
+
+    return render_template('register.html')
+
+
+# =========================================================
+# 4. LOGOUT
 # =========================================================
 @auth_bp.route('/logout')
 def logout():

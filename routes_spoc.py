@@ -108,7 +108,31 @@ def create_event():
             'results_published': False
         }
 
-        db.collection('events').add(event_data)
+        # Firestore .add() returns (timestamp, doc_ref). Capture the id so
+        # we can attach an auto-generated form schema if one was provided.
+        _, new_event_ref = db.collection('events').add(event_data)
+        new_event_id = new_event_ref.id
+
+        auto_form_raw = request.form.get('auto_form_json', '').strip()
+        if auto_form_raw:
+            try:
+                auto_fields = json.loads(auto_form_raw)
+            except json.JSONDecodeError:
+                auto_fields = []
+
+            if isinstance(auto_fields, list) and auto_fields:
+                db.collection('event_forms').document(new_event_id).set({
+                    'event_id':   new_event_id,
+                    'form_type':  'custom',
+                    'fields':     auto_fields,
+                    'created_by': session.get('user_id'),
+                    'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'source':     'ai_generated'
+                })
+                db.collection('events').document(new_event_id).update({'has_custom_form': True})
+                flash(f"Event '{event_data['title']}' published! Review and tweak the AI-generated form below.", "success")
+                return redirect(f'/forms/builder/{new_event_id}')
+
         flash(f"Event '{event_data['title']}' Published with Custom Rules!", "success")
         return redirect('/spoc/dashboard')
         

@@ -363,6 +363,39 @@
         </div>
 
         <div class="wizard-step-content" id="step-4">
+            <div class="section-card" style="border: 2px solid var(--orange);">
+                <h3 class="section-title" style="color: var(--orange);">
+                    <i class="fas fa-wand-magic-sparkles" style="color: var(--orange);"></i> AI Form Generator
+                </h3>
+                <p class="text-muted small">Describe the fields you want. AI will draft the registration form — you can edit it after the event is created.</p>
+
+                <label class="form-label">Describe Your Form</label>
+                <textarea id="aiFormDescription" class="form-control" rows="4"
+                          placeholder="e.g. need full name, email, phone, year of study, branch, t-shirt size, github link, and a short pitch about the idea"></textarea>
+
+                <div class="d-flex gap-2 mt-3 flex-wrap">
+                    <button type="button" class="btn btn-nav" style="background: var(--orange); color: white;" onclick="generateAIForm()">
+                        <i class="fas fa-sparkles"></i> <span id="aiBtnLabel">Generate with AI</span>
+                    </button>
+                    <button type="button" class="btn btn-nav btn-prev" id="aiClearBtn" onclick="clearAIForm()" style="display:none;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                    <span class="align-self-center text-muted small" id="aiSourceLabel"></span>
+                </div>
+
+                <div id="aiPreview" class="mt-3" style="display:none;">
+                    <div class="p-3 rounded" style="background: rgba(201, 164, 94, 0.08); border: 1px dashed var(--orange);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong class="text-white"><i class="fas fa-list-check"></i> Preview (<span id="aiFieldCount">0</span> fields)</strong>
+                            <small class="text-muted">You can fine-tune after publishing.</small>
+                        </div>
+                        <ol id="aiFieldList" class="text-white mb-0" style="padding-left: 20px;"></ol>
+                    </div>
+                </div>
+
+                <input type="hidden" name="auto_form_json" id="autoFormJson">
+            </div>
+
             <div class="section-card border-primary" style="border: 2px solid var(--blue);">
                 <h3 class="section-title text-primary"><i class="fas fa-sliders-h"></i> Registration Form Builder</h3>
                 <p class="text-muted small">Configure exactly what the student sees when they click "Register".</p>
@@ -527,7 +560,87 @@
             });
             document.getElementById('sponsorsJson').value = JSON.stringify(sponsors);
 
+            // AI-generated fields are already written into autoFormJson by generateAIForm()
             document.getElementById('mainForm').submit();
+        }
+
+        // 6. AI Form Generator
+        let aiGeneratedFields = [];
+
+        async function generateAIForm() {
+            const description = document.getElementById('aiFormDescription').value.trim();
+            if (!description) {
+                alert('Please describe the fields you want.');
+                return;
+            }
+
+            const btnLabel = document.getElementById('aiBtnLabel');
+            const original = btnLabel.innerText;
+            btnLabel.innerText = 'Generating…';
+
+            try {
+                const partType = document.getElementById('partType').value;
+                const isTeam = (partType === 'Team' || partType === 'Both');
+                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+                const res = await fetch('/forms/ai_generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ description, is_team: isTeam })
+                });
+                const data = await res.json();
+
+                if (data.status !== 'ok' || !Array.isArray(data.fields) || data.fields.length === 0) {
+                    alert(data.message || 'Could not generate a form from that description. Try adding more detail.');
+                    return;
+                }
+
+                aiGeneratedFields = data.fields;
+                document.getElementById('autoFormJson').value = JSON.stringify(aiGeneratedFields);
+                renderAIPreview(aiGeneratedFields, data.source);
+            } catch (err) {
+                alert('AI generation failed: ' + err.message);
+            } finally {
+                btnLabel.innerText = original;
+            }
+        }
+
+        function renderAIPreview(fields, source) {
+            const preview = document.getElementById('aiPreview');
+            const list    = document.getElementById('aiFieldList');
+            const count   = document.getElementById('aiFieldCount');
+            const srcLbl  = document.getElementById('aiSourceLabel');
+            const clrBtn  = document.getElementById('aiClearBtn');
+
+            list.innerHTML = '';
+            fields.forEach(f => {
+                const li = document.createElement('li');
+                const req = f.required ? ' <span style="color:#ef4444;">*</span>' : '';
+                const type = `<span class="text-muted small">[${f.type}]</span>`;
+                li.innerHTML = `${escapeHtml(f.label || f.id)}${req} ${type}`;
+                list.appendChild(li);
+            });
+            count.innerText = fields.length;
+            srcLbl.innerText = source === 'ai' ? '✨ Generated by Gemini AI' : '⚙️ Generated by keyword matcher (AI fallback)';
+            preview.style.display = 'block';
+            clrBtn.style.display = 'inline-block';
+        }
+
+        function clearAIForm() {
+            aiGeneratedFields = [];
+            document.getElementById('autoFormJson').value = '';
+            document.getElementById('aiPreview').style.display = 'none';
+            document.getElementById('aiClearBtn').style.display = 'none';
+            document.getElementById('aiSourceLabel').innerText = '';
+        }
+
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
         }
 
         // 5. Helpers

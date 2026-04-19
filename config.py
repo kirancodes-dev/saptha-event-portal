@@ -50,25 +50,25 @@ class Config:
     #
     # ⚠️  PRODUCTION: These MUST be set via environment variables!
     # =========================================================
-    MAIL_SERVER         = 'smtp.gmail.com'
-    MAIL_PORT           = 587
-    MAIL_USE_TLS        = True
-    MAIL_USE_SSL        = False
-    MAIL_TIMEOUT        = os.environ.get('MAIL_TIMEOUT', 10)
+    MAIL_SERVER         = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT           = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS        = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+    MAIL_USE_SSL        = os.environ.get('MAIL_USE_SSL', 'false').lower() == 'true'
+    MAIL_TIMEOUT        = int(os.environ.get('MAIL_TIMEOUT', 10))
     _mail_user_raw      = os.environ.get('MAIL_USER')
     _mail_pass_raw      = os.environ.get('MAIL_PASS')
-    
+
     # Validation: warn if production but no email configured
     if os.environ.get('FLASK_ENV') == 'production':
         if not _mail_user_raw or not _mail_pass_raw:
             logger.warning("⚠️  PRODUCTION MODE: MAIL_USER and MAIL_PASS must be set!")
-    
+
     # Use defaults only for development
     MAIL_USERNAME = _mail_user_raw or 'sapthhack@gmail.com'
     MAIL_PASSWORD = _mail_pass_raw or 'SET_THIS_IN_ENV'
     MAIL_DEFAULT_SENDER = (
         'SapthaEvent Team',
-        MAIL_USERNAME
+        os.environ.get('MAIL_SENDER') or MAIL_USERNAME
     )
 
     # =========================================================

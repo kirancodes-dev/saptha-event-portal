@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="/static/snpsu-logo.png">
 <style>
   #pwa-install-btn {
-    position: fixed; bottom: 20px; right: 20px;
+    position: fixed; bottom: 90px; right: 20px;
     z-index: 9998;
     background: #1a2557; color: #fff;
     border: none; border-radius: 999px;
@@ -21,8 +21,31 @@
   }
   #pwa-install-btn:hover { background: #0f1738; }
   #pwa-install-btn::before { content: '\2B07'; font-size: 14px; }
+  .pwa-hint-modal {
+    position: fixed; inset: 0; background: rgba(15,23,56,.55);
+    z-index: 10000; display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .pwa-hint-modal.open { display: flex; }
+  .pwa-hint-card {
+    background: #fff; border-radius: 16px; max-width: 420px; width: 100%;
+    padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  }
+  .pwa-hint-card h4 { color: #1a2557; font-weight: 700; margin: 0 0 12px; }
+  .pwa-hint-card ol { padding-left: 20px; margin: 0 0 16px; line-height: 1.6; }
+  .pwa-hint-card .btn-close-hint {
+    background: #1a2557; color: #fff; border: none; border-radius: 999px;
+    padding: 8px 20px; font-weight: 600; cursor: pointer;
+  }
 </style>
 <button id="pwa-install-btn" type="button" aria-label="Install SapthaEvent app">Install App</button>
+<div id="pwa-hint-modal" class="pwa-hint-modal" role="dialog" aria-labelledby="pwa-hint-title">
+  <div class="pwa-hint-card">
+    <h4 id="pwa-hint-title">Install SapthaEvent</h4>
+    <div id="pwa-hint-body"></div>
+    <button type="button" class="btn-close-hint" onclick="document.getElementById('pwa-hint-modal').classList.remove('open')">Got it</button>
+  </div>
+</div>
 <script>
 (function () {
   if ('serviceWorker' in navigator) {
@@ -33,24 +56,64 @@
   }
 
   var deferredPrompt = null;
-  var btn = document.getElementById('pwa-install-btn');
+  var floatBtn = document.getElementById('pwa-install-btn');
+  var navBtn = document.getElementById('nav-install-btn');
+
+  function showButtons() {
+    if (floatBtn) floatBtn.style.display = 'inline-flex';
+    if (navBtn) navBtn.classList.remove('d-none');
+  }
+  function hideButtons() {
+    if (floatBtn) floatBtn.style.display = 'none';
+    if (navBtn) navBtn.classList.add('d-none');
+  }
+
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     deferredPrompt = e;
-    if (btn) btn.style.display = 'inline-flex';
+    showButtons();
   });
-  if (btn) {
-    btn.addEventListener('click', function () {
-      if (!deferredPrompt) return;
+
+  function runPrompt() {
+    if (deferredPrompt) {
       deferredPrompt.prompt();
       deferredPrompt.userChoice.finally(function () {
         deferredPrompt = null;
-        btn.style.display = 'none';
+        hideButtons();
       });
-    });
+      return;
+    }
+    // Fallback: show platform-specific hint
+    var ua = navigator.userAgent || '';
+    var isiOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    var isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+    var body = document.getElementById('pwa-hint-body');
+    if (!body) return;
+    if (isiOS || isSafari) {
+      body.innerHTML = '<ol><li>Tap the Share icon in the address bar.</li>' +
+                       '<li>Choose <b>Add to Home Screen</b>.</li>' +
+                       '<li>Confirm the name and tap <b>Add</b>.</li></ol>';
+    } else {
+      body.innerHTML = '<ol><li>Open your browser menu (⋮).</li>' +
+                       '<li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li>' +
+                       '<li>Confirm to install SapthaEvent.</li></ol>';
+    }
+    document.getElementById('pwa-hint-modal').classList.add('open');
   }
+
+  // Expose global handler used by the nav button
+  window.triggerPwaInstall = runPrompt;
+
+  if (floatBtn) floatBtn.addEventListener('click', runPrompt);
+
+  // For browsers without beforeinstallprompt (iOS Safari), still reveal the nav button
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (!standalone && navBtn) {
+    navBtn.classList.remove('d-none');
+  }
+
   window.addEventListener('appinstalled', function () {
-    if (btn) btn.style.display = 'none';
+    hideButtons();
   });
 })();
 </script>

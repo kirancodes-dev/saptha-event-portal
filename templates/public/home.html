@@ -126,6 +126,14 @@
                                     <li><a class="dropdown-item" href="/event_head/dashboard">Coord Console</a></li>
                                 {% elif session.get('role') == 'Judge' %}
                                     <li><a class="dropdown-item" href="/judge/dashboard">Judge Console</a></li>
+                                {% elif session.get('role') == 'SuperAdmin' %}
+                                    <li><a class="dropdown-item" href="/super_admin/dashboard">Super Admin</a></li>
+                                    <li><a class="dropdown-item" href="/admin/dashboard">Admin Console</a></li>
+                                    <li><a class="dropdown-item" href="/spoc/dashboard">SPOC Console</a></li>
+                                    <li><a class="dropdown-item" href="/event_head/dashboard">Coord Console</a></li>
+                                    <li><a class="dropdown-item" href="/judge/dashboard">Judge Console</a></li>
+                                {% elif session.get('role') == 'Admin' %}
+                                    <li><a class="dropdown-item" href="/admin/dashboard">Admin Console</a></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger" href="/logout">Logout</a></li>
@@ -135,6 +143,11 @@
                         <li class="nav-item ms-2"><a href="/login" class="btn btn-custom-login">Login</a></li>
                         <li class="nav-item"><a href="/register" class="btn btn-custom-register">Register Now</a></li>
                     {% endif %}
+                    <li class="nav-item ms-2 ms-lg-2">
+                        <button type="button" id="nav-install-btn" class="btn btn-custom-login d-none" onclick="triggerPwaInstall()" title="Install SapthaEvent on your device">
+                            <i class="fas fa-download me-1"></i> Install App
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>

@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, session, flash, url_for
+from werkzeug.security import generate_password_hash
 from models import db
 import datetime
 
@@ -59,14 +60,20 @@ def create_spoc():
             flash("User already exists!", "warning")
             return redirect(url_for('super_admin.dashboard'))
 
+        raw_pw = request.form.get('spoc_password', '')
+        if len(raw_pw) < 6:
+            flash("Password must be at least 6 characters.", "warning")
+            return redirect(url_for('super_admin.dashboard'))
+
         user_data = {
             'name': request.form.get('spoc_name'),
             'email': email,
-            'password': request.form.get('spoc_password'),
+            'password': generate_password_hash(raw_pw),
             'role': 'ClubSPOC',
             'club_name': request.form.get('club_name'),
             'category': request.form.get('club_category'),
-            'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
+            'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
+            'needs_password_reset': True
         }
         db.collection('users').document(email).set(user_data)
         flash("Club Lead appointed successfully!", "success")

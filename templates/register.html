@@ -87,9 +87,7 @@
                 <div class="skeleton skeleton-button"></div>
             </div>
 
-            <!-- Registration Form -->
-            <form method="POST" class="needs-validation" id="main-content" role="main" aria-label="Student registration form" novalidate style="display:none;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="text-center mb-3">
                 <small style="letter-spacing: 2px; font-weight: 600; color: #64748b; font-size: 0.7rem;">STUDENT REGISTRATION</small>
             </div>
 
@@ -97,8 +95,9 @@
                 {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} small fw-bold py-2">{{ message }}</div>{% endfor %}{% endif %}
             {% endwith %}
 
-            <form action="/register" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <!-- Registration Form -->
+            <form action="/register" method="POST" class="needs-validation" id="main-content" role="main" aria-label="Student registration form" novalidate style="display:none;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3 mb-3">
                     <div class="col-12 col-md-6"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div>
                     <div class="col-12 col-md-6"><label class="form-label">USN / ID</label><input type="text" name="usn" class="form-control" required></div>

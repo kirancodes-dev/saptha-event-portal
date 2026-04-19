@@ -6,7 +6,7 @@ head_bp = Blueprint('head', __name__, url_prefix='/event_head')
 @head_bp.route('/dashboard')
 def dashboard():
     # 1. Security Check
-    if session.get('role') != 'Coordinator':
+    if session.get('role') not in ('Coordinator', 'SuperAdmin'):
         flash("Access Denied: Coordinators only.", "warning")
         return redirect('/login')
 
@@ -58,7 +58,7 @@ def dashboard():
 @head_bp.route('/mark_attendance/<reg_id>/<status>')
 def mark_attendance(reg_id, status):
     # status should be 'Present' or 'Absent'
-    if session.get('role') != 'Coordinator': return redirect('/login')
+    if session.get('role') not in ('Coordinator', 'SuperAdmin'): return redirect('/login')
     
     try:
         db.collection('registrations').document(reg_id).update({

@@ -15,10 +15,14 @@ import os
 # =========================================================
 if not firebase_admin._apps:
     key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-    cred = credentials.Certificate(key_path)
-    firebase_admin.initialize_app(cred)
+    if os.path.exists(key_path):
+        cred = credentials.Certificate(key_path)
+        firebase_admin.initialize_app(cred)
 
-db = firestore.client()
+try:
+    db = firestore.client()
+except Exception:
+    db = None
 
 
 # =========================================================

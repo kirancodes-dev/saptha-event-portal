@@ -1,0 +1,56 @@
+<!-- PWA: manifest, theme, iOS hints, service worker registration + install button -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1a2557">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SapthaEvent">
+<link rel="apple-touch-icon" href="/static/snpsu-logo.png">
+<style>
+  #pwa-install-btn {
+    position: fixed; bottom: 20px; right: 20px;
+    z-index: 9998;
+    background: #1a2557; color: #fff;
+    border: none; border-radius: 999px;
+    padding: 12px 20px;
+    font-weight: 600; font-size: 14px;
+    box-shadow: 0 10px 24px rgba(26,37,87,.28);
+    cursor: pointer;
+    display: none;
+    align-items: center; gap: 8px;
+  }
+  #pwa-install-btn:hover { background: #0f1738; }
+  #pwa-install-btn::before { content: '\2B07'; font-size: 14px; }
+</style>
+<button id="pwa-install-btn" type="button" aria-label="Install SapthaEvent app">Install App</button>
+<script>
+(function () {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .catch(function (err) { console.warn('SW registration failed:', err); });
+    });
+  }
+
+  var deferredPrompt = null;
+  var btn = document.getElementById('pwa-install-btn');
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (btn) btn.style.display = 'inline-flex';
+  });
+  if (btn) {
+    btn.addEventListener('click', function () {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.finally(function () {
+        deferredPrompt = null;
+        btn.style.display = 'none';
+      });
+    });
+  }
+  window.addEventListener('appinstalled', function () {
+    if (btn) btn.style.display = 'none';
+  });
+})();
+</script>

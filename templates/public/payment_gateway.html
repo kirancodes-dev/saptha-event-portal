@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <title>Secure Payment | SapthaEvent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root{--blue:#0d2d62;--orange:#f37021;}
+        :root{--blue:#1a2557;--orange:#c9a45e;}
         body { background: #f8f9fa; font-family: sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .payment-card { background: white; width: 100%; max-width: 450px; border-radius: 16px; box-shadow: 0 10px 30px rgba(13,45,98,0.1); overflow: hidden; }
+        .payment-card { background: white; width: 100%; max-width: 450px; border-radius: 16px; box-shadow: 0 10px 30px rgba(26, 37, 87,0.1); overflow: hidden; }
         .card-header { background: var(--blue); color: white; padding: 25px; text-align: center; }
         .amount { font-size: 2.5rem; font-weight: 800; color: var(--orange); }
         .card-body { padding: 30px; }
@@ -46,6 +47,7 @@
             </div>
 
             <form action="/payment/process/{{ event_id }}" method="POST" id="payForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="amount" value="{{ amount }}">
                 <button type="button" class="btn-pay" onclick="processPayment()">
                     Pay Securely <i class="fas fa-lock ms-2"></i>

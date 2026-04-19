@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin HQ | Sapthagiri NPS University</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
     <style>
-        :root { --snpsu-blue: #0d2d62; --snpsu-orange: #f37021; --bg-light: #f8f9fa; --text-dark: #1e293b; }
+        :root { --snpsu-blue: #1a2557; --snpsu-orange: #c9a45e; --bg-light: #f8f9fa; --text-dark: #1e293b; }
         body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; }
         h1, h2, h3, h4, h5 { font-family: 'Poppins', sans-serif; }
         .navbar { background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 15px 0; }
@@ -20,7 +21,7 @@
         .btn-close { filter: invert(1) brightness(200%); opacity: 0.8; }
         .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
         .form-control, .form-select { background-color: #f1f5f9 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; padding: 12px; }
-        .form-control:focus, .form-select:focus { background-color: #ffffff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(13, 45, 98, 0.1) !important; }
+        .form-control:focus, .form-select:focus { background-color: #ffffff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(26, 37, 87, 0.1) !important; }
         .btn-primary { background-color: var(--snpsu-blue); border: none; font-weight: bold; border-radius: 8px; }
         .btn-warning { background-color: var(--snpsu-orange); color: white; border: none; font-weight: bold; border-radius: 8px; }
     </style>
@@ -30,9 +31,9 @@
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container-fluid px-4">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+                <img src="/static/snpsu-logo.png"
                      alt="Sapthagiri NPS University"
-                     style="height:40px;width:auto;object-fit:contain;filter:brightness(0)invert(1);margin-right:10px;"
+                     style="height:40px;width:auto;object-fit:contain;margin-right:10px;"
                      onerror="this.style.display='none'">
                 <small style="color: #64748b; font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;">ADMIN DASHBOARD</small>
             </a>
@@ -132,6 +133,7 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="modal-body p-4">
                                 <div class="alert alert-warning border-warning bg-light text-center">
                                     <h6 class="fw-bold mb-1" style="color: var(--snpsu-blue);">Current Active Round: {{ event.active_round | default(1) }}</h6>
@@ -158,6 +160,7 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <form action="/coordinator/allocate_rooms/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="modal-body p-4">
                                 <div class="alert alert-info border-info bg-light">
                                     <strong>Total Registered Teams:</strong> {{ event.registration_count }}<br>
@@ -185,15 +188,18 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="assignStaffModal{{ event.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Appoint Staff</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form action="/coordinator/assign_staff/{{ event.id }}" method="POST"><div class="mb-3"><label class="form-label">Role</label><select name="role" class="form-select"><option value="EventCoordinator">Registration Desk Coordinator</option><option value="Judge">Event Judge</option></select></div><div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div><div class="mb-4"><label class="form-label">Email Address</label><input type="email" name="email" class="form-control" required></div><button type="submit" class="btn btn-primary w-100 py-2">Assign & Email Password</button></form></div></div></div></div>
+            <div class="modal fade" id="assignStaffModal{{ event.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Appoint Staff</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form action="/coordinator/assign_staff/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="mb-3"><label class="form-label">Role</label><select name="role" class="form-select"><option value="EventCoordinator">Registration Desk Coordinator</option><option value="Judge">Event Judge</option></select></div><div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div><div class="mb-4"><label class="form-label">Email Address</label><input type="email" name="email" class="form-control" required></div><button type="submit" class="btn btn-primary w-100 py-2">Assign & Email Password</button></form></div></div></div></div>
             
-            <div class="modal fade" id="publishModal{{ event.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-warning"><div class="modal-body text-center p-5"><i class="fas fa-trophy fa-4x text-warning mb-3"></i><h4 class="fw-bold">Conclude Event?</h4><p class="text-muted mb-4">This will generate the leaderboard and close registrations permanently.</p><form action="/coordinator/publish_results/{{ event.id }}" method="POST"><button type="submit" class="btn btn-warning w-100 py-3 fw-bold">Publish Final Results</button></form></div></div></div></div>
+            <div class="modal fade" id="publishModal{{ event.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-warning"><div class="modal-body text-center p-5"><i class="fas fa-trophy fa-4x text-warning mb-3"></i><h4 class="fw-bold">Conclude Event?</h4><p class="text-muted mb-4">This will generate the leaderboard and close registrations permanently.</p><form action="/coordinator/publish_results/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-warning w-100 py-3 fw-bold">Publish Final Results</button></form></div></div></div></div>
 
             <div class="modal fade" id="editEventModal{{ event.id }}" tabindex="-1">
                 <div class="modal-dialog modal-xl modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header bg-dark text-white"><h4 class="modal-title">Edit Event: {{ event.title }}</h4><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                         <form action="/coordinator/edit_event/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="modal-body p-4">
                                 <div class="row g-3 mb-4">
                                     <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" value="{{ event.title }}" required></div>
@@ -251,6 +257,7 @@
                 <div class="modal-content">
                     <div class="modal-header"><h4 class="modal-title">Create Elite Event</h4><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                     <form action="/coordinator/create_event" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="modal-body p-4 p-md-5">
                             <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--snpsu-blue);">1. Basic Details</h5>
                             <div class="row g-3 mb-4">
@@ -293,7 +300,8 @@
             </div>
         </div>
 
-        <div class="modal fade" id="appointSpocModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Appoint New Club SPOC</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form action="/admin/appoint_spoc" method="POST"><div class="mb-3"><label class="form-label">SPOC Name</label><input type="text" class="form-control" name="name" required placeholder="Ex: Kiran Biradar"></div><div class="mb-3"><label class="form-label">Email Address (Login ID)</label><input type="email" class="form-control" name="email" required placeholder="tech@snpsu.edu.in"></div><div class="mb-3"><label class="form-label">Assign Password</label><input type="password" class="form-control" name="password" required placeholder="Minimum 6 characters"></div><div class="mb-4"><label class="form-label">Assign Division</label><select class="form-select" name="category" required><option value="Tech">Technical Division</option><option value="Cultural">Cultural Division</option><option value="Sports">Sports Division</option><option value="General">General Events</option></select></div><button type="submit" class="btn btn-primary w-100 py-2 fs-5">Create SPOC Account</button></form></div></div></div></div>
+        <div class="modal fade" id="appointSpocModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Appoint New Club SPOC</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form action="/admin/appoint_spoc" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="mb-3"><label class="form-label">SPOC Name</label><input type="text" class="form-control" name="name" required placeholder="Ex: Kiran Biradar"></div><div class="mb-3"><label class="form-label">Email Address (Login ID)</label><input type="email" class="form-control" name="email" required placeholder="tech@snpsu.edu.in"></div><div class="mb-3"><label class="form-label">Assign Password</label><input type="password" class="form-control" name="password" required placeholder="Minimum 6 characters"></div><div class="mb-4"><label class="form-label">Assign Division</label><select class="form-select" name="category" required><option value="Tech">Technical Division</option><option value="Cultural">Cultural Division</option><option value="Sports">Sports Division</option><option value="General">General Events</option></select></div><button type="submit" class="btn btn-primary w-100 py-2 fs-5">Create SPOC Account</button></form></div></div></div></div>
 
     </div>
 

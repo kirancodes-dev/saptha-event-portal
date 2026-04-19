@@ -5,8 +5,8 @@
   <!-- Header -->
   <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-      <h4 class="fw-bold mb-0" style="color:#0d2d62;">
-        <i class="fas fa-chart-bar me-2" style="color:#f37021;"></i>
+      <h4 class="fw-bold mb-0" style="color:#1a2557;">
+        <i class="fas fa-chart-bar me-2" style="color:#c9a45e;"></i>
         Score Summary — {{ event.title }}
       </h4>
       <small class="text-muted">Review all judges' scores before publishing final results</small>
@@ -20,13 +20,13 @@
   <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm text-center p-3">
-        <div class="fs-3 fw-bold" style="color:#0d2d62;">{{ leaderboard|length }}</div>
+        <div class="fs-3 fw-bold" style="color:#1a2557;">{{ leaderboard|length }}</div>
         <div class="text-muted small">Teams Scored</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm text-center p-3">
-        <div class="fs-3 fw-bold" style="color:#f37021;">{{ unscored|length }}</div>
+        <div class="fs-3 fw-bold" style="color:#c9a45e;">{{ unscored|length }}</div>
         <div class="text-muted small">Not Yet Scored</div>
       </div>
     </div>
@@ -60,9 +60,9 @@
   <!-- Leaderboard table -->
   {% if leaderboard %}
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header py-3" style="background:#0d2d62;">
+    <div class="card-header py-3" style="background:#1a2557;">
       <h6 class="mb-0 text-white fw-bold">
-        <i class="fas fa-trophy me-2" style="color:#f37021;"></i>
+        <i class="fas fa-trophy me-2" style="color:#c9a45e;"></i>
         Leaderboard Preview (Average of All Judges)
       </h6>
     </div>
@@ -76,7 +76,7 @@
               {% for judge in judges %}
               <th class="text-center">{{ judge.name }}<br><small class="text-muted fw-normal">Judge</small></th>
               {% endfor %}
-              <th class="text-center fw-bold" style="color:#0d2d62;">Avg Score</th>
+              <th class="text-center fw-bold" style="color:#1a2557;">Avg Score</th>
             </tr>
           </thead>
           <tbody>
@@ -117,7 +117,7 @@
                 </td>
               {% endfor %}
               <td class="text-center">
-                <span class="fw-bold fs-5" style="color:#0d2d62;">{{ team.avg_score }}</span>
+                <span class="fw-bold fs-5" style="color:#1a2557;">{{ team.avg_score }}</span>
                 <br>
                 <small class="text-muted">{{ team.scores_count }}/{{ team.judges_count }} judges</small>
               </td>
@@ -131,7 +131,7 @@
 
   <!-- Publish button -->
   <div class="card border-0 shadow-sm p-4 text-center">
-    <h5 class="fw-bold mb-2" style="color:#0d2d62;">Ready to Publish?</h5>
+    <h5 class="fw-bold mb-2" style="color:#1a2557;">Ready to Publish?</h5>
     <p class="text-muted mb-3">
       This will calculate the final average score for each team, rank them,
       notify the top 3 winners by email and WhatsApp, and mark the event as completed.
@@ -145,8 +145,9 @@
     {% endif %}
     <form method="POST" action="/coordinator/publish_results/{{ event.id }}"
           onsubmit="return confirm('Publish final results for {{ event.title }}? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-lg px-5 fw-bold text-white rounded-pill"
-              style="background:#0d2d62;">
+              style="background:#1a2557;">
         <i class="fas fa-trophy me-2"></i>
         Publish Final Results
       </button>

@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <title>My Profile | SapthaEvent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root{--blue:#0d2d62;--orange:#f37021;}
+        :root{--blue:#1a2557;--orange:#c9a45e;}
         body { background: #f8f9fa; color: #1e293b; font-family: sans-serif; }
         .card { background: #ffffff; border: 1px solid #e2e8f0; }
         .form-control { background: #ffffff; border: 1px solid #e2e8f0; color: #1e293b; }
-        .form-control:focus { background: #ffffff; color: #1e293b; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(13,45,98,0.1); }
+        .form-control:focus { background: #ffffff; color: #1e293b; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26, 37, 87,0.1); }
         .btn-primary { background: var(--blue); border: none; }
     </style>
 </head>
@@ -42,6 +43,7 @@
                     </div>
                     <div class="card-body">
                         <form action="/profile/update" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label text-muted">Email (Cannot Change)</label>
                                 <input type="text" class="form-control" value="{{ user.email }}" disabled>
@@ -76,6 +78,7 @@
                     </div>
                     <div class="card-body">
                         <form action="/profile/security" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label">Current Password</label>
                                 <input type="password" name="current_password" class="form-control" required>

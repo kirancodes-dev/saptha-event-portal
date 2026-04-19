@@ -8,17 +8,18 @@
 <meta property="og:description" content="{{ event.description }}">
 <meta property="og:image"       content="{{ event.banner_url or '' }}">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--blue:#0d2d62;--orange:#f37021;--gold:#f59e0b;}
+:root{--blue:#1a2557;--orange:#c9a45e;--gold:#f59e0b;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
 
 /* HERO */
 .hero{position:relative;min-height:480px;display:flex;align-items:flex-end;overflow:hidden;}
 .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.45);}
-.hero-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(13,45,98,.95) 0%,rgba(13,45,98,.4) 60%,transparent 100%);}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(26, 37, 87,.95) 0%,rgba(26, 37, 87,.4) 60%,transparent 100%);}
 .hero-content{position:relative;z-index:2;padding:40px 32px 36px;width:100%;}
 .event-category-badge{display:inline-block;background:var(--orange);color:#fff;
   font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
@@ -69,7 +70,7 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
   padding:14px 40px;border-radius:50px;border:none;transition:.2s;text-decoration:none;
   display:inline-block;}
 .btn-register:hover{background:#d95e1a;color:#fff;transform:translateY(-2px);
-  box-shadow:0 8px 24px rgba(243,112,33,.4);}
+  box-shadow:0 8px 24px rgba(201,164,94,.4);}
 .btn-register.disabled-reg{background:#64748b;cursor:not-allowed;}
 
 /* QR */
@@ -120,7 +121,7 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
   {% if event.banner_url %}
   <div class="hero-bg" style="background-image:url('{{ event.banner_url }}');"></div>
   {% else %}
-  <div class="hero-bg" style="background:linear-gradient(135deg,#0d2d62,#1a4fa0);"></div>
+  <div class="hero-bg" style="background:linear-gradient(135deg,#1a2557,#1a4fa0);"></div>
   {% endif %}
   <div class="hero-overlay"></div>
   <div class="hero-content container">
@@ -417,7 +418,7 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
 {% endif %}
 
 <!-- FOOTER -->
-<footer style="background:#0d2d62;padding:24px 0;text-align:center;">
+<footer style="background:#1a2557;padding:24px 0;text-align:center;">
   <p style="color:rgba(255,255,255,.5);font-size:12px;margin:0;">
     Powered by <strong style="color:var(--orange);">SapthaEvent Portal</strong> —
     Sapthagiri NPS University &nbsp;·&nbsp;

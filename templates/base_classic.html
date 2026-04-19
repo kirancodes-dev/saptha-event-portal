@@ -4,37 +4,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0d2d62">
+    <meta name="theme-color" content="#1a2557">
     <!-- ═══ SEO Meta Tags ═══ -->
     <meta name="description" content="{% block meta_description %}SapthaEvent: Official event management portal for Sapthagiri NPS University. Manage events, register participants, and track event attendance.{% endblock %}">
     <meta name="keywords" content="events, management, SNPSU, Sapthagiri, university, portal">
     <meta name="author" content="Sapthagiri NPS University">
     <meta name="robots" content="noindex, follow">
     <meta name="language" content="English">
+    <!-- CSRF token for fetch()/XHR (HTML forms use a hidden input instead) -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- ═══ Canonical URL ═══ -->
     <link rel="canonical" href="https://events.snpsu.edu.in">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    {% include 'includes/pwa_head.html' %}
     <title>{% block title %}Page Title{% endblock %} | SapthaEvent Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
     <style>
         /* ── ACCESSIBILITY STYLES ────────────────────── */
-        .skip-link{position:absolute;top:-40px;left:0;background:#0d2d62;color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
+        .skip-link{position:absolute;top:-40px;left:0;background:#1a2557;color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
         .skip-link:focus{top:0;}
-        *:focus-visible{outline:3px solid #f37021;outline-offset:2px;}
+        *:focus-visible{outline:3px solid #c9a45e;outline-offset:2px;}
         @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
         @media(prefers-contrast:more){*{font-weight:600;}}
         @media(prefers-color-scheme:dark){body{background:#1a1a1a;color:#e0e0e0;}.sidebar{background:#0d0d0d;}.main-content{background:#1a1a1a;}}
     </style>
     {% block extra_css %}{% endblock %}
+    <link href="/static/css/global.css" rel="stylesheet">
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to Main Content</a>
     <!-- Sidebar Navigation -->
     {% if not public_layout %}
         <aside class="sidebar" role="complementary" aria-label="Navigation sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-text" aria-label="SapthaEvent Dashboard">Saptha<span>Event</span></div>
+            <div class="sidebar-brand" style="background:#1a2557;padding:18px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="width:100%;max-width:200px;height:auto;object-fit:contain;border-radius:6px;">
+                <div class="brand-text" aria-label="SapthaEvent Dashboard" style="color:#fff;font-weight:700;font-size:14px;letter-spacing:.5px;">Saptha<span style="color:#c9a45e;">Event</span></div>
             </div>
 
             <nav class="sidebar-menu" role="navigation" aria-label="Main navigation">
@@ -62,6 +67,10 @@
                         <a href="/admin/users" class="nav-link">
                             <i class="fas fa-users" aria-hidden="true"></i>
                             <span>Users</span>
+                        </a>
+                        <a href="/admin/sponsors" class="nav-link {% if current_page == 'sponsors' %}active{% endif %}">
+                            <i class="fas fa-handshake" aria-hidden="true"></i>
+                            <span>Sponsors</span>
                         </a>
                     </div>
                 {% endif %}
@@ -135,6 +144,32 @@
                 });
             }
         });
+    </script>
+    <script>
+        // Auto-attach CSRF token to same-origin mutating fetch() requests.
+        (function () {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            var token = meta ? meta.getAttribute('content') : '';
+            if (!token || !window.fetch) return;
+            var origFetch = window.fetch.bind(window);
+            window.fetch = function (input, init) {
+                init = init || {};
+                var method = (init.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].indexOf(method) === -1) {
+                    return origFetch(input, init);
+                }
+                var url = typeof input === 'string' ? input : (input && input.url) || '';
+                try {
+                    var u = new URL(url, window.location.origin);
+                    if (u.origin !== window.location.origin) return origFetch(input, init);
+                } catch (_) {}
+                var headers = new Headers(init.headers || {});
+                if (!headers.has('X-CSRFToken')) headers.set('X-CSRFToken', token);
+                init.headers = headers;
+                if (!init.credentials) init.credentials = 'same-origin';
+                return origFetch(input, init);
+            };
+        })();
     </script>
     {% block extra_js %}{% endblock %}
 </body>

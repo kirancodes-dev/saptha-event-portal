@@ -12,7 +12,7 @@
 <title>500 - Server Error | SapthaEvent</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--blue:#0d2d62;--orange:#f37021;}
+:root{--blue:#1a2557;--orange:#c9a45e;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
 .card{background:#fff;border-radius:20px;border:1px solid #e2e8f0;padding:48px 36px;max-width:480px;width:100%;text-align:center;}
@@ -33,10 +33,11 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:
 @media(prefers-contrast:more){.title,.code{font-weight:900;}.btn-home,.btn-back{border:2px solid;font-weight:700;}}
 @media(prefers-color-scheme:dark){body{background:#1a1a1a;}.card{background:#2a2a2a;color:#e0e0e0;border-color:#444;}.title{color:#e0e0e0;}.desc{color:#a0a0a0;}.btn-back{background:#333;color:#e0e0e0;border-color:#555;}.btn-back:hover{background:#444;}}
 </style>
+    <link href="/static/css/global.css" rel="stylesheet">
 </head>
 <body role="main" aria-label="500 Server Error">
 <div class="card" role="region" aria-live="polite" aria-label="Server error message">
-  <div class="logo-sq" style="background:var(--orange);" aria-hidden="true"><img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png" alt="" style="height:24px;width:auto;filter:brightness(0)invert(1);" onerror="this.style.display='none';"></div>
+  <div class="logo-sq" style="background:var(--orange);" aria-hidden="true"><img src="/static/snpsu-logo.png" alt="" style="height:24px;width:auto;" onerror="this.style.display='none';"></div>
   <div class="code" aria-label="Error code">500</div>
   <h1 class="title">Something Went Wrong</h1>
   <p class="desc">
@@ -50,9 +51,9 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:
   </div>
   <div class="divider"></div>
   <div style="text-align:center;margin-bottom:8px;">
-    <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
+    <img src="/static/snpsu-logo.png"
          alt="Sapthagiri NPS University"
-         style="height:24px;width:auto;object-fit:contain;filter:brightness(0)invert(1);"
+         style="height:24px;width:auto;object-fit:contain;"
          onerror="this.style.display='none'">
   </div>
   <p class="uni">Sapthagiri NPS University, Bengaluru</p>

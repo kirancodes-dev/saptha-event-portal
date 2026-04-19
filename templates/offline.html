@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a2557">
+  <title>Offline | SapthaEvent</title>
+  <link href="/static/css/global.css" rel="stylesheet">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: linear-gradient(135deg, #1a2557 0%, #2a3a7a 100%);
+    }
+    .offline-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 48px rgba(0,0,0,.18);
+      padding: 2.5rem 2rem;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+    .offline-card img { width: 100%; max-width: 240px; margin-bottom: 1.25rem; }
+    .offline-card h1 { color: #1a2557; font-size: 1.5rem; margin-bottom: .5rem; }
+    .offline-card p { color: #475569; margin-bottom: 1.5rem; }
+    .offline-card .btn {
+      display: inline-block;
+      background: #1a2557; color: #fff;
+      padding: .75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .offline-card .hint {
+      font-size: .85rem; color: #64748b; margin-top: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-card">
+    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
+    <h1>You're offline</h1>
+    <p>We couldn't reach the network. Your already-opened tickets and cached pages will still work.</p>
+    <a href="/" class="btn" onclick="location.reload();return false;">Retry</a>
+    <p class="hint">Tip: open your ticket while online once and it'll be available offline at the event gate.</p>
+  </div>
+</body>
+</html>

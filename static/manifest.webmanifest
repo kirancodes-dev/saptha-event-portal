@@ -1,0 +1,41 @@
+{
+  "name": "SapthaEvent — Sapthagiri NPS University",
+  "short_name": "SapthaEvent",
+  "description": "Official Event Portal for Sapthagiri NPS University. Register, get QR tickets, earn certificates.",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1a2557",
+  "theme_color": "#1a2557",
+  "lang": "en-IN",
+  "categories": ["education", "events", "productivity"],
+  "icons": [
+    {
+      "src": "/static/snpsu-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/snpsu-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Tickets",
+      "short_name": "Tickets",
+      "url": "/participant/dashboard",
+      "icons": [{"src": "/static/snpsu-logo.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Browse Events",
+      "short_name": "Events",
+      "url": "/",
+      "icons": [{"src": "/static/snpsu-logo.png", "sizes": "192x192"}]
+    }
+  ]
+}

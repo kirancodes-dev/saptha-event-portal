@@ -79,7 +79,7 @@ def init_scheduler(flask_app):
         replace_existing = True,
         misfire_grace_time = 600,   # 10-minute grace if job is late
     )
-    scheduler.start()
+    #
 
     # Run once immediately on startup so you don't have to wait an hour
     _reminder_job()

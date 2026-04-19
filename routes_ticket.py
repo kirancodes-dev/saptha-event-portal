@@ -27,10 +27,20 @@ def _now() -> str:
 def _base_url() -> str:
     """
     Returns the correct base URL for QR codes.
-    Set BASE_URL environment variable on Render to your real domain.
-    Falls back to localhost for local development.
+    Priority: BASE_URL env var > current request host > localhost fallback.
     """
-    return os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
+    env_url = os.environ.get('BASE_URL', '').strip().rstrip('/')
+    if env_url:
+        return env_url
+    try:
+        host = request.host_url.rstrip('/')
+        if host and '127.0.0.1' not in host and 'localhost' not in host:
+            return host
+        if host:
+            return host
+    except RuntimeError:
+        pass  # outside request context
+    return 'http://127.0.0.1:5000'
 
 
 # =========================================================

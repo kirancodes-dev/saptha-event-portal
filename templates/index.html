@@ -58,7 +58,8 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;font-weight:700;}
 
 
 /* ── TICKER ─────────────────────────────────── */
-.ticker-bar{background:linear-gradient(90deg,#071929 0%,#0a2a3f 100%);padding:10px 0;overflow:hidden;white-space:nowrap;position:relative;}
+html,body{margin:0;padding:0;}
+.ticker-bar{background:linear-gradient(90deg,#071929 0%,#0a2a3f 100%);padding:10px 0;overflow:hidden;white-space:nowrap;position:relative;margin:0;}
 .ticker-bar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,#071929,transparent);z-index:10;}
 .ticker-bar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,transparent,#071929);z-index:10;}
 .ticker-track{display:inline-flex;gap:64px;animation:tickMove 40s linear infinite;}
@@ -69,8 +70,9 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;font-weight:700;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* ── NAVBAR ──────────────────────────────────── */
-.snav{background:linear-gradient(135deg,var(--blue) 0%,#0a2a3f 100%);position:sticky;top:0;z-index:1050;box-shadow:0 4px 20px rgba(26, 37, 87,.15);backdrop-filter:blur(10px);background-color:rgba(26, 37, 87,.98);}
-.snav .navbar-brand{display:flex;align-items:center;gap:12px;text-decoration:none;padding:8px 0;animation:slideInLeft .6s ease;}
+.snav{background:#0f1a3d;background:linear-gradient(135deg,#1a2557 0%,#0a2a3f 100%);position:sticky;top:0;z-index:1050;box-shadow:0 4px 20px rgba(26, 37, 87,.25);margin:0;padding:6px 0;border:0;}
+.snav .navbar-brand{display:flex;align-items:center;gap:12px;text-decoration:none;padding:2px 0;margin:0;animation:slideInLeft .6s ease;}
+.snav .navbar-brand img{background:transparent;}
 .nav-logo-sq{width:42px;height:42px;background:linear-gradient(135deg,var(--orange),#c9a45e);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(201,164,94,.3);}
 .brand-n{font-family:'Poppins',sans-serif;font-weight:800;font-size:18px;color:#fff;line-height:1.1;display:block;letter-spacing:-.5px;}
 .brand-s{font-size:8.5px;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;display:block;font-weight:600;}
@@ -78,11 +80,17 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;font-weight:700;}
 .snav .nav-link::after{content:'';position:absolute;bottom:0;left:50%;width:0;height:2px;background:var(--orange);transition:.3s;transform:translateX(-50%);}
 .snav .nav-link:hover{color:#fff!important;background:rgba(255,255,255,.08);}
 .snav .nav-link:hover::after{width:20px;}
-.snav .btn-login{background:var(--orange)!important;color:#fff!important;font-weight:700!important;padding:8px 22px!important;border-radius:8px!important;transition:.2s!important;box-shadow:0 4px 12px rgba(201,164,94,.3)!important;}
+.snav .btn-login{background:var(--orange)!important;color:#fff!important;font-weight:700!important;padding:8px 22px!important;border-radius:8px!important;transition:.2s!important;box-shadow:0 4px 12px rgba(201,164,94,.3)!important;border:none!important;}
 .snav .btn-login:hover{background:#d95f0f!important;transform:translateY(-2px);box-shadow:0 6px 16px rgba(201,164,94,.4)!important;}
-.navbar-toggler{border:none;outline:none;color:#fff;font-size:20px;padding:6px 10px;}
+.btn-login-mini{background:var(--orange);color:#fff;font-weight:700;font-size:13px;padding:7px 16px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(201,164,94,.3);transition:.2s;border:none;white-space:nowrap;}
+.btn-login-mini:hover{background:#d95f0f;color:#fff;text-decoration:none;transform:translateY(-1px);}
+.navbar-toggler{border:1.5px solid rgba(255,255,255,.25)!important;outline:none;color:#fff;font-size:16px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);}
 .navbar-toggler:focus{box-shadow:none;}
-.snav .navbar-collapse{background:linear-gradient(180deg,rgba(26, 37, 87,.98),rgba(26, 37, 87,.95));}
+.snav .navbar-collapse{background:linear-gradient(180deg,#1a2557,#0a2a3f);}
+@media(max-width:991px){
+  .snav .navbar-collapse{margin-top:8px;border-radius:10px;padding:6px 10px;}
+  .snav .navbar-brand img{height:36px!important;}
+}
 
 /* ── SKELETON LOADERS ───────────────────────────── */
 @keyframes skeletonPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
@@ -470,11 +478,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
       </div>
     </a>
-    <button class="navbar-toggler" type="button"
-            data-bs-toggle="collapse" data-bs-target="#mainNav"
-            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-      <i class="fas fa-bars"></i>
-    </button>
+    <!-- Mobile: compact Login button + hamburger, always visible -->
+    <div class="d-flex align-items-center gap-2 d-lg-none">
+      {% if session.get('user_id') %}
+        <a class="btn-login-mini" href="/logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></a>
+      {% else %}
+        <a class="btn-login-mini" href="/login" aria-label="Login">
+          <i class="fas fa-sign-in-alt me-1"></i>Login
+        </a>
+      {% endif %}
+      <button class="navbar-toggler" type="button"
+              data-bs-toggle="collapse" data-bs-target="#mainNav"
+              aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-ellipsis-v"></i>
+      </button>
+    </div>
     <div class="collapse navbar-collapse" id="mainNav">
       <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 py-3 py-lg-0">
         <li class="nav-item"><a class="nav-link" href="#events">Events</a></li>
@@ -488,16 +506,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
           {% elif role == 'Judge' %}
             <li class="nav-item"><a class="nav-link" href="/judge/dashboard"><i class="fas fa-gavel me-1"></i>Judge Panel</a></li>
           {% endif %}
-          <li class="nav-item ms-lg-2">
+          <li class="nav-item ms-lg-2 d-none d-lg-block">
             <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
           </li>
         {% else %}
-          <li class="nav-item ms-lg-2">
+          <li class="nav-item ms-lg-2 d-none d-lg-block">
             <a class="nav-link btn-login" href="/login">
               <i class="fas fa-sign-in-alt me-1"></i>Login
             </a>
           </li>
         {% endif %}
+        <li class="nav-item ms-lg-2">
+          <button type="button" id="nav-install-btn" class="nav-link btn-login d-none" onclick="triggerPwaInstall()" title="Install SapthaEvent">
+            <i class="fas fa-download me-1"></i>Install App
+          </button>
+        </li>
       </ul>
     </div>
   </div>

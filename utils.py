@@ -50,6 +50,10 @@ def role_required(roles):
             legacy = [r.replace('SuperAdmin', 'Super Admin') for r in valid_roles]
             valid_roles = valid_roles + legacy
 
+            # SuperAdmin is a wildcard: always permitted on any @role_required route.
+            if user_role == 'SuperAdmin':
+                return f(*args, **kwargs)
+
             if user_role not in valid_roles:
                 flash(
                     f"🛑 Access denied. You are logged in as '{session.get('role')}', "

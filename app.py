@@ -12,6 +12,7 @@ import flask_limiter.util
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_session import Session
 from flask_talisman import Talisman
+from werkzeug.middleware.proxy_fix import ProxyFix
 from google.cloud.firestore_v1.base_query import FieldFilter
 from config import Config
 from dotenv import load_dotenv
@@ -75,6 +76,10 @@ if _SENTRY_DSN:
 # =========================================================
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Trust Railway/Heroku/Nginx proxy headers (X-Forwarded-Proto etc.)
+# Required so Talisman's force_https doesn't loop-redirect behind TLS-terminating proxies.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # =========================================================
 # EXTENSIONS

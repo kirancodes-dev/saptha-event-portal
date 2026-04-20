@@ -259,6 +259,32 @@ def send_credentials_email(to_email: str, name: str, role: str,
     return _send(to_email, f"🔐 Your SapthaEvent Login — {role}", html)
 
 
+def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{name or 'User'}</strong>,</p>
+        <p style="color:#475569;">We received a request to reset your
+           SapthaEvent password. Click the button below to set a new one.
+           This link expires in <strong>1 hour</strong>.</p>
+        <p style="text-align:center;margin:24px 0;">
+          <a href="{reset_url}"
+             style="background:#0d2d62;color:#fff;padding:12px 32px;
+                    border-radius:8px;text-decoration:none;font-weight:700;
+                    display:inline-block;">
+            Reset My Password →
+          </a>
+        </p>
+        <p style="color:#64748b;font-size:12px;">
+          If the button doesn't work, copy this link into your browser:<br>
+          <span style="word-break:break-all;color:#0d2d62;">{reset_url}</span>
+        </p>
+        <p style="color:#ef4444;font-size:12px;margin-top:18px;">
+          Didn't request this? You can safely ignore this email — your
+          password will remain unchanged.
+        </p>
+    """, "Password Reset Request")
+    return _send(to_email, "🔐 Reset your SapthaEvent password", html)
+
+
 def send_appointment_email(to_email: str, name: str, role: str,
                            event_title: str) -> bool:
     base = _base_url()

@@ -1,12 +1,21 @@
 import datetime
 import logging
-from flask import Blueprint, render_template, request, redirect, session, flash, current_app
+from flask import Blueprint, render_template, request, redirect, session, flash, current_app, url_for
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
 from utils import log_action
+from utils_email import send_password_reset_email
 
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
+
+RESET_TOKEN_SALT    = 'sapthaevent-password-reset'
+RESET_TOKEN_MAX_AGE = 3600  # 1 hour
+
+
+def _reset_serializer():
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=RESET_TOKEN_SALT)
 
 # Role → dashboard URL map (single source of truth)
 ROLE_REDIRECTS = {
@@ -224,7 +233,129 @@ def register():
 
 
 # =========================================================
-# 4. LOGOUT
+# 4. FORGOT PASSWORD — request reset link via email
+# =========================================================
+@auth_bp.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if 'user_id' in session:
+        return _redirect_by_role(session.get('role', ''))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').lower().strip()
+
+        if not email:
+            flash("Please enter your email address.", "warning")
+            return redirect('/forgot_password')
+
+        # Generic response in all cases — never reveal whether the email exists
+        generic_msg = ("If an account exists for that email, a reset link "
+                       "has been sent. Check your inbox (and spam folder).")
+
+        try:
+            user_doc = db.collection('users').document(email).get()
+            if not user_doc.exists:
+                flash(generic_msg, "info")
+                log_action(db, "RESET_REQ_NOACCT", f"Reset requested for unknown {email}")
+                return redirect('/forgot_password')
+
+            user_data = user_doc.to_dict()
+            role      = (user_data.get('role', '') or '').strip()
+            if role == 'Super Admin':
+                role = 'SuperAdmin'
+
+            # SuperAdmin cannot reset via email — use master key recovery path
+            if role == 'SuperAdmin':
+                flash(generic_msg, "info")
+                log_action(db, "RESET_REQ_BLOCKED_SUPER",
+                           f"SuperAdmin {email} attempted email-based reset")
+                return redirect('/forgot_password')
+
+            token = _reset_serializer().dumps(email)
+            base  = request.host_url.rstrip('/')
+            reset_url = f"{base}/reset_token/{token}"
+
+            sent = send_password_reset_email(email,
+                                             user_data.get('name', ''),
+                                             reset_url)
+            if sent:
+                log_action(db, "RESET_LINK_SENT",
+                           f"Reset link emailed to {email} (role={role})")
+            else:
+                log_action(db, "RESET_LINK_FAIL",
+                           f"Email send failed for {email}")
+
+            flash(generic_msg, "info")
+            return redirect('/forgot_password')
+
+        except Exception as exc:
+            current_app.logger.error("Forgot-password error: %s", exc)
+            flash("Something went wrong. Please try again.", "danger")
+            return redirect('/forgot_password')
+
+    return render_template('forgot_password.html')
+
+
+# =========================================================
+# 5. RESET WITH TOKEN — link from email
+# =========================================================
+@auth_bp.route('/reset_token/<token>', methods=['GET', 'POST'])
+def reset_token(token):
+    try:
+        email = _reset_serializer().loads(token, max_age=RESET_TOKEN_MAX_AGE)
+    except SignatureExpired:
+        flash("This reset link has expired. Please request a new one.", "danger")
+        return redirect('/forgot_password')
+    except BadSignature:
+        flash("Invalid reset link.", "danger")
+        return redirect('/forgot_password')
+
+    user_doc = db.collection('users').document(email).get()
+    if not user_doc.exists:
+        flash("Account no longer exists.", "danger")
+        return redirect('/login')
+
+    user_data = user_doc.to_dict()
+    role      = (user_data.get('role', '') or '').strip()
+    if role == 'Super Admin':
+        role = 'SuperAdmin'
+    if role == 'SuperAdmin':
+        flash("SuperAdmin cannot be reset via email.", "danger")
+        return redirect('/login')
+
+    if request.method == 'POST':
+        new_pw     = request.form.get('new_password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+
+        if new_pw != confirm_pw:
+            flash("Passwords do not match.", "danger")
+            return redirect(request.path)
+        if len(new_pw) < 8:
+            flash("Password must be at least 8 characters.", "danger")
+            return redirect(request.path)
+        if not any(c.isdigit() for c in new_pw):
+            flash("Password must contain at least one number.", "danger")
+            return redirect(request.path)
+
+        try:
+            db.collection('users').document(email).update({
+                'password':             generate_password_hash(new_pw),
+                'needs_password_reset': False
+            })
+            log_action(db, "PASSWORD_RESET_EMAIL",
+                       f"{email} reset password via email token")
+            flash("✅ Password updated. You can now log in.", "success")
+            return redirect('/login')
+        except Exception as exc:
+            current_app.logger.error("Reset-token update error: %s", exc)
+            flash("Could not update password. Try again.", "danger")
+            return redirect(request.path)
+
+    return render_template('reset_password_token.html',
+                           email=email, name=user_data.get('name', ''))
+
+
+# =========================================================
+# 6. LOGOUT
 # =========================================================
 @auth_bp.route('/logout')
 def logout():

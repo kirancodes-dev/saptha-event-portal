@@ -77,15 +77,116 @@ def init_scheduler(flask_app):
         id      = "event_24h_reminder",
         name    = "24-hour event reminder",
         replace_existing = True,
-        misfire_grace_time = 600,   # 10-minute grace if job is late
+        misfire_grace_time = 600,
     )
-    #
+    scheduler.add_job(
+        func    = _lifecycle_job,
+        trigger = IntervalTrigger(hours=6),
+        id      = "event_lifecycle",
+        name    = "Event lifecycle (close/delete)",
+        replace_existing = True,
+        misfire_grace_time = 600,
+    )
 
-    # Run once immediately on startup so you don't have to wait an hour
+    # Run once immediately on startup (works even if the background
+    # scheduler fails to start in a gunicorn worker)
     _reminder_job()
+    _lifecycle_job()
 
-    logger.info("Reminder scheduler started — running every hour (IST)")
+    try:
+        scheduler.start()
+        logger.info("Scheduler started — reminders hourly, lifecycle every 6h (IST)")
+    except Exception as exc:
+        logger.warning("Scheduler.start() failed (jobs will still run on boot): %s", exc)
+
     return scheduler
+
+
+# ═══════════════════════════════════════════════════════
+# LIFECYCLE JOB — close registrations, delete old events/regs
+# ═══════════════════════════════════════════════════════
+
+def _lifecycle_job():
+    """
+    Runs every 6 hours. Does three things:
+      1. Close registrations when reg_deadline has passed
+         (sets event.status = 'registration_closed')
+      2. Delete registrations 30 days after event date
+      3. Delete event itself 5 days after event date
+    """
+    if _app is None:
+        logger.warning("Lifecycle job: Flask app not set. Skipping.")
+        return
+    with _app.app_context():
+        try:
+            _run_lifecycle()
+        except Exception as exc:
+            logger.exception("Lifecycle job failed: %s", exc)
+
+
+def _run_lifecycle():
+    from models import db
+
+    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    today = datetime.datetime.now(ist).date()
+
+    def _parse_date(s):
+        s = str(s or "").strip()[:10]
+        try:
+            return datetime.datetime.strptime(s, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    events = list(db.collection("events").stream())
+    closed = deleted_events = deleted_regs = 0
+
+    for doc in events:
+        e = doc.to_dict() or {}
+        e_id   = doc.id
+        status = (e.get("status", "") or "").lower()
+        event_date = _parse_date(e.get("date"))
+        reg_dl     = _parse_date(e.get("reg_deadline"))
+
+        # 1. Close registrations once deadline has passed
+        if reg_dl and today > reg_dl and status == "active":
+            try:
+                db.collection("events").document(e_id).update({
+                    "status": "registration_closed",
+                    "registration_closed_at": datetime.datetime.now(ist).isoformat(),
+                })
+                closed += 1
+            except Exception as exc:
+                logger.warning("Could not close registrations for %s: %s", e_id, exc)
+
+        # 2. Delete registrations 30 days after event date
+        if event_date and (today - event_date).days >= 30:
+            try:
+                regs = db.collection("registrations") \
+                         .where("event_id", "==", e_id).stream()
+                for r in regs:
+                    r.reference.delete()
+                    deleted_regs += 1
+            except Exception as exc:
+                logger.warning("Reg cleanup failed for %s: %s", e_id, exc)
+
+        # 3. Delete event 5 days after event date
+        if event_date and (today - event_date).days >= 5:
+            try:
+                # Also wipe any remaining registrations first (if not yet purged)
+                regs = db.collection("registrations") \
+                         .where("event_id", "==", e_id).stream()
+                for r in regs:
+                    r.reference.delete()
+                    deleted_regs += 1
+                db.collection("events").document(e_id).delete()
+                deleted_events += 1
+            except Exception as exc:
+                logger.warning("Event cleanup failed for %s: %s", e_id, exc)
+
+    logger.info(
+        "Lifecycle: closed=%d, events_deleted=%d, regs_deleted=%d",
+        closed, deleted_events, deleted_regs
+    )
 
 
 # ═══════════════════════════════════════════════════════

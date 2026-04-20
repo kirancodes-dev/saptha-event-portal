@@ -28,6 +28,9 @@ import base64
 
 logger = logging.getLogger(__name__)
 
+# Last outbound send error — populated by _send_via_* on failure, read by /diag/email
+LAST_EMAIL_ERROR = ""
+
 
 # ─────────────────────────────────────────────────────────────
 # HELPERS
@@ -94,6 +97,8 @@ def _send_via_resend(to_email, subject: str, html: str,
         logger.info("Resend → %s | %s", to_list, subject)
         return True
     except Exception as exc:
+        global LAST_EMAIL_ERROR
+        LAST_EMAIL_ERROR = f"Resend: {exc}"
         logger.error("Resend failed → %s | %s", to_email, exc)
         return False
 
@@ -114,7 +119,10 @@ def _send_via_gmail(to_email, subject: str, html: str,
     mail_pass = os.environ.get('MAIL_PASS', '').strip()
 
     if not mail_user or not mail_pass:
-        logger.error("MAIL_USER or MAIL_PASS not set in Railway Variables")
+        global LAST_EMAIL_ERROR
+        LAST_EMAIL_ERROR = ("Gmail: MAIL_USER or MAIL_PASS not set. "
+                            "Add them in Railway Variables and redeploy.")
+        logger.error(LAST_EMAIL_ERROR)
         return False
 
     try:
@@ -154,13 +162,15 @@ def _send_via_gmail(to_email, subject: str, html: str,
         logger.info("Gmail SMTP → %s | %s", to_list, subject)
         return True
 
-    except smtplib.SMTPAuthenticationError:
-        logger.error(
-            "Gmail auth failed. MAIL_PASS must be a 16-char App Password "
-            "(no spaces). Generate at myaccount.google.com/apppasswords"
-        )
+    except smtplib.SMTPAuthenticationError as exc:
+        global LAST_EMAIL_ERROR
+        LAST_EMAIL_ERROR = (f"Gmail auth failed: {exc}. MAIL_PASS must be a "
+                            "16-char App Password (no spaces). Generate at "
+                            "myaccount.google.com/apppasswords")
+        logger.error(LAST_EMAIL_ERROR)
         return False
     except Exception as exc:
+        LAST_EMAIL_ERROR = f"Gmail SMTP: {exc}"
         logger.error("Gmail SMTP failed → %s | %s", to_email, exc)
         return False
 

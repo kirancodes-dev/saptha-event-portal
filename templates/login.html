@@ -357,6 +357,12 @@
                     <i class="fas fa-sign-in-alt"></i>
                     Login to Portal
                 </button>
+
+                <div id="forgotPasswordWrap" style="text-align:center;margin-top:14px;font-size:.88rem;">
+                    <a href="/forgot_password" style="color:var(--primary-900);font-weight:600;text-decoration:none;">
+                        <i class="fas fa-key me-1"></i>Forgot Password?
+                    </a>
+                </div>
             </form>
 
             <!-- Footer -->
@@ -379,15 +385,18 @@
 
         // ── ROLE SELECTION HANDLER ────
         document.getElementById('roleSelect').addEventListener('change', function() {
-            const secretDiv = document.getElementById('secretKeyDiv');
+            const secretDiv   = document.getElementById('secretKeyDiv');
             const secretInput = document.getElementById('secretKeyInput');
-            
+            const forgotWrap  = document.getElementById('forgotPasswordWrap');
+
             if (this.value === 'SuperAdmin') {
                 secretDiv.classList.add('show');
                 secretInput.setAttribute('required', 'required');
+                if (forgotWrap) forgotWrap.style.display = 'none';
             } else {
                 secretDiv.classList.remove('show');
                 secretInput.removeAttribute('required');
+                if (forgotWrap) forgotWrap.style.display = '';
             }
         });
     </script>

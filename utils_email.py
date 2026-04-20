@@ -81,6 +81,7 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
 
 def _send_via_resend(to_email, subject: str, html: str,
                      attachments: list = None) -> bool:
+    global LAST_EMAIL_ERROR
     try:
         import resend
         resend.api_key = os.environ.get('RESEND_API_KEY', '')
@@ -97,7 +98,6 @@ def _send_via_resend(to_email, subject: str, html: str,
         logger.info("Resend → %s | %s", to_list, subject)
         return True
     except Exception as exc:
-        global LAST_EMAIL_ERROR
         LAST_EMAIL_ERROR = f"Resend: {exc}"
         logger.error("Resend failed → %s | %s", to_email, exc)
         return False
@@ -109,6 +109,7 @@ def _send_via_resend(to_email, subject: str, html: str,
 
 def _send_via_gmail(to_email, subject: str, html: str,
                     attachments: list = None) -> bool:
+    global LAST_EMAIL_ERROR
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text      import MIMEText
@@ -119,7 +120,6 @@ def _send_via_gmail(to_email, subject: str, html: str,
     mail_pass = os.environ.get('MAIL_PASS', '').strip()
 
     if not mail_user or not mail_pass:
-        global LAST_EMAIL_ERROR
         LAST_EMAIL_ERROR = ("Gmail: MAIL_USER or MAIL_PASS not set. "
                             "Add them in Railway Variables and redeploy.")
         logger.error(LAST_EMAIL_ERROR)
@@ -163,7 +163,6 @@ def _send_via_gmail(to_email, subject: str, html: str,
         return True
 
     except smtplib.SMTPAuthenticationError as exc:
-        global LAST_EMAIL_ERROR
         LAST_EMAIL_ERROR = (f"Gmail auth failed: {exc}. MAIL_PASS must be a "
                             "16-char App Password (no spaces). Generate at "
                             "myaccount.google.com/apppasswords")

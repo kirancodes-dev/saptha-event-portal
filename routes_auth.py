@@ -5,6 +5,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
 from utils import log_action
+import utils_email
 from utils_email import send_password_reset_email
 
 logger = logging.getLogger(__name__)
@@ -364,6 +365,51 @@ def logout():
     session.clear()
     flash("You have been logged out.", "info")
     return redirect('/')
+
+
+# =========================================================
+# 7. EMAIL DIAGNOSTIC — SuperAdmin only
+#    Usage: /diag/email?to=you@example.com
+# =========================================================
+@auth_bp.route('/diag/email')
+def diag_email():
+    import os as _os
+    if session.get('role') not in ('SuperAdmin', 'Super Admin'):
+        return {"error": "SuperAdmin only"}, 403
+
+    to = (request.args.get('to') or session.get('user_id') or '').strip()
+    if not to:
+        return {"error": "pass ?to=email@address"}, 400
+
+    provider = "Resend" if _os.environ.get('RESEND_API_KEY') else "Gmail SMTP"
+    from_addr = _os.environ.get(
+        'MAIL_FROM',
+        f"SapthaEvent <{_os.environ.get('MAIL_USER', '(unset)')}>"
+    )
+
+    utils_email.LAST_EMAIL_ERROR = ""
+    ok = utils_email._send(
+        to, "SapthaEvent — Email Diagnostic",
+        "<p>If you can read this, email delivery is working.</p>"
+    )
+    return {
+        "provider":         provider,
+        "from":             from_addr,
+        "to":               to,
+        "sent":             ok,
+        "error":            utils_email.LAST_EMAIL_ERROR or None,
+        "resend_key_set":   bool(_os.environ.get('RESEND_API_KEY')),
+        "mail_user_set":    bool(_os.environ.get('MAIL_USER')),
+        "mail_pass_set":    bool(_os.environ.get('MAIL_PASS')),
+        "hint": (
+            "Resend free plan: MAIL_FROM must be 'onboarding@resend.dev' "
+            "OR a verified domain, AND you can only send to the email that "
+            "owns the Resend account until you verify a domain."
+            if provider == "Resend" else
+            "Gmail: MAIL_PASS must be a 16-char App Password (no spaces), "
+            "generated at myaccount.google.com/apppasswords."
+        ),
+    }
 
 
 # =========================================================

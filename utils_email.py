@@ -189,8 +189,29 @@ def _send(to_email, subject: str, html: str,
 # ─────────────────────────────────────────────────────────────
 
 def send_ticket_email(to_email: str, name: str, event_title: str,
-                      reg_id: str, qr_bytes: bytes = None) -> bool:
+                      reg_id: str, qr_bytes: bytes = None,
+                      is_new_user: bool = False,
+                      raw_password: str = None) -> bool:
     base = _base_url()
+    credentials_block = ""
+    if is_new_user and raw_password:
+        credentials_block = f"""
+        <div style="background:#e8f0fe;border-radius:10px;padding:16px;margin:16px 0;">
+          <p style="color:#0d2d62;font-weight:700;margin:0 0 10px;font-size:14px;">
+            🔑 Your Login Credentials</p>
+          <table style="width:100%;font-size:14px;border-collapse:collapse;">
+            <tr><td style="color:#64748b;padding:4px 0;width:30%;">Email</td>
+                <td style="font-weight:700;color:#0d2d62;">{to_email}</td></tr>
+            <tr><td style="color:#64748b;padding:4px 0;">Password</td>
+                <td style="font-family:monospace;font-weight:700;color:#f37021;
+                           letter-spacing:1px;">{raw_password}</td></tr>
+            <tr><td style="color:#64748b;padding:4px 0;">Login</td>
+                <td><a href="{base}/login" style="color:#0d2d62;font-weight:700;">
+                  {base}/login</a></td></tr>
+          </table>
+          <p style="color:#ef4444;font-size:12px;margin:10px 0 0;font-weight:600;">
+            ⚠️ Change your password after first login.</p>
+        </div>"""
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
         <p style="color:#475569;">You are successfully registered for
@@ -202,6 +223,7 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
           <p style="font-family:monospace;font-size:22px;color:#0d2d62;
                     font-weight:700;margin:0;">{reg_id}</p>
         </div>
+        {credentials_block}
         <p style="color:#475569;font-size:13px;">
           Show this Ticket ID at the venue for check-in.
           {'Your QR code is attached.' if qr_bytes else ''}

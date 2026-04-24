@@ -128,7 +128,7 @@ def _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url):
 <table width="540" cellpadding="0" cellspacing="0"
        style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;max-width:540px;">
   <tr>
-    <td align="center" style="background:#0d2d62;padding:28px 32px 24px;">
+    <td align="center" style="background:#1a2557;padding:28px 32px 24px;">
       <h2 style="margin:0;font-size:18px;color:#fff;">&#9201; Tomorrow's Your Event!</h2>
     </td>
   </tr>
@@ -141,7 +141,7 @@ def _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url):
       <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
         <tr><td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
           <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Event</span><br>
-          <strong style="color:#0d2d62;">{event_title}</strong>
+          <strong style="color:#1a2557;">{event_title}</strong>
         </td></tr>
         <tr><td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
           <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Date</span><br>
@@ -153,12 +153,12 @@ def _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url):
         </td></tr>
         <tr><td style="padding:14px 20px;">
           <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Ticket ID</span><br>
-          <code style="color:#0d2d62;">{reg_id}</code>
+          <code style="color:#1a2557;">{reg_id}</code>
         </td></tr>
       </table>
       <table width="100%"><tr><td align="center">
         <a href="{ticket_url}"
-           style="display:inline-block;background:#f37021;color:#fff;
+           style="display:inline-block;background:#c9a227;color:#fff;
                   font-size:14px;font-weight:700;padding:12px 32px;
                   border-radius:9px;text-decoration:none;">
           &#127918; View My QR Ticket

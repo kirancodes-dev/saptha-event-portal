@@ -60,7 +60,7 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
     <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;
                 background:#fff;border-radius:12px;overflow:hidden;
                 border:1px solid #e2e8f0;">
-      <div style="background:#0d2d62;padding:24px;text-align:center;">
+      <div style="background:#1a2557;padding:24px;text-align:center;">
         <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
              height="36" style="display:block;margin:0 auto 10px;max-width:200px;" alt="SNPSU">
         <h2 style="color:#fff;margin:0;font-size:18px;">{title}</h2>
@@ -211,16 +211,16 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
     if is_new_user and raw_password:
         credentials_block = f"""
         <div style="background:#e8f0fe;border-radius:10px;padding:16px;margin:16px 0;">
-          <p style="color:#0d2d62;font-weight:700;margin:0 0 10px;font-size:14px;">
+          <p style="color:#1a2557;font-weight:700;margin:0 0 10px;font-size:14px;">
             🔑 Your Login Credentials</p>
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr><td style="color:#64748b;padding:4px 0;width:30%;">Email</td>
-                <td style="font-weight:700;color:#0d2d62;">{to_email}</td></tr>
+                <td style="font-weight:700;color:#1a2557;">{to_email}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Password</td>
-                <td style="font-family:monospace;font-weight:700;color:#f37021;
+                <td style="font-family:monospace;font-weight:700;color:#c9a227;
                            letter-spacing:1px;">{raw_password}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Login</td>
-                <td><a href="{base}/login" style="color:#0d2d62;font-weight:700;">
+                <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">
                   {base}/login</a></td></tr>
           </table>
           <p style="color:#ef4444;font-size:12px;margin:10px 0 0;font-weight:600;">
@@ -229,12 +229,12 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
         <p style="color:#475569;">You are successfully registered for
-           <strong style="color:#0d2d62;">{event_title}</strong>.</p>
+           <strong style="color:#1a2557;">{event_title}</strong>.</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:16px;text-align:center;margin:16px 0;">
           <p style="color:#166534;font-size:13px;margin:0 0 6px;font-weight:700;">
             Your Ticket ID</p>
-          <p style="font-family:monospace;font-size:22px;color:#0d2d62;
+          <p style="font-family:monospace;font-size:22px;color:#1a2557;
                     font-weight:700;margin:0;">{reg_id}</p>
         </div>
         {credentials_block}
@@ -244,7 +244,7 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
         </p>
         <p style="margin-top:20px;">
           <a href="{base}/participant/dashboard"
-             style="background:#0d2d62;color:#fff;padding:10px 24px;
+             style="background:#1a2557;color:#fff;padding:10px 24px;
                     border-radius:8px;text-decoration:none;font-weight:700;">
             View My Dashboard →
           </a>
@@ -268,23 +268,23 @@ def send_credentials_email(to_email: str, name: str, role: str,
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
         <p style="color:#475569;">You have been appointed as
-           <strong style="color:#0d2d62;">{role}</strong>
+           <strong style="color:#1a2557;">{role}</strong>
            {f'for <strong>{category}</strong> events' if category else ''}.</p>
         <div style="background:#e8f0fe;border-radius:10px;padding:20px;margin:16px 0;">
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr>
               <td style="color:#64748b;padding:8px 0;width:30%;">Login URL</td>
-              <td><a href="{base}/login" style="color:#0d2d62;font-weight:700;">
+              <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">
                 {base}/login</a></td>
             </tr>
             <tr>
               <td style="color:#64748b;padding:8px 0;">Email</td>
-              <td style="font-weight:700;color:#0d2d62;">{to_email}</td>
+              <td style="font-weight:700;color:#1a2557;">{to_email}</td>
             </tr>
             <tr>
               <td style="color:#64748b;padding:8px 0;">Password</td>
               <td style="font-family:monospace;font-size:20px;font-weight:700;
-                         color:#f37021;letter-spacing:2px;">{password}</td>
+                         color:#c9a227;letter-spacing:2px;">{password}</td>
             </tr>
           </table>
         </div>
@@ -303,7 +303,7 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
            This link expires in <strong>1 hour</strong>.</p>
         <p style="text-align:center;margin:24px 0;">
           <a href="{reset_url}"
-             style="background:#0d2d62;color:#fff;padding:12px 32px;
+             style="background:#1a2557;color:#fff;padding:12px 32px;
                     border-radius:8px;text-decoration:none;font-weight:700;
                     display:inline-block;">
             Reset My Password →
@@ -311,7 +311,7 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
         </p>
         <p style="color:#64748b;font-size:12px;">
           If the button doesn't work, copy this link into your browser:<br>
-          <span style="word-break:break-all;color:#0d2d62;">{reset_url}</span>
+          <span style="word-break:break-all;color:#1a2557;">{reset_url}</span>
         </p>
         <p style="color:#ef4444;font-size:12px;margin-top:18px;">
           Didn't request this? You can safely ignore this email — your
@@ -327,11 +327,11 @@ def send_appointment_email(to_email: str, name: str, role: str,
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
         <p style="color:#475569;">You have been appointed as
-           <strong style="color:#0d2d62;">{role}</strong>
+           <strong style="color:#1a2557;">{role}</strong>
            for <strong>{event_title}</strong>.</p>
         <p style="margin-top:20px;">
           <a href="{base}/login"
-             style="background:#f37021;color:#fff;padding:10px 24px;
+             style="background:#c9a227;color:#fff;padding:10px 24px;
                     border-radius:8px;text-decoration:none;font-weight:700;">
             Login to Dashboard →
           </a>
@@ -349,7 +349,7 @@ def send_result_email(to_email: str, name: str, event_title: str,
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:24px;text-align:center;margin:16px 0;">
           <p style="font-size:32px;margin:0 0 6px;">{rank_text}</p>
-          <p style="color:#0d2d62;font-weight:700;font-size:16px;margin:0;">
+          <p style="color:#1a2557;font-weight:700;font-size:16px;margin:0;">
             Final Score: {score}</p>
         </div>
         <p style="color:#475569;">Congratulations in
@@ -384,7 +384,7 @@ def _send_cert_email(to_email: str, student_name: str,
         headline = f"Congratulations! {rank_labels.get(rank, f'Rank {rank}')}"
         body     = (f"Your Certificate of Achievement for "
                     f"<strong>{event_title}</strong> is attached.<br>"
-                    f"<strong style='color:#0d2d62;'>Score: {score}</strong>")
+                    f"<strong style='color:#1a2557;'>Score: {score}</strong>")
     else:
         subject  = f"🎓 Your Participation Certificate — {event_title}"
         headline = "Thank you for participating!"

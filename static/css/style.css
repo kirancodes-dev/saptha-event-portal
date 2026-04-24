@@ -7,16 +7,17 @@
    1. CORE VARIABLES & THEME - CLASSIC PALETTE
    -------------------------------------------------------------------------- */
 :root {
-    /* Primary Colors - Classic Navy & Cream */
-    --primary-900: #1a2332;    /* Deep Navy */
-    --primary-800: #2d3e52;    /* Navy */
-    --primary-700: #3d5066;    /* Medium Navy */
-    --primary-600: #4a6280;    /* Lighter Navy */
-    
-    --accent-700: #8b6914;     /* Deep Gold */
-    --accent-600: #b8860b;     /* Classic Gold */
-    --accent-500: #daa520;     /* Goldenrod */
-    --accent-100: #fef5e7;     /* Cream */
+    /* Primary Colors — SNPSU Navy (matches screenshot header) */
+    --primary-900: #0d1b3e;    /* Deep Navy — card header / login bg */
+    --primary-800: #1a2557;    /* Navy — navbar, buttons */
+    --primary-700: #243a7a;    /* Medium Navy */
+    --primary-600: #2e4898;    /* Lighter Navy */
+
+    /* Accent Colors — SNPSU Gold (matches shield logo) */
+    --accent-700: #a07c15;     /* Deep Gold */
+    --accent-600: #c9a227;     /* Classic Gold */
+    --accent-500: #d4a82a;     /* Goldenrod */
+    --accent-100: #fef8e7;     /* Cream */
     
     /* Neutrals - Refined */
     --light: #f7f4f1;          /* Warm White */

@@ -1,39 +1,65 @@
 """
-gunicorn.conf.py  —  Production Gunicorn Configuration for SapthaEvent
-=======================================================================
-Railway runs:  gunicorn -c gunicorn.conf.py app:app
+gunicorn.conf.py — Production Gunicorn configuration for SapthaEvent
+=====================================================================
+Multi-worker, stateless web fleet.
+
+APScheduler has been removed from the web process — all scheduled and
+async work now runs in the celery-worker / celery-beat containers.
+This means we can safely run multiple Gunicorn workers without duplicate
+job execution.
 
 Tuned for:
-  - 2000 concurrent users
-  - Railway free tier (512 MB RAM, 1 vCPU)
-  - Flask-Limiter in-memory (or Redis if REDIS_URL set)
-  - APScheduler background thread (only 1 worker to avoid double scheduling)
+  - 3-5 web replicas behind Nginx (docker-compose scale)
+  - Each replica: 2-4 workers × N threads
+  - 512 MB RAM per replica (Railway / Cloud Run tier)
+  - Redis-backed sessions (no shared filesystem needed)
 """
+
 import multiprocessing
 import os
 
 # ── Workers ───────────────────────────────────────────────
-# Use 1 worker + multiple threads.
-# Multiple workers would start APScheduler N times (duplicate reminders).
-# Threads share the same process → scheduler runs exactly once.
-workers = 1
-threads = multiprocessing.cpu_count() * 2 + 1   # 3 on 1-core Railway
+# Rule of thumb: 2 × CPU + 1 per replica.
+# Each replica in docker-compose gets its own CPU slice.
+# Cap at 4 to avoid OOM on 512 MB instances.
+_cpu  = multiprocessing.cpu_count()
+workers = min((_cpu * 2) + 1, 4)
+
+# Threads give concurrency within each worker for I/O-bound requests.
+# Most of our I/O (email, Firestore) is now offloaded to Celery,
+# so requests complete quickly — threads reduce latency spikes.
+threads = 2
+
+# Use gevent event loop if available (install greenlet + gevent for it).
+# Falls back to sync worker class automatically.
+worker_class = os.environ.get('GUNICORN_WORKER_CLASS', 'sync')
 
 # ── Server ────────────────────────────────────────────────
-bind    = f"0.0.0.0:{os.environ.get('PORT', '8080')}"
-timeout = 120          # 2 min — gives email + Firestore ops room to complete
-keepalive = 5
+bind           = f"0.0.0.0:{os.environ.get('PORT', '8080')}"
+timeout        = 60          # reduced from 120s — Celery handles slow ops now
+keepalive      = 5
+graceful_timeout = 30
+
+# ── Memory leak guard ─────────────────────────────────────
+max_requests        = 1000
+max_requests_jitter = 200    # spread restarts to avoid all-at-once
 
 # ── Logging ───────────────────────────────────────────────
-accesslog  = '-'       # stdout → Railway log stream
+accesslog  = '-'
 errorlog   = '-'
-loglevel   = 'info'
-access_log_format = '%(h)s "%(r)s" %(s)s %(b)s %(D)sus'
+loglevel   = os.environ.get('LOG_LEVEL', 'info').lower()
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s %(D)sus'
 
-# ── Process title (visible in Railway metrics) ────────────
-proc_name = 'sapthaevent'
+# ── Process title ─────────────────────────────────────────
+proc_name = 'sapthaevent-web'
 
-# ── Graceful restart ──────────────────────────────────────
-graceful_timeout = 30
-max_requests     = 1000   # restart workers after N requests (memory leak guard)
-max_requests_jitter = 100
+# ── Hooks ─────────────────────────────────────────────────
+def on_starting(server):
+    server.log.info("SapthaEvent web fleet starting — workers=%d threads=%d", workers, threads)
+
+def post_fork(server, worker):
+    """Called after each worker is forked."""
+    server.log.info("Worker spawned (pid: %s)", worker.pid)
+
+def worker_exit(server, worker):
+    server.log.info("Worker exiting (pid: %s)", worker.pid)

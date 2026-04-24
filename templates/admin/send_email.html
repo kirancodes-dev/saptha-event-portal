@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Email | Admin — SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --snpsu-blue: #1a2557; --snpsu-gold: #c9a227; --bg-light: #f8f9fa; }
+        body { background: var(--bg-light); font-family: 'Inter', sans-serif; }
+        h1,h2,h3,h4,h5 { font-family: 'Poppins', sans-serif; }
+        .navbar { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.05); }
+        .card { border: none; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,.05); }
+        .card-header { background: var(--snpsu-blue); color: #fff; border-radius: 14px 14px 0 0 !important; padding: 18px 24px; }
+        .form-label { font-size: .82rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; letter-spacing: .5px; }
+        .form-control, .form-select { background: #f1f5f9 !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; padding: 12px; }
+        .form-control:focus, .form-select:focus { background: #fff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(26,37,87,.1) !important; }
+        .btn-send { background: var(--snpsu-blue); color: #fff; border: none; border-radius: 8px; padding: 12px 32px; font-weight: 700; font-size: 1rem; transition: background .2s; }
+        .btn-send:hover { background: #0d1b3e; color: #fff; }
+        .audience-card { border: 2px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; cursor: pointer; transition: border-color .2s, background .2s; }
+        .audience-card:has(input:checked) { border-color: var(--snpsu-blue); background: #eef2ff; }
+        .preview-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; font-size: .9rem; }
+        .counter-badge { background: var(--snpsu-gold); color: #fff; border-radius: 20px; padding: 2px 10px; font-size: .78rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand d-flex align-items-center" href="/admin/dashboard">
+            <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:38px;width:auto;object-fit:contain;margin-right:10px;"
+                 onerror="this.style.display='none'">
+            <small style="color:#64748b;font-size:.7rem;font-weight:700;letter-spacing:1.5px;">ADMIN · SEND EMAIL</small>
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <a href="/admin/dashboard" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Dashboard
+            </a>
+            <a href="/logout" class="btn btn-sm btn-outline-danger px-4 fw-bold">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4" style="max-width: 780px;">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ 'success' if cat == 'success' else 'danger' if cat == 'danger' else 'warning' }} alert-dismissible fade show rounded-3 mb-3" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Success summary -->
+    {% if last_sent %}
+    <div class="alert alert-success rounded-3 mb-4 d-flex align-items-center gap-3">
+        <i class="fas fa-check-circle fa-2x"></i>
+        <div>
+            <strong>Sent!</strong> &quot;{{ last_sent.subject }}&quot; delivered to
+            <span class="counter-badge">{{ last_sent.count }}</span> recipient(s).
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="fas fa-envelope-open-text"></i>
+            <span class="fw-bold fs-5">Compose & Send Email</span>
+        </div>
+        <div class="card-body p-4">
+            <form method="POST" action="/admin/send_email" id="emailForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- ── Audience ──────────────────────────────── -->
+                <div class="mb-4">
+                    <label class="form-label mb-2">Send To</label>
+                    <div class="row g-2">
+
+                        <div class="col-12 col-md-4">
+                            <label class="audience-card d-flex align-items-start gap-2 h-100">
+                                <input type="radio" name="audience" value="all_users" checked class="mt-1">
+                                <div>
+                                    <div class="fw-bold" style="color:var(--snpsu-blue)">
+                                        <i class="fas fa-users me-1"></i> All Users
+                                    </div>
+                                    <small class="text-muted">Every registered account</small>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="audience-card d-flex align-items-start gap-2 h-100">
+                                <input type="radio" name="audience" value="event_regs" class="mt-1" id="radioEvent">
+                                <div>
+                                    <div class="fw-bold" style="color:var(--snpsu-blue)">
+                                        <i class="fas fa-calendar-check me-1"></i> Event Registrants
+                                    </div>
+                                    <small class="text-muted">Everyone registered for one event</small>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <label class="audience-card d-flex align-items-start gap-2 h-100">
+                                <input type="radio" name="audience" value="role_filter" class="mt-1" id="radioRole">
+                                <div>
+                                    <div class="fw-bold" style="color:var(--snpsu-blue)">
+                                        <i class="fas fa-user-tag me-1"></i> By Role
+                                    </div>
+                                    <small class="text-muted">Students, Coordinators, Judges…</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event selector (shown when event_regs selected) -->
+                <div class="mb-3" id="eventPicker" style="display:none;">
+                    <label class="form-label">Select Event</label>
+                    <select name="event_id" class="form-select">
+                        <option value="">— choose an event —</option>
+                        {% for ev in events %}
+                        <option value="{{ ev.id }}">{{ ev.get('title','(untitled)') }} — {{ ev.get('date','') }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Role selector -->
+                <div class="mb-3" id="rolePicker" style="display:none;">
+                    <label class="form-label">Select Role</label>
+                    <select name="role_filter" class="form-select">
+                        <option value="Student">Students (Participants)</option>
+                        <option value="Coordinator">Coordinators</option>
+                        <option value="Judge">Judges</option>
+                        <option value="ClubSPOC">Club SPOCs</option>
+                        <option value="Admin">Admins</option>
+                    </select>
+                </div>
+
+                <!-- ── Subject ───────────────────────────────── -->
+                <div class="mb-3">
+                    <label class="form-label">Subject <span class="text-danger">*</span></label>
+                    <input type="text" name="subject" class="form-control"
+                           placeholder="e.g. Important update about SapthaEvent 2026" required
+                           maxlength="120">
+                </div>
+
+                <!-- ── Message body ──────────────────────────── -->
+                <div class="mb-3">
+                    <label class="form-label">
+                        Message <span class="text-danger">*</span>
+                        <span class="text-muted fw-normal ms-2" style="font-size:.75rem;text-transform:none;">
+                            Supports line breaks. Will be wrapped in the SapthaEvent email template.
+                        </span>
+                    </label>
+                    <textarea name="message" class="form-control" rows="8" required
+                              placeholder="Dear participant,&#10;&#10;We are excited to announce..."
+                              id="msgBody"></textarea>
+                    <div class="d-flex justify-content-end mt-1">
+                        <small class="text-muted" id="charCount">0 characters</small>
+                    </div>
+                </div>
+
+                <!-- ── Live preview ──────────────────────────── -->
+                <div class="mb-4">
+                    <label class="form-label">Preview</label>
+                    <div class="preview-box">
+                        <div style="background:#1a2557;color:#fff;padding:14px 18px;border-radius:8px 8px 0 0;margin:-20px -20px 16px;">
+                            <strong>SapthaEvent</strong> &middot; Sapthagiri NPS University
+                        </div>
+                        <div id="previewText" style="white-space:pre-wrap;color:#475569;">
+                            Your message will appear here…
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 align-items-center">
+                    <button type="submit" class="btn-send" id="sendBtn">
+                        <i class="fas fa-paper-plane me-2"></i> Send Email
+                    </button>
+                    <small class="text-muted">Sends immediately to all selected recipients.</small>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="d-flex gap-3 flex-wrap">
+        <a href="/admin/dashboard" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-tachometer-alt me-1"></i> Back to Dashboard
+        </a>
+        <a href="/diag/email?to={{ session.get('user_id','') }}" target="_blank"
+           class="btn btn-outline-success btn-sm">
+            <i class="fas fa-vial me-1"></i> Test Email (sends to you)
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Show/hide audience sub-pickers
+    document.querySelectorAll('input[name="audience"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.getElementById('eventPicker').style.display =
+                this.value === 'event_regs' ? 'block' : 'none';
+            document.getElementById('rolePicker').style.display =
+                this.value === 'role_filter' ? 'block' : 'none';
+        });
+    });
+
+    // Live message preview + char counter
+    const msgBody   = document.getElementById('msgBody');
+    const preview   = document.getElementById('previewText');
+    const charCount = document.getElementById('charCount');
+
+    msgBody.addEventListener('input', function() {
+        preview.textContent  = this.value || 'Your message will appear here…';
+        charCount.textContent = this.value.length + ' characters';
+    });
+
+    // Confirm before sending to all
+    document.getElementById('emailForm').addEventListener('submit', function(e) {
+        const audience = document.querySelector('input[name="audience"]:checked').value;
+        const label    = audience === 'all_users'   ? 'ALL users in the system'
+                       : audience === 'event_regs'  ? 'all registrants of the selected event'
+                       : 'all users with the selected role';
+        if (!confirm('Send "' + document.querySelector('[name=subject]').value + '" to ' + label + '?')) {
+            e.preventDefault();
+        } else {
+            document.getElementById('sendBtn').innerHTML =
+                '<i class="fas fa-spinner fa-spin me-2"></i> Sending…';
+            document.getElementById('sendBtn').disabled = true;
+        }
+    });
+</script>
+</body>
+</html>

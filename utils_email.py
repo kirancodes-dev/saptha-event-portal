@@ -114,6 +114,7 @@ def _send_via_gmail(to_email, subject: str, html: str,
     from email.mime.multipart import MIMEMultipart
     from email.mime.text      import MIMEText
     from email.mime.base      import MIMEBase
+    from email.header         import Header
     from email                import encoders
 
     mail_user = os.environ.get('MAIL_USER', '').strip()
@@ -133,7 +134,7 @@ def _send_via_gmail(to_email, subject: str, html: str,
         msg            = MIMEMultipart('mixed')
         msg['From']    = _from_address()
         msg['To']      = ', '.join(to_list)
-        msg['Subject'] = subject
+        msg['Subject'] = Header(subject, 'utf-8')
 
         alt = MIMEMultipart('alternative')
         alt.attach(MIMEText(html, 'html', 'utf-8'))
@@ -162,7 +163,7 @@ def _send_via_gmail(to_email, subject: str, html: str,
             server.starttls()
             server.ehlo()
             server.login(mail_user, mail_pass)
-            server.sendmail(mail_user, to_list, msg.as_string())
+            server.send_message(msg)
 
         logger.info("Gmail SMTP → %s | %s", to_list, subject)
         return True

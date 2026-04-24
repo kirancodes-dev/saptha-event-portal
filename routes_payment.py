@@ -6,8 +6,8 @@ from flask import (Blueprint, flash, redirect, render_template,
 
 from models import db
 from utils import log_action
-from utils_email import send_ticket_email
-from utils_whatsapp import send_ticket_whatsapp, send_payment_receipt_whatsapp  # ← NEW
+from tasks.email_tasks import send_ticket_email_task
+from tasks.notification_tasks import send_ticket_whatsapp_task, send_payment_receipt_whatsapp_task
 
 payment_bp = Blueprint('payment', __name__, url_prefix='/payment')
 
@@ -90,27 +90,31 @@ def process_payment():
             'registration_count': event_data.get('registration_count', 0) + 1
         })
 
-        # ── NOTIFICATIONS ─────────────────────────────────
-        # Email ticket
-        send_ticket_email(email, name, event_data.get('title', 'Event'), reg_id)
-
-        # WhatsApp payment receipt (if phone on record)
+        # ── NOTIFICATIONS (fire-and-forget via Celery) ────
+        event_title = event_data.get('title', 'Event')
+        send_ticket_email_task.delay(
+            to_email=email,
+            name=name,
+            event_title=event_title,
+            reg_id=reg_id,
+            event_date=event_data.get('date', ''),
+            venue=event_data.get('venue', ''),
+        )
         if phone:
-            send_payment_receipt_whatsapp(
+            send_payment_receipt_whatsapp_task.delay(
                 phone=phone,
                 name=name,
-                event_title=event_data.get('title', 'Event'),
+                event_title=event_title,
+                amount=str(int(amount)),
                 reg_id=reg_id,
-                amount=int(amount)
             )
-            # Also send the ticket WhatsApp with event details
-            send_ticket_whatsapp(
+            send_ticket_whatsapp_task.delay(
                 phone=phone,
                 name=name,
-                event_title=event_data.get('title', 'Event'),
+                event_title=event_title,
                 reg_id=reg_id,
                 event_date=event_data.get('date', ''),
-                venue=event_data.get('venue', '')
+                venue=event_data.get('venue', ''),
             )
         # ──────────────────────────────────────────────────
 

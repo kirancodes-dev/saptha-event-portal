@@ -16,7 +16,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from google.cloud.firestore_v1.base_query import FieldFilter
 from config import Config
 from dotenv import load_dotenv
-from scheduler import init_scheduler
 
 load_dotenv()
 
@@ -570,12 +569,12 @@ def server_error(e):
 
 
 # =========================================================
-# PRODUCTION — Gunicorn entry point (Railway / Docker)
-# Gunicorn imports this module, not __main__, so the scheduler
-# must start here too, not just inside  if __name__ == '__main__'
+# CELERY — bind Flask app context to the Celery instance
+# Scheduling and async work run in celery-worker / celery-beat
+# containers, NOT in the web fleet. The web fleet is stateless.
 # =========================================================
-if os.environ.get('FLASK_ENV') == 'production':
-    init_scheduler(app)
+from celery_app import init_celery  # noqa: E402
+init_celery(app)
 
 
 # =========================================================
@@ -583,5 +582,4 @@ if os.environ.get('FLASK_ENV') == 'production':
 # =========================================================
 if __name__ == '__main__':
     debug_mode = app.config.get('FLASK_ENV', 'development') != 'production'
-    init_scheduler(app)
     app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)), use_reloader=False)

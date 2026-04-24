@@ -391,11 +391,10 @@
 
             if (this.value === 'SuperAdmin') {
                 secretDiv.classList.add('show');
-                secretInput.setAttribute('required', 'required');
                 if (forgotWrap) forgotWrap.style.display = 'none';
             } else {
                 secretDiv.classList.remove('show');
-                secretInput.removeAttribute('required');
+                secretInput.value = '';
                 if (forgotWrap) forgotWrap.style.display = '';
             }
         });

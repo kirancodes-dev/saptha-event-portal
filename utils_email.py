@@ -136,7 +136,7 @@ def _send_via_gmail(to_email, subject: str, html: str,
         msg['Subject'] = subject
 
         alt = MIMEMultipart('alternative')
-        alt.attach(MIMEText(html, 'html'))
+        alt.attach(MIMEText(html, 'html', 'utf-8'))
         msg.attach(alt)
 
         if attachments:

@@ -117,7 +117,9 @@ def _send_via_gmail(to_email, subject: str, html: str,
     from email                import encoders
 
     mail_user = os.environ.get('MAIL_USER', '').strip()
-    mail_pass = os.environ.get('MAIL_PASS', '').strip()
+    # Gmail App Passwords are displayed as "xxxx xxxx xxxx xxxx" but the actual
+    # credential used in SMTP is the 16 chars without spaces.
+    mail_pass = os.environ.get('MAIL_PASS', '').strip().replace(' ', '')
 
     if not mail_user or not mail_pass:
         LAST_EMAIL_ERROR = ("Gmail: MAIL_USER or MAIL_PASS not set. "
@@ -151,8 +153,11 @@ def _send_via_gmail(to_email, subject: str, html: str,
                                 f'attachment; filename="{fname}"')
                 msg.attach(part)
 
-        # 10-second timeout — prevents gunicorn worker hang
-        with smtplib.SMTP('smtp.gmail.com', 587, timeout=10) as server:
+        smtp_host = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('MAIL_PORT', 587))
+        timeout   = int(os.environ.get('MAIL_TIMEOUT', 10))
+
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=timeout) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()

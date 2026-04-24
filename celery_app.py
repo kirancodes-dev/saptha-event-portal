@@ -45,7 +45,18 @@ celery = Celery(
     ],
 )
 
+# Eager mode when CELERY_BROKER_URL is not explicitly set in the environment.
+# This lets localhost run the full workflow (email, WhatsApp, etc.) without Redis.
+_no_broker = not os.environ.get('CELERY_BROKER_URL', '').startswith('redis')
+
 celery.conf.update(
+    # ── Eager mode — runs tasks inline when no Redis broker is available.
+    # This lets the full email/WhatsApp/notification workflow work on
+    # localhost without needing a running Redis + Celery worker.
+    # Set CELERY_BROKER_URL=redis://... in production to disable eager mode.
+    task_always_eager        = _no_broker,
+    task_eager_propagates    = True,   # surface exceptions in eager mode
+
     # ── Serialisation ─────────────────────────────────────
     task_serializer          = 'json',
     result_serializer        = 'json',

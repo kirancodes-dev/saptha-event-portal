@@ -102,6 +102,20 @@ def dashboard():
     # Sort active by soonest date
     active_tickets.sort(key=lambda x: x.get('event_date', ''))
 
+    # Upcoming events not yet registered for
+    registered_event_ids = {r.get('event_id') for r in active_tickets + completed_events}
+    upcoming_events = []
+    for e in (db.collection('events')
+                .where(filter=_ff('status', '==', 'active'))
+                .stream()):
+        if e.id not in registered_event_ids:
+            d = e.to_dict()
+            d['id'] = e.id
+            d['days_until'] = _days_until(d.get('date', ''))
+            upcoming_events.append(d)
+    upcoming_events.sort(key=lambda x: x.get('date', ''))
+    upcoming_events = upcoming_events[:6]
+
     # Calendar feed
     calendar_events = []
     for e in (db.collection('events')
@@ -132,6 +146,7 @@ def dashboard():
         'participant/dashboard.html',
         active_tickets   = active_tickets,
         completed_events = completed_events,
+        upcoming_events  = upcoming_events,
         calendar_events  = json.dumps(calendar_events),
         user_name        = session.get('name'),
         announcements    = announcements,

@@ -582,4 +582,4 @@ init_celery(app)
 # =========================================================
 if __name__ == '__main__':
     debug_mode = app.config.get('FLASK_ENV', 'development') != 'production'
-    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)), use_reloader=False)
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)), use_reloader=False)  # nosec B104

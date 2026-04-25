@@ -23,7 +23,7 @@ jobs:
         run: pip install ruff
 
       - name: Lint
-        run: ruff check . --select E,W,F --ignore E501,W503
+        run: ruff check . --select E,W,F --ignore E501
 
   # ── Tests ─────────────────────────────────────────────────
   test:

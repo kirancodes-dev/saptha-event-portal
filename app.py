@@ -2,10 +2,9 @@ import os
 import json
 import datetime
 import logging
-import uuid
 import firebase_admin
 from firebase_admin import credentials, firestore
-from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
+from flask import Flask, render_template, session, redirect, request, jsonify, Response
 from flask_mail import Mail
 from flask_limiter import Limiter
 import flask_limiter.util
@@ -162,7 +161,6 @@ app.extensions['limiter'] = limiter
 # =========================================================
 if not firebase_admin._apps:
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
-    
     if firebase_creds_json:
         # Production: Use environment variable
         try:
@@ -208,22 +206,22 @@ except Exception as exc:
 # =========================================================
 # BLUEPRINTS
 # =========================================================
-from routes_auth        import auth_bp
-from routes_api         import api_bp  # Ensure routes_api.py exists in the same directory
-from routes_ai_matching import ai_bp
-from routes_admin       import admin_bp
-from routes_coordinator import coord_bp
-from routes_participant import participant_bp
-from routes_payment     import payment_bp
-from routes_judge       import judge_bp
-from routes_profile     import profile_bp
-from routes_feedback    import feedback_bp
-from chatbot_routes     import chatbot_bp
-from routes_ticket      import ticket_bp
-from routes_forms       import forms_bp
-from routes_portfolio   import portfolio_bp
-from routes_sponsors    import sponsors_bp
-from routes_teams       import teams_bp
+from routes_auth        import auth_bp        # noqa: E402
+from routes_api         import api_bp          # noqa: E402
+from routes_ai_matching import ai_bp           # noqa: E402
+from routes_admin       import admin_bp        # noqa: E402
+from routes_coordinator import coord_bp        # noqa: E402
+from routes_participant import participant_bp   # noqa: E402
+from routes_payment     import payment_bp      # noqa: E402
+from routes_judge       import judge_bp        # noqa: E402
+from routes_profile     import profile_bp      # noqa: E402
+from routes_feedback    import feedback_bp     # noqa: E402
+from chatbot_routes     import chatbot_bp      # noqa: E402
+from routes_ticket      import ticket_bp       # noqa: E402
+from routes_forms       import forms_bp        # noqa: E402
+from routes_portfolio   import portfolio_bp    # noqa: E402
+from routes_sponsors    import sponsors_bp     # noqa: E402
+from routes_teams       import teams_bp        # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(api_bp)

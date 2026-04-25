@@ -353,6 +353,21 @@ def submit_form(event_id):
                 "info"
             )
 
+        # Build members list — lead + any member_N_* fields from team forms
+        members = [{'role': 'Lead', 'name': full_name,
+                    'email': email, 'usn': usn, 'phone': phone}]
+        for i in range(1, 10):
+            m_name = answers.get(f'member_{i}_name', '').strip()
+            if not m_name:
+                break
+            members.append({
+                'role':  'Member',
+                'name':  m_name,
+                'email': answers.get(f'member_{i}_email', '').strip().lower(),
+                'usn':   answers.get(f'member_{i}_usn',   '').strip().upper(),
+                'phone': answers.get(f'member_{i}_phone', '').strip(),
+            })
+
         # Build registration
         reg_id   = f"REG-{int(time.time() * 1000)}"
         reg_data = {
@@ -364,9 +379,8 @@ def submit_form(event_id):
             'lead_usn':        usn,
             'lead_phone':      phone,
             'team_name':       team_name,
-            'members':         [{'role': 'Lead', 'name': full_name,
-                                  'email': email, 'usn': usn, 'phone': phone}],
-            'member_count':    1,
+            'members':         members,
+            'member_count':    len(members),
             'attendance':      'Pending',
             'registered_at':   datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'is_eliminated':   False,

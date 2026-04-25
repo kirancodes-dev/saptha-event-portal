@@ -396,3 +396,120 @@ def view_audit_log():
         flash(f"Error loading audit log: {exc}", "danger")
         entries = []
     return render_template('admin/audit_log.html', entries=entries)
+
+
+# =========================================================
+# BULK EMAIL — send to all users or all registrants of an event
+# =========================================================
+@admin_bp.route('/send_email', methods=['GET', 'POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def send_bulk_email():
+    """
+    GET  → show compose form (recipient options + subject + body)
+    POST → send to selected audience and show delivery report
+    """
+    from utils_email import send_broadcast_email
+
+    events = []
+    try:
+        events = [
+            {**e.to_dict(), 'id': e.id}
+            for e in db.collection('events').stream()
+        ]
+    except Exception:
+        pass
+
+    if request.method == 'GET':
+        return render_template('admin/send_email.html', events=events)
+
+    # ── POST — collect form values ────────────────────────
+    audience   = request.form.get('audience', 'all_users')  # all_users | event_regs | role_filter
+    event_id   = request.form.get('event_id', '').strip()
+    role_filter = request.form.get('role_filter', '').strip()  # Student / Coordinator / Judge / …
+    subject    = request.form.get('subject', '').strip()
+    message    = request.form.get('message', '').strip()
+
+    if not subject or not message:
+        flash('Subject and message are required.', 'warning')
+        return render_template('admin/send_email.html', events=events)
+
+    emails = []
+
+    try:
+        if audience == 'event_regs' and event_id:
+            regs = db.collection('registrations') \
+                     .where('event_id', '==', event_id).stream()
+            seen = set()
+            for r in regs:
+                d = r.to_dict()
+                addr = d.get('lead_email') or d.get('email', '')
+                if addr:
+                    seen.add(addr.lower().strip())
+            emails = list(seen)
+
+        elif audience == 'role_filter' and role_filter:
+            users = db.collection('users') \
+                      .where('role', '==', role_filter).stream()
+            for u in users:
+                d = u.to_dict()
+                addr = d.get('email') or u.id  # doc ID == email in this system
+                if addr:
+                    emails.append(addr.lower().strip())
+
+        else:
+            users = db.collection('users').stream()
+            for u in users:
+                d = u.to_dict()
+                addr = d.get('email') or u.id
+                if addr:
+                    emails.append(addr.lower().strip())
+
+        emails = [e for e in emails if e and '@' in e]
+
+        if not emails:
+            flash('No recipients found for that selection.', 'warning')
+            return render_template('admin/send_email.html', events=events)
+
+        # Send individually and count successes
+        from utils_email import _html_wrapper, _send
+        import utils_email as _ue
+        html_body = _html_wrapper(
+            f'<div style="color:#475569;font-size:14px;line-height:1.8;'
+            f'white-space:pre-line;">{message}</div>',
+            subject
+        )
+        sent_ok, sent_fail = 0, 0
+        failed_addrs = []
+        for addr in emails:
+            _ue.LAST_EMAIL_ERROR = ''
+            if _send(addr, subject, html_body):
+                sent_ok += 1
+            else:
+                sent_fail += 1
+                failed_addrs.append(addr)
+                current_app.logger.warning(
+                    "Bulk email failed → %s | %s", addr, _ue.LAST_EMAIL_ERROR)
+
+        log_action(db, 'BULK_EMAIL_SENT',
+                   f"{session.get('user_id')} → ok={sent_ok} fail={sent_fail} | {subject}")
+
+        if sent_ok == 0:
+            err = _ue.LAST_EMAIL_ERROR or 'Unknown error — check server logs'
+            flash(f'❌ All {sent_fail} emails failed to send. Error: {err}', 'danger')
+        elif sent_fail:
+            flash(f'⚠️ Sent to {sent_ok} recipient(s). Failed: {sent_fail} '
+                  f'({", ".join(failed_addrs[:5])}{"…" if len(failed_addrs)>5 else ""})',
+                  'warning')
+        else:
+            flash(f'✅ Email delivered to {sent_ok} recipient(s).', 'success')
+
+        return render_template('admin/send_email.html',
+                               events=events,
+                               last_sent={'count': sent_ok, 'subject': subject,
+                                          'audience': audience})
+
+    except Exception as exc:
+        current_app.logger.exception("Bulk email route error: %s", exc)
+        flash(f'Send failed: {exc}', 'danger')
+        return render_template('admin/send_email.html', events=events)

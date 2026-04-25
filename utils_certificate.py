@@ -67,7 +67,7 @@ def _get_logo() -> ImageReader | None:
         import urllib.request
         req = urllib.request.Request(logo_url,
                                      headers={'User-Agent': 'SapthaEvent/1.0'})
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=8) as resp:  # nosec B310
             data = resp.read()
         buf = io.BytesIO(data)
         buf.seek(0)

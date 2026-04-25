@@ -24,7 +24,7 @@ class Config:
     SESSION_KEY_PREFIX     = 'saptha_sess:'
     # Writable path in container — /app is root-owned, so write to /tmp.
     # Override with SESSION_FILE_DIR env var if mounting a persistent volume.
-    SESSION_FILE_DIR       = os.environ.get('SESSION_FILE_DIR', '/tmp/flask_session')
+    SESSION_FILE_DIR       = os.environ.get('SESSION_FILE_DIR', '/tmp/flask_session')  # nosec B108
 
     # CSRF protection (Flask-WTF)
     WTF_CSRF_ENABLED       = True

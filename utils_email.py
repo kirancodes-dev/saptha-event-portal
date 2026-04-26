@@ -155,15 +155,25 @@ def _send_via_gmail(to_email, subject: str, html: str,
                 msg.attach(part)
 
         smtp_host = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-        smtp_port = int(os.environ.get('MAIL_PORT', 587))
+        smtp_port = int(os.environ.get('MAIL_PORT', 465))
         timeout   = int(os.environ.get('MAIL_TIMEOUT', 10))
 
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=timeout) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(mail_user, mail_pass)
-            server.send_message(msg)
+        # Port 465 → SSL directly (works on Railway Hobby).
+        # Port 587 → STARTTLS (blocked by some cloud providers).
+        if smtp_port == 465:
+            import ssl as _ssl
+            ctx = _ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_host, smtp_port,
+                                  context=ctx, timeout=timeout) as server:
+                server.login(mail_user, mail_pass)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=timeout) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(mail_user, mail_pass)
+                server.send_message(msg)
 
         logger.info("Gmail SMTP → %s | %s", to_list, subject)
         return True

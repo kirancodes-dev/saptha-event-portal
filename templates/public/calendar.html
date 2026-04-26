@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events Calendar | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;}
+body{background:#f1f5f9;font-family:'Inter',sans-serif;min-height:100vh;}
+.topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
+.brand{font-weight:700;font-size:15px;color:#fff;}
+.nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+.nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
+.cal-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px 24px;}
+/* FullCalendar overrides */
+.fc-toolbar-title{font-family:'Poppins',sans-serif;font-size:18px !important;font-weight:800;color:var(--blue);}
+.fc-button{background:var(--blue) !important;border-color:var(--blue) !important;font-size:12px !important;}
+.fc-button:hover{background:#0f1a3e !important;}
+.fc-today-button{background:var(--orange) !important;border-color:var(--orange) !important;}
+.fc-day-today{background:#fffbeb !important;}
+.fc-event{border-radius:5px !important;border:none !important;font-size:11.5px !important;font-weight:600 !important;padding:2px 5px !important;cursor:pointer;}
+.fc-daygrid-event-dot{display:none;}
+
+/* Sidebar event list */
+.ev-list-item{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px 16px;margin-bottom:10px;transition:.15s;text-decoration:none;display:block;color:inherit;}
+.ev-list-item:hover{box-shadow:0 4px 16px rgba(26,37,87,.1);transform:translateY(-2px);color:inherit;}
+.ev-cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.ev-title{font-size:13.5px;font-weight:700;color:var(--blue);}
+.ev-meta{font-size:11.5px;color:#94a3b8;margin-top:3px;}
+.ev-fee{font-size:11.5px;font-weight:700;color:var(--orange);}
+
+/* Tooltip */
+#cal-tooltip{position:fixed;background:#1e293b;color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;max-width:220px;z-index:9999;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:38px;width:auto;object-fit:contain;">
+  <span class="brand">SapthaEvent</span>
+  <div class="ms-auto d-flex gap-1">
+    <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Home</a>
+    <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+  </div>
+</nav>
+
+<div class="container-fluid px-4 py-4" style="max-width:1300px;">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 style="font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);margin:0;">Events Calendar</h4>
+      <p style="font-size:13px;color:#94a3b8;margin:3px 0 0;">All upcoming events at Sapthagiri NPS University</p>
+    </div>
+    <!-- Category filter pills -->
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="filter-btn active" data-cat="all"
+        style="font-size:12px;font-weight:700;padding:5px 14px;border-radius:100px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;transition:.15s;">
+        All
+      </button>
+      {% for cat, color in [('Technical','#f37021'),('Cultural','#7c3aed'),('Sports','#10b981'),('Management','#0891b2')] %}
+      <button class="filter-btn" data-cat="{{ cat }}"
+        style="font-size:12px;font-weight:700;padding:5px 14px;border-radius:100px;border:1.5px solid {{ color }};background:transparent;color:{{ color }};cursor:pointer;transition:.15s;"
+        data-color="{{ color }}">
+        {{ cat }}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Calendar -->
+    <div class="col-lg-8">
+      <div class="cal-card">
+        <div id="calendar"></div>
+      </div>
+    </div>
+
+    <!-- Sidebar: upcoming list -->
+    <div class="col-lg-4">
+      <div style="font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--blue);margin-bottom:12px;">
+        <i class="fas fa-list me-2" style="color:var(--orange);"></i>Upcoming Events
+      </div>
+      {% if events %}
+        {% for ev in events | sort(attribute='date') %}
+        <a href="/forms/register/{{ ev.id }}" class="ev-list-item">
+          <div class="d-flex align-items-start gap-2">
+            <div class="ev-cat-dot mt-1"
+              style="background:{{ {'Technical':'#f37021','Cultural':'#7c3aed','Sports':'#10b981','Management':'#0891b2'}.get(ev.get('category',''),'#1a2557') }};"></div>
+            <div style="flex:1;min-width:0;">
+              <div class="ev-title">{{ ev.get('title','Event') }}</div>
+              <div class="ev-meta">
+                <i class="fas fa-calendar-alt me-1"></i>{{ ev.get('date','TBD') }}
+                &nbsp;·&nbsp;
+                <i class="fas fa-map-marker-alt me-1"></i>{{ ev.get('venue','SNPSU') }}
+              </div>
+              <div class="d-flex align-items-center justify-content-between mt-1">
+                <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">{{ ev.get('category','General') }}</span>
+                <span class="ev-fee">{{ '₹' ~ ev.entry_fee if ev.get('entry_fee') and ev.entry_fee|int > 0 else 'Free' }}</span>
+              </div>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:13.5px;">
+          <i class="fas fa-calendar-times" style="font-size:32px;display:block;margin-bottom:10px;"></i>
+          No upcoming events.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div id="cal-tooltip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script id="cal-events-data" type="application/json">{{ calendar_events | tojson }}</script>
+<script>
+var allEvents = JSON.parse(document.getElementById('cal-events-data').textContent);
+var activeFilter = 'all';
+var tooltip = document.getElementById('cal-tooltip');
+
+var cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
+  initialView: 'dayGridMonth',
+  headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
+  events: allEvents,
+  height: 'auto',
+  eventMouseEnter: function(info) {
+    tooltip.innerHTML = '<strong>' + info.event.title + '</strong><br>' +
+      (info.event.extendedProps.venue ? '<i class="fas fa-map-marker-alt" style="margin-right:4px;"></i>' + info.event.extendedProps.venue + '<br>' : '') +
+      (info.event.extendedProps.category ? info.event.extendedProps.category : '');
+    tooltip.style.display = 'block';
+  },
+  eventMouseLeave: function() { tooltip.style.display = 'none'; },
+  eventClick: function(info) {
+    if (info.event.url) {
+      info.jsEvent.preventDefault();
+      window.location.href = info.event.url;
+    }
+  },
+  eventDidMount: function(info) {
+    info.el.style.cursor = 'pointer';
+  },
+  mousemove: function(e) { tooltip.style.left = (e.clientX + 14) + 'px'; tooltip.style.top = (e.clientY + 14) + 'px'; },
+});
+cal.render();
+
+document.addEventListener('mousemove', function(e) {
+  if (tooltip.style.display !== 'none') {
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top  = (e.clientY + 14) + 'px';
+  }
+});
+
+// Category filter
+document.querySelectorAll('.filter-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    activeFilter = btn.dataset.cat;
+    document.querySelectorAll('.filter-btn').forEach(function(b) {
+      var color = b.dataset.color || '#1a2557';
+      if (b === btn) {
+        b.style.background = color; b.style.color = '#fff';
+      } else {
+        b.style.background = 'transparent'; b.style.color = b.dataset.color || '#1a2557';
+      }
+    });
+    var filtered = activeFilter === 'all'
+      ? allEvents
+      : allEvents.filter(function(e) { return e.category === activeFilter; });
+    cal.removeAllEvents();
+    cal.addEventSource(filtered);
+  });
+});
+</script>
+</body>
+</html>

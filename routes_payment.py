@@ -1,7 +1,11 @@
+import hashlib
+import hmac
+import os
 import time
 import datetime
 
-from flask import (Blueprint, flash, redirect, render_template,
+import razorpay
+from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, session)
 
 from models import db
@@ -10,6 +14,88 @@ from tasks.email_tasks import send_ticket_email_task
 from tasks.notification_tasks import send_ticket_whatsapp_task, send_payment_receipt_whatsapp_task
 
 payment_bp = Blueprint('payment', __name__, url_prefix='/payment')
+
+RAZORPAY_KEY_ID     = os.environ.get('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
+
+def _rzp():
+    return razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+
+
+# =========================================================
+# 1a. CREATE RAZORPAY ORDER
+# =========================================================
+@payment_bp.route('/create_order', methods=['POST'])
+def create_order():
+    """Return a Razorpay order_id + key for the frontend to open the checkout popup."""
+    reg_data = session.get('pending_reg_data')
+    if not reg_data:
+        return jsonify({'error': 'No pending registration'}), 400
+
+    event_id = request.json.get('event_id', '')
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        return jsonify({'error': 'Event not found'}), 404
+
+    amount_inr = event_doc.to_dict().get('entry_fee', 0)
+    amount_paise = int(amount_inr) * 100  # Razorpay uses paise
+
+    if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+        # Keys not configured — fall through to simulation
+        return jsonify({'simulate': True, 'amount': amount_inr, 'event_id': event_id})
+
+    order = _rzp().order.create({
+        'amount':   amount_paise,
+        'currency': 'INR',
+        'receipt':  f"reg_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}",
+        'notes':    {'event_id': event_id, 'email': reg_data.get('lead_email', '')},
+    })
+    return jsonify({
+        'order_id': order['id'],
+        'key':      RAZORPAY_KEY_ID,
+        'amount':   amount_paise,
+        'event_id': event_id,
+        'name':     reg_data.get('lead_name', ''),
+        'email':    reg_data.get('lead_email', ''),
+    })
+
+
+# =========================================================
+# 1b. VERIFY RAZORPAY PAYMENT
+# =========================================================
+@payment_bp.route('/verify', methods=['POST'])
+def verify_payment():
+    """Verify Razorpay signature and complete registration."""
+    data = request.json or {}
+    razorpay_order_id   = data.get('razorpay_order_id', '')
+    razorpay_payment_id = data.get('razorpay_payment_id', '')
+    razorpay_signature  = data.get('razorpay_signature', '')
+    event_id            = data.get('event_id', '')
+
+    expected = hmac.new(
+        RAZORPAY_KEY_SECRET.encode(),
+        f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected, razorpay_signature):
+        return jsonify({'error': 'Invalid signature'}), 400
+
+    reg_data = session.get('pending_reg_data')
+    if not reg_data:
+        return jsonify({'error': 'Session expired'}), 400
+
+    amount = data.get('amount_inr', 0)
+    result = _complete_registration(
+        event_id=event_id,
+        reg_data=reg_data,
+        payment_status='Paid',
+        amount_paid=int(amount),
+        razorpay_payment_id=razorpay_payment_id,
+    )
+    if 'error' in result:
+        return jsonify(result), 400
+    return jsonify({'redirect': f"/ticket/{result['reg_id']}"})
 
 
 # =========================================================
@@ -21,6 +107,21 @@ def checkout(event_id):
     if not reg_data:
         flash("No pending registration found. Please register first.", "warning")
         return redirect('/')
+
+    # Duplicate guard — catch it before showing payment UI
+    email = reg_data.get('lead_email', '')
+    if email:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        existing = list(
+            db.collection('registrations')
+              .where(filter=FieldFilter('event_id', '==', event_id))
+              .where(filter=FieldFilter('lead_email', '==', email))
+              .limit(1).stream()
+        )
+        if existing:
+            session.pop('pending_reg_data', None)
+            flash("You are already registered for this event. Here is your ticket.", "info")
+            return redirect(f"/ticket/{existing[0].id}")
 
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
@@ -42,26 +143,16 @@ def checkout(event_id):
 
 
 # =========================================================
-# 2. PROCESS PAYMENT (SIMULATION)
-#    Replace with Razorpay webhook when ready.
+# SHARED HELPER — write registration to Firestore + notify
 # =========================================================
-@payment_bp.route('/process', methods=['POST'])
-def process_payment():
-    event_id = request.form.get('event_id', '').strip()
-    amount   = request.form.get('amount', '0')
-
-    reg_data = session.get('pending_reg_data')
-    if not reg_data:
-        flash("Session expired. Please start registration again.", "danger")
-        return redirect('/')
-
+def _complete_registration(event_id, reg_data, payment_status='Paid',
+                            amount_paid=0, razorpay_payment_id=''):
     email  = reg_data.get('lead_email')
     name   = reg_data.get('lead_name')
-    phone  = reg_data.get('lead_phone', '')           # ← phone for WhatsApp
+    phone  = reg_data.get('lead_phone', '')
     reg_id = reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}"
 
     try:
-        # Duplicate guard
         existing = list(
             db.collection('registrations')
               .where('event_id', '==', event_id)
@@ -69,69 +160,80 @@ def process_payment():
               .limit(1).stream()
         )
         if existing:
-            flash("You are already registered for this event.", "warning")
             session.pop('pending_reg_data', None)
-            return redirect('/')
+            return {'error': 'already_registered'}
 
         reg_data.update({
-            'reg_id':         reg_id,
-            'status':         'Confirmed',
-            'payment_status': 'Paid',
-            'amount_paid':    int(amount),
-            'is_eliminated':  False,
-            'current_round':  1,
+            'reg_id':               reg_id,
+            'status':               'Confirmed',
+            'payment_status':       payment_status,
+            'amount_paid':          amount_paid,
+            'razorpay_payment_id':  razorpay_payment_id,
+            'is_eliminated':        False,
+            'current_round':        1,
         })
-
         db.collection('registrations').document(reg_id).set(reg_data)
 
         event_ref  = db.collection('events').document(event_id)
         event_data = event_ref.get().to_dict() or {}
-        event_ref.update({
-            'registration_count': event_data.get('registration_count', 0) + 1
-        })
+        event_ref.update({'registration_count': event_data.get('registration_count', 0) + 1})
 
-        # ── NOTIFICATIONS (fire-and-forget via Celery) ────
         event_title = event_data.get('title', 'Event')
+        event_date  = event_data.get('date', '')
+        venue       = event_data.get('venue', '')
+
         send_ticket_email_task.delay(
-            to_email=email,
-            name=name,
-            event_title=event_title,
-            reg_id=reg_id,
-            event_date=event_data.get('date', ''),
-            venue=event_data.get('venue', ''),
+            to_email=email, name=name, event_title=event_title,
+            reg_id=reg_id, event_date=event_date, venue=venue,
         )
         if phone:
             send_payment_receipt_whatsapp_task.delay(
-                phone=phone,
-                name=name,
-                event_title=event_title,
-                amount=str(int(amount)),
-                reg_id=reg_id,
+                phone=phone, name=name, event_title=event_title,
+                amount=str(amount_paid), reg_id=reg_id,
             )
             send_ticket_whatsapp_task.delay(
-                phone=phone,
-                name=name,
-                event_title=event_title,
-                reg_id=reg_id,
-                event_date=event_data.get('date', ''),
-                venue=event_data.get('venue', ''),
+                phone=phone, name=name, event_title=event_title,
+                reg_id=reg_id, event_date=event_date, venue=venue,
             )
-        # ──────────────────────────────────────────────────
 
         session.pop('pending_reg_data', None)
-
-        # Auto-login the participant
         session['user_id']  = email
         session['name']     = name
         session['role']     = 'Student'
         session['category'] = 'General'
 
         log_action(db, "PAYMENT_CONFIRMED",
-                   f"Registration {reg_id} confirmed for event {event_id} — ₹{amount}")
-
-        return redirect(f'/ticket/{reg_id}')
+                   f"Registration {reg_id} confirmed for event {event_id} — ₹{amount_paid}")
+        return {'reg_id': reg_id}
 
     except Exception as exc:
-        flash(f"Payment failed: {exc}", "danger")
         log_action(db, "PAYMENT_FAILED", f"Event {event_id}, email {email} — {exc}")
+        return {'error': str(exc)}
+
+
+# =========================================================
+# 2. PROCESS PAYMENT (simulation fallback — no Razorpay keys)
+# =========================================================
+@payment_bp.route('/process', methods=['POST'])
+def process_payment():
+    event_id = request.form.get('event_id', '').strip()
+    amount   = int(request.form.get('amount', '0') or 0)
+
+    reg_data = session.get('pending_reg_data')
+    if not reg_data:
+        flash("Session expired. Please start registration again.", "danger")
         return redirect('/')
+
+    result = _complete_registration(
+        event_id=event_id,
+        reg_data=reg_data,
+        payment_status='Paid (Simulation)',
+        amount_paid=amount,
+    )
+    if result.get('error') == 'already_registered':
+        flash("You are already registered for this event.", "warning")
+        return redirect('/')
+    if 'error' in result:
+        flash(f"Payment failed: {result['error']}", "danger")
+        return redirect('/')
+    return redirect(f"/ticket/{result['reg_id']}")

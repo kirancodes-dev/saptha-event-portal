@@ -42,6 +42,7 @@ celery = Celery(
         'tasks.webhook_tasks',
         'tasks.analytics_tasks',
         'tasks.scheduled_tasks',
+        'tasks.waitlist_tasks',
     ],
 )
 
@@ -89,15 +90,25 @@ celery.conf.update(
 
     # ── Beat schedule (runs in the celery-beat container) ─
     beat_schedule = {
-        # 24-hour event reminders — run every hour
+        # 24-hour ticket email (entry QR) — run every hour
         'event-24h-reminders': {
             'task':     'tasks.scheduled_tasks.send_24h_reminders',
             'schedule': crontab(minute=0),           # top of every hour
+        },
+        # 3-day early reminder — run every hour
+        'event-3day-reminders': {
+            'task':     'tasks.scheduled_tasks.send_3day_reminders',
+            'schedule': crontab(minute=30),          # 30 min past every hour
         },
         # Event lifecycle (close regs, delete old events)
         'event-lifecycle': {
             'task':     'tasks.scheduled_tasks.run_event_lifecycle',
             'schedule': crontab(minute=0, hour='*/6'),  # every 6 hours
+        },
+        # Velocity alert — 3 days before registration deadline
+        'registration-velocity-alert': {
+            'task':     'tasks.scheduled_tasks.check_registration_velocity',
+            'schedule': crontab(minute=45, hour=9),  # 09:45 IST daily
         },
         # Daily analytics rollup — midnight IST
         'daily-analytics': {

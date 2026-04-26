@@ -645,9 +645,14 @@ def process_walkin():
 @login_required
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
 def scanner_selector():
-    events = [{'id': e.id, 'title': e.to_dict().get('title')}
-              for e in (db.collection('events')
-                          .where(filter=_ff('status', '==', 'active')).stream())]
+    user_email = session.get('user_id', '')
+    is_super   = session.get('role', '') in ('SuperAdmin', 'Super Admin')
+    events = []
+    for e in db.collection('events').where(filter=_ff('status', '==', 'active')).stream():
+        d = e.to_dict()
+        assigned = any(s.get('email') == user_email for s in d.get('staff', []))
+        if is_super or assigned:
+            events.append({'id': e.id, 'title': d.get('title'), 'date': d.get('date', '')})
     return render_template('coordinator/scanner_selector.html', events=events)
 
 
@@ -656,10 +661,24 @@ def scanner_selector():
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
 def scan_page(event_id):
     doc = db.collection('events').document(event_id).get()
-    if not doc.exists: return redirect('/coordinator/scanner')
+    if not doc.exists:
+        return redirect('/coordinator/scanner')
+    d = doc.to_dict()
+    user_email = session.get('user_id', '')
+    is_super   = session.get('role', '') in ('SuperAdmin', 'Super Admin')
+    assigned   = any(s.get('email') == user_email for s in d.get('staff', []))
+    if not is_super and not assigned:
+        flash("You are not assigned to scan for this event.", "danger")
+        return redirect('/coordinator/scanner')
+    today_str      = datetime.datetime.now().strftime('%Y-%m-%d')
+    event_date_str = str(d.get('date', ''))[:10]
+    scanning_open  = event_date_str == today_str
     return render_template('coordinator/scan.html',
                             event_id=event_id,
-                            event_title=doc.to_dict().get('title'))
+                            event_title=d.get('title'),
+                            event_date=event_date_str,
+                            today=today_str,
+                            scanning_open=scanning_open)
 
 
 @coord_bp.route('/get_ticket/<reg_id>')

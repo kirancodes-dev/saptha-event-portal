@@ -148,8 +148,9 @@ Talisman(
 limiter = Limiter(
     key_func=flask_limiter.util.get_remote_address,
     app=app,
-    default_limits=app.config.get('RATELIMIT_DEFAULT', '5000 per day;500 per hour').split(';'),
-    storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://')
+    default_limits=[],
+    storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
+    enabled=False
 )
 
 # Expose limiter on app so blueprints can attach route-specific limits

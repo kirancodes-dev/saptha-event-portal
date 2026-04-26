@@ -259,11 +259,6 @@ for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp):
     except Exception as exc:
         logger.warning("CSRF exempt failed for %s: %s", _json_bp.name, exc)
 
-# Tighten /login to mitigate brute-force and credential-stuffing
-try:
-    limiter.limit("5 per minute; 20 per hour")(app.view_functions['auth.login'])
-except Exception as exc:  # never block boot on rate-limit wiring
-    logger.warning("Could not attach limiter to auth.login: %s", exc)
 
 # =========================================================
 # ROLE → DASHBOARD MAP

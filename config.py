@@ -77,7 +77,7 @@ class Config:
     # =========================================================
     # 4. RATE LIMITING
     # =========================================================
-    RATELIMIT_DEFAULT         = "200 per day;50 per hour"
+    RATELIMIT_DEFAULT         = "100000 per day;10000 per hour"
     RATELIMIT_STORAGE_URL     = os.environ.get('REDIS_URL', 'memory://')
     RATELIMIT_HEADERS_ENABLED = True
 

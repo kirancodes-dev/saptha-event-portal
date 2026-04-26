@@ -203,6 +203,59 @@ def _send(to_email, subject: str, html: str,
 # PUBLIC EMAIL FUNCTIONS
 # ─────────────────────────────────────────────────────────────
 
+def send_registration_confirmed_email(to_email: str, name: str, event_title: str,
+                                       event_date: str = '', venue: str = '',
+                                       is_new_user: bool = False,
+                                       raw_password: str = None) -> bool:
+    """
+    Sent immediately at registration. Simple confirmation — no QR, no ticket ID.
+    The actual entry ticket (with QR) is sent 1 day before the event.
+    """
+    credentials_block = ""
+    if is_new_user and raw_password:
+        base = _base_url()
+        credentials_block = f"""
+        <div style="background:#e8f0fe;border-radius:10px;padding:16px;margin:16px 0;">
+          <p style="color:#1a2557;font-weight:700;margin:0 0 10px;font-size:14px;">
+            🔑 Your Login Credentials</p>
+          <table style="width:100%;font-size:14px;border-collapse:collapse;">
+            <tr><td style="color:#64748b;padding:4px 0;width:30%;">Email</td>
+                <td style="font-weight:700;color:#1a2557;">{to_email}</td></tr>
+            <tr><td style="color:#64748b;padding:4px 0;">Password</td>
+                <td style="font-family:monospace;font-weight:700;color:#c9a227;
+                           letter-spacing:1px;">{raw_password}</td></tr>
+            <tr><td style="color:#64748b;padding:4px 0;">Login</td>
+                <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">{base}/login</a></td></tr>
+          </table>
+          <p style="color:#ef4444;font-size:12px;margin:10px 0 0;font-weight:600;">
+            ⚠️ Change your password after first login.</p>
+        </div>"""
+    details = ""
+    if event_date:
+        details += f"<tr><td style='color:#64748b;padding:4px 0;width:30%;'>Date</td><td style='font-weight:600;color:#1a2557;'>📅 {event_date}</td></tr>"
+    if venue:
+        details += f"<tr><td style='color:#64748b;padding:4px 0;'>Venue</td><td style='font-weight:600;color:#1a2557;'>📍 {venue}</td></tr>"
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Your registration for
+           <strong style="color:#1a2557;">{event_title}</strong> is confirmed!</p>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
+                    padding:16px;margin:16px 0;">
+          <p style="color:#166534;font-size:13px;margin:0 0 10px;font-weight:700;">
+            ✅ Registration Confirmed</p>
+          <table style="width:100%;font-size:14px;border-collapse:collapse;">
+            {details}
+          </table>
+        </div>
+        {credentials_block}
+        <p style="color:#475569;font-size:13px;">
+          Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
+          Keep an eye on your inbox!
+        </p>
+    """, f"Registration Confirmed — {event_title}")
+    return _send(to_email, f"Registration Confirmed — {event_title}", html)
+
+
 def send_ticket_email(to_email: str, name: str, event_title: str,
                       reg_id: str, qr_bytes: bytes = None,
                       is_new_user: bool = False,

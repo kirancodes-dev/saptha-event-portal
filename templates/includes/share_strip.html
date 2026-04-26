@@ -1,0 +1,79 @@
+{#
+  Reusable social share strip.
+  Parameters (set before including):
+    share_title  — text for the post (e.g. "I just won 1st place at HackFest 2025!")
+    share_url    — full URL to share (default: current page)
+    share_label  — heading above the buttons (default: "Share")
+#}
+{% set _st = share_title | default('Check out SapthaEvent — Sapthagiri NPS University') %}
+{% set _su = share_url   | default('') %}
+{% set _sl = share_label | default('Share') %}
+
+<div class="share-strip-wrap" style="margin-top:16px;">
+  <p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;font-weight:700;margin-bottom:8px;">
+    <i class="fas fa-share-alt me-1"></i>{{ _sl }}
+  </p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="shr-btn shr-li" href="#" target="_blank" rel="noopener"
+       data-title="{{ _st }}" data-url="{{ _su }}"
+       style="background:#0077b5;color:#fff;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;transition:.15s;">
+      <i class="fab fa-linkedin-in"></i> LinkedIn
+    </a>
+    <a class="shr-btn shr-wa" href="#" target="_blank" rel="noopener"
+       data-title="{{ _st }}" data-url="{{ _su }}"
+       style="background:#25d366;color:#fff;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;transition:.15s;">
+      <i class="fab fa-whatsapp"></i> WhatsApp
+    </a>
+    <a class="shr-btn shr-tw" href="#" target="_blank" rel="noopener"
+       data-title="{{ _st }}" data-url="{{ _su }}"
+       style="background:#1da1f2;color:#fff;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;transition:.15s;">
+      <i class="fab fa-twitter"></i> X / Twitter
+    </a>
+    <a class="shr-btn shr-fb" href="#" target="_blank" rel="noopener"
+       data-title="{{ _st }}" data-url="{{ _su }}"
+       style="background:#1877f2;color:#fff;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;transition:.15s;">
+      <i class="fab fa-facebook-f"></i> Facebook
+    </a>
+    <button class="shr-btn shr-cp" onclick="shareCopy(this)"
+       data-url="{{ _su }}"
+       style="background:#f1f5f9;color:#1a2557;border:1px solid #e2e8f0;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s;">
+      <i class="fas fa-link"></i> Copy Link
+    </button>
+    <button onclick="sharNative(this)"
+       data-title="{{ _st }}" data-url="{{ _su }}"
+       class="shr-btn shr-native"
+       style="display:none;background:#1a2557;color:#fff;border:none;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s;">
+      <i class="fas fa-share"></i> Share
+    </button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var base = window.location.href;
+  document.querySelectorAll('.share-strip-wrap .shr-btn').forEach(function(btn){
+    var u   = encodeURIComponent(btn.dataset.url || base);
+    var t   = encodeURIComponent(btn.dataset.title || document.title);
+    if(btn.classList.contains('shr-li')) btn.href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + u;
+    if(btn.classList.contains('shr-wa')) btn.href = 'https://api.whatsapp.com/send?text=' + t + '%20' + u;
+    if(btn.classList.contains('shr-tw')) btn.href = 'https://twitter.com/intent/tweet?text=' + t + '&url=' + u;
+    if(btn.classList.contains('shr-fb')) btn.href = 'https://www.facebook.com/sharer/sharer.php?u=' + u;
+    // Show native share button on mobile if API available
+    if(btn.classList.contains('shr-native') && navigator.share) btn.style.display = 'inline-flex';
+  });
+})();
+
+function shareCopy(btn){
+  var url = btn.dataset.url || window.location.href;
+  navigator.clipboard.writeText(url).then(function(){
+    var orig = btn.innerHTML;
+    btn.style.background = '#d1fae5'; btn.style.color = '#065f46';
+    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    setTimeout(function(){ btn.style.background=''; btn.style.color=''; btn.innerHTML=orig; }, 2000);
+  });
+}
+
+function sharNative(btn){
+  if(navigator.share) navigator.share({ title: btn.dataset.title, url: btn.dataset.url || window.location.href }).catch(function(){});
+}
+</script>

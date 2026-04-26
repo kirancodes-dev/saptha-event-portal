@@ -43,6 +43,9 @@
                 </button>
             </form>
             {% else %}
+                <a href="/feedback/analytics/{{ event.id }}" class="btn btn-outline-secondary fw-bold px-3">
+                    <i class="fas fa-chart-pie me-1"></i> Feedback Analytics
+                </a>
                 <button class="btn btn-secondary" disabled>Results Published</button>
             {% endif %}
         </div>
@@ -88,6 +91,12 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <!-- Share results -->
+        <div class="container mt-3 mb-5">
+          {% set share_title = "Results are live for " ~ event.title ~ " at Sapthagiri NPS University! #SapthaEvent" %}
+          {% set share_label = "Share results" %}
+          {% include 'includes/share_strip.html' %}
         </div>
     </div>
 </body>

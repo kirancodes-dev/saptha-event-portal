@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Already Checked In</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+body{background:linear-gradient(135deg,#1a2557,#1a4fa0);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Segoe UI',sans-serif;}
+.card{background:#fff;border-radius:20px;width:100%;max-width:380px;padding:40px 32px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.4);}
+.icon{font-size:48px;margin-bottom:16px;}
+h2{font-size:20px;font-weight:700;color:#1a2557;margin-bottom:8px;}
+p{font-size:13.5px;color:#64748b;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">✅</div>
+  <h2>Already Checked In, {{ name }}!</h2>
+  <p>You are already marked as <strong>Present</strong> for <strong>{{ event.title }}</strong>. Enjoy the event!</p>
+  <a href="/" style="display:inline-block;margin-top:20px;background:#c9a45e;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">Portal Home</a>
+</div>
+</body>
+</html>

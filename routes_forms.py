@@ -32,7 +32,7 @@ from werkzeug.security import generate_password_hash
 
 from models import db
 from utils import login_required, role_required, log_action, safe_int
-from utils_email import send_ticket_email
+from utils_email import send_registration_confirmed_email
 
 # WhatsApp optional
 try:
@@ -420,10 +420,14 @@ def submit_form(event_id):
             'registration_count': event_data.get('registration_count', 0) + 1
         })
 
-        # Notifications
-        send_ticket_email(email, full_name, event_data.get('title', ''),
-                          reg_id, is_new_user=is_new_user,
-                          raw_password=raw_password)
+        # Notifications — confirmation only; QR ticket sent 1 day before event
+        send_registration_confirmed_email(
+            email, full_name, event_data.get('title', ''),
+            event_date=event_data.get('date', ''),
+            venue=event_data.get('venue', ''),
+            is_new_user=is_new_user,
+            raw_password=raw_password,
+        )
         if phone and WA_ENABLED:
             try:
                 send_ticket_whatsapp(
@@ -439,13 +443,22 @@ def submit_form(event_id):
         log_action(db, "FORM_SUBMISSION",
                    f"{email} registered for event {event_id} via form")
 
-        # Auto-login before redirecting to ticket so @login_required passes
+        # Auto-login before redirecting
         session['user_id']  = email
         session['name']     = full_name
         session['role']     = 'Student'
         session['category'] = 'General'
 
-        return redirect(f'/ticket/{reg_id}')
+        # Redirect to confirmation page — not the ticket (QR gated until day before)
+        session['reg_confirmed'] = {
+            'reg_id':      reg_id,
+            'event_title': event_data.get('title', ''),
+            'event_date':  event_data.get('date', ''),
+            'venue':       event_data.get('venue', ''),
+            'is_new_user': is_new_user,
+            'raw_password': raw_password if is_new_user else '',
+        }
+        return redirect('/registration/confirmed')
 
     except Exception as exc:
         import traceback; traceback.print_exc()

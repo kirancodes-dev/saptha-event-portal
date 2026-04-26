@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Event Report | {{ event.title }}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+
+.topbar{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;
+        gap:14px;position:sticky;top:0;z-index:100;}
+.topbar-brand{font-weight:700;font-size:15px;color:#fff;}
+.back-link{color:rgba(255,255,255,.7);font-size:13px;text-decoration:none;
+           display:flex;align-items:center;gap:6px;transition:.15s;}
+.back-link:hover{color:#fff;}
+
+.page-wrap{max-width:960px;margin:0 auto;padding:28px 20px 60px;}
+
+/* report header */
+.rep-header{background:linear-gradient(135deg,var(--blue) 0%,#1a4fa0 100%);
+            border-radius:16px;padding:32px 36px;color:#fff;margin-bottom:24px;
+            position:relative;overflow:hidden;}
+.rep-header::after{content:'';position:absolute;right:-60px;top:-60px;
+                   width:200px;height:200px;background:rgba(255,255,255,.04);
+                   border-radius:50%;}
+.rep-header h2{font-size:26px;font-weight:800;margin:0 0 6px;}
+.rep-header .meta{font-size:13px;opacity:.75;display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;}
+.rep-header .meta span{display:flex;align-items:center;gap:6px;}
+.ai-badge{display:inline-flex;align-items:center;gap:6px;
+          background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+          border-radius:100px;padding:4px 14px;font-size:12px;font-weight:700;
+          margin-top:12px;}
+
+/* stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+            gap:14px;margin-bottom:24px;}
+.stat-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;
+           padding:20px 22px;text-align:center;}
+.stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+           justify-content:center;font-size:16px;margin:0 auto 12px;}
+.stat-val{font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;
+          color:var(--blue);line-height:1;}
+.stat-label{font-size:11.5px;color:#94a3b8;margin-top:4px;text-transform:uppercase;
+             letter-spacing:.5px;font-weight:600;}
+
+/* section cards */
+.sec{background:#fff;border-radius:14px;border:1px solid #e2e8f0;
+     padding:24px 28px;margin-bottom:20px;}
+.sec-title{font-size:15px;font-weight:700;color:var(--blue);
+           display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.sec-title i{color:var(--orange);}
+
+/* podium */
+.podium-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.podium-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;
+             padding:16px 22px;text-align:center;flex:1;min-width:160px;max-width:220px;}
+.podium-item.p1{background:linear-gradient(135deg,#fffbeb,#fef9c3);
+                border-color:#fde047;}
+.podium-item.p2{background:#f8fafc;border-color:#e2e8f0;}
+.podium-item.p3{background:linear-gradient(135deg,#fff7ed,#ffedd5);
+                border-color:#fed7aa;}
+.pm-medal{font-size:32px;}
+.pm-team{font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;
+         color:var(--blue);margin:6px 0 2px;}
+.pm-lead{font-size:12px;color:#64748b;}
+.pm-score{font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;
+          color:var(--orange);margin-top:8px;}
+
+/* score table */
+.score-table{width:100%;border-collapse:collapse;}
+.score-table th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+                color:#94a3b8;font-weight:600;padding:8px 12px;
+                border-bottom:2px solid #f1f5f9;}
+.score-table td{padding:10px 12px;border-bottom:1px solid #f8fafc;
+                font-size:13.5px;}
+.score-table tr:last-child td{border-bottom:none;}
+.rank-badge{background:var(--blue);color:#fff;border-radius:6px;
+            padding:2px 8px;font-size:11px;font-weight:700;}
+
+/* AI narrative */
+.narrative{background:#f8fafc;border-left:4px solid var(--orange);
+           border-radius:0 12px 12px 0;padding:20px 24px;
+           font-size:14px;line-height:1.75;color:#334155;}
+.narrative p{margin-bottom:12px;}
+.narrative p:last-child{margin-bottom:0;}
+.narrative strong{color:var(--blue);}
+
+/* score bar */
+.sbar{height:6px;background:#e2e8f0;border-radius:100px;overflow:hidden;margin-top:4px;}
+.sbar-fill{height:100%;border-radius:100px;
+           background:linear-gradient(90deg,var(--blue),var(--orange));}
+
+/* print */
+@media print{
+  .topbar,.no-print{display:none;}
+  body{background:#fff;}
+  .page-wrap{padding:0;}
+  .rep-header{border-radius:0;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <img src="/static/snpsu-logo.png" alt="" style="height:32px;" onerror="this.style.display='none'">
+  <span class="topbar-brand">SapthaEvent</span>
+  <a href="/spoc/dashboard" class="back-link ms-auto">
+    <i class="fas fa-arrow-left"></i> Back to Dashboard
+  </a>
+  <button onclick="window.print()" class="no-print"
+          style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+                 color:#fff;font-size:12px;font-weight:700;padding:6px 16px;
+                 border-radius:8px;cursor:pointer;margin-left:10px;">
+    <i class="fas fa-print me-1"></i> Print / PDF
+  </button>
+</div>
+
+<div class="page-wrap">
+
+  <!-- REPORT HEADER -->
+  <div class="rep-header">
+    <div style="font-size:12px;opacity:.65;text-transform:uppercase;letter-spacing:1px;
+                margin-bottom:8px;">AI Event Intelligence Report</div>
+    <h2>{{ event.title }}</h2>
+    <div class="meta">
+      <span><i class="fas fa-calendar-alt"></i> {{ event.date or 'TBD' }}</span>
+      <span><i class="fas fa-map-marker-alt"></i> {{ event.venue or 'SNPSU Campus' }}</span>
+      <span><i class="fas fa-tag"></i> {{ event.category or 'General' }}</span>
+      <span><i class="fas fa-clock"></i> Generated {{ generated_at }}</span>
+    </div>
+    <div class="ai-badge"><i class="fas fa-robot"></i> Powered by Gemini AI</div>
+  </div>
+
+  <!-- KEY STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(26,37,87,.08);">
+        <i class="fas fa-users" style="color:var(--blue);"></i>
+      </div>
+      <div class="stat-val">{{ stats.registered }}</div>
+      <div class="stat-label">Registered</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(34,197,94,.1);">
+        <i class="fas fa-check-circle" style="color:#16a34a;"></i>
+      </div>
+      <div class="stat-val">{{ stats.attended }}</div>
+      <div class="stat-label">Attended</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(201,164,94,.15);">
+        <i class="fas fa-percentage" style="color:var(--orange);"></i>
+      </div>
+      <div class="stat-val">{{ stats.attendance_pct }}%</div>
+      <div class="stat-label">Attendance Rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(124,58,237,.1);">
+        <i class="fas fa-gavel" style="color:#7c3aed;"></i>
+      </div>
+      <div class="stat-val">{{ stats.judges_count }}</div>
+      <div class="stat-label">Judges</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(234,179,8,.1);">
+        <i class="fas fa-star" style="color:#b45309;"></i>
+      </div>
+      <div class="stat-val">{{ stats.avg_score }}</div>
+      <div class="stat-label">Avg Score</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(16,185,129,.1);">
+        <i class="fas fa-trophy" style="color:#059669;"></i>
+      </div>
+      <div class="stat-val">{{ stats.top_score }}</div>
+      <div class="stat-label">Top Score</div>
+    </div>
+  </div>
+
+  <!-- PODIUM -->
+  {% if top3 %}
+  <div class="sec">
+    <div class="sec-title">
+      <i class="fas fa-trophy"></i> Top Performers
+    </div>
+    <div class="podium-row">
+      {% for p in top3 %}
+      <div class="podium-item {{ 'p1' if loop.index==1 else 'p2' if loop.index==2 else 'p3' }}">
+        <div class="pm-medal">{{ '🥇' if loop.index==1 else '🥈' if loop.index==2 else '🥉' }}</div>
+        <div class="pm-team">{{ p.team }}</div>
+        <div class="pm-lead">{{ p.lead }}</div>
+        <div class="pm-score">{{ p.score }}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+          {{ p.judges }} judge{{ 's' if p.judges != 1 }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- FULL SCORE TABLE -->
+  {% if leaderboard %}
+  <div class="sec">
+    <div class="sec-title">
+      <i class="fas fa-list-ol"></i> Full Leaderboard
+    </div>
+    <table class="score-table">
+      <thead>
+        <tr>
+          <th style="width:52px;">Rank</th>
+          <th>Team / Participant</th>
+          <th style="width:120px;text-align:right;">Score</th>
+          <th style="width:80px;text-align:center;">Judges</th>
+          <th style="width:90px;text-align:center;">Attendance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in leaderboard %}
+        <tr>
+          <td><span class="rank-badge">{{ loop.index }}</span></td>
+          <td>
+            <div style="font-weight:700;color:#1e293b;">{{ row.team }}</div>
+            <div style="font-size:12px;color:#94a3b8;">{{ row.lead }}</div>
+          </td>
+          <td style="text-align:right;">
+            <span style="font-family:'Poppins',sans-serif;font-size:16px;
+                         font-weight:800;color:var(--orange);">{{ row.score }}</span>
+            <div class="sbar">
+              <div class="sbar-fill" style="width:{{ row.score_pct }}%;"></div>
+            </div>
+          </td>
+          <td style="text-align:center;color:#64748b;">{{ row.judges }}</td>
+          <td style="text-align:center;">
+            {% if row.attended %}
+              <span style="color:#16a34a;font-weight:700;font-size:12px;">
+                <i class="fas fa-check-circle me-1"></i>Present
+              </span>
+            {% else %}
+              <span style="color:#94a3b8;font-size:12px;">Absent</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- AI NARRATIVE -->
+  <div class="sec">
+    <div class="sec-title">
+      <i class="fas fa-robot"></i> AI Event Analysis
+      <span style="font-size:11px;font-weight:500;color:#94a3b8;margin-left:4px;">(Gemini 2.5 Flash)</span>
+    </div>
+    <div class="narrative">
+      {{ narrative | safe }}
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

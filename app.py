@@ -221,7 +221,12 @@ from routes_ticket      import ticket_bp       # noqa: E402
 from routes_forms       import forms_bp        # noqa: E402
 from routes_portfolio   import portfolio_bp    # noqa: E402
 from routes_sponsors    import sponsors_bp     # noqa: E402
-from routes_teams       import teams_bp        # noqa: E402
+from routes_teams          import teams_bp           # noqa: E402
+from routes_notifications  import notif_bp          # noqa: E402
+from routes_push           import push_bp           # noqa: E402
+from routes_checkin        import checkin_bp        # noqa: E402
+from routes_spoc           import spoc_bp           # noqa: E402
+from routes_live           import live_bp           # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(api_bp)
@@ -239,6 +244,11 @@ app.register_blueprint(forms_bp)
 app.register_blueprint(portfolio_bp)
 app.register_blueprint(sponsors_bp)
 app.register_blueprint(teams_bp)
+app.register_blueprint(notif_bp)
+app.register_blueprint(push_bp)
+app.register_blueprint(checkin_bp)
+app.register_blueprint(spoc_bp)
+app.register_blueprint(live_bp)
 
 # CSRF exemption for JSON-API blueprints hit via fetch()/XHR.
 # HTML form-serving blueprints (auth, admin, coordinator, judge, payment,
@@ -264,7 +274,7 @@ ROLE_REDIRECTS = {
     'Super Admin':      '/admin/dashboard',
     'Admin':            '/admin/dashboard',
     'Coordinator':      '/coordinator/dashboard',
-    'ClubSPOC':         '/coordinator/dashboard',
+    'ClubSPOC':         '/spoc/dashboard',
     'EventCoordinator': '/coordinator/scanner',
     'Judge':            '/judge/dashboard',
 }
@@ -454,6 +464,18 @@ def event_details(event_id):
 
 
 # =========================================================
+# REGISTRATION CONFIRMED PAGE
+# =========================================================
+@app.route('/registration/confirmed')
+def registration_confirmed():
+    data = session.pop('reg_confirmed', None)
+    if not data:
+        return redirect('/participant/dashboard')
+    data['user_email'] = session.get('user_id', '')
+    return render_template('participant/registration_confirmed.html', **data)
+
+
+# =========================================================
 # CALENDAR JSON FEED
 # =========================================================
 @app.route('/api/calendar')
@@ -473,6 +495,36 @@ def get_calendar_json():
         return jsonify(out)
     except Exception:
         return jsonify([])
+
+
+# =========================================================
+# PUBLIC EVENTS CALENDAR
+# =========================================================
+@app.route('/calendar')
+def events_calendar():
+    color_map = {'Technical':'#f37021','Cultural':'#7c3aed',
+                 'Sports':'#10b981','Management':'#0891b2'}
+    events, cal_events = [], []
+    try:
+        for doc in (db.collection('events')
+                      .where(filter=FieldFilter('status', '==', 'active'))
+                      .stream()):
+            d = doc.to_dict()
+            d['id'] = doc.id
+            cat = d.get('category', 'General')
+            events.append(d)
+            cal_events.append({
+                'title':    d.get('title', 'Event'),
+                'start':    d.get('date', ''),
+                'url':      f"/forms/register/{doc.id}",
+                'color':    color_map.get(cat, '#1a2557'),
+                'category': cat,
+                'venue':    d.get('venue', 'SNPSU'),
+            })
+    except Exception as exc:
+        app.logger.error("Calendar page error: %s", exc)
+    return render_template('public/calendar.html',
+                           events=events, calendar_events=cal_events)
 
 
 # =========================================================

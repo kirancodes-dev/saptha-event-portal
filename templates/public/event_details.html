@@ -10,15 +10,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { 
-            --blue: #1a2557; 
+        :root {
+            --blue: #1a2557;
             --orange: #c9a45e;
-            --bg: #f8f9fa; 
-            --card: #ffffff; 
-            --text-main: #1e293b; 
-            --text-muted: #64748b; 
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
         }
         body { background-color: var(--bg); color: var(--text-main); font-family: 'Inter', sans-serif; padding-bottom: 120px; }
+        /* Countdown */
+        .countdown-band{background:linear-gradient(135deg,var(--blue),#1a4fa0);padding:14px 0;text-align:center;}
+        .cd-wrap{display:inline-flex;gap:20px;align-items:center;}
+        .cd-unit{text-align:center;min-width:52px;}
+        .cd-num{font-size:2rem;font-weight:800;color:#fff;line-height:1;font-family:'Inter',sans-serif;}
+        .cd-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:2px;}
+        .cd-sep{font-size:1.8rem;font-weight:800;color:var(--orange);line-height:1;margin-bottom:14px;}
+        .cd-over{font-size:1.1rem;font-weight:700;color:var(--orange);}
+        /* Capacity bar */
+        .cap-bar-wrap{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px 20px;margin-bottom:25px;}
+        .cap-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+        .cap-bar-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);}
+        .cap-bar-count{font-size:13px;font-weight:600;color:#64748b;}
+        .cap-bar{height:8px;background:#f1f5f9;border-radius:100px;overflow:hidden;}
+        .cap-fill{height:100%;border-radius:100px;transition:width .4s ease;background:linear-gradient(90deg,var(--blue),var(--orange));}
+        .cap-fill.full{background:linear-gradient(90deg,#ef4444,#dc2626);}
+        /* Share buttons */
+        .share-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+        .share-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;border:none;cursor:pointer;transition:.15s;}
+        .share-btn:hover{opacity:.85;transform:translateY(-1px);}
+        .share-li{background:#0077b5;color:#fff;}
+        .share-wa{background:#25d366;color:#fff;}
+        .share-tw{background:#1da1f2;color:#fff;}
+        .share-cp{background:#f1f5f9;color:var(--blue);border:1px solid #e2e8f0;}
+        .share-cp.copied{background:#d1fae5;color:#065f46;border-color:#a7f3d0;}
         
         /* Hero Section */
         .hero-section {
@@ -115,11 +140,24 @@
             </div>
             <h1 class="display-3 fw-bold text-white mb-2" style="text-shadow: 0 2px 10px rgba(0,0,0,0.5);">{{ event.title }}</h1>
             <div class="text-light opacity-100 fs-5 mt-2">
-                <i class="far fa-calendar me-2 text-warning"></i> {{ event.date }} &nbsp;|&nbsp; 
-                <i class="far fa-clock me-2 text-warning"></i> {{ event.time }} &nbsp;|&nbsp; 
+                <i class="far fa-calendar me-2 text-warning"></i> {{ event.date }} &nbsp;|&nbsp;
+                <i class="far fa-clock me-2 text-warning"></i> {{ event.time }} &nbsp;|&nbsp;
                 <i class="fas fa-map-marker-alt me-2 text-warning"></i> {{ event.venue }}
             </div>
         </div>
+    </div>
+
+    <!-- COUNTDOWN BAND -->
+    <div class="countdown-band" id="cd-band">
+      <div class="cd-wrap" id="cd-wrap">
+        <div class="cd-unit"><div class="cd-num" id="cd-d">--</div><div class="cd-label">Days</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><div class="cd-num" id="cd-h">--</div><div class="cd-label">Hrs</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><div class="cd-num" id="cd-m">--</div><div class="cd-label">Min</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><div class="cd-num" id="cd-s">--</div><div class="cd-label">Sec</div></div>
+      </div>
     </div>
 
     <div class="container mt-5">
@@ -145,6 +183,23 @@
                 <div class="content-card">
                     <h5 class="section-title">Rules & Guidelines</h5>
                     <div class="text-secondary" style="white-space: pre-wrap; line-height: 1.7;">{{ event.rules }}</div>
+                </div>
+                {% endif %}
+
+                {% if event.get('agenda') %}
+                <div class="content-card">
+                    <h5 class="section-title"><i class="fas fa-calendar-check me-2" style="color:#c9a45e;"></i>Event Schedule</h5>
+                    <div style="position:relative;padding-left:20px;">
+                      <div style="position:absolute;left:7px;top:0;bottom:0;width:2px;background:#e2e8f0;border-radius:2px;"></div>
+                      {% for item in event.agenda %}
+                      <div style="position:relative;margin-bottom:18px;padding-left:18px;">
+                        <div style="position:absolute;left:-5px;top:4px;width:12px;height:12px;border-radius:50%;background:#c9a45e;border:2px solid #fff;box-shadow:0 0 0 2px #c9a45e;"></div>
+                        <div style="font-size:11px;font-weight:700;color:#c9a45e;letter-spacing:.5px;margin-bottom:2px;">{{ item.time }}</div>
+                        <div style="font-size:14px;font-weight:700;color:#1e293b;">{{ item.title }}</div>
+                        {% if item.desc %}<div style="font-size:12.5px;color:#64748b;margin-top:2px;">{{ item.desc }}</div>{% endif %}
+                      </div>
+                      {% endfor %}
+                    </div>
                 </div>
                 {% endif %}
 
@@ -177,6 +232,45 @@
             </div>
 
             <div class="col-lg-4">
+                <!-- CAPACITY BAR -->
+                {% set max_p = (event.limits or {}).get('max_participants', 0) %}
+                {% if max_p > 0 %}
+                <div class="cap-bar-wrap">
+                  <div class="cap-bar-top">
+                    <span class="cap-bar-label"><i class="fas fa-users me-1"></i>Capacity</span>
+                    <span class="cap-bar-count">{{ reg_count }} / {{ max_p }}</span>
+                  </div>
+                  <div class="cap-bar">
+                    <div class="cap-fill {{ 'full' if reg_count >= max_p else '' }}"
+                         style="width:{{ [((reg_count / max_p) * 100)|int, 100]|min }}%;"></div>
+                  </div>
+                  {% if reg_count >= max_p %}
+                  <p style="color:#ef4444;font-size:12px;margin-top:6px;font-weight:700;"><i class="fas fa-ban me-1"></i>Registrations closed — full</p>
+                  {% else %}
+                  <p style="color:#64748b;font-size:12px;margin-top:6px;">{{ max_p - reg_count }} spot{{ 's' if (max_p - reg_count) != 1 }} remaining</p>
+                  {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- SHARE THIS EVENT -->
+                <div class="content-card" style="margin-bottom:25px;">
+                  <h5 class="section-title">Share Event</h5>
+                  <div class="share-strip">
+                    <a class="share-btn share-li" href="#" id="share-li" target="_blank" rel="noopener">
+                      <i class="fab fa-linkedin-in"></i> LinkedIn
+                    </a>
+                    <a class="share-btn share-wa" href="#" id="share-wa" target="_blank" rel="noopener">
+                      <i class="fab fa-whatsapp"></i> WhatsApp
+                    </a>
+                    <a class="share-btn share-tw" href="#" id="share-tw" target="_blank" rel="noopener">
+                      <i class="fab fa-twitter"></i> Twitter
+                    </a>
+                    <button class="share-btn share-cp" id="share-cp" onclick="copyLink()">
+                      <i class="fas fa-link"></i> Copy Link
+                    </button>
+                  </div>
+                </div>
+
                 <div class="content-card">
                     <h5 class="section-title">Timeline</h5>
                     <ul class="list-unstyled">
@@ -312,6 +406,48 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+    // ── COUNTDOWN ────────────────────────────────────────────────────
+    (function(){
+      var eventDate = "{{ event.date }}T{{ event.time or '09:00' }}";
+      var target = new Date(eventDate);
+      if (isNaN(target)) { document.getElementById('cd-band').style.display='none'; return; }
+      function tick(){
+        var now = new Date();
+        var diff = target - now;
+        if(diff <= 0){
+          document.getElementById('cd-wrap').innerHTML = '<span class="cd-over">Event is Live / Completed</span>';
+          return;
+        }
+        var d = Math.floor(diff/86400000);
+        var h = Math.floor((diff%86400000)/3600000);
+        var m = Math.floor((diff%3600000)/60000);
+        var s = Math.floor((diff%60000)/1000);
+        document.getElementById('cd-d').textContent = String(d).padStart(2,'0');
+        document.getElementById('cd-h').textContent = String(h).padStart(2,'0');
+        document.getElementById('cd-m').textContent = String(m).padStart(2,'0');
+        document.getElementById('cd-s').textContent = String(s).padStart(2,'0');
+      }
+      tick(); setInterval(tick, 1000);
+    })();
+
+    // ── SOCIAL SHARE ─────────────────────────────────────────────────
+    (function(){
+      var url   = encodeURIComponent(window.location.href);
+      var title = encodeURIComponent("{{ event.title }} | SapthaEvent — Sapthagiri NPS University");
+      var text  = encodeURIComponent("Check out this event: {{ event.title }} on {{ event.date }} at {{ event.venue }}. Register now!");
+      document.getElementById('share-li').href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + url;
+      document.getElementById('share-wa').href = 'https://api.whatsapp.com/send?text=' + text + '%20' + url;
+      document.getElementById('share-tw').href = 'https://twitter.com/intent/tweet?text=' + text + '&url=' + url;
+    })();
+    function copyLink(){
+      navigator.clipboard.writeText(window.location.href).then(function(){
+        var btn = document.getElementById('share-cp');
+        btn.classList.add('copied'); btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(function(){ btn.classList.remove('copied'); btn.innerHTML = '<i class="fas fa-link"></i> Copy Link'; }, 2000);
+      });
+    }
+
+    // ── REGISTRATION FORM ────────────────────────────────────────────
         let memberCount = 1; // Lead is #1
         const maxMembers = parseInt("{{ event.limits.team_max | default(1) }}");
         

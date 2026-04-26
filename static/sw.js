@@ -90,3 +90,25 @@ self.addEventListener('fetch', (event) => {
     fetch(req).catch(() => caches.match(req))
   );
 });
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let data = {};
+  try { data = event.data.json(); } catch { data = { title: 'SapthaEvent', body: event.data.text() }; }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'SapthaEvent', {
+      body:    data.body  || '',
+      icon:    data.icon  || '/static/snpsu-logo.png',
+      badge:   '/static/snpsu-logo.png',
+      data:    { url: data.url || '/' },
+      actions: data.actions || [],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(clients.openWindow(url));
+});

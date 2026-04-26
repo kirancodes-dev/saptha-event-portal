@@ -25,7 +25,7 @@ ROLE_REDIRECTS = {
     'Super Admin':      '/admin/dashboard',
     'Admin':            '/admin/dashboard',
     'Coordinator':      '/coordinator/dashboard',
-    'ClubSPOC':         '/coordinator/dashboard',
+    'ClubSPOC':         '/spoc/dashboard',
     'EventCoordinator': '/coordinator/scanner',
     'Judge':            '/judge/dashboard',
 }

@@ -1,148 +1,502 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Club Dashboard | SapthaEvent</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root{--blue:#1a2557;--orange:#c9a45e;}
-        body { background: #f8f9fa; color: #1e293b; font-family: 'Inter', sans-serif; }
-        
-        /* Stats Cards */
-        .stat-card {
-            background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;
-            display: flex; align-items: center; justify-content: space-between;
-            transition: 0.2s;
-        }
-        .stat-card:hover { transform: translateY(-5px); border-color: var(--blue); }
-        .stat-icon { width: 50px; height: 50px; border-radius: 10px; background: rgba(26, 37, 87, 0.1); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
-        
-        /* Table */
-        .table-dark { --bs-table-bg: #ffffff; --bs-table-border-color: #e2e8f0; }
-        .table th { font-weight: 600; text-transform: uppercase; font-size: 0.85rem; color: #64748b; }
-        .table td { vertical-align: middle; }
-        
-        /* Badges */
-        .badge-status { padding: 6px 12px; border-radius: 50px; font-weight: 600; font-size: 0.75rem; }
-        .bg-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-        .bg-completed { background: rgba(26, 37, 87, 0.2); color: var(--blue); }
-        
-        /* Action Buttons */
-        .btn-icon { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #e2e8f0; color: #64748b; transition: 0.2s; background: transparent; }
-        .btn-icon:hover { background: var(--blue); color: white; border-color: var(--blue); }
-        .btn-create { background: var(--blue); color: white; border: none; font-weight: 600; padding: 10px 25px; border-radius: 8px; }
-        .btn-create:hover { background: var(--orange); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>Club Dashboard | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;}
+*{box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;}
+h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+
+/* TOPNAV */
+.topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.logo-sq{width:34px;height:34px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:13px;color:#fff;flex-shrink:0;}
+.brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-left:10px;}
+.nav-links{display:flex;align-items:center;gap:6px;}
+.nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+.nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
+.nav-link-item.btn-orange{background:var(--orange);color:#fff;font-weight:700;}
+.nav-link-item.btn-orange:hover{background:#d95f0f;}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+@media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+.stat-card{background:#fff;border-radius:14px;padding:20px;border:1px solid #e2e8f0;display:flex;align-items:center;gap:14px;transition:.2s;}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(26,37,87,.1);}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.si-blue{background:rgba(26,37,87,.1);color:var(--blue);}
+.si-green{background:rgba(22,163,74,.1);color:#16a34a;}
+.si-orange{background:rgba(201,164,94,.15);color:var(--orange);}
+.si-purple{background:rgba(124,58,237,.1);color:#7c3aed;}
+.stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;font-weight:600;margin-bottom:4px;}
+.stat-val{font-family:'Poppins',sans-serif;font-size:24px;font-weight:800;color:var(--blue);line-height:1;}
+
+/* CHART CARDS */
+.chart-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px 24px;}
+.chart-title{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+
+/* EVENTS TABLE */
+.ev-table-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;}
+.ev-table-header{background:var(--blue);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;}
+.ev-table-header h6{color:#fff;font-family:'Poppins',sans-serif;font-weight:700;margin:0;font-size:14px;}
+.table{margin:0;}
+.table th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;font-weight:700;padding:12px 16px;border-color:#f1f5f9;}
+.table td{padding:14px 16px;border-color:#f1f5f9;vertical-align:middle;}
+.ev-title-cell{font-weight:600;color:var(--blue);font-size:13.5px;}
+.ev-cat{font-size:11px;color:#94a3b8;margin-top:2px;}
+
+/* Status badges */
+.badge-active{background:rgba(22,163,74,.1);color:#16a34a;font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;}
+.badge-completed{background:rgba(26,37,87,.1);color:var(--blue);font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;}
+
+/* Action buttons */
+.btn-tbl{width:30px;height:30px;border-radius:7px;border:1px solid #e2e8f0;background:transparent;color:#64748b;display:inline-flex;align-items:center;justify-content:center;font-size:13px;transition:.15s;text-decoration:none;}
+.btn-tbl:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn-tbl.scan:hover{background:#16a34a;border-color:#16a34a;}
+.btn-tbl-sc-on{background:#16a34a;border-color:#16a34a;color:#fff;}
+.btn-tbl-sc-on:hover{background:#15803d;border-color:#15803d;}
+
+/* Reg count bar */
+.reg-bar-wrap{display:flex;align-items:center;gap:8px;}
+.reg-bar{flex:1;height:5px;background:#f1f5f9;border-radius:100px;overflow:hidden;min-width:60px;}
+.reg-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--orange));border-radius:100px;}
+.reg-count{font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--blue);}
+
+/* Flash messages */
+.flash-box{border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;}
+</style>
 </head>
 <body>
 
-    <div class="container py-5">
-        <div class="d-flex justify-content-between align-items-center mb-5">
-            <div>
-                <h3 class="fw-bold mb-1">Club Dashboard</h3>
-                <p class="text-muted mb-0">Manage your events and registrations</p>
-            </div>
-            <div class="d-flex gap-3">
-                <a href="/" class="btn btn-outline-light">View Portal</a>
-                <a href="/spoc/create_event" class="btn btn-create shadow-lg">
-                    <i class="fas fa-plus me-2"></i> Create Event
-                </a>
-            </div>
-        </div>
+<!-- TOPNAV -->
+<div class="topnav">
+  <div class="d-flex align-items-center gap-2">
+    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
+    <span class="brand">Club Dashboard</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
+    <a href="/spoc/create_event" class="nav-link-item btn-orange"><i class="fas fa-plus me-1"></i>Create Event</a>
+    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
+  </div>
+</div>
 
-        <div class="row g-4 mb-5">
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div>
-                        <div class="text-muted small text-uppercase fw-bold">Total Events</div>
-                        <div class="fs-2 fw-bold text-white">{{ stats.total_events }}</div>
-                    </div>
-                    <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div>
-                        <div class="text-muted small text-uppercase fw-bold">Total Registrations</div>
-                        <div class="fs-2 fw-bold text-white">{{ stats.total_regs }}</div>
-                    </div>
-                    <div class="stat-icon"><i class="fas fa-users"></i></div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div>
-                        <div class="text-muted small text-uppercase fw-bold">Club Category</div>
-                        <div class="fs-4 fw-bold text-warning">{{ category }}</div>
-                    </div>
-                    <div class="stat-icon"><i class="fas fa-tag"></i></div>
-                </div>
-            </div>
-        </div>
+<div class="container-fluid px-4 py-4">
 
-        <div class="card bg-dark border-secondary overflow-hidden">
-            <div class="card-header bg-transparent border-secondary py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2 text-primary"></i> Your Events</h5>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-dark table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th class="ps-4">Event Name</th>
-                            <th>Date</th>
-                            <th>Coordinators</th>
-                            <th class="text-center">Registrations</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-end pe-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for event in events %}
-                        <tr>
-                            <td class="ps-4">
-                                <div class="fw-bold text-white">{{ event.title }}</div>
-                                <small class="text-muted">{{ event.category }}</small>
-                            </td>
-                            <td>{{ event.date }}</td>
-                            <td>
-                                {% if event.coordinators %}
-                                    <span class="text-light small" title="{{ event.coordinators | join(', ') }}">
-                                        {{ event.coordinators|length }} Assigned
-                                    </span>
-                                {% else %}
-                                    <span class="text-muted small">None</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-dark border border-secondary text-white">{{ event.registration_count }} / {{ event.limits.max_participants or '∞' }}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge-status {{ 'bg-completed' if event.status == 'completed' else 'bg-active' }}">
-                                    {{ event.status }}
-                                </span>
-                            </td>
-                            <td class="text-end pe-4">
-                                <a href="/spoc/export_csv/{{ event.id }}" class="btn-icon" title="Download Data"><i class="fas fa-download"></i></a>
-                                <a href="/spoc/results/{{ event.id }}" class="btn-icon" title="Results"><i class="fas fa-trophy"></i></a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
-                                <i class="far fa-folder-open fa-3x mb-3 opacity-50"></i>
-                                <p>No events created yet. Click "Create Event" to start.</p>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for cat, msg in messages %}
+      <div class="flash-box alert-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-1" style="color:var(--blue);font-weight:800;">{{ session.get('name', 'SPOC') }}'s Console</h4>
+    <p class="text-muted mb-0" style="font-size:13px;">{{ category }} Division · {{ events | length }} event{{ 's' if events | length != 1 }}</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if events %}
+    <a href="/spoc/scan/{{ events[0].id }}" class="btn btn-sm" style="background:#16a34a;color:#fff;font-weight:700;border-radius:8px;padding:8px 14px;font-size:12.5px;">
+      <i class="fas fa-qrcode me-1"></i> QR Scanner
+    </a>
+    {% endif %}
+    <a href="/spoc/create_event" class="btn btn-sm" style="background:var(--blue);color:#fff;font-weight:700;border-radius:8px;padding:8px 14px;font-size:12.5px;">
+      <i class="fas fa-plus me-1"></i> Create Event
+    </a>
+  </div>
+</div>
+
+<!-- STATS GRID -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon si-blue"><i class="fas fa-calendar-alt"></i></div>
+    <div>
+      <div class="stat-label">Total Events</div>
+      <div class="stat-val">{{ stats.total_events }}</div>
     </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-green"><i class="fas fa-users"></i></div>
+    <div>
+      <div class="stat-label">Registrations</div>
+      <div class="stat-val">{{ stats.total_regs }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-orange"><i class="fas fa-user-check"></i></div>
+    <div>
+      <div class="stat-label">Attendance</div>
+      <div class="stat-val">{{ stats.present_count | default(0) }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-purple"><i class="fas fa-tag"></i></div>
+    <div>
+      <div class="stat-label">Division</div>
+      <div class="stat-val" style="font-size:16px;">{{ category }}</div>
+    </div>
+  </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- CHARTS ROW -->
+{% if events %}
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="chart-card h-100">
+      <div class="chart-title"><i class="fas fa-chart-bar" style="color:var(--orange);"></i> Registrations per Event</div>
+      <canvas id="regChart" height="200"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="chart-card h-100">
+      <div class="chart-title"><i class="fas fa-chart-pie" style="color:#7c3aed;"></i> Attendance Overview</div>
+      <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
+        <canvas id="attChart"></canvas>
+        <div id="attCenter" style="position:absolute;text-align:center;pointer-events:none;">
+          <div style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">{{ stats.present_count | default(0) }}</div>
+          <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Present</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- EVENTS TABLE -->
+<div class="ev-table-card">
+  <div class="ev-table-header">
+    <h6><i class="fas fa-list me-2"></i>Your Events</h6>
+    <span style="font-size:12px;color:rgba(255,255,255,.6);">{{ events | length }} event{{ 's' if events | length != 1 }}</span>
+  </div>
+  {% if events %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Date</th>
+          <th>Registrations</th>
+          <th>Status</th>
+          <th class="text-end pe-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in events %}
+        {% set max_p = (event.limits or {}).get('max_participants', 0) %}
+        {% set rc = event.registration_count | default(0) %}
+        <tr>
+          <td>
+            <div class="ev-title-cell">{{ event.title }}</div>
+            <div class="ev-cat">{{ event.category }}</div>
+          </td>
+          <td style="font-size:13px;color:#64748b;">{{ event.date | default('TBA') }}</td>
+          <td>
+            <div class="reg-bar-wrap">
+              <span class="reg-count">{{ rc }}</span>
+              {% if max_p > 0 %}
+              <div class="reg-bar">
+                <div class="reg-fill" style="width:{{ [(rc / max_p * 100)|int, 100] | min }}%;"></div>
+              </div>
+              <span style="font-size:11px;color:#94a3b8;">/ {{ max_p }}</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <span class="{{ 'badge-active' if event.status == 'active' else 'badge-completed' }}">
+              {{ event.status | capitalize }}
+            </span>
+          </td>
+          <td class="text-end pe-3">
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="/spoc/scan/{{ event.id }}" class="btn-tbl scan" title="QR Scanner"><i class="fas fa-qrcode"></i></a>
+              <a href="/live/{{ event.id }}" target="_blank" class="btn-tbl"
+                 title="Live Leaderboard (projector view)"
+                 style="background:#7c3aed;border-color:#7c3aed;color:#fff;">
+                <i class="fas fa-broadcast-tower"></i>
+              </a>
+              <a href="/spoc/agenda/{{ event.id }}" class="btn-tbl" title="Edit Schedule"><i class="fas fa-calendar-check"></i></a>
+              <a href="/spoc/export_csv/{{ event.id }}" class="btn-tbl" title="Export CSV"><i class="fas fa-download"></i></a>
+              <a href="/spoc/results/{{ event.id }}" class="btn-tbl" title="Results"><i class="fas fa-trophy"></i></a>
+              <a href="/spoc/ai_report/{{ event.id }}" class="btn-tbl"
+                 title="AI Event Report"
+                 style="background:#0891b2;border-color:#0891b2;color:#fff;">
+                <i class="fas fa-robot"></i>
+              </a>
+              <button class="btn-tbl" title="Email All Registrants"
+                style="background:#10b981;border-color:#10b981;color:#fff;"
+                onclick="openBlastModal('{{ event.id }}', '{{ event.title | e }}')">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+              <form method="POST" action="/spoc/clone_event/{{ event.id }}" style="display:inline;"
+                    onsubmit="return confirm('Clone this event? You can edit the date and details after.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-tbl" title="Clone Event">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </form>
+              {% if event.status == 'active' %}
+              <form method="POST" action="/checkin/toggle/{{ event.id }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                  class="btn-tbl{{ ' btn-tbl-sc-on' if event.get('allow_self_checkin') else '' }}"
+                  title="{{ 'Disable Self Check-in' if event.get('allow_self_checkin') else 'Enable Self Check-in' }}">
+                  <i class="fas fa-{{ 'toggle-on' if event.get('allow_self_checkin') else 'toggle-off' }}"></i>
+                </button>
+              </form>
+              {% if event.get('allow_self_checkin') %}
+              <a href="/checkin/venue_qr/{{ event.id }}" target="_blank" class="btn-tbl"
+                 title="Venue QR Code (display at entrance)" style="background:#7c3aed;border-color:#7c3aed;color:#fff;">
+                <i class="fas fa-qrcode"></i>
+              </a>
+              {% endif %}
+              <button class="btn-tbl" title="End Event &amp; Send Certificates"
+                style="background:#dc2626;border-color:#dc2626;color:#fff;"
+                onclick="confirmEndEvent('{{ event.id }}', '{{ event.title | e }}')">
+                <i class="fas fa-flag-checkered"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:60px 24px;">
+    <i class="fas fa-calendar-plus" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:16px;"></i>
+    <h5 style="color:var(--blue);font-family:'Poppins',sans-serif;">No Events Yet</h5>
+    <p style="color:#94a3b8;font-size:13px;">Create your first event to get started.</p>
+    <a href="/spoc/create_event" style="background:var(--blue);color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;display:inline-block;">
+      <i class="fas fa-plus me-1"></i> Create Event
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- LIVE ANNOUNCEMENT PANEL -->
+{% if events %}
+<div class="container-fluid px-4 mt-4 mb-4">
+  <div class="ev-table-card">
+    <div class="ev-table-header" style="background:#78350f;">
+      <h6><i class="fas fa-bullhorn me-2"></i>Post Live Announcement</h6>
+      <span style="font-size:12px;color:rgba(255,255,255,.6);">Appears instantly on participant dashboards</span>
+    </div>
+    <div style="padding:18px 20px;">
+      <form method="POST" action="/spoc/announce/{{ events[0].id }}" id="ann-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="d-flex gap-2 flex-wrap align-items-end">
+          <select name="event_id" id="ann-event-select" class="form-select"
+                  style="max-width:200px;font-size:13px;border-radius:8px;border:1px solid #e2e8f0;"
+                  onchange="document.getElementById('ann-form').action='/spoc/announce/'+this.value">
+            {% for event in events %}
+            <option value="{{ event.id }}">{{ event.title[:30] }}</option>
+            {% endfor %}
+          </select>
+          <input type="text" name="message" placeholder="Type your announcement…"
+                 class="form-control" style="font-size:13px;border-radius:8px;border:1px solid #e2e8f0;flex:1;min-width:200px;" required>
+          <select name="priority" class="form-select" style="max-width:130px;font-size:13px;border-radius:8px;border:1px solid #e2e8f0;">
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+            <option value="success">Success</option>
+          </select>
+          <button type="submit" style="background:#78350f;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;">
+            <i class="fas fa-paper-plane me-1"></i> Post
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script id="spoc-chart-data" type="application/json">{"labels":{{ chart_labels | tojson }},"regs":{{ chart_regs | tojson }},"present":{{ stats.present_count | default(0) }},"totalRegs":{{ stats.total_regs | default(0) }},"hasEvents":{{ 'true' if events else 'false' }}}</script>
+<script>
+var _cd = JSON.parse(document.getElementById('spoc-chart-data').textContent);
+
+if (_cd.hasEvents) {
+  // ── REGISTRATION BAR CHART ──────────────────────────────
+  var regCtx = document.getElementById('regChart');
+  if (regCtx) {
+    new Chart(regCtx, {
+      type: 'bar',
+      data: {
+        labels: _cd.labels,
+        datasets: [{
+          label: 'Registrations',
+          data: _cd.regs,
+          backgroundColor: _cd.labels.map(function(_, i) {
+            return i % 2 === 0 ? 'rgba(26,37,87,.8)' : 'rgba(201,164,94,.8)';
+          }),
+          borderRadius: 8,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { size: 11 } }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // ── ATTENDANCE DONUT ────────────────────────────────────
+  var present = _cd.present;
+  var pending  = Math.max(0, _cd.totalRegs - present);
+  var attCtx   = document.getElementById('attChart');
+  if (attCtx) {
+    new Chart(attCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Present', 'Pending'],
+        datasets: [{
+          data: [present, pending],
+          backgroundColor: ['rgba(22,163,74,.8)', 'rgba(226,232,240,1)'],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '72%',
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, boxWidth: 12 } } }
+      }
+    });
+  }
+}
+
+// ── END EVENT confirmation ─────────────────────────────────
+function confirmEndEvent(eventId, eventTitle) {
+  if (!confirm('End "' + eventTitle + '"?\n\nThis will mark the event as completed and send certificate emails to all checked-in attendees. This cannot be undone.')) return;
+  var form = document.getElementById('end-event-form');
+  form.action = '/spoc/end_event/' + eventId;
+  form.submit();
+}
+</script>
+
+<!-- Hidden form for End Event POST -->
+<form id="end-event-form" method="POST" style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+
+<!-- ── BLAST EMAIL MODAL ──────────────────────────────────── -->
+<div id="blastModal" style="display:none;position:fixed;inset:0;z-index:9999;
+     background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+     display:none;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:520px;
+              box-shadow:0 32px 64px rgba(0,0,0,.25);overflow:hidden;">
+    <!-- Header -->
+    <div style="background:#10b981;padding:20px 24px;display:flex;
+                align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;
+                    color:#fff;">Email All Registrants</div>
+        <div id="blastEventName" style="font-size:12px;color:rgba(255,255,255,.75);
+                                         margin-top:2px;"></div>
+      </div>
+      <button onclick="closeBlastModal()"
+              style="background:rgba(255,255,255,.2);border:none;color:#fff;
+                     width:32px;height:32px;border-radius:50%;font-size:16px;
+                     cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        ×
+      </button>
+    </div>
+    <!-- Body -->
+    <form id="blastForm" method="POST" style="padding:24px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px;font-weight:700;color:#64748b;
+                      text-transform:uppercase;letter-spacing:.5px;display:block;
+                      margin-bottom:6px;">Audience</label>
+        <div style="display:flex;gap:8px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;
+                        font-weight:600;cursor:pointer;">
+            <input type="radio" name="audience" value="confirmed" checked> Confirmed only
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;
+                        font-weight:600;cursor:pointer;">
+            <input type="radio" name="audience" value="all"> All registrants
+          </label>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px;font-weight:700;color:#64748b;
+                      text-transform:uppercase;letter-spacing:.5px;display:block;
+                      margin-bottom:6px;">Subject</label>
+        <input type="text" name="subject" required maxlength="150"
+               placeholder="e.g. Important update about the event"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:14px;outline:none;
+                      font-family:'Inter',sans-serif;transition:.15s;"
+               onfocus="this.style.borderColor='#10b981'"
+               onblur="this.style.borderColor='#e2e8f0'">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:700;color:#64748b;
+                      text-transform:uppercase;letter-spacing:.5px;display:block;
+                      margin-bottom:6px;">Message</label>
+        <textarea name="body" required rows="6" maxlength="5000"
+                  placeholder="Write your message here…"
+                  style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                         border-radius:10px;font-size:14px;outline:none;resize:vertical;
+                         font-family:'Inter',sans-serif;transition:.15s;"
+                  onfocus="this.style.borderColor='#10b981'"
+                  onblur="this.style.borderColor='#e2e8f0'"></textarea>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+          Each registrant receives a personalised email with their name.
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit"
+                style="flex:1;padding:12px;background:#10b981;color:#fff;
+                       font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;
+                       border:none;border-radius:10px;cursor:pointer;transition:.15s;">
+          <i class="fas fa-paper-plane me-2"></i>Send Emails
+        </button>
+        <button type="button" onclick="closeBlastModal()"
+                style="padding:12px 20px;background:#f1f5f9;color:#64748b;
+                       font-family:'Poppins',sans-serif;font-weight:600;font-size:14px;
+                       border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openBlastModal(eventId, eventTitle) {
+  document.getElementById('blastForm').action = '/spoc/blast_email/' + eventId;
+  document.getElementById('blastEventName').textContent = eventTitle;
+  var m = document.getElementById('blastModal');
+  m.style.display = 'flex';
+}
+function closeBlastModal() {
+  document.getElementById('blastModal').style.display = 'none';
+  document.getElementById('blastForm').reset();
+}
+document.getElementById('blastModal').addEventListener('click', function(e) {
+  if (e.target === this) closeBlastModal();
+});
+</script>
+
 </body>
 </html>

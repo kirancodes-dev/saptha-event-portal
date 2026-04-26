@@ -40,7 +40,8 @@ def init_scheduler(flask_app):
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.interval import IntervalTrigger
-        from tasks.scheduled_tasks import send_24h_reminders, run_event_lifecycle
+        from tasks.scheduled_tasks import (send_24h_reminders, send_3day_reminders,
+                                           run_event_lifecycle, check_registration_velocity)
 
         global _scheduler
         _scheduler = BackgroundScheduler(timezone='Asia/Kolkata')
@@ -53,9 +54,23 @@ def init_scheduler(flask_app):
             misfire_grace_time=600,
         )
         _scheduler.add_job(
+            func=lambda: _run_in_context(flask_app, send_3day_reminders),
+            trigger=IntervalTrigger(hours=1),
+            id='dev_3day_reminders',
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
+        _scheduler.add_job(
             func=lambda: _run_in_context(flask_app, run_event_lifecycle),
             trigger=IntervalTrigger(hours=6),
             id='dev_lifecycle',
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
+        _scheduler.add_job(
+            func=lambda: _run_in_context(flask_app, check_registration_velocity),
+            trigger=IntervalTrigger(hours=24),
+            id='dev_velocity_alert',
             replace_existing=True,
             misfire_grace_time=600,
         )

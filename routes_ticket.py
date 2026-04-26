@@ -68,18 +68,34 @@ def view_ticket(reg_id):
     event_doc = db.collection('events').document(reg.get('event_id', '')).get()
     event     = event_doc.to_dict() if event_doc.exists else {}
 
-    # Build verification URL (this is what gets encoded into the QR)
-    verify_url = f"{_base_url()}/ticket/verify/{reg_id}"
+    # QR is only available from 1 day before the event onwards
+    today_str      = datetime.datetime.now().strftime('%Y-%m-%d')
+    event_date_str = str(event.get('date', ''))[:10]
+    if event_date_str:
+        from datetime import date
+        try:
+            event_d = date.fromisoformat(event_date_str)
+            today_d = date.fromisoformat(today_str)
+            # Show QR only from 1 day before the event up to and including event day
+            show_qr = (event_d - datetime.timedelta(days=1)) <= today_d <= event_d
+        except ValueError:
+            show_qr = True
+    else:
+        show_qr = True
 
-    # Generate QR as base64 — embedded inline, no extra HTTP request needed
-    qr_b64 = generate_qr_base64(verify_url)
+    qr_b64 = verify_url = None
+    if show_qr:
+        verify_url = f"{_base_url()}/ticket/verify/{reg_id}"
+        qr_b64     = generate_qr_base64(verify_url)
 
     return render_template(
         'participant/ticket.html',
         reg=reg,
         event=event,
         qr_b64=qr_b64,
-        verify_url=verify_url
+        verify_url=verify_url,
+        show_qr=show_qr,
+        event_date=event_date_str,
     )
 
 
@@ -95,6 +111,22 @@ def qr_image(reg_id):
     reg_doc = db.collection('registrations').document(reg_id).get()
     if not reg_doc.exists:
         abort(404)
+
+    reg = reg_doc.to_dict()
+
+    # Gate QR: only serve from 1 day before event onwards
+    event_doc = db.collection('events').document(reg.get('event_id', '')).get()
+    if event_doc.exists:
+        event_date_str = str(event_doc.to_dict().get('date', ''))[:10]
+        if event_date_str:
+            try:
+                from datetime import date
+                event_d = date.fromisoformat(event_date_str)
+                today_d = date.today()
+                if not ((event_d - datetime.timedelta(days=1)) <= today_d <= event_d):
+                    abort(403)
+            except ValueError:
+                pass
 
     verify_url = f"{_base_url()}/ticket/verify/{reg_id}"
     return generate_qr_response(verify_url)

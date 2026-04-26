@@ -51,6 +51,40 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function (reg) {
+          // Request push permission and subscribe after a short delay
+          if (!('PushManager' in window)) return;
+          setTimeout(function () {
+            fetch('/push/vapid_public_key')
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                if (!d.key) return;
+                return Notification.requestPermission().then(function (perm) {
+                  if (perm !== 'granted') return;
+                  var key = d.key;
+                  var appKey = key.length % 4 ? key + '==='.slice(key.length % 4) : key;
+                  var raw = atob(appKey.replace(/-/g, '+').replace(/_/g, '/'));
+                  var arr = new Uint8Array(raw.length);
+                  for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+                  return reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: arr,
+                  });
+                });
+              })
+              .then(function (sub) {
+                if (!sub) return;
+                fetch('/push/subscribe', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json',
+                    'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' },
+                  credentials: 'same-origin',
+                  body: JSON.stringify(sub.toJSON()),
+                });
+              })
+              .catch(function () {});
+          }, 3000);
+        })
         .catch(function (err) { console.warn('SW registration failed:', err); });
     });
   }

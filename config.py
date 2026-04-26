@@ -29,7 +29,7 @@ class Config:
     # CSRF protection (Flask-WTF)
     WTF_CSRF_ENABLED       = True
     WTF_CSRF_SECRET_KEY    = os.environ.get('WTF_CSRF_SECRET_KEY') or SECRET_KEY
-    WTF_CSRF_TIME_LIMIT    = 3600  # 1 hour
+    WTF_CSRF_TIME_LIMIT    = None  # no expiry — token lives with the session
 
     # Enforce HTTPS via Talisman when explicitly set, otherwise production-only
     FORCE_HTTPS            = os.environ.get('FORCE_HTTPS', 'false').lower() == 'true' or _is_production

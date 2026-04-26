@@ -93,7 +93,10 @@ def handle_csrf_error(e):
                    e.description, request.path, request.remote_addr)
     if request.accept_mimetypes.best == 'application/json' or request.is_json:
         return jsonify({'error': 'csrf_validation_failed', 'detail': e.description}), 400
-    return render_template('429.html'), 400
+    from flask import flash
+    flash('Your session expired. Please try again.', 'warning')
+    referrer = request.referrer or request.url
+    return redirect(referrer), 302
 
 # Expose csrf_token() in Jinja globals (Flask-WTF does this automatically,
 # but make it explicit for clarity)

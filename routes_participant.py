@@ -142,6 +142,20 @@ def dashboard():
     except Exception:
         pass
 
+    # XP + badges from user profile
+    user_xp = 0
+    user_badges = []
+    try:
+        uid = session.get('user_id', '')
+        if uid:
+            u = db.collection('users').document(uid).get()
+            if u.exists:
+                ud = u.to_dict() or {}
+                user_xp     = int(ud.get('xp', 0) or 0)
+                user_badges = ud.get('badges', []) or []
+    except Exception:
+        pass
+
     return render_template(
         'participant/dashboard.html',
         active_tickets   = active_tickets,
@@ -150,6 +164,8 @@ def dashboard():
         calendar_events  = json.dumps(calendar_events),
         user_name        = session.get('name'),
         announcements    = announcements,
+        user_xp          = user_xp,
+        user_badges      = user_badges,
     )
 
 
@@ -289,7 +305,7 @@ def public_register(event_id):
             flash("Name and email are required.", "warning")
             return redirect(f'/forms/register/{event_id}')
 
-        # Duplicate check
+        # Duplicate check — redirect to their ticket if already registered
         existing = list(
             db.collection('registrations')
               .where(filter=_ff('event_id',   '==', event_id))
@@ -297,8 +313,58 @@ def public_register(event_id):
               .limit(1).stream()
         )
         if existing:
-            flash("You have already registered for this event.", "warning")
-            return redirect('/')
+            flash("You are already registered for this event. Here is your ticket.", "info")
+            return redirect(f"/ticket/{existing[0].id}")
+
+        # Waitlist check — if event is at capacity, add to waitlist instead
+        max_p = int((event_data.get('limits') or {}).get('max_participants', 0) or
+                    event_data.get('max_participants', 0) or 0)
+        current_count = int(event_data.get('registration_count', 0))
+        if max_p > 0 and current_count >= max_p:
+            # Check if already on waitlist
+            wl_existing = list(
+                db.collection('waitlist')
+                  .where(filter=_ff('event_id', '==', event_id))
+                  .where(filter=_ff('email', '==', email))
+                  .where(filter=_ff('status', '==', 'waiting'))
+                  .limit(1).stream()
+            )
+            if wl_existing:
+                flash("You are already on the waitlist for this event.", "info")
+                return redirect('/participant/dashboard')
+
+            # Count existing waitlist to get position
+            wl_count = len(list(
+                db.collection('waitlist')
+                  .where(filter=_ff('event_id', '==', event_id))
+                  .where(filter=_ff('status', '==', 'waiting'))
+                  .stream()
+            ))
+            wl_entry = {
+                'event_id':      event_id,
+                'event_title':   event_data.get('title', ''),
+                'email':         email,
+                'name':          full_name,
+                'phone':         phone,
+                'payment_status': 'Free' if not fee else 'Pending',
+                'amount_paid':   0,
+                'joined_at':     datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                'status':        'waiting',
+                'position':      wl_count + 1,
+                'reg_data':      {
+                    'event_id': event_id, 'event_title': event_data.get('title'),
+                    'lead_email': email, 'lead_name': full_name, 'lead_usn': usn,
+                    'lead_phone': phone, 'team_name': team_name,
+                    'members': [{'role': 'Team Leader', 'name': full_name, 'email': email, 'usn': usn}],
+                    'member_count': 1, 'attendance': 'Pending',
+                    'registered_at': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'is_eliminated': False, 'current_round': 1,
+                    'reg_id': f"REG-{int(time.time() * 1000)}",
+                },
+            }
+            db.collection('waitlist').add(wl_entry)
+            flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
+            return redirect('/participant/dashboard')
 
         # Auto-create account
         user_ref     = db.collection('users').document(email)
@@ -374,3 +440,89 @@ def public_register(event_id):
         import traceback; traceback.print_exc()
         flash(f"Registration failed: {exc}", "danger")
         return redirect('/')
+
+
+# =========================================================
+# 6. CANCEL REGISTRATION (triggers waitlist promotion)
+# =========================================================
+@participant_bp.route('/cancel/<reg_id>', methods=['POST'])
+@login_required
+@role_required('Student')
+def cancel_registration(reg_id):
+    reg_doc = db.collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        flash("Registration not found.", "danger")
+        return redirect('/participant/dashboard')
+
+    reg = reg_doc.to_dict()
+    if reg.get('lead_email') != session.get('user_id'):
+        flash("Unauthorised.", "danger")
+        return redirect('/participant/dashboard')
+
+    event_id = reg.get('event_id', '')
+
+    # Mark as cancelled
+    db.collection('registrations').document(reg_id).update({'status': 'Cancelled'})
+
+    # Decrement event count (floor at 0)
+    event_ref = db.collection('events').document(event_id)
+    event_doc = event_ref.get().to_dict() or {}
+    new_count = max(0, int(event_doc.get('registration_count', 1)) - 1)
+    event_ref.update({'registration_count': new_count})
+
+    # Trigger waitlist promotion
+    try:
+        from tasks.waitlist_tasks import promote_from_waitlist
+        promote_from_waitlist.delay(event_id)
+    except Exception:
+        pass
+
+    log_action(db, "REGISTRATION_CANCELLED", f"{session.get('user_id')} cancelled {reg_id}")
+    flash("Your registration has been cancelled.", "info")
+    return redirect('/participant/dashboard')
+
+
+# =========================================================
+# 7. WAITLIST STATUS (JSON — for dashboard badge)
+# =========================================================
+@participant_bp.route('/waitlist_status')
+@login_required
+@role_required('Student')
+def waitlist_status():
+    email = session.get('user_id')
+    entries = list(
+        db.collection('waitlist')
+          .where(filter=_ff('email', '==', email))
+          .where(filter=_ff('status', '==', 'waiting'))
+          .stream()
+    )
+    result = []
+    for e in entries:
+        d = e.to_dict()
+        result.append({
+            'event_title': d.get('event_title', ''),
+            'event_id':    d.get('event_id', ''),
+            'position':    d.get('position', '?'),
+        })
+    return jsonify(result)
+
+
+# =========================================================
+# 8. PARTICIPANT BADGE CARD
+# =========================================================
+@participant_bp.route('/badge/<reg_id>')
+@login_required
+@role_required('Student')
+def badge_card(reg_id):
+    reg_doc = db.collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        flash("Registration not found.", "danger")
+        return redirect('/participant/dashboard')
+
+    reg = reg_doc.to_dict()
+    if reg.get('lead_email') != session.get('user_id'):
+        flash("Unauthorised.", "danger")
+        return redirect('/participant/dashboard')
+
+    event = db.collection('events').document(reg['event_id']).get().to_dict() or {}
+    return render_template('participant/badge.html', reg=reg, event=event, reg_id=reg_id)

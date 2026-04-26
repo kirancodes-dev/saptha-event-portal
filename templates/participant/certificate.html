@@ -137,7 +137,7 @@
         @media print {
             body { background: white; }
             .cert-container { box-shadow: none; border: 15px solid #1a2557; margin: 0; }
-            .print-btn { display: none; }
+            .print-btn, .no-print { display: none; }
             @page { size: landscape; margin: 0mm; }
         }
     </style>
@@ -170,6 +170,12 @@
     </div>
 
     <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
+
+    <div style="max-width:680px;margin:16px auto;padding:0 20px;" class="no-print">
+      {% set share_title = "I earned a certificate for " ~ event.title ~ " at Sapthagiri NPS University! #SapthaEvent #SNPSU" %}
+      {% set share_label = "Share your certificate" %}
+      {% include 'includes/share_strip.html' %}
+    </div>
 
 </body>
 </html>

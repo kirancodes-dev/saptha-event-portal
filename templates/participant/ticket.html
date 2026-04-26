@@ -361,7 +361,8 @@
                 </div>
                 {% endif %}
 
-                <!-- QR Code -->
+                <!-- QR Code — only shown from 1 day before event -->
+                {% if show_qr and qr_b64 %}
                 <div class="qr-section">
                     <div class="qr-label">Scan at venue entry</div>
                     <div class="qr-wrapper">
@@ -370,6 +371,19 @@
                     </div>
                     <div class="ticket-id">{{ reg.get('reg_id', 'N/A') }}</div>
                 </div>
+                {% else %}
+                <div style="text-align:center;padding:20px 0;">
+                    <div style="font-size:40px;margin-bottom:10px;">🔒</div>
+                    <div style="font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+                        Entry Ticket Locked
+                    </div>
+                    <div style="font-size:13px;color:#64748b;margin-top:8px;line-height:1.6;">
+                        Your QR entry ticket will be emailed and<br>
+                        unlocked here <strong>1 day before the event</strong>
+                        {% if event_date %} ({{ event_date }}){% endif %}.
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Status -->
                 <div class="status-banner {{ 'confirmed' if reg.get('status') == 'Confirmed' else 'pending' }}">
@@ -403,6 +417,11 @@
                 <i class="fas fa-arrow-left me-1"></i> Dashboard
             </a>
         </div>
+
+        <!-- Share strip -->
+        {% set share_title = "I'm registered for " ~ event.title ~ " at Sapthagiri NPS University! #SapthaEvent" %}
+        {% set share_label = "Share your ticket" %}
+        {% include 'includes/share_strip.html' %}
 
     </div><!-- /wrapper -->
 </body>

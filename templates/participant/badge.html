@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Badge | {{ reg.lead_name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Poppins',sans-serif;padding:24px;}
+
+/* ─── Badge card ─── */
+.badge-card{
+  width:380px;
+  background:linear-gradient(145deg,#1a2557 0%,#0f1a3e 60%,#1a3a6b 100%);
+  border-radius:22px;
+  overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.4);
+  position:relative;
+}
+
+/* Decorative circles */
+.badge-card::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:200px;height:200px;border-radius:50%;
+  background:rgba(201,164,94,.08);
+}
+.badge-card::after{
+  content:'';position:absolute;bottom:-40px;left:-40px;
+  width:160px;height:160px;border-radius:50%;
+  background:rgba(255,255,255,.04);
+}
+
+.badge-top{
+  background:var(--orange);
+  padding:10px 20px;
+  display:flex;align-items:center;gap:10px;
+}
+.badge-top img{height:28px;width:auto;object-fit:contain;filter:brightness(0) invert(1);}
+.badge-top-text{font-size:11px;font-weight:700;color:#fff;letter-spacing:1.5px;text-transform:uppercase;}
+
+.badge-body{padding:28px 28px 24px;position:relative;z-index:1;}
+
+.badge-avatar{
+  width:72px;height:72px;border-radius:50%;
+  background:rgba(201,164,94,.2);border:3px solid var(--orange);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:28px;font-weight:700;color:var(--orange);
+  margin:0 auto 16px;
+}
+
+.badge-name{
+  font-family:'Cinzel',serif;font-size:22px;font-weight:700;
+  color:#fff;text-align:center;letter-spacing:1px;line-height:1.2;
+  margin-bottom:4px;
+}
+
+.badge-role{
+  text-align:center;font-size:11px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--orange);margin-bottom:20px;
+}
+
+.badge-divider{height:1px;background:rgba(201,164,94,.25);margin-bottom:18px;}
+
+.badge-event-name{
+  font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;
+  color:#fff;text-align:center;margin-bottom:6px;line-height:1.3;
+}
+
+.badge-meta{
+  display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;
+}
+.badge-meta-item{
+  font-size:11.5px;color:rgba(255,255,255,.6);
+  display:flex;align-items:center;gap:5px;
+}
+.badge-meta-item i{color:var(--orange);font-size:10px;}
+
+.badge-id{
+  text-align:center;font-family:monospace;font-size:10.5px;
+  color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:0;
+}
+
+.badge-footer{
+  background:rgba(0,0,0,.25);padding:10px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:relative;z-index:1;
+}
+.badge-footer-brand{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.5px;}
+.badge-status{
+  font-size:10px;font-weight:700;padding:3px 10px;border-radius:100px;
+  background:rgba(34,197,94,.15);color:#4ade80;letter-spacing:.5px;
+  text-transform:uppercase;
+}
+
+/* Action bar outside card */
+.action-bar{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;justify-content:center;}
+.btn-dl{
+  background:var(--blue);color:#fff;border:none;padding:10px 22px;border-radius:50px;
+  font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px;transition:.2s;
+}
+.btn-dl:hover{background:#0f1a3e;color:#fff;}
+.btn-back{
+  background:#fff;color:var(--blue);border:1px solid #e2e8f0;padding:10px 22px;border-radius:50px;
+  font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px;transition:.2s;
+}
+.btn-back:hover{background:#f1f5f9;}
+
+@media print{
+  body{background:white;padding:0;}
+  .action-bar{display:none;}
+  .badge-card{box-shadow:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="badge-card" id="badge-card">
+
+  <!-- Top stripe -->
+  <div class="badge-top">
+    <img src="/static/snpsu-logo.png" alt="SNPSU"
+         onerror="this.style.display='none'">
+    <span class="badge-top-text">Sapthagiri NPS University</span>
+  </div>
+
+  <!-- Main body -->
+  <div class="badge-body">
+
+    <!-- Avatar -->
+    <div class="badge-avatar">
+      {{ reg.get('lead_name', 'P')[0].upper() }}
+    </div>
+
+    <!-- Name -->
+    <div class="badge-name">{{ reg.get('lead_name', 'Participant') }}</div>
+    <div class="badge-role">
+      {% if reg.get('team_name') and reg.team_name != 'Individual' %}
+        {{ reg.team_name }} &nbsp;·&nbsp;
+      {% endif %}
+      Participant
+    </div>
+
+    <div class="badge-divider"></div>
+
+    <!-- Event info -->
+    <div class="badge-event-name">{{ event.get('title', 'Event') }}</div>
+    <div class="badge-meta">
+      {% if event.get('date') %}
+      <div class="badge-meta-item"><i class="fas fa-calendar-alt"></i>{{ event.date }}</div>
+      {% endif %}
+      {% if event.get('venue') %}
+      <div class="badge-meta-item"><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</div>
+      {% endif %}
+      {% if event.get('category') %}
+      <div class="badge-meta-item"><i class="fas fa-tag"></i>{{ event.category }}</div>
+      {% endif %}
+    </div>
+
+    <div class="badge-id">{{ reg.get('reg_id', reg_id) }}</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="badge-footer">
+    <span class="badge-footer-brand">SapthaEvent Portal</span>
+    <span class="badge-status">Registered</span>
+  </div>
+
+</div>
+
+<div class="action-bar">
+  <button class="btn-dl" onclick="window.print()">
+    <i class="fas fa-download"></i> Save / Print
+  </button>
+  <a href="/participant/dashboard" class="btn-back">
+    <i class="fas fa-arrow-left"></i> Dashboard
+  </a>
+</div>
+
+<!-- Share strip -->
+<div style="max-width:400px;margin:16px auto 0;" class="no-print">
+  {% set share_title = "I'm participating in " ~ event.get('title','') ~ " at Sapthagiri NPS University! #SapthaEvent #SNPSU" %}
+  {% set share_label = "Share your badge" %}
+  {% include 'includes/share_strip.html' %}
+</div>
+
+</body>
+</html>

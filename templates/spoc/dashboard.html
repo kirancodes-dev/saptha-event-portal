@@ -65,12 +65,63 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
 /* Reg count bar */
 .reg-bar-wrap{display:flex;align-items:center;gap:8px;}
-.reg-bar{flex:1;height:5px;background:#f1f5f9;border-radius:100px;overflow:hidden;min-width:60px;}
-.reg-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--orange));border-radius:100px;}
+.reg-bar{flex:1;height:6px;background:#f1f5f9;border-radius:100px;overflow:hidden;}
+.reg-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--orange));border-radius:100px;transition:width .4s;}
 .reg-count{font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--blue);}
 
 /* Flash messages */
 .flash-box{border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;}
+
+/* ── EVENT CARDS ─────────────────────────────────────────── */
+.event-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 2px 8px rgba(26,37,87,.05);transition:.2s;}
+.event-card:hover{box-shadow:0 6px 24px rgba(26,37,87,.1);}
+.event-card-header{padding:20px 24px 16px;border-bottom:1px solid #f1f5f9;}
+.event-title{font-family:'Poppins',sans-serif;font-weight:800;font-size:17px;color:var(--blue);margin:0 0 6px;}
+.event-meta{font-size:12.5px;color:#64748b;display:flex;flex-wrap:wrap;align-items:center;gap:4px;}
+.event-meta span{display:flex;align-items:center;}
+.status-active{display:inline-flex;align-items:center;background:rgba(22,163,74,.12);color:#16a34a;font-size:11.5px;font-weight:700;padding:4px 12px;border-radius:100px;white-space:nowrap;}
+.status-completed{display:inline-flex;align-items:center;background:rgba(100,116,139,.12);color:#64748b;font-size:11.5px;font-weight:700;padding:4px 12px;border-radius:100px;white-space:nowrap;}
+
+/* Action groups */
+.event-actions{padding:0 24px 20px;}
+.action-group{padding:16px 0;border-bottom:1px solid #f8fafc;}
+.action-group:last-child{border-bottom:none;padding-bottom:0;}
+.action-group-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;}
+.action-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+
+/* Action button variants */
+.action-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;border:1.5px solid transparent;cursor:pointer;text-decoration:none;transition:.15s;white-space:nowrap;font-family:'Inter',sans-serif;line-height:1.2;}
+.btn-outline{background:#fff;border-color:#e2e8f0;color:#475569;}
+.btn-outline:hover{background:var(--blue);border-color:var(--blue);color:#fff;}
+.btn-green{background:#16a34a;border-color:#16a34a;color:#fff;}
+.btn-green:hover{background:#15803d;border-color:#15803d;color:#fff;}
+.btn-purple{background:#7c3aed;border-color:#7c3aed;color:#fff;}
+.btn-purple:hover{background:#6d28d9;border-color:#6d28d9;color:#fff;}
+.btn-cyan{background:#0891b2;border-color:#0891b2;color:#fff;}
+.btn-cyan:hover{background:#0e7490;border-color:#0e7490;color:#fff;}
+.btn-emerald{background:#10b981;border-color:#10b981;color:#fff;}
+.btn-emerald:hover{background:#059669;border-color:#059669;color:#fff;}
+.btn-teal-on{background:#0d9488;border-color:#0d9488;color:#fff;}
+.btn-teal-on:hover{background:#0f766e;border-color:#0f766e;color:#fff;}
+.btn-red{background:#dc2626;border-color:#dc2626;color:#fff;}
+.btn-red:hover{background:#b91c1c;border-color:#b91c1c;color:#fff;}
+.btn-amber{background:#f59e0b;border-color:#f59e0b;color:#fff;}
+.btn-amber:hover{background:#d97706;border-color:#d97706;color:#fff;}
+
+/* Coordinator chip */
+.coord-chip{display:inline-flex;align-items:center;gap:5px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600;padding:4px 10px;border-radius:100px;}
+
+/* Danger zone */
+.danger-zone{background:#fff8f8;margin:0 -24px;padding:14px 24px;border-top:1px solid #fee2e2!important;border-bottom:none!important;}
+
+/* Registration fill colour states */
+.reg-fill{width:var(--fill-w,0%);}
+.reg-fill-low{background:linear-gradient(90deg,var(--blue),var(--orange));}
+.reg-fill-mid{background:linear-gradient(90deg,#f59e0b,#fbbf24);}
+.reg-fill-high{background:linear-gradient(90deg,#dc2626,#f87171);}
+.fill-pct-low{color:#16a34a;}
+.fill-pct-mid{color:#f59e0b;}
+.fill-pct-high{color:#dc2626;}
 </style>
 </head>
 <body>
@@ -173,112 +224,180 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 </div>
 {% endif %}
 
-<!-- EVENTS TABLE -->
-<div class="ev-table-card">
-  <div class="ev-table-header">
-    <h6><i class="fas fa-list me-2"></i>Your Events</h6>
-    <span style="font-size:12px;color:rgba(255,255,255,.6);">{{ events | length }} event{{ 's' if events | length != 1 }}</span>
+<!-- EVENTS CARDS -->
+<div class="mb-2">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 style="color:var(--blue);font-family:'Poppins',sans-serif;font-weight:800;margin:0;">
+      <i class="fas fa-calendar-alt me-2" style="color:var(--orange);"></i>Your Events
+    </h5>
+    <span style="background:var(--blue);color:#fff;font-size:12px;font-weight:700;padding:5px 14px;border-radius:100px;">
+      {{ events|length }} Event{{ 's' if events|length != 1 }}
+    </span>
   </div>
+
   {% if events %}
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Date</th>
-          <th>Registrations</th>
-          <th>Status</th>
-          <th class="text-end pe-3">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for event in events %}
-        {% set max_p = (event.limits or {}).get('max_participants', 0) %}
-        {% set rc = event.registration_count | default(0) %}
-        <tr>
-          <td>
-            <div class="ev-title-cell">{{ event.title }}</div>
-            <div class="ev-cat">{{ event.category }}</div>
-          </td>
-          <td style="font-size:13px;color:#64748b;">{{ event.date | default('TBA') }}</td>
-          <td>
-            <div class="reg-bar-wrap">
-              <span class="reg-count">{{ rc }}</span>
-              {% if max_p > 0 %}
-              <div class="reg-bar">
-                <div class="reg-fill" style="width:{{ [(rc / max_p * 100)|int, 100] | min }}%;"></div>
-              </div>
-              <span style="font-size:11px;color:#94a3b8;">/ {{ max_p }}</span>
+    {% for event in events %}
+    {% set max_p = (event.limits or {}).get('max_participants', 0) %}
+    {% set rc = event.registration_count | default(0) %}
+    {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}
+
+    <div class="event-card mb-3">
+
+      <!-- ── Card Header: title, meta, status, reg bar ── -->
+      <div class="event-card-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div style="flex:1;min-width:0;">
+            <h5 class="event-title">{{ event.title }}</h5>
+            <div class="event-meta">
+              <span><i class="fas fa-tag me-1" style="color:var(--orange);"></i>{{ event.category }}</span>
+              &nbsp;·&nbsp;
+              <span><i class="fas fa-calendar me-1" style="color:var(--blue);"></i>{{ event.date | default('TBA') }}</span>
+              {% if event.get('venue') %}
+              &nbsp;·&nbsp;
+              <span><i class="fas fa-map-marker-alt me-1" style="color:#dc2626;"></i>{{ event.venue }}</span>
+              {% endif %}
+              {% if event.get('time') %}
+              &nbsp;·&nbsp;
+              <span><i class="fas fa-clock me-1" style="color:#7c3aed;"></i>{{ event.time }}</span>
               {% endif %}
             </div>
-          </td>
-          <td>
-            <span class="{{ 'badge-active' if event.status == 'active' else 'badge-completed' }}">
-              {{ event.status | capitalize }}
+          </div>
+          <span class="{{ 'status-active' if event.status == 'active' else 'status-completed' }}">
+            <i class="fas fa-{{ 'circle fa-xs' if event.status == 'active' else 'check-circle' }} me-1"></i>
+            {{ event.status | capitalize }}
+          </span>
+        </div>
+
+        <!-- Registration fill bar -->
+        <div class="mt-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span style="font-size:12px;color:#64748b;font-weight:600;">Registrations</span>
+            <span style="font-size:12px;font-weight:800;color:var(--blue);">
+              {{ rc }}{% if max_p > 0 %} <span style="color:#94a3b8;font-weight:500;">/ {{ max_p }} seats</span>{% endif %}
+              {% if max_p > 0 %}&nbsp;<span class="fill-pct-{{ 'high' if fill_pct >= 90 else ('mid' if fill_pct >= 70 else 'low') }}" style="font-size:11px;">{{ fill_pct }}%</span>{% endif %}
             </span>
-          </td>
-          <td class="text-end pe-3">
-            <div class="d-flex gap-1 justify-content-end">
-              <a href="/spoc/scan/{{ event.id }}" class="btn-tbl scan" title="QR Scanner"><i class="fas fa-qrcode"></i></a>
-              <a href="/live/{{ event.id }}" target="_blank" class="btn-tbl"
-                 title="Live Leaderboard (projector view)"
-                 style="background:#7c3aed;border-color:#7c3aed;color:#fff;">
-                <i class="fas fa-broadcast-tower"></i>
-              </a>
-              <a href="/spoc/agenda/{{ event.id }}" class="btn-tbl" title="Edit Schedule"><i class="fas fa-calendar-check"></i></a>
-              <a href="/spoc/export_csv/{{ event.id }}" class="btn-tbl" title="Export CSV"><i class="fas fa-download"></i></a>
-              <a href="/spoc/results/{{ event.id }}" class="btn-tbl" title="Results"><i class="fas fa-trophy"></i></a>
-              <a href="/spoc/ai_report/{{ event.id }}" class="btn-tbl"
-                 title="AI Event Report"
-                 style="background:#0891b2;border-color:#0891b2;color:#fff;">
-                <i class="fas fa-robot"></i>
-              </a>
-              <button class="btn-tbl" title="Email All Registrants"
-                style="background:#10b981;border-color:#10b981;color:#fff;"
-                onclick="openBlastModal('{{ event.id }}', '{{ event.title | e }}')">
-                <i class="fas fa-paper-plane"></i>
+          </div>
+          {% if max_p > 0 %}
+          <div class="reg-bar" style="height:7px;">
+            <div class="reg-fill reg-fill-{{ 'high' if fill_pct >= 90 else ('mid' if fill_pct >= 70 else 'low') }}" data-fill="{{ fill_pct }}"></div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ── Action Groups ── -->
+      <div class="event-actions">
+
+        <!-- Group 1: Live & Attendance -->
+        <div class="action-group">
+          <div class="action-group-label">
+            <i class="fas fa-broadcast-tower me-1" style="color:#7c3aed;"></i>Live &amp; Attendance
+          </div>
+          <div class="action-btns">
+            <a href="/spoc/scan/{{ event.id }}" class="action-btn btn-green">
+              <i class="fas fa-qrcode"></i> QR Scanner
+            </a>
+            <a href="/live/{{ event.id }}" target="_blank" class="action-btn btn-purple">
+              <i class="fas fa-broadcast-tower"></i> Live Leaderboard
+            </a>
+            {% if event.status == 'active' %}
+            <form method="POST" action="/checkin/toggle/{{ event.id }}" style="display:contents;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="action-btn {{ 'btn-teal-on' if event.get('allow_self_checkin') else 'btn-outline' }}">
+                <i class="fas fa-{{ 'toggle-on' if event.get('allow_self_checkin') else 'toggle-off' }}"></i>
+                Self Check-in {% if event.get('allow_self_checkin') %}<strong>ON</strong>{% else %}OFF{% endif %}
               </button>
-              <form method="POST" action="/spoc/clone_event/{{ event.id }}" style="display:inline;"
-                    onsubmit="return confirm('Clone this event? You can edit the date and details after.')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-tbl" title="Clone Event">
-                  <i class="fas fa-copy"></i>
-                </button>
-              </form>
-              {% if event.status == 'active' %}
-              <form method="POST" action="/checkin/toggle/{{ event.id }}" style="display:inline;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit"
-                  class="btn-tbl{{ ' btn-tbl-sc-on' if event.get('allow_self_checkin') else '' }}"
-                  title="{{ 'Disable Self Check-in' if event.get('allow_self_checkin') else 'Enable Self Check-in' }}">
-                  <i class="fas fa-{{ 'toggle-on' if event.get('allow_self_checkin') else 'toggle-off' }}"></i>
-                </button>
-              </form>
-              {% if event.get('allow_self_checkin') %}
-              <a href="/checkin/venue_qr/{{ event.id }}" target="_blank" class="btn-tbl"
-                 title="Venue QR Code (display at entrance)" style="background:#7c3aed;border-color:#7c3aed;color:#fff;">
-                <i class="fas fa-qrcode"></i>
-              </a>
-              {% endif %}
-              <button class="btn-tbl" title="End Event &amp; Send Certificates"
-                style="background:#dc2626;border-color:#dc2626;color:#fff;"
-                onclick="confirmEndEvent('{{ event.id }}', '{{ event.title | e }}')">
-                <i class="fas fa-flag-checkered"></i>
+            </form>
+            {% if event.get('allow_self_checkin') %}
+            <a href="/checkin/venue_qr/{{ event.id }}" target="_blank" class="action-btn btn-amber">
+              <i class="fas fa-qrcode"></i> Venue QR Code
+            </a>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Group 2: Event Management -->
+        <div class="action-group">
+          <div class="action-group-label">
+            <i class="fas fa-sliders-h me-1" style="color:var(--orange);"></i>Event Management
+          </div>
+          <div class="action-btns">
+            <a href="/spoc/agenda/{{ event.id }}" class="action-btn btn-outline">
+              <i class="fas fa-calendar-check"></i> Schedule / Agenda
+            </a>
+            <a href="/spoc/results/{{ event.id }}" class="action-btn btn-outline">
+              <i class="fas fa-trophy"></i> Results &amp; Scores
+            </a>
+            <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline">
+              <i class="fas fa-file-csv"></i> Export Attendees CSV
+            </a>
+            <a href="/spoc/ai_report/{{ event.id }}" class="action-btn btn-cyan">
+              <i class="fas fa-robot"></i> AI Event Report
+            </a>
+            <button class="action-btn btn-emerald"
+                    onclick="openBlastModal('{{ event.id }}', '{{ event.title | e }}')">
+              <i class="fas fa-paper-plane"></i> Blast Email
+            </button>
+            <form method="POST" action="/spoc/clone_event/{{ event.id }}" style="display:contents;"
+                  onsubmit="return confirm('Clone \'{{ event.title | e }}\'? You can edit the date and details after.')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="action-btn btn-outline">
+                <i class="fas fa-copy"></i> Clone Event
               </button>
-              {% endif %}
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Group 3: Coordinators -->
+        <div class="action-group">
+          <div class="action-group-label">
+            <i class="fas fa-user-tie me-1" style="color:#1d4ed8;"></i>Assigned Coordinators
+          </div>
+          <div class="action-btns">
+            {% set coords = event.get('coordinators', []) %}
+            {% if coords %}
+              {% for coord_email in coords %}
+              <span class="coord-chip">
+                <i class="fas fa-user-check"></i>{{ coord_email }}
+              </span>
+              {% endfor %}
+            {% else %}
+              <span style="font-size:12.5px;color:#94a3b8;font-style:italic;">
+                <i class="fas fa-info-circle me-1"></i>No coordinators assigned — contact admin to assign one.
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Group 4: End Event (active only) -->
+        {% if event.status == 'active' %}
+        <div class="action-group danger-zone">
+          <div class="action-group-label" style="color:#dc2626;">
+            <i class="fas fa-exclamation-triangle me-1"></i>Danger Zone
+          </div>
+          <div class="action-btns">
+            <button class="action-btn btn-red"
+                    onclick="confirmEndEvent('{{ event.id }}', '{{ event.title | e }}')">
+              <i class="fas fa-flag-checkered"></i> End Event &amp; Send Certificates
+            </button>
+            <span style="font-size:11.5px;color:#94a3b8;align-self:center;">
+              Marks event complete, awards XP/badges, emails certificates to all attendees.
+            </span>
+          </div>
+        </div>
+        {% endif %}
+
+      </div><!-- /event-actions -->
+    </div><!-- /event-card -->
+    {% endfor %}
+
   {% else %}
-  <div style="text-align:center;padding:60px 24px;">
-    <i class="fas fa-calendar-plus" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:16px;"></i>
-    <h5 style="color:var(--blue);font-family:'Poppins',sans-serif;">No Events Yet</h5>
-    <p style="color:#94a3b8;font-size:13px;">Create your first event to get started.</p>
-    <a href="/spoc/create_event" style="background:var(--blue);color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;display:inline-block;">
+  <div style="text-align:center;padding:60px 24px;background:#fff;border-radius:16px;border:1px solid #e2e8f0;">
+    <i class="fas fa-calendar-plus" style="font-size:48px;color:#cbd5e1;display:block;margin-bottom:20px;"></i>
+    <h5 style="color:var(--blue);font-family:'Poppins',sans-serif;font-weight:800;">No Events Yet</h5>
+    <p style="color:#94a3b8;font-size:13px;margin-bottom:20px;">Create your first event to get started.</p>
+    <a href="/spoc/create_event" style="background:var(--blue);color:#fff;padding:11px 28px;border-radius:9px;text-decoration:none;font-weight:700;font-size:13.5px;display:inline-block;">
       <i class="fas fa-plus me-1"></i> Create Event
     </a>
   </div>
@@ -382,6 +501,11 @@ if (_cd.hasEvents) {
     });
   }
 }
+
+// ── REG FILL BARS ─────────────────────────────────────────
+document.querySelectorAll('.reg-fill[data-fill]').forEach(function(el) {
+  el.style.setProperty('--fill-w', el.dataset.fill + '%');
+});
 
 // ── END EVENT confirmation ─────────────────────────────────
 function confirmEndEvent(eventId, eventTitle) {

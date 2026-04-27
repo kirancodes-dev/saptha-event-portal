@@ -12,14 +12,14 @@
     
     <style>
         :root {
-            --bg-body: #f8f9fa;
-            --bg-card: #ffffff;
-            --bg-input: #ffffff;
-            --primary: var(--blue);
+            --bg-body: #0d1525;
+            --bg-card: #1a2335;
+            --bg-input: #0f1c2e;
+            --primary: #1a2557;
             --primary-hover: #0a2352;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #2d3d55;
             --success: #10b981;
             --blue: #1a2557;
             --orange: #c9a45e;
@@ -32,38 +32,39 @@
             padding-bottom: 100px;
         }
 
-        /* --- VISIBILITY FIX FOR INPUTS --- */
+        /* --- INPUTS --- */
         .form-control, .form-select {
             background-color: var(--bg-input) !important;
             border: 1px solid var(--border) !important;
-            color: #ffffff !important; /* Force White Text */
+            color: #e2e8f0 !important;
             padding: 12px;
             border-radius: 8px;
             font-weight: 500;
         }
+        .form-control option, .form-select option { background: #1a2335; color: #e2e8f0; }
 
         /* Visible Placeholders */
         .form-control::placeholder {
-            color: #94a3b8 !important;
+            color: #64748b !important;
             opacity: 1;
         }
 
         .form-control:focus, .form-select:focus {
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
-            color: white !important;
+            border-color: var(--orange) !important;
+            box-shadow: 0 0 0 2px rgba(201,164,94, 0.25) !important;
+            color: #f1f5f9 !important;
             background-color: var(--bg-input) !important;
         }
 
         /* Wizard Progress Bar */
         .wizard-progress {
-            background: var(--bg-card);
+            background: #111827;
             border-bottom: 1px solid var(--border);
             padding: 20px 0;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
         }
         
         .step-indicators {
@@ -147,14 +148,14 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            color: white;
+            color: #e2e8f0;
         }
-        .section-title i { color: var(--primary); }
+        .section-title i { color: var(--orange); }
 
         .form-label {
             font-size: 0.85rem;
             font-weight: 600;
-            color: #fbbf24; /* Gold color for labels */
+            color: #c9a45e;
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -222,7 +223,7 @@
         </div>
     </div>
 
-    <form action="/spoc/create_event" method="POST" id="mainForm" class="wizard-container">
+    <form action="/spoc/create_event" method="POST" id="mainForm" class="wizard-container" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <div class="wizard-step-content active" id="step-1">
@@ -522,21 +523,30 @@
             window.scrollTo(0,0);
         }
 
-        // 2. Simple Validation
+        // 2. Validation — only title is mandatory; all other fields can be filled later
         function validateStep(step) {
-            const container = document.getElementById(`step-${step}`);
-            const inputs = container.querySelectorAll('input[required], select[required], textarea[required]');
-            let valid = true;
-            inputs.forEach(input => {
-                if(!input.value) {
-                    input.style.borderColor = '#ef4444';
-                    valid = false;
-                } else {
-                    input.style.borderColor = '#64748b';
+            if (step === 1) {
+                const titleInput = document.querySelector('[name="title"]');
+                if (!titleInput || !titleInput.value.trim()) {
+                    titleInput && (titleInput.style.borderColor = '#ef4444');
+                    titleInput && titleInput.focus();
+                    showToast('Event title is required to continue.', 'error');
+                    return false;
                 }
-            });
-            if(!valid) alert('Please fill in all required fields marked with *');
-            return valid;
+                titleInput.style.borderColor = '';
+            }
+            return true; // all other steps are freely skippable
+        }
+
+        function showToast(msg, type) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+                background:${type==='error'?'#dc2626':'#10b981'};color:#fff;padding:10px 22px;
+                border-radius:8px;font-weight:600;font-size:14px;z-index:9999;
+                box-shadow:0 4px 16px rgba(0,0,0,.4);`;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
         }
 
         // 3. Dynamic Rows: SPONSORS

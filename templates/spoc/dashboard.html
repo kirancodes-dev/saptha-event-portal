@@ -122,6 +122,17 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .fill-pct-low{color:#16a34a;}
 .fill-pct-mid{color:#f59e0b;}
 .fill-pct-high{color:#dc2626;}
+/* cert modal per-type colours */
+.ct-participation{color:#6366f1;}.ct-participation-border{border:1.5px dashed #6366f1;background:#eef2ff;}
+.ct-winner1{color:#d97706;}.ct-winner1-border{border:1.5px dashed #d97706;background:#fffbeb;}
+.ct-winner2{color:#64748b;}.ct-winner2-border{border:1.5px dashed #94a3b8;background:#f8fafc;}
+.ct-winner3{color:#b45309;}.ct-winner3-border{border:1.5px dashed #b45309;background:#fefce8;}
+/* spoc modal overlay */
+.spoc-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;}
+.spoc-modal.open{display:flex!important;}
+.spoc-modal-box{background:#fff;border-radius:18px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 32px 64px rgba(0,0,0,.25);}
+.spoc-modal-hdr{padding:18px 22px;display:flex;align-items:center;justify-content:space-between;color:#fff;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;border-radius:18px 18px 0 0;}
+.spoc-modal-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;line-height:1;}
 </style>
 </head>
 <body>
@@ -241,7 +252,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
     {% set rc = event.registration_count | default(0) %}
     {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}
 
-    <div class="event-card mb-3">
+    <div class="event-card mb-3" id="event-{{ event.id }}">
 
       <!-- ── Card Header: title, meta, status, reg bar ── -->
       <div class="event-card-header">
@@ -346,6 +357,18 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                 <i class="fas fa-copy"></i> Clone Event
               </button>
             </form>
+            <a href="/forms/builder/{{ event.id }}" class="action-btn btn-outline" style="background:#e0e7ff;border-color:#818cf8;color:#4338ca;">
+              <i class="fas fa-wpforms"></i>
+              {{ 'Edit Form' if event.get('has_custom_form') else 'Build Form' }}
+            </a>
+            <a href="/spoc/edit_event/{{ event.id }}" class="action-btn btn-outline">
+              <i class="fas fa-edit"></i> Edit Details
+            </a>
+            <a href="/spoc/delete_event/{{ event.id }}"
+               class="action-btn btn-outline" style="background:#fff1f2;border-color:#fda4af;color:#dc2626;"
+               onclick="return confirm('Delete \'{{ event.title | e }}\' and all its data? This cannot be undone.')">
+              <i class="fas fa-trash"></i> Delete Event
+            </a>
           </div>
         </div>
 
@@ -370,7 +393,40 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
           </div>
         </div>
 
-        <!-- Group 4: End Event (active only) -->
+        <!-- Group 4: Judge & Room Setup -->
+        <div class="action-group">
+          <div class="action-group-label">
+            <i class="fas fa-gavel me-1" style="color:#0891b2;"></i>Judges &amp; Rooms
+          </div>
+          <div class="action-btns">
+            <!-- OpenHall toggle -->
+            <form method="POST" action="/spoc/toggle_openhall/{{ event.id }}" style="display:contents;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="action-btn {{ 'btn-teal-on' if event.get('open_hall_mode') else 'btn-outline' }}"
+                      title="OpenHall = every judge scores every team; avg shown live">
+                <i class="fas fa-{{ 'toggle-on' if event.get('open_hall_mode') else 'toggle-off' }}"></i>
+                OpenHall {% if event.get('open_hall_mode') %}<strong>ON</strong>{% else %}OFF{% endif %}
+              </button>
+            </form>
+            <!-- Judge CSV upload -->
+            <button class="action-btn btn-outline" style="background:#f0f9ff;border-color:#7dd3fc;color:#0369a1;"
+                    onclick="openModal('judgeModal-{{ event.id }}')">
+              <i class="fas fa-users-cog"></i> Manage Judges
+            </button>
+            <!-- Room setup -->
+            <button class="action-btn btn-outline" style="background:#f0fdf4;border-color:#86efac;color:#15803d;"
+                    onclick="openModal('roomModal-{{ event.id }}')">
+              <i class="fas fa-door-open"></i> Room Setup
+            </button>
+            <!-- Certificate setup -->
+            <button class="action-btn btn-outline" style="background:#fdf4ff;border-color:#d8b4fe;color:#7e22ce;"
+                    onclick="openModal('certModal-{{ event.id }}')">
+              <i class="fas fa-certificate"></i> Cert Templates
+            </button>
+          </div>
+        </div>
+
+        <!-- Group 5: End Event (active only) -->
         {% if event.status == 'active' %}
         <div class="action-group danger-zone">
           <div class="action-group-label" style="color:#dc2626;">
@@ -390,6 +446,138 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
       </div><!-- /event-actions -->
     </div><!-- /event-card -->
+
+    <!-- ── JUDGE MODAL ── -->
+    <div id="judgeModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+      <div class="spoc-modal-box" style="max-width:520px;">
+        <div class="spoc-modal-hdr" style="background:#0369a1;">
+          <span><i class="fas fa-users-cog me-2"></i>Manage Judges — {{ event.title }}</span>
+          <button onclick="closeModal('judgeModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+        </div>
+        <div style="padding:24px;">
+          <p style="font-size:13px;color:#475569;margin-bottom:16px;">Upload a CSV with columns: <code>name,email,expertise</code>. Each judge gets login credentials emailed.</p>
+          <form method="POST" action="/spoc/upload_judges_csv/{{ event.id }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label style="font-size:12px;font-weight:700;color:#0369a1;display:block;margin-bottom:6px;">CSV File</label>
+            <input type="file" name="judges_csv" accept=".csv" required
+                   style="width:100%;padding:10px;border:1.5px dashed #7dd3fc;border-radius:8px;background:#f0f9ff;font-size:13px;margin-bottom:14px;">
+            <button type="submit" style="width:100%;background:#0369a1;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">
+              <i class="fas fa-upload me-1"></i> Upload &amp; Create Judge Logins
+            </button>
+          </form>
+          <hr style="margin:18px 0;border-color:#e2e8f0;">
+          <h6 style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px;">Or Add Single Judge</h6>
+          <form method="POST" action="/spoc/add_judge/{{ event.id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <input type="text" name="judge_name" placeholder="Full Name"
+                     style="padding:9px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;">
+              <input type="email" name="judge_email" placeholder="Email"
+                     style="padding:9px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;">
+            </div>
+            <input type="text" name="expertise" placeholder="Expertise (e.g. AI, Robotics)"
+                   style="width:100%;padding:9px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;margin-bottom:10px;">
+            <button type="submit" style="width:100%;background:#0c4a6e;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">
+              Add Judge &amp; Send Login
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROOM SETUP MODAL ── -->
+    <div id="roomModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+      <div class="spoc-modal-box" style="max-width:540px;">
+        <div class="spoc-modal-hdr" style="background:#15803d;">
+          <span><i class="fas fa-door-open me-2"></i>Room Setup — {{ event.title }}</span>
+          <button onclick="closeModal('roomModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+        </div>
+        <div style="padding:24px;">
+          <p style="font-size:13px;color:#475569;margin-bottom:4px;">Define rooms and their capacity. The system auto-allocates registered participants evenly.</p>
+          <p style="font-size:12px;color:#94a3b8;margin-bottom:16px;">Registered: <strong style="color:#15803d;">{{ event.registration_count }}</strong></p>
+          <form method="POST" action="/spoc/setup_rooms/{{ event.id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="roomRows-{{ event.id }}">
+              <div class="room-row" style="display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;">
+                <input type="text" name="room_name[]" placeholder="Room / Hall name" required
+                       style="padding:9px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;">
+                <input type="number" name="capacity[]" placeholder="Capacity" required min="1"
+                       style="padding:9px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;">
+                <button type="button" onclick="addRoomRow('{{ event.id }}')"
+                        style="background:#15803d;color:#fff;border:none;border-radius:7px;font-size:16px;cursor:pointer;">+</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:14px;">
+              <button type="submit" name="action" value="save"
+                      style="flex:1;background:#15803d;color:#fff;border:none;padding:11px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">
+                <i class="fas fa-save me-1"></i> Save Rooms
+              </button>
+              <button type="submit" name="action" value="allocate"
+                      style="flex:1;background:#0f172a;color:#fff;border:none;padding:11px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">
+                <i class="fas fa-magic me-1"></i> Save &amp; Auto-Allocate
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CERT TEMPLATES MODAL ── -->
+    <div id="certModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+      <div class="spoc-modal-box" style="max-width:560px;">
+        <div class="spoc-modal-hdr" style="background:#7e22ce;">
+          <span><i class="fas fa-certificate me-2"></i>Certificate Templates — {{ event.title }}</span>
+          <button onclick="closeModal('certModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+        </div>
+        <div style="padding:24px;">
+          <p style="font-size:13px;color:#475569;margin-bottom:16px;">
+            Upload PNG/JPG certificate templates. Participant names will be automatically overlaid
+            in the centre and emailed when you click <strong>End Event</strong>.
+            Max file size: 800 KB each.
+          </p>
+          <form method="POST" action="/spoc/upload_cert_templates/{{ event.id }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% set ctypes = [('participation','Participation (all attendees)','participation'),
+                             ('winner_1','1st Place Winner','winner1'),
+                             ('winner_2','2nd Place Winner','winner2'),
+                             ('winner_3','3rd Place Winner','winner3')] %}
+            {% for ckey, clabel, ccls in ctypes %}
+            <div style="margin-bottom:16px;">
+              <label class="ct-{{ ccls }}" style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                {% if loop.index == 1 %}<i class="fas fa-users"></i>{% else %}<i class="fas fa-trophy"></i>{% endif %}
+                {{ clabel }}
+                {% if event.get('cert_templates', {}).get(ckey) %}
+                <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:100px;font-weight:600;">Uploaded</span>
+                {% endif %}
+              </label>
+              <input type="file" name="{{ ckey }}" accept="image/png,image/jpeg"
+                     class="ct-{{ ccls }}-border"
+                     style="width:100%;padding:8px;border-radius:8px;font-size:12.5px;">
+            </div>
+            {% endfor %}
+            <div style="margin-bottom:14px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+              <label style="font-size:12px;font-weight:700;color:#1a2557;display:block;margin-bottom:6px;">Name Position (% from top of certificate)</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <label style="font-size:11px;color:#64748b;">Horizontal % (50 = centre)</label>
+                  <input type="number" name="name_x_pct" value="{{ event.get('cert_name_pos',{}).get('x',50) }}" min="10" max="90"
+                         style="width:100%;padding:7px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:#64748b;">Vertical % (42 = middle-ish)</label>
+                  <input type="number" name="name_y_pct" value="{{ event.get('cert_name_pos',{}).get('y',42) }}" min="10" max="90"
+                         style="width:100%;padding:7px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                </div>
+              </div>
+            </div>
+            <button type="submit" style="width:100%;background:#7e22ce;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">
+              <i class="fas fa-upload me-1"></i> Upload Templates &amp; Save Position
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
     {% endfor %}
 
   {% else %}
@@ -513,6 +701,32 @@ function confirmEndEvent(eventId, eventTitle) {
   var form = document.getElementById('end-event-form');
   form.action = '/spoc/end_event/' + eventId;
   form.submit();
+}
+
+// ── SPOC MODALS ───────────────────────────────────────────
+function openModal(id) {
+  var m = document.getElementById(id);
+  if (m) { m.classList.add('open'); m.style.display = 'flex'; }
+}
+function closeModal(id) {
+  var m = document.getElementById(id);
+  if (m) { m.classList.remove('open'); m.style.display = 'none'; }
+}
+// Close on backdrop click
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('spoc-modal')) closeModal(e.target.id);
+});
+
+// ── ROOM ROW BUILDER ──────────────────────────────────────
+function addRoomRow(eventId) {
+  var container = document.getElementById('roomRows-' + eventId);
+  var row = document.createElement('div');
+  row.className = 'room-row';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;';
+  row.innerHTML = '<input type="text" name="room_name[]" placeholder="Room / Hall name" required style="padding:9px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;">'
+    + '<input type="number" name="capacity[]" placeholder="Capacity" required min="1" style="padding:9px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;">'
+    + '<button type="button" onclick="this.closest(\'.room-row\').remove()" style="background:#dc2626;color:#fff;border:none;border-radius:7px;font-size:14px;cursor:pointer;">×</button>';
+  container.appendChild(row);
 }
 </script>
 

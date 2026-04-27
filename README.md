@@ -1,25 +1,24 @@
 <div align="center">
 
-# SapthaEvent — University Event Intelligence Platform
+# SapthaEvent
 
-**Sapthagiri NPS University · Full-Stack Event Management · Production-Grade**
+**University Event Intelligence Platform — Sapthagiri NPS University**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Railway-purple?style=for-the-badge&logo=railway)](https://saptha-event-portal-production.up.railway.app/)
+[![Live](https://img.shields.io/badge/Live-saptha--event--portal--production.up.railway.app-purple?style=for-the-badge&logo=railway)](https://saptha-event-portal-production.up.railway.app/)
 [![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.x-black?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com)
 [![Firebase](https://img.shields.io/badge/Firestore-NoSQL-orange?style=for-the-badge&logo=firebase)](https://firebase.google.com)
-[![Celery](https://img.shields.io/badge/Celery-Beat-green?style=for-the-badge&logo=celery)](https://docs.celeryq.dev)
 [![Gemini AI](https://img.shields.io/badge/Gemini-2.5%20Flash-teal?style=for-the-badge&logo=google)](https://ai.google.dev)
 
-**[🌐 Open Live App](https://saptha-event-portal-production.up.railway.app/)** · Built for judges, students, and clubs — not spreadsheets.
+**[🌐 Open Live App](https://saptha-event-portal-production.up.railway.app/)** &nbsp;·&nbsp; Built for judges, students, and clubs — not spreadsheets.
 
 </div>
 
 ---
 
-## What Makes SapthaEvent Different
+## Why SapthaEvent
 
-Most university event systems are glorified Google Forms. SapthaEvent is a full event intelligence platform — with a real-time projector leaderboard, AI-written post-event reports, an achievement/XP engine, automated email campaigns, and a Celery-powered scheduler that runs even when no one is logged in.
+Most university event systems are glorified Google Forms. SapthaEvent is a complete event intelligence platform — real-time leaderboard on any projector, AI post-event reports, XP/achievement engine, automated email sequences, and a Celery scheduler that works even when nobody is logged in.
 
 | Feature | Typical System | SapthaEvent |
 |---|---|---|
@@ -27,15 +26,15 @@ Most university event systems are glorified Google Forms. SapthaEvent is a full 
 | Scoring | Paper or spreadsheet | Live digital scorecard, auto-averaged across judges |
 | Results | Manually announced | Real-time SSE leaderboard on any screen/projector |
 | Post-event report | Nothing | AI-generated narrative (Gemini 2.5 Flash) + PDF export |
-| Achievements | Nothing | XP points + emoji badges written to each participant's profile |
-| Reminders | Manual | Celery Beat: 3-day + 24h automated email sequences |
+| Achievements | Nothing | XP points + emoji badges on each participant's profile |
+| Reminders | Manual | Celery Beat: 3-day + 24 h automated email sequences |
 | Email blast | CC everyone | Per-event blast with audience filter (all / attended / winners) |
 | Event cloning | Re-fill everything | One-click clone with clean slate |
 | Payments | Nothing | Razorpay with HMAC-SHA256 server-side verification |
 
 ---
 
-## Live Demo
+## Live App
 
 **URL:** `https://saptha-event-portal-production.up.railway.app/`
 
@@ -48,39 +47,34 @@ Most university event systems are glorified Google Forms. SapthaEvent is a full 
 
 ---
 
-## SapthaEvent LiveOS — The Flagship Feature Set
+## Flagship Features
 
-These three capabilities together are what no university event system has ever shipped:
-
-### 1. Real-Time SSE Leaderboard
+### 1 — Real-Time SSE Leaderboard
 `GET /live/<event_id>` — project onto any screen during the event.
 
-- **No WebSocket server** — pure Server-Sent Events, works through proxies and Railway's infra
+- Pure Server-Sent Events — no WebSocket server, works through proxies
 - Reads `scores` sub-collection from Firestore, averages across all judges, sorts by score
-- Pushes ranked update every 3 seconds; client auto-reconnects after 5-minute guard window
-- **Podium view**: top-3 shown as gold/silver/bronze cards (CSS `order: 2,1,3`)
-- Rank-change animation: rows flash green (↑) or red (↓) on each tick
-- Fullscreen toggle — optimised for projector display with dark theme (`#05050f`)
-- Falls back to `/live/data/<event_id>` JSON snapshot for initial load
+- Pushes ranked update every 3 seconds; client auto-reconnects after drop
+- Podium view: top-3 as gold/silver/bronze cards (`order: 2,1,3`)
+- Rank-change animation: rows flash green ↑ or red ↓ on each tick
+- Fullscreen toggle — dark theme (`#05050f`) optimised for projectors
 
-### 2. AI Event Report
+### 2 — AI Event Report
 `GET /spoc/ai_report/<event_id>` — one click after closing an event.
 
 - Builds a stats payload: registrations, attendance %, judge count, avg/top score, podium
-- Sends to **Gemini 2.5 Flash** with a structured prompt → 3-paragraph narrative debrief
-- Falls back gracefully to a data-driven paragraph if no API key or network failure
-- Full leaderboard table with score bars rendered inline
-- `@media print` CSS — prints/saves as clean PDF directly from browser
+- Sends to Gemini 2.5 Flash → 3-paragraph narrative debrief
+- Falls back gracefully to a data-only summary if no API key or network failure
+- `@media print` CSS — print or save as PDF directly from browser
 
-### 3. Achievement & XP Engine
+### 3 — Achievement & XP Engine
 Triggered automatically when a SPOC ends an event.
 
-- Rank 1 → 🥇 **Champion** + 500 XP
-- Rank 2 → 🥈 **Runner-Up** + 300 XP
-- Rank 3 → 🥉 **Third Place** + 200 XP
-- All scored participants → ⭐ **Participant** + 50 XP
-- XP and badges accumulate across events — participants see a live badge wall on their dashboard
-- Duplicate prevention: badges are deduped by label before writing to Firestore
+- Rank 1 → 🥇 Champion + 500 XP
+- Rank 2 → 🥈 Runner-Up + 300 XP
+- Rank 3 → 🥉 Third Place + 200 XP
+- All scored participants → ⭐ Participant + 50 XP
+- XP and badges accumulate across events — shown on each participant's dashboard
 
 ---
 
@@ -88,16 +82,16 @@ Triggered automatically when a SPOC ends an event.
 
 ### Participant Dashboard
 - Register for events (custom form per event, team + solo support)
-- Pay via Razorpay (webhook + HMAC verification)
-- Track registration status, payment receipt, ticket QR code
-- View accumulated XP and badge wall across all events
+- Pay via Razorpay — webhook + HMAC verification
+- Track registration status, payment receipt, QR ticket
+- View accumulated XP and badge wall
 
 ### Club SPOC Dashboard
 - Create and manage events with AI-generated form schemas (Gemini)
 - Set registration caps, deadlines, team sizes, payment amounts
-- Live Board button → opens SSE leaderboard in new tab
-- AI Report button → generates post-event debrief
-- Blast Email → send custom email to all/attended/winners with one form
+- Live Board → opens SSE leaderboard in new tab
+- AI Report → generates post-event debrief
+- Blast Email → send custom email to all / attended / winners
 - Clone Event → duplicate event doc + form schema, clear dates
 - Export attendee CSV (name, USN, phone, score, attendance)
 - QR-code scanner for attendance marking
@@ -106,7 +100,6 @@ Triggered automatically when a SPOC ends an event.
 - Assigned to specific events by admin
 - Score individual teams with per-criterion rubric
 - Scores averaged server-side — no manual collation
-- View current leaderboard snapshot
 
 ### Coordinator Tools
 - Cross-event attendance dashboard
@@ -117,25 +110,27 @@ Triggered automatically when a SPOC ends an event.
 - Create users (SPOC, Judge, Coordinator, Admin) with auto-generated passwords
 - Bulk-assign judges to events
 - System-wide audit log (`actions` Firestore collection)
-- Email diagnostic endpoint (`/diag/email` — SuperAdmin only)
+- Email diagnostic: `GET /diag/email?to=you@email.com`
 
 ---
 
-## Automated Email Engine
+## Automated Email
 
 All email is non-blocking — queued to Celery workers.
 
-| Trigger | What sends | When |
-|---|---|---|
-| Registration | Confirmation + ticket PDF | Immediately |
-| Payment | Receipt with amount | On Razorpay webhook |
-| 3-day reminder | "Event in 3 days" | 09:00 IST, automated |
-| 24-hour reminder | "Tomorrow! Here's your ticket" | 09:00 IST, automated |
-| Velocity alert | SPOC notified if fill rate < 70% with 3 days to deadline | 09:45 IST, automated |
-| Password reset | Timed token link (1-hour TTL) | On request |
-| Blast email | Custom SPOC-authored message | On demand |
+| Trigger | What sends |
+|---|---|
+| Registration | Confirmation email immediately |
+| Payment | Receipt with amount on Razorpay webhook |
+| 3-day reminder | "Event in 3 days" at 09:00 IST |
+| 24-hour reminder | "Tomorrow! Here's your ticket" at 09:00 IST |
+| Velocity alert | SPOC notified if fill rate < 70% with 3 days to deadline |
+| Password reset | Timed token link (1-hour TTL) |
+| Blast email | Custom SPOC-authored message, on demand |
 
-Providers: **Resend** (primary) or **Gmail SMTP** (fallback) — auto-detected from env vars.
+**Providers (auto-detected from env):**
+- `RESEND_API_KEY` set → uses Resend API (recommended for Railway free plan)
+- `RESEND_API_KEY` not set → falls back to Gmail SMTP (`MAIL_USER` + `MAIL_PASS`)
 
 ---
 
@@ -144,21 +139,21 @@ Providers: **Resend** (primary) or **Gmail SMTP** (fallback) — auto-detected f
 - Razorpay order created server-side at registration
 - Client completes payment in Razorpay modal
 - Server verifies `razorpay_signature` with HMAC-SHA256 before writing `payment_status: paid`
-- No client-side trust — amount and order_id are always fetched from Firestore
+- Amount and `order_id` always fetched from Firestore — no client-side trust
 
 ---
 
 ## Scheduled Tasks (Celery Beat)
 
 ```
-09:00 IST  send_3day_reminders       — email participants 3 days before event
-09:00 IST  send_24h_reminders        — email participants 24h before event
-09:45 IST  check_registration_velocity — alert SPOC if fill < 70% with 3 days to deadline
-00:00 IST  auto_close_registrations  — close regs past deadline
-00:00 IST  archive_past_events       — move ended events to archive
+09:00 IST  send_3day_reminders          email participants 3 days before event
+09:00 IST  send_24h_reminders           email participants 24 h before event
+09:45 IST  check_registration_velocity  alert SPOC if fill < 70% with 3 days to deadline
+00:00 IST  auto_close_registrations     close registrations past deadline
+00:00 IST  archive_past_events          move ended events to archive
 ```
 
-Dev mode uses APScheduler (in-process) so no Redis/worker needed locally.  
+Dev mode uses APScheduler (in-process) — no Redis or worker needed locally.  
 Production uses `celery -A celery_app worker` + `celery -A celery_app beat`.
 
 ---
@@ -166,33 +161,30 @@ Production uses `celery -A celery_app worker` + `celery -A celery_app beat`.
 ## Architecture
 
 ```
-Browser ──HTTPS──▶ Railway (Gunicorn 4 workers)
+Browser ──HTTPS──▶ Railway (Gunicorn)
                         │
                    Flask App
-                   ├── routes_auth.py        Login / Register / Password Reset
-                   ├── routes_participant.py  Student dashboard, registration, payment
-                   ├── routes_spoc.py         SPOC dashboard, AI report, blast, clone
-                   ├── routes_judge.py        Scoring interface
-                   ├── routes_coordinator.py  Attendance, scanner
-                   ├── routes_admin.py        User management, audit log
-                   ├── routes_live.py         SSE leaderboard stream
-                   ├── routes_forms.py        AI form schema generation
-                   ├── routes_public.py       Home, event listings
-                   └── routes_ticket.py       QR ticket + PDF
+                   ├── routes_auth.py          Login / Register / Password Reset
+                   ├── routes_participant.py   Student dashboard, registration, payment
+                   ├── routes_spoc.py          SPOC dashboard, AI report, blast, clone
+                   ├── routes_judge.py         Scoring interface
+                   ├── routes_coordinator.py   Attendance, scanner
+                   ├── routes_admin.py         User management, audit log
+                   ├── routes_live.py          SSE leaderboard stream
+                   ├── routes_forms.py         AI form schema generation
+                   ├── routes_public.py        Home, event listings
+                   └── routes_ticket.py        QR ticket + PDF
                         │
           ┌─────────────┼────────────────┐
           ▼             ▼                ▼
     Firestore       Celery Worker    Razorpay API
     (NoSQL)         + Beat           (Payments)
                         │
-                      Redis
-                   (broker/result)
+                      Redis (prod)
+                   APScheduler (dev)
                         │
                    Gemini 2.5 Flash
-                   (AI reports, forms)
-                        │
                    Resend / Gmail SMTP
-                   (Transactional email)
 ```
 
 ---
@@ -220,117 +212,133 @@ Browser ──HTTPS──▶ Railway (Gunicorn 4 workers)
 |---|---|
 | Web framework | Flask 3.x + Gunicorn |
 | Database | Google Firestore (NoSQL) |
-| Task queue | Celery 5 + Redis |
+| Task queue | Celery 5 + Redis (prod) / APScheduler (dev) |
 | AI / LLM | Google Gemini 2.5 Flash |
 | Payments | Razorpay |
-| Email | Resend API / Gmail SMTP |
+| Email | Resend API / Gmail SMTP (auto-detected) |
 | Auth tokens | itsdangerous URLSafeTimedSerializer |
 | Password hashing | Werkzeug scrypt |
 | CSRF | Flask-WTF |
 | Frontend | Bootstrap 5 + Jinja2 + Vanilla JS |
 | QR codes | qrcode[pil] |
 | PDF generation | ReportLab |
-| Deployment | Railway (web + worker + beat) |
-| CI | GitHub Actions (ruff lint + bandit security scan) |
-
----
-
-## Project Structure
-
-```
-Event_Portel/
-├── app.py                          # App factory, blueprint registration, CSRF, Razorpay
-├── models.py                       # Firestore client init
-├── celery_app.py                   # Celery config + Beat schedule
-├── scheduler.py                    # APScheduler (dev mode)
-├── utils.py                        # log_action, helpers
-├── utils_email.py                  # Resend/Gmail send logic
-│
-├── routes_auth.py                  # Login, register, password reset, logout
-├── routes_participant.py           # Student dashboard, registration, payment webhook
-├── routes_spoc.py                  # SPOC dashboard, scan, AI report, blast, clone, achievements
-├── routes_judge.py                 # Scoring interface
-├── routes_coordinator.py           # Attendance, scanner
-├── routes_admin.py                 # User/event management, audit log
-├── routes_live.py                  # SSE leaderboard stream + projector page
-├── routes_forms.py                 # AI form schema generation (Gemini)
-├── routes_public.py                # Home, event listings, search/filter
-├── routes_ticket.py                # QR ticket + PDF
-│
-├── tasks/
-│   └── scheduled_tasks.py          # Celery tasks (reminders, velocity alert, lifecycle)
-│
-├── templates/
-│   ├── live/leaderboard.html       # SSE projector page (dark theme, podium, rank animation)
-│   ├── spoc/
-│   │   ├── dashboard.html          # SPOC event management hub
-│   │   ├── ai_report.html          # AI post-event report + print/PDF
-│   │   └── scan.html               # QR attendance scanner
-│   ├── participant/
-│   │   ├── dashboard.html          # XP pill, badge wall, ticket list
-│   │   └── ticket.html             # QR ticket view
-│   ├── coordinator/scan.html
-│   ├── admin/, judge/, public/
-│   └── login.html, register.html, forgot_password.html, reset_password*.html
-│
-├── static/                         # CSS, JS, images
-├── .github/workflows/ci.yml        # Ruff + Bandit CI
-├── requirements.txt
-├── Procfile                        # Railway: web + worker + beat
-└── railway.toml
-```
+| Deployment | Railway (web + worker + beat services) |
+| CI | GitHub Actions (Ruff lint + Bandit security scan) |
 
 ---
 
 ## Local Setup
 
+### 1 — Clone and install
+
 ```bash
-# 1. Clone
 git clone https://github.com/kirancodes-dev/saptha-event-portal.git
 cd saptha-event-portal
-
-# 2. Install dependencies
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# 3. Copy and fill environment variables
-cp .env.example .env
-# Edit .env — see table below
-
-# 4. Run dev server (APScheduler runs in-process, no Redis needed)
-python app.py
-
-# 5. Production: separate worker + beat
-gunicorn app:app --workers 4 --bind 0.0.0.0:8000
-celery -A celery_app worker --loglevel=info
-celery -A celery_app beat --loglevel=info
 ```
+
+### 2 — Create `.env`
+
+```bash
+cp .env.example .env   # then fill in the values below
+```
+
+Minimum `.env` for local development:
+
+```env
+SECRET_KEY=any-random-string-here
+SUPER_ADMIN_EMAIL=admin@snpsu.edu.in
+SUPER_ADMIN_PASS=YourLocalPassword1
+MASTER_SECRET_KEY=any-local-master-key
+BASE_URL=http://127.0.0.1:5001
+GEMINI_API_KEY=your-gemini-key
+
+# Email — Gmail SMTP (local fallback, no RESEND_API_KEY set)
+MAIL_USER=your@gmail.com
+MAIL_PASS=your-16-char-app-password   # myaccount.google.com/apppasswords
+```
+
+> **Gmail App Password:** Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), create one named "SapthaEvent", paste the 16 characters (no spaces) as `MAIL_PASS`. 2-Step Verification must be enabled first.
+
+### 3 — Place Firebase key
+
+Drop your `serviceAccountKey.json` into the project root (already gitignored).
+
+### 4 — First-run admin account
+
+On first boot the SuperAdmin Firestore document may not exist or may have a legacy plaintext password. Run this once to create/reset it:
+
+```bash
+python fix_superadmin.py
+```
+
+Output shows the credentials. Log in at `http://127.0.0.1:5001/login` with:
+- **Role:** Super Admin
+- **Email:** value of `SUPER_ADMIN_EMAIL` in `.env`
+- **Password:** `Admin@12345` (change it after first login)
+
+### 5 — Start the server
+
+```bash
+python app.py
+# Runs on http://127.0.0.1:5001
+```
+
+APScheduler runs in-process — no Redis or Celery worker needed locally.
+
+### 6 — Verify email works locally
+
+With the app running, open:
+
+```
+http://127.0.0.1:5001/diag/email?to=your@gmail.com
+```
+
+Returns JSON with `"sent": true` if Gmail SMTP is working, or an error message if not.
 
 ---
 
-## Environment Variables
+## Production Deploy (Railway)
 
-| Variable | Required | Description |
-|---|---|---|
-| `SECRET_KEY` | Yes | Flask session secret |
-| `MASTER_SECRET_KEY` | Yes (prod) | SuperAdmin login gate |
-| `SUPER_ADMIN_EMAIL` | Yes | First-boot superadmin email |
-| `SUPER_ADMIN_DEFAULT_PASS` | Yes | First-boot superadmin password |
-| `FIREBASE_CREDENTIALS` | Yes | JSON string of Firebase service account |
-| `CELERY_BROKER_URL` | Prod | Redis URL (e.g. `redis://localhost:6379/0`) |
-| `RESEND_API_KEY` | Email | Resend API key (preferred) |
-| `MAIL_USER` | Email | Gmail address (fallback) |
-| `MAIL_PASS` | Email | Gmail 16-char App Password |
-| `MAIL_FROM` | Email | Sender address / display name |
-| `RAZORPAY_KEY_ID` | Payments | Razorpay public key |
-| `RAZORPAY_KEY_SECRET` | Payments | Razorpay secret (server-side only) |
-| `GEMINI_API_KEY` | AI | Google Gemini API key |
-| `FLASK_ENV` | Prod | Set to `production` to enforce master key |
+### Services (Procfile)
+
+```
+web:    gunicorn app:app
+worker: celery -A celery_app worker --loglevel=info
+beat:   celery -A celery_app beat --loglevel=info
+```
+
+### Required Railway Variables
+
+| Variable | Description |
+|---|---|
+| `SECRET_KEY` | Flask session secret (long random string) |
+| `MASTER_SECRET_KEY` | SuperAdmin login gate key |
+| `SUPER_ADMIN_EMAIL` | SuperAdmin email address |
+| `SUPER_ADMIN_PASS` | SuperAdmin default password |
+| `FIREBASE_CREDENTIALS` | Full `serviceAccountKey.json` as a JSON string |
+| `CELERY_BROKER_URL` | Redis URL — e.g. `redis://default:pass@host:6379/0` |
+| `BASE_URL` | `https://saptha-event-portal-production.up.railway.app` |
+| `FLASK_ENV` | `production` |
+| `RESEND_API_KEY` | Resend API key (preferred email provider on free plan) |
+| `MAIL_FROM` | Sender — `SapthaEvent <noreply@snpsu.edu.in>` after domain verified |
+| `MAIL_USER` | Gmail address (fallback if no `RESEND_API_KEY`) |
+| `MAIL_PASS` | Gmail 16-char App Password (no spaces) |
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `RAZORPAY_KEY_ID` | Razorpay public key |
+| `RAZORPAY_KEY_SECRET` | Razorpay secret (server-side only) |
+
+**Email provider logic:**
+- `RESEND_API_KEY` set → Resend (works on Railway free plan, no port restrictions)
+- `RESEND_API_KEY` not set → Gmail SMTP on port 465/SSL
 
 ---
 
 ## Role System
 
-| Role | Login selector | Dashboard |
+| Role | Login dropdown | Dashboard URL |
 |---|---|---|
 | `Student` | Student | `/participant/dashboard` |
 | `ClubSPOC` | Club SPOC | `/spoc/dashboard` |
@@ -340,44 +348,92 @@ celery -A celery_app beat --loglevel=info
 | `Admin` | Admin | `/admin/dashboard` |
 | `SuperAdmin` | Super Admin | `/admin/dashboard` |
 
-SuperAdmin login requires the master key in production. Cannot reset via email — by design.
+> SuperAdmin requires the master key in production. Cannot be reset via email — by design.
 
 ---
 
 ## Security
 
-- All passwords hashed with `scrypt` via Werkzeug — legacy plaintext rows blocked at login
+- All passwords hashed with `scrypt` via Werkzeug — legacy plaintext rows are **blocked at login** (not silently accepted)
 - CSRF protection on all HTML form endpoints (Flask-WTF)
-- Password reset via timed, signed token (1-hour TTL, `itsdangerous`)
+- Password reset via timed, signed token — 1-hour TTL (`itsdangerous`)
 - Razorpay payment amounts verified server-side via HMAC-SHA256
 - SuperAdmin cannot be reset via email
-- Session is permanent with server-controlled lifetime
+- Session lifetime server-controlled (1 hour)
 - Ruff (linter) + Bandit (security scanner) run on every push via GitHub Actions
 
 ---
 
-## CI/CD
+## CI / CD
 
-- **GitHub Actions**: `ruff check` + `bandit -r .` on every push and PR
-- **Railway**: auto-deploys on push to `main` — three services: web, worker, beat
-- **Procfile**:
-  ```
-  web: gunicorn app:app --workers 4 --bind 0.0.0.0:$PORT
-  worker: celery -A celery_app worker --loglevel=info
-  beat: celery -A celery_app beat --loglevel=info
-  ```
+- **GitHub Actions:** `ruff check` + `bandit -r .` on every push and PR
+- **Railway:** auto-deploys on push to `main` — three services: web, worker, beat
+
+---
+
+## Project Structure
+
+```
+Event_Portel/
+├── app.py                    # App factory, blueprint registration, CSRF, Razorpay
+├── models.py                 # Firestore client init
+├── config.py                 # All configuration — reads from env vars
+├── celery_app.py             # Celery config + Beat schedule
+├── scheduler.py              # APScheduler (dev mode, in-process)
+├── utils.py                  # log_action, shared helpers
+├── utils_email.py            # Resend / Gmail SMTP auto-switch
+├── utils_certificate.py      # PDF certificate generation
+├── utils_qr.py               # QR code helpers
+│
+├── routes_auth.py            # Login, register, password reset, logout
+├── routes_participant.py     # Student dashboard, registration, payment webhook
+├── routes_spoc.py            # SPOC dashboard, AI report, blast, clone, achievements
+├── routes_judge.py           # Scoring interface
+├── routes_coordinator.py     # Attendance, scanner
+├── routes_admin.py           # User/event management, audit log
+├── routes_live.py            # SSE leaderboard stream + projector page
+├── routes_forms.py           # AI form schema generation (Gemini)
+├── routes_public.py          # Home, event listings, search/filter
+├── routes_ticket.py          # QR ticket + PDF
+│
+├── tasks/
+│   └── scheduled_tasks.py    # Celery tasks — reminders, velocity alert, lifecycle
+│
+├── templates/                # Jinja2 HTML templates per blueprint
+├── static/                   # CSS, JS, images
+├── fix_superadmin.py         # One-shot: reset SuperAdmin in Firestore (run locally)
+├── Procfile                  # Railway: web + worker + beat
+├── requirements.txt
+└── .github/workflows/ci.yml  # Ruff + Bandit CI
+```
+
+---
+
+## Troubleshooting
+
+**Login redirects back to `/login` without error**
+The Firestore account has a legacy plaintext password. Run `python fix_superadmin.py` to reset it with a proper hash.
+
+**Emails not sending locally**
+Hit `http://127.0.0.1:5001/diag/email?to=your@gmail.com` — the JSON response shows the exact error. Most common cause: expired Gmail App Password. Generate a new one at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
+
+**Email links point to wrong URL**
+Set `BASE_URL=http://127.0.0.1:5001` in `.env` (note port 5001, not 5000).
+
+**Celery tasks not running locally**
+APScheduler runs in-process when `CELERY_BROKER_URL` is not set — no worker needed. If you need to test Celery explicitly, start Redis and run `celery -A celery_app worker`.
 
 ---
 
 ## Repository
 
 **GitHub:** `https://github.com/kirancodes-dev/saptha-event-portal`  
-**Live:** `https://saptha-event-portal-production.up.railway.app/`  
-**University:** Sapthagiri NPS University, Bengaluru
+**Production:** `https://saptha-event-portal-production.up.railway.app/`  
+**University:** Sapthagiri NPS University, Bengaluru — `snpsu.edu.in`
 
 ---
 
 <div align="center">
-Built with Flask · Firestore · Celery · Gemini · Razorpay · Railway<br>
+Flask · Firestore · Celery · Gemini · Razorpay · Railway<br>
 <sub>SapthaEvent — because spreadsheets don't belong at hackathons.</sub>
 </div>

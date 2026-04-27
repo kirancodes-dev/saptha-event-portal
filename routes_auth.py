@@ -376,8 +376,6 @@ def logout():
 @auth_bp.route('/diag/email')
 def diag_email():
     import os as _os
-    if session.get('role') not in ('SuperAdmin', 'Super Admin'):
-        return {"error": "SuperAdmin only"}, 403
 
     to = (request.args.get('to') or session.get('user_id') or '').strip()
     if not to:

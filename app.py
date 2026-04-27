@@ -599,30 +599,6 @@ def apply_security_headers(response):
 
 
 # =========================================================
-# QUICK EMAIL TEST — no login needed
-# Usage: /test-email?to=you@example.com
-# =========================================================
-@app.route('/test-email')
-def test_email():
-    import os as _os
-    import utils_email as _ue
-    to = request.args.get('to', '').strip()
-    if not to:
-        return {"error": "pass ?to=your@email.com"}, 400
-    provider = "Resend" if _os.environ.get('RESEND_API_KEY') else "Gmail SMTP"
-    _ue.LAST_EMAIL_ERROR = ""
-    ok = _ue._send(to, "SapthaEvent — Email Test",
-                   "<p>Email delivery is working!</p>")
-    return {
-        "provider": provider,
-        "resend_key_set": bool(_os.environ.get('RESEND_API_KEY')),
-        "mail_from": _os.environ.get('MAIL_FROM', '(not set)'),
-        "sent": ok,
-        "error": _ue.LAST_EMAIL_ERROR or None,
-    }
-
-
-# =========================================================
 # ERROR HANDLERS
 # =========================================================
 @app.errorhandler(404)

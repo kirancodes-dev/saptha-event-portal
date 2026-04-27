@@ -1,16 +1,9 @@
 """
 utils_certificate.py — PDF Certificate Generator for SapthaEvent
 
-Logo: Uses COLLEGE_LOGO_URL env var.
-      Defaults to official SNPSU logo if not set.
-      Colors match official branding: #0d2d62 navy, #f37021 orange.
-
-5 Certificate Templates:
-  1 = Classic Navy      (navy/orange — default SNPSU)
-  2 = Tech Blue         (dark/cyan — hackathons)
-  3 = Cultural Gold     (maroon/gold — cultural events)
-  4 = Sports Green      (green/white — sports)
-  5 = Management Purple (purple/silver — business)
+Two modes:
+  1. Built-in ReportLab templates (5 styles)
+  2. SPOC-uploaded image templates (PNG/JPG overlaid with participant name)
 """
 
 import io
@@ -436,4 +429,212 @@ def generate_and_send_all_certificates(
     logger.info("Certs for '%s': winner=%d, participation=%d, skipped=%d",
                 event_title, results['winner_sent'],
                 results['participation_sent'], results['participation_skipped'])
+    return results
+
+
+# ──────────────────────────────────────────────────────────
+# IMAGE-TEMPLATE CERTIFICATE  (SPOC-uploaded PNG/JPG)
+# ──────────────────────────────────────────────────────────
+
+def generate_from_image_template(
+    template_bytes: bytes,
+    student_name:   str,
+    reg_id:         str   = '',
+    base_url:       str   = '',
+    name_x_pct:     int   = 50,
+    name_y_pct:     int   = 42,
+    font_size:      int   = 0,   # 0 = auto-scale to image width
+    font_color:     tuple = (26, 37, 87),
+) -> bytes:
+    """
+    Overlay *student_name* onto a PNG/JPG certificate template and return
+    a landscape-A4 PDF with the image as the full-page background.
+
+    name_x_pct / name_y_pct: position of the name centred at (x%, y%)
+    relative to the page, measured from the top-left corner.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas as rl_canvas
+    from reportlab.lib.utils import ImageReader
+
+    W, H = landscape(A4)
+
+    # ── Load template ──────────────────────────────────────
+    tpl_img = Image.open(io.BytesIO(template_bytes)).convert('RGB')
+
+    # ── Calculate font size relative to template width ─────
+    tpl_w, tpl_h = tpl_img.size
+    if font_size <= 0:
+        font_size = max(28, tpl_w // 18)
+
+    # Try to load a system/bundled font; fall back gracefully
+    _FONT_CANDIDATES = [
+        '/System/Library/Fonts/Supplemental/Georgia.ttf',        # macOS
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',  # Linux
+        '/Windows/Fonts/georgia.ttf',                            # Windows
+    ]
+    pil_font = None
+    for path in _FONT_CANDIDATES:
+        try:
+            pil_font = ImageFont.truetype(path, font_size)
+            break
+        except (IOError, OSError):
+            pass
+    if pil_font is None:
+        pil_font = ImageFont.load_default()
+
+    # ── Draw name on a high-res copy ──────────────────────
+    draw = ImageDraw.Draw(tpl_img)
+    px = int(tpl_w * name_x_pct / 100)
+    py = int(tpl_h * name_y_pct / 100)
+
+    try:
+        bbox = draw.textbbox((0, 0), student_name, font=pil_font)
+        tw   = bbox[2] - bbox[0]
+    except AttributeError:
+        tw = draw.textlength(student_name, font=pil_font)
+
+    # Thin shadow for readability on busy backgrounds
+    shadow_col = (255, 255, 255, 180) if sum(font_color) < 382 else (0, 0, 0, 120)
+    for dx, dy in ((2, 2), (-2, 2)):
+        draw.text((px - tw // 2 + dx, py + dy), student_name,
+                  fill=shadow_col[:3], font=pil_font)
+    draw.text((px - tw // 2, py), student_name, fill=font_color, font=pil_font)
+
+    # ── Composite into landscape-A4 PDF ──────────────────
+    img_buf = io.BytesIO()
+    tpl_img.save(img_buf, format='PNG', dpi=(150, 150))
+    img_buf.seek(0)
+
+    pdf_buf = io.BytesIO()
+    c = rl_canvas.Canvas(pdf_buf, pagesize=landscape(A4))
+    c.drawImage(ImageReader(img_buf), 0, 0, width=W, height=H,
+                preserveAspectRatio=False)
+
+    # QR verification code (small, bottom-right)
+    if reg_id:
+        try:
+            verify_url = f"{base_url}/verify/{reg_id}" if base_url else f"/verify/{reg_id}"
+            qr_img     = _qr_reader(verify_url)
+            qr_size    = 54
+            c.drawImage(qr_img, W - qr_size - 12, 10,
+                        width=qr_size, height=qr_size)
+        except Exception:
+            pass
+
+    c.save()
+    pdf_buf.seek(0)
+    return pdf_buf.read()
+
+
+def generate_and_send_all_certificates_with_templates(
+    leaderboard:   list,
+    registrations: list,
+    event_title:   str,
+    event_id:      str,
+    event_date:    str = '',
+    base_url:      str = '',
+    college_name:  str = 'Sapthagiri NPS University',
+    template_id:   int = 1,
+    top_n:         int = 3,
+) -> dict:
+    """
+    Like generate_and_send_all_certificates but checks Firestore for
+    SPOC-uploaded image templates first; falls back to built-in ReportLab
+    styles when no custom template exists for a given cert type.
+    """
+    import base64
+    try:
+        from models import db as _db
+    except Exception:
+        _db = None
+
+    def _load_template(cert_type: str) -> bytes | None:
+        if _db is None:
+            return None
+        try:
+            doc = _db.collection('cert_templates').document(f'{event_id}_{cert_type}').get()
+            if doc.exists:
+                return base64.b64decode(doc.to_dict()['data'])
+        except Exception as exc:
+            logger.warning("Template load failed (%s): %s", cert_type, exc)
+        return None
+
+    def _name_pos(event_doc_data: dict) -> tuple[int, int]:
+        pos = event_doc_data.get('cert_name_pos', {})
+        return pos.get('x', 50), pos.get('y', 42)
+
+    # Fetch event for name-position
+    x_pct = y_pct = None
+    if _db:
+        try:
+            ev = _db.collection('events').document(event_id).get()
+            if ev.exists:
+                x_pct, y_pct = _name_pos(ev.to_dict())
+        except Exception:
+            pass
+    if x_pct is None:
+        x_pct, y_pct = 50, 42
+
+    results = {'winner_sent': 0, 'winner_failed': 0,
+               'participation_sent': 0, 'participation_failed': 0,
+               'participation_skipped': 0}
+
+    # ── Winner certificates ────────────────────────────────
+    for idx, winner in enumerate(leaderboard[:top_n], start=1):
+        name   = winner.get('lead_name', winner.get('team_name', 'Participant'))
+        email  = winner.get('email', winner.get('lead_email', ''))
+        reg_id = winner.get('reg_id', '')
+        score  = winner.get('avg_score', winner.get('final_score', 0))
+        if not email:
+            results['winner_failed'] += 1
+            continue
+        try:
+            tpl_key   = f'winner_{idx}'
+            tpl_bytes = _load_template(tpl_key)
+            if tpl_bytes:
+                pdf = generate_from_image_template(
+                    tpl_bytes, name, reg_id, base_url, x_pct, y_pct)
+            else:
+                pdf = generate_certificate_pdf(
+                    student_name=name, event_title=event_title, reg_id=reg_id,
+                    cert_type='winner', rank=idx, score=score,
+                    event_date=event_date, base_url=base_url,
+                    college_name=college_name, template_id=template_id)
+            ok = _send_cert_email(email, name, event_title, 'winner', idx, score, pdf)
+            results['winner_sent' if ok else 'winner_failed'] += 1
+        except Exception as exc:
+            logger.error("Winner cert rank %d failed: %s", idx, exc)
+            results['winner_failed'] += 1
+
+    # ── Participation certificates ─────────────────────────
+    participation_tpl = _load_template('participation')
+    for reg in registrations:
+        if reg.get('attendance') != 'Present':
+            results['participation_skipped'] += 1
+            continue
+        name   = reg.get('lead_name', 'Participant')
+        email  = reg.get('lead_email', reg.get('email', ''))
+        reg_id = reg.get('reg_id', reg.get('id', ''))
+        if not email:
+            results['participation_skipped'] += 1
+            continue
+        try:
+            if participation_tpl:
+                pdf = generate_from_image_template(
+                    participation_tpl, name, reg_id, base_url, x_pct, y_pct)
+            else:
+                pdf = generate_certificate_pdf(
+                    student_name=name, event_title=event_title, reg_id=reg_id,
+                    cert_type='participation', event_date=event_date,
+                    base_url=base_url, college_name=college_name,
+                    template_id=template_id)
+            ok = _send_cert_email(email, name, event_title, 'participation', 0, 0, pdf)
+            results['participation_sent' if ok else 'participation_failed'] += 1
+        except Exception as exc:
+            logger.error("Participation cert for %s failed: %s", email, exc)
+            results['participation_failed'] += 1
+
+    logger.info("Custom-template certs for '%s': %s", event_title, results)
     return results

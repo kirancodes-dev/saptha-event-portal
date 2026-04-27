@@ -149,8 +149,8 @@ def create_event():
                 flash(f"Event '{event_data['title']}' published! Review and tweak the AI-generated form below.", "success")
                 return redirect(f'/forms/builder/{new_event_id}')
 
-        flash(f"Event '{event_data['title']}' Published with Custom Rules!", "success")
-        return redirect('/spoc/dashboard')
+        flash(f"Event '{event_data['title']}' published! Build or customise the registration form below.", "success")
+        return redirect(f'/spoc/dashboard#event-{new_event_id}')
         
     except Exception as e:
         print(f"Error: {e}")
@@ -210,8 +210,26 @@ def event_results(event_id):
         
         leaderboard.append(data)
 
-    # 4. Sort by Highest Score
-    leaderboard.sort(key=lambda x: x['final_score'], reverse=True)
+    # 4. Sort by highest avg score; tiebreak by per-criteria averages
+    # High-impact criteria checked first when totals are equal
+    HIGH_IMPACT = ['innovation', 'Innovation', 'clarity', 'Clarity',
+                   'Presentation', 'presentation', 'Impact', 'impact']
+
+    def _tiebreak_key(reg):
+        scores_map = reg.get('scores', {})
+        if not scores_map:
+            return (0,) * (len(HIGH_IMPACT) + 1)
+        # Per-criterion averages across all judges
+        crit_avgs = {}
+        for judge_scores in scores_map.values():
+            for crit, val in (judge_scores.get('criteria') or {}).items():
+                crit_avgs.setdefault(crit, []).append(float(val))
+        avg_by_crit = {k: sum(v) / len(v) for k, v in crit_avgs.items()}
+        # Return tuple: overall avg first, then high-impact criteria in order
+        hi_vals = tuple(avg_by_crit.get(c, 0) for c in HIGH_IMPACT)
+        return (reg['final_score'],) + hi_vals
+
+    leaderboard.sort(key=_tiebreak_key, reverse=True)
 
     return render_template('spoc/results.html', event=event, leaderboard=leaderboard)
 
@@ -308,13 +326,37 @@ def api_checkin(event_id, reg_id):
 @role_required('ClubSPOC')
 def end_event(event_id):
     try:
-        from tasks.cert_tasks import bulk_generate_certificates
-        spoc_email = session.get('email', 'spoc')
         db.collection('events').document(event_id).update({
             'status': 'completed',
             'ended_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         })
-        bulk_generate_certificates.delay(event_id, triggered_by=spoc_email)
+        # Use template-aware cert task if available; fall back to Celery task
+        try:
+            from tasks.cert_tasks import bulk_generate_certificates
+            bulk_generate_certificates.delay(event_id,
+                                             triggered_by=session.get('email', 'spoc'))
+        except Exception:
+            # Inline sync fallback (no Celery / custom templates)
+            from utils_certificate import generate_and_send_all_certificates_with_templates
+            import os
+            ev   = db.collection('events').document(event_id).get().to_dict() or {}
+            regs = [r.to_dict() | {'id': r.id}
+                    for r in db.collection('registrations')
+                              .where('event_id', '==', event_id).stream()]
+            lb   = sorted(
+                [r for r in regs if r.get('scores')],
+                key=lambda x: -sum(s.get('total', 0)
+                                   for s in x.get('scores', {}).values())
+                               / max(len(x.get('scores', {})), 1)
+            )
+            generate_and_send_all_certificates_with_templates(
+                leaderboard=lb,
+                registrations=regs,
+                event_title=ev.get('title', 'Event'),
+                event_id=event_id,
+                event_date=str(ev.get('date', '')),
+                base_url=os.environ.get('BASE_URL', ''),
+            )
         _award_achievements(event_id)
         flash("Event ended. Certificates sent, achievements awarded!", "success")
     except Exception as e:
@@ -802,5 +844,314 @@ def clone_event(event_id):
                f"SPOC {session.get('user_id')} cloned event {event_id} → {new_id}")
     flash(f"✅ Event cloned! Update the date and registration deadline before publishing.", "success")
     return redirect(f'/forms/builder/{new_id}')
+
+
+# =========================================================
+# 15. TOGGLE OPEN-HALL MODE
+# =========================================================
+@spoc_bp.route('/toggle_openhall/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def toggle_openhall(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    current = doc.to_dict().get('open_hall_mode', False)
+    db.collection('events').document(event_id).update({'open_hall_mode': not current})
+    state = "ON" if not current else "OFF"
+    flash(f"Open-Hall mode turned {state}.", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 16. EDIT EVENT (basic field updates)
+# =========================================================
+@spoc_bp.route('/edit_event/<event_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('ClubSPOC')
+def edit_event(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    event = doc.to_dict()
+    event['id'] = event_id
+
+    if request.method == 'GET':
+        return render_template('spoc/edit_event.html', event=event)
+
+    updates = {}
+    for field in ['title', 'description', 'venue', 'date', 'time', 'reg_deadline', 'banner_url']:
+        val = request.form.get(field, '').strip()
+        if val:
+            updates[field] = val
+    if updates:
+        db.collection('events').document(event_id).update(updates)
+        flash("Event details updated.", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 17. DELETE EVENT
+# =========================================================
+@spoc_bp.route('/delete_event/<event_id>')
+@login_required
+@role_required('ClubSPOC')
+def delete_event(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    # Delete registrations, then event document
+    regs = db.collection('registrations').where('event_id', '==', event_id).stream()
+    for r in regs:
+        r.reference.delete()
+    db.collection('events').document(event_id).delete()
+    flash("Event and all registrations deleted.", "success")
+    return redirect('/spoc/dashboard')
+
+
+# =========================================================
+# 18. CERTIFICATE TEMPLATE UPLOAD
+# =========================================================
+@spoc_bp.route('/upload_cert_templates/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def upload_cert_templates(event_id):
+    import base64
+    MAX_BYTES = 800 * 1024  # 800 KB
+
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+
+    cert_types = ['participation', 'winner_1', 'winner_2', 'winner_3']
+    existing = doc.to_dict().get('cert_templates', {})
+    updates = dict(existing)
+    saved = []
+    errors = []
+
+    for ctype in cert_types:
+        f = request.files.get(ctype)
+        if not f or f.filename == '':
+            continue
+        raw = f.read()
+        if len(raw) > MAX_BYTES:
+            errors.append(f"{ctype}: file too large (max 800 KB)")
+            continue
+        content_type = f.content_type or 'image/png'
+        encoded = base64.b64encode(raw).decode('utf-8')
+        # Store in a sub-collection to keep event doc small
+        db.collection('cert_templates').document(f'{event_id}_{ctype}').set({
+            'event_id':     event_id,
+            'cert_type':    ctype,
+            'data':         encoded,
+            'content_type': content_type,
+            'uploaded_at':  datetime.datetime.now().isoformat(),
+            'uploaded_by':  session.get('user_id'),
+        })
+        updates[ctype] = True  # flag that template exists
+        saved.append(ctype)
+
+    # Save name position
+    try:
+        x_pct = max(10, min(90, int(request.form.get('name_x_pct', 50))))
+        y_pct = max(10, min(90, int(request.form.get('name_y_pct', 42))))
+    except (TypeError, ValueError):
+        x_pct, y_pct = 50, 42
+
+    db.collection('events').document(event_id).update({
+        'cert_templates':  updates,
+        'cert_name_pos':   {'x': x_pct, 'y': y_pct},
+    })
+
+    if saved:
+        flash(f"✅ Certificate templates saved: {', '.join(saved)}.", "success")
+    if errors:
+        for e in errors:
+            flash(f"⚠️ {e}", "warning")
+    if not saved and not errors:
+        # Only position was changed
+        flash("Name position saved.", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 19. JUDGE CSV UPLOAD + SINGLE ADD
+# =========================================================
+@spoc_bp.route('/upload_judges_csv/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def upload_judges_csv(event_id):
+    import secrets, string
+    from werkzeug.security import generate_password_hash
+
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+
+    f = request.files.get('judges_csv')
+    if not f or f.filename == '':
+        flash("No CSV file provided.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+
+    content = f.read().decode('utf-8', errors='ignore')
+    reader = csv.DictReader(io.StringIO(content))
+    created, skipped = 0, 0
+
+    for row in reader:
+        name  = (row.get('name') or row.get('Name') or '').strip()
+        email = (row.get('email') or row.get('Email') or '').strip().lower()
+        expertise = (row.get('expertise') or row.get('Expertise') or '').strip()
+        if not name or not email:
+            skipped += 1
+            continue
+
+        # Check if user already exists
+        existing = db.collection('users').where('email', '==', email).limit(1).stream()
+        if any(True for _ in existing):
+            # Just link as judge to this event
+            db.collection('events').document(event_id).update({
+                'judges': db.field_path_to_sentinel('judges') or []
+            })
+        else:
+            pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+            db.collection('users').document(email).set({
+                'name':      name,
+                'email':     email,
+                'role':      'Judge',
+                'password':  generate_password_hash(pwd),
+                'expertise': expertise,
+                'event_id':  event_id,
+                'created_at': datetime.datetime.now().isoformat(),
+            })
+            # Send credentials email
+            try:
+                from utils_email import send_email
+                send_email(
+                    to=email,
+                    subject=f"Judge Login — {doc.to_dict().get('title','Event')}",
+                    body=f"Hello {name},\n\nYou have been appointed as a Judge.\n\nLogin: {email}\nPassword: {pwd}\n\nPortal: /login\n\n— SapthaEvent"
+                )
+            except Exception:
+                pass
+        created += 1
+
+    flash(f"✅ {created} judge(s) created. {skipped} row(s) skipped.", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+@spoc_bp.route('/add_judge/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def add_judge(event_id):
+    import secrets, string
+    from werkzeug.security import generate_password_hash
+
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+
+    name      = request.form.get('judge_name', '').strip()
+    email     = request.form.get('judge_email', '').strip().lower()
+    expertise = request.form.get('expertise', '').strip()
+
+    if not name or not email:
+        flash("Name and email are required.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+
+    existing = list(db.collection('users').where('email', '==', email).limit(1).stream())
+    if not existing:
+        pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+        db.collection('users').document(email).set({
+            'name':      name,
+            'email':     email,
+            'role':      'Judge',
+            'password':  generate_password_hash(pwd),
+            'expertise': expertise,
+            'event_id':  event_id,
+            'created_at': datetime.datetime.now().isoformat(),
+        })
+        try:
+            from utils_email import send_email
+            send_email(
+                to=email,
+                subject=f"Judge Login — {doc.to_dict().get('title','Event')}",
+                body=f"Hello {name},\n\nYou are appointed as Judge.\nLogin: {email}\nPassword: {pwd}\n\n— SapthaEvent"
+            )
+        except Exception:
+            pass
+        flash(f"✅ Judge {name} created and credentials emailed.", "success")
+    else:
+        flash(f"⚠️ {email} already has an account.", "info")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 20. ROOM SETUP + AUTO-ALLOCATE
+# =========================================================
+@spoc_bp.route('/setup_rooms/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def setup_rooms(event_id):
+    import random
+
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+
+    room_names = request.form.getlist('room_name[]')
+    capacities = request.form.getlist('capacity[]')
+    action     = request.form.get('action', 'save')
+
+    rooms = []
+    for name, cap in zip(room_names, capacities):
+        name = name.strip()
+        try:
+            cap = int(cap)
+        except (ValueError, TypeError):
+            cap = 0
+        if name and cap > 0:
+            rooms.append({'name': name, 'capacity': cap})
+
+    if not rooms:
+        flash("Please add at least one room with a valid capacity.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+
+    db.collection('events').document(event_id).update({'rooms': rooms})
+
+    if action == 'allocate':
+        # Fetch all confirmed registrations and distribute across rooms
+        regs = list(db.collection('registrations')
+                    .where('event_id', '==', event_id).stream())
+        reg_ids = [r.id for r in regs]
+        random.shuffle(reg_ids)
+
+        allocations = {}  # reg_id → room_name
+        idx = 0
+        for room in rooms:
+            for _ in range(room['capacity']):
+                if idx >= len(reg_ids):
+                    break
+                allocations[reg_ids[idx]] = room['name']
+                idx += 1
+
+        batch_updates = 0
+        for reg_id, room_name in allocations.items():
+            db.collection('registrations').document(reg_id).update(
+                {'allocated_room': room_name}
+            )
+            batch_updates += 1
+
+        flash(f"✅ Rooms saved and {batch_updates} participant(s) allocated.", "success")
+    else:
+        flash(f"✅ {len(rooms)} room(s) saved.", "success")
+
+    return redirect(f'/spoc/dashboard#event-{event_id}')
 
 

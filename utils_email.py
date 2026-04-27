@@ -56,20 +56,25 @@ def _from_address() -> str:
 
 
 def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
+    logo_url = os.environ.get(
+        'COLLEGE_LOGO_URL',
+        'https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png'
+    )
     return f"""
     <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;
                 background:#fff;border-radius:12px;overflow:hidden;
                 border:1px solid #e2e8f0;">
-      <div style="background:#1a2557;padding:24px;text-align:center;">
-        <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
-             height="36" style="display:block;margin:0 auto 10px;max-width:200px;" alt="SNPSU">
-        <h2 style="color:#fff;margin:0;font-size:18px;">{title}</h2>
+      <div style="background:#1a2557;padding:28px 24px 20px;text-align:center;">
+        <img src="{logo_url}"
+             height="48" style="display:block;margin:0 auto 12px;max-width:220px;
+             background:#fff;padding:6px 10px;border-radius:6px;" alt="Sapthagiri NPS University">
+        <h2 style="color:#fff;margin:0;font-size:18px;font-weight:700;">{title}</h2>
       </div>
       <div style="padding:28px;">{content}</div>
       <div style="background:#f8fafc;padding:16px;text-align:center;
                   border-top:1px solid #e2e8f0;">
         <p style="color:#94a3b8;font-size:11px;margin:0;">
-          SapthaEvent Portal · Sapthagiri NPS University
+          SapthaEvent Portal &middot; Sapthagiri NPS University
         </p>
       </div>
     </div>"""

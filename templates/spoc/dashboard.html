@@ -145,8 +145,9 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   </div>
   <div class="nav-links">
     <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
+    <a href="/spoc/profile" class="nav-link-item" title="My Profile"><i class="fas fa-user-circle me-1"></i>Profile</a>
     <a href="/spoc/create_event" class="nav-link-item btn-orange"><i class="fas fa-plus me-1"></i>Create Event</a>
-    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
+    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
   </div>
 </div>
 
@@ -185,29 +186,33 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
     <div class="stat-icon si-blue"><i class="fas fa-calendar-alt"></i></div>
     <div>
       <div class="stat-label">Total Events</div>
-      <div class="stat-val">{{ stats.total_events }}</div>
+      <div class="stat-val" id="stat-total-events">{{ stats.total_events }}</div>
     </div>
   </div>
   <div class="stat-card">
     <div class="stat-icon si-green"><i class="fas fa-users"></i></div>
     <div>
       <div class="stat-label">Registrations</div>
-      <div class="stat-val">{{ stats.total_regs }}</div>
+      <div class="stat-val" id="stat-total-regs">{{ stats.total_regs }}</div>
     </div>
   </div>
   <div class="stat-card">
     <div class="stat-icon si-orange"><i class="fas fa-user-check"></i></div>
     <div>
       <div class="stat-label">Attendance</div>
-      <div class="stat-val">{{ stats.present_count | default(0) }}</div>
+      <div class="stat-val" id="stat-present">{{ stats.present_count | default(0) }}</div>
     </div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="position:relative;">
     <div class="stat-icon si-purple"><i class="fas fa-tag"></i></div>
     <div>
       <div class="stat-label">Division</div>
       <div class="stat-val" style="font-size:16px;">{{ category }}</div>
     </div>
+    <span id="stats-refresh-badge" title="Stats auto-refresh every 30 s"
+          style="position:absolute;top:10px;right:12px;font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:3px;">
+      <i class="fas fa-sync-alt fa-xs" id="stats-sync-icon"></i> Live
+    </span>
   </div>
 </div>
 
@@ -364,6 +369,25 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
             <a href="/spoc/edit_event/{{ event.id }}" class="action-btn btn-outline">
               <i class="fas fa-edit"></i> Edit Details
             </a>
+            <form method="POST" action="/spoc/toggle_status/{{ event.id }}" style="display:contents;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="action-btn {{ 'btn-amber' if event.status == 'active' else 'btn-outline' }}"
+                      title="Toggle event status"
+                      onclick="return confirm(this.dataset.msg)"
+                      data-msg="Mark '{{ event.title | e }}' as {{ 'Completed' if event.status == 'active' else 'Active' }}?">
+                <i class="fas fa-{{ 'flag-checkered' if event.status == 'active' else 'redo' }}"></i>
+                Mark {{ 'Completed' if event.status == 'active' else 'Re-open' }}
+              </button>
+            </form>
+            <form method="POST" action="/spoc/bulk_certs/{{ event.id }}" style="display:contents;"
+                  onsubmit="return confirm('Send participation certificates to all checked-in attendees of \'{{ event.title | e }}\'?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="action-btn btn-outline"
+                      style="background:#fdf4ff;border-color:#d8b4fe;color:#7e22ce;"
+                      title="Email participation certs to all checked-in attendees">
+                <i class="fas fa-certificate"></i> Bulk Send Certs
+              </button>
+            </form>
             <a href="/spoc/delete_event/{{ event.id }}"
                class="action-btn btn-outline" style="background:#fff1f2;border-color:#fda4af;color:#dc2626;"
                onclick="return confirm('Delete \'{{ event.title | e }}\' and all its data? This cannot be undone.')">
@@ -387,9 +411,13 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
               {% endfor %}
             {% else %}
               <span style="font-size:12.5px;color:#94a3b8;font-style:italic;">
-                <i class="fas fa-info-circle me-1"></i>No coordinators assigned — contact admin to assign one.
+                <i class="fas fa-info-circle me-1"></i>No coordinators assigned yet.
               </span>
             {% endif %}
+            <button class="action-btn btn-outline" style="background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;"
+                    onclick="openModal('assignCoordModal-{{ event.id }}')">
+              <i class="fas fa-user-plus"></i> Assign Coordinator
+            </button>
           </div>
         </div>
 
@@ -446,6 +474,53 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
       </div><!-- /event-actions -->
     </div><!-- /event-card -->
+
+    <!-- ── ASSIGN COORDINATOR MODAL ── -->
+    <div id="assignCoordModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+      <div class="spoc-modal-box" style="max-width:480px;">
+        <div class="spoc-modal-hdr" style="background:#1d4ed8;">
+          <span><i class="fas fa-user-plus me-2"></i>Assign Coordinator — {{ event.title }}</span>
+          <button onclick="closeModal('assignCoordModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+        </div>
+        <div style="padding:24px;">
+          <p style="font-size:13px;color:#475569;margin-bottom:16px;">
+            Type an email — existing coordinators appear as suggestions. New emails get an account created automatically.
+          </p>
+          <form method="POST" action="/spoc/assign_coordinator/{{ event.id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom:14px;">
+              <label style="font-size:12.5px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">
+                Coordinator Name <span style="color:#94a3b8;font-weight:400;">(for new accounts)</span>
+              </label>
+              <input type="text" name="coordinator_name" id="coordName-{{ event.id }}" class="form-control"
+                     placeholder="Full name"
+                     style="background:#f8fafc;border:1.5px solid #dde3ef;border-radius:8px;padding:10px 14px;font-size:14px;width:100%;">
+            </div>
+            <div style="margin-bottom:16px;">
+              <label style="font-size:12.5px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">
+                Coordinator Email
+              </label>
+              <input type="email" name="coordinator_email" id="coordEmail-{{ event.id }}" class="form-control" required
+                     placeholder="coordinator@example.com"
+                     list="coordSuggestions"
+                     autocomplete="off"
+                     style="background:#f8fafc;border:1.5px solid #dde3ef;border-radius:8px;padding:10px 14px;font-size:14px;width:100%;"
+                     oninput="autoFillCoordName(this.value, 'coordName-{{ event.id }}')">
+            </div>
+            <div style="display:flex;gap:10px;margin-top:4px;">
+              <button type="submit"
+                      style="background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-weight:600;font-size:13.5px;cursor:pointer;">
+                <i class="fas fa-user-plus me-1"></i> Assign
+              </button>
+              <button type="button" onclick="closeModal('assignCoordModal-{{ event.id }}')"
+                      style="background:#f1f5f9;color:#374151;border:1.5px solid #dde3ef;border-radius:8px;padding:9px 18px;font-weight:600;font-size:13.5px;cursor:pointer;">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <!-- ── JUDGE MODAL ── -->
     <div id="judgeModal-{{ event.id }}" class="spoc-modal" style="display:none;">
@@ -735,6 +810,9 @@ function addRoomRow(eventId) {
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
 
+<!-- Datalist for coordinator email autocomplete (shared across all event modals) -->
+<datalist id="coordSuggestions"></datalist>
+
 <!-- ── BLAST EMAIL MODAL ──────────────────────────────────── -->
 <div id="blastModal" style="display:none;position:fixed;inset:0;z-index:9999;
      background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
@@ -835,6 +913,61 @@ document.getElementById('blastModal').addEventListener('click', function(e) {
   if (e.target === this) closeBlastModal();
 });
 </script>
+
+<script>
+// ── COORDINATOR AUTOCOMPLETE ──────────────────────────────────
+var _coordCache = [];
+(function loadCoordinators() {
+  fetch('/spoc/api/coordinators')
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .then(function(list) {
+      _coordCache = list;
+      var dl = document.getElementById('coordSuggestions');
+      if (!dl) return;
+      dl.innerHTML = '';
+      list.forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c.email;
+        opt.label = c.name ? c.name + ' (' + c.email + ')' : c.email;
+        dl.appendChild(opt);
+      });
+    })
+    .catch(function() {});
+})();
+
+function autoFillCoordName(email, nameFieldId) {
+  var match = _coordCache.find(function(c) { return c.email === email; });
+  if (match && match.name) {
+    var f = document.getElementById(nameFieldId);
+    if (f && !f.value) f.value = match.name;
+  }
+}
+
+// ── LIVE STATS REFRESH (every 30 s) ──────────────────────────
+var _syncIcon = document.getElementById('stats-sync-icon');
+function refreshStats() {
+  if (_syncIcon) _syncIcon.style.animation = 'spin 1s linear infinite';
+  fetch('/spoc/api/stats')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (!data) return;
+      var te = document.getElementById('stat-total-events');
+      var tr = document.getElementById('stat-total-regs');
+      var pr = document.getElementById('stat-present');
+      if (te) te.textContent = data.total_events;
+      if (tr) tr.textContent = data.total_regs;
+      if (pr) pr.textContent = data.present_count;
+    })
+    .catch(function() {})
+    .finally(function() {
+      if (_syncIcon) _syncIcon.style.animation = '';
+    });
+}
+setInterval(refreshStats, 30000);
+</script>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 
 </body>
 </html>

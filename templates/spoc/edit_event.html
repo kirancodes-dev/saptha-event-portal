@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Event | SapthaEvent</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/global.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-body: #0d1525;
+      --bg-card: #1a2335;
+      --bg-input: #0f1c2e;
+      --border: #2d3d55;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --orange: #c9a45e;
+    }
+    body { background: var(--bg-body); color: var(--text-main); font-family: 'Inter', sans-serif; padding-bottom: 80px; }
+    .topbar { background: #111827; border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+    .topbar h5 { margin: 0; font-weight: 700; font-size: 1.1rem; }
+    .btn-back { background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: var(--text-main); border-radius: 8px; padding: 8px 16px; font-size: 13.5px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: .2s; }
+    .btn-back:hover { background: rgba(255,255,255,0.14); color: #fff; }
+    .edit-container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    .section-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 30px; margin-bottom: 24px; }
+    .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); display: flex; align-items: center; gap: 10px; }
+    .form-label { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .form-control, .form-select {
+      background: var(--bg-input) !important;
+      border: 1px solid var(--border) !important;
+      color: #e2e8f0 !important;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14.5px;
+    }
+    .form-control::placeholder { color: #4a5568 !important; opacity: 1; }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--orange) !important;
+      box-shadow: 0 0 0 2px rgba(201,164,94,.2) !important;
+      color: #f1f5f9 !important;
+      background: var(--bg-input) !important;
+    }
+    textarea.form-control { resize: vertical; min-height: 110px; }
+    .btn-save { background: var(--orange); color: #1a2335; font-weight: 700; border: none; border-radius: 10px; padding: 12px 32px; font-size: 15px; cursor: pointer; transition: .2s; }
+    .btn-save:hover { background: #d4aa68; transform: translateY(-1px); }
+    .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% endwith %}
+    .alert { border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <a href="/spoc/dashboard" class="btn-back">
+    <i class="fas fa-arrow-left"></i> Back to Dashboard
+  </a>
+  <h5><i class="fas fa-edit me-2" style="color:var(--orange);"></i>Edit Event Details</h5>
+</div>
+
+<div class="edit-container">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="section-card">
+    <div class="section-title">
+      <i class="fas fa-info-circle" style="color:var(--orange);"></i>
+      Basic Information
+    </div>
+
+    <form method="POST" action="/spoc/edit_event/{{ event.id }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="mb-4">
+        <label class="form-label">Event Title</label>
+        <input type="text" name="title" class="form-control"
+               value="{{ event.get('title', '') }}" placeholder="Enter event title">
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control"
+                  placeholder="Describe the event...">{{ event.get('description', '') }}</textarea>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label class="form-label">Venue</label>
+          <input type="text" name="venue" class="form-control"
+                 value="{{ event.get('venue', '') }}" placeholder="e.g. Auditorium, Block A">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Category / Type</label>
+          <input type="text" name="event_type" class="form-control"
+                 value="{{ event.get('event_type', '') }}" placeholder="e.g. Technical, Cultural">
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label class="form-label">Event Date</label>
+          <input type="date" name="date" class="form-control" value="{{ event.get('date', '') }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Event Time</label>
+          <input type="time" name="time" class="form-control" value="{{ event.get('time', '') }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Registration Deadline</label>
+          <input type="date" name="reg_deadline" class="form-control" value="{{ event.get('reg_deadline', '') }}">
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">Banner Image URL</label>
+        <input type="url" name="banner_url" class="form-control"
+               value="{{ event.get('banner_url', '') }}" placeholder="https://...">
+        <div class="hint">Paste a direct image link. Leave blank to keep the current banner.</div>
+      </div>
+
+      <div class="d-flex gap-3 align-items-center mt-2">
+        <button type="submit" class="btn-save">
+          <i class="fas fa-save me-2"></i>Save Changes
+        </button>
+        <a href="/spoc/dashboard" class="btn-back">
+          <i class="fas fa-times me-1"></i>Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

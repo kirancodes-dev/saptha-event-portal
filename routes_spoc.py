@@ -4,7 +4,7 @@ import datetime
 import csv
 import io
 import json
-from utils import login_required, role_required
+from utils import login_required, role_required, log_action
 
 spoc_bp = Blueprint('spoc', __name__, url_prefix='/spoc')
 
@@ -24,10 +24,19 @@ def dashboard():
 
     for doc in query:
         data = doc.to_dict()
-        regs = list(db.collection('registrations').where('event_id', '==', doc.id).stream())
-        reg_count = len(regs)
-        p_count = sum(1 for r in regs if r.to_dict().get('attendance') == 'Present')
-        total_regs += reg_count
+        # Use cached counts to avoid N+1 Firestore queries on every page load.
+        # /spoc/api/stats refreshes the cache every 30 s in the background.
+        reg_count = data.get('registration_count')
+        p_count   = data.get('attendance_count', 0) or 0
+        if reg_count is None:
+            regs      = list(db.collection('registrations').where('event_id', '==', doc.id).stream())
+            reg_count = len(regs)
+            p_count   = sum(1 for r in regs if r.to_dict().get('attendance') == 'Present')
+            db.collection('events').document(doc.id).update({
+                'registration_count': reg_count,
+                'attendance_count':   p_count,
+            })
+        total_regs    += reg_count
         present_count += p_count
         data['registration_count'] = reg_count
         events.append(FirebaseWrapper(doc.id, data))
@@ -842,8 +851,8 @@ def clone_event(event_id):
 
     log_action(db, "EVENT_CLONED",
                f"SPOC {session.get('user_id')} cloned event {event_id} → {new_id}")
-    flash(f"✅ Event cloned! Update the date and registration deadline before publishing.", "success")
-    return redirect(f'/forms/builder/{new_id}')
+    flash(f"✅ Event cloned! Update the date and deadline, then save.", "success")
+    return redirect(f'/spoc/edit_event/{new_id}')
 
 
 # =========================================================
@@ -913,7 +922,79 @@ def delete_event(event_id):
 
 
 # =========================================================
-# 18. CERTIFICATE TEMPLATE UPLOAD
+# 18. ASSIGN COORDINATOR
+# =========================================================
+@spoc_bp.route('/assign_coordinator/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def assign_coordinator(event_id):
+    import secrets, string
+    from werkzeug.security import generate_password_hash
+    from utils_email import send_credentials_email, send_appointment_email
+
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+
+    data = doc.to_dict() or {}
+    if data.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised to modify this event.", "danger")
+        return redirect('/spoc/dashboard')
+
+    email = request.form.get('coordinator_email', '').strip().lower()
+    name  = request.form.get('coordinator_name', '').strip() or email.split('@')[0].title()
+    if not email:
+        flash("Please enter a coordinator email.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+
+    event_title = data.get('title', 'Event')
+
+    # Check if user already exists
+    user_docs = list(db.collection('users').where('email', '==', email).stream())
+
+    if not user_docs:
+        # Create new Coordinator account with generated password
+        pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+        db.collection('users').document(email).set({
+            'name':       name,
+            'email':      email,
+            'role':       'Coordinator',
+            'password':   generate_password_hash(pwd),
+            'created_at': datetime.datetime.now().isoformat(),
+        })
+        try:
+            send_credentials_email(email, name, 'Coordinator', pwd)
+        except Exception:
+            pass
+        account_msg = f"Account created and login credentials emailed to {email}."
+    else:
+        user_data = user_docs[0].to_dict()
+        user_role = user_data.get('role', '')
+        if user_role not in ('Coordinator', 'ClubSPOC', 'SuperAdmin'):
+            flash(f"{email} is registered as '{user_role}', not a Coordinator.", "warning")
+            return redirect(f'/spoc/dashboard#event-{event_id}')
+        name = user_data.get('name', name)
+        try:
+            send_appointment_email(email, name, 'Coordinator', event_title)
+        except Exception:
+            pass
+        account_msg = f"Appointment email sent to {email}."
+
+    coords = data.get('coordinators', [])
+    if email in coords:
+        flash(f"{email} is already assigned as a coordinator.", "info")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+
+    coords.append(email)
+    db.collection('events').document(event_id).update({'coordinators': coords})
+    log_action(db, "COORDINATOR_ASSIGNED", f"SPOC {session.get('user_id')} assigned {email} to event {event_id}")
+    flash(f"✅ {email} assigned as coordinator. {account_msg}", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 19. CERTIFICATE TEMPLATE UPLOAD
 # =========================================================
 @spoc_bp.route('/upload_cert_templates/<event_id>', methods=['POST'])
 @login_required
@@ -1155,3 +1236,148 @@ def setup_rooms(event_id):
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
 
+# =========================================================
+# 21. TOGGLE EVENT STATUS (Active ↔ Completed)
+# =========================================================
+@spoc_bp.route('/toggle_status/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def toggle_status(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    data = doc.to_dict() or {}
+    if data.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised.", "danger")
+        return redirect('/spoc/dashboard')
+    current    = data.get('status', 'active')
+    new_status = 'completed' if current == 'active' else 'active'
+    db.collection('events').document(event_id).update({'status': new_status})
+    log_action(db, "STATUS_TOGGLED",
+               f"SPOC {session.get('user_id')} set event {event_id} → {new_status}")
+    flash(f"Event marked as {'Completed' if new_status == 'completed' else 'Active'}.", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 22. SPOC PROFILE (view / edit)
+# =========================================================
+@spoc_bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+@role_required('ClubSPOC')
+def profile():
+    spoc_id  = session.get('user_id')
+    user_doc = db.collection('users').document(spoc_id).get()
+    user     = user_doc.to_dict() or {}
+    user['id'] = spoc_id
+
+    if request.method == 'POST':
+        updates = {}
+        for field in ['name', 'phone', 'whatsapp_link', 'club_name']:
+            val = request.form.get(field, '').strip()
+            if val:
+                updates[field] = val
+        if updates:
+            db.collection('users').document(spoc_id).update(updates)
+            if 'name' in updates:
+                session['name'] = updates['name']
+            log_action(db, "PROFILE_UPDATED", f"SPOC {spoc_id} updated their profile")
+            flash("Profile updated successfully!", "success")
+        return redirect('/spoc/profile')
+
+    return render_template('spoc/profile.html', user=user)
+
+
+# =========================================================
+# 23. API — LIVE STATS (called every 30 s by dashboard JS)
+# =========================================================
+@spoc_bp.route('/api/stats')
+@login_required
+@role_required('ClubSPOC')
+def api_stats():
+    spoc_id    = session.get('user_id')
+    event_docs = list(db.collection('events').where('spoc_id', '==', spoc_id).stream())
+    total_regs    = 0
+    present_count = 0
+    event_stats   = []
+
+    for doc in event_docs:
+        regs      = list(db.collection('registrations').where('event_id', '==', doc.id).stream())
+        rc        = len(regs)
+        pc        = sum(1 for r in regs if r.to_dict().get('attendance') == 'Present')
+        total_regs    += rc
+        present_count += pc
+        # Refresh cache so next dashboard load is instant
+        db.collection('events').document(doc.id).update({
+            'registration_count': rc,
+            'attendance_count':   pc,
+        })
+        event_stats.append({'id': doc.id, 'reg_count': rc, 'attend_count': pc})
+
+    return jsonify({
+        'total_events':  len(event_docs),
+        'total_regs':    total_regs,
+        'present_count': present_count,
+        'events':        event_stats,
+    })
+
+
+# =========================================================
+# 24. API — COORDINATOR LIST (for datalist autocomplete)
+# =========================================================
+@spoc_bp.route('/api/coordinators')
+@login_required
+@role_required('ClubSPOC')
+def api_coordinators():
+    docs   = db.collection('users').where('role', '==', 'Coordinator').stream()
+    result = [{'email': (d.to_dict() or {}).get('email', doc.id),
+               'name':  (d.to_dict() or {}).get('name', '')}
+              for doc in docs
+              for d in [doc.to_dict() or {}]]
+    return jsonify(result)
+
+
+# =========================================================
+# 25. BULK PARTICIPATION CERTIFICATES
+# =========================================================
+@spoc_bp.route('/bulk_certs/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def bulk_certs(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+
+    event = doc.to_dict() or {}
+    if event.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised.", "danger")
+        return redirect('/spoc/dashboard')
+
+    regs     = list(db.collection('registrations').where('event_id', '==', event_id).stream())
+    all_regs = [r.to_dict() | {'id': r.id} for r in regs]
+    attended = [r for r in all_regs if r.get('attendance') == 'Present']
+
+    if not attended:
+        flash("No checked-in attendees found. Mark attendance via QR Scanner first.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+
+    try:
+        from utils_certificate import generate_and_send_all_certificates_with_templates
+        import os
+        generate_and_send_all_certificates_with_templates(
+            leaderboard=[],
+            registrations=all_regs,
+            event_title=event.get('title', 'Event'),
+            event_id=event_id,
+            event_date=str(event.get('date', '')),
+            base_url=os.environ.get('BASE_URL', ''),
+        )
+        log_action(db, "BULK_CERTS",
+                   f"SPOC {session.get('user_id')} bulk-issued certs for event {event_id}")
+        flash(f"✅ Participation certificates sent to {len(attended)} attendee(s).", "success")
+    except Exception as e:
+        flash(f"Error sending certificates: {e}", "danger")
+
+    return redirect(f'/spoc/dashboard#event-{event_id}')

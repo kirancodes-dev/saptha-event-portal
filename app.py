@@ -6,8 +6,6 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from flask import Flask, render_template, session, redirect, request, jsonify, Response
 from flask_mail import Mail
-from flask_limiter import Limiter
-import flask_limiter.util
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_session import Session
 from flask_talisman import Talisman
@@ -148,16 +146,8 @@ Talisman(
 )
 
 # ── Rate limiter ─────────────────────────────────────────
-limiter = Limiter(
-    key_func=flask_limiter.util.get_remote_address,
-    app=app,
-    default_limits=[],
-    storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
-    enabled=False
-)
-
-# Expose limiter on app so blueprints can attach route-specific limits
-app.extensions['limiter'] = limiter
+from extensions import limiter  # noqa: E402 — after app creation
+limiter.init_app(app)           # reads RATELIMIT_STORAGE_URL from app.config
 
 # =========================================================
 # FIREBASE  —  reads FIREBASE_CREDENTIALS env var on Railway
@@ -378,6 +368,16 @@ def home():
     current_date    = datetime.datetime.now().strftime("%Y-%m-%d")
     events          = []
     calendar_events = []
+    ticker_events   = []
+
+    cat_icon_map = {
+        'Technical':  'fa-laptop-code',
+        'Cultural':   'fa-music',
+        'Sports':     'fa-running',
+        'Management': 'fa-briefcase',
+        'Workshop':   'fa-tools',
+        'General':    'fa-calendar-alt',
+    }
 
     try:
         color_map = {
@@ -395,6 +395,9 @@ def home():
             d.setdefault('registration_count', 0)
             d.setdefault('entry_fee',          0)
             d.setdefault('category',           'General')
+            # Hide past events from home page; they stay in DB until SPOC deletes them
+            if d.get('date', '9999-99-99') < current_date:
+                continue
             events.append(d)
             cat = d.get('category', 'General')
             calendar_events.append({
@@ -403,13 +406,33 @@ def home():
                 'url':   f"/forms/register/{d['id']}",
                 'color': color_map.get(cat, '#0d2d62'),
             })
+
+        events.sort(key=lambda x: x.get('date', '9999-99-99'))
+        for d in events[:10]:
+            raw_date = d.get('date', '')
+            try:
+                fmt_date = datetime.datetime.strptime(raw_date, '%Y-%m-%d').strftime('%b %d')
+            except Exception:
+                fmt_date = raw_date
+            reg_count = d.get('registration_count', 0)
+            cat = d.get('category', 'General')
+            ticker_events.append({
+                'title':    d.get('title', 'Event'),
+                'date':     fmt_date,
+                'icon':     cat_icon_map.get(cat, 'fa-calendar-alt'),
+                'category': cat,
+                'reg_count': reg_count,
+                'event_id': d.get('id', ''),
+            })
+
     except Exception as exc:
         app.logger.error("Home page Firebase error: %s", exc)
 
     return render_template('index.html',
         events=events,
         current_date=current_date,
-        calendar_events=json.dumps(calendar_events))
+        calendar_events=json.dumps(calendar_events),
+        ticker_events=ticker_events)
 
 
 # =========================================================
@@ -447,7 +470,12 @@ def event_details(event_id):
         event.setdefault('price',              event.get('entry_fee', 0))
         event.setdefault('organiser',          event.get('organizer', 'SNPSU'))
 
+        reg_count = event.get('registration_count', 0)
+        limits    = event.get('limits', {})
+        max_p     = limits.get('max_participants', 200) if isinstance(limits, dict) else 200
+
         is_registered = False
+        prefill = None
         if session.get('user_id'):
             q = (db.collection('registrations')
                    .where(filter=FieldFilter('event_id',   '==', event_id))
@@ -455,8 +483,23 @@ def event_details(event_id):
                    .limit(1).stream())
             is_registered = any(q)
 
+            if session.get('role') == 'Student':
+                u_doc = db.collection('users').document(session['user_id']).get()
+                if u_doc.exists:
+                    u = u_doc.to_dict()
+                    prefill = {
+                        'name':  u.get('name', ''),
+                        'email': session['user_id'],
+                        'usn':   u.get('usn', ''),
+                        'phone': u.get('phone', ''),
+                    }
+
         return render_template('public/event_details.html',
-                               event=event, is_registered=is_registered)
+                               event=event,
+                               is_registered=is_registered,
+                               reg_count=reg_count,
+                               max_p=max_p,
+                               prefill=prefill)
     except Exception as exc:
         app.logger.error("Event details error: %s", exc)
         return render_template('500.html'), 500

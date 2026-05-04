@@ -15,12 +15,20 @@
 body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;}
 h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 /* NAV */
-.topnav{background:var(--blue);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.topnav{background:var(--blue);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
 .logo-sq{width:34px;height:34px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:13px;color:#fff;}
 .brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;}
-.nav-links{display:flex;align-items:center;gap:6px;}
-.nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+.nav-links{display:flex;align-items:center;gap:2px;}
+.nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 10px;border-radius:7px;transition:.15s;}
 .nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
+/* Mobile nav — hide brand text + link labels, icons only */
+@media(max-width:600px){
+  .brand{display:none;}
+  .topnav{padding:0 12px;}
+  .nav-link-item{padding:6px 8px;font-size:0;}
+  .nav-link-item i{font-size:16px;margin:0!important;}
+  .nav-links{gap:0;}
+}
 /* HERO */
 .hero-band{background:var(--blue);padding:20px 24px 28px;}
 .hero-name{font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;color:#fff;margin:0;}
@@ -117,7 +125,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
     <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
     <span class="brand">SapthaEvent</span>
   </div>
-  <div class="nav-links" style="gap:4px;">
+  <div class="nav-links">
     <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Events</a>
     <a href="/calendar" class="nav-link-item"><i class="fas fa-calendar-alt me-1"></i>Calendar</a>
     <a href="/profile/" class="nav-link-item"><i class="fas fa-user me-1"></i>Profile</a>

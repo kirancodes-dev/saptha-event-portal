@@ -21,7 +21,7 @@ except ImportError:
     _WA = False
 
 coord_bp    = Blueprint('coordinator', __name__, url_prefix='/coordinator')
-COORD_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
+COORD_ROLES = ['ClubSPOC', 'EventCoordinator', 'Coordinator', 'SuperAdmin', 'Super Admin']
 
 def _wa(fn, *a, **kw):
     if _WA:
@@ -646,14 +646,46 @@ def process_walkin():
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
 def scanner_selector():
     user_email = session.get('user_id', '')
+    user_name  = session.get('name', user_email.split('@')[0].title())
     is_super   = session.get('role', '') in ('SuperAdmin', 'Super Admin')
+
+    today_str    = datetime.datetime.now().strftime('%Y-%m-%d')
+    tomorrow_str = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+
     events = []
     for e in db.collection('events').where(filter=_ff('status', '==', 'active')).stream():
         d = e.to_dict()
         assigned = any(s.get('email') == user_email for s in d.get('staff', []))
-        if is_super or assigned:
-            events.append({'id': e.id, 'title': d.get('title'), 'date': d.get('date', '')})
-    return render_template('coordinator/scanner_selector.html', events=events)
+        if not (is_super or assigned):
+            continue
+        ev_date = d.get('date', '')
+        if ev_date < today_str:
+            continue
+        events.append({
+            'id':       e.id,
+            'title':    d.get('title', 'Untitled'),
+            'date':     ev_date,
+            'time':     d.get('time', ''),
+            'venue':    d.get('venue', 'SNPSU Campus'),
+            'category': d.get('category', 'General'),
+            'reg_count': int(d.get('registration_count', 0) or 0),
+            'max_cap':   int((d.get('limits') or {}).get('max_participants', 0) or 0),
+            'is_today':    ev_date == today_str,
+            'is_tomorrow': ev_date == tomorrow_str,
+        })
+
+    events.sort(key=lambda x: x['date'])
+    today_events    = [e for e in events if e['is_today']]
+    tomorrow_events = [e for e in events if e['is_tomorrow']]
+    upcoming_events = [e for e in events if not e['is_today'] and not e['is_tomorrow']]
+
+    return render_template('coordinator/scanner_selector.html',
+        user_name=user_name,
+        today_events=today_events,
+        tomorrow_events=tomorrow_events,
+        upcoming_events=upcoming_events,
+        total_assigned=len(events),
+    )
 
 
 @coord_bp.route('/scan/<event_id>')

@@ -102,7 +102,8 @@ def dashboard():
     # Sort active by soonest date
     active_tickets.sort(key=lambda x: x.get('event_date', ''))
 
-    # Upcoming events not yet registered for
+    # Upcoming events not yet registered for — exclude past events
+    today = datetime.date.today().strftime('%Y-%m-%d')
     registered_event_ids = {r.get('event_id') for r in active_tickets + completed_events}
     upcoming_events = []
     for e in (db.collection('events')
@@ -110,6 +111,8 @@ def dashboard():
                 .stream()):
         if e.id not in registered_event_ids:
             d = e.to_dict()
+            if d.get('date', '9999-99-99') < today:
+                continue
             d['id'] = e.id
             d['days_until'] = _days_until(d.get('date', ''))
             upcoming_events.append(d)

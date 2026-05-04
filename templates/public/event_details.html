@@ -6,481 +6,536 @@
     <title>{{ event.title }} | SapthaEvent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --blue: #1a2557;
-            --orange: #c9a45e;
-            --bg: #f8f9fa;
-            --card: #ffffff;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-        }
-        body { background-color: var(--bg); color: var(--text-main); font-family: 'Inter', sans-serif; padding-bottom: 120px; }
-        /* Countdown */
-        .countdown-band{background:linear-gradient(135deg,var(--blue),#1a4fa0);padding:14px 0;text-align:center;}
-        .cd-wrap{display:inline-flex;gap:20px;align-items:center;}
-        .cd-unit{text-align:center;min-width:52px;}
-        .cd-num{font-size:2rem;font-weight:800;color:#fff;line-height:1;font-family:'Inter',sans-serif;}
-        .cd-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-top:2px;}
-        .cd-sep{font-size:1.8rem;font-weight:800;color:var(--orange);line-height:1;margin-bottom:14px;}
-        .cd-over{font-size:1.1rem;font-weight:700;color:var(--orange);}
-        /* Capacity bar */
-        .cap-bar-wrap{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px 20px;margin-bottom:25px;}
-        .cap-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-        .cap-bar-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);}
-        .cap-bar-count{font-size:13px;font-weight:600;color:#64748b;}
-        .cap-bar{height:8px;background:#f1f5f9;border-radius:100px;overflow:hidden;}
-        .cap-fill{height:100%;border-radius:100px;transition:width .4s ease;background:linear-gradient(90deg,var(--blue),var(--orange));}
-        .cap-fill.full{background:linear-gradient(90deg,#ef4444,#dc2626);}
-        /* Share buttons */
-        .share-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-        .share-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;border:none;cursor:pointer;transition:.15s;}
-        .share-btn:hover{opacity:.85;transform:translateY(-1px);}
-        .share-li{background:#0077b5;color:#fff;}
-        .share-wa{background:#25d366;color:#fff;}
-        .share-tw{background:#1da1f2;color:#fff;}
-        .share-cp{background:#f1f5f9;color:var(--blue);border:1px solid #e2e8f0;}
-        .share-cp.copied{background:#d1fae5;color:#065f46;border-color:#a7f3d0;}
-        
-        /* Hero Section */
-        .hero-section {
-            height: 450px; background-size: cover; background-position: center; position: relative;
-        }
-        .hero-overlay {
-            position: absolute; inset: 0; background: linear-gradient(to top, rgba(26, 37, 87,0.9) 10%, rgba(26, 37, 87,0.7) 100%);
-        }
-        
-        /* Content Cards */
-        .content-card { 
-            background: var(--card); border-radius: 16px; padding: 30px; margin-bottom: 25px; 
-            border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(26, 37, 87,0.1);
-        }
-        .section-title { 
-            font-weight: 800; font-size: 1.25rem; margin-bottom: 20px; color: var(--blue); 
-            border-left: 4px solid var(--orange); padding-left: 15px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        
-        /* Sticky Footer */
-        .action-bar {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(255,255,255,0.98); 
-            border-top: 1px solid #e2e8f0; padding: 20px 0; z-index: 1050;
-            box-shadow: 0 -10px 40px rgba(26, 37, 87,0.1);
-        }
-        .action-label { color: #64748b; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-        .action-value { color: var(--blue); font-weight: 800; font-size: 1.8rem; }
+        :root{--blue:#1a2557;--orange:#c9a45e;--bg:#f1f5f9;}
+        body{background:var(--bg);font-family:'Inter',sans-serif;color:#1e293b;padding-bottom:100px;}
 
-        .btn-register-lg {
-            background: linear-gradient(135deg, var(--blue) 0%, #1a4fa0 100%); 
-            color: white; font-weight: 800; padding: 16px 50px; border-radius: 50px; 
-            border: 2px solid var(--blue); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 0.5px;
-            box-shadow: 0 0 20px rgba(26, 37, 87,0.3); transition: all 0.2s; width: 100%;
-        }
-        .btn-register-lg:hover { transform: translateY(-3px); box-shadow: 0 0 30px rgba(201,164,94,0.5); background: var(--orange); border-color: var(--orange); }
-        
-        /* --- HIGH VISIBILITY FORM STYLES --- */
-        .modal-content { background: white; border: 1px solid #e2e8f0; color: var(--text-main); }
-        .modal-header { border-bottom: 1px solid #e2e8f0; background: var(--blue); color: white; }
-        
-        /* Input Fields */
-        .form-control { 
-            background-color: #f8f9fa !important; 
-            border: 1.5px solid #e2e8f0 !important; 
-            color: var(--text-main) !important; 
-            padding: 12px;
-            font-weight: 500; border-radius: 8px;
-        }
-        
-        /* Placeholders */
-        .form-control::placeholder {
-            color: #94a3b8 !important; 
-            opacity: 1; 
-        }
-        
-        /* Focus State */
-        .form-control:focus { 
-            border-color: var(--blue) !important; 
-            box-shadow: 0 0 0 3px rgba(26, 37, 87,0.1) !important; 
-            background-color: #ffffff !important;
-            color: var(--text-main) !important;
-        }
-        
-        /* Field Labels */
-        .form-label-sm { 
-            font-size: 0.75rem; 
-            text-transform: uppercase; 
-            letter-spacing: 1px; 
-            color: var(--blue);
-            font-weight: 700; 
-            margin-bottom: 8px; 
-            display: block; 
-        }
-        
-        /* Text Fixes */
-        p, .text-secondary { color: var(--text-muted) !important; }
-        .text-muted { color: #94a3b8 !important; }
-        
-        /* Prizes Box */
-        .prize-box { background: rgba(26, 37, 87,0.05); border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; }
-        .prize-title { font-weight: 700; margin-bottom: 5px; color: white; }
-        .prize-amount { font-weight: 600; font-size: 0.9rem; }
+        /* ── TOPNAV ── */
+        .topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+        .topnav-brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;text-decoration:none;display:flex;align-items:center;gap:10px;}
+        .topnav-links{display:flex;align-items:center;gap:6px;}
+        .topnav-link{color:rgba(255,255,255,.75);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+        .topnav-link:hover{color:#fff;background:rgba(255,255,255,.12);}
+        .topnav-link.btn-reg{background:var(--orange);color:#fff;font-weight:700;}
+        .topnav-link.btn-reg:hover{background:#b8923f;}
+
+        /* ── HERO ── */
+        .hero{position:relative;min-height:360px;display:flex;align-items:flex-end;background:linear-gradient(135deg,var(--blue) 0%,#0f3460 100%);}
+        .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.35;}
+        .hero-gradient{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,15,40,.97) 0%,rgba(26,37,87,.55) 100%);}
+        .hero-body{position:relative;z-index:1;padding:40px 24px 36px;width:100%;}
+        .hero-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+        .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.4px;padding:4px 12px;border-radius:100px;}
+        .chip-cat{background:rgba(201,164,94,.2);color:var(--orange);border:1px solid rgba(201,164,94,.4);}
+        .chip-type{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);}
+        .chip-free{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.3);}
+        .chip-paid{background:rgba(201,164,94,.15);color:var(--orange);border:1px solid rgba(201,164,94,.3);}
+        .hero-title{font-family:'Poppins',sans-serif;font-size:clamp(22px,4vw,36px);font-weight:800;color:#fff;margin:0 0 16px;line-height:1.2;}
+        .hero-meta{display:flex;flex-wrap:wrap;gap:16px;}
+        .hero-meta-item{display:flex;align-items:center;gap:7px;font-size:13.5px;color:rgba(255,255,255,.8);}
+        .hero-meta-item i{color:var(--orange);font-size:12px;}
+
+        /* ── COUNTDOWN BAND ── */
+        .cd-band{background:#0d1f42;padding:10px 0;text-align:center;border-bottom:1px solid rgba(255,255,255,.06);}
+        .cd-inner{display:inline-flex;align-items:center;gap:4px;}
+        .cd-unit{text-align:center;min-width:44px;}
+        .cd-num{font-size:1.6rem;font-weight:800;color:#fff;line-height:1;font-family:'Poppins',sans-serif;}
+        .cd-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-top:1px;}
+        .cd-colon{font-size:1.4rem;font-weight:800;color:var(--orange);line-height:1;margin-bottom:10px;}
+        .cd-live{font-size:13px;font-weight:700;color:var(--orange);letter-spacing:.5px;}
+
+        /* ── LAYOUT ── */
+        .page-grid{display:grid;grid-template-columns:1fr 340px;gap:20px;padding:24px 20px;max-width:1100px;margin:0 auto;}
+        @media(max-width:900px){.page-grid{grid-template-columns:1fr;}}
+
+        /* ── CARDS ── */
+        .card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:24px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+        .card-title{font-family:'Poppins',sans-serif;font-size:13px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;padding-left:12px;border-left:3px solid var(--orange);margin-bottom:18px;}
+
+        /* Description */
+        .desc-text{font-size:14.5px;line-height:1.8;color:#475569;white-space:pre-wrap;}
+
+        /* Rules */
+        .rules-text{font-size:13.5px;line-height:1.75;color:#475569;white-space:pre-wrap;}
+
+        /* Agenda timeline */
+        .agenda-timeline{position:relative;padding-left:20px;}
+        .agenda-timeline::before{content:'';position:absolute;left:6px;top:0;bottom:0;width:2px;background:#e2e8f0;border-radius:2px;}
+        .agenda-item{position:relative;margin-bottom:18px;padding-left:20px;}
+        .agenda-dot{position:absolute;left:-6px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--orange);border:2px solid #fff;box-shadow:0 0 0 2px var(--orange);}
+        .agenda-time{font-size:11px;font-weight:700;color:var(--orange);letter-spacing:.5px;margin-bottom:2px;}
+        .agenda-name{font-size:14px;font-weight:700;color:#1e293b;}
+        .agenda-desc{font-size:12.5px;color:#64748b;margin-top:2px;}
+
+        /* Prizes */
+        .prizes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+        .prize-card{border-radius:12px;padding:16px 12px;text-align:center;}
+        .prize-card.gold{background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fcd34d;}
+        .prize-card.silver{background:linear-gradient(135deg,#f1f5f9,#e2e8f0);border:1px solid #cbd5e1;}
+        .prize-card.bronze{background:linear-gradient(135deg,#fff7ed,#fed7aa);border:1px solid #fdba74;}
+        .prize-icon{font-size:24px;margin-bottom:6px;}
+        .prize-rank{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:4px;}
+        .prize-val{font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;color:#1e293b;}
+
+        /* Right sidebar cards */
+        /* Capacity */
+        .cap-bar{height:8px;background:#f1f5f9;border-radius:100px;overflow:hidden;margin:8px 0 6px;}
+        .cap-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--blue),var(--orange));transition:width .4s;}
+        .cap-fill.full{background:linear-gradient(90deg,#ef4444,#dc2626);}
+        .cap-top{display:flex;justify-content:space-between;align-items:center;}
+        .cap-count{font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;color:var(--blue);}
+        .cap-max{font-size:12px;color:#94a3b8;}
+        .cap-msg{font-size:12px;margin-top:4px;}
+
+        /* Timeline */
+        .tl-item{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #f1f5f9;}
+        .tl-item:last-child{border-bottom:none;}
+        .tl-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;}
+        .tl-label{font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:.5px;color:#94a3b8;margin-bottom:2px;}
+        .tl-val{font-size:14px;font-weight:700;color:#1e293b;}
+        .tl-sub{font-size:12px;color:#64748b;margin-top:1px;}
+
+        /* Organizer */
+        .org-avatar{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--blue),#1a4fa0);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:18px;flex-shrink:0;}
+        .org-name{font-size:15px;font-weight:700;color:#1e293b;}
+        .org-role{font-size:11.5px;color:#64748b;margin-top:1px;}
+        .btn-wa{display:flex;align-items:center;justify-content:center;gap:8px;background:#22c55e;color:#fff;border-radius:10px;padding:10px 0;font-size:13px;font-weight:700;text-decoration:none;margin-top:14px;transition:.15s;}
+        .btn-wa:hover{background:#16a34a;color:#fff;}
+        .org-links{display:flex;gap:8px;margin-top:10px;}
+        .org-link{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;background:#f1f5f9;color:var(--blue);transition:.15s;}
+        .org-link:hover{background:#e2e8f0;color:var(--blue);}
+
+        /* Share */
+        .share-strip{display:flex;flex-wrap:wrap;gap:8px;}
+        .share-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;border:none;cursor:pointer;transition:.15s;}
+        .share-btn:hover{opacity:.85;transform:translateY(-1px);}
+        .s-li{background:#0a66c2;color:#fff;}
+        .s-wa{background:#25d366;color:#fff;}
+        .s-tw{background:#000;color:#fff;}
+        .s-cp{background:#f1f5f9;color:var(--blue);border:1px solid #e2e8f0;}
+        .s-cp.copied{background:#d1fae5;color:#065f46;border-color:#a7f3d0;}
+
+        /* ── STICKY ACTION BAR ── */
+        .action-bar{position:fixed;bottom:0;left:0;width:100%;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-top:1px solid #e2e8f0;padding:12px 20px;z-index:150;box-shadow:0 -4px 20px rgba(26,37,87,.1);}
+        .action-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+        .action-fee-label{font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:.5px;color:#94a3b8;}
+        .action-fee{font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:var(--blue);}
+        .action-fee .free{color:#22c55e;}
+        .btn-register{background:linear-gradient(135deg,var(--blue),#1a4fa0);color:#fff;border:none;border-radius:12px;padding:12px 36px;font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:.2s;white-space:nowrap;}
+        .btn-register:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,37,87,.3);}
+        .btn-registered{background:#f0fdf4;color:#22c55e;border:2px solid #86efac;border-radius:12px;padding:12px 36px;font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;cursor:default;}
+
+        /* ── MODAL ── */
+        .modal-content{border:none;border-radius:16px;overflow:hidden;}
+        .modal-hdr{background:var(--blue);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;}
+        .modal-hdr-title{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#fff;margin:0;}
+        .modal-hdr-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;}
+        .modal-body{padding:24px;}
+        .form-section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);border-bottom:1px solid #f1f5f9;padding-bottom:8px;margin:0 0 16px;}
+        .form-label-sm{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:6px;display:block;}
+        .form-control{background:#f8fafc!important;border:1.5px solid #e2e8f0!important;color:#1e293b!important;border-radius:9px;padding:10px 14px;font-size:13.5px;}
+        .form-control:focus{background:#fff!important;border-color:var(--blue)!important;box-shadow:0 0 0 3px rgba(26,37,87,.1)!important;color:#1e293b!important;}
+        .form-control::placeholder{color:#94a3b8!important;}
+        .btn-submit{background:linear-gradient(135deg,var(--blue),#1a4fa0);color:#fff;border:none;border-radius:10px;padding:14px;font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;width:100%;cursor:pointer;transition:.2s;margin-top:8px;}
+        .btn-submit:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(26,37,87,.25);}
+        .btn-add-member{background:#f1f5f9;color:var(--blue);border:2px dashed #cbd5e1;border-radius:9px;padding:10px;font-size:13px;font-weight:700;width:100%;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+        .btn-add-member:hover{background:#e2e8f0;}
+
+        /* flash messages */
+        .flash-wrap{max-width:1100px;margin:16px auto 0;padding:0 20px;}
     </style>
 </head>
 <body>
 
-    <div class="hero-section" style="background-image: url('{{ event.banner_url }}');">
-        <div class="hero-overlay"></div>
-        <div class="container h-100 d-flex flex-column justify-content-end pb-5 position-relative">
-            <div class="mb-3">
-                <span class="badge bg-warning text-dark fw-bold me-2 px-3 py-2 border border-warning">{{ event.category }}</span>
-                <span class="badge bg-success fw-bold px-3 py-2 border border-success">{{ event.participation_type }} Event</span>
-            </div>
-            <h1 class="display-3 fw-bold text-white mb-2" style="text-shadow: 0 2px 10px rgba(0,0,0,0.5);">{{ event.title }}</h1>
-            <div class="text-light opacity-100 fs-5 mt-2">
-                <i class="far fa-calendar me-2 text-warning"></i> {{ event.date }} &nbsp;|&nbsp;
-                <i class="far fa-clock me-2 text-warning"></i> {{ event.time }} &nbsp;|&nbsp;
-                <i class="fas fa-map-marker-alt me-2 text-warning"></i> {{ event.venue }}
-            </div>
-        </div>
+<!-- TOPNAV -->
+<div class="topnav">
+    <a href="/" class="topnav-brand">
+        <img src="/static/snpsu-logo.png" alt="SNPSU"
+             style="height:32px;width:auto;object-fit:contain;background:#fff;border-radius:5px;padding:2px 5px;"
+             onerror="this.style.display='none'">
+        SapthaEvent
+    </a>
+    <div class="topnav-links">
+        <a href="/" class="topnav-link"><i class="fas fa-home me-1"></i>Home</a>
+        {% if session.get('role') %}
+            <a href="/{% if session.role == 'Student' %}participant{% elif session.role == 'ClubSPOC' %}spoc{% elif session.role == 'SuperAdmin' or session.role == 'Super Admin' %}admin{% elif session.role == 'EventCoordinator' or session.role == 'Coordinator' %}coordinator{% elif session.role == 'Judge' %}judge{% else %}participant{% endif %}/dashboard" class="topnav-link">
+                <i class="fas fa-th-large me-1"></i>Dashboard
+            </a>
+        {% else %}
+            <a href="/login" class="topnav-link">Login</a>
+        {% endif %}
+        {% if not is_registered %}
+        <a href="#" class="topnav-link btn-reg" data-bs-toggle="modal" data-bs-target="#registerModal">
+            Register <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+        {% endif %}
     </div>
+</div>
 
-    <!-- COUNTDOWN BAND -->
-    <div class="countdown-band" id="cd-band">
-      <div class="cd-wrap" id="cd-wrap">
-        <div class="cd-unit"><div class="cd-num" id="cd-d">--</div><div class="cd-label">Days</div></div>
-        <div class="cd-sep">:</div>
-        <div class="cd-unit"><div class="cd-num" id="cd-h">--</div><div class="cd-label">Hrs</div></div>
-        <div class="cd-sep">:</div>
-        <div class="cd-unit"><div class="cd-num" id="cd-m">--</div><div class="cd-label">Min</div></div>
-        <div class="cd-sep">:</div>
-        <div class="cd-unit"><div class="cd-num" id="cd-s">--</div><div class="cd-label">Sec</div></div>
-      </div>
-    </div>
-
-    <div class="container mt-5">
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} rounded-3 shadow-lg border-0 mb-4 text-center fw-bold text-dark">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="content-card">
-                    <h5 class="section-title">Overview</h5>
-                    <p class="text-secondary lead" style="white-space: pre-wrap; line-height: 1.8;">{{ event.description }}</p>
-                </div>
-
-                {% if event.rules %}
-                <div class="content-card">
-                    <h5 class="section-title">Rules & Guidelines</h5>
-                    <div class="text-secondary" style="white-space: pre-wrap; line-height: 1.7;">{{ event.rules }}</div>
-                </div>
-                {% endif %}
-
-                {% if event.get('agenda') %}
-                <div class="content-card">
-                    <h5 class="section-title"><i class="fas fa-calendar-check me-2" style="color:#c9a45e;"></i>Event Schedule</h5>
-                    <div style="position:relative;padding-left:20px;">
-                      <div style="position:absolute;left:7px;top:0;bottom:0;width:2px;background:#e2e8f0;border-radius:2px;"></div>
-                      {% for item in event.agenda %}
-                      <div style="position:relative;margin-bottom:18px;padding-left:18px;">
-                        <div style="position:absolute;left:-5px;top:4px;width:12px;height:12px;border-radius:50%;background:#c9a45e;border:2px solid #fff;box-shadow:0 0 0 2px #c9a45e;"></div>
-                        <div style="font-size:11px;font-weight:700;color:#c9a45e;letter-spacing:.5px;margin-bottom:2px;">{{ item.time }}</div>
-                        <div style="font-size:14px;font-weight:700;color:#1e293b;">{{ item.title }}</div>
-                        {% if item.desc %}<div style="font-size:12.5px;color:#64748b;margin-top:2px;">{{ item.desc }}</div>{% endif %}
-                      </div>
-                      {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                <div class="content-card">
-                    <h5 class="section-title">Prizes & Rewards</h5>
-                    <div class="row g-3 text-center">
-                        <div class="col-4">
-                            <div class="prize-box border-warning bg-warning bg-opacity-10">
-                                <i class="fas fa-trophy text-warning fs-2 mb-2"></i>
-                                <div class="prize-title">Winner</div>
-                                <div class="prize-amount text-warning">{{ event.prizes['1st'] }}</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="prize-box border-light">
-                                <i class="fas fa-medal text-light fs-2 mb-2"></i>
-                                <div class="prize-title">Runner Up</div>
-                                <div class="prize-amount text-light">{{ event.prizes['2nd'] }}</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="prize-box border-danger bg-danger bg-opacity-10">
-                                <i class="fas fa-medal text-danger fs-2 mb-2"></i>
-                                <div class="prize-title">3rd Place</div>
-                                <div class="prize-amount text-danger">{{ event.prizes['3rd'] }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-4">
-                <!-- CAPACITY BAR -->
-                {% set max_p = (event.limits or {}).get('max_participants', 0) %}
-                {% if max_p > 0 %}
-                <div class="cap-bar-wrap">
-                  <div class="cap-bar-top">
-                    <span class="cap-bar-label"><i class="fas fa-users me-1"></i>Capacity</span>
-                    <span class="cap-bar-count">{{ reg_count }} / {{ max_p }}</span>
-                  </div>
-                  <div class="cap-bar">
-                    <div class="cap-fill {{ 'full' if reg_count >= max_p else '' }}"
-                         style="width:{{ [((reg_count / max_p) * 100)|int, 100]|min }}%;"></div>
-                  </div>
-                  {% if reg_count >= max_p %}
-                  <p style="color:#ef4444;font-size:12px;margin-top:6px;font-weight:700;"><i class="fas fa-ban me-1"></i>Registrations closed — full</p>
-                  {% else %}
-                  <p style="color:#64748b;font-size:12px;margin-top:6px;">{{ max_p - reg_count }} spot{{ 's' if (max_p - reg_count) != 1 }} remaining</p>
-                  {% endif %}
-                </div>
-                {% endif %}
-
-                <!-- SHARE THIS EVENT -->
-                <div class="content-card" style="margin-bottom:25px;">
-                  <h5 class="section-title">Share Event</h5>
-                  <div class="share-strip">
-                    <a class="share-btn share-li" href="#" id="share-li" target="_blank" rel="noopener">
-                      <i class="fab fa-linkedin-in"></i> LinkedIn
-                    </a>
-                    <a class="share-btn share-wa" href="#" id="share-wa" target="_blank" rel="noopener">
-                      <i class="fab fa-whatsapp"></i> WhatsApp
-                    </a>
-                    <a class="share-btn share-tw" href="#" id="share-tw" target="_blank" rel="noopener">
-                      <i class="fab fa-twitter"></i> Twitter
-                    </a>
-                    <button class="share-btn share-cp" id="share-cp" onclick="copyLink()">
-                      <i class="fas fa-link"></i> Copy Link
-                    </button>
-                  </div>
-                </div>
-
-                <div class="content-card">
-                    <h5 class="section-title">Timeline</h5>
-                    <ul class="list-unstyled">
-                        <li class="mb-4 d-flex align-items-center">
-                            <div class="bg-primary bg-opacity-25 p-3 rounded-circle me-3">
-                                <i class="fas fa-hourglass-half text-primary fs-5"></i>
-                            </div>
-                            <div>
-                                <small class="text-muted text-uppercase fw-bold">Registration Deadline</small>
-                                <div class="text-white fw-bold fs-5">{{ event.reg_deadline }}</div>
-                            </div>
-                        </li>
-                        <li class="d-flex align-items-center">
-                            <div class="bg-success bg-opacity-25 p-3 rounded-circle me-3">
-                                <i class="fas fa-rocket text-success fs-5"></i>
-                            </div>
-                            <div>
-                                <small class="text-muted text-uppercase fw-bold">Event Starts</small>
-                                <div class="text-white fw-bold fs-5">{{ event.date }}</div>
-                                <div class="text-secondary small">{{ event.time }}</div>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="content-card text-center">
-                    <h5 class="section-title">Contact Organizer</h5>
-                    <div class="fw-bold fs-4 mb-1 text-white">{{ event.organizer.name }}</div>
-                    <p class="text-muted small">Event Coordinator</p>
-                    <a href="{{ event.organizer.group_link }}" target="_blank" class="btn btn-success w-100 mb-3 mt-2 fw-bold py-2">
-                        <i class="fab fa-whatsapp me-2"></i> Join WhatsApp Group
-                    </a>
-                    <div class="d-flex justify-content-center gap-2">
-                        <a href="mailto:{{ event.organizer.email }}" class="btn btn-outline-light btn-sm"><i class="fas fa-envelope me-1"></i> Email</a>
-                        <a href="tel:{{ event.organizer.phone }}" class="btn btn-outline-light btn-sm"><i class="fas fa-phone me-1"></i> Call</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="action-bar">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div class="d-none d-md-block">
-                <div class="action-label">Registration Fee</div>
-                <div class="action-value">{% if event.fees.regular > 0 %}₹{{ event.fees.regular }}{% else %}Free{% endif %}</div>
-            </div>
-            
-            <div class="d-flex gap-3 align-items-center w-100 w-md-auto justify-content-end">
-                {% if is_registered %}
-                    <button class="btn btn-success fw-bold px-5 py-3 rounded-pill" disabled style="opacity: 0.8;">
-                        <i class="fas fa-check-circle me-2"></i> Already Registered
-                    </button>
+<!-- HERO -->
+<div class="hero">
+    {% if event.banner_url %}
+    <div class="hero-bg" style="background-image:url('{{ event.banner_url }}');"></div>
+    {% endif %}
+    <div class="hero-gradient"></div>
+    <div class="hero-body">
+        <div style="max-width:1100px;margin:0 auto;padding:0 4px;">
+            <div class="hero-chips">
+                <span class="chip chip-cat"><i class="fas fa-tag"></i> {{ event.category }}</span>
+                <span class="chip chip-type"><i class="fas fa-users"></i> {{ event.participation_type or 'Individual' }}</span>
+                {% if event.fees and event.fees.regular and event.fees.regular|int > 0 %}
+                <span class="chip chip-paid"><i class="fas fa-rupee-sign"></i> ₹{{ event.fees.regular }}</span>
                 {% else %}
-                    <button class="btn-register-lg" data-bs-toggle="modal" data-bs-target="#registerModal">
-                        Register Now <i class="fas fa-arrow-right ms-2"></i>
-                    </button>
+                <span class="chip chip-free"><i class="fas fa-ticket-alt"></i> Free Entry</span>
+                {% endif %}
+            </div>
+            <h1 class="hero-title">{{ event.title }}</h1>
+            <div class="hero-meta">
+                <div class="hero-meta-item"><i class="fas fa-calendar-alt"></i> {{ event.date }}</div>
+                {% if event.time %}<div class="hero-meta-item"><i class="fas fa-clock"></i> {{ event.time }}</div>{% endif %}
+                {% if event.venue %}<div class="hero-meta-item"><i class="fas fa-map-marker-alt"></i> {{ event.venue }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- COUNTDOWN BAND -->
+<div class="cd-band" id="cd-band">
+    <div class="cd-inner" id="cd-inner">
+        <div class="cd-unit"><div class="cd-num" id="cd-d">--</div><div class="cd-label">Days</div></div>
+        <span class="cd-colon">:</span>
+        <div class="cd-unit"><div class="cd-num" id="cd-h">--</div><div class="cd-label">Hrs</div></div>
+        <span class="cd-colon">:</span>
+        <div class="cd-unit"><div class="cd-num" id="cd-m">--</div><div class="cd-label">Min</div></div>
+        <span class="cd-colon">:</span>
+        <div class="cd-unit"><div class="cd-num" id="cd-s">--</div><div class="cd-label">Sec</div></div>
+    </div>
+</div>
+
+<!-- FLASH MESSAGES -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-wrap">
+{% for cat, msg in messages %}
+<div class="alert alert-{{ cat }} rounded-3 border-0 fw-semibold">{{ msg }}</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- PAGE GRID -->
+<div class="page-grid">
+
+    <!-- LEFT: MAIN CONTENT -->
+    <div>
+        <!-- About -->
+        <div class="card">
+            <p class="card-title"><i class="fas fa-align-left me-2" style="color:var(--orange);"></i>About This Event</p>
+            <p class="desc-text">{{ event.description }}</p>
+        </div>
+
+        <!-- Rules -->
+        {% if event.rules %}
+        <div class="card">
+            <p class="card-title"><i class="fas fa-list-check me-2" style="color:var(--orange);"></i>Rules &amp; Guidelines</p>
+            <div class="rules-text">{{ event.rules }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Agenda -->
+        {% if event.get('agenda') %}
+        <div class="card">
+            <p class="card-title"><i class="fas fa-calendar-check me-2" style="color:var(--orange);"></i>Event Schedule</p>
+            <div class="agenda-timeline">
+                {% for item in event.agenda %}
+                <div class="agenda-item">
+                    <span class="agenda-dot"></span>
+                    <div class="agenda-time">{{ item.time }}</div>
+                    <div class="agenda-name">{{ item.title }}</div>
+                    {% if item.desc %}<div class="agenda-desc">{{ item.desc }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Prizes -->
+        {% if event.prizes %}
+        <div class="card">
+            <p class="card-title"><i class="fas fa-trophy me-2" style="color:var(--orange);"></i>Prizes &amp; Rewards</p>
+            <div class="prizes-grid">
+                <div class="prize-card gold">
+                    <div class="prize-icon">🥇</div>
+                    <div class="prize-rank">Winner</div>
+                    <div class="prize-val">{{ event.prizes.get('1st', '—') }}</div>
+                </div>
+                <div class="prize-card silver">
+                    <div class="prize-icon">🥈</div>
+                    <div class="prize-rank">Runner Up</div>
+                    <div class="prize-val">{{ event.prizes.get('2nd', '—') }}</div>
+                </div>
+                <div class="prize-card bronze">
+                    <div class="prize-icon">🥉</div>
+                    <div class="prize-rank">3rd Place</div>
+                    <div class="prize-val">{{ event.prizes.get('3rd', '—') }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- RIGHT: SIDEBAR -->
+    <div>
+        <!-- Capacity -->
+        {% set max_p = event.limits.max_participants if event.limits and event.limits.max_participants else 0 %}
+        {% if max_p and max_p|int > 0 %}
+        {% set pct = [[((reg_count / max_p|int) * 100)|int, 100]|min, 0]|max %}
+        <div class="card">
+            <p class="card-title"><i class="fas fa-users me-2" style="color:var(--orange);"></i>Registrations</p>
+            <div class="cap-top">
+                <span class="cap-count">{{ reg_count }}</span>
+                <span class="cap-max">of {{ max_p }} seats</span>
+            </div>
+            <div class="cap-bar">
+                <div class="cap-fill {{ 'full' if reg_count >= max_p|int else '' }}" style="width:{{ pct }}%;"></div>
+            </div>
+            {% if reg_count >= max_p|int %}
+            <p class="cap-msg" style="color:#ef4444;font-weight:700;"><i class="fas fa-ban me-1"></i>Fully booked</p>
+            {% else %}
+            <p class="cap-msg" style="color:#64748b;">{{ max_p|int - reg_count }} spot{{ 's' if (max_p|int - reg_count) != 1 }} remaining</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Timeline -->
+        <div class="card">
+            <p class="card-title"><i class="fas fa-calendar-clock me-2" style="color:var(--orange);"></i>Key Dates</p>
+            {% if event.reg_deadline %}
+            <div class="tl-item">
+                <div class="tl-icon" style="background:#fff0f0;color:#ef4444;"><i class="fas fa-hourglass-end"></i></div>
+                <div>
+                    <div class="tl-label">Registration Deadline</div>
+                    <div class="tl-val">{{ event.reg_deadline }}</div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="tl-item">
+                <div class="tl-icon" style="background:#f0f9ff;color:#0891b2;"><i class="fas fa-rocket"></i></div>
+                <div>
+                    <div class="tl-label">Event Date</div>
+                    <div class="tl-val">{{ event.date }}</div>
+                    {% if event.time %}<div class="tl-sub"><i class="fas fa-clock me-1" style="color:var(--orange);font-size:10px;"></i>{{ event.time }}</div>{% endif %}
+                </div>
+            </div>
+            {% if event.venue %}
+            <div class="tl-item">
+                <div class="tl-icon" style="background:#f0fdf4;color:#22c55e;"><i class="fas fa-map-marker-alt"></i></div>
+                <div>
+                    <div class="tl-label">Venue</div>
+                    <div class="tl-val">{{ event.venue }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Organizer -->
+        {% if event.organizer %}
+        <div class="card">
+            <p class="card-title"><i class="fas fa-id-badge me-2" style="color:var(--orange);"></i>Organizer</p>
+            <div class="d-flex align-items-center gap-12" style="gap:12px;">
+                <div class="org-avatar">{{ (event.organizer.name or 'O')[0].upper() }}</div>
+                <div>
+                    <div class="org-name">{{ event.organizer.name }}</div>
+                    <div class="org-role">Event Organizer</div>
+                </div>
+            </div>
+            {% if event.organizer.group_link %}
+            <a href="{{ event.organizer.group_link }}" target="_blank" rel="noopener" class="btn-wa">
+                <i class="fab fa-whatsapp"></i> Join WhatsApp Group
+            </a>
+            {% endif %}
+            <div class="org-links">
+                {% if event.organizer.email %}
+                <a href="mailto:{{ event.organizer.email }}" class="org-link"><i class="fas fa-envelope"></i> Email</a>
+                {% endif %}
+                {% if event.organizer.phone %}
+                <a href="tel:{{ event.organizer.phone }}" class="org-link"><i class="fas fa-phone"></i> Call</a>
                 {% endif %}
             </div>
         </div>
-    </div>
+        {% endif %}
 
-    <div class="modal fade" id="registerModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold text-primary">
-                        <i class="fas fa-user-edit me-2"></i> Register for {{ event.title }}
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <form action="/participant/public_register/{{ event.id }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        
-                        <h6 class="text-warning fw-bold border-bottom border-secondary pb-2 mb-3">1. Primary Contact (Team Lead)</h6>
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label-sm">Full Name</label>
-                                <input type="text" name="full_name" class="form-control" required value="{{ prefill.name if prefill else '' }}" placeholder="Enter full name">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label-sm">Email Address</label>
-                                <input type="email" name="email" class="form-control" required value="{{ prefill.email if prefill else '' }}" {% if prefill %}readonly style="opacity:0.7"{% endif %} placeholder="name@example.com">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label-sm">USN / Roll Number</label>
-                                <input type="text" name="usn" class="form-control" required value="{{ prefill.usn if prefill else '' }}" placeholder="e.g. 1SG25CS001">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label-sm">Phone Number</label>
-                                <input type="tel" name="phone" class="form-control" required value="{{ prefill.phone if prefill else '' }}" placeholder="+91 98765 43210">
-                            </div>
-                        </div>
-
-                        {% if event.is_team_event %}
-                        <h6 class="text-warning fw-bold border-bottom border-secondary pb-2 mb-3 d-flex justify-content-between">
-                            <span>2. Team Details</span>
-                            <span class="badge bg-dark border border-secondary text-light">Max: {{ event.limits.team_max }} Members</span>
-                        </h6>
-                        <div class="mb-3">
-                            <label class="form-label-sm">Team Name</label>
-                            <input type="text" name="team_name" class="form-control" placeholder="e.g. CodeWarriors" required>
-                        </div>
-                        
-                        <div id="membersContainer"></div>
-                        
-                        <button type="button" class="btn btn-outline-primary w-100 border-dashed mt-2" onclick="addMember()">
-                            <i class="fas fa-plus-circle me-1"></i> Add Team Member
-                        </button>
-                        {% endif %}
-
-                        {% if event.form_schema.submission_type != 'none' %}
-                        <h6 class="text-warning fw-bold border-bottom border-secondary pb-2 mb-3 mt-4">3. Submission</h6>
-                        <div class="mb-3">
-                            <label class="form-label-sm">
-                                {% if event.form_schema.submission_type == 'github' %}GitHub Repository Link{% else %}Project Drive Link{% endif %}
-                            </label>
-                            <input type="url" name="submission_link" class="form-control" placeholder="https://..." required>
-                        </div>
-                        {% endif %}
-
-                        <div class="d-grid mt-5">
-                            <button type="submit" class="btn btn-primary fw-bold py-3 rounded-pill fs-5 shadow-lg">
-                                Confirm & Register
-                            </button>
-                        </div>
-                    </form>
-                </div>
+        <!-- Share -->
+        <div class="card">
+            <p class="card-title"><i class="fas fa-share-nodes me-2" style="color:var(--orange);"></i>Share Event</p>
+            <div class="share-strip">
+                <a class="share-btn s-wa" id="s-wa" href="#" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+                <a class="share-btn s-li" id="s-li" href="#" target="_blank" rel="noopener"><i class="fab fa-linkedin-in"></i> LinkedIn</a>
+                <a class="share-btn s-tw" id="s-tw" href="#" target="_blank" rel="noopener"><i class="fab fa-x-twitter"></i> Twitter</a>
+                <button class="share-btn s-cp" id="s-cp" onclick="copyLink()"><i class="fas fa-link"></i> Copy Link</button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-    // ── COUNTDOWN ────────────────────────────────────────────────────
-    (function(){
-      var eventDate = "{{ event.date }}T{{ event.time or '09:00' }}";
-      var target = new Date(eventDate);
-      if (isNaN(target)) { document.getElementById('cd-band').style.display='none'; return; }
-      function tick(){
-        var now = new Date();
-        var diff = target - now;
+</div>
+
+<!-- STICKY ACTION BAR -->
+<div class="action-bar">
+    <div class="action-inner">
+        <div class="d-none d-md-block">
+            <div class="action-fee-label">Registration Fee</div>
+            <div class="action-fee">
+                {% if event.fees and event.fees.regular and event.fees.regular|int > 0 %}
+                ₹{{ event.fees.regular }}
+                {% else %}
+                <span class="free">Free</span>
+                {% endif %}
+            </div>
+        </div>
+        {% if is_registered %}
+        <button class="btn-registered" disabled>
+            <i class="fas fa-check-circle me-2"></i> Already Registered
+        </button>
+        {% else %}
+        <button class="btn-register" data-bs-toggle="modal" data-bs-target="#registerModal">
+            Register Now <i class="fas fa-arrow-right ms-2"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- REGISTRATION MODAL -->
+<div class="modal fade" id="registerModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-hdr">
+                <p class="modal-hdr-title"><i class="fas fa-user-plus me-2"></i>Register for {{ event.title }}</p>
+                <button class="modal-hdr-close" data-bs-dismiss="modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <form action="/participant/public_register/{{ event.id }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <p class="form-section-title">1. Primary Contact</p>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label-sm">Full Name *</label>
+                            <input type="text" name="full_name" class="form-control" required
+                                   value="{{ prefill.name if prefill else '' }}" placeholder="Enter full name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-sm">Email Address *</label>
+                            <input type="email" name="email" class="form-control" required
+                                   value="{{ prefill.email if prefill else '' }}"
+                                   {% if prefill %}readonly style="opacity:.7"{% endif %}
+                                   placeholder="name@example.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-sm">USN / Roll Number *</label>
+                            <input type="text" name="usn" class="form-control" required
+                                   value="{{ prefill.usn if prefill else '' }}" placeholder="e.g. 1SG25CS001">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-sm">Phone Number *</label>
+                            <input type="tel" name="phone" class="form-control" required
+                                   value="{{ prefill.phone if prefill else '' }}" placeholder="+91 98765 43210">
+                        </div>
+                    </div>
+
+                    {% if event.is_team_event %}
+                    <p class="form-section-title">2. Team Details
+                        <span style="float:right;font-size:10px;background:var(--blue);color:#fff;padding:2px 8px;border-radius:100px;">Max {{ event.limits.team_max }} members</span>
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label-sm">Team Name *</label>
+                        <input type="text" name="team_name" class="form-control" placeholder="e.g. CodeWarriors" required>
+                    </div>
+                    <div id="membersContainer"></div>
+                    <button type="button" class="btn-add-member mb-4" onclick="addMember()">
+                        <i class="fas fa-plus-circle"></i> Add Team Member
+                    </button>
+                    {% endif %}
+
+                    {% if event.form_schema and event.form_schema.submission_type and event.form_schema.submission_type != 'none' %}
+                    <p class="form-section-title">3. Submission</p>
+                    <div class="mb-4">
+                        <label class="form-label-sm">
+                            {% if event.form_schema.submission_type == 'github' %}GitHub Repository Link{% else %}Project Drive Link{% endif %} *
+                        </label>
+                        <input type="url" name="submission_link" class="form-control" placeholder="https://..." required>
+                    </div>
+                    {% endif %}
+
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-check-circle me-2"></i> Confirm Registration
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── COUNTDOWN ────────────────────────────────────────
+(function(){
+    var t = new Date("{{ event.date }}T{{ event.time or '09:00' }}");
+    if(isNaN(t)){document.getElementById('cd-band').style.display='none';return;}
+    function tick(){
+        var diff = t - new Date();
         if(diff <= 0){
-          document.getElementById('cd-wrap').innerHTML = '<span class="cd-over">Event is Live / Completed</span>';
-          return;
+            document.getElementById('cd-inner').innerHTML = '<span class="cd-live">🟢 Event is Live / Completed</span>';
+            return;
         }
-        var d = Math.floor(diff/86400000);
-        var h = Math.floor((diff%86400000)/3600000);
-        var m = Math.floor((diff%3600000)/60000);
-        var s = Math.floor((diff%60000)/1000);
+        var d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000),
+            m=Math.floor(diff%3600000/60000), s=Math.floor(diff%60000/1000);
         document.getElementById('cd-d').textContent = String(d).padStart(2,'0');
         document.getElementById('cd-h').textContent = String(h).padStart(2,'0');
         document.getElementById('cd-m').textContent = String(m).padStart(2,'0');
         document.getElementById('cd-s').textContent = String(s).padStart(2,'0');
-      }
-      tick(); setInterval(tick, 1000);
-    })();
-
-    // ── SOCIAL SHARE ─────────────────────────────────────────────────
-    (function(){
-      var url   = encodeURIComponent(window.location.href);
-      var title = encodeURIComponent("{{ event.title }} | SapthaEvent — Sapthagiri NPS University");
-      var text  = encodeURIComponent("Check out this event: {{ event.title }} on {{ event.date }} at {{ event.venue }}. Register now!");
-      document.getElementById('share-li').href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + url;
-      document.getElementById('share-wa').href = 'https://api.whatsapp.com/send?text=' + text + '%20' + url;
-      document.getElementById('share-tw').href = 'https://twitter.com/intent/tweet?text=' + text + '&url=' + url;
-    })();
-    function copyLink(){
-      navigator.clipboard.writeText(window.location.href).then(function(){
-        var btn = document.getElementById('share-cp');
-        btn.classList.add('copied'); btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-        setTimeout(function(){ btn.classList.remove('copied'); btn.innerHTML = '<i class="fas fa-link"></i> Copy Link'; }, 2000);
-      });
     }
+    tick(); setInterval(tick,1000);
+})();
 
-    // ── REGISTRATION FORM ────────────────────────────────────────────
-        let memberCount = 1; // Lead is #1
-        const maxMembers = parseInt("{{ event.limits.team_max | default(1) }}");
-        
-        // SAFE JAVASCRIPT INJECTION
-        const reqUsn = "{{ 'true' if event.form_schema.require_member_usn else 'false' }}" === "true";
-        const reqEmail = "{{ 'true' if event.form_schema.require_member_email else 'false' }}" === "true";
-        const reqWa = "{{ 'true' if event.form_schema.require_member_whatsapp else 'false' }}" === "true";
+// ── SOCIAL SHARE ────────────────────────────────────
+(function(){
+    var url  = encodeURIComponent(window.location.href);
+    var txt  = encodeURIComponent("Check out: {{ event.title }} on {{ event.date }} at {{ event.venue }}. Register now!");
+    document.getElementById('s-wa').href = 'https://api.whatsapp.com/send?text='+txt+'%20'+url;
+    document.getElementById('s-li').href = 'https://www.linkedin.com/sharing/share-offsite/?url='+url;
+    document.getElementById('s-tw').href = 'https://twitter.com/intent/tweet?text='+txt+'&url='+url;
+})();
+function copyLink(){
+    navigator.clipboard.writeText(window.location.href).then(function(){
+        var b=document.getElementById('s-cp');
+        b.classList.add('copied'); b.innerHTML='<i class="fas fa-check"></i> Copied!';
+        setTimeout(function(){b.classList.remove('copied');b.innerHTML='<i class="fas fa-link"></i> Copy Link';},2000);
+    });
+}
 
-        function addMember() {
-            if (memberCount >= maxMembers) {
-                alert("Maximum team size reached!");
-                return;
-            }
-            memberCount++;
-            
-            let html = `
-                <div class="p-3 bg-black bg-opacity-25 border border-secondary rounded mb-3 position-relative" id="mem_${memberCount}">
-                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove(); memberCount--;"></button>
-                    <h6 class="text-muted small fw-bold mb-2">Member ${memberCount}</h6>
-                    <div class="row g-2">
-                        <div class="col-12">
-                            <input type="text" name="member_name[]" class="form-control form-control-sm" placeholder="Full Name *" required>
-                        </div>
-            `;
-            
-            if(reqUsn) html += `<div class="col-md-6"><input type="text" name="member_usn[]" class="form-control form-control-sm" placeholder="USN / SRN *" required></div>`;
-            if(reqEmail) html += `<div class="col-md-6"><input type="email" name="member_email[]" class="form-control form-control-sm" placeholder="Email ID *" required></div>`;
-            if(reqWa) html += `<div class="col-12"><input type="tel" name="member_whatsapp[]" class="form-control form-control-sm" placeholder="WhatsApp Number *" required></div>`;
-            
-            html += `</div></div>`;
-            
-            document.getElementById('membersContainer').insertAdjacentHTML('beforeend', html);
-        }
-    </script>
+// ── TEAM MEMBER FORM ────────────────────────────────
+var memberCount = 1;
+var maxMembers  = parseInt("{{ (event.limits.team_max if event.limits and event.limits.team_max else 1) }}") || 1;
+var reqUsn      = "{{ 'true' if event.form_schema and event.form_schema.require_member_usn else 'false' }}" === "true";
+var reqEmail    = "{{ 'true' if event.form_schema and event.form_schema.require_member_email else 'false' }}" === "true";
+var reqWa       = "{{ 'true' if event.form_schema and event.form_schema.require_member_whatsapp else 'false' }}" === "true";
+
+function addMember(){
+    if(memberCount >= maxMembers){alert('Maximum team size reached!');return;}
+    memberCount++;
+    var html = '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px;position:relative;">'
+        + '<button type="button" onclick="this.parentElement.remove();memberCount--;" style="position:absolute;top:8px;right:8px;background:#fee2e2;border:none;color:#ef4444;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>'
+        + '<p style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;">Member '+memberCount+'</p>'
+        + '<div class="row g-2">'
+        + '<div class="col-12"><input type="text" name="member_name[]" class="form-control" placeholder="Full Name *" required></div>';
+    if(reqUsn)   html += '<div class="col-md-6"><input type="text" name="member_usn[]" class="form-control" placeholder="USN / SRN *" required></div>';
+    if(reqEmail) html += '<div class="col-md-6"><input type="email" name="member_email[]" class="form-control" placeholder="Email ID *" required></div>';
+    if(reqWa)    html += '<div class="col-12"><input type="tel" name="member_whatsapp[]" class="form-control" placeholder="WhatsApp Number *" required></div>';
+    html += '</div></div>';
+    document.getElementById('membersContainer').insertAdjacentHTML('beforeend', html);
+}
+</script>
 </body>
 </html>

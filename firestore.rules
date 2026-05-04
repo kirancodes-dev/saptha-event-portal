@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    function isSpoc() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SPOC';
+    }
+    function isCoord() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in
+          ['Coordinator', 'EventCoordinator'];
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── users ──────────────────────────────────────────────
+    match /users/{uid} {
+      allow read:  if isOwner(uid) || isAdmin();
+      allow create: if isSignedIn() && isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── events ─────────────────────────────────────────────
+    match /events/{eventId} {
+      allow read:   if true;                      // public read
+      allow create: if isSpoc() || isAdmin();
+      allow update: if isSpoc() || isAdmin() || isCoord();
+      allow delete: if isAdmin();
+    }
+
+    // ── event_forms ────────────────────────────────────────
+    match /event_forms/{eventId} {
+      allow read:   if true;
+      allow write:  if isSpoc() || isAdmin();
+    }
+
+    // ── registrations ──────────────────────────────────────
+    match /registrations/{regId} {
+      allow read:  if isSignedIn();
+      allow create: if true;                      // public can register
+      allow update: if isAdmin() || isCoord();
+      allow delete: if isAdmin();
+    }
+
+    // ── announcements ──────────────────────────────────────
+    match /announcements/{docId} {
+      allow read:  if true;
+      allow write: if isSpoc() || isAdmin() || isCoord();
+    }
+
+    // ── check_ins ──────────────────────────────────────────
+    match /check_ins/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isCoord() || isAdmin();
+    }
+
+    // ── certificates ───────────────────────────────────────
+    match /certificates/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin() || isSpoc();
+    }
+
+    // ── notifications ──────────────────────────────────────
+    match /notifications/{uid}/items/{docId} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    // ── sponsors ───────────────────────────────────────────
+    match /sponsors/{docId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── feedback ───────────────────────────────────────────
+    match /feedback/{docId} {
+      allow read:  if isAdmin() || isSpoc();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── leaderboard / scores ───────────────────────────────
+    match /leaderboard/{docId} {
+      allow read:  if true;
+      allow write: if isAdmin() || isCoord();
+    }
+
+    // ── deny everything else ───────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

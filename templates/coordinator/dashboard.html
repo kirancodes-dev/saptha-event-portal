@@ -15,8 +15,13 @@
         body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; }
         h1,h2,h3,h4,h5 { font-family: 'Poppins', sans-serif; }
 
-        .navbar { background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 15px 0; }
-        .logo-title { color: var(--snpsu-blue); font-weight: 800; font-size: 1.3rem; margin: 0; line-height: 1.1; }
+        .topnav{background:var(--snpsu-blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+        .brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-left:10px;}
+        .nav-links{display:flex;align-items:center;gap:6px;}
+        .nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+        .nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
+        .nav-link-item.btn-orange{background:var(--snpsu-orange);color:#fff;font-weight:700;}
+        .nav-link-item.btn-orange:hover{background:#d95f0f;}
 
         .stat-card { background: #ffffff; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-top: 4px solid var(--snpsu-blue); }
         .event-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
@@ -61,24 +66,26 @@
 </head>
 <body>
 
-<!-- ── NAVBAR ──────────────────────────────────────────── -->
-<nav class="navbar navbar-expand-lg sticky-top">
-    <div class="container-fluid px-4">
-        <a class="navbar-brand d-flex align-items-center" href="#">
-            <img src="/static/snpsu-logo.png"
-                 alt="Sapthagiri NPS University"
-                 style="height:40px;width:auto;object-fit:contain;margin-right:10px;"
-                 onerror="this.style.display='none'">
-            <small style="color:#64748b;font-size:0.7rem;font-weight:700;letter-spacing:1.5px;">CLUB SPOC HQ</small>
-        </a>
-        <div class="d-flex align-items-center gap-3">
-            <span class="badge border text-dark px-3 py-2 fs-6" style="border-color:var(--snpsu-blue)!important;">
-                <i class="fas fa-tags me-1" style="color:var(--snpsu-orange);"></i> {{ club_category }} Division
-            </span>
-            <a href="/logout" class="btn btn-sm btn-outline-danger px-4 fw-bold">Logout</a>
-        </div>
+<!-- ── TOPNAV ──────────────────────────────────────────── -->
+<div class="topnav">
+    <div class="d-flex align-items-center gap-2">
+        <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University"
+             style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;"
+             onerror="this.style.display='none'">
+        <span class="brand">Club SPOC HQ</span>
     </div>
-</nav>
+    <div class="nav-links">
+        <span style="color:rgba(255,255,255,.7);font-size:12.5px;padding:5px 11px;">
+            <i class="fas fa-tags me-1" style="color:var(--snpsu-orange);"></i> {{ club_category }} Division
+        </span>
+        <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
+        <button class="nav-link-item btn-orange border-0"
+                data-bs-toggle="modal" data-bs-target="#createEventWizard">
+            <i class="fas fa-plus me-1"></i>Create Event
+        </button>
+        <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
+    </div>
+</div>
 
 <div class="container py-5">
 

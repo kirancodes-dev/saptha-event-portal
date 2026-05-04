@@ -753,6 +753,7 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
     }
 }
 
+
 /* Print */
 @media print {
     .navbar, .btn, .modal, footer { display: none !important; }

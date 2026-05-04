@@ -34,6 +34,8 @@ from models import db
 from utils import login_required, role_required, log_action, safe_int
 from utils_email import send_registration_confirmed_email
 
+from extensions import limiter
+
 # WhatsApp optional
 try:
     from utils_whatsapp import send_ticket_whatsapp
@@ -229,6 +231,7 @@ def save_form(event_id):
 # 3. PUBLIC REGISTRATION PAGE
 # =========================================================
 @forms_bp.route('/register/<event_id>')
+@limiter.limit("60 per hour")
 def registration_page(event_id):
     # Fetch event
     event_doc = db.collection('events').document(event_id).get()
@@ -276,6 +279,7 @@ def registration_page(event_id):
 # 4. SUBMIT FORM
 # =========================================================
 @forms_bp.route('/submit/<event_id>', methods=['POST'])
+@limiter.limit("20 per hour")
 def submit_form(event_id):
     try:
         event_doc = db.collection('events').document(event_id).get()

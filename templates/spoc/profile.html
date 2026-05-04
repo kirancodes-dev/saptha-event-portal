@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile | SapthaEvent</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/global.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --blue:#1a2557; --orange:#c9a45e; }
+    body { background:#f1f5f9; font-family:'Inter',sans-serif; min-height:100vh; padding-bottom:60px; }
+    h1,h2,h3,h4,h5,h6 { font-family:'Poppins',sans-serif; }
+
+    /* topnav */
+    .topnav { background:var(--blue); padding:0 24px; height:56px; display:flex; align-items:center;
+              justify-content:space-between; position:sticky; top:0; z-index:100;
+              box-shadow:0 2px 8px rgba(0,0,0,.2); }
+    .brand { font-family:'Poppins',sans-serif; font-weight:700; font-size:15px; color:#fff; margin-left:10px; }
+    .nav-link-item { color:rgba(255,255,255,.7); font-size:12.5px; text-decoration:none; padding:5px 11px;
+                     border-radius:7px; transition:.15s; }
+    .nav-link-item:hover { color:#fff; background:rgba(255,255,255,.1); }
+
+    /* card */
+    .profile-card { background:#fff; border-radius:16px; border:1px solid #e2e8f0;
+                    box-shadow:0 2px 12px rgba(26,37,87,.06); overflow:hidden; }
+    .card-header-band { background:var(--blue); padding:28px 32px; display:flex; align-items:center; gap:20px; }
+    .avatar { width:72px; height:72px; border-radius:50%; background:var(--orange);
+              display:flex; align-items:center; justify-content:center; font-family:'Poppins',sans-serif;
+              font-weight:800; font-size:26px; color:#fff; flex-shrink:0; }
+    .card-body-pad { padding:28px 32px; }
+
+    /* form */
+    .field-label { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+                   color:#64748b; margin-bottom:6px; display:block; }
+    .field-input { width:100%; padding:11px 14px; border:1.5px solid #e2e8f0; border-radius:9px;
+                   font-size:14px; font-family:'Inter',sans-serif; background:#f8fafc;
+                   color:#1e293b; transition:.15s; outline:none; }
+    .field-input:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(201,164,94,.15); background:#fff; }
+    .field-hint { font-size:11.5px; color:#94a3b8; margin-top:4px; }
+
+    /* read-only info box */
+    .info-box { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:9px;
+                padding:11px 14px; font-size:14px; color:#475569; }
+    .info-label { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+                  color:#94a3b8; margin-bottom:4px; }
+
+    .btn-save { background:var(--blue); color:#fff; font-weight:700; border:none;
+                border-radius:10px; padding:11px 32px; font-size:14.5px; cursor:pointer;
+                font-family:'Poppins',sans-serif; transition:.2s; }
+    .btn-save:hover { background:#0f1b44; transform:translateY(-1px); }
+    .btn-back-link { display:inline-flex; align-items:center; gap:6px; color:#64748b;
+                     font-size:13px; font-weight:600; text-decoration:none; padding:10px 20px;
+                     border:1.5px solid #e2e8f0; border-radius:9px; background:#fff; transition:.15s; }
+    .btn-back-link:hover { border-color:#1a2557; color:#1a2557; }
+
+    /* stat pills */
+    .stat-pill { display:inline-flex; flex-direction:column; align-items:center;
+                 background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;
+                 padding:14px 24px; min-width:110px; }
+    .stat-pill-val { font-family:'Poppins',sans-serif; font-size:22px; font-weight:800; color:var(--blue); }
+    .stat-pill-lbl { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#94a3b8; font-weight:600; }
+  </style>
+</head>
+<body>
+
+<!-- TOPNAV -->
+<div class="topnav">
+  <div class="d-flex align-items-center gap-2">
+    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
+    <span class="brand">My Profile</span>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="/spoc/dashboard" class="nav-link-item"><i class="fas fa-arrow-left me-1"></i>Back to Dashboard</a>
+    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+  </div>
+</div>
+
+<div class="container" style="max-width:720px;margin:36px auto;padding:0 16px;">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ 'success' if cat == 'success' else 'danger' }} alert-dismissible fade show mb-4" role="alert"
+         style="border-radius:10px;font-size:13.5px;">
+      {{ msg }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="profile-card mb-4">
+    <!-- Header band with avatar -->
+    <div class="card-header-band">
+      <div class="avatar">{{ (user.get('name') or 'S')[0].upper() }}</div>
+      <div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:800;font-size:20px;color:#fff;margin-bottom:2px;">
+          {{ user.get('name', 'SPOC') }}
+        </div>
+        <div style="font-size:13px;color:rgba(255,255,255,.6);">
+          <i class="fas fa-envelope me-1"></i>{{ user.get('email', user.id) }}
+          &nbsp;·&nbsp;
+          <span style="background:var(--orange);color:#fff;padding:2px 10px;border-radius:100px;font-size:11px;font-weight:700;">
+            {{ user.get('role','ClubSPOC') }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body-pad">
+
+      <!-- Read-only info -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6">
+          <div class="info-label">Email (Login ID)</div>
+          <div class="info-box"><i class="fas fa-lock me-1" style="color:#94a3b8;font-size:12px;"></i>{{ user.get('email', user.id) }}</div>
+        </div>
+        <div class="col-sm-6">
+          <div class="info-label">Role</div>
+          <div class="info-box"><i class="fas fa-shield-alt me-1" style="color:#94a3b8;font-size:12px;"></i>{{ user.get('role','ClubSPOC') }}</div>
+        </div>
+      </div>
+
+      <hr style="border-color:#f1f5f9;margin:4px 0 24px;">
+
+      <!-- Editable fields -->
+      <form method="POST" action="/spoc/profile">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="row g-4 mb-4">
+          <div class="col-sm-6">
+            <label class="field-label">Display Name</label>
+            <input type="text" name="name" class="field-input"
+                   value="{{ user.get('name', '') }}" placeholder="Your full name" required>
+          </div>
+          <div class="col-sm-6">
+            <label class="field-label">Club Name</label>
+            <input type="text" name="club_name" class="field-input"
+                   value="{{ user.get('club_name', '') }}" placeholder="e.g. IEEE Student Chapter">
+            <div class="field-hint">Shown on event pages and emails.</div>
+          </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-sm-6">
+            <label class="field-label">Phone / WhatsApp</label>
+            <input type="tel" name="phone" class="field-input"
+                   value="{{ user.get('phone', '') }}" placeholder="+91 99999 99999">
+            <div class="field-hint">Used on event contact info.</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="field-label">Group / WhatsApp Link</label>
+            <input type="url" name="whatsapp_link" class="field-input"
+                   value="{{ user.get('whatsapp_link', '') }}" placeholder="https://chat.whatsapp.com/...">
+            <div class="field-hint">Participants see this to join the event group.</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-center flex-wrap">
+          <button type="submit" class="btn-save">
+            <i class="fas fa-save me-2"></i>Save Profile
+          </button>
+          <a href="/spoc/dashboard" class="btn-back-link">
+            <i class="fas fa-times"></i>Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick stats card -->
+  <div class="profile-card">
+    <div class="card-body-pad">
+      <h6 style="font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);margin-bottom:20px;">
+        <i class="fas fa-chart-bar me-2" style="color:var(--orange);"></i>Your Activity
+      </h6>
+      <div class="d-flex flex-wrap gap-3">
+        <div class="stat-pill">
+          <div class="stat-pill-val" id="prof-total-events">—</div>
+          <div class="stat-pill-lbl">Events</div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-pill-val" id="prof-total-regs">—</div>
+          <div class="stat-pill-lbl">Registrations</div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-pill-val" id="prof-present">—</div>
+          <div class="stat-pill-lbl">Attended</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+fetch('/spoc/api/stats')
+  .then(function(r) { return r.ok ? r.json() : null; })
+  .then(function(d) {
+    if (!d) return;
+    document.getElementById('prof-total-events').textContent = d.total_events;
+    document.getElementById('prof-total-regs').textContent   = d.total_regs;
+    document.getElementById('prof-present').textContent      = d.present_count;
+  })
+  .catch(function() {});
+</script>
+</body>
+</html>

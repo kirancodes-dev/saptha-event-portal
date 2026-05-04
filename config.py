@@ -17,8 +17,10 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Strict' if _is_production else 'Lax'
     PERMANENT_SESSION_LIFETIME = 3600
 
-    # Server-side session storage — use Redis in production for multi-worker safety
-    SESSION_TYPE           = os.environ.get('SESSION_TYPE', 'filesystem')
+    # Server-side session storage — auto-select Redis when REDIS_URL is set
+    _redis_url = os.environ.get('REDIS_URL', '')
+    SESSION_TYPE           = os.environ.get('SESSION_TYPE',
+                                 'redis' if _redis_url else 'filesystem')
     SESSION_PERMANENT      = True
     SESSION_USE_SIGNER     = True
     SESSION_KEY_PREFIX     = 'saptha_sess:'

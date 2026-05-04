@@ -114,11 +114,106 @@ def send_24h_reminders(self):
                 except Exception:
                     pass
 
+        # ── Coordinator day-before briefing ──────────────────────
+        briefings_sent = 0
+        for event in events_tomorrow:
+            event_id    = event['id']
+            if event.get('coord_briefing_sent'):
+                continue
+
+            title    = event.get('title', 'Event')
+            date_str = event.get('date', tomorrow_str)
+            time_str = event.get('time', 'TBD')
+            venue    = event.get('venue', 'SNPSU Campus')
+            reg_count = int(event.get('registration_count', 0) or 0)
+            max_cap   = int((event.get('limits') or {}).get('max_participants', 0) or 0)
+            cap_line  = f"{reg_count} / {max_cap}" if max_cap else str(reg_count)
+
+            coord_emails = set()
+            for s in event.get('staff', []):
+                if s.get('role') in ('EventCoordinator', 'Coordinator') and s.get('email'):
+                    coord_emails.add(s['email'])
+            for e in event.get('coordinators', []):
+                if isinstance(e, str):
+                    coord_emails.add(e)
+
+            for coord_email in coord_emails:
+                coord_doc = db.collection('users').document(coord_email).get()
+                coord_name = (coord_doc.to_dict() or {}).get('name', coord_email.split('@')[0].title()) if coord_doc.exists else coord_email.split('@')[0].title()
+
+                subject = f"📋 Briefing: {title} — Tomorrow, {date_str}"
+                body_html = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+<table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;max-width:560px;">
+  <tr><td style="background:#1a2557;padding:28px 32px 22px;border-radius:14px 14px 0 0;">
+    <div style="display:inline-block;background:#c9a45e;color:#fff;font-size:10px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:100px;margin-bottom:10px;">COORDINATOR BRIEFING</div>
+    <h2 style="margin:0;font-size:20px;color:#fff;">{title}</h2>
+    <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,.7);">Happening Tomorrow</p>
+  </td></tr>
+  <tr><td style="padding:28px 32px;">
+    <p style="font-size:15px;color:#1e293b;">Hello <strong>{coord_name}</strong>,</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">You are assigned as Event Coordinator for <strong>{title}</strong> happening <strong>tomorrow</strong>. Here is your event briefing.</p>
+    <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin:20px 0;">
+      <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Date &amp; Time</span><br>
+        <strong style="color:#1a2557;">📅 {date_str} &nbsp;⏰ {time_str}</strong>
+      </td></tr>
+      <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Venue</span><br>
+        <strong style="color:#1a2557;">📍 {venue}</strong>
+      </td></tr>
+      <tr><td style="padding:12px 20px;">
+        <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Registered Participants</span><br>
+        <strong style="color:#1a2557;">👥 {cap_line}</strong>
+      </td></tr>
+    </table>
+    <p style="font-size:13px;font-weight:700;color:#1a2557;margin-bottom:10px;">📋 Day-of Checklist</p>
+    <table width="100%" style="background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd;margin-bottom:20px;">
+      <tr><td style="padding:14px 20px;">
+        <p style="margin:0 0 8px;font-size:13px;color:#0c4a6e;">☐ &nbsp;Arrive 45 minutes before start time</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#0c4a6e;">☐ &nbsp;Set up QR scanner at entry gate</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#0c4a6e;">☐ &nbsp;Register walk-in students via Helpdesk POS</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#0c4a6e;">☐ &nbsp;Mark attendance for all participants</p>
+        <p style="margin:0;font-size:13px;color:#0c4a6e;">☐ &nbsp;Report headcount to SPOC after event starts</p>
+      </td></tr>
+    </table>
+    <table><tr><td>
+      <a href="https://sapthaevent.in/coordinator/scanner"
+         style="display:inline-block;padding:12px 28px;background:#1a2557;color:#fff;font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;">
+        Open Scanner Dashboard →
+      </a>
+    </td></tr></table>
+  </td></tr>
+  <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;border-radius:0 0 14px 14px;">
+    <p style="margin:0;font-size:12px;color:#94a3b8;">SapthaEvent &middot; Sapthagiri NPS University, Bengaluru</p>
+  </td></tr>
+</table></td></tr></table>
+</body></html>"""
+
+                try:
+                    from tasks.email_tasks import send_generic_email_task
+                    send_generic_email_task.delay(
+                        to_email=coord_email,
+                        subject=subject,
+                        body_text=f"Briefing: {title} tomorrow at {time_str}, {venue}. {cap_line} registered.",
+                        body_html=body_html,
+                    )
+                    briefings_sent += 1
+                except Exception:
+                    pass
+
+            try:
+                db.collection('events').document(event_id).update({'coord_briefing_sent': True})
+            except Exception:
+                pass
+
         logger.info(
-            "send_24h_reminders done — ticket_emails=%d wa=%d skipped=%d",
-            queued_emails, queued_wa, skipped,
+            "send_24h_reminders done — ticket_emails=%d wa=%d skipped=%d coord_briefings=%d",
+            queued_emails, queued_wa, skipped, briefings_sent,
         )
-        return {'queued_emails': queued_emails, 'queued_wa': queued_wa, 'skipped': skipped}
+        return {'queued_emails': queued_emails, 'queued_wa': queued_wa,
+                'skipped': skipped, 'coord_briefings': briefings_sent}
 
     except Exception as exc:
         logger.exception("send_24h_reminders failed: %s", exc)

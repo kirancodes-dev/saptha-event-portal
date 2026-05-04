@@ -537,8 +537,7 @@ def public_announcements(event_id):
     items = []
     for doc in (db.collection('announcements')
                   .where(filter=FieldFilter('event_id', '==', event_id))
-                  .order_by('timestamp', direction='DESCENDING')
-                  .limit(10).stream()):
+                  .limit(20).stream()):
         d = doc.to_dict()
         items.append({
             'id':       doc.id,
@@ -546,7 +545,8 @@ def public_announcements(event_id):
             'priority': d.get('priority', 'info'),
             'ts':       d.get('timestamp', ''),
         })
-    return jsonify(items)
+    items.sort(key=lambda x: x['ts'], reverse=True)
+    return jsonify(items[:10])
 
 
 # --- 10. EVENT AGENDA / SCHEDULE BUILDER ---
@@ -954,24 +954,24 @@ def assign_coordinator(event_id):
     user_docs = list(db.collection('users').where('email', '==', email).stream())
 
     if not user_docs:
-        # Create new Coordinator account with generated password
+        # Create new EventCoordinator account with generated password
         pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
         db.collection('users').document(email).set({
             'name':       name,
             'email':      email,
-            'role':       'Coordinator',
+            'role':       'EventCoordinator',
             'password':   generate_password_hash(pwd),
             'created_at': datetime.datetime.now().isoformat(),
         })
         try:
-            send_credentials_email(email, name, 'Coordinator', pwd)
+            send_credentials_email(email, name, 'EventCoordinator', pwd)
         except Exception:
             pass
         account_msg = f"Account created and login credentials emailed to {email}."
     else:
         user_data = user_docs[0].to_dict()
         user_role = user_data.get('role', '')
-        if user_role not in ('Coordinator', 'ClubSPOC', 'SuperAdmin'):
+        if user_role not in ('EventCoordinator', 'Coordinator', 'ClubSPOC', 'SuperAdmin'):
             flash(f"{email} is registered as '{user_role}', not a Coordinator.", "warning")
             return redirect(f'/spoc/dashboard#event-{event_id}')
         name = user_data.get('name', name)
@@ -1330,11 +1330,10 @@ def api_stats():
 @login_required
 @role_required('ClubSPOC')
 def api_coordinators():
-    docs   = db.collection('users').where('role', '==', 'Coordinator').stream()
-    result = [{'email': (d.to_dict() or {}).get('email', doc.id),
-               'name':  (d.to_dict() or {}).get('name', '')}
-              for doc in docs
-              for d in [doc.to_dict() or {}]]
+    docs   = db.collection('users').where('role', '==', 'EventCoordinator').stream()
+    result = [{'email': (doc.to_dict() or {}).get('email', doc.id),
+               'name':  (doc.to_dict() or {}).get('name', '')}
+              for doc in docs]
     return jsonify(result)
 
 

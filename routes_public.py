@@ -1,3 +1,4 @@
+import datetime
 from flask import Blueprint, render_template, jsonify, session
 from models import db, FirebaseWrapper
 
@@ -28,6 +29,8 @@ def home():
                 if sid:
                     spoc_ids.add(sid)
 
+            today = datetime.date.today().strftime('%Y-%m-%d')
+            all_events = [e for e in all_events if getattr(e, 'date', '9999-99-99') >= today]
             all_events.sort(key=lambda x: getattr(x, 'date', '9999-99-99'))
             total_events = len(all_events)
             featured_events = [e for e in all_events if getattr(e, 'is_featured', False)][:3]

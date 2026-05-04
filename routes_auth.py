@@ -96,6 +96,8 @@ def login():
             db_role = user_data.get('role', '').strip()
             if db_role == 'Super Admin':
                 db_role = 'SuperAdmin'
+            if db_role == 'Coordinator':
+                db_role = 'EventCoordinator'
 
             # Password verification — hashed only. Legacy plaintext rows are
             # rejected and flagged for admin-triggered password reset.

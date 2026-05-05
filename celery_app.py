@@ -56,7 +56,7 @@ celery.conf.update(
     # localhost without needing a running Redis + Celery worker.
     # Set CELERY_BROKER_URL=redis://... in production to disable eager mode.
     task_always_eager        = _no_broker,
-    task_eager_propagates    = True,   # surface exceptions in eager mode
+    task_eager_propagates    = False,  # email failures must NOT crash web requests
 
     # ── Serialisation ─────────────────────────────────────
     task_serializer          = 'json',

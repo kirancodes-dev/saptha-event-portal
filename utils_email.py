@@ -479,6 +479,73 @@ def _send_cert_email(to_email: str, student_name: str,
     return _send(to_email, subject, html, atts)
 
 
+def send_room_assignment_email(to_email: str, name: str, event_title: str,
+                               room_name: str, event_date: str = '',
+                               event_time: str = '', venue: str = '') -> bool:
+    details = ''
+    if event_date:
+        details += (f"<tr><td style='color:#64748b;padding:6px 0;width:30%;'>Date</td>"
+                    f"<td style='font-weight:600;color:#1a2557;'>📅 {event_date}</td></tr>")
+    if event_time:
+        details += (f"<tr><td style='color:#64748b;padding:6px 0;'>Time</td>"
+                    f"<td style='font-weight:600;color:#1a2557;'>🕐 {event_time}</td></tr>")
+    if venue:
+        details += (f"<tr><td style='color:#64748b;padding:6px 0;'>Venue</td>"
+                    f"<td style='font-weight:600;color:#1a2557;'>📍 {venue}</td></tr>")
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Your room assignment for
+           <strong style="color:#1a2557;">{event_title}</strong> is confirmed.</p>
+        <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;
+                    padding:24px;text-align:center;margin:16px 0;">
+          <p style="color:#64748b;font-size:12px;margin:0 0 8px;font-weight:700;
+                    text-transform:uppercase;letter-spacing:.5px;">Your Assigned Room</p>
+          <p style="font-family:monospace;font-size:34px;font-weight:800;
+                    color:#15803d;margin:0;">{room_name}</p>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:16px 0;">
+          <table style="width:100%;font-size:14px;border-collapse:collapse;">{details}</table>
+        </div>
+        <p style="color:#475569;font-size:13px;">
+          Please report directly to your assigned room on the event day.
+          Carry your QR ticket for check-in at the room entrance.
+        </p>
+    """, f"Room Assignment — {event_title}")
+    return _send(to_email, f"🏛️ Your Room: {room_name} — {event_title}", html)
+
+
+def send_advancement_email(to_email: str, name: str, event_title: str,
+                           next_round: int, room_name: str = '',
+                           event_time: str = '') -> bool:
+    room_block = ''
+    if room_name:
+        room_block = f"""
+        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;
+                    padding:16px;margin:12px 0;text-align:center;">
+          <p style="color:#1d4ed8;font-size:11px;margin:0 0 6px;font-weight:700;
+                    text-transform:uppercase;letter-spacing:.5px;">Round {next_round} Room</p>
+          <p style="font-family:monospace;font-size:26px;font-weight:800;
+                    color:#1a2557;margin:0;">{room_name}</p>
+        </div>"""
+    time_note = (f"<p style='color:#475569;font-size:13px;'>Report time: "
+                 f"<strong>{event_time}</strong></p>") if event_time else ''
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;
+                    padding:20px;text-align:center;margin:16px 0;">
+          <p style="font-size:30px;margin:0 0 8px;">🎉</p>
+          <p style="color:#15803d;font-weight:800;font-size:18px;margin:0 0 6px;">Congratulations!</p>
+          <p style="color:#475569;margin:0;">You have advanced to
+             <strong>Round {next_round}</strong> of
+             <strong style="color:#1a2557;">{event_title}</strong>!</p>
+        </div>
+        {room_block}
+        {time_note}
+        <p style="color:#475569;font-size:13px;">Keep up the great work — best of luck in the next round!</p>
+    """, f"Round {next_round} Advancement — {event_title}")
+    return _send(to_email, f"🎉 You advanced to Round {next_round}! — {event_title}", html)
+
+
 # Alias used by utils_certificate.py
 def _get_mail():
     return None

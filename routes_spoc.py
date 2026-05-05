@@ -754,11 +754,12 @@ def blast_email(event_id):
         flash("Message body too long (max 5000 characters).", "warning")
         return redirect('/spoc/dashboard')
 
-    from tasks.email_tasks import send_generic_email_task
+    from utils_email import _send, _html_wrapper
 
     event_title = event.get('title', 'Event')
-    regs = db.collection('registrations').where('event_id', '==', event_id).stream()
-    queued = 0
+    regs   = list(db.collection('registrations').where('event_id', '==', event_id).stream())
+    sent   = 0
+    failed = 0
 
     for r in regs:
         d = r.to_dict() or {}
@@ -769,43 +770,25 @@ def blast_email(event_id):
         if not email:
             continue
 
-        personalised_subject = subject
-        body_html = f"""<!DOCTYPE html>
-<html><body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
-<table width="540" cellpadding="0" cellspacing="0"
-       style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;max-width:540px;">
-  <tr><td style="background:#1a2557;padding:24px 32px;border-radius:12px 12px 0 0;">
-    <h2 style="margin:0;font-size:17px;color:#fff;">{event_title}</h2>
-    <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,.6);">
-      Message from your event organiser
-    </p>
-  </td></tr>
-  <tr><td style="padding:28px 32px;">
-    <p style="font-size:15px;color:#1e293b;">Hello <strong>{name}</strong>,</p>
-    <div style="font-size:14px;color:#334155;line-height:1.75;white-space:pre-wrap;">{body}</div>
-  </td></tr>
-  <tr><td style="background:#f8fafc;padding:14px 32px;border-top:1px solid #e2e8f0;
-          border-radius:0 0 12px 12px;text-align:center;">
-    <p style="margin:0;font-size:12px;color:#94a3b8;">
-      SapthaEvent &middot; Sapthagiri NPS University, Bengaluru
-    </p>
-  </td></tr>
-</table></td></tr></table>
-</body></html>"""
+        html = _html_wrapper(f"""
+            <p style="color:#475569;">Hello <strong>{name}</strong>,</p>
+            <div style="font-size:14px;color:#334155;line-height:1.75;white-space:pre-wrap;">{body}</div>
+        """, f"{event_title} — {subject}")
 
-        send_generic_email_task.delay(
-            to_email=email,
-            subject=personalised_subject,
-            body_text=f"Hello {name},\n\n{body}\n\n— SapthaEvent, Sapthagiri NPS University",
-            body_html=body_html,
-        )
-        queued += 1
+        try:
+            _send(email, subject, html)
+            sent += 1
+        except Exception as exc:
+            print(f"[blast_email] failed to {email}: {exc}")
+            failed += 1
 
     log_action(db, "BLAST_EMAIL",
-               f"SPOC {session.get('user_id')} blasted '{subject}' to {queued} registrants "
-               f"for event {event_id}")
-    flash(f"✅ Email queued for {queued} registrant{'s' if queued != 1 else ''}.", "success")
+               f"SPOC {session.get('user_id')} blasted '{subject}' — "
+               f"{sent} sent, {failed} failed for event {event_id}")
+    msg = f"✅ Email sent to {sent} registrant{'s' if sent != 1 else ''}."
+    if failed:
+        msg += f" ({failed} failed — check email credentials.)"
+    flash(msg, "success" if sent else "warning")
     return redirect('/spoc/dashboard')
 
 

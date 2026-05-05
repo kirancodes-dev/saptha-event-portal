@@ -105,8 +105,11 @@ def create_event():
             'is_team_event': request.form.get('participation_type') in ['Team', 'Both'],
             
             # KEY NEW FIELDS
-            'coordinators': coordinators_list, # Array of emails
-            'form_schema': form_schema,        # The exact form requirements
+            'coordinators': coordinators_list,  # Array of emails
+            'form_schema':  form_schema,         # The exact form requirements
+
+            # Judging criteria for judge scoring
+            'judging_criteria': json.loads(request.form.get('judging_criteria_json') or '[]'),
             
             'limits': {
                 'team_min': get_int('team_min', 1),
@@ -1179,8 +1182,6 @@ def add_judge(event_id):
 @login_required
 @role_required('ClubSPOC')
 def setup_rooms(event_id):
-    import random
-
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         flash("Event not found.", "danger")
@@ -1207,33 +1208,291 @@ def setup_rooms(event_id):
     db.collection('events').document(event_id).update({'rooms': rooms})
 
     if action == 'allocate':
-        # Fetch all confirmed registrations and distribute across rooms
+        # Sort by registration timestamp — earliest registered gets a room first
         regs = list(db.collection('registrations')
                     .where('event_id', '==', event_id).stream())
-        reg_ids = [r.id for r in regs]
-        random.shuffle(reg_ids)
+        regs.sort(key=lambda r: str(r.to_dict().get('registered_at', '') or ''))
 
-        allocations = {}  # reg_id → room_name
         idx = 0
+        batch_updates = 0
         for room in rooms:
             for _ in range(room['capacity']):
-                if idx >= len(reg_ids):
+                if idx >= len(regs):
                     break
-                allocations[reg_ids[idx]] = room['name']
+                db.collection('registrations').document(regs[idx].id).update(
+                    {'assigned_room': room['name']}
+                )
                 idx += 1
+                batch_updates += 1
 
-        batch_updates = 0
-        for reg_id, room_name in allocations.items():
-            db.collection('registrations').document(reg_id).update(
-                {'allocated_room': room_name}
-            )
-            batch_updates += 1
-
-        flash(f"✅ Rooms saved and {batch_updates} participant(s) allocated.", "success")
+        log_action(db, "ROOMS_ALLOCATED",
+                   f"SPOC {session.get('user_id')} allocated {batch_updates} participants "
+                   f"in {len(rooms)} rooms for event {event_id}")
+        flash(f"✅ Rooms saved and {batch_updates} participant(s) allocated by registration order. "
+              f"<a href='/spoc/room_allocation/{event_id}' style='color:#fff;font-weight:700;text-decoration:underline;'>View allocation →</a>",
+              "success")
     else:
         flash(f"✅ {len(rooms)} room(s) saved.", "success")
 
     return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# ROOM ALLOCATION — view / manual reassign
+# =========================================================
+@spoc_bp.route('/room_allocation/<event_id>')
+@login_required
+@role_required('ClubSPOC')
+def room_allocation(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    event = doc.to_dict() or {}
+    event['id'] = event_id
+    if event.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised.", "danger")
+        return redirect('/spoc/dashboard')
+
+    regs_raw = list(db.collection('registrations')
+                    .where('event_id', '==', event_id).stream())
+    registrations = sorted(
+        [dict(r.to_dict(), id=r.id) for r in regs_raw],
+        key=lambda x: str(x.get('registered_at', '') or '')
+    )
+    rooms = event.get('rooms', [])
+    return render_template('spoc/room_allocation.html',
+                           event=event,
+                           registrations=registrations,
+                           rooms=rooms,
+                           email_sent_count=event.get('room_emails_sent', 0))
+
+
+@spoc_bp.route('/reassign_room/<event_id>/<reg_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def reassign_room(event_id, reg_id):
+    new_room = (request.get_json() or {}).get('room', '').strip()
+    if not new_room:
+        return jsonify({'status': 'error', 'message': 'No room specified'}), 400
+    db.collection('registrations').document(reg_id).update({'assigned_room': new_room})
+    return jsonify({'status': 'ok', 'room': new_room})
+
+
+@spoc_bp.route('/send_room_emails/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def send_room_emails(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect(f'/spoc/room_allocation/{event_id}')
+    event = doc.to_dict() or {}
+    if event.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised.", "danger")
+        return redirect('/spoc/dashboard')
+
+    from utils_email import send_room_assignment_email
+
+    regs = list(db.collection('registrations')
+                .where('event_id', '==', event_id).stream())
+    sent = skipped = 0
+    for r in regs:
+        d = r.to_dict()
+        room  = d.get('assigned_room', '')
+        email = d.get('lead_email', '')
+        name  = d.get('lead_name', 'Participant')
+        if not room or not email:
+            skipped += 1
+            continue
+        try:
+            send_room_assignment_email(
+                to_email=email, name=name,
+                event_title=event.get('title', 'Event'),
+                room_name=room,
+                event_date=str(event.get('date', '')),
+                event_time=str(event.get('time', '')),
+                venue=str(event.get('venue', '')),
+            )
+            sent += 1
+        except Exception:
+            skipped += 1
+
+    db.collection('events').document(event_id).update({'room_emails_sent': sent})
+    log_action(db, "ROOM_EMAILS_SENT",
+               f"SPOC {session.get('user_id')} sent room emails to {sent} participants "
+               f"for event {event_id}")
+    flash(f"✅ Room assignment emails sent to {sent} participant(s). "
+          f"{skipped} skipped (no room assigned or missing email).", "success")
+    return redirect(f'/spoc/room_allocation/{event_id}')
+
+
+# =========================================================
+# ROUND MANAGEMENT PANEL
+# =========================================================
+@spoc_bp.route('/round_panel/<event_id>')
+@login_required
+@role_required('ClubSPOC')
+def round_panel(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    event = doc.to_dict() or {}
+    event['id'] = event_id
+    if event.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised.", "danger")
+        return redirect('/spoc/dashboard')
+
+    cur_round      = event.get('active_round', 1)
+    scoring_locked = event.get('scoring_locked', False)
+
+    regs_raw = list(db.collection('registrations')
+                    .where('event_id', '==', event_id).stream())
+    leaderboard = []
+    for r in regs_raw:
+        d = r.to_dict() or {}
+        if d.get('is_eliminated'):
+            continue
+        if d.get('current_round', 1) != cur_round:
+            continue
+        scores_map = d.get('scores', {})
+        if scores_map:
+            avg = round(sum(float(s.get('total', 0)) for s in scores_map.values())
+                        / len(scores_map), 2)
+        else:
+            avg = None
+        leaderboard.append({
+            'id':            r.id,
+            'team_name':     d.get('team_name', d.get('lead_name', '—')),
+            'lead_name':     d.get('lead_name', '—'),
+            'lead_email':    d.get('lead_email', ''),
+            'assigned_room': d.get('assigned_room', '—'),
+            'score':         avg,
+            'attendance':    d.get('attendance', 'Pending'),
+            'judge_count':   len(scores_map),
+        })
+
+    leaderboard.sort(key=lambda x: (-(x['score'] or -9999), x['team_name']))
+    for i, row in enumerate(leaderboard):
+        row['rank'] = i + 1
+
+    return render_template('spoc/round_panel.html',
+                           event=event,
+                           leaderboard=leaderboard,
+                           cur_round=cur_round,
+                           scoring_locked=scoring_locked)
+
+
+@spoc_bp.route('/lock_scoring/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def lock_scoring(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    event = doc.to_dict() or {}
+    if event.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised.", "danger")
+        return redirect('/spoc/dashboard')
+    current = event.get('scoring_locked', False)
+    db.collection('events').document(event_id).update({'scoring_locked': not current})
+    state = "locked" if not current else "unlocked"
+    log_action(db, "SCORING_LOCKED" if not current else "SCORING_UNLOCKED",
+               f"SPOC {session.get('user_id')} {state} scoring for event {event_id}")
+    flash(f"✅ Scoring {state} for Round {event.get('active_round', 1)}.", "success")
+    return redirect(f'/spoc/round_panel/{event_id}')
+
+
+@spoc_bp.route('/advance_round/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def advance_round(event_id):
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    event = doc.to_dict() or {}
+    if event.get('spoc_id') != session.get('user_id'):
+        flash("Not authorised.", "danger")
+        return redirect('/spoc/dashboard')
+
+    mode = request.form.get('mode', 'top_n')
+    try:
+        top_n = int(request.form.get('top_n', 0))
+    except (ValueError, TypeError):
+        top_n = 0
+    try:
+        cutoff = float(request.form.get('cutoff', 0))
+    except (ValueError, TypeError):
+        cutoff = 0.0
+
+    cur_round = event.get('active_round', 1)
+    nxt_round = cur_round + 1
+
+    regs_raw = list(db.collection('registrations')
+                    .where('event_id', '==', event_id).stream())
+    scored = []
+    for r in regs_raw:
+        d = r.to_dict() or {}
+        if d.get('is_eliminated') or d.get('current_round', 1) != cur_round:
+            continue
+        scores_map = d.get('scores', {})
+        if not scores_map:
+            continue
+        avg = round(sum(float(s.get('total', 0)) for s in scores_map.values())
+                    / len(scores_map), 2)
+        scored.append({'id': r.id, 'avg': avg, 'data': d})
+
+    scored.sort(key=lambda x: -x['avg'])
+
+    if mode == 'top_n' and top_n > 0:
+        advancers   = scored[:top_n]
+        eliminatees = scored[top_n:]
+    elif mode == 'cutoff' and cutoff > 0:
+        advancers   = [s for s in scored if s['avg'] >= cutoff]
+        eliminatees = [s for s in scored if s['avg'] < cutoff]
+    else:
+        flash("Please specify Top N or a score cutoff.", "warning")
+        return redirect(f'/spoc/round_panel/{event_id}')
+
+    from utils_email import send_advancement_email
+
+    promoted = eliminated = 0
+    for s in advancers:
+        db.collection('registrations').document(s['id']).update({
+            'current_round': nxt_round,
+            'scores':        {},
+            'assigned_room': None,
+        })
+        try:
+            d = s['data']
+            send_advancement_email(
+                to_email=d.get('lead_email', ''),
+                name=d.get('lead_name', 'Participant'),
+                event_title=event.get('title', 'Event'),
+                next_round=nxt_round,
+            )
+        except Exception:
+            pass
+        promoted += 1
+
+    for s in eliminatees:
+        db.collection('registrations').document(s['id']).update({'is_eliminated': True})
+        eliminated += 1
+
+    db.collection('events').document(event_id).update({
+        'active_round':  nxt_round,
+        'scoring_locked': False,
+    })
+
+    log_action(db, "ROUND_ADVANCED",
+               f"SPOC {session.get('user_id')} advanced event {event_id} "
+               f"to Round {nxt_round}: {promoted} promoted, {eliminated} eliminated")
+    flash(f"✅ Round {nxt_round} started! {promoted} advanced, {eliminated} eliminated. "
+          f"Advancement emails sent.", "success")
+    return redirect(f'/spoc/round_panel/{event_id}')
 
 
 # =========================================================

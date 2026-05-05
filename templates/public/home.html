@@ -98,7 +98,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .ev-today .ev-countdown .cd-unit{background:rgba(201,164,94,.8);}
 
 .ev-body{padding:16px;flex:1;display:flex;flex-direction:column;}
-.ev-title{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);margin:0 0 8px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ev-title{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);margin:0 0 8px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .ev-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
 .ev-meta-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#64748b;}
 .ev-meta-item i{color:var(--orange);font-size:11px;width:12px;}
@@ -115,6 +115,17 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .ev-fee .free{color:#16a34a;}
 .btn-ev{background:var(--blue);color:#fff;font-size:12px;font-weight:700;padding:8px 16px;border-radius:8px;text-decoration:none;transition:.2s;border:none;display:inline-flex;align-items:center;gap:5px;}
 .btn-ev:hover{background:var(--orange);color:#fff;transform:translateY(-1px);}
+.btn-det{background:#f1f5f9;color:var(--blue);font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;border:1.5px solid #e2e8f0;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:5px;flex-shrink:0;}
+.btn-det:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+/* Detail modal */
+.ev-det-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 8px;text-align:center;}
+.ev-det-box i{font-size:18px;display:block;margin-bottom:6px;}
+.ev-det-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-top:2px;}
+.ev-det-val{font-size:13px;font-weight:700;color:var(--blue);margin-top:3px;word-break:break-word;}
+.prize-box{background:#fff8f0;border:1px solid var(--orange);border-radius:10px;padding:14px 20px;text-align:center;min-width:100px;flex:1;}
+.prize-medal{font-size:26px;display:block;margin-bottom:4px;}
+.prize-rank{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;}
+.prize-val{font-size:14px;font-weight:700;color:var(--blue);margin-top:4px;}
 
 /* Empty state */
 .empty-state{background:#fff;border-radius:16px;padding:60px 24px;text-align:center;border:1px solid #e2e8f0;}
@@ -220,6 +231,9 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   </div>
 </div>
 </nav>
+
+<!-- ══ CAMPUS SLIDER (photos to be added) ══════════════ -->
+<!-- Placeholder: upload your photos, then they will be wired in here -->
 
 <!-- ══ HERO ══════════════════════════════════════════════ -->
 <section class="hero">
@@ -353,7 +367,8 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
               <span>{{ max_p - reg_count }} left</span>
             </div>
             <div class="cap-bar">
-              <div class="cap-fill {% if pct > 75 %}high{% endif %}" style="width:{{ [pct, 100] | min }}%;"></div>
+              {% set pct_w = [pct, 100] | min %}
+              <div class="cap-fill {% if pct > 75 %}high{% endif %}" data-pct="{{ pct_w }}"></div>
             </div>
           </div>
           {% endif %}
@@ -366,7 +381,10 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                 <span class="free"><i class="fas fa-tag me-1"></i>Free</span>
               {% endif %}
             </div>
-            <a href="/event/{{ event.id }}" class="btn-ev">View &amp; Register <i class="fas fa-arrow-right"></i></a>
+            <div class="d-flex gap-2 align-items-center">
+              <button class="btn-det" onclick="showDetails('{{ event.id }}')"><i class="fas fa-info-circle"></i> Details</button>
+              <a href="/event/{{ event.id }}" class="btn-ev">Register <i class="fas fa-arrow-right"></i></a>
+            </div>
           </div>
         </div>
       </div>
@@ -476,10 +494,75 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   </div>
 </div>
 
+<!-- ══ EVENT DETAILS MODAL ══════════════════════════════ -->
+<div class="modal fade" id="eventDetailsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 rounded-4 shadow-lg">
+      <div class="modal-header border-0" style="background:var(--blue);color:#fff;border-radius:16px 16px 0 0;padding:20px 24px;">
+        <h5 class="modal-title fw-bold" id="detailModalTitle" style="font-family:'Poppins',sans-serif;font-size:18px;"></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="detailModalBody" style="max-height:65vh;overflow-y:auto;"></div>
+      <div class="modal-footer border-0 bg-light" style="border-radius:0 0 16px 16px;padding:16px 24px;">
+        <button class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+        <a href="#" id="detailModalRegBtn" class="btn rounded-pill px-4 fw-bold" style="background:var(--blue);color:#fff;">
+          <i class="fas fa-arrow-right me-1"></i> View &amp; Register
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ SCRIPTS ═══════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script type="application/json" id="eventsDataJson">
+[{% for event in events %}{"id":{{ event.id|tojson }},"title":{{ (event.title or '')|tojson }},"description":{{ (event.description or '')|tojson }},"rules":{{ (event.rules or '')|tojson }},"prizes":{{ (event.prizes or {})|tojson }},"prize_pool":{{ (event.prize_pool or '')|tojson }},"date":{{ (event.date or 'TBA')|tojson }},"time":{{ (event.time or '')|tojson }},"venue":{{ (event.venue or '')|tojson }},"fee":{{ ((event.fees or {}).get('regular',0))|tojson }},"participation_type":{{ (event.participation_type or 'Individual')|tojson }},"reg_deadline":{{ (event.reg_deadline or '')|tojson }},"banner_url":{{ (event.banner_url or '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]
+</script>
 <script>
+// ── EVENT DATA FOR DETAILS MODAL ─────────────────────────
+const eventsData = {};
+(JSON.parse(document.getElementById('eventsDataJson').textContent || '[]')).forEach(function(e){ eventsData[e.id] = e; });
+
+function showDetails(eventId) {
+  const ev = eventsData[eventId];
+  if (!ev) return;
+  document.getElementById('detailModalTitle').textContent = ev.title;
+  document.getElementById('detailModalRegBtn').href = '/event/' + eventId;
+  let html = '';
+  if (ev.banner_url) {
+    html += `<img src="${ev.banner_url}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:10px;margin-bottom:16px;" onerror="this.style.display='none'">`;
+  }
+  // Info grid
+  html += `<div class="row g-2 mb-4">`;
+  if (ev.date) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-calendar-alt text-primary"></i><div class="ev-det-label">Date</div><div class="ev-det-val">${ev.date}</div></div></div>`;
+  if (ev.time) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-clock" style="color:var(--orange)"></i><div class="ev-det-label">Time</div><div class="ev-det-val">${ev.time}</div></div></div>`;
+  if (ev.venue) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-map-marker-alt text-danger"></i><div class="ev-det-label">Venue</div><div class="ev-det-val">${ev.venue}</div></div></div>`;
+  if (ev.participation_type) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-users text-success"></i><div class="ev-det-label">Format</div><div class="ev-det-val">${ev.participation_type}</div></div></div>`;
+  if (ev.reg_deadline) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-hourglass-end text-warning"></i><div class="ev-det-label">Deadline</div><div class="ev-det-val">${ev.reg_deadline}</div></div></div>`;
+  html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-tag text-success"></i><div class="ev-det-label">Entry Fee</div><div class="ev-det-val">${ev.fee > 0 ? '₹' + ev.fee : 'Free'}</div></div></div>`;
+  html += `</div>`;
+  if (ev.description) {
+    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-info-circle me-2"></i>About</h6><p style="color:#475569;font-size:14px;line-height:1.8;">${ev.description}</p></div>`;
+  }
+  if (ev.rules) {
+    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-list-ul me-2"></i>Rules &amp; Guidelines</h6><div style="color:#475569;font-size:14px;line-height:1.9;white-space:pre-line;">${ev.rules}</div></div>`;
+  }
+  const prizes = ev.prizes || {};
+  const hasPrizes = prizes['1st'] || prizes['2nd'] || prizes['3rd'] || ev.prize_pool;
+  if (hasPrizes) {
+    html += `<div class="mb-2"><h6 class="fw-bold mb-3" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-trophy me-2" style="color:var(--orange)"></i>Prizes`;
+    if (ev.prize_pool) html += ` <span style="font-size:12px;font-weight:500;color:var(--orange);">(${ev.prize_pool})</span>`;
+    html += `</h6><div class="d-flex gap-3 flex-wrap">`;
+    if (prizes['1st']) html += `<div class="prize-box"><span class="prize-medal">🥇</span><div class="prize-rank">1st Place</div><div class="prize-val">${prizes['1st']}</div></div>`;
+    if (prizes['2nd']) html += `<div class="prize-box"><span class="prize-medal">🥈</span><div class="prize-rank">2nd Place</div><div class="prize-val">${prizes['2nd']}</div></div>`;
+    if (prizes['3rd']) html += `<div class="prize-box"><span class="prize-medal">🥉</span><div class="prize-rank">3rd Place</div><div class="prize-val">${prizes['3rd']}</div></div>`;
+    html += `</div></div>`;
+  }
+  document.getElementById('detailModalBody').innerHTML = html;
+  new bootstrap.Modal(document.getElementById('eventDetailsModal')).show();
+}
+
 // ── ANIMATED COUNTERS ─────────────────────────────────────
 function animateCounters() {
   document.querySelectorAll('.counter').forEach(el => {
@@ -494,6 +577,11 @@ function animateCounters() {
   });
 }
 window.addEventListener('load', animateCounters);
+
+// ── CAPACITY BARS ─────────────────────────────────────────
+document.querySelectorAll('.cap-fill[data-pct]').forEach(function(el){
+  el.style.width = el.dataset.pct + '%';
+});
 
 // ── FULLCALENDAR ──────────────────────────────────────────
 let dateFilter = null;

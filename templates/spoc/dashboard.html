@@ -446,6 +446,14 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
                     onclick="openModal('roomModal-{{ event.id }}')">
               <i class="fas fa-door-open"></i> Room Setup
             </button>
+            <!-- Room allocation view -->
+            <a href="/spoc/room_allocation/{{ event.id }}" class="action-btn btn-outline" style="background:#f0fdf4;border-color:#6ee7b7;color:#047857;">
+              <i class="fas fa-table"></i> Room Allocation
+            </a>
+            <!-- Round management -->
+            <a href="/spoc/round_panel/{{ event.id }}" class="action-btn btn-outline" style="background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;">
+              <i class="fas fa-layer-group"></i> Round Manager
+            </a>
             <!-- Certificate setup -->
             <button class="action-btn btn-outline" style="background:#fdf4ff;border-color:#d8b4fe;color:#7e22ce;"
                     onclick="openModal('certModal-{{ event.id }}')">

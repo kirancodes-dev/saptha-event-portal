@@ -54,33 +54,12 @@ def send_reminder_email_task(self, to_email: str, name: str, event_title: str,
                               event_date: str, venue: str, reg_id: str):
     """Send a 24-hour event reminder email."""
     try:
-        from flask import current_app
-        from flask_mail import Message
-
-        mail = current_app.extensions.get('mail')
-        if not mail:
-            logger.warning("Flask-Mail not initialised — skipping reminder to %s", to_email)
-            return
-
-        base_url = current_app.config.get('BASE_URL', 'http://127.0.0.1:5000')
+        import os
+        from utils_email import _send
+        base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
         ticket_url = f"{base_url}/ticket/{reg_id}"
-
-        msg = Message(
-            subject=f"Reminder: {event_title} is Tomorrow!",
-            recipients=[to_email],
-        )
-        msg.body = (
-            f"Reminder: {event_title} is Tomorrow!\n\n"
-            f"Hello {name},\n\n"
-            f"Event: {event_title}\n"
-            f"Date:  {event_date}\n"
-            f"Venue: {venue}\n"
-            f"Ticket ID: {reg_id}\n\n"
-            f"View your QR ticket: {ticket_url}\n\n"
-            f"— SapthaEvent, Sapthagiri NPS University"
-        )
-        msg.html = _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url)
-        mail.send(msg)
+        html = _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url)
+        _send(to_email, f"⏰ Reminder: {event_title} is Tomorrow!", html)
         logger.info("reminder email sent to %s for %s", to_email, event_title)
     except Exception as exc:
         logger.warning("reminder email failed %s: %s", to_email, exc)
@@ -98,21 +77,13 @@ def send_generic_email_task(self, to_email: str, subject: str,
                              body_text: str, body_html: str = ''):
     """Generic fire-and-forget email for announcements, password resets, etc."""
     try:
-        from flask import current_app
-        from flask_mail import Message
-
-        mail = current_app.extensions.get('mail')
-        if not mail:
-            logger.warning("Flask-Mail not initialised")
-            return
-
-        msg = Message(subject=subject, recipients=[to_email])
-        msg.body = body_text
-        if body_html:
-            msg.html = body_html
-        mail.send(msg)
+        from utils_email import _send
+        html = body_html or f"<pre style='font-family:sans-serif'>{body_text}</pre>"
+        _send(to_email, subject, html)
         logger.info("generic email sent to %s subject=%r", to_email, subject)
     except Exception as exc:
+        logger.warning("generic email failed to %s: %s — retry %d",
+                       to_email, exc, self.request.retries)
         raise self.retry(exc=exc)
 
 

@@ -67,7 +67,13 @@
         <div class="bg-white text-dark p-4 rounded-4 shadow-lg">
             <h4 class="fw-bold mb-1 text-primary" id="t_team">Team Name</h4>
             <p class="text-muted border-bottom pb-3 mb-3">Ticket ID: <span id="t_id" class="fw-bold"></span></p>
-            
+
+            <!-- Room assignment banner -->
+            <div id="room-banner" style="display:none;background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#15803d;margin-bottom:4px;"><i class="fas fa-door-open me-1"></i>Assigned Room</div>
+              <div id="room-name" style="font-family:monospace;font-size:28px;font-weight:800;color:#14532d;"></div>
+            </div>
+
             <div class="alert alert-warning border-warning">
                 <i class="fas fa-exclamation-triangle me-2"></i> Only leave checkboxes checked for students physically present. <strong>Absent students will not receive certificates.</strong>
             </div>
@@ -176,6 +182,16 @@
                 document.getElementById('t_team').innerText = (reg.team_name && reg.team_name !== 'Individual') ? reg.team_name : reg.lead_name;
                 document.getElementById('t_id').innerText = reg.reg_id;
                 document.getElementById('submit_reg_id').value = reg.reg_id;
+
+                // Show assigned room if available
+                const room = reg.assigned_room || reg.allocated_room || '';
+                const roomBanner = document.getElementById('room-banner');
+                if (room) {
+                    document.getElementById('room-name').innerText = room;
+                    roomBanner.style.display = '';
+                } else {
+                    roomBanner.style.display = 'none';
+                }
                 
                 let html = '';
                 // Leader

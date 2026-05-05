@@ -127,6 +127,9 @@ def submit_score(reg_id):
 
         event_id  = reg_data.get('event_id')
         event_doc = db.collection('events').document(event_id).get().to_dict()
+        if event_doc.get('scoring_locked'):
+            flash("Scoring is locked by the SPOC for this round.", "danger")
+            return redirect(f'/judge/event/{event_id}')
         criteria  = event_doc.get('judging_criteria', ['Overall Score'])
 
         score_details = {}
@@ -183,6 +186,9 @@ def score_inline(reg_id):
             return jsonify({'status': 'error', 'message': 'Registration not found'}), 404
 
         event_doc = db.collection('events').document(reg_data['event_id']).get().to_dict()
+        if event_doc.get('scoring_locked'):
+            return jsonify({'status': 'locked',
+                            'message': 'Scoring is locked by the SPOC for this round.'}), 403
         criteria  = event_doc.get('judging_criteria', ['Overall Score'])
 
         total = sum(safe_int(scores.get(c, 0)) for c in criteria)

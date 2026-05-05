@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Log | Admin HQ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --blue:#1a2557; --orange:#c9a45e; }
+        body { background:#f8f9fa; font-family:'Inter',sans-serif; color:#1e293b; }
+        h1,h2,h3,h4,h5 { font-family:'Poppins',sans-serif; }
+
+        .topnav { background:var(--blue); padding:0 24px; height:56px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+        .brand { font-family:'Poppins',sans-serif; font-weight:700; font-size:15px; color:#fff; margin-left:10px; }
+        .nav-link-item { color:rgba(255,255,255,.7); font-size:12.5px; text-decoration:none; padding:5px 11px; border-radius:7px; transition:.15s; }
+        .nav-link-item:hover { color:#fff; background:rgba(255,255,255,.1); }
+
+        .page-header { background:var(--blue); color:#fff; padding:32px 0 28px; margin-bottom:32px; }
+        .page-header h2 { font-size:1.6rem; font-weight:800; margin:0; }
+        .page-header p { font-size:13px; color:rgba(255,255,255,.6); margin:4px 0 0; }
+
+        .filter-bar { background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:16px 20px; margin-bottom:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        .filter-bar input, .filter-bar select { font-size:13px; border:1.5px solid #e2e8f0; border-radius:8px; padding:7px 12px; outline:none; color:#334155; }
+        .filter-bar input:focus, .filter-bar select:focus { border-color:var(--blue); }
+
+        .log-table-wrap { background:#fff; border-radius:14px; border:1px solid #e2e8f0; overflow:hidden; }
+        .log-table { width:100%; border-collapse:collapse; font-size:13px; }
+        .log-table thead th { background:var(--blue); color:#fff; font-weight:600; padding:12px 16px; white-space:nowrap; font-family:'Poppins',sans-serif; font-size:12px; letter-spacing:.3px; }
+        .log-table tbody tr { border-bottom:1px solid #f1f5f9; transition:.15s; }
+        .log-table tbody tr:last-child { border:none; }
+        .log-table tbody tr:hover { background:#f8faff; }
+        .log-table td { padding:12px 16px; vertical-align:middle; color:#334155; }
+
+        .action-badge { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; letter-spacing:.3px; padding:3px 10px; border-radius:100px; white-space:nowrap; }
+        .ab-create  { background:#dcfce7; color:#166534; }
+        .ab-update  { background:#dbeafe; color:#1e40af; }
+        .ab-delete  { background:#fee2e2; color:#991b1b; }
+        .ab-login   { background:#f0fdf4; color:#15803d; }
+        .ab-publish { background:#fef9c3; color:#854d0e; }
+        .ab-score   { background:#ede9fe; color:#6d28d9; }
+        .ab-default { background:#f1f5f9; color:#475569; }
+
+        .role-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px; }
+        .role-SuperAdmin { background:#fee2e2; color:#991b1b; }
+        .role-ClubSPOC   { background:#dbeafe; color:#1e40af; }
+        .role-EventCoordinator { background:#ede9fe; color:#6d28d9; }
+        .role-default    { background:#f1f5f9; color:#475569; }
+
+        .ts { font-size:11.5px; color:#94a3b8; white-space:nowrap; }
+        .ip-chip { font-size:10px; background:#f1f5f9; color:#64748b; border-radius:6px; padding:2px 7px; font-family:monospace; }
+        .details-cell { max-width:340px; word-break:break-word; color:#475569; }
+
+        .empty-state { padding:60px 24px; text-align:center; }
+        .empty-state i { font-size:48px; color:#cbd5e1; display:block; margin-bottom:16px; }
+        .empty-state h5 { color:var(--blue); font-family:'Poppins',sans-serif; font-weight:700; }
+        .empty-state p { color:#94a3b8; font-size:13px; }
+
+        .count-pill { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:100px; margin-left:8px; }
+    </style>
+</head>
+<body>
+
+<!-- TOPNAV -->
+<div class="topnav">
+    <div class="d-flex align-items-center gap-2">
+        <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" onerror="this.style.display='none'">
+        <span class="brand">Admin HQ</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="/admin/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+        <a href="/admin/users" class="nav-link-item"><i class="fas fa-users me-1"></i>Users</a>
+        <a href="/admin/events" class="nav-link-item"><i class="fas fa-calendar me-1"></i>Events</a>
+        <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
+        <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
+    </div>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:48px;height:48px;background:rgba(255,255,255,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-shield-halved" style="font-size:22px;color:var(--orange);"></i>
+            </div>
+            <div>
+                <h2>Audit Log
+                    <span class="count-pill">{{ entries | length }} entries</span>
+                </h2>
+                <p>System-wide record of privileged actions — last 100 events</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container pb-5">
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+        <i class="fas fa-filter" style="color:var(--blue);font-size:13px;"></i>
+        <input type="text" id="filterText" placeholder="Search action or details…" style="flex:1;min-width:180px;">
+        <select id="filterRole">
+            <option value="">All Roles</option>
+            <option value="SuperAdmin">SuperAdmin</option>
+            <option value="ClubSPOC">ClubSPOC</option>
+            <option value="EventCoordinator">EventCoordinator</option>
+        </select>
+        <select id="filterAction">
+            <option value="">All Actions</option>
+            <option value="CREATE">CREATE</option>
+            <option value="UPDATE">UPDATE</option>
+            <option value="DELETE">DELETE</option>
+            <option value="LOGIN">LOGIN</option>
+            <option value="PUBLISH">PUBLISH</option>
+            <option value="SCORE">SCORE</option>
+        </select>
+        <button class="btn btn-sm" style="background:var(--blue);color:#fff;border-radius:8px;font-size:12px;" onclick="clearFilters()">
+            <i class="fas fa-times me-1"></i> Clear
+        </button>
+        <span id="rowCount" style="font-size:12px;color:#94a3b8;margin-left:auto;"></span>
+    </div>
+
+    <!-- LOG TABLE -->
+    <div class="log-table-wrap">
+        {% if entries %}
+        <table class="log-table" id="auditTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Details</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody id="auditBody">
+                {% for entry in entries %}
+                <tr data-action="{{ entry.get('action','') }}" data-role="{{ entry.get('role','') }}" data-text="{{ (entry.get('action','') ~ ' ' ~ entry.get('details','') ~ ' ' ~ entry.get('user','')) | lower }}">
+                    <td style="color:#94a3b8;font-size:12px;">{{ loop.index }}</td>
+                    <td class="ts">
+                        {% set ts = entry.get('timestamp') %}
+                        {% if ts %}
+                            {% if ts is string %}
+                                {{ ts }}
+                            {% else %}
+                                {{ ts.strftime('%d %b %Y, %H:%M') }}
+                            {% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% set action = entry.get('action', '') %}
+                        {% if 'CREATE' in action or 'ADD' in action %}
+                            <span class="action-badge ab-create"><i class="fas fa-plus-circle"></i> {{ action }}</span>
+                        {% elif 'UPDATE' in action or 'EDIT' in action %}
+                            <span class="action-badge ab-update"><i class="fas fa-pen"></i> {{ action }}</span>
+                        {% elif 'DELETE' in action or 'REMOVE' in action %}
+                            <span class="action-badge ab-delete"><i class="fas fa-trash"></i> {{ action }}</span>
+                        {% elif 'LOGIN' in action %}
+                            <span class="action-badge ab-login"><i class="fas fa-sign-in-alt"></i> {{ action }}</span>
+                        {% elif 'PUBLISH' in action %}
+                            <span class="action-badge ab-publish"><i class="fas fa-bullhorn"></i> {{ action }}</span>
+                        {% elif 'SCORE' in action %}
+                            <span class="action-badge ab-score"><i class="fas fa-star"></i> {{ action }}</span>
+                        {% else %}
+                            <span class="action-badge ab-default"><i class="fas fa-circle-dot"></i> {{ action or '—' }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:12.5px;">
+                        <i class="fas fa-user-circle me-1" style="color:var(--orange);"></i>
+                        {{ entry.get('user', '—') }}
+                    </td>
+                    <td>
+                        {% set role = entry.get('role', '') %}
+                        <span class="role-badge role-{{ role | replace(' ','') if role else 'default' }}">
+                            {{ role or '—' }}
+                        </span>
+                    </td>
+                    <td class="details-cell">{{ entry.get('details', '—') }}</td>
+                    <td><span class="ip-chip">{{ entry.get('ip', '—') }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-list"></i>
+            <h5>No Audit Entries Yet</h5>
+            <p>Privileged actions will appear here as they happen.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+const rows = document.querySelectorAll('#auditBody tr');
+
+function applyFilters() {
+    const text   = document.getElementById('filterText').value.toLowerCase();
+    const role   = document.getElementById('filterRole').value.toLowerCase();
+    const action = document.getElementById('filterAction').value.toLowerCase();
+    let visible  = 0;
+    rows.forEach(function(row) {
+        const rText   = row.dataset.text   || '';
+        const rRole   = (row.dataset.role   || '').toLowerCase();
+        const rAction = (row.dataset.action || '').toLowerCase();
+        const show = (!text   || rText.includes(text)) &&
+                     (!role   || rRole.includes(role)) &&
+                     (!action || rAction.includes(action));
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    document.getElementById('rowCount').textContent = visible + ' of ' + rows.length + ' shown';
+}
+
+function clearFilters() {
+    document.getElementById('filterText').value   = '';
+    document.getElementById('filterRole').value   = '';
+    document.getElementById('filterAction').value = '';
+    applyFilters();
+}
+
+document.getElementById('filterText').addEventListener('input', applyFilters);
+document.getElementById('filterRole').addEventListener('change', applyFilters);
+document.getElementById('filterAction').addEventListener('change', applyFilters);
+
+applyFilters();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

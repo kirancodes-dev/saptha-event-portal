@@ -51,11 +51,11 @@ def _base_url() -> str:
         from flask import current_app
         return current_app.config.get(
             'BASE_URL',
-            'https://saptha-event-portal-production.up.railway.app')
+            'https://saptha-event-portal.xyz')
     except Exception:
         return os.environ.get(
             'BASE_URL',
-            'https://saptha-event-portal-production.up.railway.app')
+            'https://saptha-event-portal.xyz')
 
 
 def _from_address() -> str:
@@ -76,8 +76,11 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                 border:1px solid #e2e8f0;">
       <div style="background:#1a2557;padding:28px 24px 20px;text-align:center;">
         <img src="{logo_url}"
-             height="48" style="display:block;margin:0 auto 12px;max-width:220px;
-             background:#fff;padding:6px 10px;border-radius:6px;" alt="Sapthagiri NPS University">
+             height="52" style="display:block;margin:0 auto 10px;max-width:240px;
+             background:#fff;padding:6px 12px;border-radius:6px;" alt="Sapthagiri NPS University">
+        <p style="color:#c9a227;font-size:12px;font-weight:700;margin:0 0 6px;
+                  letter-spacing:0.5px;text-transform:uppercase;">
+          Sapthagiri NPS University</p>
         <h2 style="color:#fff;margin:0;font-size:18px;font-weight:700;">{title}</h2>
       </div>
       <div style="padding:28px;">{content}</div>

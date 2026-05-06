@@ -103,11 +103,11 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
             <div class="d-flex flex-column align-items-end gap-2">
               {% if team.my_score %}
               <div class="score-badge done">{{ team.my_score.total }}</div>
-              <button class="btn-edit-sm" onclick="openScoreModal('{{ team.id }}', {{ team | tojson | safe }})">
+              <button class="btn-edit-sm" onclick="openScoreModal('{{ team.id }}')">
                 Edit
               </button>
               {% else %}
-              <button class="btn-score-sm" onclick="openScoreModal('{{ team.id }}', {{ team | tojson | safe }})">
+              <button class="btn-score-sm" onclick="openScoreModal('{{ team.id }}')">
                 <i class="fas fa-star me-1"></i> Score
               </button>
               {% endif %}
@@ -177,10 +177,12 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <script>
 const EVENT_ID    = "{{ event.id }}";
 const CRITERIA    = {{ (event.judging_criteria or ['Overall Score']) | tojson | safe }};
+const TEAMS_DATA  = {{ teams | tojson | safe }};
 let   currentRegId = null;
 const scoreModal    = new bootstrap.Modal(document.getElementById('scoreModal'));
 
-function openScoreModal(regId, team) {
+function openScoreModal(regId) {
+  const team = TEAMS_DATA.find(t => t.id === regId) || {};
   currentRegId = regId;
   document.getElementById('scoreModalTitle').textContent =
     'Score: ' + (team.team_name || regId);

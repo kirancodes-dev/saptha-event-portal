@@ -144,7 +144,7 @@ class Config:
     # =========================================================
     COLLEGE_LOGO_URL = os.environ.get(
         'COLLEGE_LOGO_URL',
-        'https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png'
+        'https://saptha-event-portal-production.up.railway.app/static/snpsu-logo.png'
     )
 
     # =========================================================

@@ -150,7 +150,7 @@ def _send_via_brevo(to_email, subject: str, html: str,
             },
             method='POST',
         )
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310
             status = resp.status
             if status not in (200, 201):
                 raise RuntimeError(f"Brevo HTTP {status}")

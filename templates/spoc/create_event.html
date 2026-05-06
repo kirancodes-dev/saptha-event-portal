@@ -351,17 +351,85 @@
         }
         .fb-props-title { font-size:.85rem; font-weight:700; color:#1a2557; margin:0; }
         .fb-req-label { font-size:.85rem; color:#1e293b; font-weight:500; }
+
+        /* ── CRITERIA ROW — always wrappable ───────────────── */
+        .criteria-row { flex-wrap: wrap; }
+
+        /* ── MOBILE ≤ 768px ─────────────────────────────────── */
+        @media (max-width: 768px) {
+            body { padding-bottom: 76px; }
+
+            /* Step bar */
+            .step-indicators { gap: 4px; padding: 0 6px; justify-content: space-around; }
+            .step { flex-direction: column; gap: 3px; font-size: 0.62rem; padding: 2px 4px;
+                    text-align: center; min-width: 0; }
+            .step-label { display: block; line-height: 1.1; }
+            .step-num { width: 26px; height: 26px; font-size: 0.75rem; }
+            .wizard-progress { padding: 10px 0; }
+
+            /* Container */
+            .wizard-container { margin: 14px auto; padding: 0 10px; }
+
+            /* Cards */
+            .section-card { padding: 16px 14px; border-radius: 12px; margin-bottom: 14px; }
+            .fb-card { padding: 14px 12px; border-radius: 12px; }
+            .section-title { font-size: 0.95rem; gap: 7px; margin-bottom: 14px; padding-bottom: 10px; }
+
+            /* Inputs */
+            .form-control, .form-select { padding: 10px 12px; font-size: 14px; }
+
+            /* Criteria rows — stack on mobile */
+            .criteria-row { gap: 8px; }
+            .criteria-row .criteria-name { flex: 1 1 100% !important; min-width: 0 !important; }
+            .criteria-row .criteria-desc { flex: 1 1 100% !important; min-width: 0 !important; }
+            .criteria-row .cr-pts-group  { max-width: none !important; flex: 1 1 auto !important; }
+
+            /* Form builder palette */
+            .fb-palette { gap: 5px; }
+            .fb-type-btn { padding: 5px 10px; font-size: 11.5px; }
+
+            /* FB field rows */
+            .fb-field-row { padding: 8px 10px; gap: 7px; }
+            .fb-field-lbl { font-size: 13px; }
+
+            /* Banner */
+            #bannerPreview { height: 140px !important; }
+
+            /* Sponsor table — horizontal scroll */
+            .dynamic-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch;
+                             white-space: nowrap; }
+            .dynamic-table td { white-space: normal; min-width: 120px; }
+
+            /* Footer */
+            .action-footer { padding: 10px 12px; }
+            .btn-nav { padding: 9px 16px; font-size: 13px; }
+
+            /* Review step */
+            .section-card.text-center.py-5 { padding-top: 28px !important; padding-bottom: 28px !important; }
+
+            /* Props panel */
+            .fb-props-wrap { padding: 14px; }
+        }
+
+        /* ── VERY SMALL ≤ 400px ─────────────────────────────── */
+        @media (max-width: 400px) {
+            .step-label { display: none; }   /* numbers only, no text */
+            .step-num { width: 30px; height: 30px; font-size: 0.8rem; }
+            .step { padding: 2px; }
+            .btn-nav { padding: 8px 12px; font-size: 12px; }
+            .action-footer { padding: 8px 10px; }
+        }
     </style>
 </head>
 <body>
 
     <div class="wizard-progress">
         <div class="step-indicators">
-            <div class="step active" id="ind-1" onclick="goToStep(1)" title="Go to Basics"><div class="step-num" id="snum-1">1</div> Basics</div>
-            <div class="step" id="ind-2" onclick="goToStep(2)" title="Go to Logistics"><div class="step-num" id="snum-2">2</div> Logistics</div>
-            <div class="step" id="ind-3" onclick="goToStep(3)" title="Go to Rules &amp; Prizes"><div class="step-num" id="snum-3">3</div> Rules</div>
-            <div class="step" id="ind-4" onclick="goToStep(4)" title="Go to Registration Form"><div class="step-num" id="snum-4">4</div> Form</div>
-            <div class="step" id="ind-5" onclick="goToStep(5)" title="Review &amp; Publish"><div class="step-num" id="snum-5">5</div> Review</div>
+            <div class="step active" id="ind-1" onclick="goToStep(1)" title="Go to Basics"><div class="step-num" id="snum-1">1</div><span class="step-label">Basics</span></div>
+            <div class="step" id="ind-2" onclick="goToStep(2)" title="Go to Logistics"><div class="step-num" id="snum-2">2</div><span class="step-label">Logistics</span></div>
+            <div class="step" id="ind-3" onclick="goToStep(3)" title="Go to Rules &amp; Prizes"><div class="step-num" id="snum-3">3</div><span class="step-label">Rules</span></div>
+            <div class="step" id="ind-4" onclick="goToStep(4)" title="Go to Registration Form"><div class="step-num" id="snum-4">4</div><span class="step-label">Form</span></div>
+            <div class="step" id="ind-5" onclick="goToStep(5)" title="Review &amp; Publish"><div class="step-num" id="snum-5">5</div><span class="step-label">Review</span></div>
         </div>
     </div>
 
@@ -819,11 +887,11 @@
                 <i class="fas fa-grip-vertical" style="color:#cbd5e1;flex-shrink:0;"></i>
                 <input type="text" class="form-control cr-input criteria-name"
                        placeholder="Criterion name (e.g. Innovation)" value="${name || ''}"
-                       oninput="syncCriteria()" style="flex:2;min-width:120px;">
+                       oninput="syncCriteria()" style="flex:2;">
                 <input type="text" class="form-control cr-input criteria-desc"
                        placeholder="What judges look for (optional)" value="${desc || ''}"
-                       oninput="syncCriteria()" style="flex:3;min-width:140px;">
-                <div class="input-group" style="max-width:120px;flex-shrink:0;">
+                       oninput="syncCriteria()" style="flex:3;">
+                <div class="input-group cr-pts-group" style="max-width:120px;flex-shrink:0;">
                     <input type="number" class="form-control cr-input criteria-max"
                            value="${maxScore||10}" min="1" max="100" oninput="syncCriteria()">
                     <span class="input-group-text" style="background:#f8fafc;border:1.5px solid #e2e8f0;color:#64748b;font-size:11px;font-weight:700;">pts</span>

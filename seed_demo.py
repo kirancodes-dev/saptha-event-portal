@@ -13,7 +13,7 @@ Run locally (requires Firebase creds):
 
     python seed_demo.py
 """
-import os, sys, json, datetime, random
+import os, sys, json, datetime
 
 
 def init_firebase():
@@ -168,9 +168,10 @@ def build_event(title, category, days_from_now, time_str, fee, team, venue, bann
         "media_urls":       [banner_url] if banner_url else [],
         "staff": [{"name": j["name"], "email": j["email"], "role": "Judge"} for j in JUDGES]
                + [{"name": c["name"], "email": c["email"], "role": "EventCoordinator"} for c in COORDINATORS],
+        "spoc_id":          spoc_email,
         "created_by":       spoc_name,
         "created_by_email": spoc_email,
-        "created_at":       datetime.datetime.utcnow(),
+        "created_at":       datetime.datetime.now(datetime.timezone.utc),
     }
 
 
@@ -183,7 +184,7 @@ def main():
     print("=" * 60)
 
     db = init_firebase()
-    today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+    today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
     # --- 1. Users ---------------------------------------------------
     print("\n[1/3] Creating users...")

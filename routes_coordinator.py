@@ -47,17 +47,18 @@ def dashboard():
     club_category = session.get('category', 'General')
     try:
         is_super = user_role in ('SuperAdmin', 'Super Admin') or club_category == 'All'
-        if is_super:
-            events_ref = (db.collection('events')
-                           .order_by('created_at', direction=firestore.Query.DESCENDING)
-                           .stream())
-        else:
-            events_ref = (db.collection('events')
-                           .where(filter=_ff('created_by_email', '==', user_email))
-                           .stream())
+        all_events_ref = (db.collection('events')
+                            .order_by('created_at', direction=firestore.Query.DESCENDING)
+                            .stream())
         events = []; total_regs = 0; total_staff = 0
-        for e in events_ref:
+        for e in all_events_ref:
             d = e.to_dict(); d['id'] = e.id
+            # Non-superadmin coordinators only see events they are assigned to
+            if not is_super:
+                in_staff = any(s.get('email') == user_email for s in d.get('staff', []))
+                in_coords = user_email in d.get('coordinators', [])
+                if not in_staff and not in_coords:
+                    continue
             total_regs  += d.get('registration_count', 0)
             total_staff += len(d.get('staff', []))
             regs = (db.collection('registrations')
@@ -610,31 +611,54 @@ def process_walkin():
         if not event_id or not email or not name:
             flash("Event, name and email are required.", "warning")
             return redirect('/coordinator/on_spot')
-        user_ref = db.collection('users').document(email)
-        if not user_ref.get().exists:
+        WALKIN_PASSWORD = 'Welcome@123'
+        user_ref  = db.collection('users').document(email)
+        is_new    = not user_ref.get().exists
+        if is_new:
             user_ref.set({'email': email, 'name': name, 'phone': phone, 'usn': usn,
-                'role': 'Student', 'password': generate_password_hash('Welcome@123'),
+                'role': 'Student', 'password': generate_password_hash(WALKIN_PASSWORD),
                 'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
                 'needs_password_reset': True})
+
         reg_id      = f"REG-{int(_time.time() * 1000)}"
         event_doc   = db.collection('events').document(event_id).get().to_dict() or {}
         event_title = event_doc.get('title', 'Event')
         db.collection('registrations').document(reg_id).set({
             'reg_id': reg_id, 'event_id': event_id, 'event_title': event_title,
             'lead_name': name, 'lead_email': email, 'lead_usn': usn, 'lead_phone': phone,
-            'team_name': 'Walk-in', 'members': [],
+            'team_name': name, 'members': [],
             'status': 'Confirmed', 'payment_status': 'Paid',
-            'amount_paid': event_doc.get('entry_fee', 0),
+            'amount_paid': event_doc.get('fees', {}).get('regular', 0),
             'payment_mode': request.form.get('payment_mode', 'Cash'),
             'registered_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'attendance': 'Present',
             'checkin_time': datetime.datetime.now().strftime("%H:%M:%S"),
             'is_eliminated': False, 'current_round': event_doc.get('active_round', 1)})
-        send_ticket_email(email, name, event_title, reg_id)
+
+        # Generate QR code bytes so it can be attached to the ticket email
+        try:
+            from utils_qr import generate_qr_base64
+            import base64, qrcode, io
+            from qrcode.image.pil import PilImage
+            qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H,
+                               box_size=8, border=2)
+            qr.add_data(reg_id)
+            qr.make(fit=True)
+            buf = io.BytesIO()
+            qr.make_image(fill_color="black", back_color="white",
+                          image_factory=PilImage).save(buf, format="PNG")
+            qr_bytes = buf.getvalue()
+        except Exception:
+            qr_bytes = None
+
+        send_ticket_email(email, name, event_title, reg_id,
+                          qr_bytes=qr_bytes,
+                          is_new_user=is_new,
+                          raw_password=WALKIN_PASSWORD if is_new else None)
         _wa(send_ticket_whatsapp, phone, name, event_title, reg_id,
             event_doc.get('date', ''), event_doc.get('venue', ''))
         log_action(db, "WALKIN_REGISTERED", f"Walk-in {email} for event {event_id}")
-        flash(f"Walk-in for {name} registered. Ticket sent.", "success")
+        flash(f"Walk-in for {name} registered. Ticket + login details sent to {email}.", "success")
     except Exception as exc:
         flash(f"Walk-in error: {exc}", "danger")
     return redirect('/coordinator/on_spot')
@@ -655,8 +679,9 @@ def scanner_selector():
     events = []
     for e in db.collection('events').where(filter=_ff('status', '==', 'active')).stream():
         d = e.to_dict()
-        assigned = any(s.get('email') == user_email for s in d.get('staff', []))
-        if not (is_super or assigned):
+        in_staff  = any(s.get('email') == user_email for s in d.get('staff', []))
+        in_coords = user_email in d.get('coordinators', [])
+        if not (is_super or in_staff or in_coords):
             continue
         ev_date = d.get('date', '')
         if ev_date < today_str:
@@ -698,8 +723,9 @@ def scan_page(event_id):
     d = doc.to_dict()
     user_email = session.get('user_id', '')
     is_super   = session.get('role', '') in ('SuperAdmin', 'Super Admin')
-    assigned   = any(s.get('email') == user_email for s in d.get('staff', []))
-    if not is_super and not assigned:
+    in_staff  = any(s.get('email') == user_email for s in d.get('staff', []))
+    in_coords = user_email in d.get('coordinators', [])
+    if not is_super and not in_staff and not in_coords:
         flash("You are not assigned to scan for this event.", "danger")
         return redirect('/coordinator/scanner')
     today_str      = datetime.datetime.now().strftime('%Y-%m-%d')

@@ -234,7 +234,7 @@ def event_results(event_id):
         # Per-criterion averages across all judges
         crit_avgs = {}
         for judge_scores in scores_map.values():
-            for crit, val in (judge_scores.get('criteria') or {}).items():
+            for crit, val in (judge_scores.get('details') or {}).items():
                 crit_avgs.setdefault(crit, []).append(float(val))
         avg_by_crit = {k: sum(v) / len(v) for k, v in crit_avgs.items()}
         # Return tuple: overall avg first, then high-impact criteria in order
@@ -973,7 +973,16 @@ def assign_coordinator(event_id):
         return redirect(f'/spoc/dashboard#event-{event_id}')
 
     coords.append(email)
-    db.collection('events').document(event_id).update({'coordinators': coords})
+
+    # Also add to staff list so scanner and judge views recognise the coordinator
+    staff = data.get('staff', [])
+    if not any(s.get('email') == email for s in staff):
+        staff.append({'name': name, 'email': email, 'role': 'EventCoordinator'})
+
+    db.collection('events').document(event_id).update({
+        'coordinators': coords,
+        'staff':        staff,
+    })
     log_action(db, "COORDINATOR_ASSIGNED", f"SPOC {session.get('user_id')} assigned {email} to event {event_id}")
     flash(f"✅ {email} assigned as coordinator. {account_msg}", "success")
     return redirect(f'/spoc/dashboard#event-{event_id}')
@@ -1095,14 +1104,10 @@ def upload_judges_csv(event_id):
                 'event_id':  event_id,
                 'created_at': datetime.datetime.now().isoformat(),
             })
-            # Send credentials email
             try:
-                from utils_email import send_email
-                send_email(
-                    to=email,
-                    subject=f"Judge Login — {doc.to_dict().get('title','Event')}",
-                    body=f"Hello {name},\n\nYou have been appointed as a Judge.\n\nLogin: {email}\nPassword: {pwd}\n\nPortal: /login\n\n— SapthaEvent"
-                )
+                from utils_email import send_credentials_email
+                send_credentials_email(email, name, 'Judge', pwd,
+                                       category=doc.to_dict().get('title', ''))
             except Exception:
                 pass
         created += 1
@@ -1140,21 +1145,27 @@ def add_judge(event_id):
             'role':      'Judge',
             'password':  generate_password_hash(pwd),
             'expertise': expertise,
-            'event_id':  event_id,
             'created_at': datetime.datetime.now().isoformat(),
         })
         try:
-            from utils_email import send_email
-            send_email(
-                to=email,
-                subject=f"Judge Login — {doc.to_dict().get('title','Event')}",
-                body=f"Hello {name},\n\nYou are appointed as Judge.\nLogin: {email}\nPassword: {pwd}\n\n— SapthaEvent"
-            )
+            from utils_email import send_credentials_email
+            send_credentials_email(email, name, 'Judge', pwd,
+                                   category=doc.to_dict().get('title', ''))
         except Exception:
             pass
         flash(f"✅ Judge {name} created and credentials emailed.", "success")
     else:
-        flash(f"⚠️ {email} already has an account.", "info")
+        existing_name = existing[0].to_dict().get('name', name)
+        name = existing_name
+        flash(f"⚠️ {email} already has an account — added to event staff.", "info")
+
+    # Always ensure judge is in the event's staff list so they can see it
+    event_data = doc.to_dict() or {}
+    staff = event_data.get('staff', [])
+    if not any(s.get('email') == email for s in staff):
+        staff.append({'name': name, 'email': email, 'role': 'Judge'})
+        db.collection('events').document(event_id).update({'staff': staff})
+
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
 

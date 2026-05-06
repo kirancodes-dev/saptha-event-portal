@@ -1,25 +1,35 @@
 """
 utils_email.py — SapthaEvent Email (Auto-switching)
 
-CURRENT (Railway free plan):   Set RESEND_API_KEY  → uses Resend
-FUTURE  (Railway paid plan):   Remove RESEND_API_KEY → auto-falls back to Gmail SMTP
+Railway blocks outbound SMTP (ports 465/587) at the platform level.
+Use an HTTP-based provider instead — Brevo is free and works everywhere.
 
-Zero code changes needed when you upgrade Railway.
-Just remove RESEND_API_KEY from Railway Variables and Gmail takes over.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ RECOMMENDED (free, works on Railway):  BREVO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1. Sign up free at https://brevo.com
+ 2. Settings → SMTP & API → API Keys → Generate
+ 3. In Railway Variables add:
+      BREVO_API_KEY = xkeysib-xxxxxxxxxxxxxxxxxxxx
+      MAIL_FROM     = SapthaEvent <sapthhack@gmail.com>
 
-Railway Variables needed RIGHT NOW (free plan):
-  RESEND_API_KEY = re_xxxxxxxxxxxx
-  MAIL_FROM      = SapthaEvent <noreply@snpsu.edu.in>  ← after domain verified
-                   or onboarding@resend.dev              ← before domain verified
+ Free tier: 300 emails/day, sends to ANYONE. No domain verification needed.
 
-Railway Variables needed LATER (paid plan) — keep these always:
-  MAIL_USER      = sapthhack@gmail.com
-  MAIL_PASS      = yqfktmdnvxofqvxj   (16-char App Password without spaces)
-  MAIL_FROM      = SapthaEvent <sapthhack@gmail.com>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ FALLBACK: RESEND (free but only to verified emails)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      RESEND_API_KEY = re_xxxxxxxxxxxx
 
-PRIORITY ORDER (auto-detected):
-  1. RESEND_API_KEY is set  → Resend (works on free Railway)
-  2. RESEND_API_KEY not set → Gmail SMTP (works on paid Railway)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ LAST RESORT: Gmail SMTP (blocked by Railway SMTP firewall)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      MAIL_USER = sapthhack@gmail.com
+      MAIL_PASS = yqfktmdnvxofqvxj
+
+PRIORITY ORDER (auto-detected at runtime):
+  1. BREVO_API_KEY set     → Brevo HTTP API  ✅ Railway-safe, free, anyone
+  2. RESEND_API_KEY set    → Resend HTTP API  ⚠️  verified emails only (free)
+  3. Neither               → Gmail SMTP       ❌ blocked on Railway
 """
 
 import os
@@ -83,6 +93,73 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
 # ─────────────────────────────────────────────────────────────
 # PROVIDER 1 — RESEND (used on Railway free plan)
 # ─────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# PROVIDER 0 — BREVO (recommended for Railway — pure HTTP, no SMTP)
+# Free: 300 emails/day, sends to anyone, no domain verification needed.
+# ─────────────────────────────────────────────────────────────
+
+def _send_via_brevo(to_email, subject: str, html: str,
+                    attachments: list = None) -> bool:
+    global LAST_EMAIL_ERROR
+    try:
+        import urllib.request, json as _json
+
+        api_key  = os.environ.get('BREVO_API_KEY', '')
+        from_raw = _from_address()
+
+        # Parse "Name <email>" or plain email
+        if '<' in from_raw and '>' in from_raw:
+            from_name  = from_raw[:from_raw.index('<')].strip().strip('"')
+            from_email = from_raw[from_raw.index('<')+1:from_raw.index('>')].strip()
+        else:
+            from_name  = 'SapthaEvent'
+            from_email = from_raw.strip()
+
+        to_list = [to_email] if isinstance(to_email, str) else to_email
+
+        payload = {
+            'sender':      {'name': from_name, 'email': from_email},
+            'to':          [{'email': e} for e in to_list],
+            'subject':     subject,
+            'htmlContent': html,
+        }
+
+        if attachments:
+            payload['attachment'] = []
+            for att in attachments:
+                data = att.get('content') or att.get('data', b'')
+                if isinstance(data, (bytes, bytearray)):
+                    data = base64.b64encode(data).decode()
+                payload['attachment'].append({
+                    'name':    att.get('filename') or att.get('name', 'attachment'),
+                    'content': data,
+                })
+
+        body = _json.dumps(payload).encode('utf-8')
+        req  = urllib.request.Request(
+            'https://api.brevo.com/v3/smtp/email',
+            data=body,
+            headers={
+                'accept':       'application/json',
+                'api-key':      api_key,
+                'content-type': 'application/json',
+            },
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            status = resp.status
+            if status not in (200, 201):
+                raise RuntimeError(f"Brevo HTTP {status}")
+
+        logger.info("Brevo → %s | %s", to_list, subject)
+        return True
+
+    except Exception as exc:
+        LAST_EMAIL_ERROR = f"Brevo: {exc}"
+        logger.error("Brevo failed → %s | %s", to_email, exc)
+        return False
+
 
 def _send_via_resend(to_email, subject: str, html: str,
                      attachments: list = None) -> bool:
@@ -202,16 +279,16 @@ def _send_via_gmail(to_email, subject: str, html: str,
 def _send(to_email, subject: str, html: str,
           attachments: list = None) -> bool:
     """
-    Auto-detects which provider to use.
-    Never raises. Returns True on success, False on failure.
-
-    FREE PLAN  → RESEND_API_KEY is set  → uses Resend
-    PAID PLAN  → RESEND_API_KEY removed → uses Gmail SMTP
+    Priority order (first key found wins):
+      1. BREVO_API_KEY  → Brevo HTTP API  (Railway-safe, free 300/day, anyone)
+      2. RESEND_API_KEY → Resend HTTP API (free but verified emails only)
+      3. neither        → Gmail SMTP      (blocked on Railway)
     """
+    if os.environ.get('BREVO_API_KEY'):
+        return _send_via_brevo(to_email, subject, html, attachments)
     if os.environ.get('RESEND_API_KEY'):
         return _send_via_resend(to_email, subject, html, attachments)
-    else:
-        return _send_via_gmail(to_email, subject, html, attachments)
+    return _send_via_gmail(to_email, subject, html, attachments)
 
 
 # ─────────────────────────────────────────────────────────────

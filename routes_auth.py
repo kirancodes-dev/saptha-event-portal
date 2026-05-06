@@ -383,7 +383,13 @@ def diag_email():
     if not to:
         return {"error": "pass ?to=email@address"}, 400
 
-    provider = "Resend" if _os.environ.get('RESEND_API_KEY') else "Gmail SMTP"
+    if _os.environ.get('BREVO_API_KEY'):
+        provider = "Brevo"
+    elif _os.environ.get('RESEND_API_KEY'):
+        provider = "Resend"
+    else:
+        provider = "Gmail SMTP"
+
     from_addr = _os.environ.get(
         'MAIL_FROM',
         f"SapthaEvent <{_os.environ.get('MAIL_USER', '(unset)')}>"
@@ -392,25 +398,25 @@ def diag_email():
     utils_email.LAST_EMAIL_ERROR = ""
     ok = utils_email._send(
         to, "SapthaEvent — Email Diagnostic",
-        "<p>If you can read this, email delivery is working.</p>"
+        "<p>If you can read this, email delivery is working. ✅</p>"
     )
+
+    hints = {
+        "Brevo":     "Brevo: free 300/day, sends to anyone. If failing check BREVO_API_KEY and MAIL_FROM.",
+        "Resend":    "Resend free plan only sends to the Resend account owner's email until domain is verified.",
+        "Gmail SMTP":"Gmail SMTP is blocked by Railway's outbound SMTP firewall. Use Brevo instead.",
+    }
     return {
-        "provider":         provider,
-        "from":             from_addr,
-        "to":               to,
-        "sent":             ok,
-        "error":            utils_email.LAST_EMAIL_ERROR or None,
-        "resend_key_set":   bool(_os.environ.get('RESEND_API_KEY')),
-        "mail_user_set":    bool(_os.environ.get('MAIL_USER')),
-        "mail_pass_set":    bool(_os.environ.get('MAIL_PASS')),
-        "hint": (
-            "Resend free plan: MAIL_FROM must be 'onboarding@resend.dev' "
-            "OR a verified domain, AND you can only send to the email that "
-            "owns the Resend account until you verify a domain."
-            if provider == "Resend" else
-            "Gmail: MAIL_PASS must be a 16-char App Password (no spaces), "
-            "generated at myaccount.google.com/apppasswords."
-        ),
+        "provider":        provider,
+        "from":            from_addr,
+        "to":              to,
+        "sent":            ok,
+        "error":           utils_email.LAST_EMAIL_ERROR or None,
+        "brevo_key_set":   bool(_os.environ.get('BREVO_API_KEY')),
+        "resend_key_set":  bool(_os.environ.get('RESEND_API_KEY')),
+        "mail_user_set":   bool(_os.environ.get('MAIL_USER')),
+        "mail_pass_set":   bool(_os.environ.get('MAIL_PASS')),
+        "hint":            hints.get(provider, ""),
     }
 
 

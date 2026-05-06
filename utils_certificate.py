@@ -117,190 +117,167 @@ def generate_certificate_pdf(
     issued_by:     str   = 'Dean of Student Affairs',
     template_id:   int   = 1,
 ) -> bytes:
+    import math
+
     tpl     = TEMPLATES.get(template_id, TEMPLATES[1])
     buf     = io.BytesIO()
     W, H    = landscape(A4)
     c       = rl_canvas.Canvas(buf, pagesize=landscape(A4))
     PRIMARY = HexColor(tpl['primary'])
     ACCENT  = HexColor(tpl['accent'])
-    BG      = HexColor(tpl['bg'])
     TEXT_D  = HexColor(tpl['text_dark'])
     TEXT_M  = HexColor(tpl['text_mid'])
-    BORDER  = HexColor(tpl['border'])
-    bm      = 14
+    CX      = W / 2
 
-    # Background
-    c.setFillColor(BG)
+    def _diamond(cx, cy, hw, hh, angle_deg=0, fill=None, stroke=None, lw=1.0):
+        a = math.radians(angle_deg)
+        cos_a, sin_a = math.cos(a), math.sin(a)
+        pts = [
+            (cx - hh * sin_a, cy + hh * cos_a),
+            (cx + hw * cos_a, cy + hw * sin_a),
+            (cx + hh * sin_a, cy - hh * cos_a),
+            (cx - hw * cos_a, cy - hw * sin_a),
+        ]
+        c.saveState()
+        p = c.beginPath()
+        p.moveTo(*pts[0])
+        for pt in pts[1:]:
+            p.lineTo(*pt)
+        p.close()
+        if fill:   c.setFillColor(fill)
+        if stroke: c.setStrokeColor(stroke); c.setLineWidth(lw)
+        c.drawPath(p, fill=1 if fill else 0, stroke=1 if stroke else 0)
+        c.restoreState()
+
+    # ── 1. White background ────────────────────────────────────────────────────
+    c.setFillColor(white)
     c.rect(0, 0, W, H, fill=1, stroke=0)
-    style = tpl['style']
-    if style == 'tech':
-        c.setStrokeColor(HexColor('#e2e8f0')); c.setLineWidth(0.3)
-        for x in range(0, int(W), 30): c.line(x, 0, x, H)
-        for y in range(0, int(H), 30): c.line(0, y, W, y)
-    elif style == 'cultural':
-        c.setFillColor(HexColor('#fef3c7'))
-        for cx2, cy2 in [(70,70),(W-70,70),(70,H-70),(W-70,H-70)]:
-            c.circle(cx2, cy2, 48, fill=1, stroke=0)
-    elif style == 'sports':
-        c.setFillColor(HexColor('#dcfce7')); c.setLineWidth(18)
-        for i in range(-8, 18):
-            c.setStrokeColor(HexColor('#dcfce7'))
-            c.line(i*60, 0, i*60+H, H)
 
-    # Border frame
-    _draw_rounded_rect(c, bm, bm, W-2*bm, H-2*bm,
-                       r=14, fill=white, stroke=PRIMARY, lw=2.5)
-    _draw_rounded_rect(c, bm+6, bm+6, W-2*(bm+6), H-2*(bm+6),
-                       r=10, stroke=BORDER, lw=0.8)
+    # ── 2. Decorative diamond clusters (primary + accent colors) ──────────────
+    pale = HexColor('#cfd8dc')
+    pale2 = HexColor('#e8eaf6')
 
-    # Header bar
-    header_h = 80
-    hy = H - bm - header_h
-    _draw_rounded_rect(c, bm, hy, W-2*bm, header_h, r=14, fill=PRIMARY)
-    c.setFillColor(ACCENT)
-    c.rect(bm, hy-6, W-2*bm, 6, fill=1, stroke=0)
+    # Left cluster — bottom-left corner
+    _diamond( 52,  98, 92, 70, 12,  fill=PRIMARY)
+    _diamond( 94,  58, 66, 50, -8,  fill=PRIMARY)
+    _diamond( 26, 172, 58, 44, 18,  fill=ACCENT)
+    _diamond(122, 136, 40, 32, -14, fill=pale,  stroke=PRIMARY, lw=1.2)
+    _diamond(152,  58, 28, 22,  5,  fill=pale2, stroke=ACCENT,  lw=1.0)
 
-    # Logo in header
-    logo     = _get_logo()
-    logo_endx = bm + 16
+    # Right cluster — top-right corner
+    _diamond(W - 54,  H - 90,  80, 62, -10, fill=PRIMARY)
+    _diamond(W - 100, H - 62,  56, 43,  15, fill=ACCENT)
+    _diamond(W - 30,  H - 152, 40, 32,  -5, fill=pale,  stroke=PRIMARY, lw=1.2)
 
+    # ── 3. Header — logo left, portal name right ───────────────────────────────
+    logo = _get_logo()
     if logo:
-        logo_h    = 52
-        logo_w    = 160   # wide logo — SNPSU logo is landscape
-        logo_x    = bm + 16
-        logo_y    = hy + (header_h - logo_h) / 2
-        # White rounded bg for logo
-        _draw_rounded_rect(c, logo_x - 4, logo_y - 4,
-                           logo_w + 8, logo_h + 8,
-                           r=8, fill=white)
+        lh, lw2, lx, ly = 42, 136, 168, H - 54
         try:
-            c.drawImage(logo, logo_x, logo_y,
-                        width=logo_w, height=logo_h,
+            c.drawImage(logo, lx, ly, width=lw2, height=lh,
                         preserveAspectRatio=True, mask='auto')
         except Exception:
-            c.drawImage(logo, logo_x, logo_y,
-                        width=logo_w, height=logo_h,
+            c.drawImage(logo, lx, ly, width=lw2, height=lh,
                         preserveAspectRatio=True)
-        logo_endx = logo_x + logo_w + 14
-
-    # Header text
-    hcx = (logo_endx + W - bm) / 2
-    c.setFillColor(ACCENT)
-    c.setFont('Helvetica-Bold', 10)
-    c.drawCentredString(hcx, hy + header_h - 18, college_name.upper())
-    c.setFillColor(HexColor('#94a3b8'))
-    c.setFont('Helvetica', 8)
-    c.drawCentredString(hcx, hy + header_h - 30,
-                        'Office of Student Affairs — Events Division')
-    cert_title = ('CERTIFICATE  OF  ACHIEVEMENT'
-                  if cert_type == 'winner'
-                  else 'CERTIFICATE  OF  PARTICIPATION')
-    c.setFillColor(white)
-    c.setFont('Helvetica-Bold', 17)
-    c.drawCentredString(hcx, hy + 18, cert_title)
-
-    # Left accent column
-    col_w = 100
-    col_x = bm + 6
-    col_h = hy - bm - 12
-    c.setFillColor(PRIMARY)
-    c.rect(col_x, bm+6, col_w, col_h, fill=1, stroke=0)
-    c.setFillColor(ACCENT)
-    c.rect(col_x + col_w - 6, bm+6, 6, col_h, fill=1, stroke=0)
-
-    # Rotated event label
-    c.saveState()
-    c.setFillColor(white); c.setFont('Helvetica-Bold', 9)
-    c.translate(col_x + col_w/2, bm+6 + col_h/2); c.rotate(90)
-    lbl = (event_title[:26] + '...' if len(event_title) > 26 else event_title).upper()
-    c.drawCentredString(0, 0, lbl)
-    c.restoreState()
-
-    # Rank badge
-    badge_cx = col_x + col_w/2
-    badge_cy = bm + 6 + col_h * 0.76
-    if cert_type == 'winner' and rank in RANK_LABELS:
-        rc = {1:HexColor('#fbbf24'),2:HexColor('#94a3b8'),3:HexColor('#f97316')}.get(rank, ACCENT)
-        c.setFillColor(rc); c.circle(badge_cx, badge_cy, 32, fill=1, stroke=0)
-        c.setFillColor(white); c.circle(badge_cx, badge_cy, 26, fill=1, stroke=0)
-        c.setFillColor(rc); c.circle(badge_cx, badge_cy, 22, fill=1, stroke=0)
-        c.setFillColor(white); c.setFont('Helvetica-Bold', 16)
-        c.drawCentredString(badge_cx, badge_cy+2, {1:'1ST',2:'2ND',3:'3RD'}.get(rank,''))
-        c.setFont('Helvetica', 7); c.drawCentredString(badge_cx, badge_cy-9, 'PLACE')
     else:
-        c.setFillColor(ACCENT); c.circle(badge_cx, badge_cy, 26, fill=1, stroke=0)
-        c.setFillColor(white); c.setFont('Helvetica-Bold', 9)
-        c.drawCentredString(badge_cx, badge_cy+2,  'PARTI-')
-        c.drawCentredString(badge_cx, badge_cy-10, 'CIPANT')
+        c.setFillColor(PRIMARY); c.setFont('Helvetica-Bold', 10)
+        c.drawString(168, H - 30, college_name.upper())
+        c.setFillColor(TEXT_M); c.setFont('Helvetica', 8)
+        c.drawString(168, H - 42, 'Office of Student Affairs')
 
-    # Main content
-    content_x  = col_x + col_w + 16
-    content_w  = W - content_x - bm - 104
-    content_cx = content_x + content_w / 2
+    c.setFillColor(PRIMARY); c.setFont('Helvetica-Bold', 8)
+    c.drawRightString(W - 162, H - 26, 'SapthaEvent Portal')
+    c.setFillColor(TEXT_M); c.setFont('Helvetica', 7.5)
+    c.drawRightString(W - 162, H - 38, 'SNPSU — Events Division')
 
+    # Thin horizontal rule under header
+    c.setStrokeColor(HexColor('#e2e8f0')); c.setLineWidth(0.5)
+    c.line(168, H - 74, W - 168, H - 74)
+
+    # ── 4. Certificate title ───────────────────────────────────────────────────
+    cert_title = ('Certificate of Achievement'
+                  if cert_type == 'winner'
+                  else 'Certificate of Participation')
+    c.setFillColor(PRIMARY); c.setFont('Helvetica-Bold', 34)
+    c.drawCentredString(CX, H - 138, cert_title)
+
+    # ── 5. "This is to certify that" with flanking rules ──────────────────────
+    sub_text = 'This is to certify that'
+    sub_w    = c.stringWidth(sub_text, 'Helvetica', 12)
+    sub_y    = H - 182
+    c.setStrokeColor(HexColor('#cbd5e1')); c.setLineWidth(0.8)
+    c.line(CX - sub_w / 2 - 85, sub_y + 5, CX - sub_w / 2 - 6, sub_y + 5)
+    c.line(CX + sub_w / 2 + 6,  sub_y + 5, CX + sub_w / 2 + 85, sub_y + 5)
     c.setFillColor(TEXT_M); c.setFont('Helvetica', 12)
-    c.drawCentredString(content_cx, hy - 38, 'This is to certify that')
+    c.drawCentredString(CX, sub_y, sub_text)
 
-    c.setFillColor(TEXT_D)
-    name_fs = 28 if len(student_name) <= 26 else (22 if len(student_name) <= 36 else 17)
-    c.setFont('Helvetica-Bold', name_fs)
+    # ── 6. Recipient name + underline ─────────────────────────────────────────
     name_disp = student_name[:36] + '...' if len(student_name) > 36 else student_name
-    c.drawCentredString(content_cx, hy - 68, name_disp)
+    name_fs   = 30 if len(student_name) <= 26 else (24 if len(student_name) <= 36 else 19)
+    name_y    = H - 224
+    c.setFillColor(TEXT_D); c.setFont('Helvetica-Bold', name_fs)
+    c.drawCentredString(CX, name_y, name_disp)
 
     nw = c.stringWidth(name_disp, 'Helvetica-Bold', name_fs)
-    c.setStrokeColor(ACCENT); c.setLineWidth(1.5)
-    c.line(content_cx - nw/2, hy-74, content_cx + nw/2, hy-74)
+    c.setStrokeColor(ACCENT); c.setLineWidth(2)
+    c.line(CX - nw / 2, name_y - 7, CX + nw / 2, name_y - 7)
 
-    c.setFillColor(TEXT_M); c.setFont('Helvetica', 12)
+    # ── 7. Body description ────────────────────────────────────────────────────
+    c.setFillColor(TEXT_M); c.setFont('Helvetica', 11.5)
+    body_y = H - 261
     if cert_type == 'winner':
-        c.drawCentredString(content_cx, hy-98,
-                            f'has achieved {RANK_LABELS.get(rank,"Top Place")} in')
+        c.drawCentredString(CX, body_y,
+                            f'has achieved {RANK_LABELS.get(rank, "Top Place")} in')
     else:
-        c.drawCentredString(content_cx, hy-98, 'has successfully participated in')
+        c.drawCentredString(CX, body_y,
+                            f'from {college_name} has successfully participated in')
 
-    c.setFillColor(PRIMARY)
-    evt_fs = 18 if len(event_title) <= 38 else (13 if len(event_title) <= 55 else 11)
-    c.setFont('Helvetica-Bold', evt_fs)
-    evt_disp = event_title[:55] + '...' if len(event_title) > 55 else event_title
-    c.drawCentredString(content_cx, hy-124, evt_disp)
+    evt_disp = event_title[:58] + '...' if len(event_title) > 58 else event_title
+    evt_fs   = 16 if len(event_title) <= 40 else (13 if len(event_title) <= 58 else 11)
+    c.setFillColor(PRIMARY); c.setFont('Helvetica-Bold', evt_fs)
+    c.drawCentredString(CX, body_y - 26, evt_disp)
+
+    c.setFillColor(TEXT_M); c.setFont('Helvetica', 11)
+    c.drawCentredString(CX, body_y - 48, f'organised by {college_name}.')
 
     if cert_type == 'winner' and score:
-        _draw_rounded_rect(c, content_cx-60, hy-158, 120, 22, r=11, fill=PRIMARY)
+        _draw_rounded_rect(c, CX - 74, body_y - 84, 148, 24, r=12, fill=PRIMARY)
         c.setFillColor(white); c.setFont('Helvetica-Bold', 10)
-        c.drawCentredString(content_cx, hy-151, f'Final Score: {score}')
+        c.drawCentredString(CX, body_y - 76, f'Final Score: {score}')
 
-    # Date + signature
-    c.setFillColor(TEXT_M); c.setFont('Helvetica', 9)
-    date_str = event_date or datetime.now().strftime('%d %B %Y')
-    c.drawCentredString(content_cx, bm+62, f'Date: {date_str}')
-
-    sig_x = content_x + 20; sig_y = bm + 36
-    c.setStrokeColor(TEXT_D); c.setLineWidth(0.7)
-    c.line(sig_x, sig_y+12, sig_x+150, sig_y+12)
+    # ── 8. Signature ──────────────────────────────────────────────────────────
+    sig_cx = CX - 80
+    sig_y  = 78
+    c.setStrokeColor(HexColor('#475569')); c.setLineWidth(0.7)
+    c.line(sig_cx - 68, sig_y + 14, sig_cx + 68, sig_y + 14)
     c.setFillColor(TEXT_D); c.setFont('Helvetica-Bold', 8)
-    c.drawCentredString(sig_x+75, sig_y+2, issued_by)
+    c.drawCentredString(sig_cx, sig_y + 4, issued_by)
     c.setFillColor(TEXT_M); c.setFont('Helvetica', 7)
-    c.drawCentredString(sig_x+75, sig_y-8, college_name[:40])
+    c.drawCentredString(sig_cx, sig_y - 6, college_name[:40])
 
-    # QR code
-    verify_url = (f"{base_url}/verify/{reg_id}" if base_url else f"/verify/{reg_id}")
+    date_str = event_date or datetime.now().strftime('%d %B %Y')
+    c.setFillColor(TEXT_M); c.setFont('Helvetica', 9)
+    c.drawString(sig_cx + 84, sig_y + 4, f'Date: {date_str}')
+
+    # ── 9. QR code bottom-right ───────────────────────────────────────────────
+    verify_url = f"{base_url}/verify/{reg_id}" if base_url else f"/verify/{reg_id}"
     try:
-        qr_img = _qr_reader(verify_url)
-        qr_size = 68; qr_x = W-bm-qr_size-18; qr_y = bm+14
+        qr_img  = _qr_reader(verify_url)
+        qr_size = 66
+        qr_x    = W - 168 - qr_size
+        qr_y    = 28
         c.setFillColor(white)
-        c.rect(qr_x-3, qr_y-3, qr_size+6, qr_size+6, fill=1, stroke=0)
+        c.rect(qr_x - 3, qr_y - 3, qr_size + 6, qr_size + 6, fill=1, stroke=0)
         c.drawImage(qr_img, qr_x, qr_y, width=qr_size, height=qr_size)
         c.setFillColor(TEXT_M); c.setFont('Helvetica', 7)
-        c.drawCentredString(qr_x+qr_size/2, qr_y-9, 'Scan to verify')
+        c.drawCentredString(qr_x + qr_size / 2, qr_y - 9, 'Scan to verify')
     except Exception as exc:
         logger.warning("QR failed: %s", exc)
 
-    # Footer + corners
+    # ── 10. Footer ────────────────────────────────────────────────────────────
     c.setFillColor(TEXT_M); c.setFont('Helvetica', 7)
-    c.drawString(bm+12, bm+6, f'Reg ID: {reg_id}')
-    c.drawRightString(W-bm-12, bm+6, 'SapthaEvent Portal')
-    for cx3, cy3 in [(bm+10,bm+10),(W-bm-10,bm+10),(bm+10,H-bm-10),(W-bm-10,H-bm-10)]:
-        c.setFillColor(ACCENT); c.circle(cx3, cy3, 4, fill=1, stroke=0)
+    c.drawString(168, 14, f'Reg ID: {reg_id}')
+    c.drawRightString(W - 168, 14, 'SapthaEvent Portal · Sapthagiri NPS University')
 
     c.save(); buf.seek(0)
     return buf.read()

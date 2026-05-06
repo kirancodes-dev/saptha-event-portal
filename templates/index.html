@@ -1125,7 +1125,7 @@ function filterEv(cat, btn){
   document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   document.querySelectorAll('.ev-col').forEach(function(c){
-    var shouldShow = (cat === 'all' || c.dataset.cat === cat);
+    var shouldShow = (cat === 'all' || c.dataset.cat === cat.toLowerCase());
     c.style.display = shouldShow ? '' : 'none';
     if(shouldShow && !c.classList.contains('animate')){
       c.classList.add('scroll-animator', 'animate');

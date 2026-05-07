@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, flash
+from flask import Blueprint, render_template, redirect, session, flash
 from models import db, FirebaseWrapper
 
 head_bp = Blueprint('head', __name__, url_prefix='/event_head')
@@ -15,7 +15,7 @@ def dashboard():
     # 2. Find the Event assigned to this Coordinator
     # We check if their email matches either the Student OR Staff coordinator field
     events_ref = db.collection('events')
-    
+
     # Query for Student Coordinator
     query_stu = events_ref.where('coord_student_id', '==', user_email).stream()
     # Query for Staff Coordinator
@@ -29,7 +29,7 @@ def dashboard():
         data = doc.to_dict()
         my_events.append(FirebaseWrapper(doc.id, data))
         event_ids.append(doc.id)
-        
+
     for doc in query_staff:
         # Avoid duplicates if someone is somehow both (unlikely)
         if doc.id not in event_ids:
@@ -39,7 +39,7 @@ def dashboard():
     # 3. Fetch Registrations for these events
     # We create a dictionary where Key = EventID, Value = List of Teams
     registrations_map = {}
-    
+
     for event in my_events:
         regs = db.collection('registrations').where('event_id', '==', event.id).stream()
         team_list = []
@@ -50,8 +50,8 @@ def dashboard():
         registrations_map[event.id] = team_list
 
     return render_template(
-        'head/dashboard.html', 
-        events=my_events, 
+        'head/dashboard.html',
+        events=my_events,
         registrations=registrations_map
     )
 
@@ -59,7 +59,7 @@ def dashboard():
 def mark_attendance(reg_id, status):
     # status should be 'Present' or 'Absent'
     if session.get('role') not in ('Coordinator', 'SuperAdmin'): return redirect('/login')
-    
+
     try:
         db.collection('registrations').document(reg_id).update({
             'attendance': status
@@ -67,7 +67,7 @@ def mark_attendance(reg_id, status):
         flash(f"Team marked as {status}", "success")
     except Exception as e:
         flash(f"Error: {e}", "danger")
-        
+
     return redirect('/event_head/dashboard')
 
 

@@ -287,7 +287,6 @@ def _send_cert_email(to_email, student_name, event_title,
                      cert_type, rank, score, pdf_bytes) -> bool:
     try:
         from flask_mail import Message
-        from flask import current_app
         from utils_email import _get_mail
 
         rank_labels = {1:'🥇 1st Place', 2:'🥈 2nd Place', 3:'🥉 3rd Place'}

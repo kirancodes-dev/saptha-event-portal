@@ -13,7 +13,10 @@ Run locally (requires Firebase creds):
 
     python seed_demo.py
 """
-import os, sys, json, datetime
+import os
+import sys
+import json
+import datetime
 
 
 def init_firebase():
@@ -230,21 +233,21 @@ def main():
         print(f"  OK  [{cat:<10s}]  {title:<32s}  {ev['date']}   id={ref.id}")
 
     # --- 3. Summary -------------------------------------------------
-    print(f"\n[3/3] Summary\n" + "-" * 60)
-    print(f"  URL: https://saptha-event-portal-production.up.railway.app/login\n")
-    print(f"  SUPER ADMIN")
+    print("\n[3/3] Summary\n" + "-" * 60)
+    print("  URL: https://saptha-event-portal-production.up.railway.app/login\n")
+    print("  SUPER ADMIN")
     print(f"    Email:      {SUPER_ADMIN['email']}")
     print(f"    Password:   {SUPER_ADMIN['password_raw']}")
-    print(f"    Master Key: <your MASTER_SECRET_KEY in Railway>")
-    print(f"\n  SPOC")
+    print("    Master Key: <your MASTER_SECRET_KEY in Railway>")
+    print("\n  SPOC")
     print(f"    {SPOC['email']:<40s} {SPOC['password_raw']}")
-    print(f"\n  JUDGES")
+    print("\n  JUDGES")
     for j in JUDGES:
         print(f"    {j['email']:<40s} {j['password_raw']}")
-    print(f"\n  COORDINATORS")
+    print("\n  COORDINATORS")
     for c in COORDINATORS:
         print(f"    {c['email']:<40s} {c['password_raw']}")
-    print(f"\n  STUDENTS  (all share pw: Student@1234)")
+    print("\n  STUDENTS  (all share pw: Student@1234)")
     print(f"    student001@snpsu.edu.in  …  student{len(STUDENTS):03d}@snpsu.edu.in")
     print(f"\n  EVENTS ({len(event_ids)} created)")
     for (t, c, eid, d) in event_ids:

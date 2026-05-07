@@ -24,19 +24,19 @@ def generate_test_data():
         'judging_criteria': ['Innovation', 'Code Quality', 'UI/UX', 'Pitch'],
         'status': 'active',
         'registration_count': 25, # 25 Teams
-        'staff': [], 
+        'staff': [],
         'created_by': 'System Seeder',
         'created_by_email': 'tech@snpsu.edu.in', # Change this if your SPOC email is different!
         'created_at': datetime.datetime.now().strftime("%Y-%m-%d")
     }
-    
+
     # 2. CREATE 5 JUDGES
     judges = []
     for i in range(1, 6):
         judge_email = f"judge{i}@test.com"
         judge_name = f"Test Judge {i}"
         judges.append({'name': judge_name, 'email': judge_email, 'role': 'Judge'})
-        
+
         # Save judge to users collection
         db.collection('users').document(judge_email).set({
             'name': judge_name,
@@ -57,9 +57,9 @@ def generate_test_data():
     for i in range(1, 26):
         reg_id = f"REG-TEST-{1000 + i}"
         team_name = f"Quantum Coders {i}"
-        
+
         lead_usn = f"1SP26CS{i:03d}"
-        
+
         members = []
         for j in range(1, 4): # Add 3 members to the lead
             members.append({
@@ -69,7 +69,7 @@ def generate_test_data():
                 'phone': "9876543210",
                 'attendance': 'Pending'
             })
-            
+
         reg_data = {
             'reg_id': reg_id,
             'event_id': event_id,
@@ -90,7 +90,7 @@ def generate_test_data():
             'assigned_judge_email': None
         }
         db.collection('registrations').document(reg_id).set(reg_data)
-        
+
     print("✅ Successfully generated 25 Teams (100 total students)!")
     print("🎉 ALL TEST DATA LOADED! Go to your SPOC/Admin Dashboard to view it.")
 

@@ -1,6 +1,6 @@
 import datetime
 import logging
-from flask import Blueprint, render_template, request, redirect, session, flash, current_app, url_for
+from flask import Blueprint, render_template, request, redirect, session, flash, current_app
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
@@ -429,4 +429,3 @@ def _set_session(email: str, name: str, role: str, category: str):
     session['name']     = name
     session['role']     = role
     session['category'] = category
-   

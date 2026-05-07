@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SapthaEvent Portal — Full Project Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue:#1a2557; --navy:#0d1f42; --orange:#c9a45e;
+    --green:#16a34a; --red:#dc2626; --purple:#7c3aed;
+    --teal:#0891b2; --bg:#f0f4f8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:#1e293b;font-size:14px;line-height:1.6;}
+
+  /* ── PRINT BUTTON ── */
+  .print-btn{position:fixed;bottom:28px;right:28px;background:var(--orange);color:#fff;border:none;
+    border-radius:50px;padding:12px 24px;font-weight:700;font-size:13px;cursor:pointer;
+    box-shadow:0 6px 20px rgba(201,164,94,.5);z-index:999;display:flex;align-items:center;gap:8px;}
+  .print-btn:hover{background:#b8923f;}
+  @media print{.print-btn{display:none!important;}.page-break{page-break-before:always;}}
+
+  /* ── COVER ── */
+  .cover{
+    background:linear-gradient(135deg,var(--navy) 0%,#0a2a4a 40%,#1a1040 100%);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:60px 40px;text-align:center;position:relative;overflow:hidden;}
+  .cover::before{content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse 80% 60% at 50% 30%,rgba(201,164,94,.12),transparent);}
+  .cover-badge{background:rgba(201,164,94,.15);border:1px solid rgba(201,164,94,.3);
+    color:var(--orange);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+    padding:5px 18px;border-radius:100px;display:inline-block;margin-bottom:24px;}
+  .cover-logo{width:72px;height:72px;background:linear-gradient(135deg,var(--orange),#e8c47a);
+    border-radius:20px;display:flex;align-items:center;justify-content:center;
+    font-family:'Poppins',sans-serif;font-size:26px;font-weight:900;color:var(--navy);
+    margin:0 auto 28px;box-shadow:0 8px 32px rgba(201,164,94,.4);}
+  .cover h1{font-family:'Poppins',sans-serif;font-size:clamp(32px,6vw,56px);font-weight:900;
+    color:#fff;line-height:1.1;margin-bottom:16px;position:relative;}
+  .cover h1 span{color:var(--orange);}
+  .cover-sub{font-size:16px;color:rgba(255,255,255,.6);margin-bottom:40px;max-width:520px;}
+  .cover-meta{display:flex;gap:32px;flex-wrap:wrap;justify-content:center;position:relative;}
+  .cover-meta-item{text-align:center;}
+  .cover-meta-num{font-family:'Poppins',sans-serif;font-size:32px;font-weight:800;color:var(--orange);}
+  .cover-meta-lbl{font-size:11px;color:rgba(255,255,255,.5);letter-spacing:1px;text-transform:uppercase;}
+  .cover-footer{position:absolute;bottom:24px;left:0;right:0;text-align:center;
+    font-size:11px;color:rgba(255,255,255,.3);}
+
+  /* ── TOC ── */
+  .toc{background:#fff;margin:0;padding:48px 60px;}
+  .toc h2{font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:var(--blue);
+    margin-bottom:24px;display:flex;align-items:center;gap:10px;}
+  .toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;}
+  .toc-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;
+    background:var(--bg);text-decoration:none;color:#334155;font-size:13px;font-weight:500;
+    transition:.15s;border:1px solid #e2e8f0;}
+  .toc-item:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .toc-num{width:22px;height:22px;background:var(--orange);color:#fff;border-radius:50%;
+    font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+  /* ── SECTIONS ── */
+  .section{padding:48px 60px;border-bottom:1px solid #e2e8f0;}
+  .section:nth-child(even){background:#fff;}
+  .section-header{display:flex;align-items:center;gap:14px;margin-bottom:32px;}
+  .section-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;font-size:20px;flex-shrink:0;}
+  .section-title{font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:var(--blue);}
+  .section-sub{font-size:13px;color:#64748b;margin-top:2px;}
+
+  /* ── STAT CARDS ── */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px;}
+  .stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 18px;
+    box-shadow:0 2px 6px rgba(0,0,0,.04);}
+  .stat-card.blue{border-top:3px solid var(--blue);}
+  .stat-card.orange{border-top:3px solid var(--orange);}
+  .stat-card.green{border-top:3px solid var(--green);}
+  .stat-card.purple{border-top:3px solid var(--purple);}
+  .stat-card.teal{border-top:3px solid var(--teal);}
+  .stat-card.red{border-top:3px solid var(--red);}
+  .stat-num{font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;color:var(--blue);}
+  .stat-lbl{font-size:11.5px;color:#64748b;font-weight:500;margin-top:2px;}
+
+  /* ── ROLE CARDS ── */
+  .role-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+  .role-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:22px;
+    box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .role-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .role-avatar{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;font-size:18px;flex-shrink:0;}
+  .role-name{font-weight:700;font-size:14px;color:var(--blue);}
+  .role-desc{font-size:12px;color:#64748b;}
+  .role-perms{list-style:none;display:flex;flex-direction:column;gap:5px;}
+  .role-perms li{font-size:12.5px;color:#475569;display:flex;align-items:flex-start;gap:7px;}
+  .role-perms li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px;}
+
+  /* ── FEATURE TABLE ── */
+  .feat-table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+  .feat-table th{background:var(--blue);color:#fff;padding:10px 14px;text-align:left;
+    font-size:12px;font-weight:700;letter-spacing:.3px;}
+  .feat-table th:first-child{border-radius:8px 0 0 0;}
+  .feat-table th:last-child{border-radius:0 8px 0 0;}
+  .feat-table td{padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:12.5px;vertical-align:top;}
+  .feat-table tr:hover td{background:#f8fafc;}
+  .feat-table tr:last-child td{border-bottom:none;}
+  .tag{display:inline-block;padding:2px 9px;border-radius:100px;font-size:10.5px;font-weight:700;margin:1px;}
+  .tag-new{background:#dcfce7;color:#15803d;}
+  .tag-fix{background:#fef9c3;color:#92400e;}
+  .tag-imp{background:#dbeafe;color:#1d4ed8;}
+  .tag-sec{background:#fce7f3;color:#9d174d;}
+
+  /* ── FIX LOG ── */
+  .fix-log{display:flex;flex-direction:column;gap:14px;}
+  .fix-item{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 20px;
+    border-left:4px solid var(--orange);}
+  .fix-item.green{border-left-color:var(--green);}
+  .fix-item.blue{border-left-color:var(--blue);}
+  .fix-item.red{border-left-color:var(--red);}
+  .fix-title{font-weight:700;font-size:13px;color:var(--blue);margin-bottom:4px;}
+  .fix-where{font-size:11px;color:#94a3b8;margin-bottom:8px;font-family:monospace;}
+  .fix-desc{font-size:12.5px;color:#475569;line-height:1.55;}
+  .code-diff{margin-top:10px;border-radius:8px;overflow:hidden;font-family:monospace;font-size:11.5px;}
+  .code-del{background:#fef2f2;color:#991b1b;padding:4px 10px;display:block;border-left:3px solid #f87171;}
+  .code-add{background:#f0fdf4;color:#166534;padding:4px 10px;display:block;border-left:3px solid #4ade80;}
+  .code-neutral{background:#f8fafc;color:#475569;padding:4px 10px;display:block;border-left:3px solid #cbd5e1;}
+
+  /* ── TECH STACK ── */
+  .tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .tech-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;
+    display:flex;align-items:center;gap:12px;}
+  .tech-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;
+    justify-content:center;font-size:17px;flex-shrink:0;}
+  .tech-name{font-weight:700;font-size:13px;color:var(--blue);}
+  .tech-use{font-size:11px;color:#64748b;}
+
+  /* ── FLOW DIAGRAM ── */
+  .flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin:16px 0;}
+  .flow-step{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;
+    font-size:12px;font-weight:600;color:var(--blue);white-space:nowrap;}
+  .flow-arrow{color:var(--orange);font-weight:800;padding:0 8px;font-size:16px;}
+
+  /* ── EMAIL TABLE ── */
+  .email-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+  .email-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;}
+  .email-trigger{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--orange);margin-bottom:6px;}
+  .email-name{font-weight:700;font-size:13.5px;color:var(--blue);margin-bottom:4px;}
+  .email-desc{font-size:12px;color:#64748b;}
+
+  /* ── PAGE GRID DIAGRAM ── */
+  .page-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+  .page-item{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;}
+  .page-role{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;}
+  .page-url{font-family:monospace;font-size:11.5px;color:var(--blue);font-weight:600;}
+  .page-name{font-size:11.5px;color:#64748b;margin-top:3px;}
+
+  /* ── DIVIDER ── */
+  .divider{height:1px;background:linear-gradient(90deg,var(--orange),transparent);margin:24px 0;opacity:.3;}
+
+  /* ── CHAPTER LABEL ── */
+  .chapter{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+    color:var(--orange);margin-bottom:6px;}
+
+  /* ── HIGHLIGHT BOX ── */
+  .highlight-box{background:linear-gradient(135deg,var(--navy),#0d2d50);border-radius:16px;
+    padding:24px 28px;color:#fff;margin:16px 0;}
+  .highlight-box h3{font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;
+    color:var(--orange);margin-bottom:10px;}
+  .highlight-box p{font-size:13px;color:rgba(255,255,255,.75);line-height:1.6;}
+
+  /* ── TIMELINE ── */
+  .timeline{position:relative;padding-left:24px;}
+  .timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;
+    background:linear-gradient(to bottom,var(--orange),transparent);}
+  .tl-item{position:relative;margin-bottom:18px;padding-left:20px;}
+  .tl-item::before{content:'';position:absolute;left:-20px;top:6px;width:10px;height:10px;
+    border-radius:50%;background:var(--orange);border:2px solid #fff;
+    box-shadow:0 0 0 2px var(--orange);}
+  .tl-date{font-size:10px;font-weight:700;color:var(--orange);letter-spacing:.5px;text-transform:uppercase;}
+  .tl-title{font-weight:700;font-size:13px;color:var(--blue);margin:2px 0;}
+  .tl-desc{font-size:12px;color:#64748b;}
+
+  /* ── FOOTER ── */
+  .report-footer{background:var(--navy);color:rgba(255,255,255,.5);padding:32px 60px;
+    text-align:center;font-size:12px;}
+  .report-footer strong{color:var(--orange);}
+
+  h3.sub{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);
+    margin:20px 0 12px;display:flex;align-items:center;gap:8px;}
+  h3.sub::before{content:'';display:block;width:3px;height:16px;background:var(--orange);border-radius:2px;}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;
+    font-size:11px;font-weight:700;}
+  .badge-blue{background:#dbeafe;color:#1d4ed8;}
+  .badge-green{background:#dcfce7;color:#15803d;}
+  .badge-orange{background:rgba(201,164,94,.15);color:#92400e;}
+  .badge-red{background:#fee2e2;color:#991b1b;}
+  .badge-purple{background:#ede9fe;color:#6d28d9;}
+
+  @media(max-width:700px){
+    .cover{padding:40px 20px;}
+    .section{padding:32px 20px;}
+    .toc{padding:32px 20px;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ COVER ═══════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-badge">SNPSU · Full Project Report · May 2026</div>
+  <div class="cover-logo">SE</div>
+  <h1>Saptha<span>Event</span><br>Portal</h1>
+  <p class="cover-sub">A full-stack college event management platform — multi-role, QR-ticketed, and AI-assisted — built for SNPSU.</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">6</div>
+      <div class="cover-meta-lbl">User Roles</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">60+</div>
+      <div class="cover-meta-lbl">Route Endpoints</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">50+</div>
+      <div class="cover-meta-lbl">Templates</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">8</div>
+      <div class="cover-meta-lbl">Email Triggers</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">15+</div>
+      <div class="cover-meta-lbl">Fixes & Upgrades</div>
+    </div>
+  </div>
+  <div class="cover-footer">Prepared by Kiran Mahantesh Biradar &nbsp;·&nbsp; SapthaEvent v2.0 &nbsp;·&nbsp; 3 May 2026</div>
+</div>
+
+<!-- ═══════════════════════════════════ TOC ═══════════════════════════════════ -->
+<div class="toc">
+  <h2>📋 Table of Contents</h2>
+  <div class="toc-grid">
+    <a href="#overview" class="toc-item"><span class="toc-num">1</span>Platform Overview</a>
+    <a href="#tech" class="toc-item"><span class="toc-num">2</span>Technology Stack</a>
+    <a href="#roles" class="toc-item"><span class="toc-num">3</span>Role System</a>
+    <a href="#modules" class="toc-item"><span class="toc-num">4</span>All Modules & Features</a>
+    <a href="#pages" class="toc-item"><span class="toc-num">5</span>Page Map</a>
+    <a href="#email" class="toc-item"><span class="toc-num">6</span>Email & Notification System</a>
+    <a href="#qr" class="toc-item"><span class="toc-num">7</span>QR Ticket & Scanner System</a>
+    <a href="#cert" class="toc-item"><span class="toc-num">8</span>Certificate System</a>
+    <a href="#security" class="toc-item"><span class="toc-num">9</span>Security & Auth</a>
+    <a href="#fixes" class="toc-item"><span class="toc-num">10</span>Bug Fixes Log</a>
+    <a href="#ui" class="toc-item"><span class="toc-num">11</span>UI/UX Upgrades</a>
+    <a href="#db" class="toc-item"><span class="toc-num">12</span>Database Structure</a>
+    <a href="#ai" class="toc-item"><span class="toc-num">13</span>AI Features</a>
+    <a href="#stats" class="toc-item"><span class="toc-num">14</span>Code Statistics</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 1. OVERVIEW ═══════════════════════════════════ -->
+<div class="section" id="overview">
+  <div class="section-header">
+    <div class="section-icon" style="background:#dbeafe;">🏛️</div>
+    <div>
+      <div class="chapter">Section 01</div>
+      <div class="section-title">Platform Overview</div>
+      <div class="section-sub">What SapthaEvent is and what it does</div>
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <h3>What is SapthaEvent?</h3>
+    <p>SapthaEvent is a complete college event management portal built for SNPSU. It handles the entire lifecycle of a college event — from creation and public listing, to participant registration with QR tickets, live scanning at the venue, real-time scoring for judged events, automated certificate generation, and post-event AI analytics. Every role in the event ecosystem has a dedicated dashboard with purpose-built tools.</p>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card blue">
+      <div class="stat-num">6</div>
+      <div class="stat-lbl">User Roles</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-num">60+</div>
+      <div class="stat-lbl">API Endpoints</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-num">50+</div>
+      <div class="stat-lbl">HTML Templates</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-num">8</div>
+      <div class="stat-lbl">Automated Emails</div>
+    </div>
+    <div class="stat-card teal">
+      <div class="stat-num">Firebase</div>
+      <div class="stat-lbl">Firestore Database</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-num">PWA</div>
+      <div class="stat-lbl">Works Offline</div>
+    </div>
+  </div>
+
+  <h3 class="sub">Core Event Lifecycle</h3>
+  <div class="flow">
+    <div class="flow-step">🎯 SPOC Creates Event</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📢 Public Listing</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📝 Participant Registers</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📧 QR Ticket Email</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">⏰ 24h Reminder</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📲 Scanner Check-in</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🏆 Results & Certs</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 2. TECH STACK ═══════════════════════════════════ -->
+<div class="section" id="tech">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ede9fe;">⚙️</div>
+    <div>
+      <div class="chapter">Section 02</div>
+      <div class="section-title">Technology Stack</div>
+      <div class="section-sub">Every tool and framework powering the platform</div>
+    </div>
+  </div>
+
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#fef3c7;">🐍</div>
+      <div>
+        <div class="tech-name">Python 3 + Flask</div>
+        <div class="tech-use">Backend framework, routing, Blueprints</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#fff7ed;">🔥</div>
+      <div>
+        <div class="tech-name">Firebase Firestore</div>
+        <div class="tech-use">NoSQL real-time database</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#dbeafe;">🎨</div>
+      <div>
+        <div class="tech-name">Bootstrap 5.3</div>
+        <div class="tech-use">Responsive CSS grid & components</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#dcfce7;">📧</div>
+      <div>
+        <div class="tech-name">Resend / Gmail SMTP</div>
+        <div class="tech-use">Transactional email delivery</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#fce7f3;">📋</div>
+      <div>
+        <div class="tech-name">Celery Beat</div>
+        <div class="tech-use">Scheduled tasks (24h reminders)</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#ede9fe;">🔐</div>
+      <div>
+        <div class="tech-name">Werkzeug / itsdangerous</div>
+        <div class="tech-use">Password hashing, CSRF, reset tokens</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#f0fdf4;">📦</div>
+      <div>
+        <div class="tech-name">Jinja2 Templates</div>
+        <div class="tech-use">Server-side HTML rendering</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#fff1f2;">📊</div>
+      <div>
+        <div class="tech-name">OpenPyXL / CSV</div>
+        <div class="tech-use">Excel & CSV export of registrations</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#fef9c3;">🤖</div>
+      <div>
+        <div class="tech-name">Claude AI (Anthropic)</div>
+        <div class="tech-use">AI event narrative & Sparky chatbot</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#dbeafe;">📱</div>
+      <div>
+        <div class="tech-name">PWA (Service Worker)</div>
+        <div class="tech-use">Offline support, installable app</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#dcfce7;">🔳</div>
+      <div>
+        <div class="tech-name">QR Code Generator</div>
+        <div class="tech-use">Per-registration unique QR tickets</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#fff7ed;">💬</div>
+      <div>
+        <div class="tech-name">WhatsApp API</div>
+        <div class="tech-use">WA reminders & group links</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 3. ROLES ═══════════════════════════════════ -->
+<div class="section" id="roles">
+  <div class="section-header">
+    <div class="section-icon" style="background:#dcfce7;">👥</div>
+    <div>
+      <div class="chapter">Section 03</div>
+      <div class="section-title">Role System</div>
+      <div class="section-sub">Six distinct roles, each with its own dashboard and permission set</div>
+    </div>
+  </div>
+
+  <div class="role-grid">
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fef3c7;font-size:22px;">👑</div>
+        <div>
+          <div class="role-name">SuperAdmin</div>
+          <div class="role-desc">Platform administrator — master control</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Create & manage all users, clubs, SPOCs</li>
+        <li>Master key protected login</li>
+        <li>View system-wide analytics & logs</li>
+        <li>Email diagnostic endpoint</li>
+        <li>Access all events and registrations</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#dbeafe;font-size:22px;">🛡️</div>
+        <div>
+          <div class="role-name">Admin</div>
+          <div class="role-desc">Department-level event oversight</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Manage all events within their scope</li>
+        <li>User management</li>
+        <li>Analytics & leaderboard access</li>
+        <li>Sponsor & branding management</li>
+        <li>Send bulk emails to participants</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#ede9fe;font-size:22px;">🎪</div>
+        <div>
+          <div class="role-name">ClubSPOC</div>
+          <div class="role-desc">Club's Single Point of Contact</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Create, edit, clone, delete events</li>
+        <li>Assign EventCoordinators to events</li>
+        <li>Manage judges, rooms, and agenda</li>
+        <li>Post live announcements</li>
+        <li>OpenHall mode, results, AI report</li>
+        <li>Certificate template upload</li>
+        <li>Blast email to all registrants</li>
+        <li>Toggle event status (active/inactive)</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fce7f3;font-size:22px;">📲</div>
+        <div>
+          <div class="role-name">EventCoordinator</div>
+          <div class="role-desc">On-ground event volunteer</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>TODAY / TOMORROW / UPCOMING dashboard</li>
+        <li>QR ticket scanner (camera or upload)</li>
+        <li>On-spot walk-in registration</li>
+        <li>View registration count & capacity</li>
+        <li>Day-before briefing email</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#dcfce7;font-size:22px;">🎓</div>
+        <div>
+          <div class="role-name">Student (Participant)</div>
+          <div class="role-desc">Any SNPSU student</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Self-register with email & USN</li>
+        <li>Browse & register for events</li>
+        <li>Download QR ticket as image</li>
+        <li>View certificates after event</li>
+        <li>Submit event feedback</li>
+        <li>See leaderboard & badge card</li>
+        <li>Cancel registration</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fff7ed;font-size:22px;">⚖️</div>
+        <div>
+          <div class="role-name">Judge</div>
+          <div class="role-desc">Event evaluator</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Assigned per event by SPOC</li>
+        <li>Score participants in assigned room</li>
+        <li>View live leaderboard</li>
+        <li>CSV bulk-upload judge roster</li>
+        <li>Dedicated judge dashboard</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 4. MODULES ═══════════════════════════════════ -->
+<div class="section" id="modules">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fce7f3;">🧩</div>
+    <div>
+      <div class="chapter">Section 04</div>
+      <div class="section-title">All Modules & Features</div>
+      <div class="section-sub">Complete feature inventory across every module</div>
+    </div>
+  </div>
+
+  <h3 class="sub">SPOC Module (ClubSPOC)</h3>
+  <table class="feat-table">
+    <thead><tr><th>Feature</th><th>Description</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Event Creation Wizard</td><td>Multi-field form: title, date, venue, category, capacity, fee, banner, rules, agenda, prizes, links</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Event Cloning</td><td>Duplicate an existing event with one click, clearing date/counts</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Event Edit & Delete</td><td>Full edit of all event fields; soft delete with confirmation</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Status Toggle</td><td>Flip event active ↔ inactive without deleting</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>OpenHall Mode</td><td>Open check-in to all — bypass registration requirement for walk-ins</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Coordinator Assignment</td><td>Auto-create EventCoordinator accounts with generated password; email sent</td><td><span class="tag tag-fix">Fixed</span></td></tr>
+      <tr><td>Coordinator Autocomplete</td><td>AJAX search of existing coordinators while typing in assignment form</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Live Announcements</td><td>Post urgent/info/success announcements; participants see them on dashboard in real-time</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Agenda Manager</td><td>Add/edit timed agenda items per event</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Judge Management</td><td>Add judges manually or bulk-upload via CSV; assign to rooms</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Room Management</td><td>Setup judging rooms with capacity; assign participants to rooms</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Certificate Templates</td><td>Upload custom winner/participation certificate templates per event</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Publish Results</td><td>Set rank/position for top participants; triggers certificate generation</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>AI Event Report</td><td>GPT-quality narrative summary of event stats, top performers, engagement analysis</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Blast Email</td><td>Send custom HTML email to all registrants of an event</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Results Export</td><td>Download full registration list as CSV or Excel (.xlsx)</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>SPOC Profile Page</td><td>Edit name, phone, club info; change password</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Live Stats Panel</td><td>Real-time count of registrations per event on dashboard</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Event Cards Dashboard</td><td>Card-based SPOC dashboard with fast load, status badges, quick actions</td><td><span class="tag tag-new">New</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Coordinator Module (EventCoordinator)</h3>
+  <table class="feat-table">
+    <thead><tr><th>Feature</th><th>Description</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>TODAY / TOMORROW / UPCOMING</td><td>Events organized into 3 sections with color-coded cards, pulsing LIVE badge</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Event Card Stats</td><td>Each card shows registration count, max capacity, progress bar, venue, time</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>QR Ticket Scanner</td><td>Camera-based QR code scanner using jsQR; validates ticket against Firestore</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Upload QR (fallback)</td><td>Upload a screenshot/photo of QR code if camera not available</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Granular Attendance</td><td>Mark attendance per sub-event/round, not just globally</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>On-Spot Walk-in</td><td>Register a participant on the spot without pre-registration; generates ticket instantly</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Day-Before Briefing Email</td><td>Automated email sent 24h before event with participant count, checklist, event info</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Role Fix (login)</td><td>EventCoordinator login now works correctly after role normalization fix</td><td><span class="tag tag-fix">Fixed</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Participant Module (Student)</h3>
+  <table class="feat-table">
+    <thead><tr><th>Feature</th><th>Description</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Self Registration</td><td>Sign up with name, USN, email, phone, password — account ready instantly</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Event Browser on Dashboard</td><td>See all upcoming events not yet registered for (past events now excluded)</td><td><span class="tag tag-fix">Fixed</span></td></tr>
+      <tr><td>Event Registration</td><td>Register for any active event; custom form fields supported</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>QR Ticket</td><td>Unique QR code per registration; downloadable as PNG</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>24h Reminder Email</td><td>Auto-email with QR ticket attachment sent the day before event</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Certificate Download</td><td>Download participation/winner certificate after event results are published</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Badge Card</td><td>Shareable digital badge showing event name, position, and participant name</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Leaderboard View</td><td>See rankings for any judged event</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Cancel Registration</td><td>Cancel before event; spot released back to capacity</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Feedback Form</td><td>Rate and comment on attended events</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Waitlist</td><td>Auto-waitlist when event is full; notified if spot opens</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>WhatsApp Reminder</td><td>WA message with event details sent alongside email reminder</td><td><span class="tag tag-imp">Core</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Public Module (No Login)</h3>
+  <table class="feat-table">
+    <thead><tr><th>Feature</th><th>Description</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Home Page</td><td>Hero, live event ticker from DB, event grid with category filter, Sparky AI chatbot</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Event Details Page</td><td>Full redesign: hero, countdown, prizes, organizer card, share strip, sticky register button</td><td><span class="tag tag-new">New</span></td></tr>
+      <tr><td>Event Calendar</td><td>Monthly calendar view of all events</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Public Results</td><td>View results/winners for any completed event without login</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Certificate Verification</td><td>Verify authenticity of any certificate using registration ID</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Self Check-in</td><td>Participants can check themselves in by entering registration ID at venue kiosk</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Event Brochure</td><td>Printable/shareable A4 brochure for any event</td><td><span class="tag tag-imp">Core</span></td></tr>
+      <tr><td>Live Announcements Feed</td><td>Participants see real-time event announcements on event details page</td><td><span class="tag tag-fix">Fixed</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════ 5. PAGE MAP ═══════════════════════════════════ -->
+<div class="section page-break" id="pages">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef9c3;">🗺️</div>
+    <div>
+      <div class="chapter">Section 05</div>
+      <div class="section-title">Page Map</div>
+      <div class="section-sub">Every URL and what it serves</div>
+    </div>
+  </div>
+
+  <h3 class="sub">Public Routes</h3>
+  <div class="page-map" style="margin-bottom:20px;">
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/</div><div class="page-name">Home — event grid, ticker, chatbot</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/home</div><div class="page-name">Alternate home (public blueprint)</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/event/&lt;id&gt;</div><div class="page-name">Event detail page (redesigned)</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/events/calendar</div><div class="page-name">Monthly event calendar</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/verify/&lt;reg_id&gt;</div><div class="page-name">Certificate verification</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/results/&lt;event_id&gt;</div><div class="page-name">Public results / leaderboard</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/self-checkin</div><div class="page-name">Kiosk self-check-in</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--teal);">PUBLIC</div><div class="page-url">/register/&lt;event_id&gt;</div><div class="page-name">Event registration form</div></div>
+  </div>
+
+  <h3 class="sub">Auth Routes</h3>
+  <div class="page-map" style="margin-bottom:20px;">
+    <div class="page-item"><div class="page-role" style="color:var(--purple);">AUTH</div><div class="page-url">/login</div><div class="page-name">Multi-role login</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--purple);">AUTH</div><div class="page-url">/register</div><div class="page-name">Student self-registration</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--purple);">AUTH</div><div class="page-url">/logout</div><div class="page-name">Session clear</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--purple);">AUTH</div><div class="page-url">/forgot_password</div><div class="page-name">Request email reset link</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--purple);">AUTH</div><div class="page-url">/reset_token/&lt;token&gt;</div><div class="page-name">Use emailed reset token</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--purple);">AUTH</div><div class="page-url">/reset_password</div><div class="page-name">First-login forced reset</div></div>
+  </div>
+
+  <h3 class="sub">SPOC Routes</h3>
+  <div class="page-map" style="margin-bottom:20px;">
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/dashboard</div><div class="page-name">Main SPOC dashboard</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/create_event</div><div class="page-name">Create new event</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/edit_event/&lt;id&gt;</div><div class="page-name">Edit event</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/assign_coordinator/&lt;id&gt;</div><div class="page-name">Assign coordinator</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/scan/&lt;id&gt;</div><div class="page-name">SPOC scanner view</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/results/&lt;id&gt;</div><div class="page-name">Publish results</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/ai_report/&lt;id&gt;</div><div class="page-name">AI-generated event report</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/profile</div><div class="page-name">SPOC profile editor</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/blast_email/&lt;id&gt;</div><div class="page-name">Send bulk email</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--blue);">SPOC</div><div class="page-url">/spoc/announcements/public/&lt;id&gt;</div><div class="page-name">Public announcements JSON feed</div></div>
+  </div>
+
+  <h3 class="sub">Coordinator Routes</h3>
+  <div class="page-map" style="margin-bottom:20px;">
+    <div class="page-item"><div class="page-role" style="color:var(--red);">COORD</div><div class="page-url">/coordinator/scanner</div><div class="page-name">TODAY/TOMORROW/UPCOMING dashboard</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--red);">COORD</div><div class="page-url">/coordinator/scan/&lt;id&gt;</div><div class="page-name">QR scanner for specific event</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--red);">COORD</div><div class="page-url">/coordinator/on_spot</div><div class="page-name">Walk-in registration form</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--red);">COORD</div><div class="page-url">/coordinator/ticket/&lt;reg_id&gt;</div><div class="page-name">View/validate a ticket</div></div>
+  </div>
+
+  <h3 class="sub">Participant Routes</h3>
+  <div class="page-map">
+    <div class="page-item"><div class="page-role" style="color:var(--green);">STUDENT</div><div class="page-url">/participant/dashboard</div><div class="page-name">Active tickets & upcoming events</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--green);">STUDENT</div><div class="page-url">/participant/certificate/&lt;reg_id&gt;</div><div class="page-name">Download certificate</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--green);">STUDENT</div><div class="page-url">/participant/badge/&lt;reg_id&gt;</div><div class="page-name">Digital badge card</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--green);">STUDENT</div><div class="page-url">/participant/feedback/&lt;reg_id&gt;</div><div class="page-name">Submit feedback</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--green);">STUDENT</div><div class="page-url">/participant/cancel/&lt;reg_id&gt;</div><div class="page-name">Cancel registration</div></div>
+    <div class="page-item"><div class="page-role" style="color:var(--green);">STUDENT</div><div class="page-url">/participant/leaderboard/&lt;id&gt;</div><div class="page-name">Event leaderboard</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 6. EMAIL ═══════════════════════════════════ -->
+<div class="section" id="email">
+  <div class="section-header">
+    <div class="section-icon" style="background:#dcfce7;">📧</div>
+    <div>
+      <div class="chapter">Section 06</div>
+      <div class="section-title">Email & Notification System</div>
+      <div class="section-sub">8 automated email triggers keeping everyone informed</div>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="margin-bottom:24px;">
+    <h3>Dual Email Provider</h3>
+    <p>The system auto-detects which provider to use: if <code style="color:var(--orange)">RESEND_API_KEY</code> is set it uses the Resend API, otherwise it falls back to Gmail SMTP via <code style="color:var(--orange)">MAIL_USER / MAIL_PASS</code>. A diagnostic endpoint at <code style="color:var(--orange)">/diag/email?to=you@example.com</code> lets SuperAdmin test delivery without writing code.</p>
+  </div>
+
+  <div class="email-grid">
+    <div class="email-card">
+      <div class="email-trigger">On Registration</div>
+      <div class="email-name">QR Ticket Email</div>
+      <div class="email-desc">Sent immediately when a participant registers. Contains event details, QR code, venue & time.</div>
+    </div>
+    <div class="email-card">
+      <div class="email-trigger">24 Hours Before (Celery Beat)</div>
+      <div class="email-name">Participant Reminder</div>
+      <div class="email-desc">Automated day-before reminder with QR ticket re-attached. WhatsApp message also sent if phone on file.</div>
+    </div>
+    <div class="email-card">
+      <div class="email-trigger">24 Hours Before (Celery Beat) — NEW</div>
+      <div class="email-name">Coordinator Briefing</div>
+      <div class="email-desc">All assigned coordinators get event details, participant count, and a day-of operations checklist. Sent once per event via <code>coord_briefing_sent</code> flag.</div>
+    </div>
+    <div class="email-card">
+      <div class="email-trigger">Coordinator Assignment</div>
+      <div class="email-name">New Account Credentials</div>
+      <div class="email-desc">When SPOC assigns a new coordinator, an email is sent with auto-generated login password and link to the portal.</div>
+    </div>
+    <div class="email-card">
+      <div class="email-trigger">On Password Reset Request</div>
+      <div class="email-name">Password Reset Link</div>
+      <div class="email-desc">Secure time-limited token (1 hour) sent via itsdangerous. SuperAdmin excluded from this flow — uses master key instead.</div>
+    </div>
+    <div class="email-card">
+      <div class="email-trigger">Post-Event</div>
+      <div class="email-name">Certificate Ready</div>
+      <div class="email-desc">After SPOC publishes results, winners and participants receive email notification that their certificate is available.</div>
+    </div>
+    <div class="email-card">
+      <div class="email-trigger">SPOC Triggered</div>
+      <div class="email-name">Blast Email</div>
+      <div class="email-desc">SPOC can compose and send custom HTML email to all registrants of any of their events.</div>
+    </div>
+    <div class="email-card">
+      <div class="email-trigger">Manual (Admin/SPOC)</div>
+      <div class="email-name">Reminder Trigger</div>
+      <div class="email-desc">Admin or SPOC can manually trigger the reminder send for any event outside of the automated schedule.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 7. QR SYSTEM ═══════════════════════════════════ -->
+<div class="section" id="qr">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef9c3;">🔳</div>
+    <div>
+      <div class="chapter">Section 07</div>
+      <div class="section-title">QR Ticket & Scanner System</div>
+      <div class="section-sub">From registration to check-in in seconds</div>
+    </div>
+  </div>
+
+  <h3 class="sub">How It Works</h3>
+  <div class="flow" style="flex-wrap:wrap;gap:8px;margin-bottom:24px;">
+    <div class="flow-step">📝 Register</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🔑 Unique reg_id generated</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🔳 QR code = reg_id</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📧 QR emailed</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">📲 Coordinator scans</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">🔥 Firestore lookup</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">✅ Checked in</div>
+  </div>
+
+  <table class="feat-table">
+    <thead><tr><th>Capability</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Camera QR Scan</td><td>Uses browser's camera API + jsQR library; works on mobile & desktop</td></tr>
+      <tr><td>Image Upload Fallback</td><td>Coordinator can upload a screenshot/photo of the QR if camera denied</td></tr>
+      <tr><td>Already Checked In</td><td>System shows a distinct "already checked in" screen — prevents double entry</td></tr>
+      <tr><td>OpenHall Mode</td><td>SPOC can disable QR check and allow anyone to check in — ideal for open workshops</td></tr>
+      <tr><td>Granular Attendance</td><td>Mark attendance per round/sub-event for multi-stage competitions</td></tr>
+      <tr><td>On-Spot Registration</td><td>Walk-in form creates registration instantly; QR available to print on-site</td></tr>
+      <tr><td>Self Check-in Kiosk</td><td>Public URL participants can open on a shared screen to self-check in by ID</td></tr>
+      <tr><td>Certificate Verification</td><td>Any certificate can be verified at /verify/<reg_id> — returns name, event, position</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════ 8. CERTIFICATES ═══════════════════════════════════ -->
+<div class="section" id="cert">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ede9fe;">🏆</div>
+    <div>
+      <div class="chapter">Section 08</div>
+      <div class="section-title">Certificate System</div>
+      <div class="section-sub">Digital certificates with public verification</div>
+    </div>
+  </div>
+
+  <div class="flow" style="margin-bottom:20px;">
+    <div class="flow-step">SPOC uploads template</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Publishes results with ranks</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">System generates certs</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Email sent to winners</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Participant downloads PDF</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Public verify at /verify URL</div>
+  </div>
+
+  <table class="feat-table">
+    <thead><tr><th>Feature</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Custom Templates</td><td>SPOC uploads separate templates for winner certificate and participation certificate</td></tr>
+      <tr><td>Auto-population</td><td>Name, event name, date, position auto-filled onto template</td></tr>
+      <tr><td>Unique Verify URL</td><td>Each cert has a public URL like /verify/<reg_id> that confirms authenticity</td></tr>
+      <tr><td>Badge Card</td><td>Compact shareable badge (LinkedIn-style) generated alongside certificate</td></tr>
+      <tr><td>Participation vs Winner</td><td>Different certificate content for rank holders vs all attendees</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════ 9. SECURITY ═══════════════════════════════════ -->
+<div class="section" id="security">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fce7f3;">🔐</div>
+    <div>
+      <div class="chapter">Section 09</div>
+      <div class="section-title">Security & Authentication</div>
+      <div class="section-sub">How the platform keeps accounts and data safe</div>
+    </div>
+  </div>
+
+  <table class="feat-table">
+    <thead><tr><th>Layer</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Password Hashing</td><td>Werkzeug scrypt/pbkdf2 — no plaintext passwords stored. Legacy plaintext rows are blocked at login and flagged for admin reset.</td></tr>
+      <tr><td>CSRF Protection</td><td>Flask-WTF CSRF tokens on all POST forms; automatic 400 on mismatch</td></tr>
+      <tr><td>SuperAdmin Master Key</td><td>Extra secret key required at login in production mode — prevents brute-force account takeover even with correct password</td></tr>
+      <tr><td>Password Reset Tokens</td><td>itsdangerous URLSafeTimedSerializer; tokens expire after 1 hour; one-time use</td></tr>
+      <tr><td>Forced Password Reset</td><td>Auto-generated accounts get <code>needs_password_reset: true</code> — user must change password on first login</td></tr>
+      <tr><td>Role-Based Access</td><td><code>@role_required</code> decorator on every protected route; session cookie checked on every request</td></tr>
+      <tr><td>Security Headers</td><td>X-Frame-Options, X-Content-Type-Options, CSP, HSTS set on every response via after_request hook</td></tr>
+      <tr><td>Rate Limiting</td><td>Flask-Limiter on login and registration endpoints — 429 returned on abuse</td></tr>
+      <tr><td>Secure Session</td><td>SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', permanent sessions with configurable TTL</td></tr>
+      <tr><td>Enum-safe Role Normalization</td><td>Legacy <code>'Coordinator'</code> → <code>'EventCoordinator'</code> and <code>'Super Admin'</code> → <code>'SuperAdmin'</code> on every login path</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════ 10. BUG FIXES ═══════════════════════════════════ -->
+<div class="section page-break" id="fixes">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fee2e2;">🐛</div>
+    <div>
+      <div class="chapter">Section 10</div>
+      <div class="section-title">Bug Fixes Log</div>
+      <div class="section-sub">Every issue resolved, with root cause and solution</div>
+    </div>
+  </div>
+
+  <div class="fix-log">
+
+    <div class="fix-item red">
+      <div class="fix-title">🔴 EventCoordinator Login Always Failing (POST /login → redirect loop)</div>
+      <div class="fix-where">routes_spoc.py · routes_auth.py · routes_coordinator.py</div>
+      <div class="fix-desc">
+        <strong>Root Cause:</strong> Three-file cascading mismatch. When SPOC assigns a coordinator, the account was created with <code>role: 'Coordinator'</code> in Firestore. But the login form sends <code>role='EventCoordinator'</code>. The auth check <code>db_role != role</code> fails every time.<br><br>
+        <strong>Cascading Effect:</strong> Even if user manually changed DB role to EventCoordinator, the coordinator dashboard's <code>COORD_ROLES</code> list didn't include it, so they'd be denied access after login.<br><br>
+        <strong>Fix:</strong> Changed account creation to use <code>'EventCoordinator'</code>, added legacy normalization in auth, and added <code>'EventCoordinator'</code> to COORD_ROLES.
+      </div>
+      <div class="code-diff">
+        <span class="code-del">- 'role': 'Coordinator'  # wrong — login would always fail</span>
+        <span class="code-add">+ 'role': 'EventCoordinator'  # matches login form value</span>
+        <span class="code-del">- if db_role == 'Super Admin': db_role = 'SuperAdmin'</span>
+        <span class="code-add">+ if db_role == 'Super Admin': db_role = 'SuperAdmin'</span>
+        <span class="code-add">+ if db_role == 'Coordinator': db_role = 'EventCoordinator'  # legacy normalization</span>
+      </div>
+    </div>
+
+    <div class="fix-item red">
+      <div class="fix-title">🔴 /spoc/api/coordinators — 500 AttributeError: 'dict' object has no attribute 'to_dict'</div>
+      <div class="fix-where">routes_spoc.py · api_coordinators()</div>
+      <div class="fix-desc">
+        <strong>Root Cause:</strong> Overcomplicated double-comprehension was calling <code>.to_dict()</code> on an already-converted dict: <code>[... for doc in docs for d in [doc.to_dict() or {}]]</code> — the inner loop variable <code>d</code> is a plain dict, not a Firestore document, so <code>d.to_dict()</code> crashes.<br><br>
+        Additionally, the query was filtering for <code>role == 'Coordinator'</code> but the correct role is now <code>'EventCoordinator'</code>.
+      </div>
+      <div class="code-diff">
+        <span class="code-del">- docs = db.collection('users').where('role', '==', 'Coordinator').stream()</span>
+        <span class="code-del">- result = [{'email': (d.to_dict() or {}).get(...)} for doc in docs for d in [doc.to_dict() or {}]]</span>
+        <span class="code-add">+ docs = db.collection('users').where('role', '==', 'EventCoordinator').stream()</span>
+        <span class="code-add">+ result = [{'email': (doc.to_dict() or {}).get('email', doc.id), 'name': ...} for doc in docs]</span>
+      </div>
+    </div>
+
+    <div class="fix-item red">
+      <div class="fix-title">🔴 /spoc/announcements/public/&lt;id&gt; — 500 FailedPrecondition: Query requires an index</div>
+      <div class="fix-where">routes_spoc.py · public_announcements()</div>
+      <div class="fix-desc">
+        <strong>Root Cause:</strong> Firestore requires a manually-created composite index for queries that combine a <code>WHERE</code> clause on one field with <code>ORDER BY</code> on a different field. The query had <code>where(event_id == x).order_by(timestamp)</code> but no composite index existed in Firebase console.<br><br>
+        <strong>Fix:</strong> Removed <code>.order_by()</code> from the query; sort in Python after fetching.
+      </div>
+      <div class="code-diff">
+        <span class="code-del">- .where(filter=FieldFilter('event_id', '==', event_id))</span>
+        <span class="code-del">- .order_by('timestamp', direction='DESCENDING')</span>
+        <span class="code-del">- .limit(20).stream()</span>
+        <span class="code-add">+ .where(filter=FieldFilter('event_id', '==', event_id))</span>
+        <span class="code-add">+ .limit(20).stream()</span>
+        <span class="code-add">+ items.sort(key=lambda x: x['ts'], reverse=True)  # sort in Python</span>
+      </div>
+    </div>
+
+    <div class="fix-item">
+      <div class="fix-title">🟡 Jinja2 UndefinedError: 'today_events' is undefined</div>
+      <div class="fix-where">templates/coordinator/scanner_selector.html</div>
+      <div class="fix-desc">
+        <strong>Root Cause:</strong> Template was updated to expect <code>today_events / tomorrow_events / upcoming_events</code> variables, but the route function was still passing the old <code>events=events</code> single list. Server hadn't been restarted, so the new route code wasn't active.<br><br>
+        <strong>Fix:</strong> Confirmed route was updated correctly; required server restart to reload new Python code.
+      </div>
+    </div>
+
+    <div class="fix-item">
+      <div class="fix-title">🟡 Participant Dashboard Showing Past Events in "Upcoming" Section</div>
+      <div class="fix-where">routes_participant.py · dashboard()</div>
+      <div class="fix-desc">
+        <strong>Root Cause:</strong> The upcoming events query fetched all active events regardless of date. Events from months ago appeared in the "Browse & Register" section.<br><br>
+        <strong>Fix:</strong> Added date filter — skip any event where <code>date &lt; today</code>.
+      </div>
+      <div class="code-diff">
+        <span class="code-add">+ today = datetime.date.today().strftime('%Y-%m-%d')</span>
+        <span class="code-add">+ if d.get('date', '9999-99-99') &lt; today: continue</span>
+      </div>
+    </div>
+
+    <div class="fix-item green">
+      <div class="fix-title">🟢 app.py Redundant upcoming List (Code Quality)</div>
+      <div class="fix-where">app.py · home()</div>
+      <div class="fix-desc">
+        <strong>Issue:</strong> A <code>upcoming = [d for d in events if d.get('date') >= current_date]</code> re-filter was applied after <code>events</code> was already filtered by the same <code>continue</code> guard in the loop above — pure redundant work.<br><br>
+        <strong>Fix:</strong> Removed the intermediate list; iterate <code>events</code> directly.
+      </div>
+    </div>
+
+    <div class="fix-item green">
+      <div class="fix-title">🟢 Dead Jinja2 'is defined' Guards on FirebaseWrapper Objects</div>
+      <div class="fix-where">templates/public/home.html</div>
+      <div class="fix-desc">
+        <strong>Issue:</strong> Templates had patterns like <code>ev.title if ev.title is defined else ev.get('title','')</code>. FirebaseWrapper objects always have these attributes — the fallback branch was unreachable dead code.<br><br>
+        <strong>Fix:</strong> Removed all such guards; simplified to <code>ev.title</code> directly.
+      </div>
+    </div>
+
+    <div class="fix-item green">
+      <div class="fix-title">🟢 cat_icons Dict Re-defined Inside Loop (Efficiency)</div>
+      <div class="fix-where">templates/participant/dashboard.html</div>
+      <div class="fix-desc">
+        <strong>Issue:</strong> The <code>{% set cat_icons = {...} %}</code> dictionary was inside a <code>{% for _ in range(2) %}</code> loop (for the infinite ticker), so it was re-created twice per page render.<br><br>
+        <strong>Fix:</strong> Moved the dict definition to before the loop.
+      </div>
+    </div>
+
+    <div class="fix-item green">
+      <div class="fix-title">🟢 index.html — JS onclick Missing Quotes Around event.id</div>
+      <div class="fix-where">templates/index.html · line 727</div>
+      <div class="fix-desc">
+        <strong>Issue:</strong> <code>onclick="showEventModal({{ event.id }})"</code> — Firestore document IDs are strings (e.g. <code>abc-123</code>). Without quotes, the JS engine sees hyphens as subtraction operators → parse error.<br><br>
+        <strong>Fix:</strong> <code>onclick="showEventModal('{{ event.id }}')"</code>
+      </div>
+    </div>
+
+    <div class="fix-item green">
+      <div class="fix-title">🟢 Empty CSS Rulesets in index.html</div>
+      <div class="fix-where">templates/index.html · lines 285, 349</div>
+      <div class="fix-desc">
+        <strong>Issue:</strong> <code>.modal-header .btn-close{}</code> and <code>.ev-card{}</code> were empty rules flagged by VS Code CSS linter.<br><br>
+        <strong>Fix:</strong> Added <code>filter:invert(1)</code> to .btn-close (so it shows on dark modal header); removed the empty .ev-card rule.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 11. UI/UX ═══════════════════════════════════ -->
+<div class="section" id="ui">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef9c3;">🎨</div>
+    <div>
+      <div class="chapter">Section 11</div>
+      <div class="section-title">UI/UX Upgrades</div>
+      <div class="section-sub">Visual and interaction improvements across the platform</div>
+    </div>
+  </div>
+
+  <h3 class="sub">Event Details Page — Full Redesign</h3>
+  <table class="feat-table" style="margin-bottom:24px;">
+    <thead><tr><th>Before (Old)</th><th>After (New)</th></tr></thead>
+    <tbody>
+      <tr><td>White text on white cards (invisible content)</td><td>Dark hero section with proper contrast throughout</td></tr>
+      <tr><td>btn-outline-light buttons invisible on white bg</td><td>Proper colored buttons for all actions</td></tr>
+      <tr><td>Prize amounts in border-light text — unreadable</td><td>Gold / Silver / Bronze gradient prize cards with emoji icons</td></tr>
+      <tr><td>Timeline dates in text-white on white card</td><td>Colored icon boxes with clear date/venue labels</td></tr>
+      <tr><td>No sticky register button — user had to scroll</td><td>Sticky action bar with fee display + register CTA</td></tr>
+      <tr><td>No organizer contact details</td><td>Organizer card: avatar, name, WhatsApp, email, call links</td></tr>
+      <tr><td>No share options</td><td>Share strip: WhatsApp, LinkedIn, Twitter, Copy Link</td></tr>
+      <tr><td>No countdown</td><td>Live countdown band (days/hours/minutes/seconds)</td></tr>
+      <tr><td>No top navigation</td><td>Sticky topnav with logo and register CTA</td></tr>
+      <tr><td>Registration modal: dark styling issues</td><td>Clean light-mode registration modal</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Coordinator Scanner Dashboard — Full Redesign</h3>
+  <table class="feat-table" style="margin-bottom:24px;">
+    <thead><tr><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td>Flat list of all events</td><td>TODAY / TOMORROW / UPCOMING sections with color badges</td></tr>
+      <tr><td>No date context</td><td>Pulsing "LIVE TODAY" red badge on today's events</td></tr>
+      <tr><td>No capacity information</td><td>Registration count + max capacity + progress bar on each card</td></tr>
+      <tr><td>No venue/time at a glance</td><td>Venue and time shown on every event card</td></tr>
+      <tr><td>Generic "Scan" button for all events</td><td>Red "Scan Tickets" for today; blue for future events</td></tr>
+      <tr><td>No stats header</td><td>Stats row: assigned events count, today count, hero greeting</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">CSS Architecture Upgrade — Shared Ticker</h3>
+  <div class="highlight-box">
+    <h3>Eliminated Duplicated CSS</h3>
+    <p>The event ticker animation was copy-pasted across 4 templates (admin dashboard, participant dashboard, SPOC dashboard, home). A shared <code>.ev-ticker</code> block was added to <code>global.css</code> — removing ~50 lines of duplicated CSS. Each template now only overrides the <code>::before content</code> label (e.g. <code>'LIVE ▶'</code>, <code>'YOUR EVENTS'</code>, <code>'ALL EVENTS'</code>).</p>
+  </div>
+
+  <h3 class="sub">Home Page Ticker — Real Events from DB</h3>
+  <table class="feat-table">
+    <thead><tr><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td>12 hardcoded placeholder ticker items ("SapthaFest 2026...", "Hackathon 2026...")</td><td>Real events from Firestore, sorted by nearest date, with registration count badges</td></tr>
+      <tr><td>No links on ticker items</td><td>Every ticker item links directly to that event's detail page</td></tr>
+      <tr><td>Would still show stale items after events end</td><td>Only future events shown; fallback shown if no events in DB</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════ 12. DATABASE ═══════════════════════════════════ -->
+<div class="section" id="db">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff7ed;">🗄️</div>
+    <div>
+      <div class="chapter">Section 12</div>
+      <div class="section-title">Database Structure</div>
+      <div class="section-sub">Firebase Firestore collection schema</div>
+    </div>
+  </div>
+
+  <div class="role-grid">
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#dbeafe;font-size:20px;">📦</div>
+        <div><div class="role-name">events</div><div class="role-desc">One document per event</div></div>
+      </div>
+      <ul class="role-perms">
+        <li>title, date, time, venue, category</li>
+        <li>status (active/inactive), is_featured</li>
+        <li>description, rules, agenda[], prizes{}</li>
+        <li>registration_count, limits{}</li>
+        <li>spoc_id, spoc_name, spoc_email</li>
+        <li>staff[] (assigned coordinators)</li>
+        <li>banner_url, whatsapp_group</li>
+        <li>24h_reminder_sent, coord_briefing_sent</li>
+        <li>openhall_mode, results_published</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#dcfce7;font-size:20px;">📋</div>
+        <div><div class="role-name">registrations</div><div class="role-desc">One document per participant+event</div></div>
+      </div>
+      <ul class="role-perms">
+        <li>event_id, event_title, event_date</li>
+        <li>participant_email, participant_name</li>
+        <li>usn, phone, college</li>
+        <li>status (confirmed/waitlist/cancelled)</li>
+        <li>checked_in (bool), check_in_time</li>
+        <li>position/rank (after results)</li>
+        <li>ticket_sent, reminder_sent</li>
+        <li>form_data{} (custom fields)</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#ede9fe;font-size:20px;">👤</div>
+        <div><div class="role-name">users</div><div class="role-desc">One document per user (keyed by email)</div></div>
+      </div>
+      <ul class="role-perms">
+        <li>email, name, phone, usn</li>
+        <li>role (Student/EventCoordinator/etc.)</li>
+        <li>category (club/dept)</li>
+        <li>password (hashed scrypt/pbkdf2)</li>
+        <li>needs_password_reset (bool)</li>
+        <li>created_at</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fce7f3;font-size:20px;">📢</div>
+        <div><div class="role-name">announcements</div><div class="role-desc">Live event updates</div></div>
+      </div>
+      <ul class="role-perms">
+        <li>event_id, event_title</li>
+        <li>message, priority (urgent/info/success)</li>
+        <li>timestamp</li>
+        <li>posted_by (SPOC email)</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fef9c3;font-size:20px;">📝</div>
+        <div><div class="role-name">feedback</div><div class="role-desc">Post-event participant ratings</div></div>
+      </div>
+      <ul class="role-perms">
+        <li>reg_id, event_id</li>
+        <li>rating (1-5), comment</li>
+        <li>submitted_at</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fee2e2;font-size:20px;">📊</div>
+        <div><div class="role-name">action_logs</div><div class="role-desc">Audit trail for all actions</div></div>
+      </div>
+      <ul class="role-perms">
+        <li>action (LOGIN, REGISTER, etc.)</li>
+        <li>detail</li>
+        <li>timestamp</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 13. AI ═══════════════════════════════════ -->
+<div class="section" id="ai">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef3c7;">🤖</div>
+    <div>
+      <div class="chapter">Section 13</div>
+      <div class="section-title">AI Features</div>
+      <div class="section-sub">Anthropic Claude-powered intelligence built into the platform</div>
+    </div>
+  </div>
+
+  <div class="role-grid">
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fef3c7;font-size:22px;">✍️</div>
+        <div>
+          <div class="role-name">AI Event Narrative Report</div>
+          <div class="role-desc">SPOC-triggered post-event analysis</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Generates a professional paragraph summary of the event</li>
+        <li>Highlights top performers by name</li>
+        <li>Calculates engagement rate, turnout %, avg feedback score</li>
+        <li>Outputs ready-to-share report text</li>
+        <li>Accessible at /spoc/ai_report/&lt;event_id&gt;</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#dcfce7;font-size:22px;">💬</div>
+        <div>
+          <div class="role-name">Sparky AI Chatbot</div>
+          <div class="role-desc">Public home page assistant</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Answers questions about upcoming events</li>
+        <li>Helps participants find the right event to register for</li>
+        <li>Visible on the public home page as a floating chat widget</li>
+        <li>Context-aware: knows current event list</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 14. STATS ═══════════════════════════════════ -->
+<div class="section" id="stats">
+  <div class="section-header">
+    <div class="section-icon" style="background:#dbeafe;">📊</div>
+    <div>
+      <div class="chapter">Section 14</div>
+      <div class="section-title">Code Statistics</div>
+      <div class="section-sub">Scale of the codebase at a glance</div>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card blue">
+      <div class="stat-num">~5,500</div>
+      <div class="stat-lbl">Lines of Python (backend)</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-num">50+</div>
+      <div class="stat-lbl">Jinja2 HTML Templates</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-num">15</div>
+      <div class="stat-lbl">Files Changed This Session</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-num">1,080+</div>
+      <div class="stat-lbl">Lines Added This Session</div>
+    </div>
+    <div class="stat-card teal">
+      <div class="stat-num">546</div>
+      <div class="stat-lbl">Lines: Event Details Page</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-num">995</div>
+      <div class="stat-lbl">Lines: SPOC Dashboard</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-num">1,270</div>
+      <div class="stat-lbl">Lines: Home Page</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-num">727</div>
+      <div class="stat-lbl">Lines: Participant Dashboard</div>
+    </div>
+  </div>
+
+  <h3 class="sub">This Session — Changes Summary</h3>
+  <table class="feat-table">
+    <thead><tr><th>File</th><th>Change</th><th>Lines Added</th></tr></thead>
+    <tbody>
+      <tr><td><code>templates/public/event_details.html</code></td><td>Complete redesign — new hero, countdown, prize cards, grid layout, sticky action bar</td><td>+530</td></tr>
+      <tr><td><code>templates/coordinator/scanner_selector.html</code></td><td>Full redesign — TODAY/TOMORROW/UPCOMING sections, event cards with stats</td><td>+240</td></tr>
+      <tr><td><code>tasks/scheduled_tasks.py</code></td><td>Added coordinator briefing email task (day-before automated send)</td><td>+101</td></tr>
+      <tr><td><code>templates/spoc/dashboard.html</code></td><td>Ticker CSS, profile link, live stats, status badge</td><td>+22</td></tr>
+      <tr><td><code>templates/participant/dashboard.html</code></td><td>Ticker fix (cat_icons moved outside loop), past-event filter</td><td>+38</td></tr>
+      <tr><td><code>templates/admin/dashboard.html</code></td><td>Ticker CSS override, broken selectattr filter fixed</td><td>+24</td></tr>
+      <tr><td><code>templates/index.html</code></td><td>Ticker upgraded to real DB events; JS onclick quote fix; empty CSS rules</td><td>+37</td></tr>
+      <tr><td><code>static/css/global.css</code></td><td>Shared .ev-ticker block added (eliminates 4× CSS duplication)</td><td>+13</td></tr>
+      <tr><td><code>routes_spoc.py</code></td><td>api_coordinators 500 fix; public_announcements composite-index fix; role fix</td><td>+23</td></tr>
+      <tr><td><code>routes_auth.py</code></td><td>EventCoordinator role normalization at login</td><td>+2</td></tr>
+      <tr><td><code>routes_coordinator.py</code></td><td>COORD_ROLES fix; scanner_selector full rewrite for TODAY/TOMORROW/UPCOMING</td><td>+40</td></tr>
+      <tr><td><code>routes_participant.py</code></td><td>Past-event date filter in upcoming section</td><td>+5</td></tr>
+      <tr><td><code>routes_public.py</code></td><td>Past-event filter on home events list</td><td>+3</td></tr>
+      <tr><td><code>app.py</code></td><td>Removed redundant upcoming re-filter; ticker_events real data</td><td>+57</td></tr>
+      <tr><td><code>templates/public/home.html</code></td><td>Ticker CSS override, dead Jinja2 guards removed</td><td>+23</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════ FOOTER ═══════════════════════════════════ -->
+<div class="report-footer">
+  <div style="font-family:'Poppins',sans-serif;font-size:18px;font-weight:800;color:rgba(255,255,255,.8);margin-bottom:8px;">SapthaEvent Portal</div>
+  <div>Prepared by <strong>Kiran Mahantesh Biradar</strong> &nbsp;·&nbsp; <strong>SNPSU</strong> &nbsp;·&nbsp; <strong>3 May 2026</strong></div>
+  <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.25);">To save as PDF: Click "Save as PDF" below → or Ctrl+P → Save as PDF (set margins to None for best results)</div>
+</div>
+
+<!-- PRINT BUTTON -->
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+
+<script>
+  // Smooth scroll for TOC links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const el = document.querySelector(a.getAttribute('href'));
+      if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+</script>
+</body>
+</html>

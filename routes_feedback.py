@@ -12,7 +12,6 @@ import collections
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session
 from google.cloud.firestore_v1.base_query import FieldFilter
-from google.cloud import firestore
 
 from models import db
 from utils import login_required, role_required

@@ -45,7 +45,7 @@ def create_users():
 
 def create_event():
     print("Creating Sample Event...")
-    
+
     # We need the SPOC's ID and Judge's ID we just created
     spoc_id = 'spoc@snpsu.edu.in'
     judge_id = 'judge@snpsu.edu.in'
@@ -61,7 +61,7 @@ def create_event():
         'status': 'active',
         'spoc_id': spoc_id,
         'created_by': spoc_id,
-        
+
         # Rules
         'is_team_event': True,
         'team_min': 2,
@@ -69,13 +69,13 @@ def create_event():
         'max_participants': 100,
         'reg_deadline': '2026-03-10',
         'is_published': True,
-        
+
         # Resources
         'banner_url': 'https://snpsu.edu.in/wp-content/uploads/2024/05/SNPSU-Campus.jpg',
         'prizes': '1st Place: ₹10,000, 2nd Place: ₹5,000',
         'group_link': 'https://chat.whatsapp.com/sample',
         'problem_statements': ['Healthcare AI', 'Smart Campus', 'FinTech'],
-        
+
         # Assignments
         'coord_student_id': coord_id,
         'coord_staff_id': None,
@@ -90,7 +90,7 @@ def create_event():
 
 def create_registration(event_id, event_title):
     print("Creating Sample Registration...")
-    
+
     reg_data = {
         'event_id': event_id,
         'event_title': event_title,
@@ -114,7 +114,7 @@ def create_registration(event_id, event_title):
             }
         }
     }
-    
+
     db.collection('registrations').add(reg_data)
     print("✅ Created Sample Registration for 'Code Warriors'")
 

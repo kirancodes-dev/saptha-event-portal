@@ -1,4 +1,9 @@
-import csv, datetime, io, random, secrets, string
+import csv
+import datetime
+import io
+import random
+import secrets
+import string
 from io import StringIO
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -637,8 +642,8 @@ def process_walkin():
 
         # Generate QR code bytes so it can be attached to the ticket email
         try:
-            from utils_qr import generate_qr_base64
-            import base64, qrcode, io
+            import qrcode
+            import io
             from qrcode.image.pil import PilImage
             qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H,
                                box_size=8, border=2)

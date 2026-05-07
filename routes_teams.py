@@ -13,7 +13,7 @@ import secrets
 import string
 
 from flask import (Blueprint, flash, redirect, render_template, request,
-                   session, url_for)
+                   session)
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from models import db

@@ -26,7 +26,6 @@ import time
 
 from flask import (Blueprint, Response, current_app, flash, jsonify,
                    redirect, render_template, request, session)
-from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from werkzeug.security import generate_password_hash
 

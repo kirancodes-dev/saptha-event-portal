@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, Response, url_for, jsonify
+from flask import Blueprint, render_template, request, redirect, session, flash, Response, jsonify
 from models import db, FirebaseWrapper
 import datetime
 import csv
@@ -62,14 +62,14 @@ def dashboard():
 @role_required('ClubSPOC')
 def create_event():
     if request.method == 'GET':
-        return render_template('spoc/create_event.html') 
+        return render_template('spoc/create_event.html')
 
     try:
         def get_bool(key): return True if request.form.get(key) == 'on' else False
-        def get_int(key, default=0): 
+        def get_int(key, default=0):
             try: return int(request.form.get(key, default))
             except: return default
-        
+
         # 1. Capture Multiple Coordinators (Comma separated string -> List)
         coord_string = request.form.get('coordinators', '')
         coordinators_list = [email.strip().lower() for email in coord_string.split(',') if email.strip()]
@@ -103,14 +103,14 @@ def create_event():
             'venue': request.form.get('venue'),
             'participation_type': request.form.get('participation_type'),
             'is_team_event': request.form.get('participation_type') in ['Team', 'Both'],
-            
+
             # KEY NEW FIELDS
             'coordinators': coordinators_list,  # Array of emails
             'form_schema':  form_schema,         # The exact form requirements
 
             # Judging criteria for judge scoring
             'judging_criteria': json.loads(request.form.get('judging_criteria_json') or '[]'),
-            
+
             'limits': {
                 'team_min': get_int('team_min', 1),
                 'team_max': get_int('team_max', 1),
@@ -123,10 +123,10 @@ def create_event():
                 '2nd': request.form.get('prize_2'),
                 '3rd': request.form.get('prize_3')
             },
-            
+
             'spoc_id': session['user_id'],
             'organizer': {
-                'name': session.get('name'), 
+                'name': session.get('name'),
                 'email': session.get('user_id'),
                 'phone': '9999999999', # Placeholder, ideally fetch from profile
                 'group_link': '#'
@@ -163,7 +163,7 @@ def create_event():
 
         flash(f"Event '{event_data['title']}' published! Build or customise the registration form below.", "success")
         return redirect(f'/spoc/dashboard#event-{new_event_id}')
-        
+
     except Exception as e:
         print(f"Error: {e}")
         flash(f"Error creating event: {str(e)}", "danger")
@@ -203,23 +203,23 @@ def event_results(event_id):
 
     # 2. Fetch Registrations
     regs_ref = db.collection('registrations').where('event_id', '==', event_id).stream()
-    
+
     leaderboard = []
-    
+
     for r in regs_ref:
         data = r.to_dict()
         data['id'] = r.id
-        
+
         # 3. Calculate Scores
         scores_map = data.get('scores', {})
         total_score = sum([s.get('total', 0) for s in scores_map.values()])
         judge_count = len(scores_map)
-        
+
         avg_score = round(total_score / judge_count, 2) if judge_count > 0 else 0
-        
+
         data['final_score'] = avg_score
         data['judge_count'] = judge_count
-        
+
         leaderboard.append(data)
 
     # 4. Sort by highest avg score; tiebreak by per-criteria averages
@@ -593,7 +593,7 @@ def publish_results(event_id):
         flash("Results have been published to the student portal!", "success")
     except Exception as e:
         flash(f"Error: {e}", "danger")
-        
+
     return redirect(f'/spoc/results/{event_id}')
 
 
@@ -837,7 +837,7 @@ def clone_event(event_id):
 
     log_action(db, "EVENT_CLONED",
                f"SPOC {session.get('user_id')} cloned event {event_id} → {new_id}")
-    flash(f"✅ Event cloned! Update the date and deadline, then save.", "success")
+    flash("✅ Event cloned! Update the date and deadline, then save.", "success")
     return redirect(f'/spoc/edit_event/{new_id}')
 
 
@@ -914,7 +914,8 @@ def delete_event(event_id):
 @login_required
 @role_required('ClubSPOC')
 def assign_coordinator(event_id):
-    import secrets, string
+    import secrets
+    import string
     from werkzeug.security import generate_password_hash
     from utils_email import send_credentials_email, send_appointment_email
 
@@ -1061,7 +1062,8 @@ def upload_cert_templates(event_id):
 @login_required
 @role_required('ClubSPOC')
 def upload_judges_csv(event_id):
-    import secrets, string
+    import secrets
+    import string
     from werkzeug.security import generate_password_hash
 
     doc = db.collection('events').document(event_id).get()
@@ -1120,7 +1122,8 @@ def upload_judges_csv(event_id):
 @login_required
 @role_required('ClubSPOC')
 def add_judge(event_id):
-    import secrets, string
+    import secrets
+    import string
     from werkzeug.security import generate_password_hash
 
     doc = db.collection('events').document(event_id).get()

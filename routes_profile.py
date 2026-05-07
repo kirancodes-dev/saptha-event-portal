@@ -1,7 +1,6 @@
 # =========================================================
 # routes_profile.py
 # =========================================================
-import datetime
 from flask import Blueprint, flash, redirect, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db

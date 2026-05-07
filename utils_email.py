@@ -106,7 +106,8 @@ def _send_via_brevo(to_email, subject: str, html: str,
                     attachments: list = None) -> bool:
     global LAST_EMAIL_ERROR
     try:
-        import urllib.request, json as _json
+        import urllib.request
+        import json as _json
 
         api_key  = os.environ.get('BREVO_API_KEY', '')
         from_raw = _from_address()

@@ -17,7 +17,6 @@ import datetime
 import uuid
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session
-from google.cloud import firestore
 
 from models import db
 from utils import login_required, role_required, log_action

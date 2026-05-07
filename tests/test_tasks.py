@@ -13,12 +13,7 @@ class TestSendReminderEmailTask:
     def test_sends_email_when_mail_configured(self):
         from tasks.email_tasks import send_reminder_email_task
 
-        mock_mail = MagicMock()
-        mock_app  = MagicMock()
-        mock_app.config.get.return_value = 'http://test.local'
-        mock_app.extensions = {'mail': mock_mail}
-
-        with patch('flask.current_app', mock_app):
+        with patch('utils_email._send', return_value=True) as mock_send:
             send_reminder_email_task(
                 to_email='user@test.local',
                 name='Test User',
@@ -27,7 +22,7 @@ class TestSendReminderEmailTask:
                 venue='Main Hall',
                 reg_id='REG-001',
             )
-        mock_mail.send.assert_called_once()
+        mock_send.assert_called_once()
 
     def test_skips_when_mail_not_configured(self):
         from tasks.email_tasks import send_reminder_email_task

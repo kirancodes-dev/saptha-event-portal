@@ -12,6 +12,7 @@ Queued on: 'webhooks'
 import logging
 import datetime
 from celery_app import celery
+from models import db
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ def process_razorpay_payment(self, payload: dict):
     """
     retry_num = self.request.retries
     try:
-        from models import db
+
         from tasks.email_tasks import send_ticket_email_task
         from tasks.notification_tasks import send_payment_receipt_whatsapp_task
 
@@ -127,7 +128,7 @@ def process_razorpay_payment(self, payload: dict):
 def process_razorpay_refund(self, payload: dict):
     """Handle Razorpay refund.processed webhook."""
     try:
-        from models import db
+
 
         reg_id     = payload.get('reg_id', '')
         payment_id = payload.get('razorpay_payment_id', '')

@@ -25,15 +25,26 @@ def dashboard():
         events_ref = (db.collection('events')
                         .order_by('created_at', direction=firestore.Query.DESCENDING)
                         .stream())
-        events      = []
-        total_regs  = 0
-        total_staff = 0
+        events          = []
+        total_regs      = 0
+        total_revenue   = 0
+        unique_staff_emails = set()
+        cat_counts      = {}
 
         for e in events_ref:
             d       = e.to_dict()
             d['id'] = e.id
-            total_regs  += d.get('registration_count', 0)
-            total_staff += len(d.get('staff', []))
+            rc = int(d.get('registration_count', 0) or 0)
+            total_regs += rc
+            # Revenue: fee × confirmed registrations
+            fee = int((d.get('fees') or {}).get('regular', 0) or d.get('entry_fee', 0) or 0)
+            total_revenue += fee * rc
+            # Unique staff (deduplicate across events)
+            for s in d.get('staff', []):
+                if s.get('email'):
+                    unique_staff_emails.add(s['email'])
+            cat = d.get('category', 'Other')
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
             regs = db.collection('registrations').where('event_id', '==', e.id).stream()
             d['scored_teams'] = sum(
                 1 for r in regs
@@ -42,15 +53,23 @@ def dashboard():
             )
             events.append(d)
 
-        users_ref  = db.collection('users').stream()
-        user_stats = {'total': 0, 'students': 0, 'staff': 0}
-        for u in users_ref:
-            role = u.to_dict().get('role', '')
+        # User stats — role breakdown
+        user_stats = {'total': 0, 'students': 0, 'judges': 0,
+                      'coordinators': 0, 'spocs': 0, 'admins': 0}
+        for u in db.collection('users').stream():
+            ud = u.to_dict()
+            role = (ud.get('role') or '').strip()
             user_stats['total'] += 1
             if role == 'Student':
                 user_stats['students'] += 1
-            else:
-                user_stats['staff'] += 1
+            elif role == 'Judge':
+                user_stats['judges'] += 1
+            elif role in ('EventCoordinator', 'Coordinator'):
+                user_stats['coordinators'] += 1
+            elif role == 'ClubSPOC':
+                user_stats['spocs'] += 1
+            elif role in ('SuperAdmin', 'Super Admin', 'Admin'):
+                user_stats['admins'] += 1
 
         audit_log = []
         try:
@@ -63,16 +82,20 @@ def dashboard():
 
     except Exception as exc:
         flash(f"Dashboard error: {exc}", "danger")
-        events, total_regs, total_staff, user_stats, audit_log = [], 0, 0, {}, []
+        events, total_regs, total_revenue = [], 0, 0
+        unique_staff_emails, user_stats, audit_log, cat_counts = set(), {}, [], {}
 
     return render_template(
         'admin/dashboard.html',
         events=events,
         total_regs=total_regs,
-        total_staff=total_staff,
+        total_revenue=total_revenue,
+        total_staff=len(unique_staff_emails),
         user_stats=user_stats,
+        cat_counts=cat_counts,
         audit_log=audit_log,
-        user_name=session.get('name')
+        user_name=session.get('name'),
+        today=datetime.date.today().strftime('%Y-%m-%d'),
     )
 
 
@@ -513,3 +536,69 @@ def send_bulk_email():
         current_app.logger.exception("Bulk email route error: %s", exc)
         flash(f'Send failed: {exc}', 'danger')
         return render_template('admin/send_email.html', events=events)
+
+
+# =========================================================
+# A4 PORTAL REPORT
+# =========================================================
+@admin_bp.route('/report')
+@login_required
+@role_required(SUPER_ROLES)
+def report():
+    try:
+        all_events = []
+        total_regs = total_revenue = 0
+        cat_counts = {}
+        unique_staff = set()
+
+        for e in db.collection('events').order_by('date').stream():
+            d = e.to_dict()
+            d['id'] = e.id
+            rc  = int(d.get('registration_count', 0) or 0)
+            fee = int((d.get('fees') or {}).get('regular', 0) or d.get('entry_fee', 0) or 0)
+            d['_fee'] = fee
+            d['_revenue'] = fee * rc
+            total_regs    += rc
+            total_revenue += fee * rc
+            cat = d.get('category', 'Other')
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
+            for s in d.get('staff', []):
+                if s.get('email'):
+                    unique_staff.add(s['email'])
+            all_events.append(d)
+
+        user_stats = {'total': 0, 'students': 0, 'judges': 0,
+                      'coordinators': 0, 'spocs': 0}
+        all_users = []
+        for u in db.collection('users').stream():
+            ud = u.to_dict()
+            role = (ud.get('role') or '').strip()
+            user_stats['total'] += 1
+            if role == 'Student':
+                user_stats['students'] += 1
+            elif role == 'Judge':
+                user_stats['judges'] += 1
+                all_users.append(ud)
+            elif role in ('EventCoordinator', 'Coordinator'):
+                user_stats['coordinators'] += 1
+                all_users.append(ud)
+            elif role == 'ClubSPOC':
+                user_stats['spocs'] += 1
+                all_users.append(ud)
+
+    except Exception as exc:
+        flash(f"Report error: {exc}", "danger")
+        return redirect('/admin/dashboard')
+
+    return render_template(
+        'admin/report.html',
+        events=all_events,
+        user_stats=user_stats,
+        staff_users=all_users,
+        total_regs=total_regs,
+        total_revenue=total_revenue,
+        total_staff=len(unique_staff),
+        cat_counts=cat_counts,
+        generated_at=datetime.datetime.now().strftime('%d %B %Y, %I:%M %p'),
+        today=datetime.date.today().strftime('%d %B %Y'),
+    )

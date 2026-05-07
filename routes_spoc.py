@@ -14,18 +14,22 @@ spoc_bp = Blueprint('spoc', __name__, url_prefix='/spoc')
 @role_required('ClubSPOC')
 def dashboard():
     spoc_id = session.get('user_id')
-    query = db.collection('events').where('spoc_id', '==', spoc_id).stream()
+    # SuperAdmin sees all events; SPOC sees only their own
+    if session.get('role') in ('SuperAdmin', 'Super Admin'):
+        query = db.collection('events').stream()
+    else:
+        query = db.collection('events').where('spoc_id', '==', spoc_id).stream()
 
     events = []
     total_regs = 0
     present_count = 0
+    total_revenue = 0
+    unique_staff: set = set()
     chart_labels = []
     chart_regs = []
 
     for doc in query:
         data = doc.to_dict()
-        # Use cached counts to avoid N+1 Firestore queries on every page load.
-        # /spoc/api/stats refreshes the cache every 30 s in the background.
         reg_count = data.get('registration_count')
         p_count   = data.get('attendance_count', 0) or 0
         if reg_count is None:
@@ -38,6 +42,11 @@ def dashboard():
             })
         total_regs    += reg_count
         present_count += p_count
+        fee = int((data.get('fees') or {}).get('regular', 0) or data.get('entry_fee', 0) or 0)
+        total_revenue += fee * reg_count
+        for s in data.get('staff', []):
+            if s.get('email'):
+                unique_staff.add(s['email'])
         data['registration_count'] = reg_count
         events.append(FirebaseWrapper(doc.id, data))
         chart_labels.append(data.get('title', doc.id)[:20])
@@ -50,6 +59,8 @@ def dashboard():
             'total_events':  len(events),
             'total_regs':    total_regs,
             'present_count': present_count,
+            'total_revenue': total_revenue,
+            'staff_count':   len(unique_staff),
         },
         category=session.get('category', 'General'),
         chart_labels=chart_labels,

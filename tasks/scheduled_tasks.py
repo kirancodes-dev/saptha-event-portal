@@ -16,6 +16,7 @@ Jobs:
 import logging
 import datetime
 from celery_app import celery
+from models import db
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def send_24h_reminders(self):
     individual email + WhatsApp reminder tasks.
     """
     try:
-        from models import db
+
         from tasks.email_tasks import send_ticket_email_task
         from tasks.notification_tasks import send_reminder_whatsapp_task
 
@@ -233,7 +234,7 @@ def send_3day_reminders(self):
     Scan for events 3 days away. Send a "your event is in 3 days, ticket coming soon" reminder.
     """
     try:
-        from models import db
+
         from tasks.email_tasks import send_generic_email_task
 
         ist_now      = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
@@ -365,7 +366,7 @@ def check_registration_velocity(self):
       - Marks event with `velocity_alert_sent=True` to avoid repeat sends.
     """
     try:
-        from models import db
+
         from tasks.email_tasks import send_generic_email_task
 
         ist     = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
@@ -531,7 +532,7 @@ def run_event_lifecycle(self):
     3. Delete event document 5 days after event date
     """
     try:
-        from models import db
+
 
         ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         today = datetime.datetime.now(ist).date()

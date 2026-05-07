@@ -12,6 +12,7 @@ Schedule:  daily at midnight IST (via Celery Beat in celery_app.py)
 import logging
 import datetime
 from celery_app import celery
+from models import db
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def daily_rollup(self):
       - total_revenue
     """
     try:
-        from models import db
+
 
         ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         today_str = datetime.datetime.now(ist).strftime('%Y-%m-%d')
@@ -98,7 +99,7 @@ def event_registration_snapshot(self, event_id: str):
     Called by admin routes after bulk imports or major status changes.
     """
     try:
-        from models import db
+
         from google.cloud.firestore_v1.base_query import FieldFilter
 
         regs = list(db.collection('registrations')

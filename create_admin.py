@@ -34,7 +34,7 @@ def appoint_spoc():
         })
 
         flash(f"Successfully appointed {name} as the SPOC for {category} Division!", "success")
-        
+
     except Exception as e:
         flash(f"Error creating SPOC: {e}", "danger")
 

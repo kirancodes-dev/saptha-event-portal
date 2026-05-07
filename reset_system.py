@@ -1,10 +1,10 @@
 from app import app, db
-from models import Participant, Event
+from models import Participant
 
 with app.app_context():
     # 1. Create a Test Student
     print("Creating Test Student...")
-    
+
     # Check if student already exists to avoid duplicate error
     if not Participant.query.filter_by(email='student@test.com').first():
         student = Participant(
@@ -22,4 +22,3 @@ with app.app_context():
 
     print("\nSystem ready for login testing.")
 
-    

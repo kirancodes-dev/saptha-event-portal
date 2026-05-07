@@ -4,7 +4,6 @@ tests/test_tasks.py — Celery task unit tests (synchronous, no broker needed)
 Tasks are called directly (not via .delay()) so tests run without Redis.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
 

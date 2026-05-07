@@ -14,7 +14,12 @@ Run order:
 Requirements: firebase_admin, werkzeug  (already in requirements.txt)
 """
 
-import os, sys, json, datetime, time, random
+import os
+import sys
+import json
+import datetime
+import time
+import random
 
 # ── Firebase init ──────────────────────────────────────────────────────
 def init_firebase():
@@ -218,7 +223,7 @@ def main():
             'needs_password_reset': False,
             'created_at':          today,
         })
-    print(f"  OK  [Student           ]  student001–100@snpsu.edu.in  pw: Student@1234")
+    print("  OK  [Student           ]  student001–100@snpsu.edu.in  pw: Student@1234")
     print(f"      Users created: {len(all_users)} staff + 100 students\n")
 
     # ── 2. Create event ───────────────────────────────────────────────
@@ -278,42 +283,42 @@ def main():
 
     # Update registration_count on event
     ev_ref.update({'registration_count': 100})
-    print(f"  OK  100 registrations created — all marked Present\n")
+    print("  OK  100 registrations created — all marked Present\n")
 
     # ── 4. Print summary ──────────────────────────────────────────────
     print("[4/4] Done! Full summary:\n")
     print("─"*60)
-    print(f"  LOGIN URL   https://saptha-event-portal-production.up.railway.app/login")
+    print("  LOGIN URL   https://saptha-event-portal-production.up.railway.app/login")
     print("─"*60)
-    print(f"\n  SPOC")
+    print("\n  SPOC")
     print(f"    {SPOC['email']:<40s} {SPOC['password_raw']}")
-    print(f"\n  JUDGES  (dashboard: /judge/dashboard)")
+    print("\n  JUDGES  (dashboard: /judge/dashboard)")
     for j in JUDGES:
         print(f"    {j['email']:<40s} {j['password_raw']}")
-    print(f"\n  COORDINATORS  (dashboard: /coordinator/scanner)")
+    print("\n  COORDINATORS  (dashboard: /coordinator/scanner)")
     for c in COORDINATORS:
         print(f"    {c['email']:<40s} {c['password_raw']}")
-    print(f"\n  STUDENTS  (dashboard: /participant/dashboard)")
-    print(f"    student001@snpsu.edu.in  …  student100@snpsu.edu.in")
-    print(f"    Password: Student@1234  (same for all)")
-    print(f"\n  EVENT")
+    print("\n  STUDENTS  (dashboard: /participant/dashboard)")
+    print("    student001@snpsu.edu.in  …  student100@snpsu.edu.in")
+    print("    Password: Student@1234  (same for all)")
+    print("\n  EVENT")
     print(f"    ID:       {event_id}")
     print(f"    Title:    {event_title}")
-    print(f"    Students: 100 registered + Present")
-    print(f"    Judges:   5 (Open Hall Mode — all see all students)")
-    print(f"    Criteria: Innovation · Technical Complexity · Impact · Presentation")
+    print("    Students: 100 registered + Present")
+    print("    Judges:   5 (Open Hall Mode — all see all students)")
+    print("    Criteria: Innovation · Technical Complexity · Impact · Presentation")
     print("─"*60)
-    print(f"\n  NEXT STEPS:")
-    print(f"  1. Log in as judge1–5@snpsu.edu.in and submit scores")
-    print(f"  2. Log in as spoc@snpsu.edu.in → View Scores → Publish Results")
-    print(f"  3. Check student emails for certificates")
+    print("\n  NEXT STEPS:")
+    print("  1. Log in as judge1–5@snpsu.edu.in and submit scores")
+    print("  2. Log in as spoc@snpsu.edu.in → View Scores → Publish Results")
+    print("  3. Check student emails for certificates")
     print("─"*60)
     print()
 
     # Save event_id to file for reference
     with open('test_event_id.txt', 'w') as f:
         f.write(event_id)
-    print(f"  Event ID saved to test_event_id.txt\n")
+    print("  Event ID saved to test_event_id.txt\n")
 
 if __name__ == '__main__':
     main()

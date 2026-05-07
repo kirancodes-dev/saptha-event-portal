@@ -22,7 +22,9 @@ What this script creates:
 Run:  python seed_live_demo.py
 """
 
-import sys, datetime, os, json
+import sys
+import datetime
+import os
 sys.path.insert(0, '.')
 
 from werkzeug.security import generate_password_hash
@@ -189,34 +191,34 @@ def main():
     print(f'  DEMO READY — Tomorrow {TOMORROW}')
     print(f'{"═"*W}')
 
-    print(f'\n  STEP-BY-STEP DEMO SCRIPT')
+    print('\n  STEP-BY-STEP DEMO SCRIPT')
     print(f'  {"─"*60}')
-    print(f'  09:00–10:00  REGISTRATION (on-spot at venue)')
-    print(f'               Coordinator logs in → /coordinator/on_spot')
-    print(f'               Enter student Name / Email / USN → Submit')
-    print(f'               Student gets a ticket email with QR code')
+    print('  09:00–10:00  REGISTRATION (on-spot at venue)')
+    print('               Coordinator logs in → /coordinator/on_spot')
+    print('               Enter student Name / Email / USN → Submit')
+    print('               Student gets a ticket email with QR code')
     print()
-    print(f'  10:00–11:30  SPOC SETUP (already done by this script)')
-    print(f'               SPOC logs in → /spoc/dashboard')
-    print(f'               Verify judges & coordinators are listed on event')
+    print('  10:00–11:30  SPOC SETUP (already done by this script)')
+    print('               SPOC logs in → /spoc/dashboard')
+    print('               Verify judges & coordinators are listed on event')
     print()
-    print(f'  11:45–12:00  QR CHECK-IN')
-    print(f'               Coordinator → /coordinator/scanner')
-    print(f'               Select event "Project Showcase 2026"')
-    print(f'               Scan each student\'s QR code → marks them Present')
+    print('  11:45–12:00  QR CHECK-IN')
+    print('               Coordinator → /coordinator/scanner')
+    print('               Select event "Project Showcase 2026"')
+    print('               Scan each student\'s QR code → marks them Present')
     print()
-    print(f'  12:00–14:00  JUDGING (judges score on their phones/laptops)')
-    print(f'               Judge logs in → /judge/dashboard')
-    print(f'               See list of Present students → Score each one')
-    print(f'               Criteria: Idea / Implementation / Presentation / Innovation')
+    print('  12:00–14:00  JUDGING (judges score on their phones/laptops)')
+    print('               Judge logs in → /judge/dashboard')
+    print('               See list of Present students → Score each one')
+    print('               Criteria: Idea / Implementation / Presentation / Innovation')
     print()
-    print(f'  14:00        PUBLISH RESULTS')
+    print('  14:00        PUBLISH RESULTS')
     print(f'               SPOC → /spoc/event/{event_id}/results')
-    print(f'               Click "Publish Results" → leaderboard goes live')
-    print(f'               Certificates auto-generated for top participants')
+    print('               Click "Publish Results" → leaderboard goes live')
+    print('               Certificates auto-generated for top participants')
     print()
     print(f'  {"─"*60}')
-    print(f'  LOGIN CREDENTIALS')
+    print('  LOGIN CREDENTIALS')
     print(f'  {"─"*60}')
     print(f'  SPOC          {DEMO_SPOC["email"]:<35} {DEMO_SPOC["password"]}')
     for j in DEMO_JUDGES:
@@ -225,7 +227,7 @@ def main():
         print(f'  Coordinator   {c["email"]:<35} {c["password"]}')
     print()
     print(f'  EVENT ID (for direct URLs): {event_id}')
-    print(f'  Also saved to: demo_event_id.txt')
+    print('  Also saved to: demo_event_id.txt')
     print(f'{"═"*W}\n')
 
 

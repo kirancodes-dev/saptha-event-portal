@@ -14,15 +14,15 @@ def dashboard():
         # Stats Logic
         users_ref = db.collection('users')
         spocs = list(users_ref.where('role', '==', 'ClubSPOC').stream())
-        
+
         # Safe counts
         active_events = len(list(db.collection('events').where('status', '==', 'active').stream()))
         students = len(list(users_ref.where('role', 'in', ['Student', 'Participant']).stream()))
-        
+
         spoc_list = [{'id': d.id, **d.to_dict()} for d in spocs]
 
         return render_template(
-            'super_admin/dashboard.html', 
+            'super_admin/dashboard.html',
             stats={'spocs': len(spoc_list), 'events': active_events, 'students': students},
             spocs=spoc_list
         )
@@ -35,7 +35,7 @@ def dashboard():
 def events():
     # Placeholder: In future, make a 'manage_events.html'
     flash("Event Management Module loaded.", "info")
-    return redirect(url_for('super_admin.dashboard')) 
+    return redirect(url_for('super_admin.dashboard'))
 
 # --- 3. USER ROLES (NEW ROUTE) ---
 @super_bp.route('/users')
@@ -77,7 +77,7 @@ def create_spoc():
         }
         db.collection('users').document(email).set(user_data)
         flash("Club Lead appointed successfully!", "success")
-        
+
     except Exception as e:
         flash(f"Error: {str(e)}", "danger")
 

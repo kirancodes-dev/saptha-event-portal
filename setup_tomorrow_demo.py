@@ -19,7 +19,9 @@ Does TWO things:
 Run:  python setup_tomorrow_demo.py
 """
 
-import sys, datetime, os
+import sys
+import datetime
+import os
 sys.path.insert(0, '.')
 
 import firebase_admin
@@ -223,19 +225,19 @@ def print_summary(event_ids):
     print(f'  DONE — {TOMORROW}')
     print(f'{"═"*W}')
 
-    print(f'\n  LOGIN AS SPOC')
+    print('\n  LOGIN AS SPOC')
     print(f'  {"─"*60}')
     print(f'  {SPOC_EMAIL}  →  /spoc/dashboard')
-    print(f'  Both events will appear there. Assign judges & coordinators')
-    print(f'  from the dashboard using "Add Judge" / "Assign Coordinator".')
+    print('  Both events will appear there. Assign judges & coordinators')
+    print('  from the dashboard using "Add Judge" / "Assign Coordinator".')
 
-    print(f'\n  EVENTS')
+    print('\n  EVENTS')
     print(f'  {"─"*60}')
-    print(f'  [FREE]  Code Innovation Challenge 2026  (Individual)')
+    print('  [FREE]  Code Innovation Challenge 2026  (Individual)')
     print(f'          ID      : {free_id}')
     print(f'          Results : /spoc/results/{free_id}')
     print()
-    print(f'  [PAID]  Tech Hackathon Sprint 2026  ₹150  (Team 2–4)')
+    print('  [PAID]  Tech Hackathon Sprint 2026  ₹150  (Team 2–4)')
     print(f'          ID      : {paid_id}')
     print(f'          Results : /spoc/results/{paid_id}')
     print(f'{"═"*W}\n')
@@ -245,7 +247,7 @@ def print_summary(event_ids):
 if __name__ == '__main__':
     print('SapthaEvent — Tomorrow Demo Setup')
     print(f'  Keeps : SuperAdmin accounts + {SPOC_EMAIL}')
-    print(f'  Keeps : ALL existing events (untouched)')
+    print('  Keeps : ALL existing events (untouched)')
     print(f'  Adds  : 2 Technical events for {TOMORROW} under {SPOC_EMAIL}')
     confirm = input('\nType YES to continue: ').strip()
     if confirm != 'YES':

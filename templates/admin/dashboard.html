@@ -1,411 +1,660 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin HQ | Sapthagiri NPS University</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        .chart-card { background:#fff; border-radius:14px; border:1px solid #e2e8f0; padding:20px 24px; }
-        .chart-title { font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; color:var(--snpsu-blue); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
-        :root { --snpsu-blue: #1a2557; --snpsu-orange: #c9a45e; --bg-light: #f8f9fa; --text-dark: #1e293b; }
-        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; }
-        h1, h2, h3, h4, h5 { font-family: 'Poppins', sans-serif; }
-        .topnav{background:var(--snpsu-blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-        .brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-left:10px;}
-        .nav-links{display:flex;align-items:center;gap:6px;}
-        .nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
-        .nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
-        .stat-card { background: #ffffff; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-top: 4px solid var(--snpsu-blue); }
-        .event-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-        .modal-content { border: none; border-radius: 16px; background-color: #ffffff; }
-        .modal-header { background-color: var(--snpsu-blue); color: white; border-radius: 16px 16px 0 0; }
-        .btn-close { filter: invert(1) brightness(200%); opacity: 0.8; }
-        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
-        .form-control, .form-select { background-color: #f1f5f9 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; padding: 12px; }
-        .form-control:focus, .form-select:focus { background-color: #ffffff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(26, 37, 87, 0.1) !important; }
-        .btn-primary { background-color: var(--snpsu-blue); border: none; font-weight: bold; border-radius: 8px; }
-        .btn-warning { background-color: var(--snpsu-orange); color: white; border: none; font-weight: bold; border-radius: 8px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin HQ | Sapthagiri NPS University</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/global.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--blue:#1a2557;--orange:#c9a227;--green:#16a34a;--purple:#7c3aed;--bg:#f1f5f9;}
+    *{box-sizing:border-box;}
+    body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;margin:0;}
+    h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+
+    /* ── SIDEBAR ── */
+    .sidebar{position:fixed;top:0;left:0;width:240px;height:100vh;background:var(--blue);display:flex;flex-direction:column;z-index:200;overflow-y:auto;}
+    .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+    .sidebar-logo img{height:38px;background:#fff;border-radius:6px;padding:3px 8px;}
+    .sidebar-logo .role-badge{font-size:10px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;}
+    .sidebar-logo .user-name{font-size:13px;color:#fff;font-weight:600;font-family:'Poppins',sans-serif;}
+    .sidebar-section{padding:16px 12px 4px;font-size:10px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.8px;}
+    .sidebar-link{display:flex;align-items:center;gap:10px;padding:9px 16px;color:rgba(255,255,255,.75);font-size:13px;font-weight:500;text-decoration:none;border-radius:8px;margin:2px 8px;transition:.15s;}
+    .sidebar-link:hover,.sidebar-link.active{background:rgba(255,255,255,.12);color:#fff;}
+    .sidebar-link .icon{width:20px;text-align:center;font-size:14px;}
+    .sidebar-link .badge-pill{margin-left:auto;background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;}
+    .sidebar-bottom{margin-top:auto;padding:16px 12px;border-top:1px solid rgba(255,255,255,.1);}
+
+    /* ── MAIN ── */
+    .main{margin-left:240px;min-height:100vh;}
+    .topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+    .topbar-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;color:var(--blue);}
+    .topbar-actions{display:flex;align-items:center;gap:8px;}
+    .page-body{padding:28px;}
+
+    /* ── STAT CARDS ── */
+    .stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-bottom:28px;}
+    @media(max-width:1400px){.stat-grid{grid-template-columns:repeat(3,1fr);}}
+    @media(max-width:768px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+    .stat-card{background:#fff;border-radius:14px;padding:20px;border:1px solid #e2e8f0;position:relative;overflow:hidden;transition:.2s;}
+    .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,37,87,.08);}
+    .stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;}
+    .si-blue{background:rgba(26,37,87,.1);color:var(--blue);}
+    .si-green{background:rgba(22,163,74,.1);color:#16a34a;}
+    .si-orange{background:rgba(201,162,39,.15);color:var(--orange);}
+    .si-purple{background:rgba(124,58,237,.1);color:var(--purple);}
+    .si-cyan{background:rgba(8,145,178,.1);color:#0891b2;}
+    .si-red{background:rgba(220,38,38,.1);color:#dc2626;}
+    .stat-val{font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;color:var(--blue);line-height:1;margin-bottom:4px;}
+    .stat-label{font-size:11.5px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+    .stat-sub{font-size:11px;color:#94a3b8;margin-top:4px;}
+
+    /* ── QUICK ACCESS ── */
+    .quick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;}
+    @media(max-width:1200px){.quick-grid{grid-template-columns:repeat(3,1fr);}}
+    @media(max-width:768px){.quick-grid{grid-template-columns:repeat(2,1fr);}}
+    .quick-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;text-decoration:none;color:var(--blue);transition:.2s;display:block;}
+    .quick-card:hover{background:var(--blue);color:#fff;transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,37,87,.15);}
+    .quick-card:hover .quick-icon{background:rgba(255,255,255,.2);color:#fff;}
+    .quick-icon{width:40px;height:40px;border-radius:10px;background:rgba(26,37,87,.08);display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 8px;}
+    .quick-label{font-size:12px;font-weight:700;font-family:'Poppins',sans-serif;}
+
+    /* ── SECTION CARD ── */
+    .section-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:24px;}
+    .section-hdr{padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;}
+    .section-hdr h6{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;color:var(--blue);margin:0;}
+
+    /* ── EVENT TABLE ── */
+    .ev-table th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;font-weight:700;padding:10px 14px;border-color:#f1f5f9;background:#fafafa;}
+    .ev-table td{padding:13px 14px;border-color:#f1f5f9;vertical-align:middle;font-size:13px;}
+    .ev-table tr:hover td{background:#fafafe;}
+    .ev-title{font-weight:700;color:var(--blue);font-size:13.5px;}
+    .ev-cat{font-size:11px;color:#94a3b8;font-weight:500;}
+    .status-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;white-space:nowrap;}
+    .pill-active{background:rgba(22,163,74,.1);color:#16a34a;}
+    .pill-done{background:rgba(26,37,87,.08);color:var(--blue);}
+    .action-btn{width:28px;height:28px;border-radius:7px;border:1px solid #e2e8f0;background:transparent;color:#64748b;display:inline-flex;align-items:center;justify-content:center;font-size:12px;transition:.15s;text-decoration:none;}
+    .action-btn:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+    .action-btn.red:hover{background:#dc2626;border-color:#dc2626;}
+    .action-btn.green:hover{background:#16a34a;border-color:#16a34a;}
+
+    /* ── AUDIT LOG ── */
+    .log-row{padding:10px 16px;border-bottom:1px solid #f8fafc;display:flex;align-items:flex-start;gap:10px;font-size:12.5px;}
+    .log-row:last-child{border-bottom:none;}
+    .log-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);margin-top:4px;flex-shrink:0;}
+    .log-action{font-weight:700;color:var(--blue);font-size:11.5px;}
+    .log-detail{color:#475569;}
+    .log-time{color:#94a3b8;font-size:11px;margin-left:auto;flex-shrink:0;}
+
+    /* ── MODALS ── */
+    .modal-content{border:none;border-radius:16px;}
+    .modal-header{background:var(--blue);color:#fff;border-radius:16px 16px 0 0;padding:16px 20px;}
+    .modal-header.danger{background:#dc2626;}
+    .modal-header.warning{background:#f59e0b;}
+    .btn-close{filter:invert(1) brightness(200%);}
+    .form-label{font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px;}
+    .form-control,.form-select{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;padding:10px 12px;}
+    .form-control:focus,.form-select:focus{background:#fff;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,37,87,.08);}
+
+    /* ── SEARCH ── */
+    #eventSearch{padding:10px 16px 10px 38px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;font-size:13px;width:220px;}
+    .search-wrap{position:relative;display:inline-block;}
+    .search-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:13px;}
+
+    /* ── CHART CARD ── */
+    .chart-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px 24px;}
+    .chart-title{font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--blue);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+
+    @media(max-width:768px){.sidebar{display:none;}.main{margin-left:0;}}
+  </style>
 </head>
 <body>
 
-    <div class="topnav">
-        <div class="d-flex align-items-center gap-2">
-            <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University"
-                 style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;"
-                 onerror="this.style.display='none'">
-            <span class="brand">Admin HQ</span>
-        </div>
-        <div class="nav-links">
-            <span style="color:rgba(255,255,255,.7);font-size:12.5px;padding:5px 11px;">
-                <i class="fas fa-crown me-1" style="color:var(--snpsu-orange);"></i> Super Admin
-            </span>
-            <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
-            <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
-        </div>
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <img src="/static/snpsu-logo.png" alt="SNPSU"
+         onerror="this.style.display='none'">
+    <div class="role-badge mt-2"><i class="fas fa-crown me-1" style="color:var(--orange);"></i> Super Admin</div>
+    <div class="user-name">{{ user_name }}</div>
+  </div>
+
+  <div class="sidebar-section">Portal</div>
+  <a href="/admin/dashboard" class="sidebar-link active">
+    <span class="icon"><i class="fas fa-home"></i></span> Dashboard
+  </a>
+  <a href="/admin/analytics" class="sidebar-link">
+    <span class="icon"><i class="fas fa-chart-line"></i></span> Analytics
+  </a>
+  <a href="/admin/report" class="sidebar-link">
+    <span class="icon"><i class="fas fa-file-alt"></i></span> A4 Report
+  </a>
+  <a href="/admin/send_email" class="sidebar-link">
+    <span class="icon"><i class="fas fa-envelope"></i></span> Blast Email
+  </a>
+
+  <div class="sidebar-section">Manage</div>
+  <a href="/spoc/dashboard" class="sidebar-link">
+    <span class="icon"><i class="fas fa-user-shield"></i></span> SPOC Console
+  </a>
+  <a href="/coordinator/dashboard" class="sidebar-link">
+    <span class="icon"><i class="fas fa-clipboard-check"></i></span> Coordinator
+  </a>
+  <a href="/judge/dashboard" class="sidebar-link">
+    <span class="icon"><i class="fas fa-gavel"></i></span> Judge Panel
+  </a>
+  <a href="/participant/dashboard" class="sidebar-link">
+    <span class="icon"><i class="fas fa-users"></i></span> Student View
+  </a>
+
+  <div class="sidebar-section">Settings</div>
+  <a href="/diag/email" class="sidebar-link">
+    <span class="icon"><i class="fas fa-stethoscope"></i></span> Email Diag
+  </a>
+  <a href="/admin/audit_log" class="sidebar-link">
+    <span class="icon"><i class="fas fa-history"></i></span> Audit Log
+  </a>
+
+  <div class="sidebar-bottom">
+    <a href="/" class="sidebar-link"><span class="icon"><i class="fas fa-globe"></i></span> Public Portal</a>
+    <a href="/logout" class="sidebar-link" style="color:#f87171;">
+      <span class="icon"><i class="fas fa-sign-out-alt"></i></span> Logout
+    </a>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title"><i class="fas fa-crown me-2" style="color:var(--orange);"></i>Super Admin HQ</span>
+    <div class="topbar-actions">
+      <span class="text-muted" style="font-size:12px;">{{ today }}</span>
+      <button class="btn btn-sm btn-outline-primary fw-bold ms-2" data-bs-toggle="modal" data-bs-target="#appointSpocModal">
+        <i class="fas fa-user-shield me-1"></i> New SPOC
+      </button>
+      <button class="btn btn-sm ms-1 fw-bold text-white" style="background:var(--orange);" data-bs-toggle="modal" data-bs-target="#createEventModal">
+        <i class="fas fa-plus me-1"></i> New Event
+      </button>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} fw-bold mb-3"><i class="fas fa-info-circle me-2"></i>{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- ── STAT CARDS ── -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon si-blue"><i class="fas fa-calendar-alt"></i></div>
+        <div class="stat-val">{{ events|length }}</div>
+        <div class="stat-label">Total Events</div>
+        <div class="stat-sub">{{ events|selectattr('status','equalto','active')|list|length }} active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-green"><i class="fas fa-users"></i></div>
+        <div class="stat-val">{{ total_regs }}</div>
+        <div class="stat-label">Registrations</div>
+        <div class="stat-sub">{{ user_stats.students|default(0) }} students total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-orange"><i class="fas fa-rupee-sign"></i></div>
+        <div class="stat-val">₹{{ "{:,}".format(total_revenue) }}</div>
+        <div class="stat-label">Revenue</div>
+        <div class="stat-sub">from paid events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-purple"><i class="fas fa-user-tie"></i></div>
+        <div class="stat-val">{{ total_staff }}</div>
+        <div class="stat-label">Unique Staff</div>
+        <div class="stat-sub">{{ user_stats.judges|default(0) }} judges · {{ user_stats.coordinators|default(0) }} coords</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-cyan"><i class="fas fa-user-shield"></i></div>
+        <div class="stat-val">{{ user_stats.spocs|default(0) }}</div>
+        <div class="stat-label">Club SPOCs</div>
+        <div class="stat-sub">event organisers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-red"><i class="fas fa-user-graduate"></i></div>
+        <div class="stat-val">{{ user_stats.students|default(0) }}</div>
+        <div class="stat-label">Students</div>
+        <div class="stat-sub">{{ user_stats.total|default(0) }} accounts total</div>
+      </div>
     </div>
 
-    <div class="container py-5">
+    <!-- ── QUICK ACCESS ── -->
+    <h6 class="fw-bold mb-3" style="color:var(--blue);font-size:13px;text-transform:uppercase;letter-spacing:.5px;">
+      <i class="fas fa-bolt me-2" style="color:var(--orange);"></i>Quick Access
+    </h6>
+    <div class="quick-grid mb-4">
+      <a href="/spoc/dashboard" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-user-shield"></i></div>
+        <div class="quick-label">SPOC Console</div>
+      </a>
+      <a href="/coordinator/dashboard" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-clipboard-list"></i></div>
+        <div class="quick-label">Coordinator</div>
+      </a>
+      <a href="/judge/dashboard" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-gavel"></i></div>
+        <div class="quick-label">Judge Panel</div>
+      </a>
+      <a href="/admin/analytics" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="quick-label">Analytics</div>
+      </a>
+      <a href="/admin/report" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-file-pdf"></i></div>
+        <div class="quick-label">Print Report</div>
+      </a>
+    </div>
 
-        <div class="d-flex justify-content-between align-items-end mb-5 border-bottom pb-4">
-            <div>
-                <h2 class="fw-bold mb-1" style="color: var(--snpsu-blue);">Welcome, {{ user_name }}</h2>
-                <p class="text-muted m-0">Manage events, appoint staff, and oversee operations.</p>
-            </div>
-            <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-outline-primary btn-lg px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#appointSpocModal" style="border-width: 2px;">
-                    <i class="fas fa-user-shield me-2"></i> Appoint SPOC
-                </button>
-                <a href="/admin/send_email" class="btn btn-outline-success btn-lg px-4 shadow-sm fw-bold" style="border-width: 2px;">
-                    <i class="fas fa-envelope-open-text me-2"></i> Send Email
-                </a>
-                <button class="btn btn-warning btn-lg px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#createEventModal">
-                    <i class="fas fa-plus-circle me-2"></i> Create New Event
-                </button>
-            </div>
+    <!-- ── CHARTS ROW ── -->
+    {% if events %}
+    <div class="row g-4 mb-4">
+      <div class="col-lg-7">
+        <div class="chart-card h-100">
+          <div class="chart-title"><i class="fas fa-chart-bar" style="color:var(--orange);"></i>Registrations per Event</div>
+          <canvas id="adminRegChart" height="220"></canvas>
         </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} fw-bold"><i class="fas fa-info-circle me-2"></i>{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
-        <div class="row g-4 mb-5">
-            <div class="col-md-4"><div class="stat-card"><p class="text-muted fw-bold text-uppercase mb-2">Events Managed</p><h2>{{ events|length }}</h2></div></div>
-            <div class="col-md-4"><div class="stat-card" style="border-top-color: #10b981;"><p class="text-muted fw-bold text-uppercase mb-2">Total Registrations</p><h2 style="color: #10b981;">{{ total_regs }}</h2></div></div>
-            <div class="col-md-4"><div class="stat-card" style="border-top-color: var(--snpsu-orange);"><p class="text-muted fw-bold text-uppercase mb-2">Staff Appointed</p><h2 style="color: var(--snpsu-orange);">{{ total_staff }}</h2></div></div>
-        </div>
-
-        <!-- ANALYTICS CHARTS -->
-        {% if events %}
-        <div class="row g-4 mb-5">
-          <div class="col-lg-7">
-            <div class="chart-card h-100">
-              <div class="chart-title"><i class="fas fa-chart-bar" style="color:var(--snpsu-orange);"></i> Registrations per Event</div>
-              <canvas id="adminRegChart" height="220"></canvas>
-            </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="chart-card h-100">
+          <div class="chart-title"><i class="fas fa-chart-pie" style="color:var(--purple);"></i>Category Distribution</div>
+          <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
+            <canvas id="adminCatChart"></canvas>
           </div>
-          <div class="col-lg-5">
-            <div class="chart-card h-100">
-              <div class="chart-title"><i class="fas fa-chart-pie" style="color:#7c3aed;"></i> Event Status</div>
-              <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
-                <canvas id="adminStatusChart"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── EVENT CONTROL CENTER ── -->
+    <div class="section-card">
+      <div class="section-hdr">
+        <h6><i class="fas fa-calendar-check me-2" style="color:var(--orange);"></i>Event Control Center</h6>
+        <div class="d-flex align-items-center gap-2">
+          <div class="search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="eventSearch" placeholder="Search events…">
+          </div>
+          <select id="statusFilter" class="form-select form-select-sm" style="width:120px;font-size:12px;">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table ev-table mb-0" id="eventsTable">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Regs</th>
+              <th>Fee</th>
+              <th>Staff</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in events %}
+            <tr data-title="{{ event.title|lower }}" data-status="{{ event.status }}">
+              <td>
+                <div class="ev-title">{{ event.title }}</div>
+                <div class="ev-cat"><i class="fas fa-map-marker-alt me-1"></i>{{ event.venue|default('TBA') }}</div>
+              </td>
+              <td style="white-space:nowrap;font-size:12.5px;">{{ event.date|default('TBA') }}</td>
+              <td><span class="status-pill" style="background:rgba(124,58,237,.08);color:var(--purple);">{{ event.category|default('General') }}</span></td>
+              <td>
+                <span class="status-pill {{ 'pill-active' if event.status == 'active' else 'pill-done' }}">
+                  <i class="fas fa-circle fa-xs me-1"></i>{{ event.status|capitalize }}
+                </span>
+              </td>
+              <td><strong style="color:var(--blue);">{{ event.registration_count|default(0) }}</strong></td>
+              <td style="font-size:12.5px;">
+                {% set fee = (event.fees or {}).get('regular', 0) or event.entry_fee or 0 %}
+                {% if fee %}₹{{ fee }}{% else %}<span class="text-success fw-bold">Free</span>{% endif %}
+              </td>
+              <td style="font-size:12.5px;">{{ event.staff|default([])|length }}</td>
+              <td>
+                <div class="d-flex gap-1 flex-wrap">
+                  {% if event.status == 'active' %}
+                  <button class="action-btn" title="Edit Event" data-bs-toggle="modal" data-bs-target="#editEventModal{{ event.id }}"><i class="fas fa-edit"></i></button>
+                  <button class="action-btn green" title="Appoint Staff" data-bs-toggle="modal" data-bs-target="#assignStaffModal{{ event.id }}"><i class="fas fa-user-plus"></i></button>
+                  <button class="action-btn" title="Allocate Rooms" style="color:#0891b2;border-color:#bae6fd;" data-bs-toggle="modal" data-bs-target="#allocateModal{{ event.id }}"><i class="fas fa-network-wired"></i></button>
+                  <button class="action-btn" title="Next Round" style="color:#f59e0b;border-color:#fde68a;" data-bs-toggle="modal" data-bs-target="#eliminateModal{{ event.id }}"><i class="fas fa-filter"></i></button>
+                  <button class="action-btn" title="Publish Results" style="color:#dc2626;border-color:#fecaca;" data-bs-toggle="modal" data-bs-target="#publishModal{{ event.id }}"><i class="fas fa-trophy"></i></button>
+                  {% endif %}
+                  <a href="/coordinator/export_registrations/{{ event.id }}" class="action-btn green" title="Export Excel"><i class="fas fa-file-excel"></i></a>
+                  <a href="/coordinator/delete_event/{{ event.id }}" class="action-btn red" title="Delete"
+                     onclick="return confirm('Delete {{ event.title }}?')"><i class="fas fa-trash"></i></a>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-muted py-5">No events yet. Create one to get started!</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── AUDIT LOG ── -->
+    {% if audit_log %}
+    <div class="section-card">
+      <div class="section-hdr">
+        <h6><i class="fas fa-history me-2" style="color:var(--purple);"></i>Recent Activity</h6>
+        <a href="/admin/audit_log" class="btn btn-sm btn-outline-primary fw-bold" style="font-size:12px;">View All</a>
+      </div>
+      <div>
+        {% for log in audit_log[:15] %}
+        <div class="log-row">
+          <div class="log-dot"></div>
+          <div>
+            <div class="log-action">{{ log.action|default('ACTION') }}</div>
+            <div class="log-detail">{{ log.detail|default(log.message|default('—')) }}</div>
+          </div>
+          <div class="log-time">{{ log.timestamp|default('')|string|truncate(16,True,'') }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /page-body -->
+</div><!-- /main -->
+
+<!-- ───────────── MODALS ───────────── -->
+
+<!-- Appoint SPOC -->
+<div class="modal fade" id="appointSpocModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Appoint Club SPOC</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form action="/admin/appoint_spoc" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3"><label class="form-label">Full Name</label><input class="form-control" name="name" required placeholder="Kiran Biradar"></div>
+          <div class="mb-3"><label class="form-label">Email (Login ID)</label><input class="form-control" type="email" name="email" required placeholder="spoc@snpsu.edu.in"></div>
+          <div class="mb-3"><label class="form-label">Password</label><input class="form-control" type="password" name="password" required placeholder="Min 6 characters"></div>
+          <div class="mb-4"><label class="form-label">Division</label>
+            <select class="form-select" name="category" required>
+              <option value="Technical">Technical Division</option>
+              <option value="Cultural">Cultural Division</option>
+              <option value="Sports">Sports Division</option>
+              <option value="General">General Events</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Create SPOC Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Event -->
+<div class="modal fade" id="createEventModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Create New Event</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/create_event" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" placeholder="Hackathon 2026" required></div>
+            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="0" min="0"></div>
+            <div class="col-md-4"><label class="form-label">Date</label><input type="text" name="date" class="form-control" placeholder="2026-05-10" required></div>
+            <div class="col-md-4"><label class="form-label">Deadline</label><input type="text" name="deadline" class="form-control" placeholder="2026-05-09" required></div>
+            <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" placeholder="Main Auditorium" required></div>
+            <div class="col-12"><label class="form-label">Primary Image URL</label>
+              <div id="createAdminMediaContainer">
+                <div class="input-group mb-2">
+                  <input type="url" name="media_urls[]" class="form-control" placeholder="https://…" required>
+                  <button class="btn btn-outline-primary" type="button" onclick="addMediaField('createAdminMediaContainer')"><i class="fas fa-plus"></i></button>
+                </div>
               </div>
             </div>
+            <div class="col-12"><label class="form-label">Overview</label><textarea name="overview" class="form-control" rows="3" required></textarea></div>
+            <div class="col-md-6"><label class="form-label">Rules</label><textarea name="rules" class="form-control" rows="3"></textarea></div>
+            <div class="col-md-6"><label class="form-label">Prizes</label><textarea name="prizes" class="form-control" rows="3"></textarea></div>
+            <div class="col-12"><label class="form-label">Judging Criteria (comma-separated)</label><input type="text" name="criteria" class="form-control" placeholder="Innovation, Code Quality, Presentation" required></div>
           </div>
         </div>
-        {% endif %}
-
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <h4 class="fw-bold mb-0" style="color: var(--snpsu-blue);">Event Control Center</h4>
-          <a href="/admin/analytics" class="btn btn-sm btn-outline-primary fw-bold"><i class="fas fa-chart-line me-1"></i>Full Analytics</a>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn fw-bold text-white" style="background:var(--orange);">Publish Event <i class="fas fa-rocket ms-1"></i></button>
         </div>
-        <div class="row g-4">
-            {% for event in events %}
-            <div class="col-lg-4 col-md-6">
-                <div class="event-card d-flex flex-column h-100">
-                    <div class="p-4 d-flex flex-column flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h4 class="fw-bold mb-1" style="color: var(--snpsu-blue);">{{ event.title }}</h4>
-                            <span class="badge bg-{{ 'success' if event.status == 'active' else 'secondary' }}">{{ 'Round ' ~ event.active_round|default(1) if event.status == 'active' else 'Closed' }}</span>
-                        </div>
-                        <p class="text-muted small mb-1"><i class="far fa-clock me-1 text-primary"></i> <strong>Event:</strong> {{ event.date }}</p>
-                        <p class="text-danger small mb-3"><i class="fas fa-exclamation-circle me-1"></i> <strong>Deadline:</strong> {{ event.deadline if event.deadline else 'Not Set' }}</p>
-                        
-                        <div class="d-flex justify-content-between mb-3 bg-light rounded p-2 border">
-                            <div class="text-center w-50 border-end">
-                                <small class="text-muted d-block fw-bold">Participants</small>
-                                <span class="fw-bold text-dark">{{ event.registration_count }}</span>
-                            </div>
-                            <div class="text-center w-50">
-                                <small class="text-muted d-block fw-bold">Judged</small>
-                                <span class="fw-bold text-success">{{ event.scored_teams }}</span>
-                            </div>
-                        </div>
-
-                        <div class="mt-auto d-grid gap-2">
-                            {% if event.status == 'active' %}
-                                <div class="btn-group w-100">
-                                    <button class="btn btn-outline-dark fw-bold w-50" data-bs-toggle="modal" data-bs-target="#editEventModal{{ event.id }}"><i class="fas fa-edit"></i> Edit</button>
-                                    <a href="/coordinator/export_registrations/{{ event.id }}" class="btn btn-success fw-bold w-50"><i class="fas fa-file-excel"></i> Export</a>
-                                </div>
-                                <button class="btn btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#assignStaffModal{{ event.id }}"><i class="fas fa-user-shield me-1"></i> Appoint Staff / Judges</button>
-                                
-                                <div class="btn-group w-100 mt-1 mb-1">
-                                    <button class="btn btn-dark fw-bold text-white w-50" data-bs-toggle="modal" data-bs-target="#allocateModal{{ event.id }}"><i class="fas fa-network-wired"></i> Allocate</button>
-                                    <a href="/coordinator/trigger_reminders/{{ event.id }}" class="btn btn-info fw-bold text-dark w-50" onclick="return confirm('This will instantly email all allocated teams their room and judge details. Proceed?');"><i class="fas fa-paper-plane"></i> Remind</a>
-                                </div>
-
-                                <button class="btn btn-danger fw-bold text-white mb-1" data-bs-toggle="modal" data-bs-target="#eliminateModal{{ event.id }}"><i class="fas fa-filter me-1"></i> Next Round / Eliminate</button>
-
-                                <button class="btn btn-warning fw-bold text-dark mt-1" data-bs-toggle="modal" data-bs-target="#publishModal{{ event.id }}"><i class="fas fa-trophy me-1"></i> End Event & Publish</button>
-                            {% else %}
-                                <a href="/coordinator/export_registrations/{{ event.id }}" class="btn btn-success fw-bold w-100 mb-2"><i class="fas fa-file-excel me-1"></i> Export Final Data</a>
-                                <button class="btn btn-secondary fw-bold" disabled>Event Concluded</button>
-                            {% endif %}
-                            <a href="/coordinator/delete_event/{{ event.id }}" class="text-danger text-center small fw-bold mt-2 text-decoration-none" onclick="return confirm('Delete entirely?');"><i class="fas fa-trash me-1"></i> Delete Event</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="eliminateModal{{ event.id }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content border-danger">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title"><i class="fas fa-filter me-2"></i>Manage Rounds & Eliminations</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
-                        <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div class="modal-body p-4">
-                                <div class="alert alert-warning border-warning bg-light text-center">
-                                    <h6 class="fw-bold mb-1" style="color: var(--snpsu-blue);">Current Active Round: {{ event.active_round | default(1) }}</h6>
-                                    <small class="text-muted">Set a cut-off score. Teams at or above this score will advance to Round {{ (event.active_round | default(1)) + 1 }}. The rest will be eliminated.</small>
-                                </div>
-                                <div class="mb-3 mt-4">
-                                    <label class="form-label text-danger">Cut-off Score</label>
-                                    <input type="number" step="0.1" name="cutoff_score" class="form-control border-danger form-control-lg text-center fw-bold fs-3" placeholder="e.g. 75" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer bg-light">
-                                <button type="submit" class="btn btn-danger px-4 fw-bold w-100 fs-5" onclick="return confirm('WARNING: This will permanently eliminate teams below the cut-off and wipe the current room allocations for the winners to prepare for the next round. Proceed?');">Execute Elimination <i class="fas fa-skull-crossbones ms-2"></i></button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="allocateModal{{ event.id }}" tabindex="-1">
-                <div class="modal-dialog modal-lg modal-dialog-centered">
-                    <div class="modal-content border-dark">
-                        <div class="modal-header bg-dark text-white">
-                            <h5 class="modal-title"><i class="fas fa-network-wired me-2"></i>Smart Auto-Allocation</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
-                        <form action="/coordinator/allocate_rooms/{{ event.id }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div class="modal-body p-4">
-                                <div class="alert alert-info border-info bg-light">
-                                    <strong>Total Registered Teams:</strong> {{ event.registration_count }}<br>
-                                    <small>Just define the rooms and capacities. The system will randomly pick appointed Judges and auto-assign active participants!</small>
-                                </div>
-                                <div id="roomContainer{{ event.id }}">
-                                    <div class="row g-2 mb-3 align-items-end room-row">
-                                        <div class="col-md-7">
-                                            <label class="form-label">Room/Venue Name</label>
-                                            <input type="text" name="room_name[]" class="form-control border-dark" placeholder="Ex: Room 101" required>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label">Capacity (Teams)</label>
-                                            <input type="number" name="capacity[]" class="form-control border-dark" placeholder="Ex: 25" required>
-                                        </div>
-                                        <div class="col-md-1 pb-1">
-                                            <button type="button" class="btn btn-primary w-100" onclick="addRoomField('roomContainer{{ event.id }}')"><i class="fas fa-plus"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer bg-light"><button type="submit" class="btn btn-dark px-4 fw-bold w-100">Execute Random Allocation <i class="fas fa-magic ms-2"></i></button></div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="assignStaffModal{{ event.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Appoint Staff</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form action="/coordinator/assign_staff/{{ event.id }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="mb-3"><label class="form-label">Role</label><select name="role" class="form-select"><option value="EventCoordinator">Registration Desk Coordinator</option><option value="Judge">Event Judge</option></select></div><div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div><div class="mb-4"><label class="form-label">Email Address</label><input type="email" name="email" class="form-control" required></div><button type="submit" class="btn btn-primary w-100 py-2">Assign & Email Password</button></form></div></div></div></div>
-            
-            <div class="modal fade" id="publishModal{{ event.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-warning"><div class="modal-body text-center p-5"><i class="fas fa-trophy fa-4x text-warning mb-3"></i><h4 class="fw-bold">Conclude Event?</h4><p class="text-muted mb-4">This will generate the leaderboard and close registrations permanently.</p><form action="/coordinator/publish_results/{{ event.id }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-warning w-100 py-3 fw-bold">Publish Final Results</button></form></div></div></div></div>
-
-            <div class="modal fade" id="editEventModal{{ event.id }}" tabindex="-1">
-                <div class="modal-dialog modal-xl modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header bg-dark text-white"><h4 class="modal-title">Edit Event: {{ event.title }}</h4><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-                        <form action="/coordinator/edit_event/{{ event.id }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div class="modal-body p-4">
-                                <div class="row g-3 mb-4">
-                                    <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" value="{{ event.title }}" required></div>
-                                    <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee }}" required></div>
-                                    <div class="col-md-4"><label class="form-label">Date & Time</label><input type="text" name="date" class="form-control" value="{{ event.date }}" required></div>
-                                    <div class="col-md-4"><label class="form-label text-danger">Reg Deadline</label><input type="text" name="deadline" class="form-control border-danger" value="{{ event.deadline }}" required></div>
-                                    <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" value="{{ event.venue }}" required></div>
-                                    
-                                    <div class="col-12">
-                                        <label class="form-label text-primary"><i class="fas fa-images me-2"></i>Event Media Gallery</label>
-                                        <div id="editMediaContainer{{ event.id }}">
-                                            {% if event.media_urls %}
-                                                {% for url in event.media_urls %}
-                                                <div class="input-group mb-2">
-                                                    <input type="url" name="media_urls[]" class="form-control" value="{{ url }}" required>
-                                                    {% if loop.index == 1 %}
-                                                    <button class="btn btn-outline-success px-4" type="button" onclick="addMediaField('editMediaContainer{{ event.id }}')"><i class="fas fa-plus"></i></button>
-                                                    {% else %}
-                                                    <button class="btn btn-outline-danger px-4" type="button" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
-                                                    {% endif %}
-                                                </div>
-                                                {% endfor %}
-                                            {% else %}
-                                                <div class="input-group mb-2">
-                                                    <input type="url" name="media_urls[]" class="form-control" value="{{ event.banner_url }}" placeholder="Primary Image or Video URL">
-                                                    <button class="btn btn-outline-success px-4" type="button" onclick="addMediaField('editMediaContainer{{ event.id }}')"><i class="fas fa-plus"></i></button>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3 p-3 bg-light border border-success rounded">
-                                    <label class="form-label text-success"><i class="fas fa-balance-scale me-2"></i>Judging Criteria (Comma Separated)</label>
-                                    <input type="text" name="criteria" class="form-control border-success" value="{{ event.judging_criteria | default([]) | join(', ') }}" required>
-                                </div>
-
-                                <div class="mb-3"><label class="form-label">Event Overview</label><textarea name="overview" class="form-control" rows="3">{{ event.overview }}</textarea></div>
-                                <div class="mb-3"><label class="form-label">Rules</label><textarea name="rules" class="form-control" rows="3">{{ event.rules }}</textarea></div>
-                                <div class="mb-3"><label class="form-label">Prizes & Rewards</label><textarea name="prizes" class="form-control" rows="3">{{ event.prizes }}</textarea></div>
-                            </div>
-                            <div class="modal-footer bg-light"><button type="submit" class="btn btn-dark px-5 fw-bold">Save Changes</button></div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
-            {% else %}
-            <p class="text-muted text-center w-100 py-5">No events found. Start by creating one!</p>
-            {% endfor %}
-        </div>
-
-        <div class="modal fade" id="createEventModal" tabindex="-1">
-            <div class="modal-dialog modal-xl modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header"><h4 class="modal-title">Create Elite Event</h4><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                    <form action="/coordinator/create_event" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="modal-body p-4 p-md-5">
-                            <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--snpsu-blue);">1. Basic Details</h5>
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" placeholder="Ex: Hackathon 2026" required></div>
-                                <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="0" min="0" required></div>
-                                <div class="col-md-4"><label class="form-label">Date & Time</label><input type="text" name="date" class="form-control" placeholder="Oct 15, 10:00 AM" required></div>
-                                <div class="col-md-4"><label class="form-label text-danger">Reg Deadline</label><input type="text" name="deadline" class="form-control border-danger" placeholder="Oct 12, 11:59 PM" required></div>
-                                <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" placeholder="Ex: Main Auditorium" required></div>
-                                
-                                <div class="col-12">
-                                    <label class="form-label text-primary"><i class="fas fa-images me-2"></i>Event Media Gallery (Images & Videos)</label>
-                                    <div id="createAdminMediaContainer">
-                                        <div class="input-group mb-2">
-                                            <input type="url" name="media_urls[]" class="form-control border-primary" placeholder="Primary Image or Video URL (.mp4)" required>
-                                            <button class="btn btn-primary px-4" type="button" onclick="addMediaField('createAdminMediaContainer')"><i class="fas fa-plus"></i> Add More</button>
-                                        </div>
-                                    </div>
-                                    <div class="form-text text-muted small mt-1">Add multiple links to generate a sliding carousel!</div>
-                                </div>
-                            </div>
-
-                            <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--snpsu-blue);">2. Rich Brochure Content</h5>
-                            <div class="mb-3"><label class="form-label text-primary">Event Overview & Theme</label><textarea name="overview" class="form-control" rows="4" required></textarea></div>
-                            <div class="mb-3"><label class="form-label text-danger">Rules & Guidelines</label><textarea name="rules" class="form-control" rows="4"></textarea></div>
-                            <div class="mb-3"><label class="form-label text-warning">Prizes & Rewards</label><textarea name="prizes" class="form-control" rows="3"></textarea></div>
-
-                            <div class="mb-3 p-3 bg-light border border-success rounded">
-                                <label class="form-label text-success"><i class="fas fa-balance-scale me-2"></i>Judging Criteria (Comma Separated)</label>
-                                <input type="text" name="criteria" class="form-control border-success" placeholder="Ex: Innovation, Code Quality, Presentation" required>
-                            </div>
-
-                            <div class="form-check form-switch mt-4 p-3 bg-light border rounded">
-                                <input class="form-check-input ms-0 me-3" style="width: 40px; height: 20px;" type="checkbox" name="is_team" id="teamCheck">
-                                <label class="form-check-label fw-bold text-dark pt-1" for="teamCheck">This is a Team Event</label>
-                            </div>
-                        </div>
-                        <div class="modal-footer bg-light"><button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-warning px-5 fw-bold text-dark fs-5">Publish to Portal <i class="fas fa-rocket ms-2"></i></button></div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="appointSpocModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Appoint New Club SPOC</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form action="/admin/appoint_spoc" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="mb-3"><label class="form-label">SPOC Name</label><input type="text" class="form-control" name="name" required placeholder="Ex: Kiran Biradar"></div><div class="mb-3"><label class="form-label">Email Address (Login ID)</label><input type="email" class="form-control" name="email" required placeholder="tech@snpsu.edu.in"></div><div class="mb-3"><label class="form-label">Assign Password</label><input type="password" class="form-control" name="password" required placeholder="Minimum 6 characters"></div><div class="mb-4"><label class="form-label">Assign Division</label><select class="form-select" name="category" required><option value="Tech">Technical Division</option><option value="Cultural">Cultural Division</option><option value="Sports">Sports Division</option><option value="General">General Events</option></select></div><button type="submit" class="btn btn-primary w-100 py-2 fs-5">Create SPOC Account</button></form></div></div></div></div>
-
+      </form>
     </div>
+  </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script id="admin-chart-data" type="application/json">{"labels":{{ events | map(attribute='title') | list | tojson }},"regs":{{ events | map(attribute='registration_count') | list | tojson }},"active":{{ events | selectattr('status','equalto','active') | list | length }},"total":{{ events | length }}}</script>
-    <script>
-        // ── ADMIN CHARTS ──────────────────────────────────────
-        var _cd = JSON.parse(document.getElementById('admin-chart-data').textContent);
-        var _adminLabels = _cd.labels;
-        var _adminRegs   = _cd.regs;
-        var _adminActive = _cd.active;
-        var _adminClosed = _cd.total - _adminActive;
+<!-- Per-event modals -->
+{% for event in events %}
 
-        if (_adminLabels.length) {
-          _adminLabels = _adminLabels.map(function(l){ return l.length > 18 ? l.slice(0,18)+'…' : l; });
+<div class="modal fade" id="assignStaffModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Appoint Staff — {{ event.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form action="/coordinator/assign_staff/{{ event.id }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3"><label class="form-label">Role</label>
+            <select name="role" class="form-select">
+              <option value="EventCoordinator">Registration Coordinator</option>
+              <option value="Judge">Event Judge</option>
+            </select>
+          </div>
+          <div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div>
+          <div class="mb-4"><label class="form-label">Email</label><input type="email" name="email" class="form-control" required></div>
+          <button type="submit" class="btn btn-primary w-100 fw-bold">Assign & Email Credentials</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-          var regCtx = document.getElementById('adminRegChart');
-          if (regCtx) {
-            new Chart(regCtx, {
-              type: 'bar',
-              data: { labels: _adminLabels, datasets: [{ label: 'Registrations', data: _adminRegs,
-                backgroundColor: _adminLabels.map(function(_,i){ return i%2===0?'rgba(26,37,87,.8)':'rgba(201,164,94,.8)'; }),
-                borderRadius: 8, borderSkipped: false }] },
-              options: { responsive: true, plugins: { legend: { display: false } },
-                scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                          y: { grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { size: 10 } }, beginAtZero: true } } }
-            });
-          }
+<div class="modal fade" id="eliminateModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-danger">
+      <div class="modal-header danger">
+        <h5 class="modal-title"><i class="fas fa-filter me-2"></i>Next Round / Eliminate — {{ event.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="alert alert-warning text-center">
+            <strong>Current Round: {{ event.active_round|default(1) }}</strong><br>
+            <small>Teams at or above the cut-off advance to Round {{ (event.active_round|default(1)) + 1 }}.</small>
+          </div>
+          <label class="form-label text-danger">Cut-off Score</label>
+          <input type="number" step="0.1" name="cutoff_score" class="form-control form-control-lg text-center fw-bold border-danger" placeholder="e.g. 75" required>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger w-100 fw-bold"
+                  onclick="return confirm('Permanently eliminate teams below cut-off?')">
+            Execute Elimination <i class="fas fa-skull-crossbones ms-2"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
-          var stCtx = document.getElementById('adminStatusChart');
-          if (stCtx) {
-            new Chart(stCtx, {
-              type: 'doughnut',
-              data: { labels: ['Active', 'Completed'],
-                datasets: [{ data: [_adminActive, _adminClosed],
-                  backgroundColor: ['rgba(22,163,74,.8)', 'rgba(26,37,87,.5)'],
-                  borderWidth: 0, hoverOffset: 4 }] },
-              options: { responsive: true, cutout: '65%',
-                plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, boxWidth: 12 } } } }
-            });
-          }
-        }
+<div class="modal fade" id="allocateModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#0891b2;">
+        <h5 class="modal-title"><i class="fas fa-network-wired me-2"></i>Auto Room Allocation — {{ event.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/allocate_rooms/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="alert alert-info"><strong>Registered:</strong> {{ event.registration_count|default(0) }} teams/participants</div>
+          <div id="roomContainer{{ event.id }}">
+            <div class="row g-2 mb-3 align-items-end room-row">
+              <div class="col-7"><label class="form-label">Room / Venue Name</label><input type="text" name="room_name[]" class="form-control" placeholder="Room 101" required></div>
+              <div class="col-4"><label class="form-label">Capacity</label><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div>
+              <div class="col-1 pb-1"><button type="button" class="btn btn-primary w-100" onclick="addRoomField('roomContainer{{ event.id }}')"><i class="fas fa-plus"></i></button></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn fw-bold text-white w-100" style="background:#0891b2;">Auto-Allocate <i class="fas fa-magic ms-1"></i></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
-        function addMediaField(containerId) {
-            const container = document.getElementById(containerId);
-            const newDiv = document.createElement('div');
-            newDiv.className = 'input-group mb-2';
-            newDiv.innerHTML = `
-                <input type="url" name="media_urls[]" class="form-control" placeholder="Image or Video URL (.mp4)" required>
-                <button class="btn btn-outline-danger px-4" type="button" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
-            `;
-            container.appendChild(newDiv);
-        }
-        
-        // ADD ROOM FIELD FOR RANDOM ALLOCATION
-        function addRoomField(containerId) {
-            const container = document.getElementById(containerId);
-            const newDiv = document.createElement('div');
-            newDiv.className = 'row g-2 mb-3 align-items-end room-row';
-            newDiv.innerHTML = `
-                <div class="col-md-7">
-                    <input type="text" name="room_name[]" class="form-control border-dark" placeholder="Ex: Room 102" required>
-                </div>
-                <div class="col-md-4">
-                    <input type="number" name="capacity[]" class="form-control border-dark" placeholder="Ex: 25" required>
-                </div>
-                <div class="col-md-1 pb-1">
-                    <button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-            container.appendChild(newDiv);
-        }
-    </script>
+<div class="modal fade" id="publishModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center p-5">
+        <i class="fas fa-trophy fa-4x mb-3" style="color:var(--orange);"></i>
+        <h4 class="fw-bold">Conclude &amp; Publish Results?</h4>
+        <p class="text-muted mb-4">This generates the final leaderboard and closes registrations permanently.</p>
+        <form action="/coordinator/publish_results/{{ event.id }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn w-100 py-3 fw-bold text-white" style="background:var(--orange);">Publish Final Results</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editEventModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#334155;">
+        <h4 class="modal-title"><i class="fas fa-edit me-2"></i>Edit: {{ event.title }}</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/edit_event/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-8"><label class="form-label">Title</label><input type="text" name="title" class="form-control" value="{{ event.title }}" required></div>
+            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee|default(0) }}"></div>
+            <div class="col-md-4"><label class="form-label">Date</label><input type="text" name="date" class="form-control" value="{{ event.date }}" required></div>
+            <div class="col-md-4"><label class="form-label">Deadline</label><input type="text" name="deadline" class="form-control" value="{{ event.deadline|default('') }}" required></div>
+            <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" value="{{ event.venue|default('') }}" required></div>
+            <div class="col-12"><label class="form-label">Judging Criteria (comma-separated)</label>
+              <input type="text" name="criteria" class="form-control" value="{{ event.judging_criteria|default([])|join(', ') }}" required>
+            </div>
+            <div class="col-12"><label class="form-label">Overview</label><textarea name="overview" class="form-control" rows="3">{{ event.overview|default('') }}</textarea></div>
+            <div class="col-md-6"><label class="form-label">Rules</label><textarea name="rules" class="form-control" rows="3">{{ event.rules|default('') }}</textarea></div>
+            <div class="col-md-6"><label class="form-label">Prizes</label><textarea name="prizes" class="form-control" rows="3">{{ event.prizes|default('') }}</textarea></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-dark px-5 fw-bold">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endfor %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script id="adminChartData" type="application/json">{"labels":{{ events|map(attribute='title')|list|tojson }},"regs":{{ events|map(attribute='registration_count')|list|tojson }},"cats":{{ cat_counts|tojson }}}</script>
+<script>
+// ── CHARTS ──
+var _chartData = JSON.parse(document.getElementById('adminChartData').textContent);
+
+if (_chartData.labels.length) {
+  var labels = _chartData.labels.map(function(l){ return l.length>18?l.slice(0,18)+'…':l; });
+  var rc = document.getElementById('adminRegChart');
+  if (rc) {
+    new Chart(rc, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{
+        label: 'Registrations', data: _chartData.regs,
+        backgroundColor: labels.map(function(_,i){ return i%2===0?'rgba(26,37,87,.8)':'rgba(201,162,39,.8)'; }),
+        borderRadius: 8, borderSkipped: false
+      }]},
+      options: { responsive:true, plugins:{legend:{display:false}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:10}}},
+                y:{grid:{color:'#f1f5f9'},ticks:{stepSize:1,font:{size:10}},beginAtZero:true}} }
+    });
+  }
+  var cc = document.getElementById('adminCatChart');
+  if (cc && Object.keys(_chartData.cats).length) {
+    var catLabels = Object.keys(_chartData.cats);
+    var catVals   = Object.values(_chartData.cats);
+    new Chart(cc, {
+      type: 'doughnut',
+      data: { labels: catLabels, datasets: [{
+        data: catVals,
+        backgroundColor: ['rgba(26,37,87,.8)','rgba(201,162,39,.8)','rgba(22,163,74,.8)','rgba(124,58,237,.8)','rgba(8,145,178,.8)'],
+        borderWidth: 0, hoverOffset: 4
+      }]},
+      options: { responsive:true, cutout:'62%',
+        plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10}}} }
+    });
+  }
+}
+
+// ── SEARCH & FILTER ──
+var searchInput = document.getElementById('eventSearch');
+var statusFilter = document.getElementById('statusFilter');
+function filterTable() {
+  var q = (searchInput.value||'').toLowerCase();
+  var s = (statusFilter.value||'').toLowerCase();
+  document.querySelectorAll('#eventsTable tbody tr[data-title]').forEach(function(row) {
+    var title  = row.getAttribute('data-title')||'';
+    var status = row.getAttribute('data-status')||'';
+    var show = title.includes(q) && (!s || status === s);
+    row.style.display = show ? '' : 'none';
+  });
+}
+if (searchInput) searchInput.addEventListener('input', filterTable);
+if (statusFilter) statusFilter.addEventListener('change', filterTable);
+
+// ── MEDIA FIELD ──
+function addMediaField(containerId) {
+  var c = document.getElementById(containerId);
+  var d = document.createElement('div');
+  d.className = 'input-group mb-2';
+  d.innerHTML = '<input type="url" name="media_urls[]" class="form-control" placeholder="Image URL" required>' +
+    '<button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>';
+  c.appendChild(d);
+}
+
+// ── ROOM FIELD ──
+function addRoomField(containerId) {
+  var c = document.getElementById(containerId);
+  var d = document.createElement('div');
+  d.className = 'row g-2 mb-3 align-items-end room-row';
+  d.innerHTML = '<div class="col-7"><input type="text" name="room_name[]" class="form-control" placeholder="Room 102" required></div>' +
+    '<div class="col-4"><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div>' +
+    '<div class="col-1 pb-1"><button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-trash"></i></button></div>';
+  c.appendChild(d);
+}
+</script>
 </body>
 </html>

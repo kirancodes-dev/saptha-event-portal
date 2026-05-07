@@ -1,0 +1,11 @@
+[lint]
+# Rules intentionally ignored across this codebase:
+#   E401  - multiple imports on one line (used in lazy local imports)
+#   E402  - module-level import not at top (script files need sys.path setup first)
+#   E701  - multiple statements on one line with colon (drawing/compact code)
+#   E702  - multiple statements on one line with semicolon (compact one-liners)
+#   E722  - bare except (used intentionally for broad catch-and-continue patterns)
+#   E731  - lambda assignment (used in demo/seed scripts)
+#   E741  - ambiguous variable name (l, O, I used in PDF-drawing loops)
+#   F841  - local variable assigned but never used (placeholder vars in tasks)
+ignore = ["E401", "E402", "E701", "E702", "E722", "E731", "E741", "F841"]

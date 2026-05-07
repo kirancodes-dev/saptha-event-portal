@@ -12,7 +12,10 @@ Setup:
 Run:  python seed_presentation.py
 """
 
-import os, sys, json, datetime, random
+import os
+import sys
+import json
+import datetime
 
 def init_firebase():
     import firebase_admin
@@ -186,7 +189,7 @@ def main():
         print(f"  OK  {reg_id}  {name:<22s}  email={email}")
 
     # ── 3. Summary ─────────────────────────────────────────────────────────────
-    print(f"\n[3/3] Done!\n" + "-"*60)
+    print("\n[3/3] Done!\n" + "-"*60)
     print("  HackSaptha 2026 — Expected leaderboard (after all judges score):")
     expected = [
         ("1st", "Team Gamma",  "Karthik Shetty",  93.0),

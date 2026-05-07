@@ -34,7 +34,7 @@ def init_firebase():
     """Initialize Firebase connection"""
     if firebase_admin._apps:
         return firestore.client()
-    
+
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
     if firebase_creds_json:
         try:
@@ -51,7 +51,7 @@ def init_firebase():
             print(f"❌ Neither FIREBASE_CREDENTIALS env var nor {key_path} found!")
             sys.exit(1)
         cred = credentials.Certificate(key_path)
-    
+
     firebase_admin.initialize_app(cred)
     return firestore.client()
 
@@ -61,17 +61,17 @@ def init_firebase():
 # =========================================================
 def init_superadmin():
     """Create SuperAdmin account if it doesn't exist"""
-    
+
     # Get credentials from environment or config defaults
     from config import Config
-    
+
     admin_email = os.environ.get('SUPER_ADMIN_EMAIL', Config.SUPER_ADMIN_EMAIL)
     admin_pass = os.environ.get('SUPER_ADMIN_PASS', Config.SUPER_ADMIN_DEFAULT_PASS)
-    
+
     if not admin_email or not admin_pass:
         print("❌ ERROR: SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASS must be set!")
         sys.exit(1)
-    
+
     # Initialize Firebase
     print("\n📡 Connecting to Firebase...")
     try:
@@ -80,14 +80,14 @@ def init_superadmin():
     except Exception as e:
         print(f"❌ Firebase connection failed: {e}")
         sys.exit(1)
-    
+
     # Check if SuperAdmin exists
     print(f"\n🔍 Checking if SuperAdmin exists: {admin_email}")
     try:
         admin_doc = db.collection('users').document(admin_email).get()
         if admin_doc.exists:
             admin_data = admin_doc.to_dict()
-            print(f"✅ SuperAdmin already exists:")
+            print("✅ SuperAdmin already exists:")
             print(f"   Name: {admin_data.get('name', 'N/A')}")
             print(f"   Role: {admin_data.get('role', 'N/A')}")
             print(f"   Created: {admin_data.get('created_at', 'N/A')}")
@@ -95,9 +95,9 @@ def init_superadmin():
     except Exception as e:
         print(f"❌ Error checking for SuperAdmin: {e}")
         sys.exit(1)
-    
+
     # Create SuperAdmin account
-    print(f"\n🚀 Creating SuperAdmin account...")
+    print("\n🚀 Creating SuperAdmin account...")
     try:
         hashed_pass = generate_password_hash(admin_pass)
         admin_data = {
@@ -115,18 +115,18 @@ def init_superadmin():
         db.collection('users').document(admin_email).set(admin_data)
         print("✅ SuperAdmin created successfully!")
         print(f"\n{'='*60}")
-        print(f"  SUPERADMIN LOGIN CREDENTIALS")
+        print("  SUPERADMIN LOGIN CREDENTIALS")
         print(f"{'='*60}")
         print(f"Email:    {admin_email}")
         print(f"Password: {admin_pass}")
         print(f"{'='*60}")
-        print(f"\n⚠️  IMPORTANT:")
-        print(f"  - Save these credentials securely")
-        print(f"  - Change password after first login")
-        print(f"  - Store in secure password manager")
-        print(f"  - Never commit to version control")
-        print(f"\n✅ Initialization complete! System is ready for production.\n")
-        
+        print("\n⚠️  IMPORTANT:")
+        print("  - Save these credentials securely")
+        print("  - Change password after first login")
+        print("  - Store in secure password manager")
+        print("  - Never commit to version control")
+        print("\n✅ Initialization complete! System is ready for production.\n")
+
     except Exception as e:
         print(f"❌ Error creating SuperAdmin: {e}")
         sys.exit(1)

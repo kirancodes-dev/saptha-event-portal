@@ -57,7 +57,7 @@ from google import genai
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from models import db
-from utils import login_required, role_required, log_action, safe_int
+from utils import login_required, role_required, log_action
 
 logger   = logging.getLogger(__name__)
 ai_bp    = Blueprint('ai', __name__, url_prefix='/ai')

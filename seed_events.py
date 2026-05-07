@@ -631,7 +631,7 @@ if __name__ == '__main__':
     print(f"\n2/2  Seeding {len(EVENTS)} events + registration forms …")
     n_ev, n_forms = seed_events()
 
-    print(f"\n══════════════════════════════════════════════════════")
+    print("\n══════════════════════════════════════════════════════")
     print(f"  Done!  {n_ev} events + {n_forms} event_forms seeded.")
     print()
 
@@ -642,5 +642,5 @@ if __name__ == '__main__':
         print(f"  │  Password : {s['password']}")
         print(f"  │  Role     : ClubSPOC  (category: {s['category']})")
         print(f"  │  Phone    : {s['phone']}")
-        print(f"  └──────────────────────────────────────────────")
+        print("  └──────────────────────────────────────────────")
         print()

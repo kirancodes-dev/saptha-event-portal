@@ -319,6 +319,8 @@ def public_register(event_id):
             flash("You are already registered for this event. Here is your ticket.", "info")
             return redirect(f"/ticket/{existing[0].id}")
 
+        fee = safe_int(event_data.get('entry_fee', 0))
+
         # Waitlist check — if event is at capacity, add to waitlist instead
         max_p = int((event_data.get('limits') or {}).get('max_participants', 0) or
                     event_data.get('max_participants', 0) or 0)
@@ -420,7 +422,6 @@ def public_register(event_id):
             'current_round':   1,
         }
 
-        fee = safe_int(event_data.get('entry_fee', 0))
         if fee > 0:
             session['pending_reg_data'] = reg_data
             return redirect(f'/payment/checkout/{event_id}')

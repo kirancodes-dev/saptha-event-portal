@@ -121,7 +121,6 @@ def _upload_cert(pdf_bytes: bytes, reg_id: str) -> str:
     """Upload cert PDF to GCS; return public URL. Falls back to data URI."""
     try:
         from google.cloud import storage
-        from flask import current_app
         import os
 
         bucket_name = os.environ.get('GCS_BUCKET_NAME', '')

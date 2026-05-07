@@ -2,7 +2,7 @@ import collections
 import datetime
 import json
 
-from flask import Blueprint, flash, redirect, render_template, request, session
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session
 from google.cloud import firestore
 from werkzeug.security import generate_password_hash
 
@@ -242,7 +242,8 @@ def analytics():
 @login_required
 @role_required(SUPER_ROLES)
 def analytics_export(kind):
-    import csv, io
+    import csv
+    import io
     from flask import Response
 
     if kind not in ('registrations', 'events', 'revenue'):
@@ -409,7 +410,6 @@ def send_bulk_email():
     GET  → show compose form (recipient options + subject + body)
     POST → send to selected audience and show delivery report
     """
-    from utils_email import send_broadcast_email
 
     events = []
     try:

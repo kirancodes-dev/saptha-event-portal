@@ -350,7 +350,7 @@ textarea.form-control{resize:vertical;min-height:90px;}
       {% endfor %}
 
       <!-- Submit -->
-      <button type="submit" class="btn-submit" id="submit-btn">
+      <button type="submit" class="btn-submit" id="submit-btn" data-no-loader>
         <i class="fas fa-paper-plane"></i>
         {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
           Continue to Payment — ₹{{ event.entry_fee }}
@@ -371,37 +371,40 @@ textarea.form-control{resize:vertical;min-height:90px;}
 
 </div><!-- /page-wrap -->
 
+<script src="/static/js/global.js"></script>
 <script>
-// Prevent double-submit
 document.getElementById('reg-form') &&
 document.getElementById('reg-form').addEventListener('submit', function(e) {
   // Client-side: mark required radio groups
   let ok = true;
   this.querySelectorAll('[data-required-radio]').forEach(function(grp) {
     const name = grp.dataset.requiredRadio;
-    if(!document.querySelector('[name="'+name+'"]:checked')) {
-      grp.style.borderColor='#ef4444';
+    if (!document.querySelector('[name="'+name+'"]:checked')) {
+      grp.style.borderColor = '#ef4444';
       ok = false;
     }
   });
-  if(!ok) { e.preventDefault(); return; }
-
+  if (!ok) {
+    e.preventDefault();
+    if (typeof showToast === 'function') showToast('Please answer all required questions.', 'warning', 4000);
+    return;
+  }
   const btn = document.getElementById('submit-btn');
-  if(btn) {
+  if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+    btn.innerHTML = '<span class="sp-spinner"></span> Submitting…';
   }
 });
 
-// Highlight selected radio/checkbox visually for accessibility
+// Highlight selected radio/checkbox visually
 document.querySelectorAll('.choice-item input').forEach(function(inp) {
   inp.addEventListener('change', function() {
-    if(this.type === 'radio') {
+    if (this.type === 'radio') {
       document.querySelectorAll('[name="'+this.name+'"]').forEach(function(r) {
-        r.closest('.choice-item').style.borderColor='';
+        r.closest('.choice-item').style.borderColor = '';
       });
     }
-    this.closest('.choice-item').style.borderColor='var(--orange)';
+    this.closest('.choice-item').style.borderColor = 'var(--orange)';
   });
 });
 </script>

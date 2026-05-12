@@ -269,6 +269,7 @@
         @media(prefers-color-scheme:dark){.login-card{background:#1a1a1a;color:#e0e0e0;}.login-header{background:#1a2557;}.form-label{color:#e0e0e0;}.form-control{background:#2a2a2a;color:#e0e0e0;border-color:#444;}}
     </style>
     <link href="/static/css/global.css" rel="stylesheet">
+    <script src="/static/js/global.js" defer></script>
 </head>
 <body class="login-page">
     <a href="#main-content" class="skip-link">Skip to Login Form</a>
@@ -341,7 +342,12 @@
                     <label class="form-label">
                         Password <span class="required">*</span>
                     </label>
-                    <input type="password" name="password" class="form-control" required placeholder="••••••••">
+                    <div class="pw-wrap">
+                        <input type="password" id="passwordInput" name="password" class="form-control" required placeholder="••••••••">
+                        <button type="button" class="pw-toggle" onclick="spTogglePw('passwordInput',this)" tabindex="-1" aria-label="Show password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="secret-key-group" id="secretKeyDiv">
@@ -353,7 +359,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="login-submit">
+                <button type="submit" class="login-submit" data-loading-text="Signing in…">
                     <i class="fas fa-sign-in-alt"></i>
                     Login to Portal
                 </button>
@@ -367,7 +373,7 @@
 
             <!-- Footer -->
             <div class="login-footer">
-                <p>Sapthagiri Event Management System © 2024</p>
+                <p>Sapthagiri NPS University &copy; 2026 &mdash; SapthaEvent Portal</p>
             </div>
         </div>
     </div>
@@ -382,6 +388,19 @@
                 if(form) form.style.display = '';
             }, 250);
         });
+
+        // ── PASSWORD TOGGLE ────
+        function spTogglePw(id, btn) {
+            const inp = document.getElementById(id);
+            const icon = btn.querySelector('i');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                inp.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
 
         // ── ROLE SELECTION HANDLER ────
         document.getElementById('roleSelect').addEventListener('change', function() {

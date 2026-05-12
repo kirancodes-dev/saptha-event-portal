@@ -760,3 +760,247 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
     body { background: #fff !important; color: #000 !important; }
     .card { box-shadow: none !important; border: 1px solid #ddd !important; }
 }
+
+/* --------------------------------------------------------------------------
+   21. BUTTON LOADING SPINNER
+   -------------------------------------------------------------------------- */
+.sp-spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: sp-spin .7s linear infinite;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+@keyframes sp-spin { to { transform: rotate(360deg); } }
+
+/* Disabled/loading button — keep shape, dim */
+button:disabled, .btn:disabled {
+    opacity: 0.72 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   22. EMPTY STATES
+   -------------------------------------------------------------------------- */
+.empty-state {
+    text-align: center;
+    padding: clamp(2rem, 6vw, 4rem) 1.5rem;
+    color: var(--ink-500);
+}
+.empty-state .empty-icon {
+    font-size: 3rem;
+    color: var(--ink-300);
+    margin-bottom: 1rem;
+    display: block;
+}
+.empty-state h5 { color: var(--ink-700); margin-bottom: 0.4rem; }
+.empty-state p  { font-size: 0.875rem; color: var(--ink-400); margin-bottom: 1.25rem; }
+
+/* --------------------------------------------------------------------------
+   23. STATUS BADGE SHORTHANDS
+   -------------------------------------------------------------------------- */
+.status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.4px;
+    text-transform: uppercase; padding: 0.3em 0.75em;
+    border-radius: var(--radius-pill);
+}
+.status-active   { background: var(--success-soft); color: #065f46; }
+.status-closed   { background: var(--danger-soft);  color: #991b1b; }
+.status-pending  { background: var(--warning-soft); color: #92400e; }
+.status-free     { background: var(--info-soft);    color: #1e40af; }
+
+/* --------------------------------------------------------------------------
+   24. SECTION DIVIDER / EYEBROW LABELS
+   -------------------------------------------------------------------------- */
+.section-eyebrow {
+    font-size: 0.7rem; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--snpsu-gold);
+    margin-bottom: 0.35rem;
+}
+.section-rule {
+    border: none; height: 2px;
+    background: linear-gradient(90deg, var(--snpsu-blue) 0%, var(--snpsu-gold) 40%, transparent 100%);
+    margin: 0.75rem 0 1.25rem;
+    border-radius: var(--radius-pill);
+}
+
+/* --------------------------------------------------------------------------
+   25. FLOATING ACTION BUTTON (FAB) CLUSTER
+   -------------------------------------------------------------------------- */
+.fab-cluster {
+    position: fixed; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+    z-index: 9980;
+}
+.fab {
+    width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #fff;
+    background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-light));
+    box-shadow: 0 6px 20px rgba(26,37,87,.35);
+    transition: transform var(--t-fast), box-shadow var(--t-fast);
+}
+.fab:hover { transform: scale(1.08); box-shadow: 0 10px 28px rgba(26,37,87,.45); }
+.fab.fab-gold { background: linear-gradient(135deg, var(--snpsu-gold-dark), var(--snpsu-gold)); }
+
+/* --------------------------------------------------------------------------
+   26. CARD HIGHLIGHT / FEATURE CARD
+   -------------------------------------------------------------------------- */
+.feature-card {
+    background: linear-gradient(135deg, var(--snpsu-blue) 0%, var(--snpsu-blue-light) 100%);
+    color: #fff; border-radius: var(--radius-lg);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    position: relative; overflow: hidden;
+    box-shadow: var(--shadow-brand);
+}
+.feature-card::after {
+    content: '';
+    position: absolute; right: -60px; bottom: -60px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,164,94,.3), transparent 70%);
+    pointer-events: none;
+}
+.feature-card h2, .feature-card h3,
+.feature-card h4, .feature-card h5 { color: #fff; }
+.feature-card p { color: rgba(255,255,255,0.8); }
+
+/* --------------------------------------------------------------------------
+   27. SKELETON LOADERS
+   -------------------------------------------------------------------------- */
+@keyframes sp-skeleton { 0%,100%{opacity:1} 50%{opacity:.5} }
+.skeleton {
+    background: linear-gradient(90deg, var(--ink-100) 25%, var(--ink-200) 50%, var(--ink-100) 75%);
+    background-size: 200% 100%;
+    animation: sp-skeleton 1.6s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+.skeleton-text  { height: 14px; border-radius: 4px; margin-bottom: 8px; }
+.skeleton-title { height: 22px; border-radius: 4px; width: 60%; margin-bottom: 12px; }
+.skeleton-card  { height: 120px; border-radius: var(--radius-lg); }
+.skeleton-btn   { height: 42px; border-radius: var(--radius-sm); width: 120px; }
+.skeleton-avatar{ width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
+
+/* --------------------------------------------------------------------------
+   28. SMOOTH PAGE TRANSITIONS
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+    main, .page-content, .content-area {
+        animation: sp-fadein .22s ease-out both;
+    }
+    @keyframes sp-fadein {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: none; }
+    }
+}
+
+/* --------------------------------------------------------------------------
+   29. MOBILE BOTTOM SAFE AREA
+   -------------------------------------------------------------------------- */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    body { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* --------------------------------------------------------------------------
+   30. INPUT ICON HELPERS
+   -------------------------------------------------------------------------- */
+.input-icon-wrap { position: relative; }
+.input-icon-wrap .form-control { padding-left: 2.4rem !important; }
+.input-icon-wrap .inp-icon {
+    position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+    color: var(--ink-400); font-size: 0.875rem; pointer-events: none;
+}
+
+/* Password show/hide toggle */
+.pw-wrap { position: relative; }
+.pw-wrap .form-control { padding-right: 2.8rem !important; }
+.pw-toggle {
+    position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-400); font-size: 0.875rem; padding: 4px;
+    transition: color var(--t-fast);
+}
+.pw-toggle:hover { color: var(--snpsu-blue); }
+
+/* --------------------------------------------------------------------------
+   31. NOTIFICATION DOT
+   -------------------------------------------------------------------------- */
+.notif-dot {
+    position: absolute; top: -3px; right: -3px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--danger);
+    border: 2px solid #fff;
+}
+
+/* --------------------------------------------------------------------------
+   32. MOBILE TABLE — card-style fallback (override for small screens)
+   -------------------------------------------------------------------------- */
+@media (max-width: 575.98px) {
+    .table-card-mobile tbody tr {
+        display: block;
+        background: var(--bg-card);
+        border: 1px solid var(--ink-200);
+        border-radius: var(--radius);
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+        box-shadow: var(--shadow-xs);
+    }
+    .table-card-mobile thead { display: none; }
+    .table-card-mobile td {
+        display: flex !important;
+        justify-content: space-between;
+        border: none !important;
+        padding: 4px 0 !important;
+        font-size: 0.85rem;
+    }
+    .table-card-mobile td::before {
+        content: attr(data-label);
+        font-weight: 700; color: var(--ink-600);
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: .5px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   33. TOOLTIP UTILITY
+   -------------------------------------------------------------------------- */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 7px); left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink-900); color: #fff;
+    font-size: 11px; font-weight: 500; line-height: 1.4;
+    padding: 5px 9px; border-radius: 6px;
+    white-space: nowrap; max-width: 220px; white-space: pre-wrap;
+    pointer-events: none; opacity: 0;
+    transition: opacity .18s;
+    z-index: 9000;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* --------------------------------------------------------------------------
+   34. FOCUS RING OVERRIDE for interactive cards
+   -------------------------------------------------------------------------- */
+.ev-card:focus-within, .ticket-card:focus-within {
+    outline: 2px solid var(--snpsu-gold);
+    outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   35. RESPONSIVE GRID HELPERS
+   -------------------------------------------------------------------------- */
+.grid-2 { display: grid; gap: 1rem; grid-template-columns: repeat(2, 1fr); }
+.grid-3 { display: grid; gap: 1rem; grid-template-columns: repeat(3, 1fr); }
+.grid-4 { display: grid; gap: 1rem; grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 767.98px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 479px) {
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+}
+

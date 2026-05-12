@@ -411,7 +411,15 @@
         <!-- Action buttons (outside ticket so they don't print) -->
         <div class="action-row">
             <button class="btn-download" onclick="window.print()">
-                <i class="fas fa-download me-1"></i> Save / Print
+                <i class="fas fa-print me-1"></i> Save / Print
+            </button>
+            {% if navigator_share_supported %}
+            <button class="btn-back" id="shareBtn" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;">
+                <i class="fas fa-share-alt me-1"></i> Share
+            </button>
+            {% endif %}
+            <button class="btn-back" id="copyLinkBtn" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;">
+                <i class="fas fa-link me-1"></i> Copy Link
             </button>
             <a href="/participant/dashboard" class="btn-back">
                 <i class="fas fa-arrow-left me-1"></i> Dashboard
@@ -424,5 +432,33 @@
         {% include 'includes/share_strip.html' %}
 
     </div><!-- /wrapper -->
+
+<script src="/static/js/global.js"></script>
+<script>
+// Copy ticket link
+document.getElementById('copyLinkBtn') && document.getElementById('copyLinkBtn').addEventListener('click', function() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(function() {
+        showToast('Ticket link copied!', 'success', 2500);
+    }).catch(function() {
+        showToast('Copy manually: ' + url, 'info', 5000);
+    });
+});
+
+// Native share (mobile)
+if (navigator.share) {
+    var shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+        shareBtn.style.display = 'inline-flex';
+        shareBtn.addEventListener('click', function() {
+            navigator.share({
+                title: 'My Event Ticket — {{ event.get("title","") | e }}',
+                text: "I'm registered for {{ event.get('title','') | e }} at Sapthagiri NPS University! #SapthaEvent",
+                url: window.location.href
+            });
+        });
+    }
+}
+</script>
 </body>
 </html>

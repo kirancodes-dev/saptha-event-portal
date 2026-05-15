@@ -152,7 +152,7 @@ def submit_score(reg_id):
                     'raw_total':    total_score,
                     'remarks':      remarks,
                     'judge_name':   session.get('name'),
-                    'submitted_at': datetime.datetime.utcnow().isoformat(),
+                    'submitted_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 }
             }
         }, merge=True)
@@ -203,7 +203,7 @@ def score_inline(reg_id):
                     'raw_total':    total,
                     'remarks':      remarks,
                     'judge_name':   session.get('name'),
-                    'submitted_at': datetime.datetime.utcnow().isoformat(),
+                    'submitted_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 }
             }
         }, merge=True)

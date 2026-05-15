@@ -251,7 +251,7 @@ Return ONLY valid JSON in this exact schema — no prose, no markdown fences:
                     'confidence':   60,
                 })
 
-        plan['generated_at']  = datetime.datetime.utcnow().isoformat()
+        plan['generated_at']  = datetime.datetime.now(datetime.timezone.utc).isoformat()
         plan['event_id']      = event_id
         plan['unmatched_count'] = len(unmatched)
 
@@ -339,7 +339,7 @@ def apply_match(event_id):
 
         db.collection('events').document(event_id).update({
             'ai_match_applied':    True,
-            'ai_match_applied_at': datetime.datetime.utcnow().isoformat(),
+            'ai_match_applied_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         })
         log_action(db, 'AI_MATCH_APPLIED',
                    f'Applied AI match for event {event_id}: {applied} assignments')
@@ -611,7 +611,7 @@ def generate_summaries(event_id):
         summary_map = {s['reg_id']: s for s in summaries if isinstance(s, dict)}
 
         # ── 4. Write each summary to its registration doc ─────────────
-        now_ts  = datetime.datetime.utcnow().isoformat()
+        now_ts  = datetime.datetime.now(datetime.timezone.utc).isoformat()
         written = 0
         for t in scored:
             rid     = t['reg_id']
@@ -763,7 +763,7 @@ def regenerate_summary(reg_id):
 
         parsed   = json.loads(raw)
         summary  = parsed[0] if isinstance(parsed, list) else parsed
-        summary['generated_at'] = datetime.datetime.utcnow().isoformat()
+        summary['generated_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         summary['avg_score']    = sb['avg_total']
         summary['crit_avgs']    = sb['crit_avgs']
 

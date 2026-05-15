@@ -1459,8 +1459,8 @@ def advance_round(event_id):
         advancers   = scored[:top_n]
         eliminatees = scored[top_n:]
     elif mode == 'cutoff' and cutoff > 0:
-        advancers   = [s for s in scored if s['avg'] >= cutoff]
-        eliminatees = [s for s in scored if s['avg'] < cutoff]
+        advancers   = [s for s in scored if float(s['avg']) >= cutoff]
+        eliminatees = [s for s in scored if float(s['avg']) < cutoff]
     else:
         flash("Please specify Top N or a score cutoff.", "warning")
         return redirect(f'/spoc/round_panel/{event_id}')
@@ -1475,7 +1475,7 @@ def advance_round(event_id):
             'assigned_room': None,
         })
         try:
-            d = s['data']
+            d: dict = s['data']
             send_advancement_email(
                 to_email=d.get('lead_email', ''),
                 name=d.get('lead_name', 'Participant'),

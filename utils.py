@@ -1,6 +1,9 @@
 from functools import wraps
 from flask import session, redirect, flash, request
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # =========================================================
@@ -22,10 +25,7 @@ def role_required(roles):
     """
     Restrict a route to one or more roles.
 
-    Usage:
-        @role_required('Admin')
-        @role_required(['Admin', 'SuperAdmin'])
-
+    Pass a single role string or a list of role strings.
     Common mistake guard: if someone writes @role_required without ()
     Flask passes the view function as `roles` — we catch that and
     raise a clear error instead of a cryptic AttributeError.
@@ -74,9 +74,8 @@ def log_action(db, action: str, details: str = ""):
     """
     Write an immutable audit entry to Firestore.
 
-    Call this any time a privileged action happens:
-        log_action(db, "SCORE_SUBMITTED", f"Judge {email} scored team {reg_id}")
-        log_action(db, "EVENT_DELETED",   f"Event {event_id} deleted by {email}")
+    Call this any time a privileged action happens, passing the db client,
+    an action string (e.g. SCORE_SUBMITTED, EVENT_DELETED), and a details string.
     """
     try:
         db.collection('audit_log').add({
@@ -85,11 +84,11 @@ def log_action(db, action: str, details: str = ""):
             'user':      session.get('user_id', 'anonymous'),
             'role':      session.get('role', 'unknown'),
             'ip':        request.remote_addr,
-            'timestamp': datetime.datetime.utcnow()
+            'timestamp': datetime.datetime.now(datetime.timezone.utc)
         })
     except Exception as exc:
         # Never let logging crash the application
-        print(f"[AUDIT LOG ERROR] {exc}")
+        logger.warning("[AUDIT LOG ERROR] %s", exc)
 
 
 # =========================================================
@@ -124,3 +123,36 @@ def paginate_list(items: list, page: int, per_page: int = 20) -> dict:
         'has_prev':    page > 1,
         'has_next':    end < total,
     }
+
+
+# =========================================================
+# ROLE → DASHBOARD MAP  (single source of truth)
+# Import this in routes_auth.py and app.py instead of
+# defining the same dict twice.
+# =========================================================
+ROLE_REDIRECTS = {
+    'Student':          '/participant/dashboard',
+    'SuperAdmin':       '/admin/dashboard',
+    'Super Admin':      '/admin/dashboard',
+    'Admin':            '/admin/dashboard',
+    'Coordinator':      '/coordinator/dashboard',
+    'ClubSPOC':         '/spoc/dashboard',
+    'EventCoordinator': '/coordinator/scanner',
+    'Judge':            '/judge/dashboard',
+}
+
+
+# =========================================================
+# PASSWORD STRENGTH VALIDATOR  (single policy for all flows)
+# =========================================================
+def validate_password_strength(password: str) -> tuple:
+    """
+    Returns (is_valid: bool, error_message: str).
+    Policy: min 8 chars, at least 1 digit.
+    Used in: register, force-reset, token-reset.
+    """
+    if not password or len(password) < 8:
+        return False, 'Password must be at least 8 characters.'
+    if not any(c.isdigit() for c in password):
+        return False, 'Password must contain at least one number.'
+    return True, ''

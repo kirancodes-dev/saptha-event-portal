@@ -67,7 +67,7 @@ def _fmt_phone(phone: str) -> str:
     if not phone:
         return ''
     # Strip spaces, dashes, brackets
-    p = ''.join(c for c in str(phone) if c.isdigit() or c == '+')
+    p = ''.join(c for c in phone if c.isdigit() or c == '+')
     if p.startswith('+'):
         return f'whatsapp:{p}'
     if len(p) == 10:          # bare Indian mobile number
@@ -109,17 +109,19 @@ def _send(to_phone: str, body: str) -> bool:
 # ─────────────────────────────────────────────────────────────
 
 def send_ticket_whatsapp(phone: str, name: str, event_title: str,
-                         reg_id: str, base_url: str = '') -> bool:
-    """
-    Sent when a participant registers for a free event
-    or after payment confirmation for a paid event.
-    """
+                         reg_id: str, base_url: str = '',
+                         event_date: str = '', venue: str = '') -> bool:
+    """Sent when a participant registers for a free or paid event."""
     base = base_url or os.environ.get(
         'BASE_URL', 'https://saptha-event-portal-production.up.railway.app')
+    date_line = f"📅 *Date:* {event_date}\n" if event_date else ""
+    venue_line = f"📍 *Venue:* {venue}\n" if venue else ""
     body = (
         f"🎟️ *Registration Confirmed!*\n\n"
         f"Hi {name},\n"
         f"You're registered for *{event_title}*.\n\n"
+        f"{date_line}"
+        f"{venue_line}"
         f"📌 *Ticket ID:* `{reg_id}`\n\n"
         f"Show this ID at the venue for check-in.\n"
         f"👉 Dashboard: {base}/participant/dashboard"

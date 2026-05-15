@@ -7,6 +7,7 @@ exactly like an ORM object (e.g. event.title, event.date).
 """
 import firebase_admin
 from firebase_admin import credentials, firestore
+from typing import Any, cast
 import os
 
 
@@ -19,10 +20,11 @@ if not firebase_admin._apps:
         cred = credentials.Certificate(key_path)
         firebase_admin.initialize_app(cred)
 
+db: Any = None
 try:
-    db = firestore.client()
+    db = cast(Any, firestore.client())
 except Exception:
-    db = None
+    pass
 
 
 # =========================================================
@@ -31,12 +33,10 @@ except Exception:
 class FirebaseWrapper:
     """
     Wraps a Firestore document dict so templates can access fields
-    with dot notation: {{ event.title }}  instead of {{ event['title'] }}
+    with dot notation (event.title) instead of dict notation (event['title']).
 
-    Usage:
-        doc  = db.collection('events').document(event_id).get()
-        event = FirebaseWrapper(doc.id, doc.to_dict())
-        print(event.title, event.date)
+    Pass the document id and its to_dict() result to the constructor.
+    Every field becomes an attribute; use .get(key, default) for safe access.
     """
 
     def __init__(self, doc_id: str, data: dict):

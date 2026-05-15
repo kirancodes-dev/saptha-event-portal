@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, jsonify, request
 from google import genai
 from google.cloud.firestore_v1.base_query import FieldFilter
 from models import db
+from extensions import limiter
 
 logger     = logging.getLogger(__name__)
 chatbot_bp = Blueprint('chatbot', __name__, url_prefix='/chatbot')
@@ -32,10 +33,11 @@ def _get_client():
 
 
 @chatbot_bp.route('/ask', methods=['POST'])
+@limiter.limit("20 per minute")   # protect Gemini API quota
 def ask():
     try:
         data         = request.get_json() or {}
-        user_message = data.get('message', '').strip()
+        user_message = data.get('message', '').strip()[:500]   # cap message length
         if not user_message:
             return jsonify({'reply': "I didn't catch that — please ask again!"})
 

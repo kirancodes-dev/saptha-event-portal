@@ -1,17 +1,10 @@
 """
 utils_validation.py — Input Validation & Sanitization
-=====================================================
 
 Provides validation functions for common data types used throughout SapthaEvent.
 Prevents invalid data from entering the database.
 
-Usage:
-  from utils_validation import validate_email, validate_phone, sanitize_input
-
-  if validate_email(email):
-      # Process email
-  if validate_phone(phone):
-      # Process phone
+Import validate_email, validate_phone, sanitize_input from this module.
 """
 
 import re
@@ -42,9 +35,7 @@ def validate_email(email: str) -> bool:
     Returns:
         True if valid, False otherwise
 
-    Examples:
-        validate_email("user@example.com")  # True
-        validate_email("invalid.email")     # False
+    Returns True for valid addresses like "user@example.com", False otherwise.
     """
     if not email or not isinstance(email, str):
         return False
@@ -203,27 +194,10 @@ def sanitize_phone(phone: str) -> str:
 # =========================================================
 def validate_registration_data(data: dict) -> Tuple[bool, Optional[str]]:
     """
-    Validate complete registration data.
+    Validate complete registration data dict.
 
-    Args:
-        data: Registration data dict with keys:
-              - lead_name: str
-              - lead_email: str
-              - lead_phone: str
-              - event_id: str
-              - team_name: str (optional)
-
-    Returns:
-        Tuple of (is_valid, error_message)
-
-    Examples:
-        is_valid, error = validate_registration_data({
-            'lead_name': 'John Doe',
-            'lead_email': 'john@example.com',
-            'lead_phone': '9876543210',
-            'event_id': 'EVT-001',
-            'team_name': 'Team Alpha'
-        })
+    Expects keys: lead_name, lead_email, lead_phone, event_id, team_name (optional).
+    Returns a tuple of (is_valid: bool, error_message: str | None).
     """
     if not isinstance(data, dict):
         return False, "Data must be a dictionary"
@@ -292,7 +266,7 @@ def validate_event_data(data: dict) -> Tuple[bool, Optional[str]]:
 # =========================================================
 # BATCH SANITIZER
 # =========================================================
-def sanitize_dict(data: dict, fields_to_sanitize: list = None) -> dict:
+def sanitize_dict(data: dict, fields_to_sanitize: "list | None" = None) -> dict:
     """
     Sanitize multiple fields in a dictionary.
 

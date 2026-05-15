@@ -26,6 +26,7 @@ import time
 
 from flask import (Blueprint, Response, current_app, flash, jsonify,
                    redirect, render_template, request, session)
+from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from werkzeug.security import generate_password_hash
 
@@ -90,7 +91,7 @@ def _validate_submission(schema: dict, form_data: dict) -> list:
 
         if ftype == 'number' and value:
             try:
-                n = float(value)
+                n = float(str(value))
                 if field.get('min') != '' and field.get('min') is not None:
                     if n < float(field['min']):
                         errors.append(f"'{label}' must be at least {field['min']}.")
@@ -209,7 +210,7 @@ def save_form(event_id):
             'form_desc':  form_desc,
             'fields':     clean_fields,
             'created_by': session.get('user_id'),
-            'updated_at': datetime.datetime.utcnow().isoformat(),
+            'updated_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
 
         db.collection('event_forms').document(event_id).set(schema)
@@ -292,8 +293,8 @@ def submit_form(event_id):
                 event_data.get('is_team_event', False))['fields']
         }
 
-        # Collect all answers
-        answers = {}
+        # Collect all answers — values are str for most fields, list[str] for checkbox_group
+        answers: dict = {}
         for field in schema.get('fields', []):
             fid = field.get('id', '')
             if not fid or field.get('type') in ('heading', 'paragraph', 'divider'):
@@ -350,9 +351,9 @@ def submit_form(event_id):
                 'created_at':          datetime.datetime.now().strftime('%Y-%m-%d'),
                 'needs_password_reset': True
             })
+            # ✅ Do NOT show raw password in flash — it is emailed securely
             flash(
-                f"🆕 Account created! Temporary password: "
-                f"<strong>{raw_password}</strong> (also emailed to you).",
+                "🆕 Account created! Check your email for your login credentials.",
                 "info"
             )
 
@@ -360,15 +361,15 @@ def submit_form(event_id):
         members = [{'role': 'Lead', 'name': full_name,
                     'email': email, 'usn': usn, 'phone': phone}]
         for i in range(1, 10):
-            m_name = answers.get(f'member_{i}_name', '').strip()
+            m_name = str(answers.get(f'member_{i}_name') or '').strip()
             if not m_name:
                 break
             members.append({
                 'role':  'Member',
                 'name':  m_name,
-                'email': answers.get(f'member_{i}_email', '').strip().lower(),
-                'usn':   answers.get(f'member_{i}_usn',   '').strip().upper(),
-                'phone': answers.get(f'member_{i}_phone', '').strip(),
+                'email': str(answers.get(f'member_{i}_email') or '').strip().lower(),
+                'usn':   str(answers.get(f'member_{i}_usn')   or '').strip().upper(),
+                'phone': str(answers.get(f'member_{i}_phone') or '').strip(),
             })
 
         # Build registration
@@ -399,7 +400,7 @@ def submit_form(event_id):
             'email':        email,
             'name':         full_name,
             'answers':      answers,
-            'submitted_at': datetime.datetime.utcnow().isoformat(),
+            'submitted_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         })
 
         # Free vs paid
@@ -419,8 +420,9 @@ def submit_form(event_id):
             'amount_paid':    0
         })
         db.collection('registrations').document(reg_id).set(reg_data)
+        # Atomic increment — safe under concurrent registrations
         db.collection('events').document(event_id).update({
-            'registration_count': event_data.get('registration_count', 0) + 1
+            'registration_count': firestore.Increment(1)
         })
 
         # Notifications — confirmation only; QR ticket sent 1 day before event

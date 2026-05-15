@@ -1,5 +1,5 @@
 import hashlib
-import hmac
+import hmac as _hmac  # alias to avoid shadowing module with local var
 import os
 import time
 import datetime
@@ -7,6 +7,8 @@ import datetime
 import razorpay
 from flask import (Blueprint, flash, jsonify, redirect, render_template,
                    request, session)
+from google.cloud import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from models import db
 from utils import log_action
@@ -44,7 +46,7 @@ def create_order():
         # Keys not configured — fall through to simulation
         return jsonify({'simulate': True, 'amount': amount_inr, 'event_id': event_id})
 
-    order = _rzp().order.create({
+    order = _rzp().order.create({  # type: ignore[union-attr]
         'amount':   amount_paise,
         'currency': 'INR',
         'receipt':  f"reg_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}",
@@ -72,13 +74,13 @@ def verify_payment():
     razorpay_signature  = data.get('razorpay_signature', '')
     event_id            = data.get('event_id', '')
 
-    expected = hmac.new(
+    expected = _hmac.new(
         RAZORPAY_KEY_SECRET.encode(),
         f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
         hashlib.sha256,
     ).hexdigest()
 
-    if not hmac.compare_digest(expected, razorpay_signature):
+    if not _hmac.compare_digest(expected, razorpay_signature):
         return jsonify({'error': 'Invalid signature'}), 400
 
     reg_data = session.get('pending_reg_data')
@@ -155,8 +157,8 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
     try:
         existing = list(
             db.collection('registrations')
-              .where('event_id', '==', event_id)
-              .where('lead_email', '==', email)
+              .where(filter=FieldFilter('event_id', '==', event_id))
+              .where(filter=FieldFilter('lead_email', '==', email))
               .limit(1).stream()
         )
         if existing:
@@ -176,7 +178,8 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
 
         event_ref  = db.collection('events').document(event_id)
         event_data = event_ref.get().to_dict() or {}
-        event_ref.update({'registration_count': event_data.get('registration_count', 0) + 1})
+        # Atomic increment — safe under concurrent registrations
+        event_ref.update({'registration_count': firestore.Increment(1)})
 
         event_title = event_data.get('title', 'Event')
         event_date  = event_data.get('date', '')

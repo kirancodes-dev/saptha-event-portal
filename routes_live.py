@@ -21,7 +21,7 @@ live_bp = Blueprint('live', __name__, url_prefix='/live')
 _ROUND_LABEL = {1: 'Round 1', 2: 'Round 2', 3: 'Semi-Final', 4: 'Final'}
 
 
-def _compute_leaderboard(event_id: str) -> dict | None:
+def _compute_leaderboard(event_id: str) -> "dict | None":
     """Read Firestore and return a ranked snapshot."""
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
@@ -116,7 +116,7 @@ def sse_stream(event_id):
         yield "event: reconnect\ndata: {}\n\n"
 
     return Response(
-        stream_with_context(generate()),
+        stream_with_context(generate()),  # type: ignore[arg-type]
         mimetype='text/event-stream',
         headers={
             'Cache-Control':    'no-cache',

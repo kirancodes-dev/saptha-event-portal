@@ -1,9 +1,11 @@
 import csv
 import datetime
 import io
+import os
 import random
 import secrets
 import string
+import time as _time
 from io import StringIO
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -117,16 +119,17 @@ def create_event():
         category = (session.get('category') if session.get('category') not in (None, 'All')
                     else request.form.get('category', 'General'))
         db.collection('events').add({
-            'title':              request.form.get('title', '').strip(),
+            # Length caps — prevent oversized Firestore documents
+            'title':              request.form.get('title', '').strip()[:100],
             'date':               request.form.get('date'),
             'deadline':           request.form.get('deadline'),
-            'venue':              request.form.get('venue', '').strip(),
+            'venue':              request.form.get('venue', '').strip()[:200],
             'description':        overview[:120] + '...' if len(overview) > 120 else overview,
-            'overview':           overview,
-            'rules':              request.form.get('rules', ''),
-            'prizes':             request.form.get('prizes', ''),
+            'overview':           overview[:3000],
+            'rules':              request.form.get('rules', '')[:5000],
+            'prizes':             request.form.get('prizes', '')[:1000],
             'category':           category,
-            'media_urls':         media_urls,
+            'media_urls':         media_urls[:5],   # max 5 media URLs
             'banner_url':         media_urls[0] if media_urls else '',
             'entry_fee':          safe_int(request.form.get('entry_fee', 0)),
             'is_team_event':      request.form.get('is_team') == 'on',
@@ -137,7 +140,7 @@ def create_event():
             'staff':              [],
             'created_by':         session.get('name'),
             'created_by_email':   session.get('user_id'),
-            'created_at':         datetime.datetime.utcnow(),
+            'created_at':         datetime.datetime.now(datetime.timezone.utc),
         })
         log_action(db, "EVENT_CREATED",
                    f"{session.get('user_id')} created '{request.form.get('title')}'")
@@ -416,13 +419,13 @@ def publish_results(event_id):
             })
 
         for idx, winner in enumerate(leaderboard[:3], start=1):
-            send_result_email(winner['email'], winner['lead_name'], event_title, idx, winner['score'])
+            send_result_email(str(winner['email']), str(winner['lead_name']), event_title, idx, winner['score'])
             if winner.get('phone'):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
                     event_title, idx, winner['score'])
 
         event_ref.update({'status': 'completed', 'winners': leaderboard[:3],
-                          'completed_at': datetime.datetime.utcnow()})
+                          'completed_at': datetime.datetime.now(datetime.timezone.utc)})
 
         # Kick off AI summaries in background (best-effort — won't block publish)
         try:
@@ -442,7 +445,8 @@ def publish_results(event_id):
                         _gen(event_id)
             threading.Thread(target=_bg_summaries, daemon=True).start()
         except Exception as exc:
-            current_app.logger.warning('Background summary generation failed: %s', exc)
+            import logging as _log
+            _log.getLogger(__name__).warning('Background summary generation failed: %s', exc)
 
         log_action(db, "RESULTS_PUBLISHED", f"Event {event_id} by {session.get('user_id')}")
         flash("Results published! Top 3 notified. AI summaries generating in background.", "success")
@@ -489,7 +493,7 @@ def export_registrations(event_id):
                     row += [m.get('name', ''), m.get('email', ''),
                              m.get('phone', ''), m.get('usn', '')]
             writer.writerow(row)
-        title = event_data.get('title', 'Event').replace(' ', '_')
+        title = str(event_data.get('title', 'Event')).replace(' ', '_')
         return Response(output.getvalue(), mimetype='text/csv',
             headers={"Content-Disposition": f"attachment; filename={title}_Registrations.csv"})
     except Exception as exc:
@@ -509,7 +513,9 @@ def export_excel(event_id):
         regs       = list(db.collection('registrations')
                           .where(filter=_ff('event_id', '==', event_id)).stream())
         wb = openpyxl.Workbook()
-        ws = wb.active; ws.title = "Registrations"
+        ws = wb.active
+        assert ws is not None
+        ws.title = "Registrations"
         hf    = PatternFill("solid", fgColor="0D2D62")
         hfont = Font(bold=True, color="FFFFFF", size=11)
         haln  = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -518,7 +524,7 @@ def export_excel(event_id):
         afill = PatternFill("solid", fgColor="EEF3FA")
         thin  = Side(style="thin", color="CCCCCC")
         bdr   = Border(left=thin, right=thin, top=thin, bottom=thin)
-        event_title = event_data.get('title', 'Event')
+        event_title = str(event_data.get('title', 'Event'))
         last_col    = 15 + (16 if is_team else 0)
         last_ltr    = get_column_letter(last_col)
         # Row 1 — title banner
@@ -616,7 +622,7 @@ def process_walkin():
         if not event_id or not email or not name:
             flash("Event, name and email are required.", "warning")
             return redirect('/coordinator/on_spot')
-        WALKIN_PASSWORD = 'Welcome@123'
+        WALKIN_PASSWORD = os.environ.get('WALKIN_DEFAULT_PASSWORD', 'Welcome@Saptha1')
         user_ref  = db.collection('users').document(email)
         is_new    = not user_ref.get().exists
         if is_new:
@@ -657,9 +663,9 @@ def process_walkin():
             qr_bytes = None
 
         send_ticket_email(email, name, event_title, reg_id,
-                          qr_bytes=qr_bytes,
+                          qr_bytes=qr_bytes or b'',
                           is_new_user=is_new,
-                          raw_password=WALKIN_PASSWORD if is_new else None)
+                          raw_password=WALKIN_PASSWORD if is_new else '')
         _wa(send_ticket_whatsapp, phone, name, event_title, reg_id,
             event_doc.get('date', ''), event_doc.get('venue', ''))
         log_action(db, "WALKIN_REGISTERED", f"Walk-in {email} for event {event_id}")

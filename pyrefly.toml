@@ -1,0 +1,6 @@
+python_interpreter = ".venv/bin/python"
+
+# Suppress false-positive errors from Pyrefly analyzing code blocks
+# inside docstrings as standalone virtual Python files
+[errors]
+ignore = ["parse-error", "unknown-name"]

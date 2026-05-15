@@ -85,7 +85,7 @@ def create_team(event_id):
             if not dup:
                 break
 
-        team_id = f"TEAM-{int(datetime.datetime.utcnow().timestamp() * 1000)}"
+        team_id = f"TEAM-{int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)}"
         db.collection('teams').document(team_id).set({
             'team_id':    team_id,
             'event_id':   event_id,
@@ -103,7 +103,7 @@ def create_team(event_id):
             'join_code':   code,
             'max_size':    max_size,
             'status':      'Open',
-            'created_at':  datetime.datetime.utcnow().isoformat(),
+            'created_at':  datetime.datetime.now(datetime.timezone.utc).isoformat(),
         })
         log_action(lead_email, 'team_create', f"{team_id} for {event_id}")
         flash(f"Team created. Share code {code} with your teammates.", "success")
@@ -145,7 +145,7 @@ def join_team():
             flash("This team is no longer accepting members.", "warning")
             return redirect('/teams/join')
 
-        email   = session.get('user_id')
+        email   = session.get('user_id') or ''
         members = team.get('members', [])
 
         if any((m.get('email') or '').lower() == email.lower() for m in members):

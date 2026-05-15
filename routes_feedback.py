@@ -49,7 +49,7 @@ def submit_feedback(reg_id):
                 'rating':    int(rating),
                 'comments':  comments,
                 'tags':      tags,
-                'timestamp': datetime.datetime.utcnow(),
+                'timestamp': datetime.datetime.now(datetime.timezone.utc),
             }
         })
         flash("Thank you for your feedback!", "success")

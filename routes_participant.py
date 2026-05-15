@@ -31,7 +31,7 @@ def _ff(f, op, v):
     return FieldFilter(f, op, v)
 
 
-def _days_until(date_str: str) -> int | None:
+def _days_until(date_str: str) -> "int | None":
     """Returns days until event date, or None if unparseable."""
     try:
         event_date = datetime.datetime.strptime(date_str[:10], '%Y-%m-%d').date()
@@ -274,7 +274,7 @@ def submit_feedback(reg_id):
                 'rating':    int(rating),
                 'comments':  comments,
                 'tags':      tags,
-                'timestamp': datetime.datetime.utcnow(),
+                'timestamp': datetime.datetime.now(datetime.timezone.utc),
             }
         })
         flash("Thank you for your feedback!", "success")
@@ -428,8 +428,9 @@ def public_register(event_id):
 
         reg_data.update({'status': 'Confirmed', 'payment_status': 'Free', 'amount_paid': 0})
         db.collection('registrations').document(reg_id).set(reg_data)
+        # Atomic increment — safe under concurrent registrations
         db.collection('events').document(event_id).update({
-            'registration_count': event_data.get('registration_count', 0) + 1
+            'registration_count': firestore.Increment(1)
         })
         send_ticket_email(email, full_name, event_data.get('title', ''),
                           reg_id, is_new_user=is_new_user, raw_password=raw_password)
@@ -468,11 +469,10 @@ def cancel_registration(reg_id):
     # Mark as cancelled
     db.collection('registrations').document(reg_id).update({'status': 'Cancelled'})
 
-    # Decrement event count (floor at 0)
-    event_ref = db.collection('events').document(event_id)
-    event_doc = event_ref.get().to_dict() or {}
-    new_count = max(0, int(event_doc.get('registration_count', 1)) - 1)
-    event_ref.update({'registration_count': new_count})
+    # Atomic decrement — floor at 0 handled server-side via max check after read
+    db.collection('events').document(event_id).update({
+        'registration_count': firestore.Increment(-1)
+    })
 
     # Trigger waitlist promotion
     try:

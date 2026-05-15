@@ -4,7 +4,8 @@ import datetime
 import logging
 import firebase_admin
 from firebase_admin import credentials, firestore
-from flask import Flask, render_template, session, redirect, request, jsonify, Response
+from typing import Any, cast
+from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_session import Session
@@ -13,6 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from google.cloud.firestore_v1.base_query import FieldFilter
 from config import Config
 from dotenv import load_dotenv
+from utils import ROLE_REDIRECTS  # single source of truth
 
 load_dotenv()
 
@@ -98,7 +100,7 @@ def handle_csrf_error(e):
 
 # Expose csrf_token() in Jinja globals (Flask-WTF does this automatically,
 # but make it explicit for clarity)
-app.jinja_env.globals['csrf_token'] = lambda: (
+app.jinja_env.globals['csrf_token'] = lambda: (  # type: ignore[index]
     __import__('flask_wtf.csrf', fromlist=['generate_csrf']).generate_csrf()
 )
 
@@ -190,12 +192,12 @@ if not firebase_admin._apps:
                 # For development without Firebase, you can disable it or use mock credentials
 
 # Initialize Firestore database (only if Firebase was initialized)
+db: Any = None
 try:
-    db = firestore.client()
+    db = cast(Any, firestore.client())
     logger.info("Firestore: Connected successfully")
 except Exception as exc:
     logger.error("Firestore: Failed to connect: %s", exc)
-    db = None  # Use None and handle in routes
 
 # =========================================================
 # BLUEPRINTS
@@ -255,18 +257,8 @@ for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp):
 
 
 # =========================================================
-# ROLE → DASHBOARD MAP
+# ROLE → DASHBOARD MAP  (defined in utils.py — imported above)
 # =========================================================
-ROLE_REDIRECTS = {
-    'Student':          '/participant/dashboard',
-    'SuperAdmin':       '/admin/dashboard',
-    'Super Admin':      '/admin/dashboard',
-    'Admin':            '/admin/dashboard',
-    'Coordinator':      '/coordinator/dashboard',
-    'ClubSPOC':         '/spoc/dashboard',
-    'EventCoordinator': '/coordinator/scanner',
-    'Judge':            '/judge/dashboard',
-}
 
 # =========================================================
 # NOISE SUPPRESSORS
@@ -312,6 +304,19 @@ def offline_page():
 @app.route('/.well-known/<path:subpath>')
 def well_known_suppress(subpath):
     return Response(status=204)
+
+
+# =========================================================
+# LEGAL PAGES — Privacy Policy & Terms of Service
+# Required under Indian DPDP Act 2023 and IT Act 2008
+# =========================================================
+@app.route('/privacy')
+def privacy_policy():
+    return render_template('public/privacy.html')
+
+@app.route('/terms')
+def terms_of_service():
+    return render_template('public/terms.html')
 
 # =========================================================
 # HEALTH CHECK — For load balancers & monitoring
@@ -616,15 +621,15 @@ def verify_certificate(reg_id):
 @app.before_request
 def log_request():
     """Log all incoming requests"""
-    request.start_time = datetime.datetime.now()
+    g.start_time = datetime.datetime.now()
     if request.path not in ['/health', '/health/ready', '/favicon.ico']:
         logger.info(f"→ {request.method} {request.path} from {request.remote_addr}")
 
 @app.after_request
 def log_response(response):
     """Log response details"""
-    if hasattr(request, 'start_time'):
-        duration = (datetime.datetime.now() - request.start_time).total_seconds()
+    if hasattr(g, 'start_time'):
+        duration = (datetime.datetime.now() - g.start_time).total_seconds()
         if request.path not in ['/health', '/health/ready', '/favicon.ico']:
             logger.info(f"← {response.status_code} {request.method} {request.path} ({duration:.3f}s)")
     return response
@@ -658,6 +663,59 @@ def rate_limited(e):
 def server_error(e):
     logger.error(f"500 Server Error: {e}", exc_info=True)
     return render_template('500.html'), 500
+
+
+# =========================================================
+# ROBOTS.TXT  — keep private pages out of Google's index
+# =========================================================
+@app.route('/robots.txt')
+def robots_txt():
+    content = (
+        "User-agent: *\n"
+        "Disallow: /admin/\n"
+        "Disallow: /spoc/\n"
+        "Disallow: /coordinator/\n"
+        "Disallow: /judge/\n"
+        "Disallow: /participant/\n"
+        "Disallow: /ai/\n"
+        "Disallow: /payment/\n"
+        "Disallow: /forms/builder/\n"
+        "Disallow: /forms/responses/\n"
+        "Allow: /\n"
+        "Allow: /calendar\n"
+        "Allow: /event/\n"
+        "Allow: /verify/\n"
+        f"Sitemap: {app.config.get('BASE_URL', '')}/sitemap.xml\n"
+    )
+    return Response(content, mimetype='text/plain')
+
+
+# =========================================================
+# SITEMAP.XML  — help Google index public pages
+# =========================================================
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    base = app.config.get('BASE_URL', 'https://saptha-event-portal.xyz')
+    urls = [base + '/', base + '/calendar', base + '/login', base + '/register']
+    try:
+        for doc in db.collection('events').where(
+            filter=FieldFilter('status', '==', 'active')
+        ).stream():
+            urls.append(f"{base}/event/{doc.id}")
+    except Exception:
+        pass
+    items = ''.join(f'<url><loc>{u}</loc></url>' for u in urls)
+    xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{items}</urlset>'
+    return Response(xml, mimetype='application/xml')
+
+
+# =========================================================
+# PAYMENT FAILED PAGE  — dedicated failure UX
+# =========================================================
+@app.route('/payment/failed')
+def payment_failed():
+    reason = request.args.get('reason', 'Payment could not be completed.')
+    return render_template('payment/failed.html', reason=reason)
 
 
 # =========================================================

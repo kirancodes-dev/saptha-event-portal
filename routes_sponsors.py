@@ -56,7 +56,7 @@ def admin_sponsors():
             'logo_url': logo_url,
             'description': desc,
             'active': True,
-            'created_at': datetime.datetime.utcnow().isoformat(),
+            'created_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'created_by': session.get('user_id'),
         })
         log_action(session.get('user_id'), 'sponsor_add', f"{sid} {name} ({tier})")

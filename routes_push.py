@@ -50,7 +50,7 @@ def send_push(user_id: str, title: str, body: str, url: str = '/'):
     if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
         return
     try:
-        from pywebpush import webpush
+        from pywebpush import webpush  # type: ignore[import-untyped]
         doc = db.collection('push_subscriptions').document(user_id).get()
         if not doc.exists:
             return

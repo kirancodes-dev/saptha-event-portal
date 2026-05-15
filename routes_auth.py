@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, session, flash,
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
-from utils import log_action
+from utils import log_action, ROLE_REDIRECTS, validate_password_strength
 import utils_email
 from utils_email import send_password_reset_email
 
@@ -18,17 +18,7 @@ RESET_TOKEN_MAX_AGE = 3600  # 1 hour
 def _reset_serializer():
     return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=RESET_TOKEN_SALT)
 
-# Role → dashboard URL map (single source of truth)
-ROLE_REDIRECTS = {
-    'Student':          '/participant/dashboard',
-    'SuperAdmin':       '/admin/dashboard',
-    'Super Admin':      '/admin/dashboard',
-    'Admin':            '/admin/dashboard',
-    'Coordinator':      '/coordinator/dashboard',
-    'ClubSPOC':         '/spoc/dashboard',
-    'EventCoordinator': '/coordinator/scanner',
-    'Judge':            '/judge/dashboard',
-}
+# NOTE: ROLE_REDIRECTS is now defined in utils.py — single source of truth.
 
 
 def _redirect_by_role(role: str):
@@ -154,17 +144,12 @@ def reset_password():
         new_pw      = request.form.get('new_password', '')
         confirm_pw  = request.form.get('confirm_password', '')
 
+        ok, pw_err = validate_password_strength(new_pw)
         if new_pw != confirm_pw:
             flash("Passwords do not match.", "danger")
             return redirect('/reset_password')
-
-        if len(new_pw) < 8:
-            flash("Password must be at least 8 characters.", "danger")
-            return redirect('/reset_password')
-
-        # Must contain at least one digit
-        if not any(c.isdigit() for c in new_pw):
-            flash("Password must contain at least one number.", "danger")
+        if not ok:
+            flash(pw_err, "danger")
             return redirect('/reset_password')
 
         try:
@@ -203,8 +188,9 @@ def register():
             flash('Name, email, and password are required.', 'warning')
             return redirect('/register')
 
-        if len(password) < 6:
-            flash('Password must be at least 6 characters.', 'warning')
+        ok, pw_err = validate_password_strength(password)
+        if not ok:
+            flash(pw_err, 'warning')
             return redirect('/register')
 
         try:
@@ -331,14 +317,12 @@ def reset_token(token):
         new_pw     = request.form.get('new_password', '')
         confirm_pw = request.form.get('confirm_password', '')
 
+        ok, pw_err = validate_password_strength(new_pw)
         if new_pw != confirm_pw:
             flash("Passwords do not match.", "danger")
             return redirect(request.path)
-        if len(new_pw) < 8:
-            flash("Password must be at least 8 characters.", "danger")
-            return redirect(request.path)
-        if not any(c.isdigit() for c in new_pw):
-            flash("Password must contain at least one number.", "danger")
+        if not ok:
+            flash(pw_err, "danger")
             return redirect(request.path)
 
         try:

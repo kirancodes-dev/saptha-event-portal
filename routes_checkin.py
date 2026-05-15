@@ -121,7 +121,7 @@ def venue_qr(event_id):
     url = f"{base_url}/checkin/{event_id}"
     img = qrcode.make(url)
     buf = io.BytesIO()
-    img.save(buf, format='PNG')
+    img.save(buf, format='PNG')  # type: ignore[call-arg]
     buf.seek(0)
     from flask import Response
     return Response(buf.read(), mimetype='image/png')

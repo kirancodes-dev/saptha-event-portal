@@ -385,12 +385,15 @@ def home():
     }
 
     try:
+        if db is None:
+            raise RuntimeError("Firebase not configured")
         color_map = {
             'Technical':  '#f37021',
             'Cultural':   '#7c3aed',
             'Sports':     '#10b981',
             'Management': '#0891b2',
         }
+        all_active = []
         for e in (db.collection('events')
                     .where(filter=FieldFilter('status', '==', 'active'))
                     .stream()):
@@ -400,10 +403,16 @@ def home():
             d.setdefault('registration_count', 0)
             d.setdefault('entry_fee',          0)
             d.setdefault('category',           'General')
-            # Hide past events from home page; they stay in DB until SPOC deletes them
-            if d.get('date', '9999-99-99') < current_date:
-                continue
-            events.append(d)
+            all_active.append(d)
+
+        # Prefer upcoming/ongoing events; fall back to most-recent past events
+        # so the homepage is never empty when active events exist.
+        future = [d for d in all_active if d.get('date', '9999-99-99') >= current_date]
+        events = future if future else sorted(
+            all_active, key=lambda x: x.get('date', ''), reverse=True
+        )[:6]
+
+        for d in events:
             cat = d.get('category', 'General')
             calendar_events.append({
                 'title': d.get('title', 'Event'),
@@ -433,11 +442,14 @@ def home():
     except Exception as exc:
         app.logger.error("Home page Firebase error: %s", exc)
 
-    return render_template('index.html',
-        events=events,
-        current_date=current_date,
-        calendar_events=json.dumps(calendar_events),
-        ticker_events=ticker_events)
+    _ctx = {
+        'events':          events,
+        'current_date':    current_date,
+        'calendar_events': json.dumps(calendar_events),
+        'ticker_events':   ticker_events,
+        'no_firebase':     db is None,
+    }
+    return render_template('index.html', **_ctx)
 
 
 # =========================================================

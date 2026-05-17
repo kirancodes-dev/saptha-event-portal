@@ -1,0 +1,113 @@
+# ─────────────────────────────────────────────
+# SapthaEvent — SQL Connect Queries (camelCase)
+# ─────────────────────────────────────────────
+
+query ListActiveEvents @auth(level: PUBLIC) {
+  events(where: { status: { eq: active } }, orderBy: { date: ASC }) {
+    id title description category date deadline venue
+    status fee minTeamSize maxTeamSize
+    totalRounds activeRound posterUrl coordinatorId
+  }
+}
+
+query GetEvent($id: UUID!) @auth(level: PUBLIC) {
+  event(id: $id) {
+    id title description category date deadline venue
+    status fee minTeamSize maxTeamSize rules prizes
+    totalRounds activeRound posterUrl coordinatorId
+  }
+}
+
+query ListEventsByCategory($category: EventCategory!) @auth(level: PUBLIC) {
+  events(where: { category: { eq: $category }, status: { eq: active } }) {
+    id title date venue fee category status posterUrl
+  }
+}
+
+query GetEventRegistrations($eventId: UUID!) @auth(level: NO_ACCESS) {
+  registrations(where: { eventId: { eq: $eventId } }, orderBy: { createdAt: DESC }) {
+    id leadName leadEmail leadPhone teamName
+    status paymentStatus attendance currentRound isEliminated createdAt
+    teamMembers_on_registration {
+      id name email phone usn college
+    }
+    scores_on_registration {
+      judgeId judgeName round total feedback scoredAt
+    }
+  }
+}
+
+query GetRegistration($id: UUID!) @auth(level: NO_ACCESS) {
+  registration(id: $id) {
+    id leadName leadEmail leadPhone teamName
+    status paymentStatus attendance currentRound isEliminated qrCodeUrl
+    event { id title date venue category fee }
+    teamMembers_on_registration { id name email phone usn college department }
+    scores_on_registration { judgeId judgeName round total criteria feedback scoredAt }
+  }
+}
+
+query GetRegistrationByEmail($eventId: UUID!, $email: String!) @auth(level: NO_ACCESS) {
+  registrations(where: { eventId: { eq: $eventId }, leadEmail: { eq: $email } }, limit: 1) {
+    id leadName leadEmail leadPhone teamName status paymentStatus attendance
+  }
+}
+
+query ListUsers @auth(level: NO_ACCESS) {
+  users(orderBy: { createdAt: DESC }) {
+    id email name phone role college department isActive createdAt
+  }
+}
+
+query GetUser($id: String!) @auth(level: NO_ACCESS) {
+  user(id: $id) {
+    id email name phone role college department isActive createdAt
+  }
+}
+
+query ListUsersByRole($role: UserRole!) @auth(level: NO_ACCESS) {
+  users(where: { role: { eq: $role } }) {
+    id email name phone college department isActive
+  }
+}
+
+query GetLeaderboard($eventId: UUID!) @auth(level: PUBLIC) {
+  registrations(
+    where: { eventId: { eq: $eventId }, isEliminated: { eq: false } }
+    orderBy: { createdAt: ASC }
+  ) {
+    id teamName leadName attendance currentRound
+    scores_on_registration { judgeId round total }
+    teamMembers_on_registration { id }
+  }
+}
+
+query ListAuditLog($limit: Int!) @auth(level: NO_ACCESS) {
+  auditLogs(orderBy: { createdAt: DESC }, limit: $limit) {
+    id actorEmail action targetId detail createdAt
+  }
+}
+
+query GetFormSubmissions($eventId: UUID!) @auth(level: NO_ACCESS) {
+  formSubmissions(where: { eventId: { eq: $eventId } }) {
+    id answersJson submittedAt
+    registration { id leadName leadEmail teamName }
+  }
+}
+
+query GetEventForm($eventId: UUID!) @auth(level: PUBLIC) {
+  eventForms(where: { eventId: { eq: $eventId } }, limit: 1) {
+    fieldsJson createdAt
+  }
+}
+
+# This will fetch all registrations so we guarantee data appears in the UI
+query GetMyRegistrations @auth(level: PUBLIC) {
+  registrations {
+    id
+    teamName
+    event {
+      title
+    }
+  }
+}

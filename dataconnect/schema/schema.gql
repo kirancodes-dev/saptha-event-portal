@@ -1,0 +1,165 @@
+# ─────────────────────────────────────────────
+# SapthaEvent Portal — SQL Connect Schema
+# All field names must be camelCase (SQL Connect requirement)
+# ─────────────────────────────────────────────
+
+enum UserRole {
+  SuperAdmin
+  Coordinator
+  SPOC
+  Judge
+  Participant
+}
+
+enum EventCategory {
+  Technical
+  Cultural
+  Sports
+  Management
+}
+
+enum EventStatus {
+  active
+  inactive
+  completed
+  cancelled
+}
+
+enum RegistrationStatus {
+  pending
+  confirmed
+  cancelled
+  waitlisted
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+  waived
+  refunded
+}
+
+enum AttendanceStatus {
+  Present
+  Absent
+  Pending
+}
+
+# ─── Users ───────────────────────────────────
+type User @table(name: "users", key: ["id"]) {
+  id:           String!
+  email:        String!
+  name:         String!
+  phone:        String
+  role:         UserRole!
+  college:      String
+  department:   String
+  passwordHash: String
+  isActive:     Boolean! @default(expr: "true")
+  createdAt:    Timestamp! @default(expr: "request.time")
+  updatedAt:    Timestamp! @default(expr: "request.time")
+}
+
+# ─── Events ──────────────────────────────────
+type Event @table(name: "events") {
+  id:            UUID! @default(expr: "uuidV4()")
+  title:         String!
+  description:   String
+  category:      EventCategory!
+  date:          Date!
+  deadline:      Date
+  venue:         String!
+  status:        EventStatus! @default(expr: "'active'")
+  maxTeams:      Int
+  minTeamSize:   Int! @default(expr: "1")
+  maxTeamSize:   Int! @default(expr: "1")
+  fee:           Float! @default(expr: "0")
+  totalRounds:   Int! @default(expr: "1")
+  activeRound:   Int! @default(expr: "1")
+  posterUrl:     String
+  rules:         String
+  prizes:        String
+  coordinatorId: String
+  createdAt:     Timestamp! @default(expr: "request.time")
+  updatedAt:     Timestamp! @default(expr: "request.time")
+}
+
+# ─── Registrations ───────────────────────────
+type Registration @table(name: "registrations") {
+  id:            UUID! @default(expr: "uuidV4()")
+  event:         Event!
+  leadName:      String!
+  leadEmail:     String!
+  leadPhone:     String!
+  teamName:      String
+  status:        RegistrationStatus! @default(expr: "'confirmed'")
+  paymentStatus: PaymentStatus! @default(expr: "'unpaid'")
+  paymentId:     String
+  attendance:    AttendanceStatus! @default(expr: "'Pending'")
+  currentRound:  Int! @default(expr: "1")
+  isEliminated:  Boolean! @default(expr: "false")
+  qrCodeUrl:     String
+  notes:         String
+  createdAt:     Timestamp! @default(expr: "request.time")
+  updatedAt:     Timestamp! @default(expr: "request.time")
+}
+
+# ─── Team Members ────────────────────────────
+type TeamMember @table(name: "team_members") {
+  id:           UUID! @default(expr: "uuidV4()")
+  registration: Registration!
+  name:         String!
+  email:        String
+  phone:        String
+  usn:          String
+  college:      String
+  department:   String
+}
+
+# ─── Scores ──────────────────────────────────
+type Score @table(name: "scores", key: ["registration", "judgeId"]) {
+  registration: Registration!
+  judgeId:      String!
+  judgeName:    String
+  round:        Int!
+  total:        Float!
+  criteria:     String
+  feedback:     String
+  scoredAt:     Timestamp! @default(expr: "request.time")
+}
+
+# ─── Event Forms ─────────────────────────────
+type EventForm @table(name: "event_forms", key: ["event"]) {
+  event:      Event!
+  fieldsJson: String!
+  createdAt:  Timestamp! @default(expr: "request.time")
+}
+
+# ─── Form Submissions ────────────────────────
+type FormSubmission @table(name: "form_submissions") {
+  id:           UUID! @default(expr: "uuidV4()")
+  event:        Event!
+  registration: Registration!
+  answersJson:  String!
+  submittedAt:  Timestamp! @default(expr: "request.time")
+}
+
+# ─── Audit Log ───────────────────────────────
+type AuditLog @table(name: "audit_log") {
+  id:          UUID! @default(expr: "uuidV4()")
+  actorEmail:  String!
+  action:      String!
+  targetId:    String
+  detail:      String
+  createdAt:   Timestamp! @default(expr: "request.time")
+}
+
+# ─── Push Subscriptions ──────────────────────
+type PushSubscription @table(name: "push_subscriptions") {
+  id:        UUID! @default(expr: "uuidV4()")
+  userEmail: String!
+  endpoint:  String!
+  p256dh:    String!
+  authKey:   String!
+  createdAt: Timestamp! @default(expr: "request.time")
+}

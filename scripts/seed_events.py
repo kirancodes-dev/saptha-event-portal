@@ -1,0 +1,108 @@
+"""
+seed_events.py — Seed 30 upcoming events + SPOC user in Firestore.
+Run from project root: python scripts/seed_events.py
+"""
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import firebase_admin
+from firebase_admin import credentials, firestore
+from werkzeug.security import generate_password_hash
+from datetime import date, timedelta
+
+KEY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'serviceAccountKey.json')
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(credentials.Certificate(KEY))
+db = firestore.client()
+
+SPOC_EMAIL = 'biradark543@gmail.com'
+SPOC_PASS  = 'Kiran123@'
+TODAY = date.today()  # 2026-05-16
+
+# ── 1. Create / update SPOC user ─────────────────────────────────────────────
+spoc_data = {
+    'email':               SPOC_EMAIL,
+    'name':                'Kiran Biradar',
+    'phone':               '9876543210',
+    'role':                'ClubSPOC',
+    'category':            'All',
+    'college':             'SNPS University',
+    'department':          'Computer Science',
+    'password':            generate_password_hash(SPOC_PASS, method='pbkdf2:sha256'),
+    'needs_password_reset': False,
+    'is_active':           True,
+    'created_at':          firestore.SERVER_TIMESTAMP,
+}
+db.collection('users').document(SPOC_EMAIL).set(spoc_data)
+print(f"✓ SPOC created: {SPOC_EMAIL}")
+
+# ── 2. Event catalogue ────────────────────────────────────────────────────────
+def d(offset): return (TODAY + timedelta(days=offset)).isoformat()
+
+events = [
+    # ── Technical (10) ──────────────────────────────────────────
+    dict(title="HackFusion 2026",           category="Technical",  date=d(5),  deadline=d(3),  venue="Innovation Lab, Block A",     fee=200, min_team=2, max_team=4, rounds=3, prizes="₹50,000 cash + internship"),
+    dict(title="CodeSprint Championship",   category="Technical",  date=d(8),  deadline=d(6),  venue="CS Seminar Hall",              fee=100, min_team=1, max_team=1, rounds=2, prizes="₹20,000 + trophy"),
+    dict(title="AI/ML Datathon",            category="Technical",  date=d(12), deadline=d(10), venue="Data Science Lab",             fee=250, min_team=2, max_team=3, rounds=2, prizes="₹30,000 + certificates"),
+    dict(title="Robo Wars 2026",            category="Technical",  date=d(15), deadline=d(13), venue="Mechanical Workshop Arena",    fee=500, min_team=2, max_team=5, rounds=3, prizes="₹40,000 + trophy"),
+    dict(title="Web Dev Blitz",             category="Technical",  date=d(18), deadline=d(16), venue="Computer Centre, Floor 2",     fee=150, min_team=1, max_team=2, rounds=2, prizes="₹15,000 cash"),
+    dict(title="Cybersecurity CTF",         category="Technical",  date=d(22), deadline=d(20), venue="Networking Lab",               fee=100, min_team=2, max_team=4, rounds=2, prizes="₹25,000 + goodies"),
+    dict(title="IoT Innovation Challenge",  category="Technical",  date=d(25), deadline=d(23), venue="Electronics Lab",              fee=300, min_team=2, max_team=4, rounds=2, prizes="₹35,000 + internship"),
+    dict(title="App Dev Hackathon",         category="Technical",  date=d(30), deadline=d(28), venue="Mobile Lab, Block C",          fee=200, min_team=2, max_team=3, rounds=2, prizes="₹20,000 cash"),
+    dict(title="Cloud Computing Quiz",      category="Technical",  date=d(33), deadline=d(31), venue="Seminar Hall 1",               fee=50,  min_team=1, max_team=1, rounds=1, prizes="₹5,000 + certs"),
+    dict(title="Database Design Contest",   category="Technical",  date=d(37), deadline=d(35), venue="CS Lab 3",                     fee=100, min_team=1, max_team=2, rounds=2, prizes="₹10,000 cash"),
+
+    # ── Cultural (8) ────────────────────────────────────────────
+    dict(title="Spotlight Solo Singing",    category="Cultural",   date=d(6),  deadline=d(4),  venue="Open Air Auditorium",         fee=0,   min_team=1, max_team=1, rounds=2, prizes="₹10,000 + trophy"),
+    dict(title="Battle of Bands",           category="Cultural",   date=d(9),  deadline=d(7),  venue="Main Auditorium",             fee=500, min_team=3, max_team=8, rounds=2, prizes="₹25,000 + recording deal"),
+    dict(title="Nukkad Natak (Street Play)",category="Cultural",   date=d(14), deadline=d(12), venue="Central Plaza",               fee=200, min_team=5, max_team=12,rounds=2, prizes="₹15,000 cash"),
+    dict(title="Classical Dance Fiesta",    category="Cultural",   date=d(19), deadline=d(17), venue="Main Auditorium",             fee=100, min_team=1, max_team=6, rounds=2, prizes="₹12,000 + trophy"),
+    dict(title="Western Dance Crew Battle", category="Cultural",   date=d(24), deadline=d(22), venue="Main Auditorium",             fee=300, min_team=4, max_team=10,rounds=2, prizes="₹20,000 cash"),
+    dict(title="Photography Hunt",          category="Cultural",   date=d(28), deadline=d(26), venue="SNPSU Campus (All Zones)",     fee=100, min_team=1, max_team=1, rounds=1, prizes="₹8,000 + exhibition"),
+    dict(title="Short Film Showcase",       category="Cultural",   date=d(35), deadline=d(30), venue="Seminar Hall 2",              fee=200, min_team=2, max_team=6, rounds=1, prizes="₹15,000 + OTT feature"),
+    dict(title="Mr & Ms Saptha 2026",       category="Cultural",   date=d(40), deadline=d(35), venue="Main Auditorium",             fee=0,   min_team=1, max_team=1, rounds=3, prizes="Crown + ₹20,000"),
+
+    # ── Sports (7) ──────────────────────────────────────────────
+    dict(title="Badminton Singles Open",    category="Sports",     date=d(5),  deadline=d(3),  venue="Indoor Sports Complex",       fee=100, min_team=1, max_team=1, rounds=4, prizes="₹8,000 + trophy"),
+    dict(title="Football 5-a-Side League",  category="Sports",     date=d(10), deadline=d(8),  venue="Football Ground",             fee=500, min_team=5, max_team=5, rounds=3, prizes="₹20,000 + medals"),
+    dict(title="Cricket T10 Tournament",    category="Sports",     date=d(15), deadline=d(12), venue="Cricket Ground",              fee=1000,min_team=11,max_team=14,rounds=3, prizes="₹30,000 + trophy"),
+    dict(title="Throwball Championship",    category="Sports",     date=d(20), deadline=d(18), venue="Open Sports Court",           fee=300, min_team=7, max_team=9, rounds=3, prizes="₹12,000 + medals"),
+    dict(title="Table Tennis Doubles",      category="Sports",     date=d(26), deadline=d(24), venue="Indoor Sports Complex",       fee=150, min_team=2, max_team=2, rounds=3, prizes="₹6,000 + trophy"),
+    dict(title="Carrom Board Open",         category="Sports",     date=d(31), deadline=d(29), venue="Recreation Centre",           fee=50,  min_team=1, max_team=2, rounds=3, prizes="₹4,000 cash"),
+    dict(title="Tug of War Smackdown",      category="Sports",     date=d(38), deadline=d(36), venue="Sports Ground",               fee=200, min_team=8, max_team=10,rounds=2, prizes="₹10,000 + trophy"),
+
+    # ── Management (5) ──────────────────────────────────────────
+    dict(title="Startup Pitch Fest",        category="Management", date=d(7),  deadline=d(5),  venue="Entrepreneurship Cell Auditorium", fee=300, min_team=2, max_team=4, rounds=3, prizes="₹50,000 seed funding"),
+    dict(title="Business Case Study",       category="Management", date=d(13), deadline=d(11), venue="MBA Block Seminar Hall",      fee=200, min_team=2, max_team=4, rounds=2, prizes="₹20,000 + internship"),
+    dict(title="Marketing Blitz",           category="Management", date=d(21), deadline=d(19), venue="Conference Room A",           fee=150, min_team=2, max_team=3, rounds=2, prizes="₹15,000 cash"),
+    dict(title="HR Simulation Challenge",   category="Management", date=d(29), deadline=d(27), venue="Conference Room B",           fee=100, min_team=2, max_team=3, rounds=2, prizes="₹10,000 + certs"),
+    dict(title="Finance Quiz & Trading Sim",category="Management", date=d(36), deadline=d(34), venue="Commerce Lab",                fee=100, min_team=1, max_team=2, rounds=2, prizes="₹12,000 cash"),
+]
+
+# ── 3. Write to Firestore ─────────────────────────────────────────────────────
+batch_count = 0
+for i, ev in enumerate(events, 1):
+    doc_ref = db.collection('events').document()
+    doc_ref.set({
+        'title':          ev['title'],
+        'category':       ev['category'],
+        'date':           ev['date'],
+        'deadline':       ev['deadline'],
+        'venue':          ev['venue'],
+        'fee':            ev['fee'],
+        'min_team_size':  ev['min_team'],
+        'max_team_size':  ev['max_team'],
+        'total_rounds':   ev['rounds'],
+        'active_round':   1,
+        'prizes':         ev.get('prizes', ''),
+        'rules':          '',
+        'description':    '',
+        'status':         'active',
+        'coordinator_id': SPOC_EMAIL,
+        'max_teams':      50,
+        'created_at':     firestore.SERVER_TIMESTAMP,
+    })
+    print(f"  [{i:02d}/30] {ev['category']:<12} {ev['title']}")
+
+print(f"\n✓ 30 events created in Firestore")
+print(f"✓ SPOC login → {SPOC_EMAIL} / {SPOC_PASS}")

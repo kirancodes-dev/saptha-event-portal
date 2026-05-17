@@ -1,0 +1,9 @@
+connectorId: "default"
+authMode: ADMIN_SDK_SERVICE_ACCOUNT
+generate:
+  pythonSdk:
+    outputDir: "../../generated/dataconnect"
+    package: "saptha_dataconnect"
+  dartSdk:
+    outputDir: "../../../../development/saptha_app/lib/generated"
+    package: "saptha_app"

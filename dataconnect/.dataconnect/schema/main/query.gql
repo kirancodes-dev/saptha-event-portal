@@ -1,0 +1,474 @@
+extend type Query {
+  """
+  ✨ Look up a single `AuditLog` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  auditLog(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: AuditLog_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AuditLog_FirstRow
+  ): AuditLog @fdc_generated(from: "AuditLog", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Event` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  event(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Event_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Event_FirstRow
+  ): Event @fdc_generated(from: "Event", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `EventForm` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  eventForm(
+    """
+    The key used to identify the object.
+    """
+    key: EventForm_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: EventForm_FirstRow
+  ): EventForm @fdc_generated(from: "EventForm", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `FormSubmission` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  formSubmission(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: FormSubmission_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: FormSubmission_FirstRow
+  ): FormSubmission @fdc_generated(from: "FormSubmission", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `PushSubscription` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  pushSubscription(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: PushSubscription_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: PushSubscription_FirstRow
+  ): PushSubscription @fdc_generated(from: "PushSubscription", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Registration` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  registration(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Registration_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Registration_FirstRow
+  ): Registration @fdc_generated(from: "Registration", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Score` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  score(
+    """
+    The key used to identify the object.
+    """
+    key: Score_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Score_FirstRow
+  ): Score @fdc_generated(from: "Score", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `TeamMember` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  teamMember(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: TeamMember_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: TeamMember_FirstRow
+  ): TeamMember @fdc_generated(from: "TeamMember", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `User` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  user(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: User_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: User_FirstRow
+  ): User @fdc_generated(from: "User", purpose: QUERY_SINGLE)
+  """
+  ✨ List `AuditLog` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  auditLogs(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AuditLog_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AuditLog_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AuditLog_Having
+  ): [AuditLog!]! @fdc_generated(from: "AuditLog", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Event` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  events(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Event_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Event_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Event_Having
+  ): [Event!]! @fdc_generated(from: "Event", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `EventForm` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  eventForms(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: EventForm_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [EventForm_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: EventForm_Having
+  ): [EventForm!]! @fdc_generated(from: "EventForm", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `FormSubmission` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  formSubmissions(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: FormSubmission_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [FormSubmission_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: FormSubmission_Having
+  ): [FormSubmission!]! @fdc_generated(from: "FormSubmission", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `PushSubscription` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  pushSubscriptions(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: PushSubscription_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [PushSubscription_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: PushSubscription_Having
+  ): [PushSubscription!]! @fdc_generated(from: "PushSubscription", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Registration` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  registrations(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Registration_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Registration_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Registration_Having
+  ): [Registration!]! @fdc_generated(from: "Registration", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Score` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  scores(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Score_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Score_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Score_Having
+  ): [Score!]! @fdc_generated(from: "Score", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `TeamMember` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  teamMembers(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: TeamMember_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [TeamMember_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: TeamMember_Having
+  ): [TeamMember!]! @fdc_generated(from: "TeamMember", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `User` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  users(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: User_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [User_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: User_Having
+  ): [User!]! @fdc_generated(from: "User", purpose: QUERY_MULTIPLE)
+}

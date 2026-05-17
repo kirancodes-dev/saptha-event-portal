@@ -1,0 +1,34 @@
+extend type EventForm {
+  """
+  ✨ Implicit foreign key field based on `EventForm`.`event`. It must match the value of `Event`.`id`. See `@ref` for how to customize it.
+  """
+  eventId: UUID! @fdc_generated(from: "EventForm.event", purpose: IMPLICIT_REF_FIELD)
+}
+extend type FormSubmission {
+  """
+  ✨ Implicit foreign key field based on `FormSubmission`.`event`. It must match the value of `Event`.`id`. See `@ref` for how to customize it.
+  """
+  eventId: UUID! @fdc_generated(from: "FormSubmission.event", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `FormSubmission`.`registration`. It must match the value of `Registration`.`id`. See `@ref` for how to customize it.
+  """
+  registrationId: UUID! @fdc_generated(from: "FormSubmission.registration", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Registration {
+  """
+  ✨ Implicit foreign key field based on `Registration`.`event`. It must match the value of `Event`.`id`. See `@ref` for how to customize it.
+  """
+  eventId: UUID! @fdc_generated(from: "Registration.event", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Score {
+  """
+  ✨ Implicit foreign key field based on `Score`.`registration`. It must match the value of `Registration`.`id`. See `@ref` for how to customize it.
+  """
+  registrationId: UUID! @fdc_generated(from: "Score.registration", purpose: IMPLICIT_REF_FIELD)
+}
+extend type TeamMember {
+  """
+  ✨ Implicit foreign key field based on `TeamMember`.`registration`. It must match the value of `Registration`.`id`. See `@ref` for how to customize it.
+  """
+  registrationId: UUID! @fdc_generated(from: "TeamMember.registration", purpose: IMPLICIT_REF_FIELD)
+}

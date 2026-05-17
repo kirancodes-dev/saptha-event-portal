@@ -1,0 +1,146 @@
+# ─────────────────────────────────────────────
+# SapthaEvent — SQL Connect Mutations (camelCase)
+# ─────────────────────────────────────────────
+
+# ── Users ──────────────────────────────────
+mutation CreateUser(
+  $id: String!, $email: String!, $name: String!,
+  $phone: String, $role: UserRole!, $college: String,
+  $department: String, $passwordHash: String
+) @auth(level: NO_ACCESS) {
+  user_insert(data: {
+    id: $id, email: $email, name: $name,
+    phone: $phone, role: $role, college: $college,
+    department: $department, passwordHash: $passwordHash
+  })
+}
+
+mutation UpdateUser(
+  $id: String!, $name: String, $phone: String,
+  $role: UserRole, $college: String, $department: String, $isActive: Boolean
+) @auth(level: NO_ACCESS) {
+  user_update(id: $id, data: {
+    name: $name, phone: $phone, role: $role,
+    college: $college, department: $department, isActive: $isActive
+  })
+}
+
+mutation DeleteUser($id: String!) @auth(level: NO_ACCESS) {
+  user_delete(id: $id)
+}
+
+# ── Events ─────────────────────────────────
+mutation CreateEvent(
+  $title: String!, $description: String, $category: EventCategory!,
+  $date: Date!, $deadline: Date, $venue: String!, $fee: Float,
+  $minTeamSize: Int, $maxTeamSize: Int, $maxTeams: Int,
+  $totalRounds: Int, $rules: String, $prizes: String,
+  $posterUrl: String, $coordinatorId: String
+) @auth(level: NO_ACCESS) {
+  event_insert(data: {
+    title: $title, description: $description, category: $category,
+    date: $date, deadline: $deadline, venue: $venue, fee: $fee,
+    minTeamSize: $minTeamSize, maxTeamSize: $maxTeamSize,
+    maxTeams: $maxTeams, totalRounds: $totalRounds,
+    rules: $rules, prizes: $prizes, posterUrl: $posterUrl,
+    coordinatorId: $coordinatorId
+  })
+}
+
+mutation UpdateEvent(
+  $id: UUID!, $title: String, $description: String, $date: Date,
+  $deadline: Date, $venue: String, $status: EventStatus,
+  $activeRound: Int, $posterUrl: String
+) @auth(level: NO_ACCESS) {
+  event_update(id: $id, data: {
+    title: $title, description: $description, date: $date,
+    deadline: $deadline, venue: $venue, status: $status,
+    activeRound: $activeRound, posterUrl: $posterUrl
+  })
+}
+
+mutation DeleteEvent($id: UUID!) @auth(level: NO_ACCESS) {
+  event_delete(id: $id)
+}
+
+# ── Registrations ──────────────────────────
+mutation CreateRegistration(
+  $eventId: UUID!, $leadName: String!, $leadEmail: String!,
+  $leadPhone: String!, $teamName: String, $paymentStatus: PaymentStatus,
+  $paymentId: String, $qrCodeUrl: String
+) @auth(level: NO_ACCESS) {
+  registration_insert(data: {
+    eventId: $eventId, leadName: $leadName, leadEmail: $leadEmail,
+    leadPhone: $leadPhone, teamName: $teamName,
+    paymentStatus: $paymentStatus, paymentId: $paymentId,
+    qrCodeUrl: $qrCodeUrl
+  })
+}
+
+mutation UpdateRegistrationStatus(
+  $id: UUID!, $status: RegistrationStatus,
+  $paymentStatus: PaymentStatus, $attendance: AttendanceStatus,
+  $currentRound: Int, $isEliminated: Boolean
+) @auth(level: NO_ACCESS) {
+  registration_update(id: $id, data: {
+    status: $status, paymentStatus: $paymentStatus,
+    attendance: $attendance, currentRound: $currentRound,
+    isEliminated: $isEliminated
+  })
+}
+
+mutation DeleteRegistration($id: UUID!) @auth(level: NO_ACCESS) {
+  registration_delete(id: $id)
+}
+
+# ── Team Members ───────────────────────────
+mutation AddTeamMember(
+  $registrationId: UUID!, $name: String!, $email: String,
+  $phone: String, $usn: String, $college: String, $department: String
+) @auth(level: NO_ACCESS) {
+  teamMember_insert(data: {
+    registrationId: $registrationId, name: $name, email: $email,
+    phone: $phone, usn: $usn, college: $college, department: $department
+  })
+}
+
+mutation DeleteTeamMember($id: UUID!) @auth(level: NO_ACCESS) {
+  teamMember_delete(id: $id)
+}
+
+# ── Scores ─────────────────────────────────
+mutation UpsertScore(
+  $registrationId: UUID!, $judgeId: String!, $judgeName: String,
+  $round: Int!, $total: Float!, $criteria: String, $feedback: String
+) @auth(level: NO_ACCESS) {
+  score_upsert(data: {
+    registrationId: $registrationId, judgeId: $judgeId,
+    judgeName: $judgeName, round: $round, total: $total,
+    criteria: $criteria, feedback: $feedback
+  })
+}
+
+# ── Event Forms ────────────────────────────
+mutation UpsertEventForm($eventId: UUID!, $fieldsJson: String!) @auth(level: NO_ACCESS) {
+  eventForm_upsert(data: { eventId: $eventId, fieldsJson: $fieldsJson })
+}
+
+# ── Form Submissions ───────────────────────
+mutation SubmitForm(
+  $eventId: UUID!, $registrationId: UUID!, $answersJson: String!
+) @auth(level: NO_ACCESS) {
+  formSubmission_insert(data: {
+    eventId: $eventId, registrationId: $registrationId,
+    answersJson: $answersJson
+  })
+}
+
+# ── Audit Log ──────────────────────────────
+mutation LogAction(
+  $actorEmail: String!, $action: String!, $targetId: String, $detail: String
+) @auth(level: NO_ACCESS) {
+  auditLog_insert(data: {
+    actorEmail: $actorEmail, action: $action,
+    targetId: $targetId, detail: $detail
+  })
+}

@@ -12,19 +12,31 @@ import os
 
 
 # =========================================================
-# FIREBASE INITIALISATION (idempotent)
+# DATABASE RESOLUTION (Firestore vs. Supabase SQL)
 # =========================================================
-if not firebase_admin._apps:
-    key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-    if os.path.exists(key_path):
-        cred = credentials.Certificate(key_path)
-        firebase_admin.initialize_app(cred)
+DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'firestore').lower()
 
 db: Any = None
-try:
-    db = cast(Any, firestore.client())
-except Exception:
-    pass
+
+if DATABASE_TYPE in ('postgres', 'postgresql', 'supabase'):
+    try:
+        from db_adapter import SQLFirestoreAdapter
+        db = SQLFirestoreAdapter()
+    except Exception as exc:
+        # Fallback to printing error
+        import logging
+        logging.getLogger(__name__).error("Failed to initialize SQL Firestore Adapter: %s", exc)
+else:
+    # Initialize standard Firebase Firestore
+    if not firebase_admin._apps:
+        key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
+        if os.path.exists(key_path):
+            cred = credentials.Certificate(key_path)
+            firebase_admin.initialize_app(cred)
+    try:
+        db = cast(Any, firestore.client())
+    except Exception:
+        pass
 
 
 # =========================================================

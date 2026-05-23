@@ -129,3 +129,7 @@ flower
 # Linting / security scanning (CI only)
 ruff
 bandit
+
+# Supabase Backend Integration
+supabase
+

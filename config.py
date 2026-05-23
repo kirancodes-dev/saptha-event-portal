@@ -197,3 +197,10 @@ class Config:
     MULTI_TENANT_ENABLED = os.environ.get('MULTI_TENANT_ENABLED', 'false').lower() == 'true'
     DEFAULT_ORG_SLUG     = os.environ.get('DEFAULT_ORG_SLUG', 'snpsu')
 
+    # =========================================================
+    # 17. SUPABASE API
+    # =========================================================
+    SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+    SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+
+

@@ -115,6 +115,10 @@ class Event(Base):
     rules          = Column(Text)
     prizes         = Column(Text)
     coordinator_id = Column("coordinatorId", String(128))
+    open_hall_mode = Column("open_hall_mode", Boolean, nullable=False, default=False)
+    scoring_locked = Column("scoring_locked", Boolean, nullable=False, default=False)
+    judging_criteria_json = Column("judging_criteria_json", Text)
+    staff_json     = Column("staff_json", Text)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
@@ -154,6 +158,10 @@ class Registration(Base):
     is_eliminated  = Column("isEliminated", Boolean, nullable=False, default=False)
     qr_code_url    = Column("qrCodeUrl", String(500))
     notes          = Column(Text)
+    assigned_judge_email = Column("assigned_judge_email", String(255))
+    amount_paid    = Column("amount_paid", Float)
+    payment_mode   = Column("payment_mode", String(100))
+    assigned_room  = Column("assigned_room", String(100))
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 

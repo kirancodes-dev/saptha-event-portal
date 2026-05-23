@@ -111,6 +111,13 @@ pyasn1
 pyasn1_modules
 rsa
 
+# Industrial Upgrade — Phase 1
+alembic
+psycopg2-binary
+
+# Industrial Upgrade — Phase 4 (2FA)
+pyotp
+
 # Testing
 pytest
 pytest-cov

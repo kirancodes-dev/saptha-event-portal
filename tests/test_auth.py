@@ -8,17 +8,14 @@ def test_login_page_loads(client):
     assert resp.status_code == 200
 
 
-def test_home_redirects_logged_in_student(student_session):
-    resp = student_session.get('/')
+def test_home_redirects_logged_in_student(auth_client):
+    resp = auth_client.get('/')
     # Logged-in student should be redirected to participant dashboard
     assert resp.status_code in (301, 302)
     assert b'participant' in resp.headers.get('Location', '').encode()
 
 
 def test_home_loads_for_anonymous(client, mock_db):
-    mock_db.collection.return_value \
-           .where.return_value \
-           .stream.return_value = iter([])
     resp = client.get('/')
     assert resp.status_code == 200
 

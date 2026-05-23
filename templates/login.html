@@ -24,363 +24,139 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     {% include 'includes/pwa_head.html' %}
     <title>Login | SapthaEvent - Sapthagiri NPS University</title>
+    <!-- Stylesheets -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="/static/css/style.css" rel="stylesheet">
-    <style>
-        /* Login Page Specific */
-        body.login-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            background: linear-gradient(135deg, var(--primary-900) 0%, var(--primary-800) 100%);
-        }
-
-        .login-container {
-            width: 100%;
-            max-width: 420px;
-        }
-
-        .login-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: var(--shadow-xl);
-            overflow: hidden;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        .login-header {
-            background: linear-gradient(135deg, var(--primary-900), var(--primary-800));
-            color: white;
-            padding: 2.5rem 1.5rem;
-            text-align: center;
-            border-bottom: 4px solid var(--accent-600);
-        }
-
-        .login-header i {
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
-            display: block;
-            color: var(--accent-500);
-        }
-
-        .login-header h1 {
-            font-family: 'Crimson Text', serif;
-            font-size: 1.6rem;
-            margin: 0 0 0.25rem 0;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: white;
-        }
-
-        .login-header h1 span {
-            color: var(--accent-500);
-        }
-
-        .login-header p {
-            margin: 0.5rem 0 0 0;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.8);
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-        }
-
-        .login-form {
-            padding: 2rem 1.75rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-
-        .form-group:last-of-type {
-            margin-bottom: 0;
-        }
-
-        .form-label {
-            display: block;
-            font-weight: 600;
-            color: var(--primary-900);
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            letter-spacing: 0.3px;
-        }
-
-        .form-label .required {
-            color: var(--danger);
-            margin-left: 0.25rem;
-        }
-
-        .form-control,
-        .form-select {
-            width: 100%;
-            padding: 0.9rem 1rem;
-            border-radius: 6px;
-            border: 1.5px solid var(--gray-300);
-            font-size: 0.95rem;
-            font-family: 'Source Sans Pro', sans-serif;
-            transition: var(--transition-fast);
-            color: var(--gray-700);
-            background: white;
-        }
-
-        .form-control::placeholder {
-            color: var(--gray-400);
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            border-color: var(--accent-600);
-            box-shadow: 0 0 0 4px rgba(184, 134, 11, 0.1);
-            outline: none;
-        }
-
-        .form-select {
-            cursor: pointer;
-        }
-
-        .alert {
-            border-radius: 6px;
-            padding: 0.85rem 1rem;
-            margin-bottom: 1.25rem;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .alert-success {
-            background: #e8f5e9;
-            border-left: 4px solid var(--success);
-            color: var(--success);
-        }
-
-        .alert-danger {
-            background: #ffebee;
-            border-left: 4px solid var(--danger);
-            color: var(--danger);
-        }
-
-        .alert-warning {
-            background: #fff5e1;
-            border-left: 4px solid var(--warning);
-            color: var(--warning);
-        }
-
-        .secret-key-group {
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--gray-200);
-            display: none;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .secret-key-group.show {
-            display: block;
-        }
-
-        .secret-key-group .form-label {
-            color: var(--danger);
-        }
-
-        .login-submit {
-            background: linear-gradient(135deg, var(--primary-900), var(--primary-800));
-            color: white;
-            width: 100%;
-            padding: 1rem;
-            border-radius: 6px;
-            border: none;
-            font-weight: 700;
-            font-size: 0.95rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: var(--transition-fast);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-            margin-top: 1.5rem;
-            box-shadow: var(--shadow-md);
-        }
-
-        .login-submit:hover {
-            background: linear-gradient(135deg, var(--primary-800), var(--primary-700));
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            color: white;
-        }
-
-        .login-submit:active {
-            transform: translateY(0);
-        }
-
-        .login-submit:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .login-footer {
-            padding: 1rem 1.75rem;
-            background: var(--gray-50);
-            border-top: 1px solid var(--gray-200);
-            text-align: center;
-            font-size: 0.85rem;
-            color: var(--gray-500);
-        }
-
-        .role-icon {
-            margin-right: 0.5rem;
-        }
-
-        @media (max-width: 576px) {
-            .login-container {
-                max-width: 100%;
-            }
-
-            .login-header {
-                padding: 2rem 1rem;
-            }
-
-            .login-form {
-                padding: 1.5rem 1.25rem;
-            }
-
-            .login-header h1 {
-                font-size: 1.4rem;
-            }
-        }
-
-        /* ── SKELETON LOADERS ────────────────────── */
-        @keyframes skeletonPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
-        .skeleton{animation:skeletonPulse 1.5s ease-in-out infinite;background:#e0e0e0;border-radius:4px;}
-        .skeleton-form-group{margin-bottom:1.25rem;}
-        .skeleton-form-label{height:14px;width:120px;margin-bottom:8px;}
-        .skeleton-form-input{height:40px;width:100%;}
-        .skeleton-button{height:48px;width:100%;margin-top:1.5rem;border-radius:6px;}
-
-        /* ── ACCESSIBILITY STYLES ────────────────────── */
-        .skip-link{position:absolute;top:-40px;left:0;background:var(--primary-900);color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
-        .skip-link:focus{top:0;}
-        *:focus-visible{outline:3px solid var(--accent-600);outline-offset:2px;}
-        @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
-        @media(prefers-contrast:more){body{font-weight:600;}button,.btn{border-width:2px;}}
-        @media(prefers-color-scheme:dark){.login-card{background:#1a1a1a;color:#e0e0e0;}.login-header{background:#1a2557;}.form-label{color:#e0e0e0;}.form-control{background:#2a2a2a;color:#e0e0e0;border-color:#444;}}
-    </style>
     <link href="/static/css/global.css" rel="stylesheet">
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="/static/js/global.js" defer></script>
 </head>
-<body class="login-page">
+<body class="auth">
     <a href="#main-content" class="skip-link">Skip to Login Form</a>
-    <div class="login-container">
+    
+    <div class="auth-shell">
         <div class="login-card">
             <!-- Header -->
-            <div class="login-header">
-                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="width:100%;max-width:280px;height:auto;object-fit:contain;border-radius:6px;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;">
-                <p>Event Portal</p>
+            <div class="text-center mb-4">
+                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="img-fluid mb-2" style="max-width: 260px; height: auto; object-fit: contain;">
+                <p class="text-uppercase text-muted small fw-bold tracking-wider mb-0" style="letter-spacing: 2px;">Event Portal</p>
             </div>
 
             <!-- Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="login-form">
-                            <div class="alert alert-{{ category }}">
-                                <i class="fas fa-info-circle"></i>
-                                <span>{{ message }}</span>
-                            </div>
+                        <div class="alert alert-{{ category }} alert-dismissible fade show mb-3" role="alert">
+                            <i class="fas fa-info-circle me-2 mt-1"></i>
+                            <span>{{ message }}</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
 
             <!-- Skeleton Loading State -->
-            <div class="login-form" id="formSkeleton" role="status" aria-live="polite" aria-label="Loading login form">
-                <div class="skeleton-form-group">
-                    <div class="skeleton skeleton-form-label"></div>
-                    <div class="skeleton skeleton-form-input"></div>
+            <div id="formSkeleton" role="status" aria-live="polite" aria-label="Loading login form" class="p-1">
+                <div class="mb-3">
+                    <div class="skeleton skeleton-text w-25"></div>
+                    <div class="skeleton w-100" style="height: 44px;"></div>
                 </div>
-                <div class="skeleton-form-group">
-                    <div class="skeleton skeleton-form-label"></div>
-                    <div class="skeleton skeleton-form-input"></div>
+                <div class="mb-3">
+                    <div class="skeleton skeleton-text w-25"></div>
+                    <div class="skeleton w-100" style="height: 44px;"></div>
                 </div>
-                <div class="skeleton-form-group">
-                    <div class="skeleton skeleton-form-label"></div>
-                    <div class="skeleton skeleton-form-input"></div>
+                <div class="mb-3">
+                    <div class="skeleton skeleton-text w-25"></div>
+                    <div class="skeleton w-100" style="height: 44px;"></div>
                 </div>
-                <div class="skeleton skeleton-button"></div>
+                <div class="skeleton skeleton-btn w-100 mt-4" style="height: 44px;"></div>
             </div>
 
             <!-- Form -->
-            <form action="/login" method="POST" class="login-form" id="main-content" role="main" aria-label="Login form" style="display:none;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-group">
+            <form action="/login" method="POST" id="main-content" role="main" aria-label="Login form" style="display:none;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group mb-3">
                     <label class="form-label" for="roleSelect">
-                        Select Role <span class="required" aria-label="required">*</span>
+                        Select Role <span class="text-danger" aria-label="required">*</span>
                     </label>
-                    <select name="role" id="roleSelect" class="form-select" required aria-required="true" aria-describedby="roleHint">
-                        <option value="">Choose your role...</option>
-                        <option value="Student">🎓 Student / Participant</option>
-                        <option value="EventCoordinator">📱 Event Coordinator</option>
-                        <option value="ClubSPOC">👥 Club SPOC (Manager)</option>
-                        <option value="Judge">⚖️ Event Judge</option>
-                        <option value="SuperAdmin">👑 Super Admin</option>
-                    </select>
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-user-shield inp-icon"></i>
+                        <select name="role" id="roleSelect" class="form-select" required aria-required="true" aria-describedby="roleHint">
+                            <option value="">Choose your role...</option>
+                            <option value="Student">🎓 Student / Participant</option>
+                            <option value="EventCoordinator">📱 Event Coordinator</option>
+                            <option value="ClubSPOC">👥 Club SPOC (Manager)</option>
+                            <option value="Judge">⚖️ Event Judge</option>
+                            <option value="SuperAdmin">👑 Super Admin</option>
+                        </select>
+                    </div>
                     <span id="roleHint" class="visually-hidden">Select your role in the Sapthagiri event portal</span>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mb-3">
                     <label class="form-label" for="emailInput">
-                        Email Address <span class="required" aria-label="required">*</span>
+                        Email Address <span class="text-danger" aria-label="required">*</span>
                     </label>
-                    <input type="email" id="emailInput" name="email" class="form-control" required aria-required="true" aria-describedby="emailHint" placeholder="your.email@university.edu">
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-envelope inp-icon"></i>
+                        <input type="email" id="emailInput" name="email" class="form-control" required aria-required="true" aria-describedby="emailHint" placeholder="your.email@university.edu">
+                    </div>
                     <span id="emailHint" class="visually-hidden">Enter your registered email address</span>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">
-                        Password <span class="required">*</span>
+                <div class="form-group mb-3">
+                    <label class="form-label" for="passwordInput">
+                        Password <span class="text-danger" aria-label="required">*</span>
                     </label>
-                    <div class="pw-wrap">
+                    <div class="pw-wrap input-icon-wrap">
+                        <i class="fas fa-lock inp-icon"></i>
                         <input type="password" id="passwordInput" name="password" class="form-control" required placeholder="••••••••">
-                        <button type="button" class="pw-toggle" onclick="spTogglePw('passwordInput',this)" tabindex="-1" aria-label="Show password">
+                        <button type="button" class="pw-toggle" onclick="spTogglePw('passwordInput',this)" tabindex="-1" aria-label="Toggle password visibility">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
                 </div>
 
                 <div class="secret-key-group" id="secretKeyDiv">
-                    <div class="form-group">
-                        <label class="form-label">
-                            <i class="fas fa-key"></i> Master Secret Key <span class="required">*</span>
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="secretKeyInput">
+                            Master Secret Key <span class="text-danger">*</span>
                         </label>
-                        <input type="password" name="secret_key" id="secretKeyInput" class="form-control" placeholder="Required for Super Admin access">
+                        <div class="input-icon-wrap">
+                            <i class="fas fa-key inp-icon"></i>
+                            <input type="password" name="secret_key" id="secretKeyInput" class="form-control" placeholder="Required for Super Admin access">
+                        </div>
                     </div>
                 </div>
 
-                <button type="submit" class="login-submit" data-loading-text="Signing in…">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Login to Portal
+                <button type="submit" class="btn btn-primary w-100 mt-4 py-2" data-loading-text="Signing in…">
+                    <i class="fas fa-sign-in-alt me-2"></i> Login to Portal
                 </button>
 
-                <div id="forgotPasswordWrap" style="text-align:center;margin-top:14px;font-size:.88rem;">
-                    <a href="/forgot_password" style="color:var(--primary-900);font-weight:600;text-decoration:none;">
-                        <i class="fas fa-key me-1"></i>Forgot Password?
+                <div id="forgotPasswordWrap" class="text-center mt-3">
+                    <a href="/forgot_password" class="text-decoration-none fw-bold text-primary small">
+                        <i class="fas fa-unlock-alt me-1"></i> Forgot Password?
                     </a>
+                </div>
+
+                <div class="text-center mt-4 pt-3 border-top text-muted small">
+                    New Student? <a href="/register" class="text-decoration-none fw-bold text-primary">Register Here</a>
                 </div>
             </form>
 
             <!-- Footer -->
-            <div class="login-footer">
-                <p>Sapthagiri NPS University &copy; 2026 &mdash; SapthaEvent Portal</p>
+            <div class="text-center mt-4 pt-2 text-muted" style="font-size: 0.78rem;">
+                <p class="mb-0">Sapthagiri NPS University &copy; 2026</p>
+                <p class="mb-0 text-muted-opacity">SapthaEvent Portal &bull; Premium Experience</p>
             </div>
         </div>
     </div>
 
     <script>
         // ── SKELETON LOADER INITIALIZATION ────
-        document.addEventListener('DOMContentLoaded',function(){
+        document.addEventListener('DOMContentLoaded', function(){
             setTimeout(function(){
                 const skeleton = document.getElementById('formSkeleton');
                 const form = document.getElementById('main-content');

@@ -246,14 +246,47 @@ app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
 app.register_blueprint(live_bp)
 
+# ── Phase 1–4 Industrial Upgrade blueprints ──────────────
+from routes_api_v1          import api_v1_bp          # noqa: E402
+from routes_notifications_v2 import notif_v2_bp       # noqa: E402
+from routes_waitlist        import waitlist_bp         # noqa: E402
+from routes_coupons         import coupons_bp          # noqa: E402
+from auth_oauth             import oauth_bp            # noqa: E402
+from auth_2fa               import twofa_bp            # noqa: E402
+from routes_compliance      import compliance_bp       # noqa: E402
+
+app.register_blueprint(api_v1_bp)
+app.register_blueprint(notif_v2_bp)
+app.register_blueprint(waitlist_bp)
+app.register_blueprint(coupons_bp)
+app.register_blueprint(oauth_bp)
+app.register_blueprint(twofa_bp)
+app.register_blueprint(compliance_bp)
+
+# ── Tenant resolution middleware ─────────────────────────
+from middleware_tenant import init_tenant_middleware  # noqa: E402
+init_tenant_middleware(app, db)
+
+# ── Security hardening middleware ────────────────────────
+from security_middleware import init_security_middleware  # noqa: E402
+init_security_middleware(app)
+
 # CSRF exemption for JSON-API blueprints hit via fetch()/XHR.
 # HTML form-serving blueprints (auth, admin, coordinator, judge, payment,
 # participant, profile, feedback) remain CSRF-protected.
-for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp):
+for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp, api_v1_bp,
+                 notif_v2_bp, waitlist_bp, coupons_bp, compliance_bp):
     try:
         csrf.exempt(_json_bp)
     except Exception as exc:
         logger.warning("CSRF exempt failed for %s: %s", _json_bp.name, exc)
+
+try:
+    from routes_auth import api_login, api_register
+    csrf.exempt(api_login)
+    csrf.exempt(api_register)
+except Exception as exc:
+    logger.warning("CSRF exempt failed for API endpoints: %s", exc)
 
 
 # =========================================================

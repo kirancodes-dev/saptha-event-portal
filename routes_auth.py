@@ -3,6 +3,7 @@ import logging
 from flask import Blueprint, render_template, request, redirect, session, flash, current_app
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
+from firebase_admin import auth
 from models import db
 from utils import log_action, ROLE_REDIRECTS, validate_password_strength
 import utils_email
@@ -70,7 +71,7 @@ def login():
                         'name':                'System Super Admin',
                         'role':                'SuperAdmin',
                         'category':            'All',
-                        'password':            generate_password_hash(password),
+                        'password':            generate_password_hash(password, method='pbkdf2:sha256'),
                         'created_at':          datetime.datetime.now().strftime("%Y-%m-%d"),
                         'needs_password_reset': False
                     })
@@ -155,7 +156,7 @@ def reset_password():
         try:
             email = session['user_id']
             db.collection('users').document(email).update({
-                'password':            generate_password_hash(new_pw),
+                'password':            generate_password_hash(new_pw, method='pbkdf2:sha256'),
                 'needs_password_reset': False
             })
             session.pop('force_reset', None)
@@ -206,7 +207,7 @@ def register():
                 'phone':               phone,
                 'role':                'Student',
                 'category':            'General',
-                'password':            generate_password_hash(password),
+                'password':            generate_password_hash(password, method='pbkdf2:sha256'),
                 'created_at':          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'needs_password_reset': False
             })
@@ -327,7 +328,7 @@ def reset_token(token):
 
         try:
             db.collection('users').document(email).update({
-                'password':             generate_password_hash(new_pw),
+                'password':             generate_password_hash(new_pw, method='pbkdf2:sha256'),
                 'needs_password_reset': False
             })
             log_action(db, "PASSWORD_RESET_EMAIL",
@@ -413,3 +414,141 @@ def _set_session(email: str, name: str, role: str, category: str):
     session['name']     = name
     session['role']     = role
     session['category'] = category
+
+
+# =========================================================
+# 8. MOBILE APP API ENDPOINTS (JSON)
+# =========================================================
+@auth_bp.route('/api/auth/login', methods=['POST'])
+def api_login():
+    try:
+        data = request.get_json() or {}
+        email = data.get('email', '').lower().strip()
+        password = data.get('password', '')
+        role = data.get('role', '').strip()
+
+        if not email or not password or not role:
+            return {"success": False, "message": "Email, password, and role are required."}, 400
+
+        # Normalise role
+        if role == 'Super Admin':
+            role = 'SuperAdmin'
+        if role == 'Coordinator':
+            role = 'EventCoordinator'
+
+        # Fetch user
+        user_doc = db.collection('users').document(email).get()
+        if not user_doc.exists:
+            return {"success": False, "message": "Account not found."}, 404
+
+        user_data = user_doc.to_dict()
+        db_role = user_data.get('role', '').strip()
+        if db_role == 'Super Admin':
+            db_role = 'SuperAdmin'
+        if db_role == 'Coordinator':
+            db_role = 'EventCoordinator'
+
+        if db_role != role:
+            return {"success": False, "message": "Incorrect role selected."}, 401
+
+        # Check password hash
+        stored_pw = user_data.get('password', '')
+        if isinstance(stored_pw, (int, float)):
+            stored_pw = str(int(stored_pw))
+
+        if stored_pw.startswith(('scrypt:', 'pbkdf2:', 'argon2:')):
+            valid = check_password_hash(stored_pw, password)
+        else:
+            valid = False
+
+        if not valid:
+            return {"success": False, "message": "Incorrect password."}, 401
+
+        # Generate Custom Token
+        try:
+            custom_token = auth.create_custom_token(email)
+            if isinstance(custom_token, bytes):
+                custom_token = custom_token.decode('utf-8')
+        except Exception as exc:
+            logger.error("API Custom Token generation failed: %s", exc)
+            return {"success": False, "message": f"Token generation failed: {exc}"}, 500
+
+        log_action(db, "API_LOGIN_SUCCESS", f"{email} logged in as {role} via Mobile API")
+
+        return {
+            "success": True,
+            "customToken": custom_token,
+            "user": {
+                "email": email,
+                "name": user_data.get('name'),
+                "role": db_role,
+                "category": user_data.get('category', 'General'),
+                "usn": user_data.get('usn', ''),
+                "phone": user_data.get('phone', '')
+            }
+        }
+    except Exception as exc:
+        logger.error("API login exception: %s", exc)
+        return {"success": False, "message": str(exc)}, 500
+
+
+@auth_bp.route('/api/auth/register', methods=['POST'])
+def api_register():
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', '').strip()
+        usn = data.get('usn', '').strip().upper()
+        email = data.get('email', '').lower().strip()
+        phone = data.get('phone', '').strip()
+        password = data.get('password', '')
+
+        if not name or not email or not password:
+            return {"success": False, "message": "Name, email, and password are required."}, 400
+
+        ok, pw_err = validate_password_strength(password)
+        if not ok:
+            return {"success": False, "message": pw_err}, 400
+
+        existing = db.collection('users').document(email).get()
+        if existing.exists:
+            return {"success": False, "message": "An account with this email already exists."}, 400
+
+        # Save to Firestore
+        db.collection('users').document(email).set({
+            'email':               email,
+            'name':                name,
+            'usn':                 usn,
+            'phone':               phone,
+            'role':                'Student',
+            'category':            'General',
+            'password':            generate_password_hash(password),
+            'created_at':          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'needs_password_reset': False
+        })
+
+        # Generate Custom Token
+        try:
+            custom_token = auth.create_custom_token(email)
+            if isinstance(custom_token, bytes):
+                custom_token = custom_token.decode('utf-8')
+        except Exception as exc:
+            logger.error("API Custom Token generation failed for register: %s", exc)
+            return {"success": False, "message": f"Token generation failed: {exc}"}, 500
+
+        log_action(db, "API_USER_REGISTERED", f"New student registered via Mobile API: {email}")
+
+        return {
+            "success": True,
+            "customToken": custom_token,
+            "user": {
+                "email": email,
+                "name": name,
+                "role": "Student",
+                "category": "General",
+                "usn": usn,
+                "phone": phone
+            }
+        }
+    except Exception as exc:
+        logger.error("API registration exception: %s", exc)
+        return {"success": False, "message": str(exc)}, 500

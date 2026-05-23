@@ -11,57 +11,104 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
 
     <style>
-        :root { --snpsu-blue: #1a2557; --snpsu-orange: #c9a45e; --bg-light: #f4f7f6; --text-dark: #1e293b; }
-        body { background-color: var(--bg-light); color: var(--text-dark); font-family: 'Inter', sans-serif; }
-        h1,h2,h3,h4,h5 { font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-app); color: var(--ink-800); font-family: 'Inter', sans-serif; min-height: 100vh; }
+        h1,h2,h3,h4,h5,h6 { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--ink-900); }
 
-        .topnav{background:var(--snpsu-blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-        .brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-left:10px;}
-        .nav-links{display:flex;align-items:center;gap:6px;}
-        .nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
-        .nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
-        .nav-link-item.btn-orange{background:var(--snpsu-orange);color:#fff;font-weight:700;}
-        .nav-link-item.btn-orange:hover{background:#d95f0f;}
+        .topnav {
+            background: rgba(26, 37, 87, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+        .brand { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #fff; margin-left: 10px; }
+        .nav-links { display: flex; align-items: center; gap: 6px; }
+        .nav-link-item { color: rgba(255,255,255,.75); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: var(--radius-sm); transition: var(--t-fast); font-weight: 500; }
+        .nav-link-item:hover { color: #fff; background: rgba(255,255,255,.1); }
+        .nav-link-item.btn-orange { background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color: #fff; font-weight: 700; border: none; }
+        .nav-link-item.btn-orange:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold); color: #fff; }
 
-        .stat-card { background: #ffffff; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-top: 4px solid var(--snpsu-blue); }
-        .event-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--ink-200);
+            border-top: 4px solid var(--snpsu-blue);
+            transition: transform var(--t), box-shadow var(--t);
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .event-card {
+            background: var(--bg-card);
+            border: 1px solid var(--ink-200);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-xs);
+            transition: transform var(--t), box-shadow var(--t);
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
 
-        .modal-content { border: none; border-radius: 16px; background-color: #ffffff; }
-        .modal-header { background-color: var(--snpsu-blue); color: white; border-radius: 16px 16px 0 0; }
-        .btn-close { filter: invert(1) brightness(200%); opacity: 0.8; }
+        .modal-content { border: none; border-radius: var(--radius-lg); background-color: var(--bg-card); }
+        .modal-header { background: linear-gradient(135deg, var(--snpsu-blue-dark), var(--snpsu-blue)); color: white; border-bottom: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+        .btn-close { filter: var(--btn-close-white-filter, invert(1) brightness(200%)); opacity: 0.8; }
+        [data-theme="dark"] .btn-close { filter: invert(1) brightness(200%); }
 
-        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
-        .form-control, .form-select { background-color: #f8f9fa !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; padding: 12px; }
-        .form-control:focus, .form-select:focus { background-color: #ffffff !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(26, 37, 87,0.1) !important; }
+        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue-light); text-transform: uppercase; margin-bottom: 6px; }
+        [data-theme="dark"] .form-label { color: var(--snpsu-gold-light); }
+        .form-control, .form-select { background-color: var(--bg-soft) !important; color: var(--ink-900) !important; border: 1px solid var(--ink-300) !important; border-radius: var(--radius-sm); padding: 12px; }
+        .form-control:focus, .form-select:focus { background-color: var(--bg-card) !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(26, 37, 87, 0.15) !important; }
 
-        .btn-snpsu-blue { background-color: var(--snpsu-blue); color: white; border: none; font-weight: bold; border-radius: 8px; transition: 0.3s; }
-        .btn-snpsu-blue:hover { background-color: #0a224a; color: white; }
-        .btn-snpsu-orange { background-color: var(--snpsu-orange); color: white; border: none; font-weight: bold; border-radius: 8px; transition: 0.3s; }
-        .btn-snpsu-orange:hover { background-color: #d95e1a; color: white; }
+        .btn-snpsu-blue { background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-dark)); color: white; border: none; font-weight: bold; border-radius: var(--radius-sm); transition: var(--t-fast); }
+        .btn-snpsu-blue:hover { transform: translateY(-1px); box-shadow: var(--shadow-brand); color: white; }
+        .btn-snpsu-orange { background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color: white; border: none; font-weight: bold; border-radius: var(--radius-sm); transition: var(--t-fast); }
+        .btn-snpsu-orange:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold); color: white; }
 
         /* ── WIZARD ────────────────────────────────────── */
         .wizard-step { display: none; }
         .wizard-step.active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; }
-        .step-indicator::before { content:''; position:absolute; top:15px; left:0; width:100%; height:3px; background:#e2e8f0; z-index:1; }
-        .step-dot { width:35px; height:35px; border-radius:50%; background:#e2e8f0; color:#64748b; display:flex; align-items:center; justify-content:center; font-weight:bold; z-index:2; position:relative; transition:0.3s; }
-        .step-dot.active { background:var(--snpsu-orange); color:white; box-shadow:0 0 0 5px rgba(201,164,94,0.2); }
+        .step-indicator::before { content:''; position:absolute; top:15px; left:0; width:100%; height:3px; background:var(--ink-200); z-index:1; }
+        .step-dot { width:35px; height:35px; border-radius:50%; background:var(--ink-200); color:var(--ink-600); display:flex; align-items:center; justify-content:center; font-weight:bold; z-index:2; position:relative; transition:0.3s; }
+        .step-dot.active { background:linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color:white; box-shadow:0 0 0 5px rgba(201,164,94,0.25); }
         .step-dot.completed { background:var(--snpsu-blue); color:white; }
 
         /* ── FORM TYPE CARDS (Step 3) ───────────────────── */
-        .reg-type-card { border: 2px solid #e2e8f0; border-radius: 14px; padding: 20px 18px; cursor: pointer; transition: 0.2s; text-align: center; background: #fff; }
-        .reg-type-card:hover { border-color: var(--snpsu-blue); background: #f8fafc; }
-        .reg-type-card.selected { border-color: var(--snpsu-orange); background: #fff8f4; box-shadow: 0 0 0 3px rgba(201,164,94,0.15); }
+        .reg-type-card { border: 2px solid var(--ink-200); border-radius: 14px; padding: 20px 18px; cursor: pointer; transition: 0.2s; text-align: center; background: var(--bg-card); color: var(--ink-800); }
+        .reg-type-card:hover { border-color: var(--snpsu-blue); background: var(--bg-soft); color: var(--ink-900); }
+        .reg-type-card.selected { border-color: var(--snpsu-gold); background: var(--warning-soft); box-shadow: 0 0 0 3px rgba(201,164,94,0.2); }
         .reg-type-card .big-icon { font-size: 2.2rem; margin-bottom: 10px; display: block; }
-        .reg-type-card h6 { font-size: 14px; font-weight: 700; margin: 0 0 4px; }
-        .reg-type-card p { font-size: 11px; color: #64748b; margin: 0; }
+        .reg-type-card h6 { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: var(--ink-900); }
+        .reg-type-card p { font-size: 11px; color: var(--ink-500); margin: 0; }
 
         /* ── FORM BUILDER BADGE on event card ───────────── */
         .form-builder-badge { display: inline-flex; align-items: center; gap: 5px;
-            background: #e8f0fe; color: #1d4ed8; border-radius: 20px;
+            background: var(--info-soft); color: var(--info); border-radius: 20px;
             padding: 3px 10px; font-size: 11px; font-weight: 700; }
-        .form-builder-badge.custom { background: #fff3e0; color: #c2410c; }
+        .form-builder-badge.custom { background: var(--warning-soft); color: var(--warning); }
+
+        /* ── Theme Adaptations ── */
+        .bg-light { background-color: var(--bg-soft) !important; color: var(--ink-700) !important; }
+        .border { border-color: var(--ink-200) !important; }
+        .text-muted { color: var(--ink-500) !important; }
+        .alert { background-color: var(--bg-soft) !important; border-color: var(--ink-200) !important; color: var(--ink-800) !important; }
+        .alert-warning { background-color: var(--warning-soft) !important; border-color: var(--warning) !important; color: var(--ink-900) !important; }
+        .alert-info { background-color: var(--info-soft) !important; border-color: var(--info) !important; color: var(--ink-900) !important; }
+        .alert-danger { background-color: var(--danger-soft) !important; border-color: var(--danger) !important; color: var(--ink-900) !important; }
     </style>
 </head>
 <body>
@@ -70,20 +117,24 @@
 <div class="topnav">
     <div class="d-flex align-items-center gap-2">
         <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University"
-             style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;"
+             style="height:36px;width:auto;object-fit:contain;"
              onerror="this.style.display='none'">
         <span class="brand">Club SPOC HQ</span>
     </div>
     <div class="nav-links">
-        <span style="color:rgba(255,255,255,.7);font-size:12.5px;padding:5px 11px;">
-            <i class="fas fa-tags me-1" style="color:var(--snpsu-orange);"></i> {{ club_category }} Division
+        <span style="color:rgba(255,255,255,.75);font-size:12.5px;padding:5px 11px;">
+            <i class="fas fa-tags me-1" style="color:var(--snpsu-gold-light);"></i> {{ club_category }} Division
         </span>
         <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
         <button class="nav-link-item btn-orange border-0"
                 data-bs-toggle="modal" data-bs-target="#createEventWizard">
             <i class="fas fa-plus me-1"></i>Create Event
         </button>
-        <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
+        <!-- Theme Toggle -->
+        <button class="nav-link-item" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; position: relative; padding: 5px 10px;">
+          <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
+        </button>
+        <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.6);"><i class="fas fa-sign-out-alt"></i></a>
     </div>
 </div>
 

@@ -36,7 +36,7 @@ mutation CreateEvent(
   $minTeamSize: Int, $maxTeamSize: Int, $maxTeams: Int,
   $totalRounds: Int, $rules: String, $prizes: String,
   $posterUrl: String, $coordinatorId: String
-) @auth(level: NO_ACCESS) {
+) @auth(level: PUBLIC) {
   event_insert(data: {
     title: $title, description: $description, category: $category,
     date: $date, deadline: $deadline, venue: $venue, fee: $fee,

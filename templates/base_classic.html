@@ -19,27 +19,18 @@
     {% include 'includes/pwa_head.html' %}
     <title>{% block title %}Page Title{% endblock %} | SapthaEvent Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="/static/css/style.css" rel="stylesheet">
-    <style>
-        /* ── ACCESSIBILITY STYLES ────────────────────── */
-        .skip-link{position:absolute;top:-40px;left:0;background:#1a2557;color:white;padding:8px 12px;text-decoration:none;border-radius:0 0 4px 0;font-weight:600;z-index:9999;}
-        .skip-link:focus{top:0;}
-        *:focus-visible{outline:3px solid #c9a45e;outline-offset:2px;}
-        @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
-        @media(prefers-contrast:more){*{font-weight:600;}}
-        @media(prefers-color-scheme:dark){body{background:#1a1a1a;color:#e0e0e0;}.sidebar{background:#0d0d0d;}.main-content{background:#1a1a1a;}}
-    </style>
-    {% block extra_css %}{% endblock %}
     <link href="/static/css/global.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to Main Content</a>
     <!-- Sidebar Navigation -->
     {% if not public_layout %}
+        <div class="sidebar-overlay"></div>
         <aside class="sidebar" role="complementary" aria-label="Navigation sidebar">
-            <div class="sidebar-brand" style="background:#1a2557;padding:18px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;">
-                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="width:100%;max-width:200px;height:auto;object-fit:contain;border-radius:6px;">
-                <div class="brand-text" aria-label="SapthaEvent Dashboard" style="color:#fff;font-weight:700;font-size:14px;letter-spacing:.5px;">Saptha<span style="color:#c9a45e;">Event</span></div>
+            <div class="sidebar-brand">
+                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 32px; width: auto; object-fit: contain; margin-right: 8px;">
+                <div class="brand-text" aria-label="SapthaEvent Dashboard">Saptha<span>Event</span></div>
             </div>
 
             <nav class="sidebar-menu" role="navigation" aria-label="Main navigation">
@@ -101,11 +92,28 @@
         {% if not public_layout %}
             <header class="top-header" role="banner">
                 <div class="header-left">
+                    <button class="menu-toggle" aria-label="Toggle Sidebar" type="button">
+                        <i class="fas fa-bars" aria-hidden="true"></i>
+                    </button>
                     <h1 class="header-title" id="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
                 </div>
                 <div class="header-right">
+                    <!-- Notifications -->
+                    <a href="/notifications" class="btn-icon-link me-2" aria-label="Notifications" style="position: relative; color: var(--ink-700); font-size: 1.15rem; transition: color var(--t-fast); text-decoration: none;">
+                        <i class="fas fa-bell"></i>
+                        <span id="notif-badge" class="badge bg-danger rounded-pill" style="position: absolute; top: -5px; right: -5px; font-size: 0.65rem; padding: 0.25em 0.4em; display: none;"></span>
+                    </a>
+                    
+                    <!-- Theme Toggle -->
+                    <button class="btn-icon-link me-3" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
+                        <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
+                    </button>
+
+                    <!-- User Avatar -->
                     <div class="user-menu" role="region" aria-label="User menu">
-                        <div class="user-avatar" aria-label="User profile avatar with initials">{{ user_initials | default('U') }}</div>
+                        <a href="/profile" style="text-decoration: none;" aria-label="View Profile">
+                            <div class="user-avatar" aria-label="User profile avatar with initials">{{ user_initials | default('U') }}</div>
+                        </a>
                     </div>
                 </div>
             </header>
@@ -143,6 +151,14 @@
                     overlay.classList.remove('active');
                 });
             }
+
+            // Clean up mobile sidebar classes on window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 991) {
+                    if (sidebar) sidebar.classList.remove('active');
+                    if (overlay) overlay.classList.remove('active');
+                }
+            });
         });
     </script>
     <script>
@@ -171,6 +187,7 @@
             };
         })();
     </script>
+    <script src="/static/js/global.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

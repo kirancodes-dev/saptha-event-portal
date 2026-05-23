@@ -3,10 +3,10 @@ tests/test_health.py — Health check endpoint tests
 """
 
 import json
+from unittest.mock import patch
 
 
 def test_health_returns_200(client, mock_db):
-    mock_db.collection.return_value.limit.return_value.stream.return_value = iter([])
     resp = client.get('/health')
     assert resp.status_code == 200
     data = json.loads(resp.data)
@@ -16,7 +16,6 @@ def test_health_returns_200(client, mock_db):
 
 
 def test_ready_returns_200(client, mock_db):
-    mock_db.collection.return_value.limit.return_value.stream.return_value = iter([])
     resp = client.get('/health/ready')
     assert resp.status_code == 200
     data = json.loads(resp.data)
@@ -24,11 +23,8 @@ def test_ready_returns_200(client, mock_db):
 
 
 def test_health_503_on_db_failure(client, mock_db):
-    mock_db.collection.return_value.limit.return_value.stream.side_effect = Exception('db down')
-    resp = client.get('/health')
-    assert resp.status_code == 503
-    data = json.loads(resp.data)
-    assert data['status'] == 'unhealthy'
-    # Reset for other tests
-    mock_db.collection.return_value.limit.return_value.stream.side_effect = None
-    mock_db.collection.return_value.limit.return_value.stream.return_value = iter([])
+    with patch.object(mock_db, 'collection', side_effect=Exception('db down')):
+        resp = client.get('/health')
+        assert resp.status_code == 503
+        data = json.loads(resp.data)
+        assert data['status'] == 'unhealthy'

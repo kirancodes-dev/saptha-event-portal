@@ -170,3 +170,30 @@ class Config:
     CELERY_BROKER_URL     = os.environ.get('CELERY_BROKER_URL', '')
     CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND',
                                             os.environ.get('CELERY_BROKER_URL', ''))
+
+    # =========================================================
+    # 13. JWT AUTHENTICATION (API layer)
+    # =========================================================
+    JWT_SECRET_KEY            = os.environ.get('JWT_SECRET_KEY', '') or SECRET_KEY
+    JWT_ACCESS_TOKEN_EXPIRES  = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 900))    # 15 min
+    JWT_REFRESH_TOKEN_EXPIRES = int(os.environ.get('JWT_REFRESH_TOKEN_EXPIRES', 604800))  # 7 days
+
+    # =========================================================
+    # 14. OAUTH 2.0 / SSO
+    # =========================================================
+    OAUTH_GOOGLE_CLIENT_ID     = os.environ.get('OAUTH_GOOGLE_CLIENT_ID', '')
+    OAUTH_GOOGLE_CLIENT_SECRET = os.environ.get('OAUTH_GOOGLE_CLIENT_SECRET', '')
+    OAUTH_MICROSOFT_CLIENT_ID     = os.environ.get('OAUTH_MICROSOFT_CLIENT_ID', '')
+    OAUTH_MICROSOFT_CLIENT_SECRET = os.environ.get('OAUTH_MICROSOFT_CLIENT_SECRET', '')
+
+    # =========================================================
+    # 15. POSTGRESQL (for SQL-backed features / migration target)
+    # =========================================================
+    DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+    # =========================================================
+    # 16. MULTI-TENANCY
+    # =========================================================
+    MULTI_TENANT_ENABLED = os.environ.get('MULTI_TENANT_ENABLED', 'false').lower() == 'true'
+    DEFAULT_ORG_SLUG     = os.environ.get('DEFAULT_ORG_SLUG', 'snpsu')
+

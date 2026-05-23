@@ -12,7 +12,6 @@ const TICKET_CACHE = `saptha-tickets-${VERSION}`;
 const STATIC_ASSETS = [
   '/static/snpsu-logo.png',
   '/static/css/global.css',
-  '/static/css/style.css',
   '/static/manifest.webmanifest',
   '/offline'
 ];

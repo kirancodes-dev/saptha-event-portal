@@ -10,29 +10,26 @@
 <link rel="canonical" href="https://events.snpsu.edu.in">
 <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <title>429 - Too Many Requests | SapthaEvent</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
-.card{background:#fff;border-radius:20px;border:1px solid #e2e8f0;padding:48px 36px;max-width:480px;width:100%;text-align:center;}
-.logo-sq{width:56px;height:56px;background:var(--orange);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:22px;color:#fff;margin:0 auto 20px;}
-.code{font-family:'Poppins',sans-serif;font-size:72px;font-weight:800;color:#f59e0b;line-height:1;margin-bottom:8px;}
-.title{font-family:'Poppins',sans-serif;font-size:20px;font-weight:700;color:#1e293b;margin-bottom:8px;}
-.desc{font-size:14px;color:#64748b;line-height:1.65;margin-bottom:28px;}
-.countdown-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:16px;margin-bottom:24px;}
-.countdown-n{font-family:'Poppins',sans-serif;font-size:32px;font-weight:800;color:#b45309;}
-.countdown-l{font-size:13px;color:#78350f;}
-.btn-home{display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:#fff;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;text-decoration:none;transition:.15s;}
-.btn-home:hover{background:#0a2352;color:#fff;}
-.uni{font-size:11.5px;color:#94a3b8;margin-top:20px;}
-/* ── ACCESSIBILITY ────────── */
-*:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;transition:background var(--t);}
+.card{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--ink-200);padding:48px 36px;max-width:480px;width:100%;text-align:center;box-shadow:var(--shadow-md);transition:all var(--t);}
+.code{font-family:'Plus Jakarta Sans',sans-serif;font-size:72px;font-weight:800;color:var(--warning);line-height:1;margin-bottom:8px;}
+.title{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:var(--ink-900);margin-bottom:12px;}
+.desc{font-size:14.5px;color:var(--ink-500);line-height:1.65;margin-bottom:28px;}
+.countdown-box{background:var(--warning-soft);border:1px solid var(--warning);border-radius:var(--radius);padding:16px;margin-bottom:24px;transition:all var(--t);}
+[data-theme="dark"] .countdown-box{background:rgba(245, 158, 11, 0.1);border-color:rgba(245, 158, 11, 0.3);}
+.countdown-n{font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;color:var(--warning);}
+.countdown-l{font-size:13px;color:var(--ink-700);}
+.btn-home{display:inline-flex;align-items:center;gap:8px;background:var(--snpsu-blue);color:#fff !important;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 28px;border-radius:var(--radius-sm);text-decoration:none;transition:var(--t-fast);}
+.btn-home:hover{background:var(--snpsu-blue-light);color:#fff !important;transform:translateY(-1px);box-shadow:var(--shadow-brand);}
+.uni{font-size:12px;color:var(--ink-400);margin-top:20px;font-weight:500;}
+/* ── ACCESSIBILITY ────────────────────── */
+*:focus-visible{outline:3px solid var(--snpsu-gold);outline-offset:2px;}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
-@media(prefers-contrast:more){.title,.code{font-weight:900;}.btn-home{border:2px solid;font-weight:700;}}
-@media(prefers-color-scheme:dark){body{background:#1a1a1a;}.card{background:#2a2a2a;color:#e0e0e0;border-color:#444;}.title{color:#e0e0e0;}.desc{color:#a0a0a0;}.countdown-box{background:#2d1f00;border-color:#665200;color:#ddd;}}
 </style>
-    <link href="/static/css/global.css" rel="stylesheet">
 </head>
 <body role="main" aria-label="429 Rate Limit Error">
 <div class="card" role="region" aria-live="polite" aria-label="Rate limit error message">
@@ -45,7 +42,7 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;display:
     <div class="countdown-l">seconds until you can try again</div>
   </div>
   <a href="/" class="btn-home">↩ Return Home</a>
-  <div style="text-align:center;margin-bottom:8px;">
+  <div style="text-align:center;margin-bottom:8px;margin-top:24px;">
     <img src="/static/snpsu-logo.png"
          alt="Sapthagiri NPS University"
          style="height:24px;width:auto;object-fit:contain;"

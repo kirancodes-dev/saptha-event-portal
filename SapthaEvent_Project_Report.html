@@ -255,6 +255,8 @@
     <a href="#db" class="toc-item"><span class="toc-num">12</span>Database Structure</a>
     <a href="#ai" class="toc-item"><span class="toc-num">13</span>AI Features</a>
     <a href="#stats" class="toc-item"><span class="toc-num">14</span>Code Statistics</a>
+    <a href="#business" class="toc-item"><span class="toc-num">15</span>Business Model</a>
+    <a href="#defense" class="toc-item"><span class="toc-num">16</span>Judge Q&A Defense</a>
   </div>
 </div>
 
@@ -1259,6 +1261,160 @@
       <tr><td><code>templates/public/home.html</code></td><td>Ticker CSS override, dead Jinja2 guards removed</td><td>+23</td></tr>
     </tbody>
   </table>
+</div>
+
+<!-- ═══════════════════════════════════ 15. BUSINESS MODEL ═══════════════════════════════════ -->
+<div class="section" id="business">
+  <div class="section-header">
+    <div class="section-icon" style="background:#dcfce7;">💼</div>
+    <div>
+      <div class="chapter">Section 15</div>
+      <div class="section-title">Business & Monetization Model</div>
+      <div class="section-sub">Pricing plans, feature upgrades, and commercial pitch framework</div>
+    </div>
+  </div>
+
+  <h3 class="sub">Deployment Pricing Models</h3>
+  <p style="margin-bottom: 16px; color: #475569;">We offer two distinct pricing models to colleges depending on their budgetary preferences: CapEx (High upfront, low recurring) and OpEx (No upfront, subscription-based).</p>
+  
+  <div class="role-grid" style="margin-bottom: 28px;">
+    <div class="role-card" style="border-top: 3px solid var(--orange);">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fff7ed;font-size:22px;">💳</div>
+        <div>
+          <div class="role-name">Model A: The Subscription Model (Recommended)</div>
+          <div class="role-desc">Best for steady recurring revenue (ARR)</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li><strong>Financials:</strong> We absorb the infrastructure costs within a monthly/yearly fee</li>
+        <li><strong>Our Internal Cost:</strong> ~$600 / year (Standard Tier infra + minor maintenance)</li>
+        <li><strong>Price to Charge College:</strong> ₹60,000 to ₹80,000 / year ($750 - $1,000 USD)</li>
+        <li><strong>Net Profit Margin:</strong> ~80% - 85% per college deployment</li>
+      </ul>
+    </div>
+
+    <div class="role-card" style="border-top: 3px solid var(--blue);">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#dbeafe;font-size:22px;">🛠️</div>
+        <div>
+          <div class="role-name">Model B: Setup + Maintenance Model</div>
+          <div class="role-desc">Best for pulling immediate capital upfront</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li><strong>One-Time Setup Fee:</strong> ₹1,20,000 ($1,500 USD) — white-labeling & setup</li>
+        <li><strong>Annual Maintenance Contract (AMC):</strong> ₹25,000 / year ($300 USD)</li>
+        <li><strong>Net Profit Margin:</strong> 100% profitable by Month 1 on setup</li>
+        <li><strong>Stable Margin:</strong> 50% margin on AMC, covering infra & bug fixes</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="sub">Curated Feature Upgrade & Upsell Packages</h3>
+  <p style="margin-bottom: 16px; color: #475569;">To prevent scope creep (infinite small changes requested for free), all post-deployment upgrades are structured as predefined packages. Individual custom requests are not accepted.</p>
+  
+  <div class="role-grid" style="margin-bottom: 28px;">
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#fce7f3;font-size:22px;">📦</div>
+        <div>
+          <div class="role-name">Package 1: Communications & Alerts</div>
+          <div class="role-desc">WhatsApp, SMS & Email reports</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Automated WhatsApp/SMS Integration</li>
+        <li>Automated Email Report cards</li>
+        <li>Live Attendance alerts for parents</li>
+        <li><strong>Implementation Cost:</strong> ₹15,000 ($200) one-time</li>
+        <li><strong>Maintenance Overhead:</strong> +₹1,000/month (API costs passed to client)</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#ede9fe;font-size:22px;">📦</div>
+        <div>
+          <div class="role-name">Package 2: Advanced Analytics & Exams</div>
+          <div class="role-desc">CGPA engines, transcripts & charts</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Batch performance analytics for management</li>
+        <li>Visual charts & stats for college administrators</li>
+        <li>Automated GPA/CGPA generation engine</li>
+        <li>PDF transcript generator</li>
+        <li><strong>Implementation Cost:</strong> ₹25,000 ($300) one-time</li>
+        <li><strong>Maintenance Overhead:</strong> No change (Existing compute capacity)</li>
+      </ul>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header">
+        <div class="role-avatar" style="background:#dcfce7;font-size:22px;">📦</div>
+        <div>
+          <div class="role-name">Package 3: Security & Audit Controls</div>
+          <div class="role-desc">RBAC, activity logs & secure backups</div>
+        </div>
+      </div>
+      <ul class="role-perms">
+        <li>Advanced Role-Based Access Control (RBAC)</li>
+        <li>Activity logs (who modified what data and when)</li>
+        <li>IP-whitelisting for college admins</li>
+        <li>Automated database daily backups to a secure cold storage</li>
+        <li><strong>Implementation Cost:</strong> ₹20,000 ($250) one-time</li>
+        <li><strong>Maintenance Overhead:</strong> +₹500/month (Storage expansion)</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="sub">Client Pitch & Explainer Framework</h3>
+  <div class="highlight-box">
+    <h3>Verbal Pitch Framework (Principals, Trustees, Tech Directors)</h3>
+    <p style="font-style: italic; white-space: pre-wrap; font-size: 13px; line-height: 1.6;">"Good morning team,
+When we built this portal, we prioritized two core pillars: absolute data isolation and predictable scaling. Your college handles over 25,000 active student and academic records. Storing that on a shared, cheap server risks massive downtime during exam registrations or result announcements.
+
+Therefore, we deploy your system on its own dedicated cloud container. Your data never mixes with any other institution, ensuring absolute compliance and security.
+
+We offer this under a completely transparent billing model. For a flat annual subscription, we handle the server costs, the database indexing, maintenance, and regular security updates. You don’t need an internal IT team to maintain servers; we handle it all seamlessly in the background.
+
+Furthermore, to ensure the absolute stability of the platform, our core system is fully complete from day one. If your institution grows and requires advanced features like automated WhatsApp engines or audit logging, we offer these via curated Upgrade Packages. This guarantees that your platform scales smoothly without unexpected, messy development delays."</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ 16. JUDGE Q&A DEFENSE ═══════════════════════════════════ -->
+<div class="section" id="defense">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff7ed;">⚖️</div>
+    <div>
+      <div class="chapter">Section 16</div>
+      <div class="section-title">Judge Q&A Defense Strategy</div>
+      <div class="section-sub">Stresstests, technical justifications, and commercial validation</div>
+    </div>
+  </div>
+
+  <div class="fix-log">
+    <div class="fix-item blue">
+      <div class="fix-title">Q1: Why did you choose a multi-instance (separate for each college) approach instead of a single multi-tenant database? Isn't multi-tenancy cheaper?</div>
+      <div class="fix-desc"><strong>Defense Answer:</strong> "While a shared multi-tenant database reduces initial infrastructure costs, it introduces significant risks for educational institutions. First, data privacy: colleges are highly sensitive about student data records mixing with competitors. Second, noisy neighbor issues: if College A runs a massive query or data import of 25,000 rows, it won't degrade performance for College B. Third, customization: isolated deployments allow us to easily apply specific college-level configurations without rewriting global database schemas."</div>
+    </div>
+
+    <div class="fix-item orange">
+      <div class="fix-title">Q2: 25,000 records per college can slow down a cheap database tier during peak hours (e.g., results day). How does your tech stack handle concurrent traffic spikes?</div>
+      <div class="fix-desc"><strong>Defense Answer:</strong> "Our 'Standard Tier' architecture utilizes optimized relational indexing on fields like student_id and academic_year. For heavy read operations—like checking results—we decouple the web server from the database using connection pooling (like PgBouncer). If traffic spikes excessively, our architecture allows us to scale up compute instances vertically within minutes without touching or breaking the underlying database layer."</div>
+    </div>
+
+    <div class="fix-item green">
+      <div class="fix-title">Q3: What is your strategy if a college insists on a minor custom feature that isn't in your pre-packaged upgrade tiers?</div>
+      <div class="fix-desc"><strong>Defense Answer:</strong> "To maintain product profitability and a clean codebase, we explicitly do not support one-off custom code modification. If a college requests an unlisted feature, we evaluate its utility. If it benefits other colleges, we roadmap it into a new feature package. If it is highly specific to them, we offer them a dedicated 'Enterprise Customization' tier billed at premium development hours, ensuring our engineering time is fully compensated."</div>
+    </div>
+
+    <div class="fix-item red">
+      <div class="fix-title">Q4: If you are using Tier 2 (Standard Cloud) hosting at ~$45/mo, and charging ~₹65,000/year, your margins are healthy. What happens if data volume doubles?</div>
+      <div class="fix-desc"><strong>Defense Answer:</strong> "Our database selection (Supabase/PostgreSQL) can scale efficiently way past 25,000 rows into millions of rows before requiring significantly higher storage tiers. If data volume doubles, our hosting expense might increase by $5–$10/month for storage blocks, but our pricing models already include an 80%+ profit margin buffer to absorb these incremental operational scaling costs easily."</div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════ FOOTER ═══════════════════════════════════ -->

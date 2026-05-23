@@ -15,6 +15,10 @@ import uuid
 import logging
 from datetime import datetime, date, timezone
 from dateutil import parser as date_parser
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -49,6 +53,19 @@ def to_uuid(doc_id):
     except ValueError:
         # Generate deterministic UUID using DNS namespace
         return uuid.uuid5(uuid.NAMESPACE_DNS, doc_id)
+
+
+def safe_str(val) -> str:
+    """Safely convert any type to string.
+
+    Handles None (returns empty string) and JSON-serializable complex objects
+    (lists, dicts) by serializing them to a JSON string.
+    """
+    if val is None:
+        return ""
+    if isinstance(val, (dict, list)):
+        return json.dumps(val)
+    return str(val)
 
 
 # ── Utility: Date & Datetime Parsers ─────────────────────────────────────────
@@ -201,12 +218,12 @@ def migrate_users(db, session: Session):
         user = User(
             id=email,  # set primary key directly to email (matching Firestore doc ID pattern)
             email=email,
-            name=data.get('name', 'Unknown User'),
-            phone=data.get('phone'),
+            name=safe_str(data.get('name', 'Unknown User')),
+            phone=safe_str(data.get('phone', '')),
             role=map_user_role(data.get('role', 'Participant')),
-            college=data.get('college'),
-            department=data.get('department'),
-            password_hash=data.get('password') or data.get('passwordHash'),
+            college=safe_str(data.get('college', '')),
+            department=safe_str(data.get('department', '')),
+            password_hash=safe_str(data.get('password') or data.get('passwordHash') or ''),
             is_active=data.get('is_active', data.get('isActive', True)),
             created_at=parse_datetime(data.get('created_at', data.get('createdAt'))),
         )
@@ -241,12 +258,12 @@ def migrate_events(db, session: Session):
 
         event = Event(
             id=event_id,
-            title=data.get('title', 'Untitled Event'),
-            description=data.get('description') or data.get('overview'),
+            title=safe_str(data.get('title', 'Untitled Event')),
+            description=safe_str(data.get('description') or data.get('overview') or ''),
             category=map_event_category(data.get('category', 'Technical')),
             date=parse_date(data.get('date')),
             deadline=parse_date(data.get('deadline')) if data.get('deadline') else None,
-            venue=data.get('venue', 'Unknown Venue'),
+            venue=safe_str(data.get('venue', 'Unknown Venue')),
             status=map_event_status(data.get('status', 'active')),
             max_teams=data.get('max_teams', data.get('max_participants')),
             min_team_size=data.get('min_team_size', data.get('team_min', 1)),
@@ -254,9 +271,9 @@ def migrate_events(db, session: Session):
             fee=float(data.get('fee', data.get('entry_fee', 0.0))),
             total_rounds=data.get('total_rounds', data.get('totalRounds', 1)),
             active_round=data.get('active_round', data.get('activeRound', 1)),
-            poster_url=data.get('poster_url') or data.get('banner_url'),
-            rules=data.get('rules'),
-            prizes=data.get('prizes'),
+            poster_url=safe_str(data.get('poster_url') or data.get('banner_url') or ''),
+            rules=safe_str(data.get('rules') or ''),
+            prizes=safe_str(data.get('prizes') or ''),
             coordinator_id=coord_email,
             created_at=parse_datetime(data.get('created_at', data.get('createdAt'))),
         )
@@ -297,18 +314,18 @@ def migrate_registrations_and_relations(db, session: Session):
         reg = Registration(
             id=reg_id,
             event_id=event_id,
-            lead_name=data.get('lead_name') or data.get('leadName', 'Unknown Lead'),
-            lead_email=data.get('lead_email') or data.get('leadEmail', 'unknown@test.com'),
-            lead_phone=data.get('lead_phone') or data.get('leadPhone') or data.get('phone', '0000000000'),
-            team_name=data.get('team_name') or data.get('teamName'),
+            lead_name=safe_str(data.get('lead_name') or data.get('leadName', 'Unknown Lead')),
+            lead_email=safe_str(data.get('lead_email') or data.get('leadEmail', 'unknown@test.com')),
+            lead_phone=safe_str(data.get('lead_phone') or data.get('leadPhone') or data.get('phone', '0000000000')),
+            team_name=safe_str(data.get('team_name') or data.get('teamName') or ''),
             status=map_registration_status(data.get('status', 'Confirmed')),
             payment_status=map_payment_status(data.get('payment_status') or data.get('paymentStatus', 'unpaid')),
-            payment_id=data.get('payment_id') or data.get('paymentId'),
+            payment_id=safe_str(data.get('payment_id') or data.get('paymentId') or ''),
             attendance=map_attendance_status(data.get('attendance', 'Pending')),
             current_round=data.get('current_round', data.get('currentRound', 1)),
             is_eliminated=data.get('is_eliminated', data.get('isEliminated', False)),
-            qr_code_url=data.get('qr_code_url') or data.get('qrCodeUrl'),
-            notes=data.get('notes'),
+            qr_code_url=safe_str(data.get('qr_code_url') or data.get('qrCodeUrl') or ''),
+            notes=safe_str(data.get('notes') or ''),
             created_at=parse_datetime(data.get('registered_at') or data.get('createdAt')),
         )
         session.add(reg)
@@ -327,12 +344,12 @@ def migrate_registrations_and_relations(db, session: Session):
             member = TeamMember(
                 id=member_id,
                 registration_id=reg_id,
-                name=m.get('name', 'Unknown Member'),
-                email=m.get('email'),
-                phone=m.get('phone'),
-                usn=m.get('usn'),
-                college=m.get('college'),
-                department=m.get('dept') or m.get('department'),
+                name=safe_str(m.get('name', 'Unknown Member')),
+                email=safe_str(m.get('email', '')),
+                phone=safe_str(m.get('phone', '')),
+                usn=safe_str(m.get('usn', '')),
+                college=safe_str(m.get('college', '')),
+                department=safe_str(m.get('dept') or m.get('department') or ''),
             )
             session.add(member)
             count_members += 1
@@ -352,11 +369,11 @@ def migrate_registrations_and_relations(db, session: Session):
                 score = Score(
                     registration_id=reg_id,
                     judge_id=judge_id,
-                    judge_name=score_data.get('judge_name'),
+                    judge_name=safe_str(score_data.get('judge_name', '')),
                     round=score_data.get('round', reg.current_round),
                     total=float(score_data.get('total', 0.0)),
                     criteria=json.dumps(criteria_data),
-                    feedback=score_data.get('feedback', ''),
+                    feedback=safe_str(score_data.get('feedback', '')),
                     scored_at=parse_datetime(score_data.get('timestamp') or score_data.get('scoredAt')),
                 )
                 session.add(score)
@@ -445,10 +462,10 @@ def migrate_audit_log(db, session: Session):
 
         entry = AuditLog(
             id=log_id,
-            actor_email=data.get('actor_email', 'system'),
-            action=data.get('action', 'unknown'),
-            target_id=data.get('target_id') or data.get('targetId'),
-            detail=data.get('detail') or data.get('details'),
+            actor_email=safe_str(data.get('actor_email', 'system')),
+            action=safe_str(data.get('action', 'unknown')),
+            target_id=safe_str(data.get('target_id') or data.get('targetId') or ''),
+            detail=safe_str(data.get('detail') or data.get('details') or ''),
             created_at=parse_datetime(data.get('created_at', data.get('createdAt'))),
         )
         session.add(entry)
@@ -472,10 +489,10 @@ def migrate_push_subscriptions(db, session: Session):
 
         sub = PushSubscription(
             id=sub_id,
-            user_email=data.get('user_email', data.get('email', 'unknown')),
-            endpoint=data.get('endpoint', ''),
-            p256dh=data.get('p256dh', ''),
-            auth_key=data.get('auth_key', data.get('auth', '')),
+            user_email=safe_str(data.get('user_email', data.get('email', 'unknown'))),
+            endpoint=safe_str(data.get('endpoint', '')),
+            p256dh=safe_str(data.get('p256dh', '')),
+            auth_key=safe_str(data.get('auth_key') or data.get('auth') or ''),
             created_at=parse_datetime(data.get('created_at', data.get('createdAt'))),
         )
         session.add(sub)

@@ -85,15 +85,30 @@ def header_footer(canvas, doc):
 
 
 def section_table(data, col_widths, header_bg=NAVY):
-    t = Table(data, colWidths=col_widths)
+    formatted_data = []
+    for row_idx, row in enumerate(data):
+        formatted_row = []
+        for col_idx, cell in enumerate(row):
+            if isinstance(cell, Paragraph):
+                formatted_row.append(cell)
+            else:
+                text = str(cell)
+                if row_idx == 0:
+                    style = styles["TH"]
+                else:
+                    if len(text) < 15 and text.startswith(("₹", "$", "~", "Basic", "Optimal", "Premium", "Model", "Pkg", "Setup", "Subscription")):
+                        style = styles["TCC"]
+                    else:
+                        style = styles["TC"]
+                formatted_row.append(Paragraph(text, style))
+        formatted_data.append(formatted_row)
+
+    t = Table(formatted_data, colWidths=col_widths)
     base_style = [
         ("BACKGROUND", (0, 0), (-1, 0), header_bg),
-        ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),

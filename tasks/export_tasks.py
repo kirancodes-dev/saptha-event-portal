@@ -181,19 +181,10 @@ def export_attendance_qr_list(self, event_id: str):
 
 def _upload_export(data: bytes, gcs_path: str,
                    content_type: str = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') -> str:
+    """Upload data export to cloud/local storage; return public URL."""
     try:
-        import os
-        from google.cloud import storage
-
-        bucket_name = os.environ.get('GCS_BUCKET_NAME', '')
-        if not bucket_name:
-            raise ValueError("GCS_BUCKET_NAME not configured")
-
-        client = storage.Client()
-        blob   = client.bucket(bucket_name).blob(gcs_path)
-        blob.upload_from_string(data, content_type=content_type)
-        blob.make_public()
-        return blob.public_url
+        from utils_storage import upload_file
+        return upload_file(data, gcs_path, content_type)
     except Exception as exc:
-        logger.warning("GCS upload failed: %s — returning empty URL", exc)
+        logger.warning("Storage upload failed: %s — returning empty URL", exc)
         return ''

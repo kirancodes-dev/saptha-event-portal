@@ -118,23 +118,12 @@ def bulk_generate_certificates(self, event_id: str, triggered_by: str = 'admin')
 # ── Helpers ───────────────────────────────────────────────
 
 def _upload_cert(pdf_bytes: bytes, reg_id: str) -> str:
-    """Upload cert PDF to GCS; return public URL. Falls back to data URI."""
+    """Upload cert PDF to cloud/local storage; return public URL."""
     try:
-        from google.cloud import storage
-        import os
-
-        bucket_name = os.environ.get('GCS_BUCKET_NAME', '')
-        if not bucket_name:
-            raise ValueError("GCS_BUCKET_NAME not set")
-
-        client = storage.Client()
-        bucket = client.bucket(bucket_name)
-        blob   = bucket.blob(f"certificates/{reg_id}.pdf")
-        blob.upload_from_string(pdf_bytes, content_type='application/pdf')
-        blob.make_public()
-        return blob.public_url
+        from utils_storage import upload_file
+        return upload_file(pdf_bytes, f"certificates/{reg_id}.pdf", 'application/pdf')
     except Exception as exc:
-        logger.warning("GCS upload failed, cert not stored publicly: %s", exc)
+        logger.warning("Storage upload failed, cert not stored publicly: %s", exc)
         return ''
 
 

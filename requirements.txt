@@ -133,3 +133,6 @@ bandit
 # Supabase Backend Integration
 supabase
 
+# AWS S3 Storage
+boto3
+

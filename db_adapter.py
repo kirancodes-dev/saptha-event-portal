@@ -723,6 +723,12 @@ class SQLBatch:
 class SQLFirestoreAdapter:
     """Mock Firestore client providing complete adapter interfaces to SQLAlchemy."""
     def __init__(self):
+        # Create all tables if they do not exist
+        from db_pg import init_db
+        try:
+            init_db()
+        except Exception as exc:
+            logger.error("Failed to initialize database tables: %s", exc)
         # Auto-align live postgres schemas on start
         verify_and_align_schema()
 

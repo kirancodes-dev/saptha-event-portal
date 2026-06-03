@@ -11,13 +11,13 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "/static/snpsu-logo.png",
+      "src": "/static/app-icon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/snpsu-logo.png",
+      "src": "/static/app-icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -27,12 +27,12 @@
     {
       "name": "Browse Events",
       "url": "/#events",
-      "icons": [{ "src": "/static/snpsu-logo.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/static/app-icon.png", "sizes": "192x192" }]
     },
     {
       "name": "My Tickets",
       "url": "/participant/dashboard",
-      "icons": [{ "src": "/static/snpsu-logo.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/static/app-icon.png", "sizes": "192x192" }]
     }
   ]
 }

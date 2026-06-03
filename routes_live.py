@@ -133,3 +133,12 @@ def live_data(event_id):
     if not snapshot:
         return jsonify({'error': 'Event not found'}), 404
     return jsonify(snapshot)
+
+# ── 4. Live Streams & Reels ──────────────────────────────────────────────
+@live_bp.route('/streams')
+def live_streams():
+    return render_template('public/live_streams.html')
+
+@live_bp.route('/reels')
+def live_reels():
+    return render_template('public/reels.html')

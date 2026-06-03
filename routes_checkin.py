@@ -81,6 +81,14 @@ def submit_self_checkin(event_id):
         'checkin_time':      checkin_time,
         'self_checkin':      True,
     })
+
+    # Award +150 XP for self check-in
+    try:
+        from routes_gamification import award_xp
+        award_xp(email, 150)
+    except Exception as e:
+        pass
+
     return render_template('public/checkin_success.html',
                            event=event,
                            name=reg.get('lead_name', ''),

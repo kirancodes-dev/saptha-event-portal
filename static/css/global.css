@@ -1143,12 +1143,12 @@ button:disabled, .btn:disabled {
 /* --------------------------------------------------------------------------
    25. FAB CLUSTER
    -------------------------------------------------------------------------- */
-.fab-cluster {
+.app-fab-cluster {
     position: fixed; bottom: 24px; right: 24px;
     display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
     z-index: 9980;
 }
-.fab {
+.app-fab {
     width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; color: #fff;
@@ -1156,8 +1156,8 @@ button:disabled, .btn:disabled {
     box-shadow: 0 6px 20px rgba(26,37,87,.35);
     transition: transform var(--t-fast), box-shadow var(--t-fast);
 }
-.fab:hover { transform: scale(1.08); box-shadow: 0 10px 28px rgba(26,37,87,.45); }
-.fab.fab-gold { background: linear-gradient(135deg, var(--snpsu-gold-dark), var(--snpsu-gold)); }
+.app-fab:hover { transform: scale(1.08); box-shadow: 0 10px 28px rgba(26,37,87,.45); }
+.app-fab.app-fab-gold { background: linear-gradient(135deg, var(--snpsu-gold-dark), var(--snpsu-gold)); }
 
 /* --------------------------------------------------------------------------
    26. TIMELINE
@@ -1458,7 +1458,7 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
 
 /* Print */
 @media print {
-    .navbar, .btn, .modal, footer, .sidebar, .fab-cluster, .no-print { display: none !important; }
+    .navbar, .btn, .modal, footer, .sidebar, .app-fab-cluster, .no-print { display: none !important; }
     body { background: #fff !important; color: #000 !important; }
     .card { box-shadow: none !important; border: 1px solid #ddd !important; }
     .main-content { margin-left: 0; }
@@ -2188,6 +2188,7 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
     align-items: center;
     justify-content: center;
     transition: var(--t-fast);
+    text-decoration: none !important;
 }
 .soc-btn:hover {
     background: var(--snpsu-gold);

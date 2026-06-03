@@ -52,6 +52,7 @@ tzdata
 
 # Payments
 razorpay
+stripe
 
 # Data / PDF / QR / Certificates
 numpy

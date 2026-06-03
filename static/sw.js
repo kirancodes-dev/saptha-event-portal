@@ -1,113 +1,138 @@
-/*
- * SapthaEvent Service Worker
- * - Cache-first for static assets and the SNPSU logo
- * - Network-first with offline fallback for pages
- * - Runtime cache of ticket pages so students can show their QR offline
+/**
+ * SapthaEvent Service Worker (v2)
+ * ============================================================
  */
-const VERSION = 'v1.0.0';
-const STATIC_CACHE = `saptha-static-${VERSION}`;
-const PAGE_CACHE = `saptha-pages-${VERSION}`;
-const TICKET_CACHE = `saptha-tickets-${VERSION}`;
 
+const CACHE_NAME = 'sapthaevent-v2';
 const STATIC_ASSETS = [
-  '/static/snpsu-logo.png',
+  '/offline',
   '/static/css/global.css',
-  '/static/manifest.webmanifest',
-  '/offline'
+  '/static/css/mobile.css',
+  '/static/js/pwa.js',
+  '/static/snpsu-logo.png',
+  '/static/manifest.webmanifest'
 ];
 
+// INSTALL: cache base files
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => cache.addAll(STATIC_ASSETS).catch(() => null))
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(STATIC_ASSETS);
+      })
       .then(() => self.skipWaiting())
   );
 });
 
+// ACTIVATE: delete old versioned caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter((k) => ![STATIC_CACHE, PAGE_CACHE, TICKET_CACHE].includes(k))
-          .map((k) => caches.delete(k))
-    )).then(() => self.clients.claim())
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
-const isTicketUrl = (url) =>
-  url.pathname.startsWith('/ticket/') && !url.pathname.startsWith('/ticket/verify') && !url.pathname.startsWith('/ticket/api');
-
-const isStaticUrl = (url) =>
-  url.pathname.startsWith('/static/');
-
+// FETCH INTERCEPTION
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
 
-  // 1) Static assets → cache-first
-  if (isStaticUrl(url)) {
-    event.respondWith(
-      caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(STATIC_CACHE).then((c) => c.put(req, copy));
-        return res;
-      }).catch(() => caches.match('/static/snpsu-logo.png')))
-    );
+  // Exclude third-party dynamic APIs and /chatbots
+  if (url.origin !== self.location.origin || url.pathname.includes('/chatbot')) {
     return;
   }
 
-  // 2) Ticket pages → network-first, save for offline
-  if (isTicketUrl(url)) {
+  // 1. Static Assets (CSS, JS, images, fonts) -> Cache First
+  if (url.pathname.startsWith('/static/')) {
     event.respondWith(
-      fetch(req).then((res) => {
-        if (res.ok) {
-          const copy = res.clone();
-          caches.open(TICKET_CACHE).then((c) => c.put(req, copy));
+      caches.match(req).then((cachedResponse) => {
+        if (cachedResponse) {
+          // Fetch updated in background
+          fetch(req).then((networkResponse) => {
+            if (networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, networkResponse));
+            }
+          }).catch(() => {/* ignore */});
+          return cachedResponse;
         }
-        return res;
-      }).catch(() => caches.match(req).then((hit) => hit || caches.match('/offline')))
+        return fetch(req).then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(req, networkResponse.clone());
+            return networkResponse;
+          });
+        });
+      })
     );
     return;
   }
 
-  // 3) HTML navigations → network-first with offline fallback
+  // 2. HTML pages -> Network First with offline fallback
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith(
-      fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(PAGE_CACHE).then((c) => c.put(req, copy));
-        return res;
-      }).catch(() => caches.match(req).then((hit) => hit || caches.match('/offline')))
+      fetch(req)
+        .then((networkResponse) => {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(req).then((cachedResponse) => {
+            return cachedResponse || caches.match('/offline');
+          });
+        })
     );
     return;
   }
 
-  // 4) Everything else → network falling back to cache
+  // 3. Fallback standard request -> Network falling back to cache
   event.respondWith(
     fetch(req).catch(() => caches.match(req))
   );
 });
 
-// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────
+// PUSH NOTIFICATIONS
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   let data = {};
-  try { data = event.data.json(); } catch { data = { title: 'SapthaEvent', body: event.data.text() }; }
+  try {
+    data = event.data.json();
+  } catch (err) {
+    data = { title: 'SapthaEvent', body: event.data.text() };
+  }
+
   event.waitUntil(
     self.registration.showNotification(data.title || 'SapthaEvent', {
-      body:    data.body  || '',
-      icon:    data.icon  || '/static/snpsu-logo.png',
-      badge:   '/static/snpsu-logo.png',
-      data:    { url: data.url || '/' },
-      actions: data.actions || [],
+      body: data.body || '',
+      icon: data.icon || '/static/snpsu-logo.png',
+      badge: '/static/snpsu-logo.png',
+      data: { url: data.url || '/' },
+      actions: data.actions || []
     })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
-  event.waitUntil(clients.openWindow(url));
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === targetUrl && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
 });

@@ -13,6 +13,7 @@ import uuid
 import secrets
 from datetime import datetime, timezone
 from typing import Optional
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 
 # ---------------------------------------------------------------------------
@@ -104,8 +105,8 @@ def get_org_by_slug(db, slug: str) -> Optional[dict]:
     """Look up an organization by its URL slug."""
     docs = (
         db.collection("organizations")
-        .where("slug", "==", slug.lower().strip())
-        .where("is_active", "==", True)
+        .where(filter=FieldFilter("slug", "==", slug.lower().strip()))
+        .where(filter=FieldFilter("is_active", "==", True))
         .limit(1)
         .stream()
     )
@@ -120,8 +121,8 @@ def get_org_by_domain(db, domain: str) -> Optional[dict]:
     """Look up an organization by email domain (e.g. 'manipal.edu')."""
     docs = (
         db.collection("organizations")
-        .where("domain", "==", domain.lower().strip())
-        .where("is_active", "==", True)
+        .where(filter=FieldFilter("domain", "==", domain.lower().strip()))
+        .where(filter=FieldFilter("is_active", "==", True))
         .limit(1)
         .stream()
     )
@@ -146,7 +147,7 @@ def list_organizations(db, *, active_only: bool = True, limit: int = 100) -> lis
     """List all organizations."""
     query = db.collection("organizations")
     if active_only:
-        query = query.where("is_active", "==", True)
+        query = query.where(filter=FieldFilter("is_active", "==", True))
     query = query.limit(limit)
     results = []
     for doc in query.stream():
@@ -195,8 +196,8 @@ def get_user_orgs(db, email: str) -> list:
     """Get all organizations a user belongs to."""
     docs = (
         db.collection("org_members")
-        .where("email", "==", email.lower().strip())
-        .where("is_active", "==", True)
+        .where(filter=FieldFilter("email", "==", email.lower().strip()))
+        .where(filter=FieldFilter("is_active", "==", True))
         .stream()
     )
     orgs = []
@@ -213,8 +214,8 @@ def get_org_members(db, org_id: str) -> list:
     """Get all members of an organization."""
     docs = (
         db.collection("org_members")
-        .where("org_id", "==", org_id)
-        .where("is_active", "==", True)
+        .where(filter=FieldFilter("org_id", "==", org_id))
+        .where(filter=FieldFilter("is_active", "==", True))
         .stream()
     )
     return [doc.to_dict() for doc in docs]
@@ -224,9 +225,9 @@ def is_org_member(db, org_id: str, email: str) -> bool:
     """Check if a user is a member of an organization."""
     docs = (
         db.collection("org_members")
-        .where("org_id", "==", org_id)
-        .where("email", "==", email.lower().strip())
-        .where("is_active", "==", True)
+        .where(filter=FieldFilter("org_id", "==", org_id))
+        .where(filter=FieldFilter("email", "==", email.lower().strip()))
+        .where(filter=FieldFilter("is_active", "==", True))
         .limit(1)
         .stream()
     )

@@ -10,7 +10,9 @@ from flask import (Blueprint, flash, jsonify, redirect, render_template,
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-from models import db
+def _db():
+    from app import db
+    return db
 from utils import log_action
 from tasks.email_tasks import send_ticket_email_task
 from tasks.notification_tasks import send_ticket_whatsapp_task, send_payment_receipt_whatsapp_task
@@ -35,16 +37,18 @@ def create_order():
         return jsonify({'error': 'No pending registration'}), 400
 
     event_id = request.json.get('event_id', '')
-    event_doc = db.collection('events').document(event_id).get()
+    event_doc = _db().collection('events').document(event_id).get()
     if not event_doc.exists:
         return jsonify({'error': 'Event not found'}), 404
 
-    amount_inr = event_doc.to_dict().get('entry_fee', 0)
-    amount_paise = int(amount_inr) * 100  # Razorpay uses paise
+    from routes_dynamic_pricing import calculate_surge_price
+    base_price = float(event_doc.to_dict().get('entry_fee', 0) or 0)
+    amount_inr, multiplier, reason = calculate_surge_price(event_id, base_price)
+    amount_paise = int(amount_inr * 100)  # Razorpay uses paise
 
     if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
         # Keys not configured — fall through to simulation
-        return jsonify({'simulate': True, 'amount': amount_inr, 'event_id': event_id})
+        return jsonify({'simulate': True, 'amount': amount_inr, 'event_id': event_id, 'multiplier': multiplier, 'reason': reason})
 
     order = _rzp().order.create({  # type: ignore[union-attr]
         'amount':   amount_paise,
@@ -115,7 +119,7 @@ def checkout(event_id):
     if email:
         from google.cloud.firestore_v1.base_query import FieldFilter
         existing = list(
-            db.collection('registrations')
+            _db().collection('registrations')
               .where(filter=FieldFilter('event_id', '==', event_id))
               .where(filter=FieldFilter('lead_email', '==', email))
               .limit(1).stream()
@@ -125,7 +129,7 @@ def checkout(event_id):
             flash("You are already registered for this event. Here is your ticket.", "info")
             return redirect(f"/ticket/{existing[0].id}")
 
-    event_doc = db.collection('events').document(event_id).get()
+    event_doc = _db().collection('events').document(event_id).get()
     if not event_doc.exists:
         flash("Event not found.", "danger")
         return redirect('/')
@@ -156,7 +160,7 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
 
     try:
         existing = list(
-            db.collection('registrations')
+            _db().collection('registrations')
               .where(filter=FieldFilter('event_id', '==', event_id))
               .where(filter=FieldFilter('lead_email', '==', email))
               .limit(1).stream()
@@ -174,9 +178,16 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             'is_eliminated':        False,
             'current_round':        1,
         })
-        db.collection('registrations').document(reg_id).set(reg_data)
+        _db().collection('registrations').document(reg_id).set(reg_data)
 
-        event_ref  = db.collection('events').document(event_id)
+        # Award +50 XP for registration
+        try:
+            from routes_gamification import award_xp
+            award_xp(email, 50)
+        except Exception as e:
+            pass
+
+        event_ref  = _db().collection('events').document(event_id)
         event_data = event_ref.get().to_dict() or {}
         # Atomic increment — safe under concurrent registrations
         event_ref.update({'registration_count': firestore.Increment(1)})
@@ -205,12 +216,12 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
         session['role']     = 'Student'
         session['category'] = 'General'
 
-        log_action(db, "PAYMENT_CONFIRMED",
+        log_action(_db(), "PAYMENT_CONFIRMED",
                    f"Registration {reg_id} confirmed for event {event_id} — ₹{amount_paid}")
         return {'reg_id': reg_id}
 
     except Exception as exc:
-        log_action(db, "PAYMENT_FAILED", f"Event {event_id}, email {email} — {exc}")
+        log_action(_db(), "PAYMENT_FAILED", f"Event {event_id}, email {email} — {exc}")
         return {'error': str(exc)}
 
 

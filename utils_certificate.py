@@ -11,12 +11,15 @@ import os
 import logging
 import qrcode
 from datetime import datetime
+from typing import Optional
 from qrcode.image.pil import PilImage
 
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.colors import HexColor, white
 from reportlab.pdfgen import canvas as rl_canvas
 from reportlab.lib.utils import ImageReader
+
+from utils_email import _send_cert_email
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +46,11 @@ TEMPLATES = {
 
 RANK_LABELS = {1:'1ST PLACE', 2:'2ND PLACE', 3:'3RD PLACE'}
 
-_logo_cache: object = None
+_logo_cache: Optional[ImageReader] = None
 _logo_fetched: bool = False
 
 
-def _get_logo() -> ImageReader | None:
+def _get_logo() -> Optional[ImageReader]:
     global _logo_cache, _logo_fetched
     if _logo_fetched:
         return _logo_cache
@@ -118,6 +121,31 @@ def generate_certificate_pdf(
     template_id:   int   = 1,
 ) -> bytes:
     import math
+    import hashlib
+
+    data_to_hash = f"{reg_id}:{student_name}:{event_title}:{cert_type}:{rank}:{score}"
+    verification_hash = hashlib.sha256(data_to_hash.encode('utf-8')).hexdigest()
+
+    try:
+        from flask import current_app
+        _db = current_app.db if (current_app and hasattr(current_app, 'db')) else None
+        if not _db:
+            from models import db as _db
+        if _db:
+            _db.collection('verified_certificates').document(verification_hash).set({
+                'hash': verification_hash,
+                'reg_id': reg_id,
+                'student_name': student_name,
+                'event_title': event_title,
+                'cert_type': cert_type,
+                'rank': rank,
+                'score': score,
+                'issued_at': datetime.now().isoformat(),
+                'college_name': college_name,
+                'status': 'Verified'
+            })
+    except Exception as exc:
+        logger.warning("Failed to store verified certificate record: %s", exc)
 
     tpl     = TEMPLATES.get(template_id, TEMPLATES[1])
     buf     = io.BytesIO()
@@ -260,7 +288,7 @@ def generate_certificate_pdf(
     c.drawString(sig_cx + 84, sig_y + 4, f'Date: {date_str}')
 
     # ── 9. QR code bottom-right ───────────────────────────────────────────────
-    verify_url = f"{base_url}/verify/{reg_id}" if base_url else f"/verify/{reg_id}"
+    verify_url = f"{base_url}/verify/{verification_hash}" if base_url else f"/verify/{verification_hash}"
     try:
         qr_img  = _qr_reader(verify_url)
         qr_size = 66
@@ -283,65 +311,7 @@ def generate_certificate_pdf(
     return buf.read()
 
 
-def _send_cert_email(to_email, student_name, event_title,
-                     cert_type, rank, score, pdf_bytes) -> bool:
-    try:
-        from flask_mail import Message
-        from utils_email import _get_mail
 
-        rank_labels = {1:'🥇 1st Place', 2:'🥈 2nd Place', 3:'🥉 3rd Place'}
-        if cert_type == 'winner':
-            subject   = f"🏆 Your Achievement Certificate — {event_title}"
-            headline  = f"Congratulations! You achieved {rank_labels.get(rank, f'Rank {rank}')}"
-            body_html = (f"Your <strong>Certificate of Achievement</strong> for "
-                         f"<strong>{event_title}</strong> is attached.<br><br>"
-                         f"<strong style='color:#0d2d62;font-size:16px;'>Final Score: {score}</strong>")
-        else:
-            subject   = f"🎓 Your Participation Certificate — {event_title}"
-            headline  = f"Thank you for participating in {event_title}!"
-            body_html = (f"Your <strong>Certificate of Participation</strong> for "
-                         f"<strong>{event_title}</strong> is attached.")
-
-        msg      = Message(subject=subject, recipients=[to_email])
-        msg.html = f"""
-        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:540px;
-                    margin:auto;background:#fff;border-radius:12px;overflow:hidden;
-                    border:1px solid #e2e8f0;">
-          <div style="background:#0d2d62;padding:28px;text-align:center;">
-            <img src="https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png"
-                 height="40" style="display:block;margin:0 auto 12px;" alt="SNPSU">
-            <h1 style="color:#fff;font-size:20px;margin:0;">{headline}</h1>
-          </div>
-          <div style="padding:28px;">
-            <p style="color:#475569;font-size:14px;">Dear <strong>{student_name}</strong>,</p>
-            <p style="color:#475569;font-size:14px;line-height:1.7;">{body_html}</p>
-            <div style="background:#f8fafc;border-radius:10px;padding:16px;
-                        margin:16px 0;font-size:13px;color:#475569;">
-              <strong>What to do with your certificate:</strong>
-              <ul style="margin:8px 0 0;padding-left:20px;line-height:2.2;">
-                <li>Download and save the attached PDF</li>
-                <li>Share it on <strong>LinkedIn</strong> to showcase your achievement</li>
-                <li>Scan the QR code on the certificate to verify its authenticity</li>
-              </ul>
-            </div>
-            <p style="color:#94a3b8;font-size:11px;border-top:1px solid #e2e8f0;
-                      padding-top:16px;margin-top:20px;">
-              Issued by SapthaEvent Portal · Sapthagiri NPS University
-            </p>
-          </div>
-        </div>"""
-        msg.body = (f"Dear {student_name},\n\n{headline}\n\n"
-                    f"Your certificate for {event_title} is attached.\n\n"
-                    f"Regards,\nSapthaEvent Portal\nSapthagiri NPS University")
-        safe_title = event_title.replace(' ','_').replace('/','_')[:35]
-        cert_label = 'Achievement' if cert_type == 'winner' else 'Participation'
-        msg.attach(filename=f"Certificate_{cert_label}_{safe_title}.pdf",
-                   content_type='application/pdf', data=pdf_bytes)
-        _get_mail().send(msg)
-        return True
-    except Exception as exc:
-        logger.error("Cert email to %s failed: %s", to_email, exc)
-        return False
 
 
 def generate_and_send_all_certificates(
@@ -526,7 +496,7 @@ def generate_and_send_all_certificates_with_templates(
     except Exception:
         _db = None
 
-    def _load_template(cert_type: str) -> bytes | None:
+    def _load_template(cert_type: str) -> Optional[bytes]:
         if _db is None:
             return None
         try:
@@ -542,7 +512,7 @@ def generate_and_send_all_certificates_with_templates(
         return pos.get('x', 50), pos.get('y', 42)
 
     # Fetch event for name-position
-    x_pct = y_pct = None
+    x_pct, y_pct = 50, 42
     if _db:
         try:
             ev = _db.collection('events').document(event_id).get()
@@ -550,8 +520,6 @@ def generate_and_send_all_certificates_with_templates(
                 x_pct, y_pct = _name_pos(ev.to_dict())
         except Exception:
             pass
-    if x_pct is None:
-        x_pct, y_pct = 50, 42
 
     results = {'winner_sent': 0, 'winner_failed': 0,
                'participation_sent': 0, 'participation_failed': 0,

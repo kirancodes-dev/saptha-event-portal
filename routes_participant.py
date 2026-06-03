@@ -428,6 +428,14 @@ def public_register(event_id):
 
         reg_data.update({'status': 'Confirmed', 'payment_status': 'Free', 'amount_paid': 0})
         db.collection('registrations').document(reg_id).set(reg_data)
+
+        # Award +50 XP for registration
+        try:
+            from routes_gamification import award_xp
+            award_xp(email, 50)
+        except Exception as e:
+            pass
+
         # Atomic increment — safe under concurrent registrations
         db.collection('events').document(event_id).update({
             'registration_count': firestore.Increment(1)

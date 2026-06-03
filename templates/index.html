@@ -67,7 +67,285 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   body{background:#1a1a1a;color:#e0e0e0;}
   .sec-p{color:#b0b0b0;}
 }
-</style>
+
+/* Sleek Search Box and Filter controls */
+.search-box input {
+    background: var(--bg-card);
+    border: 1px solid var(--ink-200);
+    color: var(--ink-900);
+    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    font-size: 0.9rem;
+    border-radius: var(--radius-pill);
+    transition: var(--t-fast);
+}
+.search-box input:focus {
+    border-color: var(--snpsu-gold);
+    box-shadow: 0 0 0 3px rgba(201, 164, 94, 0.15);
+    outline: none;
+}
+.search-box i {
+    color: var(--ink-400);
+    z-index: 10;
+}
+
+/* Horizontal scrolling categories on mobile */
+@media (max-width: 991.98px) {
+    .ftabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Hide standard scrollbar in Firefox */
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    .ftabs::-webkit-scrollbar {
+        display: none; /* Hide scrollbar in Webkit browsers */
+    }
+    .ftab {
+        flex: 0 0 auto !important; /* Prevent tabs from shrinking */
+        white-space: nowrap;
+    }
+}
+
+/* Load More Button style */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+}
+.btn-load-more {
+    background: var(--bg-card);
+    border: 2px solid var(--snpsu-blue);
+    color: var(--snpsu-blue);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.75rem 2.25rem;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-sm);
+    transition: var(--t-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+.btn-load-more:hover {
+    background: var(--snpsu-blue);
+    color: white;
+    box-shadow: var(--shadow-brand);
+    transform: translateY(-2px);
+}
+.btn-load-more:active {
+    transform: translateY(0);
+}
+
+/* Sticky Controls Wrapper styling */
+.sticky-controls-wrapper {
+    position: sticky;
+    top: 58px; /* Sticks right below the sticky navbar */
+    z-index: 1010;
+    background: #f8f9fa;
+    padding: 12px 0;
+    transition: box-shadow var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+    border-bottom: 1px solid transparent;
+}
+.sticky-controls-wrapper.is-sticky {
+    box-shadow: 0 8px 24px -8px rgba(15, 23, 56, 0.08);
+    border-bottom: 1px solid var(--ink-200);
+    background: rgba(248, 249, 250, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* Clear Search Button style */
+.btn-clear-search {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--t-fast);
+}
+.btn-clear-search:hover {
+    color: var(--snpsu-blue) !important;
+    transform: scale(1.1);
+}
+
+/* Category capsule scrolling container & hints */
+.ftabs-scroll-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+.ftabs-scroll-container::before,
+.ftabs-scroll-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity var(--t-fast) ease;
+}
+.ftabs-scroll-container::before {
+    left: 0;
+    background: linear-gradient(to right, #f8f9fa 20%, transparent);
+}
+.ftabs-scroll-container::after {
+    right: 0;
+    background: linear-gradient(to left, #f8f9fa 20%, transparent);
+}
+.ftabs-scroll-container.can-scroll-left::before {
+    opacity: 1;
+}
+.ftabs-scroll-container.can-scroll-right::after {
+    opacity: 1;
+}
+
+/* Inactive vs Active tab capsules */
+.ftab {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--ink-200) !important;
+    color: var(--ink-700) !important;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: var(--radius-pill);
+    transition: var(--t-fast);
+    box-shadow: var(--shadow-xs);
+}
+.ftab:hover {
+    border-color: var(--snpsu-gold-light) !important;
+    color: var(--snpsu-blue-light) !important;
+}
+.ftab.active {
+    background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-light)) !important;
+    border-color: var(--snpsu-blue) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(26, 37, 87, 0.2);
+}
+
+/* Quick Filter Pills */
+.q-filter-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--ink-200);
+    color: var(--ink-600);
+    padding: 4px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all var(--t-fast) ease;
+    cursor: pointer;
+    min-height: 32px !important;
+    box-shadow: var(--shadow-xs);
+}
+.q-filter-pill:hover {
+    border-color: var(--ink-400);
+    color: var(--ink-800);
+}
+.q-filter-pill.active {
+    background: var(--snpsu-blue-light);
+    border-color: var(--snpsu-blue);
+    color: white !important;
+    box-shadow: 0 4px 10px rgba(26, 37, 87, 0.15);
+}
+/* Individual Color coding for active states */
+.q-filter-pill.active#qfFree {
+    background: var(--success) !important;
+    border-color: var(--success) !important;
+}
+.q-filter-pill.active#qfSoon {
+    background: var(--warning) !important;
+    border-color: var(--warning) !important;
+}
+
+/* Mobile responsive compact styling overrides */
+@media (max-width: 991.98px) {
+    .sticky-controls-wrapper {
+        top: 54px; /* sticks right under mobile navbar */
+        padding: 8px 0;
+    }
+    .ftabs-scroll-container::before {
+        background: linear-gradient(to right, #f8f9fa 10%, transparent);
+    }
+    .ftabs-scroll-container::after {
+        background: linear-gradient(to left, #f8f9fa 10%, transparent);
+    }
+}
+
+/* Dark mode overrides */
+@media(prefers-color-scheme:dark){
+    .sticky-controls-wrapper {
+        background: #1a1a1a !important;
+    }
+    .sticky-controls-wrapper.is-sticky {
+        background: rgba(26, 26, 26, 0.96) !important;
+        border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    .ftabs-scroll-container::before {
+        background: linear-gradient(to right, #1a1a1a 20%, transparent);
+    }
+    .ftabs-scroll-container::after {
+        background: linear-gradient(to left, #1a1a1a 20%, transparent);
+    }
+    .ftab {
+        background: #2a2a2a !important;
+        border-color: #3d3d3d !important;
+        color: #d0d0d0 !important;
+    }
+    .q-filter-pill {
+        background: #2a2a2a;
+        border-color: #3d3d3d;
+        color: #d0d0d0;
+    }
+    .q-filter-pill:hover {
+        border-color: #5d5d5d;
+        color: #f0f0f0;
+    }
+}
+
+/* Event detail modal styled like a premium bottom drawer on mobile */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+    .modal-content {
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+        border: none;
+        border-top: 1px solid var(--ink-200);
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    /* Add a visual indicator drag bar on top of mobile modal content */
+    .modal-content::before {
+        content: '';
+        width: 40px;
+        height: 4px;
+        background: var(--ink-300);
+        border-radius: 2px;
+        margin: 10px auto 0;
+        display: block;
+    }
+    .modal-header {
+        border-bottom: none;
+        padding-top: 0.5rem;
+    }
+}
+
 
 <!-- ═══ JSON-LD Structured Data for SEO ═══ -->
 <script type="application/ld+json">
@@ -300,20 +578,56 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <section id="events" class="py-5" style="background:#f8f9fa;" role="region" aria-label="Upcoming events for registration">
   <div class="container-xl px-3">
 
-    <!-- Header row -->
-    <div class="row align-items-center mb-4">
-      <div class="col-lg-5 mb-3 mb-lg-0">
+    <!-- Heading Row -->
+    <div class="row mb-3">
+      <div class="col-12 text-center text-md-start">
         <div class="sec-eyebrow">Open for Registration</div>
         <h2 class="sec-h mb-1">Upcoming Events</h2>
         <p class="sec-p mb-0">Register in seconds and receive your QR ticket instantly.</p>
       </div>
-      <div class="col-lg-7">
-        <div class="ftabs justify-content-lg-end" role="group" aria-label="Event category filters">
-          <button class="ftab active" onclick="filterEv('all',this)" aria-pressed="true">All Events</button>
-          <button class="ftab" onclick="filterEv('Technical',this)" aria-pressed="false"><i class="fas fa-code me-1" aria-hidden="true"></i>Technical</button>
-          <button class="ftab" onclick="filterEv('Cultural',this)" aria-pressed="false"><i class="fas fa-music me-1" aria-hidden="true"></i>Cultural</button>
-          <button class="ftab" onclick="filterEv('Sports',this)" aria-pressed="false"><i class="fas fa-running me-1" aria-hidden="true"></i>Sports</button>
-          <button class="ftab" onclick="filterEv('Management',this)" aria-pressed="false"><i class="fas fa-briefcase me-1" aria-hidden="true"></i>Management</button>
+    </div>
+
+    <!-- Controls Row (Search + Filter Tabs) -->
+    <div class="sticky-controls-wrapper">
+      <div class="container-xl px-0 px-md-3">
+        <div class="row align-items-center g-2 g-md-3 px-3 px-md-0">
+          <!-- Search input (Left/Top) -->
+          <div class="col-12 col-md-4">
+            <div class="search-box position-relative">
+              <input type="text" id="evSearch" class="form-control w-100" placeholder="Search events..." oninput="filterEvs()" style="min-height:44px; padding-right:2.5rem;">
+              <i class="fas fa-search position-absolute top-50 translate-middle-y text-muted" style="left: 0.95rem;"></i>
+              <button id="evSearchClear" class="btn btn-clear-search d-none position-absolute top-50 end-0 translate-middle-y border-0 bg-transparent text-muted" onclick="clearSearch()" style="min-height: auto; padding: 0 12px; z-index: 11;" type="button" aria-label="Clear search">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Category filters (Right/Bottom) -->
+          <div class="col-12 col-md-8 d-flex flex-column align-items-stretch align-items-md-end gap-2">
+            <div class="ftabs-scroll-container position-relative w-100">
+              <div class="ftabs" role="group" aria-label="Event category filters">
+                <button class="ftab active" onclick="setCategoryFilter('all',this)" aria-pressed="true">All Events</button>
+                <button class="ftab" onclick="setCategoryFilter('Technical',this)" aria-pressed="false"><i class="fas fa-code me-1" aria-hidden="true"></i>Technical</button>
+                <button class="ftab" onclick="setCategoryFilter('Cultural',this)" aria-pressed="false"><i class="fas fa-music me-1" aria-hidden="true"></i>Cultural</button>
+                <button class="ftab" onclick="setCategoryFilter('Sports',this)" aria-pressed="false"><i class="fas fa-running me-1" aria-hidden="true"></i>Sports</button>
+                <button class="ftab" onclick="setCategoryFilter('Management',this)" aria-pressed="false"><i class="fas fa-briefcase me-1" aria-hidden="true"></i>Management</button>
+              </div>
+            </div>
+            <!-- Quick Filters (Pills) -->
+            <div class="quick-filters-row d-flex flex-wrap gap-2 justify-content-start justify-content-md-end w-100 mt-1">
+              <button class="q-filter-pill" id="qfFree" onclick="toggleQuickFilter('free')" aria-pressed="false" type="button">
+                <i class="fas fa-gift me-1"></i>Free Entry
+              </button>
+              <button class="q-filter-pill" id="qfTeam" onclick="toggleQuickFilter('team')" aria-pressed="false" type="button">
+                <i class="fas fa-users me-1"></i>Team
+              </button>
+              <button class="q-filter-pill" id="qfIndividual" onclick="toggleQuickFilter('individual')" aria-pressed="false" type="button">
+                <i class="fas fa-user me-1"></i>Individual
+              </button>
+              <button class="q-filter-pill" id="qfSoon" onclick="toggleQuickFilter('soon')" aria-pressed="false" type="button">
+                <i class="fas fa-bolt me-1"></i>Happening Soon
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -344,7 +658,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     <!-- Actual Events Grid (shown after load) -->
     <div class="row g-4" id="evGrid" role="region" aria-label="Upcoming events" style="display:none;">
       {% for event in events %}
-      <div class="col-12 col-sm-6 col-lg-4 ev-col scroll-animator" data-cat="{{ event.get('category','General')|lower }}" data-id="{{ event.id }}">
+      <div class="col-12 col-sm-6 col-lg-4 ev-col scroll-animator" 
+           data-cat="{{ event.get('category','General')|lower }}" 
+           data-id="{{ event.id }}"
+           data-free="{{ 'true' if (not event.get('entry_fee') or event.entry_fee|int == 0) else 'false' }}"
+           data-team="{{ 'true' if event.get('is_team_event') else 'false' }}"
+           data-date="{{ event.get('date', '') }}"
+           data-search="{{ event.title.lower() }} {{ event.get('description','').lower() }} {{ event.get('venue','').lower() }} {{ event.get('category','').lower() }}">
         <button class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100" onclick="showEventModal('{{ event.id }}');"
                 type="button" 
                 aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
@@ -406,6 +726,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
       </div>
       {% endfor %}
+      
+      <!-- No search results fallback -->
+      <div class="col-12 text-center py-5 d-none" id="noSearchResults">
+        <div class="no-events-box mx-auto" style="max-width: 400px; background:var(--bg-card); border: 1px dashed var(--ink-300); border-radius: var(--radius-lg);">
+          <i class="fas fa-search-minus fa-3x text-muted mb-3" style="font-size:3rem;"></i>
+          <h5 class="fw-bold text-secondary mb-2">No Matching Events</h5>
+          <p class="text-muted mb-0" style="font-size:14px; line-height: 1.6;">
+            We couldn't find any events matching your search criteria. Try selecting another category or typing another keyword.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load More Button -->
+    <div class="load-more-container d-none" id="loadMoreContainer">
+      <button class="btn btn-load-more" id="loadMoreBtn" onclick="loadMoreEvents()">
+        <span>Load More Events</span>
+        <i class="fas fa-chevron-down"></i>
+      </button>
     </div>
 
   </div>
@@ -773,17 +1112,206 @@ function showEventModal(eventId){
   modal.show();
 }
 
-// ── EVENT CATEGORY FILTER ─────────────────────
-function filterEv(cat, btn){
-  document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('active'); });
+// ── UNIFIED FILTERING, SEARCH, AND PAGINATION ──
+let activeCategory = 'all';
+let searchKeyword = '';
+let visibleCount = 9; // Show 9 initially
+
+// Quick filter states
+let filterFree = false;
+let filterTeam = false;
+let filterIndividual = false;
+let filterSoon = false;
+
+function setCategoryFilter(cat, btn) {
+  document.querySelectorAll('.ftab').forEach(function(b){ 
+    b.classList.remove('active'); 
+    b.setAttribute('aria-pressed', 'false'); 
+  });
   btn.classList.add('active');
-  document.querySelectorAll('.ev-col').forEach(function(c){
-    var shouldShow = (cat === 'all' || c.dataset.cat === cat.toLowerCase());
-    c.style.display = shouldShow ? '' : 'none';
-    if(shouldShow && !c.classList.contains('animate')){
-      c.classList.add('scroll-animator', 'animate');
+  btn.setAttribute('aria-pressed', 'true');
+  activeCategory = cat;
+  visibleCount = 9; // Reset pagination
+  applyFiltersAndPagination();
+}
+
+function filterEvs() {
+  const searchInput = document.getElementById('evSearch');
+  const clearBtn = document.getElementById('evSearchClear');
+  searchKeyword = searchInput.value.trim().toLowerCase();
+  
+  if (searchKeyword) {
+    clearBtn.classList.remove('d-none');
+  } else {
+    clearBtn.classList.add('d-none');
+  }
+  
+  visibleCount = 9; // Reset pagination
+  applyFiltersAndPagination();
+}
+
+function clearSearch() {
+  const searchInput = document.getElementById('evSearch');
+  searchInput.value = '';
+  document.getElementById('evSearchClear').classList.add('d-none');
+  searchKeyword = '';
+  visibleCount = 9;
+  applyFiltersAndPagination();
+  searchInput.focus();
+}
+
+function toggleQuickFilter(type) {
+  const pill = document.getElementById('qf' + type.charAt(0).toUpperCase() + type.slice(1));
+  if (!pill) return;
+  
+  if (type === 'free') {
+    filterFree = !filterFree;
+    pill.classList.toggle('active', filterFree);
+    pill.setAttribute('aria-pressed', filterFree ? 'true' : 'false');
+  } else if (type === 'team') {
+    filterTeam = !filterTeam;
+    pill.classList.toggle('active', filterTeam);
+    pill.setAttribute('aria-pressed', filterTeam ? 'true' : 'false');
+    // Mutually exclusive with individual
+    if (filterTeam && filterIndividual) {
+      filterIndividual = false;
+      const indPill = document.getElementById('qfIndividual');
+      if (indPill) {
+        indPill.classList.remove('active');
+        indPill.setAttribute('aria-pressed', 'false');
+      }
+    }
+  } else if (type === 'individual') {
+    filterIndividual = !filterIndividual;
+    pill.classList.toggle('active', filterIndividual);
+    pill.setAttribute('aria-pressed', filterIndividual ? 'true' : 'false');
+    // Mutually exclusive with team
+    if (filterIndividual && filterTeam) {
+      filterTeam = false;
+      const teamPill = document.getElementById('qfTeam');
+      if (teamPill) {
+        teamPill.classList.remove('active');
+        teamPill.setAttribute('aria-pressed', 'false');
+      }
+    }
+  } else if (type === 'soon') {
+    filterSoon = !filterSoon;
+    pill.classList.toggle('active', filterSoon);
+    pill.setAttribute('aria-pressed', filterSoon ? 'true' : 'false');
+  }
+  
+  visibleCount = 9; // Reset pagination
+  applyFiltersAndPagination();
+}
+
+function loadMoreEvents() {
+  visibleCount += 9;
+  applyFiltersAndPagination();
+}
+
+function applyFiltersAndPagination() {
+  const cards = document.querySelectorAll('.ev-col');
+  let matchCount = 0;
+  
+  cards.forEach(function(card) {
+    const cardCat = card.dataset.cat || '';
+    const cardSearch = card.dataset.search || '';
+    const cardFree = card.dataset.free === 'true';
+    const cardTeam = card.dataset.team === 'true';
+    const cardDateStr = card.dataset.date || '';
+    
+    const catMatch = (activeCategory === 'all' || cardCat === activeCategory.toLowerCase());
+    const searchMatch = (!searchKeyword || cardSearch.includes(searchKeyword));
+    const freeMatch = (!filterFree || cardFree);
+    const teamMatch = (!filterTeam || cardTeam);
+    const individualMatch = (!filterIndividual || !cardTeam);
+    
+    // Check if event is happening in the next 7 days, excluding past events
+    let soonMatch = true;
+    if (filterSoon) {
+      if (!cardDateStr) soonMatch = false;
+      else {
+        const eventDate = new Date(cardDateStr);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        eventDate.setHours(0,0,0,0);
+        const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        soonMatch = diffDays >= 0 && diffDays <= 7;
+      }
+    }
+    
+    const isMatch = catMatch && searchMatch && freeMatch && teamMatch && individualMatch && soonMatch;
+    
+    if (isMatch) {
+      matchCount++;
+      if (matchCount <= visibleCount) {
+        card.style.setProperty('display', '', 'important');
+        if (!card.classList.contains('animate')) {
+          card.classList.add('animate');
+        }
+      } else {
+        card.style.setProperty('display', 'none', 'important');
+      }
+    } else {
+      card.style.setProperty('display', 'none', 'important');
     }
   });
+  
+  // Toggle No Results State
+  const noResults = document.getElementById('noSearchResults');
+  if (noResults) {
+    if (matchCount === 0) {
+      noResults.classList.remove('d-none');
+    } else {
+      noResults.classList.add('d-none');
+    }
+  }
+  
+  // Toggle Load More Button
+  const loadMoreContainer = document.getElementById('loadMoreContainer');
+  if (loadMoreContainer) {
+    if (matchCount > visibleCount) {
+      loadMoreContainer.classList.remove('d-none');
+    } else {
+      loadMoreContainer.classList.add('d-none');
+    }
+  }
+}
+
+// ── STICKY CONTROL SCROLL HANDLER ─────────────
+function initStickyControls() {
+  const wrapper = document.querySelector('.sticky-controls-wrapper');
+  if (!wrapper) return;
+  
+  // Toggle is-sticky styling based on scroll position
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 300) {
+      wrapper.classList.add('is-sticky');
+    } else {
+      wrapper.classList.remove('is-sticky');
+    }
+  });
+}
+
+// ── CATEGORY TAB SCROLL AFFORDANCE ────────────
+function initCategoryScrollAffordance() {
+  const ftabs = document.querySelector('.ftabs');
+  const container = document.querySelector('.ftabs-scroll-container');
+  if (!ftabs || !container) return;
+  
+  function updateScrollHints() {
+    const scrollLeft = ftabs.scrollLeft;
+    const maxScrollLeft = ftabs.scrollWidth - ftabs.clientWidth;
+    
+    container.classList.toggle('can-scroll-left', scrollLeft > 2);
+    container.classList.toggle('can-scroll-right', scrollLeft < maxScrollLeft - 2);
+  }
+  
+  ftabs.addEventListener('scroll', updateScrollHints);
+  window.addEventListener('resize', updateScrollHints);
+  
+  // Initial run after render completes
+  setTimeout(updateScrollHints, 500);
 }
 
 // ── CHATBOT ────────────────────────────────────
@@ -878,6 +1406,11 @@ function validateInput(input){
 document.addEventListener('DOMContentLoaded', function(){
   initScrollAnimations();
   setupFormValidation();
+  initStickyControls();
+  initCategoryScrollAffordance();
+  
+  // Initialize unified filtering & pagination once skeletal loader starts disappearing
+  setTimeout(applyFiltersAndPagination, 350);
 });
 </script>
 <script>

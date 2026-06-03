@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Wayfinder | SapthaEvent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.15);
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            margin: 0;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 5% 5%, rgba(59, 130, 246, 0.1) 0%, transparent 35%),
+                              radial-gradient(circle at 95% 95%, rgba(16, 185, 129, 0.08) 0%, transparent 35%);
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+        }
+
+        .wayfinder-container {
+            padding: 30px 15px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .search-sidebar {
+            padding: 24px;
+            height: calc(100vh - 180px);
+            min-height: 550px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-select, .form-control {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 12px;
+            border-radius: 10px;
+        }
+        .form-select:focus, .form-control:focus {
+            background-color: rgba(15, 23, 42, 0.8);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+            color: #fff;
+        }
+
+        .location-item {
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .location-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .location-item.active {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--primary);
+        }
+
+        .location-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+        }
+
+        .map-wrapper {
+            height: calc(100vh - 180px);
+            min-height: 550px;
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #090d16;
+        }
+
+        /* Customize Leaflet style */
+        .leaflet-bar {
+            border: 1px solid var(--border-color) !important;
+            box-shadow: none !important;
+            border-radius: 10px !important;
+            overflow: hidden;
+        }
+        .leaflet-bar a {
+            background-color: var(--card-bg) !important;
+            color: #fff !important;
+            border-bottom: 1px solid var(--border-color) !important;
+        }
+        .leaflet-bar a:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .venue-popup {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 8px;
+            color: #fff;
+        }
+
+        /* Leaflet popup overrides */
+        .leaflet-popup-content-wrapper {
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color) !important;
+            color: #fff !important;
+            border-radius: 12px !important;
+        }
+        .leaflet-popup-tip {
+            background: rgba(15, 23, 42, 0.95) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .legend-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+        }
+
+        .direction-arrow-animation {
+            stroke-dasharray: 8, 8;
+            animation: dash 1.5s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -16;
+            }
+        }
+
+        .btn-direction {
+            background: linear-gradient(135deg, var(--primary), #1e40af);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-direction:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            color: white;
+        }
+
+        .route-instruction-panel {
+            margin-top: 15px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar partial can be integrated or custom simple header -->
+    <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-2">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="/" class="text-white text-decoration-none d-flex align-items-center gap-2">
+                <i class="fas fa-compass fs-4 text-primary"></i>
+                <span class="fw-bold font-monospace tracking-wide">SapthaEvent Wayfinder</span>
+            </a>
+            <a href="/" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <i class="fas fa-arrow-left me-1"></i> Exit Map
+            </a>
+        </div>
+    </div>
+
+    <div class="wayfinder-container">
+        <div class="row g-4">
+            <!-- Sidebar controls -->
+            <div class="col-lg-4 col-md-5">
+                <div class="glass-panel search-sidebar">
+                    <h4 class="fw-bold mb-3"><i class="fas fa-route text-primary me-2"></i>Find Your Venue</h4>
+                    <p class="text-muted small mb-4">Select starting point and destination to find the optimal campus path.</p>
+
+                    <!-- Direction Form -->
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">STARTING POINT</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-primary"><i class="fas fa-location-dot"></i></span>
+                            <select id="start-node" class="form-select border-opacity-25">
+                                <option value="entrance">Main Entrance (Gate 1)</option>
+                                <option value="lobby">Admin Block Lobby</option>
+                                <option value="canteen">Food Court / Cafeteria</option>
+                                <option value="seminar">Seminar Hall Block</option>
+                                <option value="ground">Sports Complex</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold">DESTINATION VENUE</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-success"><i class="fas fa-flag-checkered"></i></span>
+                            <select id="end-node" class="form-select border-opacity-25">
+                                <option value="auditorium" selected>Main Auditorium (Tech Fest)</option>
+                                <option value="lab1">Advanced CS Labs (Hackathon)</option>
+                                <option value="seminar">Seminar Hall Block (Seminars)</option>
+                                <option value="ground">Sports Ground (Athletics)</option>
+                                <option value="lounge">Club Activities Lounge</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button id="get-directions" class="btn btn-direction w-100 mb-3">
+                        <i class="fas fa-location-arrow me-2"></i>Draw Pathfinder Route
+                    </button>
+
+                    <!-- Path description box -->
+                    <div id="instructions-container" class="route-instruction-panel d-none">
+                        <h6 class="fw-bold mb-2 text-white"><i class="fas fa-walking text-primary me-2"></i>Route Instructions</h6>
+                        <div id="instructions-content" class="text-muted text-start" style="max-height: 120px; overflow-y: auto;">
+                            <!-- populated by script -->
+                        </div>
+                    </div>
+
+                    <hr class="my-3 border-secondary border-opacity-20">
+
+                    <!-- Venue Quick List -->
+                    <h6 class="fw-bold text-muted small mb-2">QUICK VENUE SELECT</h6>
+                    <div class="flex-grow-1 overflow-y-auto pe-1" style="max-height: 250px;">
+                        <div class="location-item" onclick="zoomToVenue('auditorium')">
+                            <div class="d-flex align-items-center">
+                                <div class="location-icon"><i class="fas fa-university"></i></div>
+                                <div>
+                                    <div class="fw-bold text-white small">Main Auditorium</div>
+                                    <div class="text-muted" style="font-size: 11px;">Cultural & Inaugurals</div>
+                                </div>
+                            </div>
+                            <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 font-monospace" style="font-size: 9px;">ZONE A</span>
+                        </div>
+
+                        <div class="location-item" onclick="zoomToVenue('lab1')">
+                            <div class="d-flex align-items-center">
+                                <div class="location-icon text-info bg-info bg-opacity-15"><i class="fas fa-laptop-code"></i></div>
+                                <div>
+                                    <div class="fw-bold text-white small">Advanced CS Labs</div>
+                                    <div class="text-muted" style="font-size: 11px;">Hackathons & Coding</div>
+                                </div>
+                            </div>
+                            <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25 font-monospace" style="font-size: 9px;">ZONE C</span>
+                        </div>
+
+                        <div class="location-item" onclick="zoomToVenue('seminar')">
+                            <div class="d-flex align-items-center">
+                                <div class="location-icon text-warning bg-warning bg-opacity-15"><i class="fas fa-chalkboard-user"></i></div>
+                                <div>
+                                    <div class="fw-bold text-white small">Seminar Hall Block</div>
+                                    <div class="text-muted" style="font-size: 11px;">Keynotes & Presentation</div>
+                                </div>
+                            </div>
+                            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 font-monospace" style="font-size: 9px;">ZONE B</span>
+                        </div>
+
+                        <div class="location-item" onclick="zoomToVenue('ground')">
+                            <div class="d-flex align-items-center">
+                                <div class="location-icon text-success bg-success bg-opacity-15"><i class="fas fa-running"></i></div>
+                                <div>
+                                    <div class="fw-bold text-white small">Sports Stadium</div>
+                                    <div class="text-muted" style="font-size: 11px;">Sports & Concerts</div>
+                                </div>
+                            </div>
+                            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 font-monospace" style="font-size: 9px;">ZONE D</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Viewport -->
+            <div class="col-lg-8 col-md-7">
+                <div class="map-wrapper glass-panel">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Setup coordinates inside L.CRS.Simple (Custom Coordinate Space)
+        var map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -1,
+            maxZoom: 2,
+            zoomSnap: 0.1
+        });
+
+        // Bounds of the map layout
+        var bounds = [[0, 0], [600, 800]];
+        map.fitBounds(bounds);
+        map.setView([300, 400], 0);
+
+        // Draw a simulated campus grid overlay
+        var svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg");
+        svgElement.setAttribute('viewBox', "0 0 800 600");
+        svgElement.innerHTML = `
+            <!-- Dark modern blueprint style college layout -->
+            <rect width="800" height="600" fill="#090d16"/>
+            <g opacity="0.1">
+                <!-- Grid Lines -->
+                <path d="M 0,100 L 800,100 M 0,200 L 800,200 M 0,300 L 800,300 M 0,400 L 800,400 M 0,500 L 800,500" stroke="#3b82f6" stroke-width="1"/>
+                <path d="M 100,0 L 100,600 M 200,0 L 200,600 M 300,0 L 300,600 M 400,0 L 400,600 M 500,0 L 500,600 M 600,0 L 600,600 M 700,0 L 700,600" stroke="#3b82f6" stroke-width="1"/>
+            </g>
+            
+            <!-- Campus Gardens & Outer Spaces -->
+            <rect x="50" y="50" width="700" height="500" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.15" rx="20"/>
+            <rect x="550" y="350" width="160" height="160" fill="#10b981" fill-opacity="0.05" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,4" rx="10"/>
+            <text x="630" y="440" fill="#10b981" fill-opacity="0.6" font-family="Poppins" font-size="12" text-anchor="middle">Green Zone Lawn</text>
+
+            <!-- Buildings -->
+            <!-- Main Block -->
+            <rect x="300" y="70" width="200" height="100" fill="#1e293b" fill-opacity="0.8" stroke="#3b82f6" stroke-width="2" rx="8"/>
+            <text x="400" y="125" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Administration Block</text>
+
+            <!-- CS & IT Building -->
+            <rect x="100" y="240" width="180" height="110" fill="#1e293b" fill-opacity="0.8" stroke="#06b6d4" stroke-width="2" rx="8"/>
+            <text x="190" y="300" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Computer Science Labs</text>
+
+            <!-- Seminar and Lecture Halls -->
+            <rect x="500" y="220" width="200" height="100" fill="#1e293b" fill-opacity="0.8" stroke="#f59e0b" stroke-width="2" rx="8"/>
+            <text x="600" y="275" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Seminar Hall Block</text>
+
+            <!-- Sports Stadium Arena -->
+            <rect x="100" y="420" width="240" height="120" fill="#1e293b" fill-opacity="0.8" stroke="#10b981" stroke-width="2" rx="8"/>
+            <text x="220" y="485" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Sports Stadium Complex</text>
+
+            <!-- Main Canteen / Food Court -->
+            <rect x="520" y="400" width="100" height="80" fill="#1e293b" fill-opacity="0.8" stroke="#ec4899" stroke-width="2" rx="8"/>
+            <text x="570" y="445" fill="#f8fafc" font-family="Poppins" font-size="11" font-weight="bold" text-anchor="middle">Food Court</text>
+
+            <!-- Pathways / Roads (Main corridors) -->
+            <path d="M 400,170 L 400,280 L 190,280 M 400,280 L 600,280 L 600,220 M 400,280 L 400,440 L 220,440 M 400,440 L 570,440 L 570,400 M 400,170 L 400,50" 
+                  stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.1"/>
+        `;
+
+        var imageBounds = [[0, 0], [600, 800]];
+        L.svgOverlay(svgElement, imageBounds).addTo(map);
+
+        // Nodes for wayfinding calculation
+        var nodes = {
+            entrance: { name: "Main Entrance (Gate 1)", coords: [50, 400], icon: "fa-door-open", color: "#3b82f6" },
+            lobby: { name: "Admin Block Lobby", coords: [150, 400], icon: "fa-building-columns", color: "#3b82f6" },
+            canteen: { name: "Food Court / Cafeteria", coords: [420, 570], icon: "fa-utensils", color: "#ec4899" },
+            seminar: { name: "Seminar Hall Block", coords: [270, 600], icon: "fa-chalkboard-user", color: "#f59e0b" },
+            ground: { name: "Sports Arena Complex", coords: [470, 220], icon: "fa-running", color: "#10b981" },
+            auditorium: { name: "Main Auditorium (Tech Fest Venue)", coords: [120, 350], icon: "fa-theater-masks", color: "#3b82f6" },
+            lab1: { name: "Advanced CS Labs (Hackathon)", coords: [290, 190], icon: "fa-laptop-code", color: "#06b6d4" },
+            lounge: { name: "Club Activities Lounge", coords: [270, 520], icon: "fa-comments", color: "#8b5cf6" }
+        };
+
+        // Graph connections (simplistic routes matching drawing coordinates)
+        // Format of edges: [from, to, weight, route_description]
+        var routes = {
+            "entrance-lobby": { path: [[50, 400], [150, 400]], desc: "Walk straight from Gate 1 to the Administration Block Lobby." },
+            "lobby-auditorium": { path: [[150, 400], [170, 400], [170, 350], [120, 350]], desc: "Head inside the Administration Block and turn left to the Main Auditorium entrance." },
+            "lobby-lab1": { path: [[150, 400], [280, 400], [280, 190], [290, 190]], desc: "From the lobby, take the west pathway past the garden to the Computer Science Block, Labs are on the ground floor." },
+            "lobby-seminar": { path: [[150, 400], [280, 400], [280, 600], [270, 600]], desc: "Take the east corridor from the lobby, walk towards the Seminar block entrance." },
+            "lobby-ground": { path: [[150, 400], [280, 400], [280, 280], [440, 280], [440, 220], [470, 220]], desc: "Walk down the main central quad, pass the CS building, then head south to the Sports Stadium Complex." },
+            "lobby-canteen": { path: [[150, 400], [280, 400], [280, 440], [440, 440], [440, 570], [420, 570]], desc: "Follow the central pathway past the CS lab block, turn left and walk directly to the open air Food Court." },
+            "lobby-lounge": { path: [[150, 400], [280, 400], [280, 520], [270, 520]], desc: "Take the east path from the lobby towards the Seminar complex, lounge is on the ground floor lobby." }
+        };
+
+        // Complete the graph mapping dynamically for bidirectionality
+        var fullGraph = {};
+        function addEdge(u, v, path, desc) {
+            if (!fullGraph[u]) fullGraph[u] = {};
+            fullGraph[u][v] = { path: path, desc: desc };
+            
+            // Reverse path for bidirectional
+            var revPath = [...path].reverse();
+            if (!fullGraph[v]) fullGraph[v] = {};
+            fullGraph[v][u] = { path: revPath, desc: desc.replace("from " + nodes[u].name, "from " + nodes[v].name).replace("to " + nodes[v].name, "to " + nodes[u].name) };
+        }
+
+        // Add predefined edges
+        addEdge("entrance", "lobby", [[50, 400], [150, 400]], "Walk straight from Gate 1 to the Administration Block Lobby.");
+        addEdge("lobby", "auditorium", [[150, 400], [170, 400], [170, 350], [120, 350]], "Walk into the Administration Block lobby and turn left into the Main Auditorium foyer.");
+        addEdge("lobby", "lab1", [[150, 400], [280, 400], [280, 190], [290, 190]], "Exit the Lobby west door, walk past the fountain, enter the CS Block.");
+        addEdge("lobby", "seminar", [[150, 400], [280, 400], [280, 600], [270, 600]], "Exit the Lobby east corridor, follow the yellow tiles to the Seminar Hall Block.");
+        addEdge("lobby", "ground", [[150, 400], [280, 400], [280, 220], [470, 220]], "Walk down the main west walkway, turn left at the sports ground gates.");
+        addEdge("lobby", "canteen", [[150, 400], [280, 400], [280, 440], [420, 570]], "Walk down the main central avenue, the Food Court is right beside the sports field.");
+        addEdge("lobby", "lounge", [[150, 400], [280, 400], [280, 520], [270, 520]], "Walk down the east passage towards Seminar block, the Club Lounge is on your right.");
+        
+        // Connect others via lobby transit if not direct
+        // Standard Dijkstra parser (simplified since they all connect through lobby transit)
+        function findShortestRoute(start, end) {
+            if (start === end) return { path: [nodes[start].coords], steps: ["You are already at your destination."] };
+            
+            // If direct link exists
+            if (fullGraph[start] && fullGraph[start][end]) {
+                return { 
+                    path: fullGraph[start][end].path, 
+                    steps: [fullGraph[start][end].desc] 
+                };
+            }
+            
+            // Otherwise go through lobby
+            if (fullGraph[start] && fullGraph[start]["lobby"] && fullGraph["lobby"][end]) {
+                var p1 = fullGraph[start]["lobby"];
+                var p2 = fullGraph["lobby"][end];
+                var combinedPath = [...p1.path];
+                // Avoid duplicating the lobby coordinate [150, 400]
+                combinedPath.pop();
+                combinedPath.push(...p2.path);
+                return {
+                    path: combinedPath,
+                    steps: [p1.desc, "Reach Admin Lobby, then transit:", p2.desc]
+                };
+            }
+            
+            // Default fallback
+            return {
+                path: [nodes[start].coords, nodes[end].coords],
+                steps: ["Take the general campus pathways from " + nodes[start].name + " to " + nodes[end].name + "."]
+            };
+        }
+
+        // Render Markers
+        var markers = {};
+        Object.keys(nodes).forEach(key => {
+            var n = nodes[key];
+            var iconHtml = `<div style="background: ${n.color}; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border: 2px solid rgba(255,255,255,0.4); box-shadow: 0 4px 8px rgba(0,0,0,0.4)">
+                                <i class="fas ${n.icon}"></i>
+                            </div>`;
+            var myIcon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-div-icon',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+                popupAnchor: [0, -18]
+            });
+
+            var m = L.marker(n.coords, { icon: myIcon }).addTo(map);
+            m.bindPopup(`<div class="text-center">
+                            <h6 class="fw-bold m-0 text-white">${n.name}</h6>
+                            <span class="text-muted small">Campus Landmark</span>
+                            <hr class="my-1 border-secondary">
+                            <button onclick="setAsDestination('${key}')" class="btn btn-primary btn-xs py-1 px-2 rounded mt-1" style="font-size:11px;">Navigate Here</button>
+                         </div>`);
+            markers[key] = m;
+        });
+
+        // Zoom to marker helper
+        function zoomToVenue(key) {
+            var coords = nodes[key].coords;
+            map.setView(coords, 1);
+            markers[key].openPopup();
+            document.getElementById('end-node').value = key;
+        }
+
+        function setAsDestination(key) {
+            document.getElementById('end-node').value = key;
+            map.closePopup();
+            drawActiveRoute();
+        }
+
+        var activePolyline = null;
+        var startMarkerGlow = null;
+        var endMarkerGlow = null;
+
+        function drawActiveRoute() {
+            var startKey = document.getElementById('start-node').value;
+            var endKey = document.getElementById('end-node').value;
+
+            // Remove existing route drawings
+            if (activePolyline) {
+                map.removeLayer(activePolyline);
+            }
+            if (startMarkerGlow) map.removeLayer(startMarkerGlow);
+            if (endMarkerGlow) map.removeLayer(endMarkerGlow);
+
+            var routeData = findShortestRoute(startKey, endKey);
+
+            // Draw beautiful glowing dynamic dashed path
+            activePolyline = L.polyline(routeData.path, {
+                color: '#3b82f6',
+                weight: 6,
+                opacity: 0.8,
+                lineJoin: 'round',
+                className: 'direction-arrow-animation'
+            }).addTo(map);
+
+            // Add terminal visual enhancements (start/end indicators)
+            startMarkerGlow = L.circle(nodes[startKey].coords, {
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.2,
+                radius: 20
+            }).addTo(map);
+
+            endMarkerGlow = L.circle(nodes[endKey].coords, {
+                color: '#10b981',
+                fillColor: '#10b981',
+                fillOpacity: 0.2,
+                radius: 25
+            }).addTo(map);
+
+            // Fit map bounds to show full route with padding
+            map.fitBounds(activePolyline.getBounds(), { padding: [50, 50] });
+
+            // Display instructions panel
+            var instContainer = document.getElementById('instructions-container');
+            var instContent = document.getElementById('instructions-content');
+            instContainer.classList.remove('d-none');
+            
+            instContent.innerHTML = routeData.steps.map((step, idx) => {
+                return `<div class="d-flex align-items-start gap-2 mb-2">
+                            <span class="badge bg-secondary rounded-pill mt-1" style="font-size: 9px;">${idx+1}</span>
+                            <span class="text-light">${step}</span>
+                        </div>`;
+            }).join('');
+        }
+
+        // Wire Event Listeners
+        document.getElementById('get-directions').addEventListener('click', drawActiveRoute);
+        
+        // Auto draw on load
+        window.addEventListener('load', function() {
+            setTimeout(drawActiveRoute, 500);
+        });
+    </script>
+</body>
+</html>

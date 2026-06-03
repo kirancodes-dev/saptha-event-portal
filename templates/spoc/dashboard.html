@@ -642,6 +642,24 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Plus Jakarta Sans', sans-serif; color: va
           </div>
         </div>
 
+        <!-- Group 6: Next-Gen Upgrades -->
+        <div class="action-group">
+          <div class="action-group-label" style="color:#8b5cf6;">
+            <i class="fas fa-sparkles me-1"></i>Next-Gen Upgrades
+          </div>
+          <div class="action-btns">
+            <a href="/spoc/judging/audit/{{ event.id }}" class="action-btn btn-purple-outline">
+              <i class="fas fa-scale-balanced"></i> Judging Strictness Audit
+            </a>
+            <a href="/spoc/schedule/optimize/{{ event.id }}" class="action-btn btn-blue-outline">
+              <i class="fas fa-shuffle"></i> AI Schedule Optimizer
+            </a>
+            <a href="/spoc/ticket/nfc-verify/{{ event.id }}" class="action-btn btn-green-outline">
+              <i class="fas fa-rss"></i> NFC Check-in Simulator
+            </a>
+          </div>
+        </div>
+
         <!-- Group 5: End Event (active only) -->
         {% if event.status == 'active' %}
         <div class="action-group danger-zone">

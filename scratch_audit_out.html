@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Score Normalization & Sentiment Audit | SapthaEvent SPOC</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;
+            --accent: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            margin: 0;
+            background-image: radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 90%, rgba(245, 158, 11, 0.05) 0%, transparent 40%);
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+        }
+
+        .audit-container {
+            padding: 40px 15px;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        .metric-card {
+            padding: 24px;
+            text-align: center;
+        }
+        .metric-val {
+            font-size: 32px;
+            font-weight: 800;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .badge-strictness {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .strict { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .lenient { background: rgba(16, 185, 129, 0.15); color: var(--accent); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .normal { background: rgba(59, 130, 246, 0.15); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        .sentiment-badge {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .pos { background: rgba(16, 185, 129, 0.1); color: var(--accent); }
+        .neu { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .neg { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+        .table-glass {
+            color: #f8fafc !important;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+        .table-glass th {
+            border: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px;
+        }
+        .table-glass tr {
+            margin-bottom: 10px;
+        }
+        .table-glass td {
+            background: rgba(255, 255, 255, 0.02);
+            border: none;
+            padding: 16px 12px;
+            font-size: 14px;
+        }
+        .table-glass tr:hover td {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .table-glass td:first-child {
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            border-left: 1px solid var(--border-color);
+        }
+        .table-glass td:last-child {
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .review-card {
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="/spoc/dashboard" class="text-white text-decoration-none d-flex align-items-center gap-2">
+                <i class="fas fa-chart-line fs-4 text-primary"></i>
+                <span class="fw-bold font-monospace tracking-wide">SapthaEvent SPOC Console</span>
+            </a>
+            <a href="/spoc/dashboard" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <i class="fas fa-arrow-left me-1"></i> SPOC Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="audit-container">
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <h2 class="fw-bold text-white mb-1"><i class="fas fa-scale-balanced text-primary me-2"></i>Scoring & Sentiment Audit</h2>
+                        <p class="text-muted mb-0">Event: <span class="text-white fw-semibold">RoboWars 2026</span> | Analytics layer for normalized grading consistency.</p>
+                    </div>
+                    <button class="btn btn-primary rounded-pill px-4" onclick="applyNormalization()">
+                        <i class="fas fa-wand-magic-sparkles me-2"></i>Apply Normalization Matrix
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="glass-panel metric-card">
+                    <span class="text-muted small fw-bold uppercase">GLOBAL SCORE AVG</span>
+                    <div class="metric-val text-primary mt-2">7.0 <span style="font-size: 14px; font-weight: normal;">/ 10</span></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-panel metric-card">
+                    <span class="text-muted small fw-bold uppercase">POSITIVE SENTIMENT RATIO</span>
+                    <div class="metric-val text-success mt-2">50.0%</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-panel metric-card">
+                    <span class="text-muted small fw-bold uppercase">TOTAL RESPONDENTS</span>
+                    <div class="metric-val text-warning mt-2">4 Students</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Side: Judges strictness summary -->
+            <div class="col-lg-8">
+                <div class="glass-panel p-4 h-100">
+                    <h5 class="fw-bold text-white mb-3"><i class="fas fa-user-tie text-primary me-2"></i>Judge Reliability & Variance Matrix</h5>
+                    <p class="text-muted small">Standard deviation (SD) maps variance in scoring. Standard Deviation Normalization automatically adjusts scores based on judge deviations to ensure fair results.</p>
+
+                    <div class="table-responsive">
+                        <table class="table table-glass align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Judge Email</th>
+                                    <th class="text-center">Scores Given</th>
+                                    <th class="text-center">Mean Score</th>
+                                    <th class="text-center">Std Dev (SD)</th>
+                                    <th class="text-center">Strictness Status</th>
+                                    <th class="text-center">Normalization Mod</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                
+                                    
+                                    <tr>
+                                        <td class="font-monospace text-white small">judge_strict@test.edu</td>
+                                        <td class="text-center fw-bold">1</td>
+                                        <td class="text-center text-primary fw-bold">5.0</td>
+                                        <td class="text-center text-warning font-monospace">0.0</td>
+                                        <td class="text-center">
+                                            <span class="badge-strictness strict">Strict</span>
+                                        </td>
+                                        <td class="text-center font-monospace text-info fw-bold">x1.15</td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td class="font-monospace text-white small">judge_lenient@test.edu</td>
+                                        <td class="text-center fw-bold">1</td>
+                                        <td class="text-center text-primary fw-bold">9.0</td>
+                                        <td class="text-center text-warning font-monospace">0.0</td>
+                                        <td class="text-center">
+                                            <span class="badge-strictness lenient">Lenient</span>
+                                        </td>
+                                        <td class="text-center font-monospace text-info fw-bold">x0.88</td>
+                                    </tr>
+                                    
+                                
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Sentiment Analysis feed -->
+            <div class="col-lg-4">
+                <div class="glass-panel p-4 h-100">
+                    <h5 class="fw-bold text-white mb-3"><i class="fas fa-face-smile-beam text-success me-2"></i>Student Sentiment Reviews</h5>
+                    <p class="text-muted small">Realtime text processing on feedback reviews to detect event atmosphere polarity.</p>
+
+                    <div class="reviews-feed" style="max-height: 380px; overflow-y: auto;">
+                        
+                        <div class="review-card">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="text-warning">
+                                    ★★★★★
+                                </div>
+                                <span class="sentiment-badge pos">
+                                    Positive
+                                </span>
+                            </div>
+                            <p class="small text-light text-opacity-80 m-0">"The event coordination was flawless and execution was top notch!"</p>
+                        </div>
+                        
+                        <div class="review-card">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="text-warning">
+                                    ★★★★
+                                </div>
+                                <span class="sentiment-badge pos">
+                                    Positive
+                                </span>
+                            </div>
+                            <p class="small text-light text-opacity-80 m-0">"Loved the coding challenge, but the wifi inside CS Lab was slightly slow."</p>
+                        </div>
+                        
+                        <div class="review-card">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="text-warning">
+                                    ★★★
+                                </div>
+                                <span class="sentiment-badge neu">
+                                    Neutral
+                                </span>
+                            </div>
+                            <p class="small text-light text-opacity-80 m-0">"Decent challenge but the presentation timeline was delayed too much."</p>
+                        </div>
+                        
+                        <div class="review-card">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="text-warning">
+                                    ★★
+                                </div>
+                                <span class="sentiment-badge neg">
+                                    Negative
+                                </span>
+                            </div>
+                            <p class="small text-light text-opacity-80 m-0">"Strict marking rules, we did not get enough time to present our slides."</p>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Normalization Alert overlay -->
+    <div class="modal fade" id="normModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary border-opacity-20 text-white rounded-4">
+                <div class="modal-header border-bottom border-secondary border-opacity-10 bg-black bg-opacity-20">
+                    <h5 class="modal-title fw-bold text-primary"><i class="fas fa-square-check me-2"></i>Matrix Normalization Success</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div style="width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; background: rgba(16,185,129,0.1); color:#10b981; border: 2px solid rgba(16,185,129,0.2); margin:0 auto 20px;" class="fs-3">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                    <h6 class="fw-bold mb-2">Score Normalization Applied Successfully!</h6>
+                    <p class="text-muted small mb-0">Judge bias metrics updated. Adjusted scores have been successfully cached for active leaderboards.</p>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-10 bg-black bg-opacity-20">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close Dialog</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function applyNormalization() {
+            var myModal = new bootstrap.Modal(document.getElementById('normModal'));
+            myModal.show();
+        }
+    </script>
+</body>
+</html>

@@ -39,8 +39,10 @@
 
 <!-- ═══ Stylesheets ═══ -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/global.css" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="/static/css/mobile.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
 .skip-link{position:absolute;top:-40px;left:0;background:var(--blue);color:#fff;padding:8px 16px;text-decoration:none;z-index:100;border-radius:0 0 4px 0;}
 .skip-link:focus{top:0;}
 
@@ -152,24 +154,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     </div>
     <div class="collapse navbar-collapse" id="mainNav">
       <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 py-3 py-lg-0">
-        <li class="nav-item"><a class="nav-link" href="#events">Events</a></li>
-        <li class="nav-item"><a class="nav-link" href="#how">How It Works</a></li>
+        <li class="nav-item"><a class="nav-link" href="#events" data-i18n="nav_events">Events</a></li>
+        <li class="nav-item"><a class="nav-link" href="#how" data-i18n="how_title">How It Works</a></li>
         {% if session.get('user_id') %}
           {% set role = session.get('role','') %}
           {% if role == 'Student' %}
-            <li class="nav-item"><a class="nav-link" href="/participant/dashboard"><i class="fas fa-ticket-alt me-1"></i>My Tickets</a></li>
+            <li class="nav-item"><a class="nav-link" href="/participant/dashboard"><i class="fas fa-ticket-alt me-1"></i><span data-i18n="nav_tickets">My Tickets</span></a></li>
           {% elif role in ['ClubSPOC','Coordinator','SuperAdmin','Super Admin'] %}
-            <li class="nav-item"><a class="nav-link" href="/coordinator/dashboard"><i class="fas fa-tasks me-1"></i>Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="/coordinator/dashboard"><i class="fas fa-tasks me-1"></i><span data-i18n="nav_dashboard">Dashboard</span></a></li>
           {% elif role == 'Judge' %}
             <li class="nav-item"><a class="nav-link" href="/judge/dashboard"><i class="fas fa-gavel me-1"></i>Judge Panel</a></li>
           {% endif %}
           <li class="nav-item ms-lg-2 d-none d-lg-block">
-            <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+            <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i><span data-i18n="nav_logout">Logout</span></a>
           </li>
         {% else %}
           <li class="nav-item ms-lg-2 d-none d-lg-block">
             <a class="nav-link btn-login" href="/login">
-              <i class="fas fa-sign-in-alt me-1"></i>Login
+              <i class="fas fa-sign-in-alt me-1"></i><span data-i18n="nav_login">Login</span>
             </a>
           </li>
         {% endif %}
@@ -177,6 +179,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
           <button type="button" id="nav-install-btn" class="nav-link btn-login d-none" onclick="triggerPwaInstall()" title="Install SapthaEvent">
             <i class="fas fa-download me-1"></i>Install App
           </button>
+        </li>
+        <li class="nav-item ms-lg-2">
+          {% include 'components/language_selector.html' %}
         </li>
       </ul>
     </div>
@@ -213,27 +218,27 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <!-- Left Column: Branding and Copy -->
       <div class="col-lg-7 text-center text-lg-start scroll-animator">
         <div class="hero-branding">
-          <i class="fas fa-university me-2" aria-hidden="true"></i> Sapthagiri NPS University
+          <i class="fas fa-university me-2" aria-hidden="true"></i> <span data-i18n="footer_about">Sapthagiri NPS University</span>
         </div>
-        <h1 class="hero-title">
+        <h1 class="hero-title" data-i18n="hero_title">
           Your Events.<br>
           <span class="accent">Your Campus.</span><br>
           Your Portal.
         </h1>
-        <p class="hero-desc">
+        <p class="hero-desc" data-i18n="hero_subtitle">
           Discover and register for technical hackathons, cultural fests, and sports meets. Get instant QR tickets and alerts year-round.
         </p>
         <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start">
           <a href="#events" class="btn btn-lg hero-btn-primary" aria-label="Explore upcoming events on the portal">
-            <i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>Explore Events
+            <i class="fas fa-calendar-alt me-2" aria-hidden="true"></i><span data-i18n="hero_cta_explore">Explore Events</span>
           </a>
           {% if not session.get('user_id') %}
           <a href="/login" class="btn btn-lg hero-btn-outline" aria-label="Sign in to your account">
-            <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i>Get Started
+            <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i><span data-i18n="hero_cta_login">Get Started</span>
           </a>
           {% else %}
           <a href="/participant/dashboard" class="btn btn-lg hero-btn-outline" aria-label="View your registered tickets and dashboard">
-            <i class="fas fa-ticket-alt me-2" aria-hidden="true"></i>My Dashboard
+            <i class="fas fa-ticket-alt me-2" aria-hidden="true"></i><span data-i18n="nav_dashboard">My Dashboard</span>
           </a>
           {% endif %}
         </div>
@@ -565,7 +570,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
           The official event management portal of Sapthagiri NPS University, Bengaluru.
           Powering hackathons, cultural fests, sports meets, and more.
         </p>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
           <a href="https://snpsu.edu.in" target="_blank" class="soc-btn" aria-label="Sapthagiri NPS University official website"><i class="fas fa-globe" aria-hidden="true"></i></a>
           <a href="#" class="soc-btn" aria-label="Follow SapthaEvent on Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
           <a href="#" class="soc-btn" aria-label="Connect on LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
@@ -884,5 +889,12 @@ var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);
 var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
 if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
 </script>
+
+<!-- Mobile bottom navigation -->
+{% include 'components/mobile_nav.html' %}
+
+<!-- PWA and Internationalization Scripts -->
+<script src="/static/js/pwa.js"></script>
+<script src="/static/js/i18n.js"></script>
 </body>
 </html>

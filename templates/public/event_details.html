@@ -146,6 +146,40 @@
         /* flash messages */
         .flash-wrap{max-width:1100px;margin:16px auto 0;padding:0 20px;}
     </style>
+    <!-- JSON-LD Event Schema Metadata for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      "name": "{{ event.title | replace('"', '\\"') }}",
+      "startDate": "{{ event.date }}{% if event.time %}T{{ event.time }}{% endif %}",
+      "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+      "eventStatus": "https://schema.org/EventScheduled",
+      "location": {
+        "@type": "Place",
+        "name": "{{ event.venue | replace('"', '\\"') }}",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Bengaluru",
+          "addressRegion": "Karnataka",
+          "addressCountry": "IN"
+        }
+      },
+      "description": "{{ event.description | replace('\n', ' ') | replace('"', '\\"') }}",
+      "offers": {
+        "@type": "Offer",
+        "price": "{% if event.fees and event.fees.regular %}{{ event.fees.regular }}{% else %}0{% endif %}",
+        "priceCurrency": "INR",
+        "availability": "https://schema.org/InStock",
+        "url": "{{ request.url }}"
+      },
+      "organizer": {
+        "@type": "Organization",
+        "name": "{{ event.organizer.name if event.organizer else 'Sapthagiri NPS University' }}",
+        "url": "{{ request.url_root }}"
+      }
+    }
+    </script>
 </head>
 <body>
 

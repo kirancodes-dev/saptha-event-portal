@@ -5,6 +5,15 @@ models.py — Firebase Firestore client + utility wrapper.
 `FirebaseWrapper` lets you access Firestore document fields as attributes,
 exactly like an ORM object (e.g. event.title, event.date).
 """
+import warnings
+# Suppress deprecation warnings from Firestore SDK for using positional arguments in .where()
+warnings.filterwarnings(
+    "ignore",
+    message="Detected filter using positional arguments.*",
+    category=UserWarning,
+    module="google.cloud.firestore"
+)
+
 import firebase_admin
 from firebase_admin import credentials, firestore
 from typing import Any, cast

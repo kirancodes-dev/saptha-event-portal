@@ -13,7 +13,9 @@ import os
 from flask import (Blueprint, abort, flash, jsonify,
                    redirect, render_template, request, session)
 
-from models import db
+def _db():
+    from app import db
+    return db
 from utils import login_required, log_action
 from utils_qr import generate_qr_base64, generate_qr_response
 
@@ -51,7 +53,7 @@ def _base_url() -> str:
 @ticket_bp.route('/<reg_id>')
 @login_required
 def view_ticket(reg_id):
-    reg_doc = db.collection('registrations').document(reg_id).get()
+    reg_doc = _db().collection('registrations').document(reg_id).get()
 
     if not reg_doc.exists:
         flash("Ticket not found.", "danger")
@@ -65,7 +67,7 @@ def view_ticket(reg_id):
         return redirect('/participant/dashboard')
 
     # Fetch event details
-    event_doc = db.collection('events').document(reg.get('event_id', '')).get()
+    event_doc = _db().collection('events').document(reg.get('event_id', '')).get()
     event     = event_doc.to_dict() if event_doc.exists else {}
 
     # QR is only available from 1 day before the event onwards
@@ -108,14 +110,14 @@ def view_ticket(reg_id):
 # =========================================================
 @ticket_bp.route('/qr/<reg_id>')
 def qr_image(reg_id):
-    reg_doc = db.collection('registrations').document(reg_id).get()
+    reg_doc = _db().collection('registrations').document(reg_id).get()
     if not reg_doc.exists:
         abort(404)
 
     reg = reg_doc.to_dict()
 
     # Gate QR: only serve from 1 day before event onwards
-    event_doc = db.collection('events').document(reg.get('event_id', '')).get()
+    event_doc = _db().collection('events').document(reg.get('event_id', '')).get()
     if event_doc.exists:
         event_date_str = str(event_doc.to_dict().get('date', ''))[:10]
         if event_date_str:
@@ -140,7 +142,7 @@ def qr_image(reg_id):
 # =========================================================
 @ticket_bp.route('/verify/<reg_id>')
 def verify_ticket(reg_id):
-    reg_doc = db.collection('registrations').document(reg_id).get()
+    reg_doc = _db().collection('registrations').document(reg_id).get()
 
     # ── Invalid ticket ────────────────────────────────────
     if not reg_doc.exists:
@@ -152,11 +154,13 @@ def verify_ticket(reg_id):
         )
 
     reg       = reg_doc.to_dict()
-    event_doc = db.collection('events').document(reg.get('event_id', '')).get()
+    event_doc = _db().collection('events').document(reg.get('event_id', '')).get()
     event     = event_doc.to_dict() if event_doc.exists else {}
 
     # ── Payment not confirmed ─────────────────────────────
-    if reg.get('payment_status') not in ('Paid', 'Free'):
+    payment_status = reg.get('payment_status', '')
+    is_paid_or_free = payment_status == 'Free' or (payment_status and payment_status.startswith('Paid'))
+    if not is_paid_or_free:
         return render_template(
             'coordinator/verify_result.html',
             status='unpaid',
@@ -175,14 +179,21 @@ def verify_ticket(reg_id):
 
     # ── All good — mark Present ───────────────────────────
     checkin_time = _now()
-    db.collection('registrations').document(reg_id).update({
+    _db().collection('registrations').document(reg_id).update({
         'attendance':   'Present',
         'checkin_time': checkin_time
     })
+    # Award +150 XP for check-in
+    try:
+        from routes_gamification import award_xp
+        award_xp(reg.get('lead_email'), 150)
+    except Exception as e:
+        pass
+
     reg['attendance']   = 'Present'
     reg['checkin_time'] = checkin_time
 
-    log_action(db, "QR_CHECKIN",
+    log_action(_db(), "QR_CHECKIN",
                f"Reg {reg_id} checked in via QR scan at {checkin_time}")
 
     return render_template(
@@ -200,14 +211,16 @@ def verify_ticket(reg_id):
 # =========================================================
 @ticket_bp.route('/api/verify/<reg_id>')
 def api_verify(reg_id):
-    reg_doc = db.collection('registrations').document(reg_id).get()
+    reg_doc = _db().collection('registrations').document(reg_id).get()
 
     if not reg_doc.exists:
         return jsonify({'status': 'invalid', 'message': 'Ticket not found'}), 404
 
     reg = reg_doc.to_dict()
 
-    if reg.get('payment_status') not in ('Paid', 'Free'):
+    payment_status = reg.get('payment_status', '')
+    is_paid_or_free = payment_status == 'Free' or (payment_status and payment_status.startswith('Paid'))
+    if not is_paid_or_free:
         return jsonify({
             'status':  'unpaid',
             'message': 'Payment pending — entry not allowed'
@@ -224,11 +237,18 @@ def api_verify(reg_id):
 
     # Mark present
     checkin_time = _now()
-    db.collection('registrations').document(reg_id).update({
+    _db().collection('registrations').document(reg_id).update({
         'attendance':   'Present',
         'checkin_time': checkin_time
     })
-    log_action(db, "API_QR_CHECKIN", f"Reg {reg_id} checked in via API at {checkin_time}")
+    # Award +150 XP for check-in
+    try:
+        from routes_gamification import award_xp
+        award_xp(reg.get('lead_email'), 150)
+    except Exception as e:
+        pass
+
+    log_action(_db(), "API_QR_CHECKIN", f"Reg {reg_id} checked in via API at {checkin_time}")
 
     return jsonify({
         'status':       'success',

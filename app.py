@@ -19,6 +19,23 @@ from utils import ROLE_REDIRECTS  # single source of truth
 load_dotenv()
 
 # =========================================================
+# WERKZEUG SCRYPT FIX — macOS Python 3.9 uses LibreSSL which
+# lacks scrypt support. Patch generate_password_hash to
+# default to pbkdf2:sha256 for ALL callers across the app.
+# =========================================================
+import werkzeug.security as _wsec
+
+if not hasattr(_wsec, '_is_patched'):
+    _original_generate_password_hash = _wsec.generate_password_hash
+
+    def _safe_generate_password_hash(password, method='pbkdf2:sha256', salt_length=16):
+        return _original_generate_password_hash(password, method=method, salt_length=salt_length)
+
+    _wsec.generate_password_hash = _safe_generate_password_hash
+    _wsec._is_patched = True
+
+
+# =========================================================
 # LOGGING CONFIGURATION — structured JSON in production
 # =========================================================
 def _configure_logging():
@@ -223,6 +240,10 @@ from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
 from routes_spoc           import spoc_bp           # noqa: E402
 from routes_live           import live_bp           # noqa: E402
+from routes_verification   import verification_bp   # noqa: E402
+from routes_matchmaker     import matchmaker_bp     # noqa: E402
+from routes_dynamic_pricing import dynamic_pricing_bp # noqa: E402
+from routes_referrals       import referrals_bp       # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(api_bp)
@@ -245,6 +266,10 @@ app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
 app.register_blueprint(live_bp)
+app.register_blueprint(verification_bp)
+app.register_blueprint(matchmaker_bp)
+app.register_blueprint(dynamic_pricing_bp)
+app.register_blueprint(referrals_bp)
 
 # ── Phase 1–4 Industrial Upgrade blueprints ──────────────
 from routes_api_v1          import api_v1_bp          # noqa: E402
@@ -255,6 +280,17 @@ from auth_oauth             import oauth_bp            # noqa: E402
 from auth_2fa               import twofa_bp            # noqa: E402
 from routes_compliance      import compliance_bp       # noqa: E402
 
+# ── Phase 5 Global Marketing blueprints ──────────────────
+from routes_marketing       import marketing_bp        # noqa: E402
+from routes_i18n            import i18n_bp             # noqa: E402
+from i18n                   import init_i18n           # noqa: E402
+from routes_developer       import developer_bp        # noqa: E402
+from routes_analytics       import analytics_bp        # noqa: E402
+from routes_payment_stripe  import stripe_bp           # noqa: E402
+from routes_ai_features     import ai_features_bp      # noqa: E402
+from routes_onboarding      import onboarding_bp       # noqa: E402
+from routes_gamification    import gamification_bp     # noqa: E402
+
 app.register_blueprint(api_v1_bp)
 app.register_blueprint(notif_v2_bp)
 app.register_blueprint(waitlist_bp)
@@ -262,6 +298,18 @@ app.register_blueprint(coupons_bp)
 app.register_blueprint(oauth_bp)
 app.register_blueprint(twofa_bp)
 app.register_blueprint(compliance_bp)
+
+app.register_blueprint(marketing_bp)
+app.register_blueprint(i18n_bp)
+app.register_blueprint(developer_bp)
+app.register_blueprint(analytics_bp)
+app.register_blueprint(stripe_bp)
+app.register_blueprint(ai_features_bp)
+app.register_blueprint(onboarding_bp)
+app.register_blueprint(gamification_bp)
+
+# Initialise internationalization helpers on app
+init_i18n(app)
 
 # ── Tenant resolution middleware ─────────────────────────
 from middleware_tenant import init_tenant_middleware  # noqa: E402
@@ -501,7 +549,19 @@ def event_details(event_id):
         event.setdefault('description',        '')
         event.setdefault('overview',           '')
         event.setdefault('rules',              '')
-        event.setdefault('prizes',             '')
+        prizes_val = event.get('prizes')
+        if isinstance(prizes_val, str):
+            event['prizes'] = {
+                '1st': prizes_val or '—',
+                '2nd': '—',
+                '3rd': '—'
+            }
+        elif not isinstance(prizes_val, dict):
+            event['prizes'] = {
+                '1st': '—',
+                '2nd': '—',
+                '3rd': '—'
+            }
         event.setdefault('date',               'TBD')
         event.setdefault('deadline',           '')
         event.setdefault('venue',              'SNPSU Campus')
@@ -513,16 +573,38 @@ def event_details(event_id):
         event.setdefault('media_urls',         [])
         event.setdefault('banner_url',         '')
         event.setdefault('status',             'active')
-        event.setdefault('organizer',          event.get('created_by', 'SNPSU'))
+        org_val = event.get('organizer')
+        if not isinstance(org_val, dict):
+            org_str = org_val if isinstance(org_val, str) else event.get('created_by', 'SNPSU')
+            event['organizer'] = {
+                'name': org_str,
+                'email': event.get('created_by') if (event.get('created_by') and '@' in str(event.get('created_by'))) else '',
+                'phone': '',
+                'group_link': ''
+            }
+
+        if 'fees' not in event or not isinstance(event['fees'], dict):
+            event['fees'] = {'regular': event.get('entry_fee', 0)}
+
         event.setdefault('staff',              [])
-        event.setdefault('fees',               event.get('entry_fee', 0))
         event.setdefault('fee',                event.get('entry_fee', 0))
         event.setdefault('price',              event.get('entry_fee', 0))
-        event.setdefault('organiser',          event.get('organizer', 'SNPSU'))
+        event.setdefault('organiser',          event['organizer'])
+
+        if 'limits' not in event or not isinstance(event['limits'], dict):
+            event['limits'] = {
+                'max_participants': 200,
+                'team_min': event.get('min_team_size', 1),
+                'team_max': event.get('max_team_size', 1)
+            }
+        else:
+            event['limits'].setdefault('max_participants', 200)
+            event['limits'].setdefault('team_min', event.get('min_team_size', 1))
+            event['limits'].setdefault('team_max', event.get('max_team_size', 1))
 
         reg_count = event.get('registration_count', 0)
-        limits    = event.get('limits', {})
-        max_p     = limits.get('max_participants', 200) if isinstance(limits, dict) else 200
+        limits    = event['limits']
+        max_p     = limits.get('max_participants', 200)
 
         is_registered = False
         prefill = None
@@ -632,32 +714,7 @@ def verify_lookup():
     return render_template('public/verify_lookup.html')
 
 
-@app.route('/verify/<reg_id>')
-def verify_certificate(reg_id):
-    try:
-        reg_doc = db.collection('registrations').document(reg_id).get()
-        if not reg_doc.exists:
-            return render_template('public/verify_fail.html', reg_id=reg_id)
-        data = reg_doc.to_dict()
-        if data.get('attendance') != 'Present':
-            return render_template('public/verify_fail.html',
-                                   reg_id=reg_id, reason='Absent')
-        event = db.collection('events').document(data['event_id']).get().to_dict() or {}
-
-        # Resolve student portfolio link (USN) for the cert recipient
-        student_usn = None
-        lead_email = data.get('lead_email')
-        if lead_email:
-            user_doc = db.collection('users').document(lead_email).get()
-            if user_doc.exists:
-                student_usn = (user_doc.to_dict() or {}).get('usn')
-
-        return render_template(
-            'public/verify_success.html',
-            data=data, event=event, student_usn=student_usn)
-    except Exception as exc:
-        app.logger.error("Certificate verify error: %s", exc)
-        return render_template('500.html'), 500
+# Verify route moved to routes_verification.py blueprint.
 
 
 # =========================================================
@@ -768,8 +825,11 @@ def payment_failed():
 # Scheduling and async work run in celery-worker / celery-beat
 # containers, NOT in the web fleet. The web fleet is stateless.
 # =========================================================
-from celery_app import init_celery  # noqa: E402
-init_celery(app)
+try:
+    from celery_app import init_celery  # noqa: E402
+    init_celery(app)
+except Exception as exc:
+    logger.warning("Celery init skipped (local dev): %s", exc)
 
 
 # =========================================================

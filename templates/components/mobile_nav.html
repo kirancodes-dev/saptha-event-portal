@@ -1,0 +1,49 @@
+{# ── Mobile Bottom Navigation ── #}
+<div class="mobile-nav-bar" role="navigation" aria-label="Mobile Navigation">
+  <a href="/" class="mobile-nav-item" id="mn-home">
+    <i class="fas fa-home"></i>
+    <span>Home</span>
+  </a>
+  <a href="/#events" class="mobile-nav-item" id="mn-events">
+    <i class="fas fa-calendar-alt"></i>
+    <span>Events</span>
+  </a>
+  <a href="/participant/dashboard" class="mobile-nav-item" id="mn-tickets">
+    <i class="fas fa-ticket-alt"></i>
+    <span>My Tickets</span>
+  </a>
+  <a href="/notifications" class="mobile-nav-item" id="mn-notifs">
+    <i class="fas fa-bell"></i>
+    <span>Notifs</span>
+    <span class="position-absolute top-1 start-60 translate-middle badge rounded-pill bg-danger d-none" id="mobile-notif-badge">
+      0
+    </span>
+  </a>
+  <a href="/profile" class="mobile-nav-item" id="mn-profile">
+    <i class="fas fa-user-circle"></i>
+    <span>Profile</span>
+  </a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var path = window.location.pathname;
+  var hash = window.location.hash;
+  
+  // Clean active states
+  var items = document.querySelectorAll('.mobile-nav-item');
+  items.forEach(function(el) { el.classList.remove('active'); });
+
+  if (path === '/' && hash === '#events') {
+    document.getElementById('mn-events').classList.add('active');
+  } else if (path === '/') {
+    document.getElementById('mn-home').classList.add('active');
+  } else if (path.indexOf('/participant/dashboard') !== -1 || path.indexOf('/ticket') !== -1) {
+    document.getElementById('mn-tickets').classList.add('active');
+  } else if (path.indexOf('/notifications') !== -1) {
+    document.getElementById('mn-notifs').classList.add('active');
+  } else if (path.indexOf('/profile') !== -1) {
+    document.getElementById('mn-profile').classList.add('active');
+  }
+});
+</script>

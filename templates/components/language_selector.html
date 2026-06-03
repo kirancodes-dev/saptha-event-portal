@@ -1,0 +1,204 @@
+{# ─── Language Selector Dropdown Component ─── #}
+{# Include in navbar:  {% include 'components/language_selector.html' %} #}
+
+<style>
+/* ── Language Selector ─────────────────────────────────────────────── */
+.lang-selector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  z-index: 1050;
+}
+
+.lang-selector__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: .85rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background .25s, border-color .25s, box-shadow .25s;
+  user-select: none;
+}
+.lang-selector__trigger:hover,
+.lang-selector__trigger:focus-visible {
+  background: rgba(255, 255, 255, .15);
+  border-color: rgba(201, 164, 94, .5);
+  box-shadow: 0 0 0 3px rgba(201, 164, 94, .15);
+  outline: none;
+}
+.lang-selector__trigger .globe-icon {
+  font-size: 1.05rem;
+}
+.lang-selector__trigger .chevron {
+  font-size: .65rem;
+  transition: transform .3s ease;
+}
+.lang-selector.open .lang-selector__trigger .chevron {
+  transform: rotate(180deg);
+}
+
+/* Dropdown panel */
+.lang-selector__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  padding: 8px 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(15, 27, 61, .92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .45);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(.97);
+  transition: opacity .25s ease, transform .25s ease, visibility .25s;
+  list-style: none;
+  margin: 0;
+}
+.lang-selector.open .lang-selector__dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+/* Individual item */
+.lang-selector__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  color: rgba(255, 255, 255, .82);
+  font-size: .88rem;
+  font-family: 'Inter', sans-serif;
+  text-decoration: none;
+  transition: background .2s, color .2s;
+  cursor: pointer;
+}
+.lang-selector__item:hover {
+  background: rgba(201, 164, 94, .15);
+  color: #fff;
+}
+.lang-selector__item.active {
+  color: var(--orange, #c9a45e);
+  font-weight: 600;
+  background: rgba(201, 164, 94, .08);
+}
+.lang-selector__item .flag {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.lang-selector__item .lang-native {
+  flex: 1;
+}
+.lang-selector__item .lang-check {
+  font-size: .75rem;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.lang-selector__item.active .lang-check {
+  opacity: 1;
+}
+
+/* Divider */
+.lang-selector__divider {
+  height: 1px;
+  margin: 6px 14px;
+  background: rgba(255, 255, 255, .1);
+}
+
+/* Dark-mode adjustments (light pages) */
+@media (prefers-color-scheme: light) {
+  .lang-selector__trigger {
+    background: rgba(26, 37, 87, .06);
+    border-color: rgba(26, 37, 87, .15);
+    color: var(--blue, #1a2557);
+  }
+  .lang-selector__trigger:hover {
+    background: rgba(26, 37, 87, .10);
+  }
+  .lang-selector__dropdown {
+    background: rgba(255, 255, 255, .95);
+    border-color: rgba(26, 37, 87, .1);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, .12);
+  }
+  .lang-selector__item {
+    color: rgba(26, 37, 87, .78);
+  }
+  .lang-selector__item:hover {
+    background: rgba(201, 164, 94, .1);
+    color: var(--blue, #1a2557);
+  }
+  .lang-selector__item.active {
+    color: var(--orange, #c9a45e);
+  }
+}
+</style>
+
+<div class="lang-selector" id="langSelector" role="menu" aria-label="Language selector">
+  <button
+    class="lang-selector__trigger"
+    aria-haspopup="true"
+    aria-expanded="false"
+    title="Change language"
+    onclick="document.getElementById('langSelector').classList.toggle('open'); this.setAttribute('aria-expanded', this.getAttribute('aria-expanded')==='true' ? 'false' : 'true');"
+  >
+    <i class="fa-solid fa-globe globe-icon"></i>
+    <span class="current-lang-label">
+      {{ supported_locales[current_locale]['flag'] }}
+      {{ supported_locales[current_locale]['native'] }}
+    </span>
+    <i class="fa-solid fa-chevron-down chevron"></i>
+  </button>
+
+  <ul class="lang-selector__dropdown" role="listbox">
+    {% for code, info in supported_locales.items() %}
+    <li>
+      <a
+        href="/set-language/{{ code }}"
+        class="lang-selector__item{% if code == current_locale %} active{% endif %}"
+        role="option"
+        aria-selected="{{ 'true' if code == current_locale else 'false' }}"
+        data-locale="{{ code }}"
+      >
+        <span class="flag">{{ info.flag }}</span>
+        <span class="lang-native">{{ info.native }}</span>
+        <i class="fa-solid fa-check lang-check"></i>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<script>
+/* Close dropdown when clicking outside */
+document.addEventListener('click', function (e) {
+  var sel = document.getElementById('langSelector');
+  if (sel && !sel.contains(e.target)) {
+    sel.classList.remove('open');
+    var btn = sel.querySelector('.lang-selector__trigger');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+/* Keyboard: Escape closes */
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    var sel = document.getElementById('langSelector');
+    if (sel) {
+      sel.classList.remove('open');
+      var btn = sel.querySelector('.lang-selector__trigger');
+      if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+    }
+  }
+});
+</script>

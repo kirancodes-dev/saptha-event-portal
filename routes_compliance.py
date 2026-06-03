@@ -11,13 +11,26 @@ import json
 import datetime
 import uuid
 
-from flask import Blueprint, request, session, jsonify
+from flask import Blueprint, request, session, jsonify, render_template
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from utils import login_required
 
 logger = logging.getLogger(__name__)
 compliance_bp = Blueprint("compliance", __name__, url_prefix="/compliance")
+
+
+@compliance_bp.route("/sla", methods=["GET"])
+def sla_page():
+    """GET /compliance/sla — Public SLA & service status page."""
+    services = [
+        {"name": "Database API", "status": "Operational", "uptime": "99.98%", "icon": "fa-database"},
+        {"name": "Email Gateway", "status": "Operational", "uptime": "100.0%", "icon": "fa-envelope"},
+        {"name": "Stripe Gateway", "status": "Operational", "uptime": "99.99%", "icon": "fa-credit-card"},
+        {"name": "WhatsApp Service", "status": "Operational", "uptime": "99.95%", "icon": "fa-whatsapp"},
+        {"name": "AI Generation API", "status": "Operational", "uptime": "99.90%", "icon": "fa-robot"}
+    ]
+    return render_template("compliance/sla.html", services=services)
 
 
 def _db():

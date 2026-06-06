@@ -1,4 +1,4 @@
-<!-- PWA: manifest, theme, iOS hints, and service worker registration -->
+<!-- ══ PWA: manifest, theme-color, iOS meta, service worker ══ -->
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#1a2557">
 <meta name="mobile-web-app-capable" content="yes">
@@ -6,14 +6,45 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SapthaEvent">
 <link rel="apple-touch-icon" href="/static/app-icon.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/static/app-icon.png">
 
 <script>
 (function () {
-  // Service Worker registration (handles offline availability in background)
+  // ── Service Worker registration ────
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function(reg) {
+          // Check for updates every 60 minutes
+          setInterval(() => reg.update(), 60 * 60 * 1000);
+        })
         .catch(function (err) { console.warn('SW registration failed:', err); });
+    });
+  }
+
+  // ── PWA Install Banner (shown on ALL pages to logged-in users) ────
+  // Only show if not already installed as a standalone app
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('pwa_banner_dismissed') === '1';
+
+  if (!isStandalone && !dismissed) {
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      window.__pwaPrompt = e; // make globally accessible
+
+      // Show banner after 3 seconds on first visit, immediately on return
+      const visits = parseInt(localStorage.getItem('pwa_visit_count') || '0', 10) + 1;
+      localStorage.setItem('pwa_visit_count', visits);
+      const delay = visits === 1 ? 4000 : 1500;
+
+      setTimeout(() => {
+        const banner = document.getElementById('pwaInstallBanner');
+        if (banner) banner.style.display = 'block';
+      }, delay);
     });
   }
 })();

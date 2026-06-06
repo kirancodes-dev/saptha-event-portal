@@ -1,122 +1,135 @@
 /**
- * SapthaEvent Service Worker (v2)
- * ============================================================
+ * SapthaEvent Service Worker (v3)
+ * ─────────────────────────────────────────────────────────────
+ * Strategy overview:
+ *   /static/*          → Cache-First  (assets never change mid-session)
+ *   /login, /register  → Network-First (always fresh auth pages)
+ *   /offline           → Cache-Only   (fallback page)
+ *   everything else    → Network-First with cache fallback
+ * ─────────────────────────────────────────────────────────────
  */
 
-const CACHE_NAME = 'sapthaevent-v2';
-const STATIC_ASSETS = [
-  '/offline',
+const CACHE_VERSION  = 'sapthaevent-v3';
+const OFFLINE_URL    = '/offline';
+
+// Assets cached immediately on install (shell)
+const PRECACHE_ASSETS = [
+  OFFLINE_URL,
   '/static/css/global.css',
-  '/static/css/mobile.css',
-  '/static/js/pwa.js',
+  '/static/js/global.js',
   '/static/snpsu-logo.png',
   '/static/app-icon.png',
-  '/static/manifest.webmanifest'
+  '/static/manifest.webmanifest',
 ];
 
-// INSTALL: cache base files
+// ── INSTALL ────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(STATIC_ASSETS);
-      })
+    caches.open(CACHE_VERSION)
+      .then((cache) => cache.addAll(PRECACHE_ASSETS))
       .then(() => self.skipWaiting())
   );
 });
 
-// ACTIVATE: delete old versioned caches
+// ── ACTIVATE ───────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key !== CACHE_VERSION)
+          .map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
-// FETCH INTERCEPTION
+// ── FETCH ──────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== 'GET') return;   // never intercept POST/PUT
 
   const url = new URL(req.url);
 
-  // Exclude third-party dynamic APIs and /chatbots
-  if (url.origin !== self.location.origin || url.pathname.includes('/chatbot')) {
+  // Skip cross-origin requests (CDN, external APIs)
+  if (url.origin !== self.location.origin) return;
+
+  // Skip chatbot & SSE (streaming connections must not be intercepted)
+  if (url.pathname.includes('/chatbot') ||
+      url.pathname.includes('/stream') ||
+      url.pathname.includes('/events/sse')) {
     return;
   }
 
-  // 1. Static Assets (CSS, JS, images, fonts) -> Cache First
+  // ── Static assets → Cache-First, background update ────
   if (url.pathname.startsWith('/static/')) {
-    event.respondWith(
-      caches.match(req).then((cachedResponse) => {
-        if (cachedResponse) {
-          // Fetch updated in background
-          fetch(req).then((networkResponse) => {
-            if (networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => cache.put(req, networkResponse));
-            }
-          }).catch(() => {/* ignore */});
-          return cachedResponse;
-        }
-        return fetch(req).then((networkResponse) => {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(req, networkResponse.clone());
-            return networkResponse;
-          });
-        });
-      })
-    );
+    event.respondWith(cacheFirstWithUpdate(req));
     return;
   }
 
-  // 2. HTML pages -> Network First with offline fallback
-  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
-    event.respondWith(
-      fetch(req)
-        .then((networkResponse) => {
-          const copy = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match(req).then((cachedResponse) => {
-            return cachedResponse || caches.match('/offline');
-          });
-        })
-    );
+  // ── Offline page → Cache-Only ────
+  if (url.pathname === OFFLINE_URL) {
+    event.respondWith(caches.match(OFFLINE_URL));
     return;
   }
 
-  // 3. Fallback standard request -> Network falling back to cache
-  event.respondWith(
-    fetch(req).catch(() => caches.match(req))
-  );
+  // ── All other pages → Network-First, cache fallback ────
+  event.respondWith(networkFirstWithFallback(req));
 });
 
-// PUSH NOTIFICATIONS
+// ── HELPER: Cache-First with background refresh ────────────────
+async function cacheFirstWithUpdate(req) {
+  const cache  = await caches.open(CACHE_VERSION);
+  const cached = await cache.match(req);
+
+  // Update cache in background without blocking
+  const networkFetch = fetch(req).then((netResp) => {
+    if (netResp && netResp.status === 200) {
+      cache.put(req, netResp.clone());
+    }
+    return netResp;
+  }).catch(() => null);
+
+  return cached || await networkFetch;
+}
+
+// ── HELPER: Network-First with offline fallback ────────────────
+async function networkFirstWithFallback(req) {
+  const cache = await caches.open(CACHE_VERSION);
+  try {
+    const netResp = await fetch(req);
+    // Cache successful HTML responses for offline use
+    if (netResp && netResp.status === 200) {
+      const ct = netResp.headers.get('content-type') || '';
+      if (ct.includes('text/html')) {
+        cache.put(req, netResp.clone());
+      }
+    }
+    return netResp;
+  } catch (_err) {
+    // Offline: try cache, then show offline page
+    const cached = await cache.match(req);
+    return cached || await cache.match(OFFLINE_URL);
+  }
+}
+
+// ── PUSH NOTIFICATIONS ─────────────────────────────────────────
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   let data = {};
-  try {
-    data = event.data.json();
-  } catch (err) {
-    data = { title: 'SapthaEvent', body: event.data.text() };
-  }
+  try { data = event.data.json(); }
+  catch (_) { data = { title: 'SapthaEvent', body: event.data.text() }; }
 
   event.waitUntil(
     self.registration.showNotification(data.title || 'SapthaEvent', {
-      body: data.body || '',
-      icon: data.icon || '/static/snpsu-logo.png',
-      badge: '/static/snpsu-logo.png',
-      data: { url: data.url || '/' },
-      actions: data.actions || []
+      body:    data.body   || '',
+      icon:    data.icon   || '/static/app-icon.png',
+      badge:   '/static/app-icon.png',
+      tag:     data.tag    || 'saptha-notif',
+      renotify: true,
+      data:    { url: data.url || '/' },
+      actions: data.actions || [],
+      vibrate: [200, 100, 200],
     })
   );
 });
@@ -125,15 +138,14 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url === targetUrl && 'focus' in client) {
+            return client.focus();
+          }
         }
-      }
-      if (clients.openWindow) {
         return clients.openWindow(targetUrl);
-      }
-    })
+      })
   );
 });

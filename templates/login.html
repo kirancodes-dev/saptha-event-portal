@@ -131,15 +131,26 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 mt-4 py-2" data-loading-text="Signing in…">
+                <!-- ── Keep Me Logged In + Forgot Password ── -->
+                <div class="d-flex align-items-center justify-content-between mt-2 mb-1">
+                    <div class="form-check m-0">
+                        <input class="form-check-input" type="checkbox" name="remember_me" id="rememberMe" checked>
+                        <label class="form-check-label small fw-semibold" for="rememberMe"
+                               style="cursor:pointer; color: var(--color-text-secondary, #6b7280);">
+                            <i class="fas fa-mobile-alt me-1" style="color:#c9a45e;"></i>
+                            Keep me logged in
+                        </label>
+                    </div>
+                    <div id="forgotPasswordWrap">
+                        <a href="/forgot_password" class="text-decoration-none fw-bold text-primary small">
+                            <i class="fas fa-unlock-alt me-1"></i> Forgot Password?
+                        </a>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mt-3 py-2" data-loading-text="Signing in…">
                     <i class="fas fa-sign-in-alt me-2"></i> Login to Portal
                 </button>
-
-                <div id="forgotPasswordWrap" class="text-center mt-3">
-                    <a href="/forgot_password" class="text-decoration-none fw-bold text-primary small">
-                        <i class="fas fa-unlock-alt me-1"></i> Forgot Password?
-                    </a>
-                </div>
 
                 <div class="text-center mt-4 pt-3 border-top text-muted small">
                     New Student? <a href="/register" class="text-decoration-none fw-bold text-primary">Register Here</a>
@@ -154,8 +165,49 @@
         </div>
     </div>
 
+    <!-- ══ PWA Install Banner ══ -->
+    <div id="pwaInstallBanner" style="
+        display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
+        background:linear-gradient(135deg,#0c122b 0%,#1a2557 100%);
+        border-top:3px solid #c9a45e;
+        padding:14px 20px; box-shadow:0 -4px 24px rgba(12,18,43,0.35);
+        animation: slideUp 0.4s ease;">
+        <div style="max-width:480px; margin:0 auto; display:flex; align-items:center; gap:14px;">
+            <img src="/static/app-icon.png" width="44" height="44"
+                 style="border-radius:10px; flex-shrink:0;" alt="SapthaEvent">
+            <div style="flex:1; min-width:0;">
+                <p style="margin:0; color:#fff; font-weight:700; font-size:14px; line-height:1.3;">
+                    Add SapthaEvent to Home Screen
+                </p>
+                <p style="margin:0; color:#c9a45e; font-size:12px;">
+                    Stay logged in · Get push alerts · Works offline
+                </p>
+            </div>
+            <button id="pwaInstallBtn" style="
+                background:linear-gradient(135deg,#c9a45e,#a8843f);
+                color:#fff; border:none; border-radius:8px;
+                padding:8px 16px; font-weight:700; font-size:13px;
+                cursor:pointer; white-space:nowrap; flex-shrink:0;">
+                Install App
+            </button>
+            <button onclick="document.getElementById('pwaInstallBanner').style.display='none';
+                             localStorage.setItem('pwa_banner_dismissed','1');"
+                    style="background:transparent; border:none; color:rgba(255,255,255,0.5);
+                           font-size:20px; cursor:pointer; line-height:1; flex-shrink:0;"
+                    aria-label="Dismiss">×</button>
+        </div>
+    </div>
+
+    <style>
+    @keyframes slideUp {
+        from { transform: translateY(100%); opacity: 0; }
+        to   { transform: translateY(0);   opacity: 1; }
+    }
+    </style>
+
+
     <script>
-        // ── SKELETON LOADER INITIALIZATION ────
+        // ── SKELETON LOADER ────
         document.addEventListener('DOMContentLoaded', function(){
             setTimeout(function(){
                 const skeleton = document.getElementById('formSkeleton');
@@ -163,6 +215,34 @@
                 if(skeleton) skeleton.style.display = 'none';
                 if(form) form.style.display = '';
             }, 250);
+
+            // ── PWA INSTALL PROMPT ────
+            let deferredPrompt;
+            const banner    = document.getElementById('pwaInstallBanner');
+            const installBtn = document.getElementById('pwaInstallBtn');
+            const dismissed = localStorage.getItem('pwa_banner_dismissed');
+            const installed = window.matchMedia('(display-mode: standalone)').matches;
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (!dismissed && !installed) {
+                    setTimeout(() => { banner.style.display = 'block'; }, 2000);
+                }
+            });
+
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (!deferredPrompt) return;
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    deferredPrompt = null;
+                    banner.style.display = 'none';
+                    if (outcome === 'accepted') {
+                        localStorage.setItem('pwa_banner_dismissed', '1');
+                    }
+                });
+            }
         });
 
         // ── PASSWORD TOGGLE ────
@@ -194,5 +274,6 @@
             }
         });
     </script>
+
 </body>
 </html>

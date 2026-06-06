@@ -14,7 +14,10 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE   = _is_production
     SESSION_COOKIE_SAMESITE = 'Strict' if _is_production else 'Lax'
-    PERMANENT_SESSION_LIFETIME = 3600
+    # 30 days — PWA users stay logged in like a native app
+    PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30
+    # 2 hours — when user does NOT check "Keep me logged in"
+    SHORT_SESSION_LIFETIME = 60 * 60 * 2
 
     # Server-side session storage — auto-select Redis when REDIS_URL is set
     _redis_url = os.environ.get('REDIS_URL', '')

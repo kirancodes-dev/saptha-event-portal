@@ -27,7 +27,7 @@ db.collection('users').document(EMAIL).set({
     'name':                'System Super Admin',
     'role':                'SuperAdmin',
     'category':            'All',
-    'password':            generate_password_hash(NEW_PASS),
+    'password':            generate_password_hash(NEW_PASS, method='pbkdf2:sha256'),
     'created_at':          datetime.datetime.now().strftime("%Y-%m-%d"),
     'needs_password_reset': False,
 }, merge=True)

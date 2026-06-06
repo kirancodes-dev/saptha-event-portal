@@ -346,6 +346,110 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     }
 }
 
+/* Voice search styles */
+.btn-voice-search {
+    transition: var(--t-fast);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-voice-search:hover {
+    color: var(--snpsu-blue) !important;
+    background: rgba(0, 0, 0, 0.05);
+}
+.btn-voice-search.listening {
+    color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1);
+    animation: pulse-mic 1.2s infinite ease-in-out;
+}
+@keyframes pulse-mic {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Chatbot onboarding prompt bubble */
+.chat-prompt-bubble {
+    position: absolute;
+    bottom: 80px;
+    right: 0;
+    background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-light));
+    color: white;
+    padding: 10px 16px;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px rgba(26, 37, 87, 0.25);
+    z-index: 1000;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.chat-prompt-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    padding: 0 4px;
+    cursor: pointer;
+    transition: color var(--t-fast);
+}
+
+.chat-prompt-close:hover {
+    color: white;
+}
+
+.chat-prompt-arrow {
+    position: absolute;
+    bottom: -6px;
+    right: 22px;
+    width: 12px;
+    height: 12px;
+    background: var(--snpsu-blue-light);
+    transform: rotate(45deg);
+}
+
+@keyframes bounce-in {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Premium Hero Carousel & Slider Styling */
+.hero-carousel-wrapper {
+    position: relative;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    background: rgba(26, 37, 87, 0.25);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 12px;
+    height: 100%;
+}
+.carousel-img-wrap {
+    position: relative;
+    height: 380px;
+    width: 100%;
+}
+.hero-carousel-wrapper:hover .carousel-control-prev,
+.hero-carousel-wrapper:hover .carousel-control-next {
+    opacity: 0.85 !important;
+}
+.hero-carousel-wrapper .carousel-control-prev:hover,
+.hero-carousel-wrapper .carousel-control-next:hover {
+    opacity: 1 !important;
+}
+</style>
+
 
 <!-- ═══ JSON-LD Structured Data for SEO ═══ -->
 <script type="application/ld+json">
@@ -453,11 +557,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
             </a>
           </li>
         {% endif %}
-        <li class="nav-item ms-lg-2">
-          <button type="button" id="nav-install-btn" class="nav-link btn-login d-none" onclick="triggerPwaInstall()" title="Install SapthaEvent">
-            <i class="fas fa-download me-1"></i>Install App
-          </button>
-        </li>
+
         <li class="nav-item ms-lg-2">
           {% include 'components/language_selector.html' %}
         </li>
@@ -522,50 +622,68 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
       </div>
 
-      <!-- Right Column: Interactive Stats Glass Card -->
+      <!-- Right Column: Interactive Hero Event Slider Carousel -->
       <div class="col-lg-5 scroll-animator stagger-1">
-        <div class="hero-glass-card">
-          <div class="hero-stat-grid">
-            <!-- Stat 1 -->
-            <div class="hero-stat-item">
-              <div class="hero-stat-icon">
-                <i class="fas fa-calendar-check" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="hero-stat-num stat-counter" data-count="{{ events|length }}">0</div>
-                <div class="hero-stat-lbl">Active Events</div>
-              </div>
+        <div class="hero-carousel-wrapper">
+          <div id="heroEventCarousel" class="carousel slide carousel-fade h-100" data-bs-ride="carousel" data-bs-interval="4000">
+            <!-- Indicators / Dots -->
+            <div class="carousel-indicators" style="bottom: 15px; margin-bottom: 0;">
+              {% if events and events[0].get('media_urls') %}
+                {% for img_url in events[0].get('media_urls') %}
+                  <button type="button" data-bs-target="#heroEventCarousel" data-bs-slide-to="{{ loop.index0 }}" class="{% if loop.first %}active{% endif %}" aria-current="{% if loop.first %}true{% endif %}" aria-label="Slide {{ loop.index }}"></button>
+                {% endfor %}
+              {% else %}
+                <button type="button" data-bs-target="#heroEventCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+              {% endif %}
             </div>
-            <!-- Stat 2 -->
-            <div class="hero-stat-item">
-              <div class="hero-stat-icon">
-                <i class="fas fa-users" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="hero-stat-num stat-counter" data-count="2400">0</div>
-                <div class="hero-stat-lbl">Active Students</div>
-              </div>
+
+            <!-- Slides -->
+            <div class="carousel-inner h-100" style="border-radius: 16px; overflow: hidden;">
+              {% if events and events[0].get('media_urls') %}
+                {% for img_url in events[0].get('media_urls') %}
+                  <div class="carousel-item h-100 {% if loop.first %}active{% endif %}">
+                    <div class="carousel-img-wrap">
+                      <img src="{{ img_url }}" class="d-block w-100 h-100" style="object-fit: cover; filter: brightness(0.85);" alt="Campus Event Slide {{ loop.index }}">
+                      <!-- Dark overlay gradient for readable text -->
+                      <div class="carousel-overlay" style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(13, 17, 30, 0.95) 0%, rgba(13, 17, 30, 0.4) 60%, rgba(0, 0, 0, 0) 100%); pointer-events: none;"></div>
+                      
+                      <!-- Slide info caption -->
+                      <div class="carousel-caption text-start" style="left: 20px; right: 20px; bottom: 40px; padding: 0;">
+                        <span class="badge mb-2" style="background: linear-gradient(135deg, #c9a45e, #e2c079); color: #1a2557; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;">Featured Event</span>
+                        <h4 class="fw-bold text-white mb-1" style="font-family: 'Poppins', sans-serif; text-shadow: 0 2px 4px rgba(0,0,0,0.5); font-size: 1.4rem;">{{ events[0].title }}</h4>
+                        <p class="small text-white-50 mb-0 d-flex align-items-center gap-2" style="font-size: 12px;">
+                          <i class="fas fa-map-marker-alt text-warning"></i> {{ events[0].venue }}
+                        </p>
+                        <p class="small text-white-50 mb-0 d-flex align-items-center gap-2 mt-1" style="font-size: 12px;">
+                          <i class="fas fa-calendar-alt text-warning"></i> {{ events[0].date_display or events[0].date }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <!-- Fallback static hero slide if no events seeded -->
+                <div class="carousel-item active h-100">
+                  <div class="carousel-img-wrap">
+                    <div class="d-flex flex-column justify-content-center align-items-center h-100 w-100 text-center" style="background: linear-gradient(135deg, #1a2557 0%, #0d111e 100%); color: white; padding: 30px;">
+                      <i class="fas fa-university fa-3x mb-3 text-warning"></i>
+                      <h4 class="fw-bold">Welcome to SapthaEvent Portal</h4>
+                      <p class="text-white-50 small" style="max-width: 300px;">Experience premium campus events at Sapthagiri NPS University.</p>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
             </div>
-            <!-- Stat 3 -->
-            <div class="hero-stat-item">
-              <div class="hero-stat-icon">
-                <i class="fas fa-qrcode" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="hero-stat-num">QR</div>
-                <div class="hero-stat-lbl">Instant Tickets</div>
-              </div>
-            </div>
-            <!-- Stat 4 -->
-            <div class="hero-stat-item">
-              <div class="hero-stat-icon">
-                <i class="fas fa-bell" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="hero-stat-num">2x</div>
-                <div class="hero-stat-lbl">SMS + Email Alerts</div>
-              </div>
-            </div>
+
+            <!-- Controls -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#heroEventCarousel" data-bs-slide="prev" style="width: 45px; opacity: 0; transition: opacity 0.3s ease;">
+              <span class="carousel-control-prev-icon" aria-hidden="true" style="background-color: rgba(13, 17, 30, 0.6); padding: 18px; border-radius: 50%;"></span>
+              <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#heroEventCarousel" data-bs-slide="next" style="width: 45px; opacity: 0; transition: opacity 0.3s ease;">
+              <span class="carousel-control-next-icon" aria-hidden="true" style="background-color: rgba(13, 17, 30, 0.6); padding: 18px; border-radius: 50%;"></span>
+              <span class="visually-hidden">Next</span>
+            </button>
           </div>
         </div>
       </div>
@@ -593,12 +711,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         <div class="row align-items-center g-2 g-md-3 px-3 px-md-0">
           <!-- Search input (Left/Top) -->
           <div class="col-12 col-md-4">
-            <div class="search-box position-relative">
-              <input type="text" id="evSearch" class="form-control w-100" placeholder="Search events..." oninput="filterEvs()" style="min-height:44px; padding-right:2.5rem;">
+            <div class="search-box position-relative d-flex align-items-center">
+              <input type="text" id="evSearch" class="form-control w-100" placeholder="Search events..." oninput="filterEvs()" style="min-height:44px; padding-right:4.5rem;">
               <i class="fas fa-search position-absolute top-50 translate-middle-y text-muted" style="left: 0.95rem;"></i>
-              <button id="evSearchClear" class="btn btn-clear-search d-none position-absolute top-50 end-0 translate-middle-y border-0 bg-transparent text-muted" onclick="clearSearch()" style="min-height: auto; padding: 0 12px; z-index: 11;" type="button" aria-label="Clear search">
-                <i class="fas fa-times"></i>
-              </button>
+              
+              <div class="position-absolute top-50 end-0 translate-middle-y d-flex align-items-center" style="z-index: 11; margin-right: 6px;">
+                <button id="evVoiceSearch" class="btn btn-voice-search border-0 bg-transparent text-muted p-2" onclick="startVoiceSearch()" type="button" aria-label="Search by voice" style="display: none;">
+                  <i class="fas fa-microphone"></i>
+                </button>
+                <button id="evSearchClear" class="btn btn-clear-search d-none border-0 bg-transparent text-muted p-2" onclick="clearSearch()" type="button" aria-label="Clear search">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
             </div>
           </div>
           <!-- Category filters (Right/Bottom) -->
@@ -664,15 +788,26 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
            data-free="{{ 'true' if (not event.get('entry_fee') or event.entry_fee|int == 0) else 'false' }}"
            data-team="{{ 'true' if event.get('is_team_event') else 'false' }}"
            data-date="{{ event.get('date', '') }}"
+           data-registered="{% if registered_event_ids and event.id in registered_event_ids %}true{% else %}false{% endif %}"
+           data-reg-id="{{ registered_events_map.get(event.id, '') }}"
            data-search="{{ event.title.lower() }} {{ event.get('description','').lower() }} {{ event.get('venue','').lower() }} {{ event.get('category','').lower() }}">
-        <button class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100" onclick="showEventModal('{{ event.id }}');"
-                type="button" 
-                aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
+        <div class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100" 
+             style="cursor: pointer;"
+             onclick="if(!event.target.closest('.btn-reg')) { showEventModal('{{ event.id }}'); }"
+             role="button"
+             tabindex="0"
+             onkeydown="if(event.key === 'Enter' || event.key === ' ') { if(!event.target.closest('.btn-reg')) { showEventModal('{{ event.id }}'); } }"
+             aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
           <div class="ev-banner" aria-hidden="true">
             {% if event.get('banner_url') %}
               <img src="{{ event.banner_url }}" alt="" loading="lazy"
                    onerror="this.style.display='none'">
               <div class="ev-overlay"></div>
+            {% endif %}
+            {% if registered_event_ids and event.id in registered_event_ids %}
+            <span class="ev-reg-badge" style="position: absolute; top: 12px; right: 12px; background: #10b981; color: white; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 12px; border-radius: var(--radius-sm); z-index: 3; box-shadow: var(--shadow-xs); display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fas fa-check-circle"></i> Registered
+            </span>
             {% endif %}
             {% set cat = event.get('category','General') %}
             {% if   cat == 'Technical'  %}<div class="ev-banner-icon">💻</div>
@@ -708,12 +843,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
                 {% endif %}
                 <div class="ev-reg-count">{{ event.get('registration_count', 0) }} registered</div>
               </div>
-              <span class="btn-reg">
+              {% if registered_event_ids and event.id in registered_event_ids %}
+              <a href="/ticket/{{ registered_events_map.get(event.id, '') }}" class="btn-reg text-decoration-none" onclick="event.stopPropagation();">
+                <i class="fas fa-ticket-alt" aria-hidden="true"></i>Ticket
+              </a>
+              {% else %}
+              <a href="/forms/register/{{ event.id }}" class="btn-reg text-decoration-none" onclick="event.stopPropagation();">
                 <i class="fas fa-arrow-right" aria-hidden="true"></i>Register
-              </span>
+              </a>
+              {% endif %}
             </div>
           </div>
-        </button>
+        </div>
       </div>
       {% else %}
       <div class="col-12">
@@ -983,6 +1124,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <button class="chat-send" onclick="sendChat()" aria-label="Send message"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
     </div>
   </div>
+  <div class="chat-prompt-bubble" id="chatPromptBubble" style="display: none;">
+    <span class="chat-prompt-text">Need help? Ask Sparky! 🤖</span>
+    <button class="chat-prompt-close" onclick="dismissChatPrompt(event)" aria-label="Dismiss help prompt">
+      <i class="fas fa-times"></i>
+    </button>
+    <div class="chat-prompt-arrow"></div>
+  </div>
   <button class="chat-btn" onclick="toggleChat()" aria-label="Open AI Assistant, Sparky">
     <i class="fas fa-robot" id="chatIcon" aria-hidden="true"></i>
     <span class="chat-ai-dot">AI</span>
@@ -992,8 +1140,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// ── SKELETON LOADER INITIALIZATION ────
-document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){const skeleton=document.getElementById('evGridSkeleton');const grid=document.getElementById('evGrid');if(grid){grid.style.display='';if(skeleton)skeleton.remove();}},300);});
+// ── SKELETON LOADER & INITIALIZATION ────
+document.addEventListener('DOMContentLoaded',function(){
+  setTimeout(function(){
+    const skeleton=document.getElementById('evGridSkeleton');
+    const grid=document.getElementById('evGrid');
+    if(grid){
+      grid.style.display='';
+      if(skeleton)skeleton.remove();
+    }
+  },300);
+  initVoiceSearch();
+  initChatPrompt();
+});
 
 // ── INTERSECTION OBSERVER FOR SCROLL ANIMATIONS ────
 function initScrollAnimations(){
@@ -1053,18 +1212,57 @@ function showEventModal(eventId){
   cards.forEach(function(card){
     if(card.dataset.id === String(eventId)){
       eventData = {
+        id: card.dataset.id,
         title: card.querySelector('.ev-title').textContent,
         description: card.querySelector('.ev-desc').textContent,
         category: card.dataset.cat,
         date: card.querySelector('[data-info="date"]')?.textContent || 'TBA',
         venue: card.querySelector('[data-info="venue"]')?.textContent || 'TBA',
         fee: card.querySelector('[data-info="fee"]')?.textContent || 'Free',
-        registered: card.querySelector('.ev-reg-count').textContent
+        registered: card.querySelector('.ev-reg-count').textContent,
+        isRegistered: card.dataset.registered === 'true',
+        regId: card.dataset.regId || '',
+        rawDate: card.dataset.date || ''
       };
     }
   });
   
   if(eventData){
+    // Calendar URLs
+    const googleUrl = getGoogleCalendarUrl(eventData.title, eventData.rawDate, eventData.description, eventData.venue);
+    
+    let regButtonHtml = '';
+    if (eventData.isRegistered && eventData.regId) {
+      regButtonHtml = `
+        <button class="modal-btn" style="background:#10b981; color:white; border:none;" onclick="window.location.href='/ticket/${eventData.regId}'">
+          <i class="fas fa-ticket-alt me-1"></i>View Ticket
+        </button>
+      `;
+    } else {
+      regButtonHtml = `
+        <button class="modal-btn modal-btn-primary" onclick="window.location.href='/forms/register/${eventId}'">
+          <i class="fas fa-arrow-right me-1"></i>Register Now
+        </button>
+      `;
+    }
+    
+    let calendarSectionHtml = '';
+    if (eventData.rawDate) {
+      calendarSectionHtml = `
+        <div class="event-modal-section">
+          <h5>Add to Calendar</h5>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="${googleUrl}" target="_blank" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
+              <i class="fab fa-google"></i> Google Calendar
+            </a>
+            <button onclick="downloadiCal('${eventData.title.replace(/'/g, "\\'")}', '${eventData.rawDate}', '${eventData.description.replace(/'/g, "\\'").replace(/\n/g, " ")}', '${eventData.venue.replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
+              <i class="fas fa-calendar-plus"></i> Download iCal (.ics)
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
     body.innerHTML = `
       <div class="event-modal-meta">
         <div class="event-modal-meta-item">
@@ -1077,7 +1275,7 @@ function showEventModal(eventId){
         </div>
         <div class="event-modal-meta-item">
           <i class="fas fa-tag"></i>
-          <span>${eventData.category}</span>
+          <span style="text-transform: capitalize;">${eventData.category}</span>
         </div>
         <div class="event-modal-meta-item">
           <i class="fas fa-users"></i>
@@ -1095,21 +1293,151 @@ function showEventModal(eventId){
         <p style="font-size:16px;font-weight:800;color:var(--orange);">${eventData.fee}</p>
       </div>
       
+      ${calendarSectionHtml}
+      
       <div class="event-modal-section">
         <h5>Event Highlights</h5>
         <p>🎯 Competitive spirit • 🏆 Amazing prizes • 🤝 Networking opportunities • 🎓 Skill development</p>
       </div>
       
       <div class="modal-btn-group">
-        <button class="modal-btn modal-btn-primary" onclick="window.location.href='/forms/register/${eventId}'">
-          <i class="fas fa-arrow-right me-1"></i>Register Now
-        </button>
+        ${regButtonHtml}
         <button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Back</button>
       </div>
     `;
   }
   
   modal.show();
+}
+
+// ── CALENDAR HELPER FUNCTIONS ──────────────────
+function getGoogleCalendarUrl(title, dateStr, description, venue) {
+  const cleanDate = dateStr.replace(/-/g, '').trim();
+  if (cleanDate.length !== 8) return '';
+  const dateObj = new Date(dateStr);
+  dateObj.setDate(dateObj.getDate() + 1);
+  const nextDayStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${cleanDate}/${nextDayStr}&details=${encodeURIComponent(description)}&location=${encodeURIComponent(venue)}`;
+}
+
+function downloadiCal(title, dateStr, description, venue) {
+  const cleanDate = dateStr.replace(/-/g, '').trim();
+  if (cleanDate.length !== 8) return;
+  const dateObj = new Date(dateStr);
+  dateObj.setDate(dateObj.getDate() + 1);
+  const nextDayStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+  
+  const icsContent = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//SapthaEvent//Event Calendar//EN',
+    'BEGIN:VEVENT',
+    `SUMMARY:${title}`,
+    `DTSTART;VALUE=DATE:${cleanDate}`,
+    `DTEND;VALUE=DATE:${nextDayStr}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${venue}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+  
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.ics`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ── VOICE SEARCH HELPER FUNCTIONS ──────────────
+let recognition = null;
+function initVoiceSearch() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    const voiceBtn = document.getElementById('evVoiceSearch');
+    if (voiceBtn) {
+      voiceBtn.style.display = 'block';
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onstart = function() {
+        voiceBtn.classList.add('listening');
+        document.getElementById('evSearch').placeholder = "Listening...";
+      };
+      
+      recognition.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+        stopListening();
+      };
+      
+      recognition.onend = function() {
+        stopListening();
+      };
+      
+      recognition.onresult = function(event) {
+        const resultText = event.results[0][0].transcript;
+        const searchInput = document.getElementById('evSearch');
+        searchInput.value = resultText;
+        filterEvs();
+      };
+    }
+  }
+}
+
+function startVoiceSearch() {
+  if (!recognition) return;
+  const voiceBtn = document.getElementById('evVoiceSearch');
+  if (voiceBtn.classList.contains('listening')) {
+    recognition.stop();
+  } else {
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+
+function stopListening() {
+  const voiceBtn = document.getElementById('evVoiceSearch');
+  if (voiceBtn) {
+    voiceBtn.classList.remove('listening');
+  }
+  const searchInput = document.getElementById('evSearch');
+  if (searchInput) {
+    searchInput.placeholder = "Search events...";
+  }
+}
+
+// ── CHATBOT PROMPT HELPER FUNCTIONS ────────────
+function initChatPrompt() {
+  if (localStorage.getItem('sparky_prompt_dismissed') === 'true') {
+    return;
+  }
+  setTimeout(function() {
+    const bubble = document.getElementById('chatPromptBubble');
+    const chatWin = document.getElementById('chatWin');
+    if (bubble && chatWin && !chatWin.classList.contains('open')) {
+      bubble.style.display = 'flex';
+    }
+  }, 2000);
+}
+
+function dismissChatPrompt(e) {
+  if (e) e.stopPropagation();
+  const bubble = document.getElementById('chatPromptBubble');
+  if (bubble) {
+    bubble.style.opacity = '0';
+    bubble.style.transform = 'scale(0.8)';
+    bubble.style.transition = 'all 0.3s ease';
+    setTimeout(() => {
+      bubble.style.display = 'none';
+    }, 300);
+  }
+  localStorage.setItem('sparky_prompt_dismissed', 'true');
 }
 
 // ── UNIFIED FILTERING, SEARCH, AND PAGINATION ──
@@ -1320,7 +1648,10 @@ function toggleChat(){
   chatOpen = !chatOpen;
   document.getElementById('chatWin').classList.toggle('open', chatOpen);
   document.getElementById('chatIcon').className = chatOpen ? 'fas fa-times' : 'fas fa-robot';
-  if(chatOpen) document.getElementById('chatInp').focus();
+  if(chatOpen) {
+    document.getElementById('chatInp').focus();
+    dismissChatPrompt();
+  }
 }
 async function sendChat(){
   var inp = document.getElementById('chatInp');

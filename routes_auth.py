@@ -46,10 +46,8 @@ def login():
             role = 'SuperAdmin'
 
         # Master key check for SuperAdmin
-        # In development mode the key is optional so local demos aren't blocked.
         MASTER_KEY = current_app.config.get('MASTER_SECRET_KEY', '')
-        is_production = current_app.config.get('FLASK_ENV') == 'production'
-        if role == 'SuperAdmin' and is_production and secret_key != MASTER_KEY:
+        if role == 'SuperAdmin' and MASTER_KEY and secret_key != MASTER_KEY:
             flash('🔒 Invalid Master Security Key. Access denied.', 'danger')
             log_action(db, "LOGIN_FAILED", f"Bad master key attempt for {email}")
             return redirect('/login')

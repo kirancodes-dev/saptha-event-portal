@@ -249,9 +249,9 @@ def registration_page(event_id):
 
     # Capacity check
     max_cap = safe_int((event.get('limits') or {}).get('max_participants', 0))
+    is_waitlist = False
     if max_cap and event.get('registration_count', 0) >= max_cap:
-        return render_template('public/registration_closed.html',
-                               event=event, reason='full')
+        is_waitlist = True
 
     # Already registered?
     is_registered = False
@@ -271,7 +271,8 @@ def registration_page(event_id):
         'public/registration_form.html',
         event=event,
         schema=schema,
-        is_registered=is_registered
+        is_registered=is_registered,
+        is_waitlist=is_waitlist
     )
 
 
@@ -392,6 +393,59 @@ def submit_form(event_id):
             'form_answers':    answers,
             'form_type':       schema.get('form_type', 'simple'),
         }
+
+        # Capacity check — if event is at capacity, add to waitlists instead
+        max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0))
+        current_count = safe_int(event_data.get('registration_count', 0))
+        if max_cap and current_count >= max_cap:
+            # Check if already on waitlists
+            wl_existing = list(
+                db.collection('waitlists')
+                  .where(filter=FieldFilter('event_id', '==', event_id))
+                  .where(filter=FieldFilter('email', '==', email))
+                  .where(filter=FieldFilter('status', '==', 'waiting'))
+                  .limit(1).stream()
+            )
+            if wl_existing:
+                flash("You are already on the waitlist for this event.", "info")
+                return redirect('/participant/dashboard')
+
+            # Count existing waitlist to get position
+            wl_count = 0
+            for _ in (
+                db.collection('waitlists')
+                  .where(filter=FieldFilter('event_id', '==', event_id))
+                  .where(filter=FieldFilter('status', '==', 'waiting'))
+                  .stream()
+            ):
+                wl_count += 1
+
+            wl_id = f"WL-{int(time.time() * 1000)}"
+            wl_entry = {
+                'id':            wl_id,
+                'event_id':      event_id,
+                'event_title':   event_data.get('title', ''),
+                'email':         email,
+                'user_email':    email,
+                'name':          full_name,
+                'phone':         phone,
+                'payment_status': 'Free' if not fee else 'Pending',
+                'amount_paid':   0,
+                'joined_at':     datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                'status':        'waiting',
+                'position':      wl_count + 1,
+                'reg_data':      reg_data,
+            }
+            db.collection('waitlists').document(wl_id).set(wl_entry)
+
+            # Auto-login the student
+            session['user_id']  = email
+            session['name']     = full_name
+            session['role']     = 'Student'
+            session['category'] = 'General'
+
+            flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
+            return redirect('/participant/dashboard')
 
         # Save submission analytics separately
         db.collection('form_submissions').add({

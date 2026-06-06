@@ -1729,16 +1729,16 @@ def judging_audit(event_id):
 
     global_avg = sum(global_scores) / len(global_scores) if global_scores else 7.5
     
-    # Simulating sentiment reviews if empty
-    feedbacks = list(db.collection('feedback').where('event_id', '==', event_id).stream())
+    # Extract feedback from registrations (since feedback is stored nested under registrations)
     sentiment_summary = {
         'positive': 0, 'neutral': 0, 'negative': 0, 'score': 0.0, 'total': 0
     }
     
     feedback_reviews = []
-    if feedbacks:
-        for f in feedbacks:
-            fd = f.to_dict()
+    for r in regs:
+        rd = r.to_dict()
+        fd = rd.get('feedback')
+        if fd and isinstance(fd, dict):
             comment = fd.get('comments', '')
             rating = int(fd.get('rating', 4) or 4)
             # basic heuristic sentiment classifier
@@ -1756,7 +1756,8 @@ def judging_audit(event_id):
                 'rating': rating,
                 'polarity': polarity
             })
-    else:
+
+    if not feedback_reviews:
         # Generate rich mock reviews for simulation
         mock_reviews = [
             {"comments": "The event coordination was flawless and execution was top notch!", "rating": 5, "polarity": "Positive"},

@@ -73,12 +73,14 @@ def export_user_data():
 
     # 3. Feedback
     feedback = []
-    for doc in db.collection("feedback").where(
-        filter=FieldFilter("user_email", "==", email)
-    ).stream():
-        f = doc.to_dict()
-        f["id"] = doc.id
-        feedback.append(f)
+    for r in regs:
+        fd = r.get("feedback")
+        if fd and isinstance(fd, dict):
+            fb_item = dict(fd)
+            fb_item["registration_id"] = r["id"]
+            fb_item["event_id"] = r.get("event_id")
+            fb_item["event_title"] = r.get("event_title")
+            feedback.append(fb_item)
     export["sections"]["feedback"] = feedback
 
     # 4. Notifications

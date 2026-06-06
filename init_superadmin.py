@@ -99,7 +99,7 @@ def init_superadmin():
     # Create SuperAdmin account
     print("\n🚀 Creating SuperAdmin account...")
     try:
-        hashed_pass = generate_password_hash(admin_pass)
+        hashed_pass = generate_password_hash(admin_pass, method='pbkdf2:sha256')
         admin_data = {
             'email': admin_email,
             'name': 'System Administrator',

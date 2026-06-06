@@ -233,6 +233,13 @@ textarea.form-control{resize:vertical;min-height:90px;}
     <p class="form-desc">{{ schema.form_desc }}</p>
     {% endif %}
 
+    {% if is_waitlist %}
+      <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size: 13px; border-radius: 10px; background:#fffbeb; color:#d97706; border:1px solid #fde68a;">
+        <i class="fas fa-hourglass-half text-warning"></i>
+        <div><strong>Waitlist Only:</strong> This event is currently full. Submitting this form will place you on the waitlist.</div>
+      </div>
+    {% endif %}
+
     <form method="POST" action="/forms/submit/{{ event.id }}"
           id="reg-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -352,10 +359,14 @@ textarea.form-control{resize:vertical;min-height:90px;}
       <!-- Submit -->
       <button type="submit" class="btn-submit" id="submit-btn" data-no-loader>
         <i class="fas fa-paper-plane"></i>
-        {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
-          Continue to Payment — ₹{{ event.entry_fee }}
+        {% if is_waitlist %}
+          Join Waitlist (Event is Full)
         {% else %}
-          Register Now — Free
+          {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+            Continue to Payment — ₹{{ event.entry_fee }}
+          {% else %}
+            Register Now — Free
+          {% endif %}
         {% endif %}
       </button>
 

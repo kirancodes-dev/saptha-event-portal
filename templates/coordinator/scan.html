@@ -94,6 +94,66 @@
     <script>
         let html5Qr = null;
         let camRunning = false;
+        let audioCtx = null;
+
+        function playScanSound(type) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                const now = audioCtx.currentTime;
+                
+                if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, now); // D5
+                    osc.frequency.setValueAtTime(880, now + 0.1); // A5
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate([80, 50, 80]);
+                    }
+                } else if (type === 'warning' || type === 'already_in') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now); // A4
+                    osc.frequency.setValueAtTime(349.23, now + 0.15); // F4
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+                } else {
+                    // Low buzzer error
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate([300, 100, 300]);
+                    }
+                }
+            } catch (e) {
+                console.warn("Web Audio API blocked or not supported: ", e);
+            }
+        }
 
         function showCamError(msg) {
             const box = document.getElementById('cam-error');
@@ -175,6 +235,7 @@
             const data = await response.json();
             
             if(data.status === 'success') {
+                playScanSound('success');
                 const reg = data.data;
                 document.getElementById('scanner-view').classList.add('d-none');
                 document.getElementById('attendance-view').classList.remove('d-none');
@@ -212,6 +273,7 @@
                 }
                 document.getElementById('members-list').innerHTML = html;
             } else {
+                playScanSound('error');
                 alert("❌ " + data.message);
                 resumeCamera();
             }
@@ -229,6 +291,11 @@
             });
             const data = await response.json();
             
+            if(data.status === 'success') {
+                playScanSound('success');
+            } else {
+                playScanSound('error');
+            }
             alert(data.message);
             resetScanner();
         }

@@ -10,6 +10,7 @@ const STATIC_ASSETS = [
   '/static/css/mobile.css',
   '/static/js/pwa.js',
   '/static/snpsu-logo.png',
+  '/static/app-icon.png',
   '/static/manifest.webmanifest'
 ];
 

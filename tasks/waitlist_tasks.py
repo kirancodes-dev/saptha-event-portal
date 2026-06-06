@@ -29,7 +29,7 @@ def promote_from_waitlist(self, event_id: str):
 
         # Find the oldest waiting entry for this event
         entries = list(
-            db.collection('waitlist')
+            db.collection('waitlists')
               .where(filter=FieldFilter('event_id', '==', event_id))
               .where(filter=FieldFilter('status', '==', 'waiting'))
               .order_by('joined_at')
@@ -43,7 +43,7 @@ def promote_from_waitlist(self, event_id: str):
         entry_doc  = entries[0]
         entry      = entry_doc.to_dict()
         entry_id   = entry_doc.id
-        email      = entry.get('email', '')
+        email      = entry.get('email') or entry.get('user_email', '')
         name       = entry.get('name', 'Participant')
         event_title = entry.get('event_title', 'Event')
         reg_data   = entry.get('reg_data', {})
@@ -56,21 +56,39 @@ def promote_from_waitlist(self, event_id: str):
               .limit(1).stream()
         )
         if existing:
-            db.collection('waitlist').document(entry_id).update({'status': 'already_registered'})
+            db.collection('waitlists').document(entry_id).update({'status': 'already_registered'})
             promote_from_waitlist.apply_async(args=[event_id])
             return {'promoted': False, 'reason': 'already_registered'}
 
         # Create registration
         reg_id = reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}"
-        reg_data.update({
-            'reg_id': reg_id,
-            'status': 'Confirmed',
-            'payment_status': entry.get('payment_status', 'Free'),
-            'amount_paid': entry.get('amount_paid', 0),
-            'is_eliminated': False,
-            'current_round': 1,
-            'from_waitlist': True,
-        })
+        if reg_data:
+            reg_data.update({
+                'reg_id': reg_id,
+                'status': 'Confirmed',
+                'payment_status': entry.get('payment_status', 'Free'),
+                'amount_paid': entry.get('amount_paid', 0),
+                'is_eliminated': False,
+                'current_round': 1,
+                'from_waitlist': True,
+            })
+        else:
+            reg_data = {
+                'reg_id': reg_id,
+                'event_id': event_id,
+                'event_title': event_title,
+                'lead_name': name,
+                'lead_email': email,
+                'lead_phone': entry.get('phone', ''),
+                'status': 'Confirmed',
+                'payment_status': entry.get('payment_status', 'Free'),
+                'amount_paid': entry.get('amount_paid', 0),
+                'is_eliminated': False,
+                'current_round': 1,
+                'from_waitlist': True,
+                'attendance': 'Pending',
+                'created_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }
         db.collection('registrations').document(reg_id).set(reg_data)
 
         event_ref = db.collection('events').document(event_id)
@@ -78,7 +96,7 @@ def promote_from_waitlist(self, event_id: str):
         event_ref.update({'registration_count': event_doc.get('registration_count', 0) + 1})
 
         # Mark waitlist entry as promoted
-        db.collection('waitlist').document(entry_id).update({
+        db.collection('waitlists').document(entry_id).update({
             'status': 'promoted',
             'promoted_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'reg_id': reg_id,

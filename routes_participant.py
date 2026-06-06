@@ -326,9 +326,9 @@ def public_register(event_id):
                     event_data.get('max_participants', 0) or 0)
         current_count = int(event_data.get('registration_count', 0))
         if max_p > 0 and current_count >= max_p:
-            # Check if already on waitlist
+            # Check if already on waitlists
             wl_existing = list(
-                db.collection('waitlist')
+                db.collection('waitlists')
                   .where(filter=_ff('event_id', '==', event_id))
                   .where(filter=_ff('email', '==', email))
                   .where(filter=_ff('status', '==', 'waiting'))
@@ -339,16 +339,22 @@ def public_register(event_id):
                 return redirect('/participant/dashboard')
 
             # Count existing waitlist to get position
-            wl_count = len(list(
-                db.collection('waitlist')
+            wl_count = 0
+            for _ in (
+                db.collection('waitlists')
                   .where(filter=_ff('event_id', '==', event_id))
                   .where(filter=_ff('status', '==', 'waiting'))
                   .stream()
-            ))
+            ):
+                wl_count += 1
+
+            wl_id = f"WL-{int(time.time() * 1000)}"
             wl_entry = {
+                'id':            wl_id,
                 'event_id':      event_id,
                 'event_title':   event_data.get('title', ''),
                 'email':         email,
+                'user_email':    email,
                 'name':          full_name,
                 'phone':         phone,
                 'payment_status': 'Free' if not fee else 'Pending',
@@ -367,7 +373,7 @@ def public_register(event_id):
                     'reg_id': f"REG-{int(time.time() * 1000)}",
                 },
             }
-            db.collection('waitlist').add(wl_entry)
+            db.collection('waitlists').document(wl_id).set(wl_entry)
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard')
 
@@ -503,7 +509,7 @@ def cancel_registration(reg_id):
 def waitlist_status():
     email = session.get('user_id')
     entries = list(
-        db.collection('waitlist')
+        db.collection('waitlists')
           .where(filter=_ff('email', '==', email))
           .where(filter=_ff('status', '==', 'waiting'))
           .stream()
@@ -511,9 +517,15 @@ def waitlist_status():
     result = []
     for e in entries:
         d = e.to_dict()
+        event_id = d.get('event_id', '')
+        event_title = d.get('event_title', '')
+        if event_id:
+            event_doc = db.collection('events').document(event_id).get()
+            if event_doc.exists:
+                event_title = event_doc.to_dict().get('title', event_title)
         result.append({
-            'event_title': d.get('event_title', ''),
-            'event_id':    d.get('event_id', ''),
+            'event_title': event_title,
+            'event_id':    event_id,
             'position':    d.get('position', '?'),
         })
     return jsonify(result)

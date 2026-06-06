@@ -191,6 +191,14 @@ def view_team(team_id):
     team = doc.to_dict() or {}
     team['team_id'] = doc.id
 
+    # Enrich with live event title
+    event_id = team.get('event_id')
+    if event_id:
+        event_doc = db.collection('events').document(event_id).get()
+        if event_doc.exists:
+            evt = event_doc.to_dict()
+            team['event_title'] = evt.get('title', team.get('event_title', ''))
+
     email = session.get('user_id')
     is_member = any((m.get('email') or '').lower() == (email or '').lower()
                     for m in team.get('members', []))

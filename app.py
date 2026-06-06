@@ -12,26 +12,39 @@ from flask_session import Session
 from flask_talisman import Talisman
 from werkzeug.middleware.proxy_fix import ProxyFix
 from google.cloud.firestore_v1.base_query import FieldFilter
-from config import Config
 from dotenv import load_dotenv
-from utils import ROLE_REDIRECTS  # single source of truth
-
 load_dotenv()
+
+from config import Config
+from utils import ROLE_REDIRECTS  # single source of truth
 
 # =========================================================
 # WERKZEUG SCRYPT FIX — macOS Python 3.9 uses LibreSSL which
 # lacks scrypt support. Patch generate_password_hash to
-# default to pbkdf2:sha256 for ALL callers across the app.
+# default to pbkdf2:sha256 for ALL callers across the app,
+# and check_password_hash to handle scrypt safely.
 # =========================================================
 import werkzeug.security as _wsec
 
 if not hasattr(_wsec, '_is_patched'):
     _original_generate_password_hash = _wsec.generate_password_hash
+    _original_check_password_hash = _wsec.check_password_hash
 
     def _safe_generate_password_hash(password, method='pbkdf2:sha256', salt_length=16):
         return _original_generate_password_hash(password, method=method, salt_length=salt_length)
 
+    def _safe_check_password_hash(pwhash, password):
+        try:
+            return _original_check_password_hash(pwhash, password)
+        except AttributeError as e:
+            if 'scrypt' in str(e):
+                import logging
+                logging.getLogger(__name__).warning("scrypt is missing in hashlib; check_password_hash returned False.")
+                return False
+            raise
+
     _wsec.generate_password_hash = _safe_generate_password_hash
+    _wsec.check_password_hash = _safe_check_password_hash
     _wsec._is_patched = True
 
 
@@ -465,9 +478,27 @@ def home():
         'General':    'fa-calendar-alt',
     }
 
+    registered_event_ids = []
+    registered_events_map = {}
     try:
         if db is None:
             raise RuntimeError("Firebase not configured")
+        
+        # Fetch registered events for logged-in Student
+        if session.get('user_id') and session.get('role') == 'Student':
+            try:
+                regs = db.collection('registrations')\
+                    .where(filter=FieldFilter('lead_email', '==', session['user_id']))\
+                    .stream()
+                for r in regs:
+                    rd = r.to_dict()
+                    if rd.get('status') != 'Cancelled' and rd.get('event_id'):
+                        eid = rd['event_id']
+                        registered_event_ids.append(eid)
+                        registered_events_map[eid] = r.id
+            except Exception as e:
+                app.logger.error("Error fetching student registrations: %s", e)
+
         color_map = {
             'Technical':  '#f37021',
             'Cultural':   '#7c3aed',
@@ -524,11 +555,13 @@ def home():
         app.logger.error("Home page Firebase error: %s", exc)
 
     _ctx = {
-        'events':          events,
-        'current_date':    current_date,
-        'calendar_events': json.dumps(calendar_events),
-        'ticker_events':   ticker_events,
-        'no_firebase':     db is None,
+        'events':               events,
+        'current_date':         current_date,
+        'calendar_events':      json.dumps(calendar_events),
+        'ticker_events':        ticker_events,
+        'no_firebase':          db is None,
+        'registered_event_ids': registered_event_ids,
+        'registered_events_map': registered_events_map,
     }
     return render_template('index.html', **_ctx)
 

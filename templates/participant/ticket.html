@@ -20,14 +20,70 @@
             font-family: 'Segoe UI', sans-serif;
         }
 
-        /* ---- Ticket card ---- */
-        .ticket {
-            background: #ffffff;
-            border-radius: 20px;
+        /* ---- Ticket 3D Flipping Card ---- */
+        .perspective-container {
+            perspective: 1000px;
             width: 100%;
             max-width: 420px;
+            margin: 0 auto;
+        }
+        .ticket {
+            width: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            border-radius: 20px;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        .ticket.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            width: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 32px 64px rgba(0,0,0,0.4);
+            background: #ffffff;
+        }
+        .card-face-front {
+            position: relative;
+            z-index: 2;
+        }
+        .card-face-back {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            transform: rotateY(180deg);
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .flip-trigger-btn {
+            border: none;
+            background: rgba(255,255,255,0.2);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            z-index: 10;
+        }
+        .flip-trigger-btn:hover {
+            background: rgba(255,255,255,0.35);
+            transform: scale(1.1);
         }
 
         /* ---- Top banner ---- */
@@ -283,130 +339,197 @@
 <body>
     <div>
         <!-- ===== TICKET CARD ===== -->
-        <div class="ticket" id="ticket-card">
+        <div class="perspective-container">
+            <div class="ticket" id="ticket-card">
 
-            <!-- Header -->
-            <div class="ticket-header">
-                {% if event.get('category') %}
-                <span class="category-badge">{{ event.category }}</span>
-                {% endif %}
-                <div class="org">Sapthagiri NPS University</div>
-                <div class="event-name">{{ event.get('title', 'Event') }}</div>
-                <div class="event-meta">
-                    <i class="fas fa-calendar-alt me-1"></i>{{ event.get('date', 'TBD') }}
-                    &nbsp;·&nbsp;
-                    <i class="fas fa-map-marker-alt me-1"></i>{{ event.get('venue', 'SNPSU Campus') }}
-                </div>
-            </div>
-
-            <!-- Tear line -->
-            <div class="tear-line">
-                <div class="dashes"></div>
-            </div>
-
-            <!-- Body -->
-            <div class="ticket-body">
-
-                <!-- Holder -->
-                <div class="holder-block">
-                    <div class="holder-avatar">
-                        {{ reg.lead_name[0].upper() if reg.lead_name else '?' }}
+                <!-- FRONT FACE -->
+                <div class="card-face card-face-front">
+                    <!-- Header -->
+                    <div class="ticket-header">
+                        {% if event.get('category') %}
+                        <span class="category-badge" style="right: 60px;">{{ event.category }}</span>
+                        {% endif %}
+                        <button class="flip-trigger-btn" onclick="toggleCardFlip(event)" aria-label="Flip card for guidelines" type="button">
+                          <i class="fas fa-info"></i>
+                        </button>
+                        <div class="org">Sapthagiri NPS University</div>
+                        <div class="event-name">{{ event.get('title', 'Event') }}</div>
+                        <div class="event-meta">
+                            <i class="fas fa-calendar-alt me-1"></i>{{ event.get('date', 'TBD') }}
+                            &nbsp;·&nbsp;
+                            <i class="fas fa-map-marker-alt me-1"></i>{{ event.get('venue', 'SNPSU Campus') }}
+                        </div>
                     </div>
-                    <div>
-                        <div class="holder-name">{{ reg.get('lead_name', 'Participant') }}</div>
-                        <div class="holder-sub">{{ reg.get('lead_email') }}</div>
-                    </div>
-                </div>
 
-                <!-- Info grid -->
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="label">Team Name</div>
-                        <div class="value">{{ reg.get('team_name', 'Individual') }}</div>
+                    <!-- Tear line -->
+                    <div class="tear-line">
+                        <div class="dashes"></div>
                     </div>
-                    <div class="info-item">
-                        <div class="label">Members</div>
-                        <div class="value">{{ reg.get('member_count', 1) }} Person{{ 's' if reg.get('member_count', 1) > 1 else '' }}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="label">Payment</div>
-                        <div class="value">
-                            {% if reg.get('payment_status') == 'Free' %}
-                                Free Event
-                            {% elif reg.get('payment_status') == 'Paid' %}
-                                ₹{{ reg.get('amount_paid', 0) }} Paid
+
+                    <!-- Body -->
+                    <div class="ticket-body">
+                        <!-- Holder -->
+                        <div class="holder-block">
+                            <div class="holder-avatar">
+                                {{ reg.lead_name[0].upper() if reg.lead_name else '?' }}
+                            </div>
+                            <div>
+                                <div class="holder-name">{{ reg.get('lead_name', 'Participant') }}</div>
+                                <div class="holder-sub">{{ reg.get('lead_email') }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Info grid -->
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="label">Team Name</div>
+                                <div class="value">{{ reg.get('team_name', 'Individual') }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="label">Members</div>
+                                <div class="value">{{ reg.get('member_count', 1) }} Person{{ 's' if reg.get('member_count', 1) > 1 else '' }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="label">Payment</div>
+                                <div class="value">
+                                    {% if reg.get('payment_status') == 'Free' %}
+                                        Free Event
+                                    {% elif reg.get('payment_status') == 'Paid' %}
+                                        ₹{{ reg.get('amount_paid', 0) }} Paid
+                                    {% else %}
+                                        Pending
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="label">Registered</div>
+                                <div class="value">{{ reg.get('registered_at', '')[:10] if reg.get('registered_at') else 'N/A' }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Team members (if any beyond lead) -->
+                        {% if reg.get('members') and reg.members|length > 1 %}
+                        <div class="members-block">
+                            <div class="members-title">Team members</div>
+                            {% for m in reg.members %}
+                            <div class="member-row">
+                                <span>{{ m.name }}</span>
+                                <span class="role-pill {{ 'lead' if m.role == 'Team Leader' else '' }}">
+                                    {{ m.role }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- QR Code — only shown from 1 day before event -->
+                        {% if show_qr and qr_b64 %}
+                        <div class="qr-section">
+                            <div class="qr-label">Scan at venue entry</div>
+                            <div class="qr-wrapper">
+                                <img src="data:image/png;base64,{{ qr_b64 }}"
+                                     alt="Ticket QR code for {{ reg.get('reg_id') }}">
+                            </div>
+                            <div class="ticket-id">{{ reg.get('reg_id', 'N/A') }}</div>
+                        </div>
+                        {% else %}
+                        <div style="text-align:center;padding:20px 0;">
+                            <div style="font-size:40px;margin-bottom:10px;">🔒</div>
+                            <div style="font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+                                Entry Ticket Locked
+                            </div>
+                            <div style="font-size:13px;color:#64748b;margin-top:8px;line-height:1.6;">
+                                Your QR entry ticket will be emailed and<br>
+                                unlocked here <strong>1 day before the event</strong>
+                                {% if event_date %} ({{ event_date }}){% endif %}.
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Status -->
+                        <div class="status-banner {{ 'confirmed' if reg.get('status') == 'Confirmed' else 'pending' }}">
+                            {% if reg.get('status') == 'Confirmed' %}
+                                <i class="fas fa-check-circle me-1"></i> Registration Confirmed
                             {% else %}
-                                Pending
+                                <i class="fas fa-clock me-1"></i> Awaiting Confirmation
                             {% endif %}
                         </div>
                     </div>
-                    <div class="info-item">
-                        <div class="label">Registered</div>
-                        <div class="value">{{ reg.get('registered_at', '')[:10] if reg.get('registered_at') else 'N/A' }}</div>
+
+                    <!-- Footer -->
+                    <div class="ticket-footer">
+                        <img src="/static/snpsu-logo.png"
+                             alt="Sapthagiri NPS University"
+                             style="height:18px;width:auto;object-fit:contain;margin:0 4px;"
+                             onerror="this.style.display='none'">
+                        Sapthagiri NPS University
+                        Powered by AI Event Management
                     </div>
                 </div>
 
-                <!-- Team members (if any beyond lead) -->
-                {% if reg.get('members') and reg.members|length > 1 %}
-                <div class="members-block">
-                    <div class="members-title">Team members</div>
-                    {% for m in reg.members %}
-                    <div class="member-row">
-                        <span>{{ m.name }}</span>
-                        <span class="role-pill {{ 'lead' if m.role == 'Team Leader' else '' }}">
-                            {{ m.role }}
-                        </span>
+                <!-- BACK FACE -->
+                <div class="card-face card-face-back">
+                    <!-- Header -->
+                    <div class="ticket-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                        <button class="flip-trigger-btn" onclick="toggleCardFlip(event)" aria-label="Flip card for ticket" type="button">
+                          <i class="fas fa-ticket-alt"></i>
+                        </button>
+                        <div class="org">Event Guidelines &amp; SPOC</div>
+                        <div class="event-name" style="font-size: 18px;">{{ event.get('title', 'Event') }}</div>
+                        <div class="event-meta">
+                            <i class="fas fa-user-shield me-1"></i>Official SPOC Details
+                        </div>
                     </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
 
-                <!-- QR Code — only shown from 1 day before event -->
-                {% if show_qr and qr_b64 %}
-                <div class="qr-section">
-                    <div class="qr-label">Scan at venue entry</div>
-                    <div class="qr-wrapper">
-                        <img src="data:image/png;base64,{{ qr_b64 }}"
-                             alt="Ticket QR code for {{ reg.get('reg_id') }}">
+                    <!-- Tear line -->
+                    <div class="tear-line">
+                        <div class="dashes"></div>
                     </div>
-                    <div class="ticket-id">{{ reg.get('reg_id', 'N/A') }}</div>
-                </div>
-                {% else %}
-                <div style="text-align:center;padding:20px 0;">
-                    <div style="font-size:40px;margin-bottom:10px;">🔒</div>
-                    <div style="font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
-                        Entry Ticket Locked
+
+                    <!-- Body -->
+                    <div class="ticket-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; background: #ffffff;">
+                        <div>
+                            <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; font-weight: 700;">
+                                Venue Guidelines
+                            </div>
+                            <ul style="font-size: 13px; color: #475569; padding-left: 20px; margin-bottom: 20px; line-height: 1.6;">
+                                <li>Report to the venue 15 minutes before the start time.</li>
+                                <li>Carry your college ID card for physical verification.</li>
+                                <li>Set mobile screen brightness to maximum for QR scanning.</li>
+                                <li>No food or beverages allowed inside the laboratories.</li>
+                            </ul>
+
+                            <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; font-weight: 700;">
+                                Club Coordinator (SPOC)
+                            </div>
+                            <div class="d-flex align-items-center gap-3" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #e8f0fe; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #1a2557; flex-shrink: 0; font-weight: 700;">
+                                    {{ event.get('spoc_name', 'Student Coordinator')[0].upper() if event.get('spoc_name') else 'S' }}
+                                </div>
+                                <div style="overflow: hidden;">
+                                    <div style="font-size: 14px; font-weight: 700; color: #1e293b; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                        {{ event.get('spoc_name', 'Student Coordinator') }}
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                        <i class="fas fa-envelope me-1"></i>{{ event.get('spoc_email', 'saptha@snpsu.edu.in') }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 15px; font-size: 11px; color: #94a3b8; font-weight: 500;">
+                            <i class="fas fa-sync-alt me-1"></i> Tap card anywhere to flip
+                        </div>
                     </div>
-                    <div style="font-size:13px;color:#64748b;margin-top:8px;line-height:1.6;">
-                        Your QR entry ticket will be emailed and<br>
-                        unlocked here <strong>1 day before the event</strong>
-                        {% if event_date %} ({{ event_date }}){% endif %}.
+
+                    <!-- Footer -->
+                    <div class="ticket-footer" style="background: #f1f5f9;">
+                        Sapthagiri NPS University
                     </div>
                 </div>
-                {% endif %}
 
-                <!-- Status -->
-                <div class="status-banner {{ 'confirmed' if reg.get('status') == 'Confirmed' else 'pending' }}">
-                    {% if reg.get('status') == 'Confirmed' %}
-                        <i class="fas fa-check-circle me-1"></i> Registration Confirmed
-                    {% else %}
-                        <i class="fas fa-clock me-1"></i> Awaiting Confirmation
-                    {% endif %}
-                </div>
-
-            </div><!-- /ticket-body -->
-
-            <!-- Footer -->
-            <div class="ticket-footer">
-                <img src="/static/snpsu-logo.png"
-                     alt="Sapthagiri NPS University"
-                     style="height:18px;width:auto;object-fit:contain;margin:0 4px;"
-                     onerror="this.style.display='none'">
-                Sapthagiri NPS University
-                Powered by AI Event Management
             </div>
-
-        </div><!-- /ticket -->
+        </div>
 
         <!-- Action buttons (outside ticket so they don't print) -->
         <div class="action-row">
@@ -435,6 +558,23 @@
 
 <script src="/static/js/global.js"></script>
 <script>
+// Card flip logic
+function toggleCardFlip(event) {
+    if (event) event.stopPropagation();
+    const card = document.getElementById('ticket-card');
+    if (card) {
+        card.classList.toggle('flipped');
+    }
+}
+
+// Tap anywhere on card to flip
+document.getElementById('ticket-card') && document.getElementById('ticket-card').addEventListener('click', function(e) {
+    if (e.target.closest('a') || e.target.closest('button') || e.target.closest('img')) {
+        return;
+    }
+    toggleCardFlip();
+});
+
 // Copy ticket link
 document.getElementById('copyLinkBtn') && document.getElementById('copyLinkBtn').addEventListener('click', function() {
     const url = window.location.href;

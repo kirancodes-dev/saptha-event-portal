@@ -8,35 +8,7 @@
 
   var deferredPrompt = null;
 
-  // 1. REGISTER SERVICE WORKER
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      navigator.serviceWorker.register('/static/sw.js')
-        .then(function (registration) {
-          console.log('[PWA] Service Worker registered with scope:', registration.scope);
-          
-          // Check for updates
-          registration.onupdatefound = function () {
-            var installingWorker = registration.installing;
-            if (installingWorker) {
-              installingWorker.onstatechange = function () {
-                if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    console.log('[PWA] New content is available; please refresh.');
-                    showToast('Update Available', 'Refresh to load the latest application version.', 'info', function() {
-                      window.location.reload();
-                    });
-                  }
-                }
-              };
-            }
-          };
-        })
-        .catch(function (error) {
-          console.error('[PWA] Service Worker registration failed:', error);
-        });
-    });
-  }
+
 
   // 2. OFFLINE DETECTION
   function updateOnlineStatus() {
@@ -60,31 +32,7 @@
   window.addEventListener('offline', updateOnlineStatus);
   document.addEventListener('DOMContentLoaded', updateOnlineStatus);
 
-  // 3. PWA INSTALL PROMPT
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();
-    deferredPrompt = e;
-    
-    var installBtn = document.getElementById('nav-install-btn');
-    if (installBtn) {
-      installBtn.classList.remove('d-none');
-    }
-  });
 
-  window.triggerPwaInstall = function () {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(function (choiceResult) {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('[PWA] User accepted the install prompt');
-      }
-      deferredPrompt = null;
-      var installBtn = document.getElementById('nav-install-btn');
-      if (installBtn) {
-        installBtn.classList.add('d-none');
-      }
-    });
-  };
 
   // 4. WEB SHARE API INTEGRATION
   window.shareEvent = function (title, text, url) {

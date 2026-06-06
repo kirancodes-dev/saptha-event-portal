@@ -11,13 +11,6 @@ from flask import request, session, g
 # ---------------------------------------------------------------------------
 SUPPORTED_LOCALES: Dict[str, Dict[str, str]] = {
     'en': {'name': 'English',  'native': 'English',  'dir': 'ltr', 'flag': '🇬🇧'},
-    'hi': {'name': 'Hindi',    'native': 'हिन्दी',     'dir': 'ltr', 'flag': '🇮🇳'},
-    'kn': {'name': 'Kannada',  'native': 'ಕನ್ನಡ',     'dir': 'ltr', 'flag': '🇮🇳'},
-    'ta': {'name': 'Tamil',    'native': 'தமிழ்',      'dir': 'ltr', 'flag': '🇮🇳'},
-    'te': {'name': 'Telugu',   'native': 'తెలుగు',     'dir': 'ltr', 'flag': '🇮🇳'},
-    'es': {'name': 'Spanish',  'native': 'Español',   'dir': 'ltr', 'flag': '🇪🇸'},
-    'fr': {'name': 'French',   'native': 'Français',  'dir': 'ltr', 'flag': '🇫🇷'},
-    'ar': {'name': 'Arabic',   'native': 'العربية',    'dir': 'rtl', 'flag': '🇸🇦'},
 }
 
 DEFAULT_LOCALE = 'en'

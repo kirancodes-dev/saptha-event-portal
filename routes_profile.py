@@ -23,6 +23,12 @@ def view_profile():
         for r in db.collection('registrations').where('lead_email', '==', session['user_id']).stream():
             d       = r.to_dict()
             d['id'] = r.id
+            event_id = d.get('event_id')
+            if event_id:
+                event_doc = db.collection('events').document(event_id).get()
+                if event_doc.exists:
+                    evt = event_doc.to_dict()
+                    d['event_title'] = evt.get('title', d.get('event_title', ''))
             my_teams.append(d)
             stats['total'] += 1
             if d.get('attendance') == 'Present':

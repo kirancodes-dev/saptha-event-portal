@@ -78,6 +78,7 @@ def join_waitlist(event_id):
     wl_data = {
         "id": wl_id,
         "event_id": event_id,
+        "email": email,
         "user_email": email,
         "name": data.get("name", session.get("name", "")),
         "phone": data.get("phone", ""),
@@ -194,7 +195,8 @@ def auto_promote(db, event_id: str):
         .stream()
     ):
         wl = doc.to_dict()
-        email = wl["user_email"]
+        email = wl.get("user_email") or wl.get("email", "")
+        name = wl.get("name", "Participant")
 
         # Update waitlist status
         db.collection("waitlists").document(doc.id).update({
@@ -206,18 +208,31 @@ def auto_promote(db, event_id: str):
         ev_doc = db.collection("events").document(event_id).get()
         ev = ev_doc.to_dict() if ev_doc.exists else {}
 
-        reg_id = str(uuid.uuid4())
-        db.collection("registrations").document(reg_id).set({
-            "event_id": event_id,
-            "lead_name": wl.get("name", ""),
-            "lead_email": email,
-            "lead_phone": wl.get("phone", ""),
-            "status": "confirmed",
-            "payment_status": "unpaid" if ev.get("fee", 0) > 0 else "free",
-            "attendance": "Pending",
-            "source": "waitlist_promotion",
-            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        })
+        reg_data = wl.get("reg_data") or {}
+        reg_id = reg_data.get("reg_id") or str(uuid.uuid4())
+        if reg_data:
+            reg_data.update({
+                "status": "Confirmed",
+                "payment_status": "unpaid" if ev.get("fee", 0) > 0 or ev.get("entry_fee", 0) > 0 else "free",
+                "attendance": "Pending",
+                "source": "waitlist_promotion",
+                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            })
+        else:
+            reg_data = {
+                "reg_id": reg_id,
+                "event_id": event_id,
+                "event_title": ev.get("title", ""),
+                "lead_name": name,
+                "lead_email": email,
+                "lead_phone": wl.get("phone", ""),
+                "status": "Confirmed",
+                "payment_status": "unpaid" if ev.get("fee", 0) > 0 or ev.get("entry_fee", 0) > 0 else "free",
+                "attendance": "Pending",
+                "source": "waitlist_promotion",
+                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }
+        db.collection("registrations").document(reg_id).set(reg_data)
 
         # Increment count
         from google.cloud.firestore_v1 import Increment
@@ -233,6 +248,26 @@ def auto_promote(db, event_id: str):
                 title=f"You're in! {ev.get('title', 'Event')}",
                 message="A spot opened up and you've been promoted from the waitlist!",
                 link=f"/event/{event_id}",
+            )
+        except Exception:
+            pass
+
+        # Send email notification
+        try:
+            from tasks.email_tasks import send_generic_email_task
+            send_generic_email_task.delay(
+                to_email=email,
+                subject=f"Great news! Your waitlist spot for {ev.get('title', 'Event')} is confirmed",
+                body=(
+                    f"Hi {name},\n\n"
+                    f"A seat has opened up and you've been promoted from the waitlist for "
+                    f"{ev.get('title', 'Event')}!\n\n"
+                    f"Your registration is now confirmed.\n"
+                    f"Registration ID: {reg_id}\n"
+                    f"Event Date: {ev.get('date', '')}\n"
+                    f"Venue: {ev.get('venue', 'SNPSU Campus')}\n\n"
+                    f"See you there!\n— SapthaEvent Team"
+                ),
             )
         except Exception:
             pass

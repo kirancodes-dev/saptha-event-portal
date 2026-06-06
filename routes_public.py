@@ -1,8 +1,44 @@
+import os
 import datetime
-from flask import Blueprint, render_template, jsonify, session
+from flask import Blueprint, render_template, jsonify, session, send_from_directory, current_app
 from models import db, FirebaseWrapper
 
 public_bp = Blueprint('public', __name__)
+
+
+# ─────────────────────────────────────────────────────────────
+# PWA: serve manifest & service worker with correct headers
+# ─────────────────────────────────────────────────────────────
+@public_bp.route('/manifest.webmanifest')
+def manifest():
+    """Serve PWA manifest with correct content-type (required by Chrome)."""
+    resp = send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'manifest.webmanifest'
+    )
+    resp.headers['Content-Type'] = 'application/manifest+json'
+    resp.headers['Cache-Control'] = 'public, max-age=86400'  # 1 day
+    return resp
+
+
+@public_bp.route('/sw.js')
+def service_worker():
+    """Serve service worker from root scope (must be at / not /static/)."""
+    resp = send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'sw.js'
+    )
+    resp.headers['Content-Type'] = 'application/javascript'
+    # SW must not be cached — browser must always fetch the latest
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
+
+
+@public_bp.route('/offline')
+def offline():
+    """PWA offline fallback page."""
+    return render_template('offline.html'), 200
 
 
 @public_bp.route('/')

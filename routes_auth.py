@@ -36,10 +36,11 @@ def login():
         return _redirect_by_role(session.get('role', ''))
 
     if request.method == 'POST':
-        role       = request.form.get('role', '').strip()
-        email      = request.form.get('email', '').lower().strip()
-        password   = request.form.get('password', '')
-        secret_key = request.form.get('secret_key', '').strip()
+        role        = request.form.get('role', '').strip()
+        email       = request.form.get('email', '').lower().strip()
+        password    = request.form.get('password', '')
+        secret_key  = request.form.get('secret_key', '').strip()
+        remember_me = request.form.get('remember_me') == 'on'  # checkbox
 
         # Normalise legacy DB value
         if role == 'Super Admin':
@@ -73,7 +74,7 @@ def login():
                         'created_at':          datetime.datetime.now().strftime("%Y-%m-%d"),
                         'needs_password_reset': False
                     })
-                    _set_session(email, 'System Super Admin', 'SuperAdmin', 'All')
+                    _set_session(email, 'System Super Admin', 'SuperAdmin', 'All', remember_me=remember_me)
                     flash("👑 Super Admin account initialised!", "success")
                     log_action(db, "SUPER_ADMIN_INIT", f"First-boot SuperAdmin created: {email}")
                     return redirect('/admin/dashboard')
@@ -112,7 +113,8 @@ def login():
             _set_session(email,
                          user_data.get('name'),
                          role,
-                         user_data.get('category', 'General'))
+                         user_data.get('category', 'General'),
+                         remember_me=remember_me)
 
             # Force password reset for auto-generated accounts
             if user_data.get('needs_password_reset'):
@@ -406,12 +408,28 @@ def diag_email():
 # =========================================================
 # INTERNAL HELPER
 # =========================================================
-def _set_session(email: str, name: str, role: str, category: str):
+def _set_session(email: str, name: str, role: str, category: str,
+                 remember_me: bool = True):
+    """
+    Stores user identity into the Flask session.
+
+    remember_me=True  → 30-day permanent session (PWA / app-like behaviour)
+    remember_me=False → 2-hour session (browser-only, no persistent cookie)
+    """
+    from datetime import timedelta
     session.permanent = True
-    session['user_id']  = email
-    session['name']     = name
-    session['role']     = role
-    session['category'] = category
+    if remember_me:
+        # 30 days — user stays logged in like a native app
+        current_app.permanent_session_lifetime = timedelta(days=30)
+    else:
+        # 2 hours — short session for shared/public device logins
+        current_app.permanent_session_lifetime = timedelta(hours=2)
+
+    session['user_id']      = email
+    session['name']         = name
+    session['role']         = role
+    session['category']     = category
+    session['remember_me']  = remember_me
 
 
 # =========================================================

@@ -129,18 +129,25 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
 
           <!-- ══ FOOTER ══ -->
           <tr>
-            <td style="background:#f5f7fc;border-top:2px solid #e2e8f0;padding:22px 32px;">
+            <td style="background:linear-gradient(180deg,#f5f7fc 0%,#eef0f5 100%);border-top:2px solid #e2e8f0;padding:24px 32px;">
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="text-align:center;">
-                    <img src="{logo_url}"
-                         alt="SNPSU"
-                         height="28"
-                         style="display:inline-block;height:28px;width:auto;opacity:0.55;margin-bottom:10px;background:transparent;">
+                    <!-- Logo on navy pill so white text is always visible -->
+                    <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px;">
+                      <tr>
+                        <td style="background:linear-gradient(135deg,#0c122b 0%,#1a2557 100%);border-radius:10px;padding:10px 22px;border-bottom:2px solid #c9a45e;">
+                          <img src="{logo_url}"
+                               alt="Sapthagiri NPS University"
+                               height="32"
+                               style="display:block;height:32px;width:auto;max-width:200px;border:none;outline:none;background:transparent;">
+                        </td>
+                      </tr>
+                    </table>
                     <p style="margin:0 0 4px;color:#64748b;font-size:12px;font-weight:700;letter-spacing:0.3px;">
                       SapthaEvent &nbsp;&bull;&nbsp; Sapthagiri NPS University
                     </p>
-                    <p style="margin:0 0 10px;color:#94a3b8;font-size:11px;">
+                    <p style="margin:0 0 12px;color:#94a3b8;font-size:11px;">
                       Autonomous event management platform
                     </p>
                     <p style="margin:0;font-size:11px;color:#b0bec5;">
@@ -154,6 +161,7 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
               </table>
             </td>
           </tr>
+
 
         </table>
         <!-- End of card -->

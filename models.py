@@ -42,6 +42,11 @@ else:
         if os.path.exists(key_path):
             cred = credentials.Certificate(key_path)
             firebase_admin.initialize_app(cred)
+        else:
+            try:
+                firebase_admin.initialize_app()
+            except Exception:
+                pass
     try:
         db = cast(Any, firestore.client())
     except Exception:

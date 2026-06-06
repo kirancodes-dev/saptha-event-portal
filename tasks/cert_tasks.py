@@ -30,7 +30,7 @@ def generate_and_send_certificate(self, reg_id: str, event_id: str,
     """
     try:
         from models import db
-        from utils_certificates import generate_certificate_pdf  # type: ignore
+        from utils_certificate import generate_certificate_pdf  # type: ignore
         from tasks.email_tasks import send_generic_email_task
 
         reg_doc = db.collection('registrations').document(reg_id).get()

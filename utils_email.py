@@ -66,31 +66,41 @@ def _from_address() -> str:
 
 
 def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
-    logo_url = os.environ.get(
-        'COLLEGE_LOGO_URL',
-        'https://snpsu.edu.in/wp-content/uploads/2024/03/Untitled-2-1-1536x527.png'
-    )
+    logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip()
+    if not logo_url:
+        logo_url = f"{_base_url().rstrip('/')}/static/snpsu-logo.png"
     return f"""
-    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;
-                background:#fff;border-radius:12px;overflow:hidden;
-                border:1px solid #e2e8f0;">
-      <div style="background:#1a2557;padding:28px 24px 20px;text-align:center;">
-        <img src="{logo_url}"
-             height="52" style="display:block;margin:0 auto 10px;max-width:240px;
-             background:#fff;padding:6px 12px;border-radius:6px;" alt="Sapthagiri NPS University">
-        <p style="color:#c9a227;font-size:12px;font-weight:700;margin:0 0 6px;
-                  letter-spacing:0.5px;text-transform:uppercase;">
-          Sapthagiri NPS University</p>
-        <h2 style="color:#fff;margin:0;font-size:18px;font-weight:700;">{title}</h2>
+    <div style="background-color:#faf6f0; padding:40px 10px; font-family:'Segoe UI',Arial,sans-serif; min-height:100%;">
+      <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e5e9f0; box-shadow:0 10px 30px rgba(26,37,87,0.05);">
+        
+        <!-- Premium Navy Gradient Header -->
+        <div style="background:linear-gradient(135deg, #0c122b 0%, #1a2557 100%); padding:32px 24px; text-align:center; border-bottom:3px solid #c9a45e;">
+          <img src="{logo_url}" height="52" style="display:block; margin:0 auto 12px; max-width:240px; background:#ffffff; padding:6px 16px; border-radius:8px;" alt="Sapthagiri NPS University">
+          <p style="color:#c9a45e; font-size:11px; font-weight:800; margin:0 0 6px; letter-spacing:1px; text-transform:uppercase;">
+            Sapthagiri NPS University
+          </p>
+          <h2 style="color:#ffffff; margin:0; font-size:20px; font-weight:700; letter-spacing:-0.5px;">{title}</h2>
+        </div>
+        
+        <!-- Content Area -->
+        <div style="padding:40px 35px; color:#334155; font-size:15px; line-height:1.65;">
+          {content}
+        </div>
+        
+        <!-- Footer -->
+        <div style="background:#f8fafc; padding:24px; text-align:center; border-top:1px solid #e2e8f0;">
+          <p style="color:#94a3b8; font-size:12px; margin:0 0 4px; font-weight:600;">
+            SapthaEvent Portal &middot; Sapthagiri NPS University
+          </p>
+          <p style="color:#cbd5e1; font-size:11px; margin:0;">
+            &copy; 2026 Sapthagiri NPS University. All rights reserved.
+          </p>
+        </div>
+        
       </div>
-      <div style="padding:28px;">{content}</div>
-      <div style="background:#f8fafc;padding:16px;text-align:center;
-                  border-top:1px solid #e2e8f0;">
-        <p style="color:#94a3b8;font-size:11px;margin:0;">
-          SapthaEvent Portal &middot; Sapthagiri NPS University
-        </p>
-      </div>
-    </div>"""
+    </div>
+    """
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -527,29 +537,86 @@ def send_broadcast_email(to_list: list, subject: str,
 def _send_cert_email(to_email: str, student_name: str,
                      event_title: str, cert_type: str,
                      rank: int, score: float,
-                     pdf_bytes: bytes) -> bool:
-    rank_labels = {1: '🥇 1st Place', 2: '🥈 2nd Place', 3: '🥉 3rd Place'}
+                     pdf_bytes: bytes, reg_id: str = None) -> bool:
+    rank_labels = {1: '🥇 1st Place Winner', 2: '🥈 2nd Place Winner', 3: '🥉 3rd Place Winner'}
     if cert_type == 'winner':
         subject  = f"🏆 Your Achievement Certificate — {event_title}"
-        headline = f"Congratulations! {rank_labels.get(rank, f'Rank {rank}')}"
-        body     = (f"Your Certificate of Achievement for "
-                    f"<strong>{event_title}</strong> is attached.<br>"
-                    f"<strong style='color:#1a2557;'>Score: {score}</strong>")
+        cert_label = rank_labels.get(rank, f"Rank {rank} Winner")
+        cert_color = "#d97706"  # gold/amber
     else:
         subject  = f"🎓 Your Participation Certificate — {event_title}"
-        headline = "Thank you for participating!"
-        body     = (f"Your Certificate of Participation for "
-                    f"<strong>{event_title}</strong> is attached.")
+        cert_label = "Participation"
+        cert_color = "#1d4ed8"  # blue
 
-    html  = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{student_name}</strong>,</p>
-        <p style="color:#475569;">{body}</p>
-        <ul style="color:#475569;font-size:13px;line-height:2.2;">
-          <li>Download and save the PDF</li>
-          <li>Share on <strong>LinkedIn</strong></li>
-          <li>Scan the QR code on the certificate to verify it</li>
-        </ul>
-    """, headline)
+    base = _base_url().rstrip('/')
+    verify_url = f"{base}/verify/{reg_id}" if reg_id else "#"
+
+    verified_block = ""
+    if reg_id:
+        verified_block = f"""
+        <!-- Verified Achievement Details -->
+        <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; overflow: hidden; margin: 24px 0;">
+          <div style="background-color: #1a2557; padding: 10px 16px; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">
+            Verified Achievement Details
+          </div>
+          <div style="padding: 16px; font-size: 13px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b; text-transform: uppercase; font-weight: 700; font-size: 12px;">Certificate Type</td>
+                <td style="padding: 6px 0; color: {cert_color}; font-weight: 700; text-align: right;">{cert_label}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b; text-transform: uppercase; font-weight: 700; font-size: 12px;">Certificate ID</td>
+                <td style="padding: 6px 0; font-family: monospace; color: #0f172a; font-weight: 700; text-align: right;">{reg_id}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        """
+
+    button_block = f"""
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{verify_url}" style="background-color: #1d4ed8; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);">
+        Claim Your Certificate
+      </a>
+    </div>
+    """
+
+    secure_note = ""
+    if reg_id:
+        secure_note = f"""
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 24px 0; font-size: 13px; color: #166534;">
+          <span style="background-color: #166534; color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-right: 8px; vertical-align: middle;">Secure</span>
+          <strong>Verify Your Certificate:</strong> This credential is cryptographically signed and can be verified via the link below:<br>
+          <a href="{verify_url}" style="color: #15803d; word-break: break-all; font-weight: 600; text-decoration: underline; display: block; margin-top: 8px;">{verify_url}</a>
+        </div>
+        """
+
+    content = f"""
+    <h3 style="color:#0f172a; font-size:20px; font-weight:700; margin-top:0; margin-bottom:16px;">Your Certificate Is Ready 🚀</h3>
+    <p style="margin-bottom: 20px;">
+      Thank you for participating in <strong>{event_title}</strong>. Your creativity, speed, and technical skills made the event truly unforgettable.
+    </p>
+    
+    <p style="font-size:18px; color:#1d4ed8; font-weight:700; margin: 24px 0;">
+      Congratulations, {student_name}!
+    </p>
+    
+    <p>
+      We're excited to officially award you a certificate for your participation in <strong>{event_title}</strong>. Your contribution and enthusiasm helped make this event an incredible experience.
+    </p>
+    
+    {verified_block}
+    {button_block}
+    {secure_note}
+    
+    <p style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 20px; color:#64748b;">
+      &mdash; <strong>Team SapthaEvent</strong><br>
+      <span style="font-size: 12px;">Sapthagiri NPS University</span>
+    </p>
+    """
+
+    html = _html_wrapper(content, f"Certificate Ready — {event_title}")
 
     safe  = event_title.replace(' ', '_')[:35]
     label = 'Achievement' if cert_type == 'winner' else 'Participation'
@@ -558,6 +625,7 @@ def _send_cert_email(to_email: str, student_name: str,
 
     atts = [{'filename': fname, 'name': fname, 'content': b64, 'data': pdf_bytes}]
     return _send(to_email, subject, html, atts)
+
 
 
 def send_room_assignment_email(to_email: str, name: str, event_title: str,

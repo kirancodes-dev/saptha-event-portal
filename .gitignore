@@ -33,3 +33,8 @@ flask_session/
 *.sqlite
 *.sqlite3
 *.db
+
+# Scratch & Local Env Configurations
+scratch/env-vars.yaml
+scratch/env-vars.yml
+

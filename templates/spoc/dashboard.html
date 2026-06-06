@@ -981,11 +981,88 @@ document.querySelectorAll('.reg-fill[data-fill]').forEach(function(el) {
   el.style.setProperty('--fill-w', el.dataset.fill + '%');
 });
 
-// ── END EVENT confirmation ─────────────────────────────────
+// ── END EVENT confirmation (Open custom modal) ──────────────
+const CERT_TEMPLATES = {
+  1: {
+    name: 'Classic Navy',
+    desc: 'Navy & orange themed standard design.',
+    primary: '#0d2d62',
+    accent: '#f37021'
+  },
+  2: {
+    name: 'Tech Blue',
+    desc: 'Dark slate & cyan themed tech design.',
+    primary: '#0f172a',
+    accent: '#06b6d4'
+  },
+  3: {
+    name: 'Cultural Gold',
+    desc: 'Maroon & amber gold themed cultural design.',
+    primary: '#7f1d1d',
+    accent: '#d97706'
+  },
+  4: {
+    name: 'Sports Green',
+    desc: 'Forest & emerald green sports design.',
+    primary: '#14532d',
+    accent: '#16a34a'
+  },
+  5: {
+    name: 'Management Purple',
+    desc: 'Deep purple & violet business design.',
+    primary: '#3b0764',
+    accent: '#7c3aed'
+  }
+};
+
+let currentTargetEventId = null;
+
 function confirmEndEvent(eventId, eventTitle) {
-  if (!confirm('End "' + eventTitle + '"?\n\nThis will mark the event as completed and send certificate emails to all checked-in attendees. This cannot be undone.')) return;
-  var form = document.getElementById('end-event-form');
-  form.action = '/spoc/end_event/' + eventId;
+  currentTargetEventId = eventId;
+  document.getElementById('modalEventTitle').textContent = eventTitle;
+  document.getElementById('previewEventTitle').textContent = eventTitle;
+  
+  document.getElementById('certSignatoryInput').value = "Dean of Student Affairs";
+  document.getElementById('certTemplateSelect').value = "1";
+  
+  updateCertPreview();
+  openModal('endEventModal');
+}
+
+function updateCertPreview() {
+  const tId = document.getElementById('certTemplateSelect').value;
+  const signatory = document.getElementById('certSignatoryInput').value.trim() || 'Dean of Student Affairs';
+  const theme = CERT_TEMPLATES[tId] || CERT_TEMPLATES[1];
+  
+  document.getElementById('certTemplateDesc').textContent = theme.desc;
+  document.getElementById('previewIssuedBy').textContent = signatory;
+  
+  const card = document.getElementById('certPreviewCard');
+  card.style.borderColor = theme.primary;
+  
+  const cornerTL = document.getElementById('certCornerTL');
+  cornerTL.style.background = `linear-gradient(135deg, ${theme.primary} 50%, transparent 50%)`;
+  
+  const cornerBR = document.getElementById('certCornerBR');
+  cornerBR.style.background = `linear-gradient(-45deg, ${theme.primary} 50%, transparent 50%)`;
+  
+  document.getElementById('previewCertType').style.color = theme.primary;
+  document.getElementById('previewEventTitle').style.color = theme.primary;
+}
+
+function submitEndEvent() {
+  if (!currentTargetEventId) return;
+  
+  const tId = document.getElementById('certTemplateSelect').value;
+  const signatory = document.getElementById('certSignatoryInput').value.trim() || 'Dean of Student Affairs';
+  
+  document.getElementById('end-event-template-id').value = tId;
+  document.getElementById('end-event-issued-by').value = signatory;
+  
+  const form = document.getElementById('end-event-form');
+  form.action = '/spoc/end_event/' + currentTargetEventId;
+  
+  closeModal('endEventModal');
   form.submit();
 }
 
@@ -1019,7 +1096,104 @@ function addRoomRow(eventId) {
 <!-- Hidden form for End Event POST -->
 <form id="end-event-form" method="POST" style="display:none;">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="template_id" id="end-event-template-id" value="1">
+  <input type="hidden" name="issued_by" id="end-event-issued-by" value="Dean of Student Affairs">
 </form>
+
+<!-- ── END EVENT / CERT SELECTOR MODAL ── -->
+<div id="endEventModal" class="spoc-modal" style="display:none;">
+  <div class="spoc-modal-box" style="max-width:750px;width:95%;padding:0;">
+    <!-- Header -->
+    <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;">
+        <i class="fas fa-flag-checkered me-2"></i>End Event &amp; Configure Certificates
+      </span>
+      <button type="button" onclick="closeModal('endEventModal')" style="background:transparent;border:none;color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>
+    </div>
+    
+    <!-- Body -->
+    <div style="padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px;color:#334155;">
+      <!-- Left side: Form options -->
+      <div style="display:flex;flex-direction:column;gap:18px;text-align:left;">
+        <div>
+          <h5 style="font-family:'Poppins',sans-serif;font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
+          <div style="font-weight:600;font-size:16px;color:#1e293b;" id="modalEventTitle">Event Title</div>
+        </div>
+        
+        <div>
+          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
+          <select id="certTemplateSelect" onchange="updateCertPreview()" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+            <option value="1">Classic Navy (Default SNPSU)</option>
+            <option value="2">Tech Blue (Hackathons)</option>
+            <option value="3">Cultural Gold (Arts &amp; Fests)</option>
+            <option value="4">Sports Green (Athletics)</option>
+            <option value="5">Management Purple (Business/Pitch)</option>
+          </select>
+          <div style="font-size:11px;color:#64748b;margin-top:5px;line-height:1.4;" id="certTemplateDesc">Navy &amp; orange themed standard design.</div>
+        </div>
+        
+        <div>
+          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
+          <input type="text" id="certSignatoryInput" oninput="updateCertPreview()" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+        </div>
+        
+        <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2e8f0;font-size:12px;color:#64748b;line-height:1.5;">
+          <i class="fas fa-info-circle me-1" style="color:var(--orange);"></i>
+          This action will mark the event as <strong>completed</strong>, award XP/badges, and bulk email PDF certificates to all checked-in attendees.
+        </div>
+      </div>
+      
+      <!-- Right side: Visual Live Preview -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
+        
+        <!-- CSS Cert Preview Card -->
+        <div id="certPreviewCard" style="width:100%;aspect-ratio:1.414/1;border:8px solid #0d2d62;background:#ffffff;border-radius:8px;padding:16px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-sizing:border-box;">
+          
+          <!-- Decorative Corners -->
+          <div id="certCornerTL" style="position:absolute;top:0;left:0;width:30px;height:30px;background:linear-gradient(135deg, #0d2d62 50%, transparent 50%);"></div>
+          <div id="certCornerBR" style="position:absolute;bottom:0;right:0;width:30px;height:30px;background:linear-gradient(-45deg, #0d2d62 50%, transparent 50%);"></div>
+          
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:0.5px solid #e2e8f0;padding-bottom:3px;">
+            <span style="font-size:7px;font-weight:700;color:#0d2d62;letter-spacing:0.3px;">SAPTHAGIRI NPS UNIVERSITY</span>
+            <span style="font-size:6px;color:#64748b;font-weight:500;">SapthaEvent Portal</span>
+          </div>
+          
+          <!-- Content -->
+          <div style="text-align:center;margin:6px 0;display:flex;flex-direction:column;gap:3px;">
+            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family:'Poppins',sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
+            <div style="font-size:6px;color:#64748b;font-style:italic;">This is to certify that</div>
+            <div style="font-size:11px;font-weight:700;color:#1e293b;border-bottom:1px solid #cbd5e1;width:fit-content;margin:0 auto;padding-bottom:1px;min-width:110px;line-height:1.2;">John Doe</div>
+            <div style="font-size:6px;color:#64748b;">has successfully participated in</div>
+            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family:'Poppins',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
+          </div>
+          
+          <!-- Footer -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+            <div style="text-align:left;display:flex;flex-direction:column;gap:1px;">
+              <span id="previewIssuedBy" style="font-size:7px;font-weight:700;color:#1e293b;border-bottom:0.5px solid #64748b;min-width:70px;padding-bottom:1px;display:block;white-space:nowrap;">Dean of Student Affairs</span>
+              <span style="font-size:5px;color:#64748b;">Authorized Signatory</span>
+            </div>
+            
+            <!-- Mock QR -->
+            <div style="width:20px;height:20px;border:0.5px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;border-radius:3px;">
+              <i class="fas fa-qrcode" style="font-size:12px;color:#1e293b;"></i>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="spoc-modal-ftr" style="border-top:1px solid #e2e8f0;padding:12px 20px;display:flex;justify-content:flex-end;gap:10px;background:#f8fafc;border-radius:0 0 12px 12px;">
+      <button type="button" class="action-btn" onclick="closeModal('endEventModal')" style="padding:10px 18px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;">Cancel</button>
+      <button type="button" class="action-btn" id="btnConfirmEndEvent" onclick="submitEndEvent()" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        <i class="fas fa-flag-checkered"></i> Confirm &amp; End Event
+      </button>
+    </div>
+  </div>
 
 <!-- Datalist for coordinator email autocomplete (shared across all event modals) -->
 <datalist id="coordSuggestions"></datalist>

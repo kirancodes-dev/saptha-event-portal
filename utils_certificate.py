@@ -511,13 +511,17 @@ def generate_and_send_all_certificates_with_templates(
         pos = event_doc_data.get('cert_name_pos', {})
         return pos.get('x', 50), pos.get('y', 42)
 
-    # Fetch event for name-position
+    # Fetch event for name-position and template settings
     x_pct, y_pct = 50, 42
+    issued_by = 'Dean of Student Affairs'
     if _db:
         try:
             ev = _db.collection('events').document(event_id).get()
             if ev.exists:
-                x_pct, y_pct = _name_pos(ev.to_dict())
+                ev_data = ev.to_dict()
+                x_pct, y_pct = _name_pos(ev_data)
+                template_id = int(ev_data.get('cert_template_id', template_id))
+                issued_by = ev_data.get('cert_issued_by', issued_by)
         except Exception:
             pass
 
@@ -545,7 +549,8 @@ def generate_and_send_all_certificates_with_templates(
                     student_name=name, event_title=event_title, reg_id=reg_id,
                     cert_type='winner', rank=idx, score=score,
                     event_date=event_date, base_url=base_url,
-                    college_name=college_name, template_id=template_id)
+                    college_name=college_name, template_id=template_id,
+                    issued_by=issued_by)
             ok = _send_cert_email(email, name, event_title, 'winner', idx, score, pdf)
             results['winner_sent' if ok else 'winner_failed'] += 1
         except Exception as exc:
@@ -573,7 +578,7 @@ def generate_and_send_all_certificates_with_templates(
                     student_name=name, event_title=event_title, reg_id=reg_id,
                     cert_type='participation', event_date=event_date,
                     base_url=base_url, college_name=college_name,
-                    template_id=template_id)
+                    template_id=template_id, issued_by=issued_by)
             ok = _send_cert_email(email, name, event_title, 'participation', 0, 0, pdf)
             results['participation_sent' if ok else 'participation_failed'] += 1
         except Exception as exc:

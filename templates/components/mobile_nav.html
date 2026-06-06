@@ -10,40 +10,245 @@
   </a>
   <a href="/participant/dashboard" class="mobile-nav-item" id="mn-tickets">
     <i class="fas fa-ticket-alt"></i>
-    <span>My Tickets</span>
+    <span>Tickets</span>
   </a>
   <a href="/notifications" class="mobile-nav-item" id="mn-notifs">
     <i class="fas fa-bell"></i>
     <span>Notifs</span>
-    <span class="position-absolute top-1 start-60 translate-middle badge rounded-pill bg-danger d-none" id="mobile-notif-badge">
-      0
-    </span>
+    <span class="position-absolute top-1 start-60 translate-middle badge rounded-pill bg-danger d-none" id="mobile-notif-badge">0</span>
   </a>
-  <a href="/profile" class="mobile-nav-item" id="mn-profile">
-    <i class="fas fa-user-circle"></i>
-    <span>Profile</span>
-  </a>
+  <!-- Install App button — always visible, triggers custom install flow -->
+  <button class="mobile-nav-item" id="mn-install-btn"
+          onclick="window.showPwaInstallModal()"
+          style="background:none; border:none; cursor:pointer;"
+          aria-label="Install App">
+    <i class="fas fa-download" style="color:#c9a45e;"></i>
+    <span style="color:#c9a45e; font-weight:700;">Install</span>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PWA INSTALL MODAL — handles Android + iOS
+══════════════════════════════════════════════════════════════ -->
+<div id="pwaInstallModal" style="
+    display:none; position:fixed; inset:0; z-index:100000;
+    background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);
+    align-items:flex-end; justify-content:center;"
+    onclick="if(event.target===this) window.closePwaModal()">
+
+  <div id="pwaModalSheet" style="
+      background:linear-gradient(160deg,#0c122b 0%,#1a2557 100%);
+      border-radius:24px 24px 0 0;
+      border-top:3px solid #c9a45e;
+      padding:28px 24px 40px;
+      width:100%; max-width:500px;
+      box-shadow:0 -8px 40px rgba(0,0,0,0.5);
+      transform:translateY(100%);
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);">
+
+    <!-- Drag handle -->
+    <div style="width:40px;height:4px;background:rgba(201,164,94,0.4);border-radius:2px;margin:0 auto 20px;"></div>
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+      <img src="/static/app-icon.png" width="52" height="52"
+           style="border-radius:13px;border:2px solid #c9a45e;" alt="SapthaEvent">
+      <div>
+        <h3 style="margin:0;color:#fff;font-size:18px;font-weight:800;line-height:1.2;">
+          Install SapthaEvent
+        </h3>
+        <p style="margin:0;color:#c9a45e;font-size:13px;">Add to your home screen</p>
+      </div>
+      <button onclick="window.closePwaModal()" style="
+          margin-left:auto; background:rgba(255,255,255,0.1);
+          border:none; border-radius:50%; width:34px; height:34px;
+          color:#fff; font-size:18px; cursor:pointer; line-height:1;
+          flex-shrink:0;">×</button>
+    </div>
+
+    <!-- Benefits -->
+    <div style="background:rgba(255,255,255,0.05);border-radius:14px;padding:14px 16px;margin-bottom:20px;">
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;">
+          <span style="color:#c9a45e;font-size:15px;">⚡</span>
+          Opens instantly — no browser bar, feels like a native app
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;">
+          <span style="color:#c9a45e;font-size:15px;">🔔</span>
+          Get push alerts for events and results
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;">
+          <span style="color:#c9a45e;font-size:15px;">🔐</span>
+          Stay logged in for 30 days — no re-entering credentials
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;">
+          <span style="color:#c9a45e;font-size:15px;">📶</span>
+          Works even with slow connection
+        </div>
+      </div>
+    </div>
+
+    <!-- Android install (shown when native prompt available) -->
+    <div id="pwaAndroidSection">
+      <button id="pwaAndroidInstallBtn" onclick="window.triggerNativeInstall()" style="
+          display:block; width:100%;
+          background:linear-gradient(135deg,#c9a45e,#a8843f);
+          color:#fff; border:none; border-radius:13px;
+          padding:15px; font-size:16px; font-weight:800;
+          cursor:pointer; letter-spacing:0.3px;
+          box-shadow:0 4px 16px rgba(201,164,94,0.4);">
+        <i class="fas fa-download me-2"></i>Install App Now
+      </button>
+    </div>
+
+    <!-- iOS instructions (always shown on iOS, shown as fallback on Android) -->
+    <div id="pwaIosSection" style="display:none;">
+      <p style="color:#94a3b8;font-size:12px;text-align:center;margin-bottom:14px;">
+        Follow these 3 quick steps:
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;">
+          <div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">1</div>
+          <div>
+            <p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap the Share button</p>
+            <p style="margin:0;color:#94a3b8;font-size:12px;">
+              <span id="iosShareHint">The <strong style="color:#c9a45e;">⬆ Share</strong> icon at the bottom of Safari</span>
+            </p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;">
+          <div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">2</div>
+          <div>
+            <p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Scroll down and tap</p>
+            <p style="margin:0;color:#94a3b8;font-size:12px;">
+              <strong style="color:#c9a45e;">"Add to Home Screen"</strong>
+            </p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;">
+          <div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">3</div>
+          <div>
+            <p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap <strong style="color:#c9a45e;">Add</strong> in the top right</p>
+            <p style="margin:0;color:#94a3b8;font-size:12px;">SapthaEvent icon appears on your home screen</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chrome Android fallback: 3-dot instructions -->
+      <div id="pwaChromeFallback" style="display:none;margin-top:14px;">
+        <p style="color:#94a3b8;font-size:12px;text-align:center;margin-bottom:10px;">Or on Chrome Android:</p>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;">
+          <div style="color:#c9a45e;font-size:20px;flex-shrink:0;">⋮</div>
+          <p style="margin:0;color:#e2e8f0;font-size:13px;">
+            Tap the <strong style="color:#c9a45e;">⋮ 3-dot menu</strong> → tap
+            <strong style="color:#c9a45e;">"Add to Home screen"</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:16px;margin-bottom:0;">
+      <button onclick="window.closePwaModal();localStorage.setItem('pwa_banner_dismissed','1');"
+              style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">
+        Not now
+      </button>
+    </p>
+  </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  var path = window.location.pathname;
-  var hash = window.location.hash;
-  
-  // Clean active states
-  var items = document.querySelectorAll('.mobile-nav-item');
-  items.forEach(function(el) { el.classList.remove('active'); });
+(function() {
+  var isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  var isAndroid = /Android/.test(navigator.userAgent);
+  var isChrome  = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
+  var isSafari  = /Safari/.test(navigator.userAgent) && !isChrome;
+  var isInstalled = window.matchMedia('(display-mode: standalone)').matches
+                 || window.navigator.standalone === true;
 
-  if (path === '/' && hash === '#events') {
-    document.getElementById('mn-events').classList.add('active');
-  } else if (path === '/') {
-    document.getElementById('mn-home').classList.add('active');
-  } else if (path.indexOf('/participant/dashboard') !== -1 || path.indexOf('/ticket') !== -1) {
-    document.getElementById('mn-tickets').classList.add('active');
-  } else if (path.indexOf('/notifications') !== -1) {
-    document.getElementById('mn-notifs').classList.add('active');
-  } else if (path.indexOf('/profile') !== -1) {
-    document.getElementById('mn-profile').classList.add('active');
+  // ── Hide the Install nav button if already installed ────
+  if (isInstalled) {
+    var btn = document.getElementById('mn-install-btn');
+    if (btn) btn.style.display = 'none';
   }
-});
+
+  // ── Modal open / close ────────────────────────────────────
+  window.showPwaInstallModal = function() {
+    var modal  = document.getElementById('pwaInstallModal');
+    var sheet  = document.getElementById('pwaModalSheet');
+    var androidSection = document.getElementById('pwaAndroidSection');
+    var iosSection     = document.getElementById('pwaIosSection');
+    var chromeFallback = document.getElementById('pwaChromeFallback');
+
+    // Decide which instructions to show
+    if (isIOS || isSafari) {
+      // iOS always needs manual steps
+      androidSection.style.display = 'none';
+      iosSection.style.display     = 'block';
+    } else if (window.__pwaPrompt) {
+      // Android Chrome with native prompt ready
+      androidSection.style.display = 'block';
+      iosSection.style.display     = 'none';
+    } else {
+      // No native prompt (might be late, might be Chrome with engagement not met)
+      androidSection.style.display = 'none';
+      iosSection.style.display     = 'block';
+      if (isAndroid) chromeFallback.style.display = 'block';
+    }
+
+    modal.style.display = 'flex';
+    // Animate in
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        sheet.style.transform = 'translateY(0)';
+      });
+    });
+  };
+
+  window.closePwaModal = function() {
+    var sheet = document.getElementById('pwaModalSheet');
+    var modal = document.getElementById('pwaInstallModal');
+    sheet.style.transform = 'translateY(100%)';
+    setTimeout(function() { modal.style.display = 'none'; }, 350);
+  };
+
+  window.triggerNativeInstall = async function() {
+    if (!window.__pwaPrompt) {
+      // Prompt gone — fall back to manual instructions
+      document.getElementById('pwaAndroidSection').style.display = 'none';
+      document.getElementById('pwaIosSection').style.display = 'block';
+      document.getElementById('pwaChromeFallback').style.display = 'block';
+      return;
+    }
+    window.__pwaPrompt.prompt();
+    var result = await window.__pwaPrompt.userChoice;
+    window.__pwaPrompt = null;
+    window.closePwaModal();
+    if (result.outcome === 'accepted') {
+      localStorage.setItem('pwa_banner_dismissed', '1');
+    }
+  };
+
+  // ── Capture the beforeinstallprompt event globally ────────
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    window.__pwaPrompt = e;
+    // Also update the Install button if modal is open
+    var androidSection = document.getElementById('pwaAndroidSection');
+    var iosSection     = document.getElementById('pwaIosSection');
+    if (androidSection && iosSection) {
+      androidSection.style.display = 'block';
+      iosSection.style.display     = 'none';
+    }
+  });
+
+  // ── Auto-show modal once after 3 page visits ──────────────
+  if (!isInstalled && localStorage.getItem('pwa_banner_dismissed') !== '1') {
+    var visits = parseInt(localStorage.getItem('pwa_visit_count') || '0', 10) + 1;
+    localStorage.setItem('pwa_visit_count', String(visits));
+    if (visits === 3) {
+      // Show on 3rd visit to avoid being annoying on first load
+      setTimeout(function() { window.showPwaInstallModal(); }, 3000);
+    }
+  }
+})();
 </script>

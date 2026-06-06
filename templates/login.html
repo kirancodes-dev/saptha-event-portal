@@ -160,51 +160,68 @@
             <!-- Footer -->
             <div class="text-center mt-4 pt-2 text-muted" style="font-size: 0.78rem;">
                 <p class="mb-0">Sapthagiri NPS University &copy; 2026</p>
-                <p class="mb-0 text-muted-opacity">SapthaEvent Portal &bull; Premium Experience</p>
+                <p class="mb-1 text-muted-opacity">SapthaEvent Portal &bull; Premium Experience</p>
+                <!-- Install App link — always visible -->
+                <button onclick="window.showPwaInstallModal ? window.showPwaInstallModal() : alert('Coming soon!');"
+                        style="background:none;border:none;cursor:pointer;color:#c9a45e;font-size:12px;font-weight:700;padding:2px 0;"
+                        id="loginInstallBtn">
+                    <i class="fas fa-download me-1"></i>Add to Home Screen
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- ══ PWA Install Banner ══ -->
-    <div id="pwaInstallBanner" style="
-        display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
-        background:linear-gradient(135deg,#0c122b 0%,#1a2557 100%);
-        border-top:3px solid #c9a45e;
-        padding:14px 20px; box-shadow:0 -4px 24px rgba(12,18,43,0.35);
-        animation: slideUp 0.4s ease;">
-        <div style="max-width:480px; margin:0 auto; display:flex; align-items:center; gap:14px;">
-            <img src="/static/app-icon.png" width="44" height="44"
-                 style="border-radius:10px; flex-shrink:0;" alt="SapthaEvent">
-            <div style="flex:1; min-width:0;">
-                <p style="margin:0; color:#fff; font-weight:700; font-size:14px; line-height:1.3;">
-                    Add SapthaEvent to Home Screen
-                </p>
-                <p style="margin:0; color:#c9a45e; font-size:12px;">
-                    Stay logged in · Get push alerts · Works offline
-                </p>
-            </div>
-            <button id="pwaInstallBtn" style="
-                background:linear-gradient(135deg,#c9a45e,#a8843f);
-                color:#fff; border:none; border-radius:8px;
-                padding:8px 16px; font-weight:700; font-size:13px;
-                cursor:pointer; white-space:nowrap; flex-shrink:0;">
-                Install App
-            </button>
-            <button onclick="document.getElementById('pwaInstallBanner').style.display='none';
-                             localStorage.setItem('pwa_banner_dismissed','1');"
-                    style="background:transparent; border:none; color:rgba(255,255,255,0.5);
-                           font-size:20px; cursor:pointer; line-height:1; flex-shrink:0;"
-                    aria-label="Dismiss">×</button>
+    <!-- ══ PWA Install Modal (same component as mobile_nav) ══ -->
+    <div id="pwaInstallModal" style="
+        display:none; position:fixed; inset:0; z-index:100000;
+        background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);
+        align-items:flex-end; justify-content:center;"
+        onclick="if(event.target===this) window.closePwaModal()">
+      <div id="pwaModalSheet" style="
+          background:linear-gradient(160deg,#0c122b 0%,#1a2557 100%);
+          border-radius:24px 24px 0 0; border-top:3px solid #c9a45e;
+          padding:28px 24px 40px; width:100%; max-width:500px;
+          box-shadow:0 -8px 40px rgba(0,0,0,0.5);
+          transform:translateY(100%);
+          transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);">
+        <div style="width:40px;height:4px;background:rgba(201,164,94,0.4);border-radius:2px;margin:0 auto 20px;"></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+          <img src="/static/app-icon.png" width="52" height="52" style="border-radius:13px;border:2px solid #c9a45e;" alt="SapthaEvent">
+          <div>
+            <h3 style="margin:0;color:#fff;font-size:18px;font-weight:800;">Install SapthaEvent</h3>
+            <p style="margin:0;color:#c9a45e;font-size:13px;">Add to your home screen</p>
+          </div>
+          <button onclick="window.closePwaModal()" style="margin-left:auto;background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:34px;height:34px;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;">×</button>
         </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:14px;padding:14px 16px;margin-bottom:20px;">
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;"><span style="color:#c9a45e;">⚡</span>Opens instantly — no browser bar, feels native</div>
+            <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;"><span style="color:#c9a45e;">🔐</span>Stay logged in for 30 days — no re-entering password</div>
+            <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;"><span style="color:#c9a45e;">🔔</span>Get push alerts for events and results</div>
+          </div>
+        </div>
+        <div id="pwaAndroidSection">
+          <button onclick="window.triggerNativeInstall()" style="display:block;width:100%;background:linear-gradient(135deg,#c9a45e,#a8843f);color:#fff;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;">
+            <i class="fas fa-download me-2"></i>Install App Now
+          </button>
+        </div>
+        <div id="pwaIosSection" style="display:none;">
+          <p style="color:#94a3b8;font-size:12px;text-align:center;margin-bottom:12px;">Follow these steps:</p>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;"><div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">1</div><div><p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap the Share button</p><p style="margin:0;color:#94a3b8;font-size:12px;">The <strong style="color:#c9a45e;">⬆ Share</strong> icon in Safari</p></div></div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;"><div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">2</div><div><p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap <strong style="color:#c9a45e;">"Add to Home Screen"</strong></p></div></div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;"><div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">3</div><div><p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap <strong style="color:#c9a45e;">Add</strong> — done!</p></div></div>
+          </div>
+          <div id="pwaChromeFallback" style="display:none;margin-top:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;">
+            <span style="color:#c9a45e;font-size:20px;">⋮</span>
+            <p style="margin:0;color:#e2e8f0;font-size:13px;">On Chrome: tap <strong style="color:#c9a45e;">⋮ menu</strong> → <strong style="color:#c9a45e;">Add to Home screen</strong></p>
+          </div>
+        </div>
+        <p style="text-align:center;margin-top:14px;margin-bottom:0;">
+          <button onclick="window.closePwaModal();localStorage.setItem('pwa_banner_dismissed','1');" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">Not now</button>
+        </p>
+      </div>
     </div>
-
-    <style>
-    @keyframes slideUp {
-        from { transform: translateY(100%); opacity: 0; }
-        to   { transform: translateY(0);   opacity: 1; }
-    }
-    </style>
-
 
     <script>
         // ── SKELETON LOADER ────
@@ -216,34 +233,61 @@
                 if(form) form.style.display = '';
             }, 250);
 
-            // ── PWA INSTALL PROMPT ────
-            let deferredPrompt;
-            const banner    = document.getElementById('pwaInstallBanner');
-            const installBtn = document.getElementById('pwaInstallBtn');
-            const dismissed = localStorage.getItem('pwa_banner_dismissed');
-            const installed = window.matchMedia('(display-mode: standalone)').matches;
+            // ── PWA modal logic (mirrors mobile_nav.html) ────
+            const isIOS      = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid  = /Android/.test(navigator.userAgent);
+            const isChrome   = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
+            const isSafari   = /Safari/.test(navigator.userAgent) && !isChrome;
+            const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+            window.showPwaInstallModal = function() {
+                const modal = document.getElementById('pwaInstallModal');
+                const sheet = document.getElementById('pwaModalSheet');
+                const androidSec = document.getElementById('pwaAndroidSection');
+                const iosSec     = document.getElementById('pwaIosSection');
+                const chromeFb   = document.getElementById('pwaChromeFallback');
+                if (isIOS || isSafari) {
+                    androidSec.style.display = 'none'; iosSec.style.display = 'block';
+                } else if (window.__pwaPrompt) {
+                    androidSec.style.display = 'block'; iosSec.style.display = 'none';
+                } else {
+                    androidSec.style.display = 'none'; iosSec.style.display = 'block';
+                    if (isAndroid && chromeFb) chromeFb.style.display = 'flex';
+                }
+                modal.style.display = 'flex';
+                requestAnimationFrame(() => requestAnimationFrame(() => { sheet.style.transform = 'translateY(0)'; }));
+            };
+            window.closePwaModal = function() {
+                const sheet = document.getElementById('pwaModalSheet');
+                const modal = document.getElementById('pwaInstallModal');
+                sheet.style.transform = 'translateY(100%)';
+                setTimeout(() => { modal.style.display = 'none'; }, 350);
+            };
+            window.triggerNativeInstall = async function() {
+                if (!window.__pwaPrompt) {
+                    document.getElementById('pwaAndroidSection').style.display = 'none';
+                    document.getElementById('pwaIosSection').style.display = 'block';
+                    const fb = document.getElementById('pwaChromeFallback');
+                    if (fb) fb.style.display = 'flex';
+                    return;
+                }
+                window.__pwaPrompt.prompt();
+                const { outcome } = await window.__pwaPrompt.userChoice;
+                window.__pwaPrompt = null;
+                window.closePwaModal();
+                if (outcome === 'accepted') localStorage.setItem('pwa_banner_dismissed','1');
+            };
 
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
-                deferredPrompt = e;
-                if (!dismissed && !installed) {
-                    setTimeout(() => { banner.style.display = 'block'; }, 2000);
-                }
+                window.__pwaPrompt = e;
             });
 
-            if (installBtn) {
-                installBtn.addEventListener('click', async () => {
-                    if (!deferredPrompt) return;
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    deferredPrompt = null;
-                    banner.style.display = 'none';
-                    if (outcome === 'accepted') {
-                        localStorage.setItem('pwa_banner_dismissed', '1');
-                    }
-                });
+            // Hide install button if already installed
+            if (isInstalled) {
+                const b = document.getElementById('loginInstallBtn');
+                if (b) b.style.display = 'none';
             }
-        });
 
         // ── PASSWORD TOGGLE ────
         function spTogglePw(id, btn) {

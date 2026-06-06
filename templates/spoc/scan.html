@@ -20,12 +20,23 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .back-btn{color:#94a3b8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;transition:.15s;}
 .back-btn:hover{color:#fff;}
 
-.counter-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px;}
+.counter-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px 8px;}
 .counter-card{background:#1e293b;border-radius:12px;padding:14px 16px;text-align:center;border:1px solid rgba(255,255,255,.07);}
 .counter-val{font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;line-height:1;}
 .counter-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-top:4px;}
 .cv-green{color:#22c55e;}
 .cv-blue{color:#60a5fa;}
+
+/* Progress Bar */
+.progress-container{padding:0 20px 16px;}
+.progress-wrap{height:8px;background:#1e293b;border-radius:100px;overflow:hidden;border:1px solid rgba(255,255,255,0.05);margin-top:6px;}
+.progress-bar-custom{height:100%;background:linear-gradient(90deg, #10b981, #22c55e);border-radius:100px;width:0%;transition:width 0.4s cubic-bezier(0.4, 0, 0.2, 1);}
+
+/* Custom Tabs */
+.tabs-container{padding:0 20px 16px;}
+.nav-tabs-custom{display:flex;background:#1e293b;border-radius:12px;padding:4px;border:1px solid rgba(255,255,255,0.06);}
+.tab-btn{flex:1;padding:10px;border:none;border-radius:8px;background:transparent;color:#94a3b8;font-size:13px;font-weight:600;font-family:'Poppins',sans-serif;transition:0.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tab-btn.active{background:#0f172a;color:#fff;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);}
 
 .scanner-wrap{padding:0 20px;margin-bottom:16px;}
 #qr-reader{border-radius:16px;overflow:hidden;background:#000;width:100%;aspect-ratio:1/1;position:relative;}
@@ -46,6 +57,28 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .start-btn:hover{background:#b8894a;}
 .stop-btn{display:none;width:100%;padding:14px;background:#1e293b;color:#94a3b8;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;transition:.15s;}
 .stop-btn:hover{background:#334155;color:#fff;}
+
+/* Manual check-in section */
+.search-wrap{padding:0 20px 12px;}
+.search-box-custom{background:#1e293b;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:2px 14px;display:flex;align-items:center;gap:10px;}
+.search-box-custom input{flex:1;background:transparent;border:none;color:#fff;padding:12px 0;font-size:13px;outline:none;}
+.search-box-custom i{color:#64748b;font-size:14px;}
+
+.filter-pills-wrap{padding:0 20px 16px;display:flex;gap:8px;overflow-x:auto;}
+.filter-pill{background:#1e293b;border:1px solid rgba(255,255,255,0.06);border-radius:100px;padding:6px 14px;color:#94a3b8;font-size:12px;font-weight:500;cursor:pointer;transition:0.15s;}
+.filter-pill:hover{color:#fff;background:#334155;}
+.filter-pill.active{background:var(--orange);color:#fff;border-color:transparent;}
+
+.manual-list{padding:0 20px 20px;display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
+.manual-item{background:#1e293b;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;transition:0.15s;}
+.manual-item:hover{border-color:rgba(255,255,255,0.12);background:#223047;}
+.manual-name{font-weight:600;font-size:13.5px;color:#f8fafc;}
+.manual-sub{font-size:11.5px;color:#64748b;margin-top:2px;}
+.manual-btn{background:#22c55e;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:0.12s;display:flex;align-items:center;gap:4px;}
+.manual-btn:hover{background:#16a34a;}
+.manual-status{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.status-present{color:#22c55e;}
+.status-absent{color:#64748b;}
 
 .result-panel{margin:12px 20px;padding:16px 20px;border-radius:14px;display:none;animation:fadeIn .25s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -79,7 +112,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <div class="topbar">
   <a href="/spoc/dashboard" class="back-btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
   <div class="text-end">
-    <div class="topbar-title">QR Scanner</div>
+    <div class="topbar-title">QR Scanner & Check-in</div>
     <div class="topbar-sub">{{ event.title }}</div>
   </div>
 </div>
@@ -96,44 +129,93 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   </div>
 </div>
 
-<!-- SCANNER -->
-{% if not scanning_open %}
-<div style="text-align:center;padding:40px 20px 20px;">
-  <div style="font-size:56px;">🔒</div>
-  <h4 style="font-family:'Poppins',sans-serif;font-weight:700;color:#fbbf24;margin-top:12px;">Scanner Locked</h4>
-  <p style="color:#64748b;font-size:14px;margin-top:8px;">
-    Scanning opens on <strong style="color:#e2e8f0;">{{ event_date }}</strong>.
-    {% if today < event_date %}Come back on the event day.{% else %}This event has already passed.{% endif %}
-  </p>
-  <a href="/spoc/dashboard" style="display:inline-block;margin-top:20px;padding:10px 24px;background:#1e293b;color:#94a3b8;border-radius:10px;text-decoration:none;font-size:13px;border:1px solid rgba(255,255,255,.1);">
-    ← Back to Dashboard
-  </a>
+<!-- CHECK-IN PROGRESS BAR -->
+<div class="progress-container">
+  <div class="d-flex justify-content-between align-items-center" style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+    <span>Check-in Progress</span>
+    <span id="progressText">0%</span>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar-custom" id="progressBar"></div>
+  </div>
 </div>
-{% else %}
-<div class="scanner-wrap">
-  <div id="qr-reader" style="display:none;">
-    <div class="scan-overlay">
-      <div class="scan-frame"></div>
-      <div class="scan-line"></div>
+
+<!-- TABS -->
+<div class="tabs-container">
+  <div class="nav-tabs-custom">
+    <button class="tab-btn active" id="btnTabScan" onclick="setTab('scan')">
+      <i class="fas fa-qrcode"></i> QR Scan
+    </button>
+    <button class="tab-btn" id="btnTabManual" onclick="setTab('manual')">
+      <i class="fas fa-list-ul"></i> Manual List
+    </button>
+  </div>
+</div>
+
+<!-- SCANNER TAB VIEW -->
+<div id="scanView">
+  {% if not scanning_open %}
+  <div style="text-align:center;padding:40px 20px 20px;">
+    <div style="font-size:56px;">🔒</div>
+    <h4 style="font-family:'Poppins',sans-serif;font-weight:700;color:#fbbf24;margin-top:12px;">Scanner Locked</h4>
+    <p style="color:#64748b;font-size:14px;margin-top:8px;">
+      Scanning opens on <strong style="color:#e2e8f0;">{{ event_date }}</strong>.
+      {% if today < event_date %}Come back on the event day.{% else %}This event has already passed.{% endif %}
+    </p>
+    <a href="/spoc/dashboard" style="display:inline-block;margin-top:20px;padding:10px 24px;background:#1e293b;color:#94a3b8;border-radius:10px;text-decoration:none;font-size:13px;border:1px solid rgba(255,255,255,.1);">
+      ← Back to Dashboard
+    </a>
+  </div>
+  {% else %}
+  <div class="scanner-wrap">
+    <div id="qr-reader" style="display:none;">
+      <div class="scan-overlay">
+        <div class="scan-frame"></div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <div id="placeholder" style="aspect-ratio:1/1;background:#1e293b;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:2px dashed rgba(255,255,255,.08);">
+      <i class="fas fa-qrcode" style="font-size:48px;color:#334155;"></i>
+      <span style="color:#475569;font-size:13px;">Camera inactive</span>
     </div>
   </div>
-  <div id="placeholder" style="aspect-ratio:1/1;background:#1e293b;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:2px dashed rgba(255,255,255,.08);">
-    <i class="fas fa-qrcode" style="font-size:48px;color:#334155;"></i>
-    <span style="color:#475569;font-size:13px;">Camera inactive</span>
+
+  <!-- CONTROLS -->
+  <div class="px-4 d-flex flex-column gap-2 mb-3">
+    <button class="start-btn" id="startBtn" onclick="startScanner()">
+      <i class="fas fa-camera me-2"></i>Start Camera
+    </button>
+    <button class="stop-btn" id="stopBtn" onclick="stopScanner()">
+      <i class="fas fa-stop me-2"></i>Stop Camera
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- MANUAL CHECK-IN TAB VIEW -->
+<div id="manualView" style="display:none;">
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <div class="search-box-custom">
+      <i class="fas fa-search"></i>
+      <input type="text" id="searchInput" placeholder="Search by name, email, or team..." oninput="onSearchChange()">
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filter-pills-wrap">
+    <button class="filter-pill active" id="pillAll" onclick="setFilter('all')">All</button>
+    <button class="filter-pill" id="pillAbsent" onclick="setFilter('absent')">Absent</button>
+    <button class="filter-pill" id="pillPresent" onclick="setFilter('present')">Checked In</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="manual-list" id="manualList">
+    <!-- Rendered dynamically -->
   </div>
 </div>
 
-<!-- CONTROLS -->
-<div class="px-4 d-flex flex-column gap-2 mb-3">
-  <button class="start-btn" id="startBtn" onclick="startScanner()">
-    <i class="fas fa-camera me-2"></i>Start Camera
-  </button>
-  <button class="stop-btn" id="stopBtn" onclick="stopScanner()">
-    <i class="fas fa-stop me-2"></i>Stop Camera
-  </button>
-</div>
-
-<!-- RESULT -->
+<!-- RESULT PANEL -->
 <div class="result-panel" id="resultPanel">
   <div class="rp-icon" id="rpIcon"></div>
   <div class="rp-status" id="rpStatus"></div>
@@ -141,8 +223,6 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   <div class="rp-name" id="rpName"></div>
   <div class="rp-time" id="rpTime"></div>
 </div>
-
-{% endif %}
 
 <!-- LOG -->
 <div class="log-section">
@@ -154,77 +234,205 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-const EVENT_ID    = {{ event_id | tojson }};
-const CSRF_TOKEN  = document.querySelector('meta[name="csrf-token"]')?.content || '';
-let scanner       = null;
-let scanning      = false;
-let cooldown      = false;
-let presentCount  = {{ present_count }};
-let audioCtx      = null;
+const EVENT_ID        = {{ event_id | tojson }};
+const CSRF_TOKEN      = document.querySelector('meta[name="csrf-token"]')?.content || '';
+const registrations   = {{ registrations | tojson }};
+let scanner           = null;
+let scanning          = false;
+let cooldown          = false;
+let presentCount      = {{ present_count }};
+let totalCount        = {{ total_count }};
+let audioCtx          = null;
+let currentTab        = 'scan';
+let searchFilter      = '';
+let statusFilter      = 'all';
+let resultTimeout     = null;
+
+function setTab(tab) {
+  currentTab = tab;
+  document.getElementById('btnTabScan').classList.toggle('active', tab === 'scan');
+  document.getElementById('btnTabManual').classList.toggle('active', tab === 'manual');
+  
+  document.getElementById('scanView').style.display = tab === 'scan' ? 'block' : 'none';
+  document.getElementById('manualView').style.display = tab === 'manual' ? 'block' : 'none';
+  
+  if (tab === 'manual') {
+    renderManualList();
+  }
+}
+
+function updateProgress() {
+  const pct = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+  document.getElementById('progressText').textContent = pct + '%';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function onSearchChange() {
+  searchFilter = document.getElementById('searchInput').value.toLowerCase().strip ? 
+    document.getElementById('searchInput').value.toLowerCase().trim() : 
+    document.getElementById('searchInput').value.toLowerCase();
+  renderManualList();
+}
+
+function setFilter(filter) {
+  statusFilter = filter;
+  document.getElementById('pillAll').classList.toggle('active', filter === 'all');
+  document.getElementById('pillAbsent').classList.toggle('active', filter === 'absent');
+  document.getElementById('pillPresent').classList.toggle('active', filter === 'present');
+  renderManualList();
+}
+
+function renderManualList() {
+  const container = document.getElementById('manualList');
+  container.innerHTML = '';
+  
+  const filtered = registrations.filter(r => {
+    // 1. Search Query filter
+    const matchesSearch = !searchFilter || 
+      r.lead_name.toLowerCase().includes(searchFilter) || 
+      r.lead_email.toLowerCase().includes(searchFilter) || 
+      r.team_name.toLowerCase().includes(searchFilter);
+      
+    // 2. Attendance Status filter
+    let matchesStatus = true;
+    if (statusFilter === 'present') {
+      matchesStatus = r.attendance === 'Present';
+    } else if (statusFilter === 'absent') {
+      matchesStatus = r.attendance !== 'Present';
+    }
+    
+    return matchesSearch && matchesStatus;
+  });
+  
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="color:#334155;font-size:13px;text-align:center;padding:24px;">No participants found</div>';
+    return;
+  }
+  
+  filtered.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'manual-item';
+    
+    const nameStr = r.lead_name + (r.team_name ? ` · <span style="color:var(--orange);">${r.team_name}</span>` : '');
+    const subStr = r.lead_email;
+    
+    let actionHtml = '';
+    if (r.attendance === 'Present') {
+      actionHtml = `<span class="manual-status status-present"><i class="fas fa-check-circle"></i> Checked In</span>`;
+    } else {
+      actionHtml = `<button class="manual-btn" id="btn-${r.id}" onclick="manualCheckIn('${r.id}')"><i class="fas fa-user-check"></i> Check In</button>`;
+    }
+    
+    item.innerHTML = `
+      <div>
+        <div class="manual-name">${nameStr}</div>
+        <div class="manual-sub">${subStr}</div>
+      </div>
+      <div>
+        ${actionHtml}
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+async function manualCheckIn(regId) {
+  const item = registrations.find(r => r.id === regId);
+  if (!item) return;
+  
+  const btn = document.getElementById(`btn-${regId}`);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
+  
+  try {
+    const resp = await fetch(`/spoc/api/checkin/${EVENT_ID}/${regId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN,
+      },
+    });
+    const data = await resp.json();
+    showResult(data.status, data);
+    addLog(data.status, data);
+    
+    if (data.status === 'success') {
+      item.attendance = 'Present';
+      item.checkin_time = data.checkin_time || new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      presentCount++;
+      document.getElementById('presentCount').textContent = presentCount;
+      updateProgress();
+    }
+  } catch (err) {
+    showResult('invalid', { message: 'Network error — try again' });
+  } finally {
+    renderManualList();
+  }
+}
 
 function playScanSound(type) {
-    try {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        const now = audioCtx.currentTime;
-        
-        if (type === 'success') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(587.33, now); // D5
-            osc.frequency.setValueAtTime(880, now + 0.1); // A5
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-            osc.start(now);
-            osc.stop(now + 0.35);
-            
-            if (navigator.vibrate) {
-                navigator.vibrate([80, 50, 80]);
-            }
-        } else if (type === 'warning' || type === 'already_in') {
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(440, now); // A4
-            osc.frequency.setValueAtTime(349.23, now + 0.15); // F4
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-            osc.start(now);
-            osc.stop(now + 0.4);
-            
-            if (navigator.vibrate) {
-                navigator.vibrate(200);
-            }
-        } else {
-            // Low buzzer error
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(150, now);
-            osc.frequency.linearRampToValueAtTime(100, now + 0.3);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-            osc.start(now);
-            osc.stop(now + 0.35);
-            
-            if (navigator.vibrate) {
-                navigator.vibrate([300, 100, 300]);
-            }
-        }
-    } catch (e) {
-        console.warn("Web Audio API blocked or not supported: ", e);
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    const now = audioCtx.currentTime;
+    
+    if (type === 'success') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880, now + 0.1); // A5
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+      
+      if (navigator.vibrate) {
+        navigator.vibrate([80, 50, 80]);
+      }
+    } else if (type === 'warning' || type === 'already_in') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, now); // A4
+      osc.frequency.setValueAtTime(349.23, now + 0.15); // F4
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+      
+      if (navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+    } else {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+      
+      if (navigator.vibrate) {
+        navigator.vibrate([300, 100, 300]);
+      }
+    }
+  } catch (e) {
+    console.warn("Web Audio API blocked or not supported: ", e);
+  }
 }
 
 async function onQRDetected(decoded) {
   if (cooldown) return;
 
-  // Extract reg_id from URL pattern /ticket/verify/<reg_id>
   const match = decoded.match(/\/ticket\/verify\/([^/?#]+)/);
   if (!match) {
     showResult('invalid', null);
@@ -245,9 +453,27 @@ async function onQRDetected(decoded) {
     const data = await resp.json();
     showResult(data.status, data);
     addLog(data.status, data);
+    
     if (data.status === 'success') {
+      // Find and update item locally if it exists
+      const item = registrations.find(r => r.id === regId);
+      if (item) {
+        item.attendance = 'Present';
+        item.checkin_time = data.checkin_time;
+      } else {
+        // Fallback: push dynamic new attendee if not in list
+        registrations.push({
+          id: regId,
+          lead_name: data.name || 'Unknown',
+          lead_email: '',
+          team_name: data.team || '',
+          attendance: 'Present',
+          checkin_time: data.checkin_time
+        });
+      }
       presentCount++;
       document.getElementById('presentCount').textContent = presentCount;
+      updateProgress();
     }
   } catch (err) {
     showResult('invalid', { message: 'Network error — try again' });
@@ -262,6 +488,8 @@ function showResult(status, data) {
   const detail = document.getElementById('rpDetail');
   const name   = document.getElementById('rpName');
   const time   = document.getElementById('rpTime');
+
+  if (resultTimeout) clearTimeout(resultTimeout);
 
   panel.className = 'result-panel';
   icon.textContent = '';
@@ -290,7 +518,7 @@ function showResult(status, data) {
   }
 
   panel.style.display = 'block';
-  setTimeout(() => { panel.style.display = 'none'; }, 4000);
+  resultTimeout = setTimeout(() => { panel.style.display = 'none'; }, 4000);
 }
 
 function addLog(status, data) {
@@ -329,7 +557,7 @@ function startScanner() {
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
     onQRDetected,
-    () => {}   // ignore decode errors silently
+    () => {}
   ).catch(err => {
     console.error('Camera error:', err);
     alert('Could not access camera. Please allow camera permission and try again.');
@@ -351,6 +579,9 @@ function stopScanner() {
   document.getElementById('startBtn').style.display    = 'block';
   document.getElementById('stopBtn').style.display     = 'none';
 }
+
+// Initial stats progress bar load
+updateProgress();
 </script>
 </body>
 </html>

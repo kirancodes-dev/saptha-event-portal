@@ -285,17 +285,22 @@ def scan_page(event_id):
     if event.get('spoc_id') != session.get('user_id'):
         flash("You are not authorised to scan for this event.", "danger")
         return redirect('/spoc/dashboard')
-    present_count = len(list(
-        db.collection('registrations')
-          .where('event_id', '==', event_id)
-          .where('attendance', '==', 'Present')
-          .stream()
-    ))
-    total_count = len(list(
-        db.collection('registrations')
-          .where('event_id', '==', event_id)
-          .stream()
-    ))
+
+    regs_query = db.collection('registrations').where('event_id', '==', event_id).stream()
+    registrations = []
+    for r in regs_query:
+        d = r.to_dict()
+        registrations.append({
+            'id': r.id,
+            'lead_name': d.get('lead_name', ''),
+            'lead_email': d.get('lead_email', ''),
+            'team_name': d.get('team_name', ''),
+            'attendance': d.get('attendance', 'Absent'),
+            'checkin_time': d.get('checkin_time', '')
+        })
+
+    total_count = len(registrations)
+    present_count = sum(1 for r in registrations if r.get('attendance') == 'Present')
     today_str      = datetime.datetime.now().strftime('%Y-%m-%d')
     event_date_str = str(event.get('date', ''))[:10]
     return render_template(
@@ -307,6 +312,7 @@ def scan_page(event_id):
         event_date=event_date_str,
         today=today_str,
         scanning_open=(event_date_str == today_str),
+        registrations=registrations,
     )
 
 
@@ -373,9 +379,18 @@ def api_checkin(event_id, reg_id):
 @role_required('ClubSPOC')
 def end_event(event_id):
     try:
+        template_id = request.form.get('template_id', 1)
+        try:
+            template_id = int(template_id)
+        except ValueError:
+            template_id = 1
+        issued_by = request.form.get('issued_by', '').strip() or 'Dean of Student Affairs'
+
         db.collection('events').document(event_id).update({
             'status': 'completed',
             'ended_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'cert_template_id': template_id,
+            'cert_issued_by': issued_by,
         })
         # Use template-aware cert task if available; fall back to Celery task
         try:
@@ -403,6 +418,7 @@ def end_event(event_id):
                 event_id=event_id,
                 event_date=str(ev.get('date', '')),
                 base_url=os.environ.get('BASE_URL', ''),
+                template_id=template_id,
             )
         _award_achievements(event_id)
         flash("Event ended. Certificates sent, achievements awarded!", "success")

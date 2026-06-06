@@ -69,37 +69,112 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
     logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip()
     if not logo_url:
         logo_url = f"{_base_url().rstrip('/')}/static/snpsu-logo.png"
-    return f"""
-    <div style="background-color:#faf6f0; padding:40px 10px; font-family:'Segoe UI',Arial,sans-serif; min-height:100%;">
-      <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e5e9f0; box-shadow:0 10px 30px rgba(26,37,87,0.05);">
-        
-        <!-- Premium Navy Gradient Header -->
-        <div style="background:linear-gradient(135deg, #0c122b 0%, #1a2557 100%); padding:32px 24px; text-align:center; border-bottom:3px solid #c9a45e;">
-          <img src="{logo_url}" height="52" style="display:block; margin:0 auto 12px; max-width:240px; background:#ffffff; padding:6px 16px; border-radius:8px;" alt="Sapthagiri NPS University">
-          <p style="color:#c9a45e; font-size:11px; font-weight:800; margin:0 0 6px; letter-spacing:1px; text-transform:uppercase;">
-            Sapthagiri NPS University
-          </p>
-          <h2 style="color:#ffffff; margin:0; font-size:20px; font-weight:700; letter-spacing:-0.5px;">{title}</h2>
-        </div>
-        
-        <!-- Content Area -->
-        <div style="padding:40px 35px; color:#334155; font-size:15px; line-height:1.65;">
-          {content}
-        </div>
-        
-        <!-- Footer -->
-        <div style="background:#f8fafc; padding:24px; text-align:center; border-top:1px solid #e2e8f0;">
-          <p style="color:#94a3b8; font-size:12px; margin:0 0 4px; font-weight:600;">
-            SapthaEvent Portal &middot; Sapthagiri NPS University
-          </p>
-          <p style="color:#cbd5e1; font-size:11px; margin:0;">
-            &copy; 2026 Sapthagiri NPS University. All rights reserved.
-          </p>
-        </div>
-        
-      </div>
-    </div>
-    """
+    base = _base_url().rstrip('/')
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title} | SapthaEvent</title>
+</head>
+<body style="margin:0;padding:0;background-color:#eef0f5;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+
+  <!-- Outer wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef0f5;padding:40px 12px;">
+    <tr>
+      <td align="center">
+        <!-- Email card -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 40px rgba(12,18,43,0.13);border:1px solid #dde3ef;">
+
+          <!-- ══ HEADER — matches home-page nav exactly ══ -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0c122b 0%,#1a2557 55%,#243070 100%);padding:0;">
+              <!-- Gold accent bar on top (like .topnav border-bottom) -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="height:4px;background:linear-gradient(90deg,#c9a45e,#e8c97a,#c9a45e);font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td style="padding:28px 32px 26px;text-align:center;">
+                    <!-- University logo — white text transparent background, shows on navy -->
+                    <img src="{logo_url}"
+                         alt="Sapthagiri NPS University"
+                         width="220"
+                         style="display:block;margin:0 auto 14px;height:56px;width:auto;max-width:220px;border:none;outline:none;text-decoration:none;background:transparent;">
+                    <!-- Gold divider line -->
+                    <div style="width:48px;height:2px;background:linear-gradient(90deg,transparent,#c9a45e,transparent);margin:0 auto 14px;"></div>
+                    <!-- SapthaEvent badge — like the nav brand text -->
+                    <p style="margin:0 0 6px;color:#c9a45e;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+                      SapthaEvent Portal
+                    </p>
+                    <h1 style="margin:0;color:#ffffff;font-size:19px;font-weight:700;letter-spacing:-0.3px;line-height:1.3;">
+                      {title}
+                    </h1>
+                  </td>
+                </tr>
+                <!-- Bottom gold border — replaces border-bottom from .topnav -->
+                <tr>
+                  <td style="height:3px;background:linear-gradient(90deg,#c9a45e,#e8c97a,#c9a45e);font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ══ BODY CONTENT ══ -->
+          <tr>
+            <td style="padding:36px 36px 28px;color:#334155;font-size:15px;line-height:1.7;">
+              {content}
+            </td>
+          </tr>
+
+          <!-- ══ FOOTER ══ -->
+          <tr>
+            <td style="background:#f5f7fc;border-top:2px solid #e2e8f0;padding:22px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="text-align:center;">
+                    <img src="{logo_url}"
+                         alt="SNPSU"
+                         height="28"
+                         style="display:inline-block;height:28px;width:auto;opacity:0.55;margin-bottom:10px;background:transparent;">
+                    <p style="margin:0 0 4px;color:#64748b;font-size:12px;font-weight:700;letter-spacing:0.3px;">
+                      SapthaEvent &nbsp;&bull;&nbsp; Sapthagiri NPS University
+                    </p>
+                    <p style="margin:0 0 10px;color:#94a3b8;font-size:11px;">
+                      Autonomous event management platform
+                    </p>
+                    <p style="margin:0;font-size:11px;color:#b0bec5;">
+                      &copy; 2026 Sapthagiri NPS University. All rights reserved.<br>
+                      <a href="{base}" style="color:#c9a45e;text-decoration:none;font-weight:600;">Visit Portal</a>
+                      &nbsp;&bull;&nbsp;
+                      <a href="{base}/login" style="color:#c9a45e;text-decoration:none;font-weight:600;">Login</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        <!-- End of card -->
+
+        <!-- Anti-spam friendly note below card -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;margin-top:16px;">
+          <tr>
+            <td style="text-align:center;color:#9baab8;font-size:11px;padding:0 12px;">
+              You received this email because of your association with SapthaEvent portal.<br>
+              Please do not reply directly to this automated email.
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>"""
+
 
 
 

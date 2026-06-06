@@ -200,7 +200,7 @@ if not firebase_admin._apps:
             logger.error("FIREBASE_CREDENTIALS parse error: %s", exc)
             raise
     else:
-        # Development: Try local file, skip if not available
+        # Try local file, fall back to Application Default Credentials on GCP/Cloud Run, skip if not available
         key_path = 'serviceAccountKey.json'
         if os.path.exists(key_path):
             try:
@@ -211,15 +211,18 @@ if not firebase_admin._apps:
                 logger.error("Firebase: Failed to initialize with %s: %s", key_path, exc)
                 raise
         else:
-            if os.environ.get('ENVIRONMENT') == 'production':
-                logger.critical("ERROR: FIREBASE_CREDENTIALS env var not set in production!")
-                raise EnvironmentError(
-                    "FIREBASE_CREDENTIALS environment variable is required in production. "
-                    "Set it in Railway Variables with your Firebase service account JSON."
-                )
-            else:
-                logger.warning("Firebase: serviceAccountKey.json not found - running in dev mode without Firebase")
-                # For development without Firebase, you can disable it or use mock credentials
+            try:
+                firebase_admin.initialize_app()
+                logger.info("Firebase: Initialized with Application Default Credentials (GCP/Cloud Run)")
+            except Exception as exc:
+                if os.environ.get('ENVIRONMENT') == 'production':
+                    logger.critical("ERROR: FIREBASE_CREDENTIALS env var not set in production!")
+                    raise EnvironmentError(
+                        "FIREBASE_CREDENTIALS environment variable is required in production. "
+                        "Set it in Railway Variables with your Firebase service account JSON."
+                    )
+                else:
+                    logger.warning("Firebase: serviceAccountKey.json not found and ADC initialization failed: %s - running in dev mode without Firebase", exc)
 
 # Initialize database client (reusing resolution logic in models)
 from models import db

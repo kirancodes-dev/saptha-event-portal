@@ -2515,16 +2515,19 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
 /* ──────────────────────────────────────────────────────────────────────────
    14. RESPONSIVE TOPBAR NAVIGATION FOR MOBILE DEVICES (ALL PORTALS)
    ────────────────────────────────────────────────────────────────────────── */
+/* Premium deep navy-to-dark gradient with gold bottom accent line for ALL devices */
+.topnav, nav.topnav, div.topnav {
+    background: linear-gradient(135deg, #0c122b 0%, #1a2557 100%) !important;
+    border-bottom: 2px solid #c9a45e !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+}
+
 @media (max-width: 768px) {
-    /* Premium deep navy-to-dark gradient with gold bottom accent line */
     .topnav, nav.topnav, div.topnav {
         height: 60px !important;
         min-height: 60px !important;
         padding: 0 16px !important;
         flex-wrap: nowrap !important;
-        background: linear-gradient(135deg, #0c122b 0%, #1a2557 100%) !important;
-        border-bottom: 2px solid #c9a45e !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;

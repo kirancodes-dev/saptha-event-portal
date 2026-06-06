@@ -1,265 +1,638 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificate Verification | SapthaEvent</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        :root {
-            --bg-dark: #0f172a;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary: #3b82f6;
-            --accent: #10b981;
-            --accent-fail: #ef4444;
-            --gold: #f59e0b;
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
-            color: #f8fafc;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-image: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
-                              radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.12) 0%, transparent 40%);
-        }
-        .container {
-            width: 100%;
-            max-width: 580px;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .card {
-            background: var(--card-bg);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 40px 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-        }
-        .logo-section {
-            font-family: 'Poppins', sans-serif;
-            font-size: 20px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            color: #fff;
-            margin-bottom: 24px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .logo-section i {
-            color: var(--primary);
-        }
-        .status-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 36px;
-        }
-        .status-icon.success {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--accent);
-            border: 2px solid rgba(16, 185, 129, 0.2);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
-            animation: pulse-green 2s infinite;
-        }
-        .status-icon.fail {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--accent-fail);
-            border: 2px solid rgba(239, 68, 68, 0.2);
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
-        }
-        @keyframes pulse-green {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-        h2 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 22px;
-            margin: 0 0 10px;
-            color: #fff;
-        }
-        .subtitle {
-            color: #94a3b8;
-            font-size: 14px;
-            margin-top: 0;
-            margin-bottom: 30px;
-        }
-        .info-grid {
-            text-align: left;
-            background: rgba(15, 23, 42, 0.4);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
-        }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 14px;
-        }
-        .info-row:last-child {
-            border-bottom: none;
-        }
-        .info-label {
-            color: #94a3b8;
-            font-weight: 500;
-        }
-        .info-val {
-            color: #f8fafc;
-            font-weight: 600;
-            text-align: right;
-        }
-        .badge-winner {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--gold);
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            text-transform: uppercase;
-            font-weight: 700;
-        }
-        .hash-box {
-            font-family: monospace;
-            background: #090d16;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 11px;
-            color: #64748b;
-            word-break: break-all;
-            border: 1px solid rgba(255,255,255,0.02);
-            text-align: left;
-        }
-        .hash-title {
-            font-size: 10px;
-            color: #475569;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-            text-align: left;
-            font-weight: 700;
-        }
-        .btn-home {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--primary), #1e40af);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            margin-top: 24px;
-            transition: 0.2s;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-home:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-        .error-msg {
-            color: #ef4444;
-            font-size: 15px;
-            line-height: 1.6;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Certificate Verification | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a2557;
+    --primary-dark: #0c122b;
+    --gold: #c9a45e;
+    --gold-light: #dcbb7a;
+    --success: #10b981;
+    --danger: #ef4444;
+    --bg-gradient: linear-gradient(135deg, #eef2f6 0%, #e2e8f0 100%);
+    --radius-lg: 16px;
+    --radius-sm: 8px;
+    --shadow-md: 0 10px 25px rgba(15, 23, 42, 0.08);
+  }
+  
+  body {
+    background: var(--bg-gradient);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 40px 20px;
+    color: #334155;
+    position: relative;
+  }
+
+  .celebration-wrap {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .claimed-pill {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .failed-pill {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .main-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 800;
+    font-size: clamp(20px, 4vw, 32px);
+    color: var(--primary-dark);
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 15px;
+    color: #64748b;
+  }
+
+  .cert-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+  }
+
+  .cert-header {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    border-bottom: 3px solid var(--gold);
+    padding: 24px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .cert-header-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--gold-light);
+  }
+
+  .cert-header-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin: 0;
+  }
+
+  .cert-header-sub {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+  }
+
+  .cert-body {
+    padding: 30px;
+  }
+
+  .preview-container {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    padding-top: 70.7%; /* A4 aspect ratio 1:1.414 */
+    height: 0;
+    margin-bottom: 24px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .preview-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .info-row {
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .info-cell-label {
+    padding: 12px 0;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .info-cell-value {
+    padding: 12px 0;
+    color: var(--primary-dark);
+    font-weight: 700;
+    font-size: 14px;
+    text-align: right;
+  }
+
+  .monospace-pill {
+    font-family: monospace;
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #e2e8f0;
+    max-width: 250px;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  .action-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid #e2e8f0;
+    height: 100%;
+  }
+
+  .action-card-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary-dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .action-card-title i {
+    color: var(--gold);
+  }
+
+  .btn-download {
+    background: var(--success);
+    color: #ffffff;
+    border: none;
+    font-weight: 700;
+    padding: 12px 20px;
+    width: 100%;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+
+  .btn-download:hover {
+    background: #0d9488;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  }
+
+  .share-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .btn-share {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 13.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-share.linkedin {
+    background: #0a66c2;
+    color: #ffffff;
+  }
+  .btn-share.linkedin:hover {
+    background: #004182;
+    color: #ffffff;
+  }
+
+  .btn-share.twitter {
+    background: #0f1419;
+    color: #ffffff;
+  }
+  .btn-share.twitter:hover {
+    background: #000000;
+    color: #ffffff;
+  }
+
+  .verification-link-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .verification-url {
+    font-size: 12px;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: monospace;
+  }
+
+  .btn-copy {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.15s;
+  }
+
+  .btn-copy:hover {
+    color: var(--gold);
+  }
+
+  .status-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .status-item:last-child {
+    border-bottom: none;
+  }
+
+  .status-label {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #475569;
+  }
+
+  .status-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--success);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+
+  .help-text {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  .toast-copy {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #0f172a;
+    color: #ffffff;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 9999;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .toast-copy.show {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .btn-portal {
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-portal:hover {
+    background: var(--primary-dark);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="logo-section">
-                <i class="fas fa-certificate"></i> SapthaEvent
+
+<div class="container py-4">
+  {% if success %}
+    <!-- Celebration Title & Pill -->
+    <div class="celebration-wrap">
+      <div class="claimed-pill">
+        <i class="fas fa-shield-check"></i> Certificate Verified
+      </div>
+      <h1 class="main-title">🎉 Congratulations, {{ cert.student_name }}!</h1>
+      <p class="subtitle">This cryptographic credential has been verified as authentic and valid.</p>
+    </div>
+
+    <div class="row justify-content-center">
+      <!-- Certificate Card Viewer -->
+      <div class="col-lg-7">
+        <div class="cert-card">
+          <div class="cert-header">
+            <div class="cert-header-icon">
+              <i class="fas fa-award"></i>
+            </div>
+            <div>
+              <h2 class="cert-header-title">
+                {% if cert.cert_type == 'winner' %}
+                  🥇 Winner (Rank {{ cert.rank }})
+                {% else %}
+                  Participant
+                {% endif %}
+              </h2>
+              <p class="cert-header-sub">{{ cert.event_title }}</p>
+            </div>
+          </div>
+
+          <div class="cert-body">
+            <!-- Scalable Certificate Iframe Preview -->
+            <div class="preview-container">
+              <iframe src="/verify/{{ cert.hash }}/preview"></iframe>
             </div>
 
-            {% if success %}
-                <div class="status-icon success">
-                    <i class="fas fa-shield-check"></i>
-                </div>
-                <h2>Certificate Verified</h2>
-                <p class="subtitle">This credential has been verified as authentic and valid.</p>
-
-                <div class="info-grid">
-                    <div class="info-row">
-                        <span class="info-label">Recipient Name</span>
-                        <span class="info-val">{{ cert.student_name }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Event Name</span>
-                        <span class="info-val">{{ cert.event_title }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Certification Type</span>
-                        <span class="info-val">
-                            {% if cert.cert_type == 'winner' %}
-                                <span class="badge-winner"><i class="fas fa-trophy me-1"></i> Winner (Rank {{ cert.rank }})</span>
-                            {% else %}
-                                Participant
-                            {% endif %}
-                        </span>
-                    </div>
-                    {% if cert.cert_type == 'winner' and cert.score %}
-                    <div class="info-row">
-                        <span class="info-label">Final Score</span>
-                        <span class="info-val">{{ cert.score }}</span>
-                    </div>
-                    {% endif %}
-                    <div class="info-row">
-                        <span class="info-label">Issuing College</span>
-                        <span class="info-val">{{ cert.college_name }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Date Issued</span>
-                        <span class="info-val">{{ cert.issued_at[:10] }}</span>
-                    </div>
-                </div>
-
-                <div class="hash-title">Cryptographic Receipt Hash (SHA-256)</div>
-                <div class="hash-box">
-                    {{ cert.hash }}
-                </div>
-            {% else %}
-                <div class="status-icon fail">
-                    <i class="fas fa-triangle-exclamation"></i>
-                </div>
-                <h2>Verification Failed</h2>
-                <p class="subtitle">Invalid or unverified credential parameters.</p>
-
-                <div class="info-grid" style="text-align: center; padding: 30px 20px;">
-                    <div class="error-msg">
-                        <i class="fas fa-circle-xmark me-1"></i> {{ error }}
-                    </div>
-                </div>
-            {% endif %}
-
-            <a href="/" class="btn-home"><i class="fas fa-arrow-left me-1"></i> Back to Portal</a>
+            <!-- Certificate Recipient Details Table -->
+            <table class="info-table">
+              <tr class="info-row">
+                <td class="info-cell-label">Recipient</td>
+                <td class="info-cell-value">{{ cert.student_name }}</td>
+              </tr>
+              <tr class="info-row">
+                <td class="info-cell-label">Event Name</td>
+                <td class="info-cell-value">{{ cert.event_title }}</td>
+              </tr>
+              {% if cert.cert_type == 'winner' and cert.score %}
+              <tr class="info-row">
+                <td class="info-cell-label">Final Score</td>
+                <td class="info-cell-value" style="color: var(--primary);">{{ cert.score }}</td>
+              </tr>
+              {% endif %}
+              <tr class="info-row">
+                <td class="info-cell-label">Issue Date</td>
+                <td class="info-cell-value">{{ cert.issued_at[:10] }}</td>
+              </tr>
+              <tr class="info-row">
+                <td class="info-cell-label">Cryptographic Hash</td>
+                <td class="info-cell-value">
+                  <span class="monospace-pill" title="{{ cert.hash }}">{{ cert.hash }}</span>
+                </td>
+              </tr>
+              <tr class="info-row">
+                <td class="info-cell-label">Institution</td>
+                <td class="info-cell-value">{{ cert.college_name }}</td>
+              </tr>
+            </table>
+          </div>
         </div>
+      </div>
+
+      <!-- Actions Sidebar Grid -->
+      <div class="col-lg-4">
+        <div class="row g-4">
+          <!-- Download Certificate -->
+          <div class="col-12">
+            <div class="action-card">
+              <h3 class="action-card-title"><i class="fas fa-file-pdf"></i> Download Certificate</h3>
+              <p class="help-text mb-3">Save a high-resolution, print-ready PDF copy of your credential.</p>
+              <a href="/verify/{{ cert.hash }}/download" class="btn-download">
+                <i class="fas fa-download"></i> Download PDF Certificate
+              </a>
+            </div>
+          </div>
+
+          <!-- Share Certificate -->
+          <div class="col-12">
+            <div class="action-card">
+              <h3 class="action-card-title"><i class="fas fa-share-nodes"></i> Share Certificate</h3>
+              <p class="help-text mb-3">Add this achievement to your profile or share it with your network.</p>
+              <div class="share-grid">
+                {% set share_text = "I'm proud to share my verified certificate for " ~ cert.event_title ~ " from " ~ cert.college_name ~ "! Verify here:" %}
+                {% set share_url = request.url %}
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" target="_blank" class="btn-share linkedin">
+                  <i class="fab fa-linkedin"></i> LinkedIn
+                </a>
+                <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" class="btn-share twitter">
+                  <i class="fab fa-x-twitter"></i> X (Twitter)
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Verified Seal -->
+          <div class="col-12">
+            <div class="action-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+              <h3 class="action-card-title" style="color: #166534;"><i class="fas fa-shield-halved" style="color: var(--success);"></i> Cryptographically Confirmed</h3>
+              <p class="help-text" style="color: #166534; font-size: 13px; font-weight: 500; margin: 0;">
+                Authenticity confirmed. This digital credential has been validated via cryptographic registry signatures at {{ cert.college_name }}.
+              </p>
+            </div>
+          </div>
+
+          <!-- Copy Verification Link -->
+          <div class="col-12">
+            <div class="action-card">
+              <h3 class="action-card-title"><i class="fas fa-link"></i> Verification Link</h3>
+              <div class="verification-link-box">
+                <span class="verification-url" id="verify-url-text">{{ request.url }}</span>
+                <button class="btn-copy" onclick="copyVerificationLink()" title="Copy Link">
+                  <i class="far fa-copy" id="copy-icon"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Certificate Status Tracker -->
+          <div class="col-12">
+            <div class="action-card">
+              <h3 class="action-card-title"><i class="fas fa-timeline"></i> Certificate Status</h3>
+              <ul class="status-list">
+                <li class="status-item">
+                  <span class="status-label">Generated</span>
+                  <span class="status-dot"><i class="fas fa-check"></i></span>
+                </li>
+                <li class="status-item">
+                  <span class="status-label">Delivered</span>
+                  <span class="status-dot"><i class="fas fa-check"></i></span>
+                </li>
+                <li class="status-item">
+                  <span class="status-label">Claimed</span>
+                  <span class="status-dot"><i class="fas fa-check"></i></span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Need Help -->
+          <div class="col-12">
+            <div class="action-card">
+              <h3 class="action-card-title"><i class="far fa-circle-question"></i> Need Help?</h3>
+              <p class="help-text m-0">
+                For any questions regarding your certificate details, contact the issuing organization at <strong>support@snpsu.edu.in</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  {% else %}
+    <!-- Verification Failed -->
+    <div class="row justify-content-center py-5">
+      <div class="col-md-6 text-center">
+        <div class="cert-card p-5">
+          <div class="failed-pill mb-4">
+            <i class="fas fa-triangle-exclamation"></i> Verification Failed
+          </div>
+          <h1 class="main-title mb-3" style="color: var(--danger);">Invalid Credential</h1>
+          <p class="subtitle mb-5">We were unable to verify this certificate code in our registry.</p>
+          
+          <div class="alert alert-danger mb-5 d-flex align-items-center justify-content-center gap-2" role="alert" style="border-radius: var(--radius-sm);">
+            <i class="fas fa-circle-xmark"></i>
+            <span>{{ error }}</span>
+          </div>
+
+          <a href="/" class="btn-portal">
+            <i class="fas fa-house"></i> Back to Portal Home
+          </a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Copy Action Toast -->
+<div class="toast-copy" id="copy-toast">
+  Link copied to clipboard!
+</div>
+
+{% if success %}
+<!-- Canvas Confetti Library & Script -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script>
+  // Shoot confetti on load
+  window.addEventListener('DOMContentLoaded', () => {
+    const duration = 4 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 28, spread: 360, ticks: 60, zIndex: 1000 };
+
+    function randomInRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 45 * (timeLeft / duration);
+      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+    }, 250);
+  });
+
+  // Copy URL Script
+  function copyVerificationLink() {
+    const copyText = document.getElementById("verify-url-text").textContent;
+    navigator.clipboard.writeText(copyText).then(() => {
+      const toast = document.getElementById("copy-toast");
+      const icon = document.getElementById("copy-icon");
+      
+      icon.className = "fas fa-check text-success";
+      toast.classList.add("show");
+      
+      setTimeout(() => {
+        toast.classList.remove("show");
+        icon.className = "far fa-copy";
+      }, 2500);
+    });
+  }
+</script>
+{% endif %}
 </body>
 </html>

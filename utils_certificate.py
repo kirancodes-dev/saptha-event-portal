@@ -56,8 +56,22 @@ def _get_logo() -> Optional[ImageReader]:
         return _logo_cache
     _logo_fetched = True
 
-    # Use custom URL if set, otherwise fall back to official SNPSU logo
-    logo_url = os.environ.get('COLLEGE_LOGO_URL', _DEFAULT_LOGO_URL).strip()
+    # 1. Try local load first to avoid loopback network request issues
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        local_path = os.path.join(base_dir, 'static', 'snpsu-logo.png')
+        if os.path.exists(local_path):
+            _logo_cache = ImageReader(local_path)
+            logger.info("College logo loaded locally: %s", local_path)
+            return _logo_cache
+    except Exception as exc:
+        logger.warning("Local logo load failed, will try remote fallback: %s", exc)
+
+    # 2. Remote fallback
+    logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip()
+    if not logo_url:
+        from utils_email import _base_url
+        logo_url = f"{_base_url().rstrip('/')}/static/snpsu-logo.png"
 
     try:
         import urllib.request
@@ -68,11 +82,12 @@ def _get_logo() -> Optional[ImageReader]:
         buf = io.BytesIO(data)
         buf.seek(0)
         _logo_cache = ImageReader(buf)
-        logger.info("College logo loaded: %s", logo_url)
+        logger.info("College logo loaded from remote: %s", logo_url)
         return _logo_cache
     except Exception as exc:
         logger.warning("Logo load failed (%s): %s", logo_url, exc)
         return None
+
 
 
 def _qr_reader(url: str) -> ImageReader:
@@ -345,7 +360,7 @@ def generate_and_send_all_certificates(
                 cert_type='winner', rank=idx, score=score,
                 event_date=event_date, base_url=base_url,
                 college_name=college_name, template_id=template_id)
-            ok = _send_cert_email(email, name, event_title, 'winner', idx, score, pdf)
+            ok = _send_cert_email(email, name, event_title, 'winner', idx, score, pdf, reg_id)
             if ok: results['winner_sent']   += 1
             else:  results['winner_failed'] += 1
         except Exception as exc:
@@ -365,7 +380,8 @@ def generate_and_send_all_certificates(
                 student_name=name, event_title=event_title, reg_id=reg_id,
                 cert_type='participation', event_date=event_date,
                 base_url=base_url, college_name=college_name, template_id=template_id)
-            ok = _send_cert_email(email, name, event_title, 'participation', 0, 0, pdf)
+            ok = _send_cert_email(email, name, event_title, 'participation', 0, 0, pdf, reg_id)
+
             if ok: results['participation_sent']   += 1
             else:  results['participation_failed'] += 1
         except Exception as exc:
@@ -551,7 +567,7 @@ def generate_and_send_all_certificates_with_templates(
                     event_date=event_date, base_url=base_url,
                     college_name=college_name, template_id=template_id,
                     issued_by=issued_by)
-            ok = _send_cert_email(email, name, event_title, 'winner', idx, score, pdf)
+            ok = _send_cert_email(email, name, event_title, 'winner', idx, score, pdf, reg_id)
             results['winner_sent' if ok else 'winner_failed'] += 1
         except Exception as exc:
             logger.error("Winner cert rank %d failed: %s", idx, exc)
@@ -579,7 +595,8 @@ def generate_and_send_all_certificates_with_templates(
                     cert_type='participation', event_date=event_date,
                     base_url=base_url, college_name=college_name,
                     template_id=template_id, issued_by=issued_by)
-            ok = _send_cert_email(email, name, event_title, 'participation', 0, 0, pdf)
+            ok = _send_cert_email(email, name, event_title, 'participation', 0, 0, pdf, reg_id)
+
             results['participation_sent' if ok else 'participation_failed'] += 1
         except Exception as exc:
             logger.error("Participation cert for %s failed: %s", email, exc)

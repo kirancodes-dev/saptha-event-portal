@@ -221,13 +221,12 @@ if not firebase_admin._apps:
                 logger.warning("Firebase: serviceAccountKey.json not found - running in dev mode without Firebase")
                 # For development without Firebase, you can disable it or use mock credentials
 
-# Initialize Firestore database (only if Firebase was initialized)
-db: Any = None
-try:
-    db = cast(Any, firestore.client())
-    logger.info("Firestore: Connected successfully")
-except Exception as exc:
-    logger.error("Firestore: Failed to connect: %s", exc)
+# Initialize database client (reusing resolution logic in models)
+from models import db
+if db is not None:
+    logger.info("Database: Connected successfully using models.db (Type: %s)", os.environ.get('DATABASE_TYPE', 'firestore').lower())
+else:
+    logger.error("Database: Failed to connect database client from models")
 
 # =========================================================
 # BLUEPRINTS

@@ -2511,3 +2511,145 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
     color: var(--snpsu-gold);
     line-height: 1;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   14. RESPONSIVE TOPBAR NAVIGATION FOR MOBILE DEVICES (ALL PORTALS)
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    /* Premium deep navy-to-dark gradient with gold bottom accent line */
+    .topnav, nav.topnav, div.topnav {
+        height: 60px !important;
+        min-height: 60px !important;
+        padding: 0 16px !important;
+        flex-wrap: nowrap !important;
+        background: linear-gradient(135deg, #0c122b 0%, #1a2557 100%) !important;
+        border-bottom: 2px solid #c9a45e !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+    }
+
+    /* Hide text brand on mobile to save space */
+    .topnav .brand {
+        display: none !important;
+    }
+    
+    /* For templates like event_details that have text inside .topnav-brand */
+    .topnav .topnav-brand {
+        font-size: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0 !important;
+        color: transparent !important;
+    }
+
+    /* Logo scaling for mobile screens */
+    .topnav img, .topnav-brand img {
+        height: 32px !important;
+        width: auto !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+
+    /* Clean links alignment on a single row without wrapping */
+    .topnav .nav-links, .topnav .topnav-links {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-wrap: nowrap !important;
+        margin-left: auto !important;
+    }
+
+    /* Convert link texts to premium circular icon buttons */
+    .topnav .nav-link-item,
+    .topnav .topnav-link {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        text-decoration: none !important;
+        padding: 0 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .topnav .nav-link-item:hover,
+    .topnav .topnav-link:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #fff !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Hide text labels only when an icon is present */
+    .topnav .nav-link-item:has(i),
+    .topnav .topnav-link:has(i) {
+        font-size: 0 !important;
+    }
+
+    /* Keep icons perfectly sized and centered */
+    .topnav .nav-link-item i,
+    .topnav .topnav-link i {
+        font-size: 16px !important;
+        margin: 0 !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* If a link does NOT have an icon (e.g., Login link on event details), format as a neat pill button */
+    .topnav .nav-link-item:not(:has(i)),
+    .topnav .topnav-link:not(:has(i)) {
+        width: auto !important;
+        height: auto !important;
+        padding: 6px 14px !important;
+        border-radius: 8px !important;
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        color: #fff !important;
+    }
+
+    /* Hide division badge tags/spans on mobile to fit nicely */
+    .topnav .nav-links > span:not(.nav-link-item) {
+        display: none !important;
+    }
+
+    /* Reposition notification badge dot on mobile */
+    .topnav #bell-badge {
+        top: 6px !important;
+        right: 8px !important;
+    }
+
+    /* Make btn-orange / btn-reg (Create/Register Event button) stand out in gold */
+    .topnav .nav-link-item.btn-orange,
+    .topnav .topnav-link.btn-reg,
+    .topnav .nav-links button.btn-orange,
+    .topnav .nav-links a.btn-orange {
+        background: linear-gradient(135deg, #c9a45e 0%, #a8843f 100%) !important;
+        color: #fff !important;
+        border-radius: 50% !important;
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 2px 10px rgba(201, 164, 94, 0.4) !important;
+    }
+
+    .topnav .nav-link-item.btn-orange i,
+    .topnav .topnav-link.btn-reg i {
+        color: #fff !important;
+    }
+
+    .topnav .nav-link-item.btn-orange:hover,
+    .topnav .topnav-link.btn-reg:hover {
+        background: linear-gradient(135deg, #dcbb7a 0%, #c9a45e 100%) !important;
+        box-shadow: 0 4px 14px rgba(201, 164, 94, 0.6) !important;
+    }
+}
+

@@ -730,69 +730,74 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
       </div>
 
-      <!-- Right Column: Interactive Hero Event Slider Carousel -->
-      <div class="col-lg-5 scroll-animator stagger-1">
-        <div class="hero-carousel-wrapper">
-          <div id="heroEventCarousel" class="carousel slide carousel-fade h-100" data-bs-ride="carousel" data-bs-interval="4000">
-            <!-- Indicators / Dots -->
-            <div class="carousel-indicators" style="bottom: 15px; margin-bottom: 0;">
-              {% if events and events[0].get('media_urls') %}
-                {% for img_url in events[0].get('media_urls') %}
-                  <button type="button" data-bs-target="#heroEventCarousel" data-bs-slide-to="{{ loop.index0 }}" class="{% if loop.first %}active{% endif %}" aria-current="{% if loop.first %}true{% endif %}" aria-label="Slide {{ loop.index }}"></button>
-                {% endfor %}
-              {% else %}
-                <button type="button" data-bs-target="#heroEventCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-              {% endif %}
-            </div>
-
-            <!-- Slides -->
-            <div class="carousel-inner h-100" style="border-radius: 16px; overflow: hidden;">
-              {% if events and events[0].get('media_urls') %}
-                {% for img_url in events[0].get('media_urls') %}
-                  <div class="carousel-item h-100 {% if loop.first %}active{% endif %}">
-                    <div class="carousel-img-wrap" style="cursor: pointer;" onclick="showEventModal('{{ events[0].id }}')">
-                      <img src="{{ img_url }}" class="d-block w-100 h-100" style="object-fit: cover; filter: brightness(0.85);" alt="Campus Event Slide {{ loop.index }}">
-                      <!-- Dark overlay gradient for readable text -->
-                      <div class="carousel-overlay" style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(13, 17, 30, 0.95) 0%, rgba(13, 17, 30, 0.4) 60%, rgba(0, 0, 0, 0) 100%); pointer-events: none;"></div>
-                      
-                      <!-- Slide info caption -->
-                      <div class="carousel-caption text-start" style="left: 20px; right: 20px; bottom: 40px; padding: 0;">
-                        <span class="badge mb-2" style="background: linear-gradient(135deg, #c9a45e, #e2c079); color: #1a2557; font-weight: 700; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;">Featured Event</span>
-                        <h4 class="fw-bold text-white mb-1" style="font-family: 'Poppins', sans-serif; text-shadow: 0 2px 4px rgba(0,0,0,0.5); font-size: 1.4rem;">{{ events[0].title }}</h4>
-                        <p class="small text-white-50 mb-0 d-flex align-items-center gap-2" style="font-size: 12px;">
-                          <i class="fas fa-map-marker-alt text-warning"></i> {{ events[0].venue }}
-                        </p>
-                        <p class="small text-white-50 mb-0 d-flex align-items-center gap-2 mt-1" style="font-size: 12px;">
-                          <i class="fas fa-calendar-alt text-warning"></i> {{ events[0].date_display or events[0].date }}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                {% endfor %}
-              {% else %}
-                <!-- Fallback static hero slide if no events seeded -->
-                <div class="carousel-item active h-100">
-                  <div class="carousel-img-wrap">
-                    <div class="d-flex flex-column justify-content-center align-items-center h-100 w-100 text-center" style="background: linear-gradient(135deg, #1a2557 0%, #0d111e 100%); color: white; padding: 30px;">
-                      <i class="fas fa-university fa-3x mb-3 text-warning"></i>
-                      <h4 class="fw-bold">Welcome to SapthaEvent Portal</h4>
-                      <p class="text-white-50 small" style="max-width: 300px;">Experience premium campus events at Sapthagiri NPS University.</p>
-                    </div>
-                  </div>
-                </div>
-              {% endif %}
-            </div>
-
-            <!-- Controls -->
-            <button class="carousel-control-prev" type="button" data-bs-target="#heroEventCarousel" data-bs-slide="prev" style="width: 45px; opacity: 0; transition: opacity 0.3s ease;">
-              <span class="carousel-control-prev-icon" aria-hidden="true" style="background-color: rgba(13, 17, 30, 0.6); padding: 18px; border-radius: 50%;"></span>
-              <span class="visually-hidden">Previous</span>
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#heroEventCarousel" data-bs-slide="next" style="width: 45px; opacity: 0; transition: opacity 0.3s ease;">
-              <span class="carousel-control-next-icon" aria-hidden="true" style="background-color: rgba(13, 17, 30, 0.6); padding: 18px; border-radius: 50%;"></span>
-              <span class="visually-hidden">Next</span>
-            </button>
+      <!-- Right Column: Live Event Stats Card -->
+      <div class="col-lg-5 scroll-animator stagger-1 d-flex align-items-center justify-content-center">
+        <div class="hero-stats-card">
+          <!-- Header -->
+          <div class="hsc-header">
+            <span class="hsc-badge">
+              <span class="hsc-live-dot"></span> LIVE PORTAL
+            </span>
+            <h3 class="hsc-title">Saptha 2026</h3>
+            <p class="hsc-subtitle">The Grand College Fest</p>
           </div>
+
+          <!-- Stats Grid -->
+          <div class="hsc-stats">
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(99,102,241,.15);color:#818cf8;">
+                <i class="fas fa-calendar-alt"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value" id="heroStatEvents">{{ events|length if events else 0 }}</div>
+                <div class="hsc-stat-label">Total Events</div>
+              </div>
+            </div>
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(16,185,129,.15);color:#34d399;">
+                <i class="fas fa-users"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value" id="heroStatRegs">{{ events|sum(attribute='registrations_count') if events else 0 }}</div>
+                <div class="hsc-stat-label">Registrations</div>
+              </div>
+            </div>
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(245,158,11,.15);color:#fbbf24;">
+                <i class="fas fa-bolt"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value" id="heroStatToday">
+                  {% set today_count = namespace(n=0) %}
+                  {% if events %}{% for e in events %}{% if e.date == today_date %}{% set today_count.n = today_count.n + 1 %}{% endif %}{% endfor %}{% endif %}
+                  {{ today_count.n }}
+                </div>
+                <div class="hsc-stat-label">Events Today</div>
+              </div>
+            </div>
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(236,72,153,.15);color:#f472b6;">
+                <i class="fas fa-trophy"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value">₹0</div>
+                <div class="hsc-stat-label">Entry Fee</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Pills -->
+          <div class="hsc-cats">
+            <span class="hsc-cat" style="background:rgba(99,102,241,.18);color:#a5b4fc;" onclick="filterByCategory('Technical')"><i class="fas fa-code"></i> Technical</span>
+            <span class="hsc-cat" style="background:rgba(201,164,94,.18);color:#fde68a;" onclick="filterByCategory('Cultural')"><i class="fas fa-music"></i> Cultural</span>
+            <span class="hsc-cat" style="background:rgba(16,185,129,.18);color:#6ee7b7;" onclick="filterByCategory('Sports')"><i class="fas fa-running"></i> Sports</span>
+            <span class="hsc-cat" style="background:rgba(8,145,178,.18);color:#67e8f9;" onclick="filterByCategory('Management')"><i class="fas fa-chart-bar"></i> Mgmt</span>
+          </div>
+
+          <!-- CTA -->
+          <a href="#events" class="hsc-cta">
+            <i class="fas fa-arrow-down me-2"></i>Browse All Events
+          </a>
         </div>
       </div>
     </div>

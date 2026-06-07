@@ -565,6 +565,7 @@ def home():
     _ctx = {
         'events':               events,
         'current_date':         current_date,
+        'today_date':           current_date,
         'calendar_events':      json.dumps(calendar_events),
         'ticker_events':        ticker_events,
         'no_firebase':          db is None,

@@ -47,15 +47,19 @@ LAST_EMAIL_ERROR = ""
 # ─────────────────────────────────────────────────────────────
 
 def _base_url() -> str:
+    # Always prioritize the actual production URL to guarantee images work everywhere
+    production_url = 'https://saptha-event-portal-762269836348.us-east4.run.app'
     try:
         from flask import current_app
-        return current_app.config.get(
-            'BASE_URL',
-            'https://saptha-event-portal.xyz')
+        url = current_app.config.get('BASE_URL')
+        if url and '127.0.0.1' not in url and 'localhost' not in url:
+            return url
     except Exception:
-        return os.environ.get(
-            'BASE_URL',
-            'https://saptha-event-portal.xyz')
+        pass
+    url = os.environ.get('BASE_URL')
+    if url and '127.0.0.1' not in url and 'localhost' not in url:
+        return url
+    return production_url
 
 
 def _from_address() -> str:
@@ -86,17 +90,17 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
         <!-- Email card -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 40px rgba(12,18,43,0.13);border:1px solid #dde3ef;">
 
-          <!-- ══ HEADER — clean premium white header to show the logo perfectly ══ -->
+          <!-- ══ HEADER — matches home-page nav exactly (navy + gold) ══ -->
           <tr>
-            <td style="background-color:#ffffff;padding:0;">
+            <td style="background-color:#1a2557;padding:0;">
               <!-- Gold accent bar on top -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="height:4px;background:linear-gradient(90deg,#c9a020,#e8c84a,#c9a020);font-size:0;line-height:0;">&nbsp;</td>
                 </tr>
                 <tr>
-                  <td style="padding:26px 32px 22px;text-align:center;">
-                    <!-- University logo — shown on crisp white background -->
+                  <td style="padding:28px 32px 24px;text-align:center;">
+                    <!-- University logo — crisp white text on navy background, matches home page -->
                     <img src="{logo_url}"
                          alt="Sapthagiri NPS University"
                          width="220"
@@ -107,14 +111,14 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                     <p style="margin:0 0 4px;color:#c9a020;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
                       SapthaEvent Portal
                     </p>
-                    <h1 style="margin:0;color:#0c1240;font-size:20px;font-weight:700;letter-spacing:-0.3px;line-height:1.3;">
+                    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;line-height:1.3;">
                       {title}
                     </h1>
                   </td>
                 </tr>
-                <!-- Gold accent bar at bottom -->
+                <!-- Gold accent bar at bottom (like nav border-bottom) -->
                 <tr>
-                  <td style="height:2px;background:linear-gradient(90deg,#c9a020,#e8c84a,#c9a020);font-size:0;line-height:0;">&nbsp;</td>
+                  <td style="height:3px;background:linear-gradient(90deg,#c9a020,#e8c84a,#c9a020);font-size:0;line-height:0;">&nbsp;</td>
                 </tr>
               </table>
             </td>
@@ -133,10 +137,10 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="text-align:center;">
-                    <!-- Logo on white pill so colored logo is always visible -->
+                    <!-- Logo on navy pill so white logo text is perfectly visible -->
                     <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px;">
                       <tr>
-                        <td style="background-color:#ffffff;border:1.5px solid #c9a020;border-radius:10px;padding:8px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                        <td style="background-color:#1a2557;border-bottom:2.5px solid #c9a020;border-radius:10px;padding:10px 24px;box-shadow:0 3px 12px rgba(26,37,87,0.15);">
                           <img src="{logo_url}"
                                alt="Sapthagiri NPS University"
                                height="32"

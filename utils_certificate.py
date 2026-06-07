@@ -89,6 +89,19 @@ def _get_logo() -> Optional[ImageReader]:
         return None
 
 
+def _get_cert_logo() -> Optional[ImageReader]:
+    """Loads the colored snpsu-logo.jpg for light-background certificates."""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        local_path = os.path.join(base_dir, 'static', 'snpsu-logo.jpg')
+        if os.path.exists(local_path):
+            logger.info("Colored college logo loaded locally: %s", local_path)
+            return ImageReader(local_path)
+    except Exception as exc:
+        logger.warning("Local colored logo load failed, using fallback: %s", exc)
+    return _get_logo()
+
+
 
 def _qr_reader(url: str) -> ImageReader:
     qr = qrcode.QRCode(version=None,
@@ -289,22 +302,23 @@ def generate_certificate_pdf(
     # ── 7. University logo — top-right ─────────────────────────────────────────
     CONTENT_LEFT  = margin + 86
     CONTENT_RIGHT = W - margin - 26
-    logo = _get_logo()
-    logo_w, logo_h = 140, 52
-    logo_x = CONTENT_RIGHT - logo_w
-    logo_y = H - margin - 14 - logo_h
+    logo = _get_cert_logo()
     if logo:
+        logo_w, logo_h = 210, 56
+        logo_x = CONTENT_RIGHT - logo_w
+        logo_y = H - margin - 12 - logo_h
         try:
             c.drawImage(logo, logo_x, logo_y, width=logo_w, height=logo_h,
                         preserveAspectRatio=True, mask='auto')
         except Exception:
             c.drawImage(logo, logo_x, logo_y, width=logo_w, height=logo_h,
                         preserveAspectRatio=True)
-    # University name text (right of logo or fallback)
-    c.setFillColor(PURPLE); c.setFont('Helvetica-Bold', 11)
-    c.drawRightString(CONTENT_RIGHT, H - margin - 18, 'SAPTHAGIRI NPS UNIVERSITY')
-    c.setFillColor(NAVY); c.setFont('Helvetica', 8.5)
-    c.drawRightString(CONTENT_RIGHT, H - margin - 30, 'School of Engineering & Technology')
+    else:
+        # Fallback typography only if logo image cannot load
+        c.setFillColor(PURPLE); c.setFont('Helvetica-Bold', 11)
+        c.drawRightString(CONTENT_RIGHT, H - margin - 18, 'SAPTHAGIRI NPS UNIVERSITY')
+        c.setFillColor(NAVY); c.setFont('Helvetica', 8.5)
+        c.drawRightString(CONTENT_RIGHT, H - margin - 30, 'School of Engineering & Technology')
 
     # ── 8. Gold horizontal divider under header ────────────────────────────────
     divider_y = H - margin - 78

@@ -8,15 +8,47 @@
     <i class="fas fa-calendar-alt"></i>
     <span>Events</span>
   </a>
-  <a href="/participant/dashboard" class="mobile-nav-item" id="mn-tickets">
-    <i class="fas fa-ticket-alt"></i>
-    <span>Tickets</span>
-  </a>
-  <a href="/notifications" class="mobile-nav-item" id="mn-notifs">
-    <i class="fas fa-bell"></i>
-    <span>Notifs</span>
-    <span class="position-absolute top-1 start-60 translate-middle badge rounded-pill bg-danger d-none" id="mobile-notif-badge">0</span>
-  </a>
+
+  {% if session.get('user_id') %}
+    {% set role = session.get('role') %}
+    {% if role == 'Student' %}
+      <a href="/participant/dashboard" class="mobile-nav-item" id="mn-tickets">
+        <i class="fas fa-ticket-alt"></i>
+        <span>Tickets</span>
+      </a>
+      <a href="/notifications" class="mobile-nav-item" id="mn-notifs">
+        <i class="fas fa-bell"></i>
+        <span>Notifs</span>
+        <span class="position-absolute top-1 start-60 translate-middle badge rounded-pill bg-danger d-none" id="mobile-notif-badge">0</span>
+      </a>
+    {% elif role == 'ClubSPOC' %}
+      <a href="/spoc/dashboard" class="mobile-nav-item" id="mn-spoc-dash">
+        <i class="fas fa-chart-line"></i>
+        <span>Manage</span>
+      </a>
+    {% elif role == 'SuperAdmin' %}
+      <a href="/admin/dashboard" class="mobile-nav-item" id="mn-admin-dash">
+        <i class="fas fa-user-shield"></i>
+        <span>Admin</span>
+      </a>
+    {% elif role == 'Judge' %}
+      <a href="/judge/dashboard" class="mobile-nav-item" id="mn-judge-dash">
+        <i class="fas fa-gavel"></i>
+        <span>Judge</span>
+      </a>
+    {% endif %}
+    
+    <a href="/profile/" class="mobile-nav-item" id="mn-profile">
+      <i class="fas fa-user-circle"></i>
+      <span>Profile</span>
+    </a>
+  {% else %}
+    <a href="/login" class="mobile-nav-item" id="mn-login">
+      <i class="fas fa-sign-in-alt"></i>
+      <span>Login</span>
+    </a>
+  {% endif %}
+
   <!-- Install App button — always visible, triggers custom install flow -->
   <button class="mobile-nav-item" id="mn-install-btn"
           onclick="window.showPwaInstallModal()"
@@ -238,6 +270,27 @@
     if (androidSection && iosSection) {
       androidSection.style.display = 'block';
       iosSection.style.display     = 'none';
+    }
+  });
+
+  // ── Highlight active bottom nav item based on current URL path ──
+  var path = window.location.pathname;
+  var hash = window.location.hash;
+  var items = document.querySelectorAll('.mobile-nav-bar .mobile-nav-item');
+  items.forEach(function(item) {
+    item.classList.remove('active');
+    var href = item.getAttribute('href');
+    if (href) {
+      if (href === '/' && path === '/' && !hash) {
+        item.classList.add('active');
+      } else if (href === '/#events' && hash === '#events') {
+        item.classList.add('active');
+      } else if (href !== '/' && href !== '/#events') {
+        var baseHref = href.split('?')[0].split('#')[0];
+        if (path === baseHref || path.startsWith(baseHref + '/')) {
+          item.classList.add('active');
+        }
+      }
     }
   });
 

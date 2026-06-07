@@ -758,7 +758,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
                 <i class="fas fa-users"></i>
               </div>
               <div>
-                <div class="hsc-stat-value" id="heroStatRegs">{{ events|sum(attribute='registrations_count') if events else 0 }}</div>
+                <div class="hsc-stat-value" id="heroStatRegs">
+                  {% set reg_total = namespace(n=0) %}
+                  {% if events %}{% for e in events %}{% set reg_total.n = reg_total.n + (e.get('reg_count', 0) if e is mapping else 0) %}{% endfor %}{% endif %}
+                  {{ reg_total.n }}
+                </div>
                 <div class="hsc-stat-label">Registrations</div>
               </div>
             </div>

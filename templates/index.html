@@ -1372,6 +1372,21 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a){
   });
 });
 
+// ── DEBUG TOAST (shows errors visibly on screen) ───────────────────────────
+function _dbgToast(msg, isErr){
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;max-width:90vw;word-break:break-all;box-shadow:0 4px 20px rgba(0,0,0,.4);';
+  t.style.background = isErr ? '#ef4444' : '#10b981';
+  t.style.color = '#fff';
+  t.textContent = (isErr ? '❌ ERROR: ' : '✅ ') + msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 8000);
+  console.log(isErr ? 'ERROR:' : 'DEBUG:', msg);
+}
+window.onerror = function(msg, src, line, col, err){
+  _dbgToast(msg + ' (line ' + line + ')', true);
+};
+
 // ── EVENT CARD CLICK (event delegation) ────────────────────────────────────
 document.addEventListener('click', function(e){
   // Don't trigger if clicking the Register/View Ticket button
@@ -1382,7 +1397,15 @@ document.addEventListener('click', function(e){
   
   // Walk up to the .ev-col to read all data attributes
   var col = card.closest('.ev-col');
-  if(col) showEventModalFromCol(col);
+  if(!col){ _dbgToast('Could not find .ev-col parent', true); return; }
+  
+  _dbgToast('Clicked event: ' + (col.dataset.id || 'NO-ID'));
+  
+  try {
+    showEventModalFromCol(col);
+  } catch(err) {
+    _dbgToast(err.message + ' at ' + (err.stack ? err.stack.split('\n')[1] : '?'), true);
+  }
 });
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Enter' && e.key !== ' ') return;
@@ -1395,138 +1418,97 @@ document.addEventListener('keydown', function(e){
 
 // ── EVENT MODAL ────────────────────────────────────────────────────────────
 function showEventModalFromCol(col){
-  if(typeof bootstrap === 'undefined'){
-    var id = col.dataset.id;
-    if(id) window.location.href = '/forms/register/' + id;
+  var modalEl = document.getElementById('eventModal');
+  var body    = document.getElementById('eventModalBody');
+  
+  // STEP 1: Reset spinner and show modal immediately
+  // This ensures the page is NEVER left frozen with backdrop
+  if(body) body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-3 text-muted">Loading...</p></div>';
+  
+  if(typeof bootstrap === 'undefined' || !modalEl){
+    // Bootstrap not loaded — just navigate to register page
+    var eid = col ? col.dataset.id : '';
+    if(eid) window.location.href = '/forms/register/' + eid;
     return;
   }
   
-  var modalEl = document.getElementById('eventModal');
-  if(!modalEl) return;
-  
-  // Read title, description etc. from the card INSIDE this col
-  var card = col.querySelector('.ev-card-clickable');
-  
-  var eventData = {
-    id:           col.dataset.id || '',
-    title:        col.querySelector('.ev-title')?.textContent?.trim() || 'Event',
-    description:  col.querySelector('.ev-desc')?.textContent?.trim() || '',
-    category:     col.dataset.cat || '',
-    date:         col.querySelector('[data-info="date"]')?.textContent?.trim() || 'TBA',
-    venue:        col.querySelector('[data-info="venue"]')?.textContent?.trim() || 'TBA',
-    fee:          col.querySelector('[data-info="fee"]')?.textContent?.trim() || 'Free',
-    registered:   col.querySelector('.ev-reg-count')?.textContent?.trim() || '0 registered',
-    isRegistered: col.dataset.registered === 'true',
-    regId:        col.dataset.regId || '',
-    rawDate:      col.dataset.date || '',
-    bannerUrl:    col.querySelector('.ev-banner img')?.src || ''
-  };
-  
-  // Update modal title
-  var titleEl = document.getElementById('eventModalLabel');
-  if(titleEl) titleEl.textContent = eventData.title;
-  
-  // Build modal body HTML
-  var body = document.getElementById('eventModalBody');
-  if(!body) return;
-  
-  var googleUrl = getGoogleCalendarUrl(eventData.title, eventData.rawDate, eventData.description, eventData.venue);
-  
-  var regButtonHtml = '';
-  if (eventData.isRegistered && eventData.regId) {
-    regButtonHtml = `
-      <button class="modal-btn" style="background:#10b981; color:white; border:none;" onclick="window.location.href='/ticket/${eventData.regId}'">
-        <i class="fas fa-ticket-alt me-1"></i>View Ticket
-      </button>
-    `;
-  } else {
-    regButtonHtml = `
-      <button class="modal-btn modal-btn-primary" onclick="window.location.href='/forms/register/${eventData.id}'">
-        <i class="fas fa-arrow-right me-1"></i>Register Now
-      </button>
-    `;
-  }
-  
-  var calendarSectionHtml = '';
-  if (eventData.rawDate) {
-    calendarSectionHtml = `
-      <div class="event-modal-section">
-        <h5>Add to Calendar</h5>
-        <div class="d-flex flex-wrap gap-2">
-          <a href="${googleUrl}" target="_blank" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
-            <i class="fab fa-google"></i> Google Calendar
-          </a>
-          <button onclick="downloadiCal('${eventData.title.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${eventData.rawDate}', '${eventData.description.replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${eventData.venue.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
-            <i class="fas fa-calendar-plus"></i> Download iCal (.ics)
-          </button>
-        </div>
-      </div>
-    `;
-  }
-  
-  var bannerHtml = '';
-  if(eventData.bannerUrl){
-    bannerHtml = `<div style="margin:-24px -24px 20px; border-radius: 12px 12px 0 0; overflow:hidden; max-height:200px;">
-      <img src="${eventData.bannerUrl}" style="width:100%; height:200px; object-fit:cover; display:block;" alt="${eventData.title}">
-    </div>`;
-  }
-  
-  body.innerHTML = `
-    ${bannerHtml}
-    <div class="event-modal-meta">
-      <div class="event-modal-meta-item">
-        <i class="fas fa-calendar-alt"></i>
-        <span>${eventData.date}</span>
-      </div>
-      <div class="event-modal-meta-item">
-        <i class="fas fa-map-marker-alt"></i>
-        <span>${eventData.venue}</span>
-      </div>
-      <div class="event-modal-meta-item">
-        <i class="fas fa-tag"></i>
-        <span style="text-transform: capitalize;">${eventData.category}</span>
-      </div>
-      <div class="event-modal-meta-item">
-        <i class="fas fa-users"></i>
-        <span>${eventData.registered}</span>
-      </div>
-    </div>
-    
-    <div class="event-modal-section">
-      <h5>About This Event</h5>
-      <p>${eventData.description || 'No description available.'}</p>
-    </div>
-    
-    <div class="event-modal-section">
-      <h5>Entry Fee</h5>
-      <p style="font-size:16px;font-weight:800;color:var(--orange);">${eventData.fee}</p>
-    </div>
-    
-    ${calendarSectionHtml}
-    
-    <div class="event-modal-section">
-      <h5>Event Highlights</h5>
-      <p>🎯 Competitive spirit • 🏆 Amazing prizes • 🤝 Networking opportunities • 🎓 Skill development</p>
-    </div>
-    
-    <div class="modal-btn-group">
-      ${regButtonHtml}
-      <button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Back</button>
-    </div>
-  `;
-  
-  // Show the modal
+  // Show modal NOW (with spinner) — user sees it opening immediately
   var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();
+  
+  // STEP 2: Populate content (safely, after modal is visible)
+  try {
+    if(!col){ body.innerHTML = '<p class="text-danger">Error: event data not found.</p>'; return; }
+    
+    var evId    = col.dataset.id    || '';
+    var evCat   = col.dataset.cat   || 'General';
+    var evDate  = col.dataset.date  || '';
+    var evReg   = col.dataset.registered === 'true';
+    var evRegId = col.dataset.regId || '';
+    
+    var title       = (col.querySelector('.ev-title')?.textContent || 'Event').trim();
+    var description = (col.querySelector('.ev-desc')?.textContent  || 'No description available.').trim();
+    var dateText    = (col.querySelector('[data-info="date"]')?.textContent  || evDate || 'TBA').trim();
+    var venue       = (col.querySelector('[data-info="venue"]')?.textContent || 'TBA').trim();
+    var fee         = (col.querySelector('[data-info="fee"]')?.textContent   || 'Free').trim();
+    var regCount    = (col.querySelector('.ev-reg-count')?.textContent       || '0 registered').trim();
+    var bannerSrc   = col.querySelector('.ev-banner img')?.src || '';
+    
+    // Update modal title
+    var titleEl = document.getElementById('eventModalLabel');
+    if(titleEl) titleEl.textContent = title;
+    
+    // Banner image
+    var bannerHtml = bannerSrc
+      ? '<div style="margin:-24px -24px 20px;border-radius:12px 12px 0 0;overflow:hidden;max-height:200px;"><img src="' + bannerSrc + '" style="width:100%;height:200px;object-fit:cover;display:block;" alt=""></div>'
+      : '';
+    
+    // Category badge colour
+    var catColour = {technical:'#3b82f6',cultural:'#a855f7',sports:'#10b981',management:'#f59e0b'};
+    var badgeBg = catColour[evCat.toLowerCase()] || '#6b7280';
+    
+    // Register button
+    var regBtn = evReg && evRegId
+      ? '<button class="modal-btn" style="background:#10b981;color:#fff;border:none;" onclick="location.href=\'/ticket/' + evRegId + '\'"><i class="fas fa-ticket-alt me-1"></i>View My Ticket</button>'
+      : '<button class="modal-btn modal-btn-primary" onclick="location.href=\'/forms/register/' + evId + '\'"><i class="fas fa-arrow-right me-1"></i>Register Now</button>';
+    
+    // Calendar section (only if we have a valid date)
+    var calHtml = '';
+    if(evDate && /^\d{4}-\d{2}-\d{2}$/.test(evDate)){
+      var gUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + evDate.replace(/-/g,'') + '&location=' + encodeURIComponent(venue);
+      calHtml = '<div class="event-modal-section">'
+        + '<h5>Add to Calendar</h5>'
+        + '<div class="d-flex flex-wrap gap-2">'
+        + '<a href="' + gUrl + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fab fa-google me-1"></i>Google Calendar</a>'
+        + '</div></div>';
+    }
+    
+    body.innerHTML =
+      bannerHtml +
+      '<div class="event-modal-meta">'
+        + '<div class="event-modal-meta-item"><i class="fas fa-calendar-alt"></i><span>' + dateText + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-map-marker-alt"></i><span>' + venue + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-tag"></i><span style="text-transform:capitalize;color:' + badgeBg + ';font-weight:700;">' + evCat + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-users"></i><span>' + regCount + '</span></div>'
+      + '</div>'
+      + '<div class="event-modal-section"><h5>About This Event</h5><p>' + description + '</p></div>'
+      + '<div class="event-modal-section"><h5>Entry Fee</h5><p style="font-size:18px;font-weight:800;color:var(--orange);">' + fee + '</p></div>'
+      + calHtml
+      + '<div class="event-modal-section"><h5>Event Highlights</h5><p>\uD83C\uDFAF Competitive spirit \u2022 \uD83C\uDFC6 Amazing prizes \u2022 \uD83E\uDD1D Networking opportunities \u2022 \uD83C\uDF93 Skill development</p></div>'
+      + '<div class="modal-btn-group">' + regBtn + '<button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+      
+  } catch(err) {
+    // Safety net — show error in modal so page is NEVER frozen
+    if(body) body.innerHTML = '<div class="alert alert-danger"><strong>Could not load event details.</strong><br><small>' + err.message + '</small></div><div class="modal-btn-group"><button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+    console.error('showEventModalFromCol error:', err);
+  }
 }
 
-// Legacy alias so any old calls still work
+// Legacy alias
 function showEventModal(eventId){
-  var col = document.querySelector('.ev-col[data-id="' + eventId + '"]');
+  var col = document.querySelector('.ev-col[data-id="' + CSS.escape(eventId) + '"]');
   if(col) showEventModalFromCol(col);
-  else if(typeof bootstrap !== 'undefined'){
-    window.location.href = '/forms/register/' + eventId;
-  }
+  else if(eventId) window.location.href = '/forms/register/' + eventId;
 }
 
 // ── CALENDAR HELPER FUNCTIONS ──────────────────

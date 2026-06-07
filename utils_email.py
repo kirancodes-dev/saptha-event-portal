@@ -86,35 +86,35 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
         <!-- Email card -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 40px rgba(12,18,43,0.13);border:1px solid #dde3ef;">
 
-          <!-- ══ HEADER — matches home-page nav exactly ══ -->
+          <!-- ══ HEADER — clean premium white header to show the logo perfectly ══ -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0c122b 0%,#1a2557 55%,#243070 100%);padding:0;">
-              <!-- Gold accent bar on top (like .topnav border-bottom) -->
+            <td style="background-color:#ffffff;padding:0;">
+              <!-- Gold accent bar on top -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="height:4px;background:linear-gradient(90deg,#c9a45e,#e8c97a,#c9a45e);font-size:0;line-height:0;">&nbsp;</td>
+                  <td style="height:4px;background:linear-gradient(90deg,#c9a020,#e8c84a,#c9a020);font-size:0;line-height:0;">&nbsp;</td>
                 </tr>
                 <tr>
-                  <td style="padding:28px 32px 26px;text-align:center;">
-                    <!-- University logo — white text transparent background, shows on navy -->
+                  <td style="padding:26px 32px 22px;text-align:center;">
+                    <!-- University logo — shown on crisp white background -->
                     <img src="{logo_url}"
                          alt="Sapthagiri NPS University"
                          width="220"
                          style="display:block;margin:0 auto 14px;height:56px;width:auto;max-width:220px;border:none;outline:none;text-decoration:none;background:transparent;">
                     <!-- Gold divider line -->
-                    <div style="width:48px;height:2px;background:linear-gradient(90deg,transparent,#c9a45e,transparent);margin:0 auto 14px;"></div>
-                    <!-- SapthaEvent badge — like the nav brand text -->
-                    <p style="margin:0 0 6px;color:#c9a45e;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
+                    <div style="width:60px;height:2px;background:linear-gradient(90deg,transparent,#c9a020,transparent);margin:0 auto 12px;"></div>
+                    <!-- SapthaEvent badge -->
+                    <p style="margin:0 0 4px;color:#c9a020;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
                       SapthaEvent Portal
                     </p>
-                    <h1 style="margin:0;color:#ffffff;font-size:19px;font-weight:700;letter-spacing:-0.3px;line-height:1.3;">
+                    <h1 style="margin:0;color:#0c1240;font-size:20px;font-weight:700;letter-spacing:-0.3px;line-height:1.3;">
                       {title}
                     </h1>
                   </td>
                 </tr>
-                <!-- Bottom gold border — replaces border-bottom from .topnav -->
+                <!-- Gold accent bar at bottom -->
                 <tr>
-                  <td style="height:3px;background:linear-gradient(90deg,#c9a45e,#e8c97a,#c9a45e);font-size:0;line-height:0;">&nbsp;</td>
+                  <td style="height:2px;background:linear-gradient(90deg,#c9a020,#e8c84a,#c9a020);font-size:0;line-height:0;">&nbsp;</td>
                 </tr>
               </table>
             </td>
@@ -133,10 +133,10 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="text-align:center;">
-                    <!-- Logo on navy pill so white text is always visible -->
+                    <!-- Logo on white pill so colored logo is always visible -->
                     <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px;">
                       <tr>
-                        <td style="background:linear-gradient(135deg,#0c122b 0%,#1a2557 100%);border-radius:10px;padding:10px 22px;border-bottom:2px solid #c9a45e;">
+                        <td style="background-color:#ffffff;border:1.5px solid #c9a020;border-radius:10px;padding:8px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                           <img src="{logo_url}"
                                alt="Sapthagiri NPS University"
                                height="32"
@@ -152,9 +152,9 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                     </p>
                     <p style="margin:0;font-size:11px;color:#b0bec5;">
                       &copy; 2026 Sapthagiri NPS University. All rights reserved.<br>
-                      <a href="{base}" style="color:#c9a45e;text-decoration:none;font-weight:600;">Visit Portal</a>
+                      <a href="{base}" style="color:#c9a020;text-decoration:none;font-weight:600;">Visit Portal</a>
                       &nbsp;&bull;&nbsp;
-                      <a href="{base}/login" style="color:#c9a45e;text-decoration:none;font-weight:600;">Login</a>
+                      <a href="{base}/login" style="color:#c9a020;text-decoration:none;font-weight:600;">Login</a>
                     </p>
                   </td>
                 </tr>

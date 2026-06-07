@@ -3,6 +3,7 @@ tests/test_spoc_features.py — Unit tests for SPOC check-in and certificate set
 """
 
 import json
+import datetime
 from unittest.mock import patch, MagicMock
 
 
@@ -12,7 +13,7 @@ def test_spoc_scan_page_loads(client, mock_db):
     mock_event.to_dict.return_value = {
         'title': 'Test Hackathon',
         'spoc_id': 'spoc@test.com',
-        'date': '2026-06-06'
+        'date': datetime.date.today().isoformat()
     }
     
     mock_reg1 = MagicMock()
@@ -58,7 +59,7 @@ def test_spoc_checkin_api_succeeds(client, mock_db):
     mock_event.to_dict.return_value = {
         'title': 'Test Hackathon',
         'spoc_id': 'spoc@test.com',
-        'date': '2026-06-06'
+        'date': datetime.date.today().isoformat()
     }
     
     mock_reg = MagicMock()

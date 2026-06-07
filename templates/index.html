@@ -448,6 +448,114 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .hero-carousel-wrapper .carousel-control-next:hover {
     opacity: 1 !important;
 }
+
+/* ── PHOTO COLLAGE GALLERY ─────────────────────── */
+.photo-collage-section {
+  padding: 64px 0 32px;
+  background: linear-gradient(180deg, #f8f9fa 0%, #0d1120 30%, #0d1120 80%, #f8f9fa 100%);
+  overflow: hidden;
+}
+
+/* Marquee container */
+.marquee-outer {
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+}
+.marquee-outer::before,
+.marquee-outer::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 120px;
+  z-index: 2;
+  pointer-events: none;
+}
+.marquee-outer::before { left: 0; background: linear-gradient(to right, #0d1120 0%, transparent 100%); }
+.marquee-outer::after  { right: 0; background: linear-gradient(to left, #0d1120 0%, transparent 100%); }
+
+.marquee-track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  will-change: transform;
+}
+
+/* Left direction scroll */
+@keyframes marquee-scroll-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+/* Right direction scroll */
+@keyframes marquee-scroll-right {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+.marquee-left {
+  animation: marquee-scroll-left 35s linear infinite;
+}
+.marquee-right {
+  animation: marquee-scroll-right 40s linear infinite;
+}
+
+/* Pause on hover */
+.marquee-outer:hover .marquee-left,
+.marquee-outer:hover .marquee-right {
+  animation-play-state: paused;
+}
+
+/* Image cards */
+.marquee-img-wrap {
+  flex-shrink: 0;
+  width: 260px;
+  height: 175px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  border: 2px solid rgba(255,255,255,0.06);
+}
+.marquee-img-wrap.tall {
+  height: 200px;
+  width: 300px;
+}
+.marquee-img-wrap:hover {
+  transform: scale(1.04) translateY(-4px);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 0 2px rgba(201,164,94,0.4);
+  z-index: 5;
+}
+.marquee-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter 0.35s ease;
+  filter: brightness(0.85) saturate(1.1);
+}
+.marquee-img-wrap:hover img {
+  filter: brightness(1) saturate(1.2);
+}
+
+/* Gallery CTA */
+.gallery-cta {
+  padding: 20px 0 8px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-left, .marquee-right {
+    animation: none;
+  }
+}
+
+/* Mobile: narrower images */
+@media (max-width: 576px) {
+  .marquee-img-wrap { width: 180px; height: 130px; }
+  .marquee-img-wrap.tall { width: 200px; height: 150px; }
+  .marquee-left { animation-duration: 22s; }
+  .marquee-right { animation-duration: 26s; }
+}
 </style>
 
 
@@ -642,7 +750,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
               {% if events and events[0].get('media_urls') %}
                 {% for img_url in events[0].get('media_urls') %}
                   <div class="carousel-item h-100 {% if loop.first %}active{% endif %}">
-                    <div class="carousel-img-wrap">
+                    <div class="carousel-img-wrap" style="cursor: pointer;" onclick="showEventModal('{{ events[0].id }}')">
                       <img src="{{ img_url }}" class="d-block w-100 h-100" style="object-fit: cover; filter: brightness(0.85);" alt="Campus Event Slide {{ loop.index }}">
                       <!-- Dark overlay gradient for readable text -->
                       <div class="carousel-overlay" style="position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(13, 17, 30, 0.95) 0%, rgba(13, 17, 30, 0.4) 60%, rgba(0, 0, 0, 0) 100%); pointer-events: none;"></div>
@@ -791,12 +899,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
            data-registered="{% if registered_event_ids and event.id in registered_event_ids %}true{% else %}false{% endif %}"
            data-reg-id="{{ registered_events_map.get(event.id, '') }}"
            data-search="{{ event.title.lower() }} {{ event.get('description','').lower() }} {{ event.get('venue','').lower() }} {{ event.get('category','').lower() }}">
-        <div class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100" 
+        <div class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100 ev-card-clickable" 
              style="cursor: pointer;"
-             onclick="if(!event.target.closest('.btn-reg')) { showEventModal('{{ event.id }}'); }"
+             data-ev-id="{{ event.id }}"
              role="button"
              tabindex="0"
-             onkeydown="if(event.key === 'Enter' || event.key === ' ') { if(!event.target.closest('.btn-reg')) { showEventModal('{{ event.id }}'); } }"
              aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
           <div class="ev-banner" aria-hidden="true">
             {% if event.get('banner_url') %}
@@ -888,6 +995,70 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       </button>
     </div>
 
+  </div>
+</section>
+
+<!-- ═══ PHOTO COLLAGE GALLERY ═══ -->
+<section class="photo-collage-section" id="campus-gallery" aria-label="Campus photo gallery" role="region">
+  <div class="container-xl px-3 mb-4">
+    <div class="text-center">
+      <div class="sec-eyebrow justify-content-center" style="color: rgba(201,164,94,0.85);">Campus Life</div>
+      <h2 class="sec-h" style="color: #ffffff; text-shadow: 0 2px 16px rgba(0,0,0,0.4);">Life at Sapthagiri NPS University</h2>
+      <p class="sec-p mx-auto" style="max-width:520px; color: rgba(255,255,255,0.65);">Vibrant events, passionate students, and unforgettable moments — captured live at our campus.</p>
+    </div>
+  </div>
+
+  <!-- Row 1: scrolls left -->
+  <div class="marquee-outer" aria-hidden="true">
+    <div class="marquee-track marquee-left">
+      <!-- Photos set 1 (duplicated for seamless loop) -->
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103649422_2026-04-17_02-25-58.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103508763_2026-04-17_02-35-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1624637338_2026-04-15_10-38-55.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/departments/banner/507099540_2026-04-14_05-45-28.webp" alt="Campus banner" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <!-- Duplicate for seamless loop -->
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103649422_2026-04-17_02-25-58.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103508763_2026-04-17_02-35-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1624637338_2026-04-15_10-38-55.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/departments/banner/507099540_2026-04-14_05-45-28.webp" alt="Campus banner" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+    </div>
+  </div>
+
+  <!-- Row 2: scrolls right -->
+  <div class="marquee-outer" aria-hidden="true">
+    <div class="marquee-track marquee-right">
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/598302472_2026-04-15_09-12-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1466339825_2026-04-15_05-47-24.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1323184756_2026-04-15_05-29-48.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/671174912_2026-04-15_05-03-39.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <!-- Duplicate -->
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/598302472_2026-04-15_09-12-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1466339825_2026-04-15_05-47-24.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1323184756_2026-04-15_05-29-48.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/671174912_2026-04-15_05-03-39.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+    </div>
+  </div>
+
+  <div class="gallery-cta text-center mt-4">
+    <a href="#events" class="btn btn-outline-secondary btn-sm" style="border-radius: var(--radius-pill); padding: 8px 24px; font-size:13px; font-weight:600; border-color: var(--ink-300); color: var(--ink-500);">
+      <i class="fas fa-arrow-down me-2"></i>Explore Events
+    </a>
   </div>
 </section>
 
@@ -1201,9 +1372,33 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a){
   });
 });
 
+// ── EVENT CARD CLICK (event delegation — avoids 'event' variable collision) ────
+document.addEventListener('click', function(e){
+  var card = e.target.closest('.ev-card-clickable');
+  if(!card) return;
+  if(e.target.closest('.btn-reg')) return;
+  var evId = card.dataset.evId;
+  if(evId) showEventModal(evId);
+});
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  var card = e.target.closest('.ev-card-clickable');
+  if(!card) return;
+  if(e.target.closest('.btn-reg')) return;
+  var evId = card.dataset.evId;
+  if(evId){ e.preventDefault(); showEventModal(evId); }
+});
+
 // ── EVENT MODAL ────────────────────────────────
 function showEventModal(eventId){
-  var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+  if(typeof bootstrap === 'undefined'){
+    // Fallback if Bootstrap not loaded — navigate directly
+    window.location.href = '/forms/register/' + eventId;
+    return;
+  }
+  var modalEl = document.getElementById('eventModal');
+  if(!modalEl) return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   var body = document.getElementById('eventModalBody');
   
   var cards = document.querySelectorAll('.ev-col');
@@ -1213,13 +1408,13 @@ function showEventModal(eventId){
     if(card.dataset.id === String(eventId)){
       eventData = {
         id: card.dataset.id,
-        title: card.querySelector('.ev-title').textContent,
-        description: card.querySelector('.ev-desc').textContent,
-        category: card.dataset.cat,
+        title: card.querySelector('.ev-title')?.textContent || 'Event',
+        description: card.querySelector('.ev-desc')?.textContent || '',
+        category: card.dataset.cat || '',
         date: card.querySelector('[data-info="date"]')?.textContent || 'TBA',
         venue: card.querySelector('[data-info="venue"]')?.textContent || 'TBA',
         fee: card.querySelector('[data-info="fee"]')?.textContent || 'Free',
-        registered: card.querySelector('.ev-reg-count').textContent,
+        registered: card.querySelector('.ev-reg-count')?.textContent || '0 registered',
         isRegistered: card.dataset.registered === 'true',
         regId: card.dataset.regId || '',
         rawDate: card.dataset.date || ''

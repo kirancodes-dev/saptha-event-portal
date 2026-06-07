@@ -1575,7 +1575,13 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
 
 /* Pure CSS Hero Section */
 .hero-section {
-    background: radial-gradient(circle at 10% 20%, var(--snpsu-blue-dark) 0%, var(--snpsu-blue) 90%);
+    background:
+        linear-gradient(135deg,
+            rgba(15, 23, 56, 0.88) 0%,
+            rgba(26, 37, 87, 0.80) 50%,
+            rgba(10, 18, 45, 0.90) 100%),
+        url('/static/campus.jpg')
+        center center / cover no-repeat;
     position: relative;
     padding: clamp(80px, 10vw, 140px) 0 clamp(60px, 8vw, 100px) 0;
     overflow: hidden;

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Modal Debug Test</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { padding: 30px; font-family: monospace; background: #1a1a2e; color: #eee; }
+.result { margin: 10px 0; padding: 12px; border-radius: 8px; font-size: 14px; }
+.ok  { background: #1a4731; border: 1px solid #10b981; }
+.err { background: #4a1a1a; border: 1px solid #ef4444; }
+.info{ background: #1a2a4a; border: 1px solid #3b82f6; }
+button { margin: 8px; padding: 10px 20px; border-radius: 8px; border:none; cursor:pointer; font-weight:700; }
+</style>
+</head>
+<body>
+<h2>🔧 SapthaEvent — Modal Debug Page</h2>
+<div id="results"></div>
+<button onclick="runTests()" style="background:#3b82f6;color:#fff;">Run All Tests</button>
+<button onclick="window.open('/', '_blank')" style="background:#6b7280;color:#fff;">Open Home Page</button>
+
+<div class="modal fade" id="testModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content bg-dark text-white">
+    <div class="modal-header"><h5 class="modal-title">Test Modal</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">Bootstrap Modal is working! ✅</div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+var log = document.getElementById('results');
+function add(msg, cls){ 
+  var d = document.createElement('div');
+  d.className = 'result ' + cls;
+  d.innerHTML = msg;
+  log.appendChild(d);
+}
+
+function runTests(){
+  log.innerHTML = '';
+  
+  // Test 1: Bootstrap available?
+  add('1. typeof bootstrap = <b>' + typeof bootstrap + '</b>', typeof bootstrap !== 'undefined' ? 'ok' : 'err');
+  
+  // Test 2: bootstrap.Modal available?
+  try {
+    var x = bootstrap.Modal;
+    add('2. bootstrap.Modal = <b>' + (x ? 'EXISTS' : 'UNDEFINED') + '</b>', x ? 'ok' : 'err');
+  } catch(e){ add('2. bootstrap.Modal ERROR: ' + e.message, 'err'); }
+  
+  // Test 3: Modal element exists?
+  var homeModal = null;
+  try {
+    // Open home page in iframe to test
+    add('3. Loading home page in hidden iframe to test event modal...', 'info');
+    var iframe = document.createElement('iframe');
+    iframe.src = '/';
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;';
+    document.body.appendChild(iframe);
+    
+    iframe.onload = function(){
+      try {
+        var iDoc = iframe.contentDocument;
+        var iWin = iframe.contentWindow;
+        
+        // Check bootstrap in iframe
+        var bsType = typeof iWin.bootstrap;
+        add('4. bootstrap in home page: <b>' + bsType + '</b>', bsType !== 'undefined' ? 'ok' : 'err');
+        
+        // Check modal element
+        var modalEl = iDoc.getElementById('eventModal');
+        add('5. #eventModal element: <b>' + (modalEl ? 'FOUND' : 'NOT FOUND') + '</b>', modalEl ? 'ok' : 'err');
+        
+        // Check event cards
+        var cards = iDoc.querySelectorAll('.ev-card-clickable');
+        add('6. .ev-card-clickable count: <b>' + cards.length + '</b>', cards.length > 0 ? 'ok' : 'err');
+        
+        // Check evGrid visibility
+        var grid = iDoc.getElementById('evGrid');
+        add('7. #evGrid display: <b>' + (grid ? getComputedStyle(grid).display : 'NOT FOUND') + '</b>', 
+            grid && getComputedStyle(grid).display !== 'none' ? 'ok' : 'info');
+        
+        // Try to call showEventModalFromCol on the first card
+        if(cards.length > 0){
+          var firstCol = cards[0].closest('.ev-col');
+          add('8. First .ev-col found: <b>' + (firstCol ? 'YES, data-id=' + firstCol.dataset.id : 'NO') + '</b>', firstCol ? 'ok' : 'err');
+          
+          if(firstCol && iWin.showEventModalFromCol){
+            try {
+              iWin.showEventModalFromCol(firstCol);
+              add('9. showEventModalFromCol() called: <b>NO EXCEPTION THROWN ✅</b>', 'ok');
+              setTimeout(function(){
+                var modal = iDoc.getElementById('eventModal');
+                var visible = modal && modal.classList.contains('show');
+                add('10. Modal visible after call: <b>' + (visible ? 'YES ✅' : 'NO ❌') + '</b>', visible ? 'ok' : 'err');
+                var body = iDoc.getElementById('eventModalBody');
+                add('11. Modal body innerHTML length: <b>' + (body ? body.innerHTML.length : 'N/A') + ' chars</b>', body && body.innerHTML.length > 50 ? 'ok' : 'err');
+              }, 1000);
+            } catch(err){
+              add('9. showEventModalFromCol() THREW ERROR: <b>' + err.message + '</b><br><small>' + err.stack + '</small>', 'err');
+            }
+          } else {
+            add('9. showEventModalFromCol function: <b>' + (iWin.showEventModalFromCol ? 'EXISTS' : 'NOT DEFINED') + '</b>', iWin.showEventModalFromCol ? 'ok' : 'err');
+          }
+        }
+        
+      } catch(err){
+        add('iframe test error: ' + err.message, 'err');
+      }
+    };
+  } catch(e){ add('iframe test error: ' + e.message, 'err'); }
+  
+  // Test own modal
+  setTimeout(function(){
+    try {
+      var m = bootstrap.Modal.getOrCreateInstance(document.getElementById('testModal'));
+      m.show();
+      add('Bootstrap Modal.show() on test modal: <b>WORKS ✅</b>', 'ok');
+    } catch(e){ add('Bootstrap Modal.show() ERROR: <b>' + e.message + '</b>', 'err'); }
+  }, 500);
+}
+
+window.onerror = function(msg, src, line){ 
+  add('UNCAUGHT JS ERROR: ' + msg + ' (line ' + line + ')', 'err'); 
+};
+</script>
+</body>
+</html>

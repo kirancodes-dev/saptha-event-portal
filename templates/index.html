@@ -1372,137 +1372,161 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a){
   });
 });
 
-// ── EVENT CARD CLICK (event delegation — avoids 'event' variable collision) ────
+// ── EVENT CARD CLICK (event delegation) ────────────────────────────────────
 document.addEventListener('click', function(e){
+  // Don't trigger if clicking the Register/View Ticket button
+  if(e.target.closest('.btn-reg')) return;
+  
   var card = e.target.closest('.ev-card-clickable');
   if(!card) return;
-  if(e.target.closest('.btn-reg')) return;
-  var evId = card.dataset.evId;
-  if(evId) showEventModal(evId);
+  
+  // Walk up to the .ev-col to read all data attributes
+  var col = card.closest('.ev-col');
+  if(col) showEventModalFromCol(col);
 });
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Enter' && e.key !== ' ') return;
+  if(e.target.closest('.btn-reg')) return;
   var card = e.target.closest('.ev-card-clickable');
   if(!card) return;
-  if(e.target.closest('.btn-reg')) return;
-  var evId = card.dataset.evId;
-  if(evId){ e.preventDefault(); showEventModal(evId); }
+  var col = card.closest('.ev-col');
+  if(col){ e.preventDefault(); showEventModalFromCol(col); }
 });
 
-// ── EVENT MODAL ────────────────────────────────
-function showEventModal(eventId){
+// ── EVENT MODAL ────────────────────────────────────────────────────────────
+function showEventModalFromCol(col){
   if(typeof bootstrap === 'undefined'){
-    // Fallback if Bootstrap not loaded — navigate directly
-    window.location.href = '/forms/register/' + eventId;
+    var id = col.dataset.id;
+    if(id) window.location.href = '/forms/register/' + id;
     return;
   }
+  
   var modalEl = document.getElementById('eventModal');
   if(!modalEl) return;
-  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  
+  // Read title, description etc. from the card INSIDE this col
+  var card = col.querySelector('.ev-card-clickable');
+  
+  var eventData = {
+    id:           col.dataset.id || '',
+    title:        col.querySelector('.ev-title')?.textContent?.trim() || 'Event',
+    description:  col.querySelector('.ev-desc')?.textContent?.trim() || '',
+    category:     col.dataset.cat || '',
+    date:         col.querySelector('[data-info="date"]')?.textContent?.trim() || 'TBA',
+    venue:        col.querySelector('[data-info="venue"]')?.textContent?.trim() || 'TBA',
+    fee:          col.querySelector('[data-info="fee"]')?.textContent?.trim() || 'Free',
+    registered:   col.querySelector('.ev-reg-count')?.textContent?.trim() || '0 registered',
+    isRegistered: col.dataset.registered === 'true',
+    regId:        col.dataset.regId || '',
+    rawDate:      col.dataset.date || '',
+    bannerUrl:    col.querySelector('.ev-banner img')?.src || ''
+  };
+  
+  // Update modal title
+  var titleEl = document.getElementById('eventModalLabel');
+  if(titleEl) titleEl.textContent = eventData.title;
+  
+  // Build modal body HTML
   var body = document.getElementById('eventModalBody');
+  if(!body) return;
   
-  var cards = document.querySelectorAll('.ev-col');
-  var eventData = null;
+  var googleUrl = getGoogleCalendarUrl(eventData.title, eventData.rawDate, eventData.description, eventData.venue);
   
-  cards.forEach(function(card){
-    if(card.dataset.id === String(eventId)){
-      eventData = {
-        id: card.dataset.id,
-        title: card.querySelector('.ev-title')?.textContent || 'Event',
-        description: card.querySelector('.ev-desc')?.textContent || '',
-        category: card.dataset.cat || '',
-        date: card.querySelector('[data-info="date"]')?.textContent || 'TBA',
-        venue: card.querySelector('[data-info="venue"]')?.textContent || 'TBA',
-        fee: card.querySelector('[data-info="fee"]')?.textContent || 'Free',
-        registered: card.querySelector('.ev-reg-count')?.textContent || '0 registered',
-        isRegistered: card.dataset.registered === 'true',
-        regId: card.dataset.regId || '',
-        rawDate: card.dataset.date || ''
-      };
-    }
-  });
+  var regButtonHtml = '';
+  if (eventData.isRegistered && eventData.regId) {
+    regButtonHtml = `
+      <button class="modal-btn" style="background:#10b981; color:white; border:none;" onclick="window.location.href='/ticket/${eventData.regId}'">
+        <i class="fas fa-ticket-alt me-1"></i>View Ticket
+      </button>
+    `;
+  } else {
+    regButtonHtml = `
+      <button class="modal-btn modal-btn-primary" onclick="window.location.href='/forms/register/${eventData.id}'">
+        <i class="fas fa-arrow-right me-1"></i>Register Now
+      </button>
+    `;
+  }
   
-  if(eventData){
-    // Calendar URLs
-    const googleUrl = getGoogleCalendarUrl(eventData.title, eventData.rawDate, eventData.description, eventData.venue);
-    
-    let regButtonHtml = '';
-    if (eventData.isRegistered && eventData.regId) {
-      regButtonHtml = `
-        <button class="modal-btn" style="background:#10b981; color:white; border:none;" onclick="window.location.href='/ticket/${eventData.regId}'">
-          <i class="fas fa-ticket-alt me-1"></i>View Ticket
-        </button>
-      `;
-    } else {
-      regButtonHtml = `
-        <button class="modal-btn modal-btn-primary" onclick="window.location.href='/forms/register/${eventId}'">
-          <i class="fas fa-arrow-right me-1"></i>Register Now
-        </button>
-      `;
-    }
-    
-    let calendarSectionHtml = '';
-    if (eventData.rawDate) {
-      calendarSectionHtml = `
-        <div class="event-modal-section">
-          <h5>Add to Calendar</h5>
-          <div class="d-flex flex-wrap gap-2">
-            <a href="${googleUrl}" target="_blank" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
-              <i class="fab fa-google"></i> Google Calendar
-            </a>
-            <button onclick="downloadiCal('${eventData.title.replace(/'/g, "\\'")}', '${eventData.rawDate}', '${eventData.description.replace(/'/g, "\\'").replace(/\n/g, " ")}', '${eventData.venue.replace(/'/g, "\\'")}')" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
-              <i class="fas fa-calendar-plus"></i> Download iCal (.ics)
-            </button>
-          </div>
-        </div>
-      `;
-    }
-    
-    body.innerHTML = `
-      <div class="event-modal-meta">
-        <div class="event-modal-meta-item">
-          <i class="fas fa-calendar-alt"></i>
-          <span>${eventData.date}</span>
-        </div>
-        <div class="event-modal-meta-item">
-          <i class="fas fa-map-marker-alt"></i>
-          <span>${eventData.venue}</span>
-        </div>
-        <div class="event-modal-meta-item">
-          <i class="fas fa-tag"></i>
-          <span style="text-transform: capitalize;">${eventData.category}</span>
-        </div>
-        <div class="event-modal-meta-item">
-          <i class="fas fa-users"></i>
-          <span>${eventData.registered}</span>
-        </div>
-      </div>
-      
+  var calendarSectionHtml = '';
+  if (eventData.rawDate) {
+    calendarSectionHtml = `
       <div class="event-modal-section">
-        <h5>About This Event</h5>
-        <p>${eventData.description}</p>
-      </div>
-      
-      <div class="event-modal-section">
-        <h5>Entry Fee</h5>
-        <p style="font-size:16px;font-weight:800;color:var(--orange);">${eventData.fee}</p>
-      </div>
-      
-      ${calendarSectionHtml}
-      
-      <div class="event-modal-section">
-        <h5>Event Highlights</h5>
-        <p>🎯 Competitive spirit • 🏆 Amazing prizes • 🤝 Networking opportunities • 🎓 Skill development</p>
-      </div>
-      
-      <div class="modal-btn-group">
-        ${regButtonHtml}
-        <button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Back</button>
+        <h5>Add to Calendar</h5>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="${googleUrl}" target="_blank" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
+            <i class="fab fa-google"></i> Google Calendar
+          </a>
+          <button onclick="downloadiCal('${eventData.title.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${eventData.rawDate}', '${eventData.description.replace(/'/g, "\\'").replace(/\n/g, ' ')}', '${eventData.venue.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="font-size:12px; font-weight:600; border-radius: var(--radius-sm);">
+            <i class="fas fa-calendar-plus"></i> Download iCal (.ics)
+          </button>
+        </div>
       </div>
     `;
   }
   
+  var bannerHtml = '';
+  if(eventData.bannerUrl){
+    bannerHtml = `<div style="margin:-24px -24px 20px; border-radius: 12px 12px 0 0; overflow:hidden; max-height:200px;">
+      <img src="${eventData.bannerUrl}" style="width:100%; height:200px; object-fit:cover; display:block;" alt="${eventData.title}">
+    </div>`;
+  }
+  
+  body.innerHTML = `
+    ${bannerHtml}
+    <div class="event-modal-meta">
+      <div class="event-modal-meta-item">
+        <i class="fas fa-calendar-alt"></i>
+        <span>${eventData.date}</span>
+      </div>
+      <div class="event-modal-meta-item">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>${eventData.venue}</span>
+      </div>
+      <div class="event-modal-meta-item">
+        <i class="fas fa-tag"></i>
+        <span style="text-transform: capitalize;">${eventData.category}</span>
+      </div>
+      <div class="event-modal-meta-item">
+        <i class="fas fa-users"></i>
+        <span>${eventData.registered}</span>
+      </div>
+    </div>
+    
+    <div class="event-modal-section">
+      <h5>About This Event</h5>
+      <p>${eventData.description || 'No description available.'}</p>
+    </div>
+    
+    <div class="event-modal-section">
+      <h5>Entry Fee</h5>
+      <p style="font-size:16px;font-weight:800;color:var(--orange);">${eventData.fee}</p>
+    </div>
+    
+    ${calendarSectionHtml}
+    
+    <div class="event-modal-section">
+      <h5>Event Highlights</h5>
+      <p>🎯 Competitive spirit • 🏆 Amazing prizes • 🤝 Networking opportunities • 🎓 Skill development</p>
+    </div>
+    
+    <div class="modal-btn-group">
+      ${regButtonHtml}
+      <button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Back</button>
+    </div>
+  `;
+  
+  // Show the modal
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();
+}
+
+// Legacy alias so any old calls still work
+function showEventModal(eventId){
+  var col = document.querySelector('.ev-col[data-id="' + eventId + '"]');
+  if(col) showEventModalFromCol(col);
+  else if(typeof bootstrap !== 'undefined'){
+    window.location.href = '/forms/register/' + eventId;
+  }
 }
 
 // ── CALENDAR HELPER FUNCTIONS ──────────────────

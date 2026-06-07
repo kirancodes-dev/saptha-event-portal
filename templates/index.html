@@ -1432,6 +1432,12 @@ function showEventModalFromCol(col){
     return;
   }
   
+  // CRITICAL: Move modal to <body> directly so it escapes any stacking context
+  // (backdrop-filter on navbar creates a stacking context that traps children)
+  if(modalEl.parentElement !== document.body){
+    document.body.appendChild(modalEl);
+  }
+  
   // Show modal NOW (with spinner) — user sees it opening immediately
   var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();

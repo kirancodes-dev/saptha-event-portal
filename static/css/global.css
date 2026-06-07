@@ -2397,6 +2397,16 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
     50% { opacity: 1; transform: translateY(-4px); }
 }
 
+/* ── CRITICAL: Bootstrap Modal Z-index fix ──────────────────────────────────
+   backdrop-filter on .navbar creates a stacking context that can trap modals.
+   Force modal and backdrop to always be on top of everything.             */
+.modal              { z-index: 10500 !important; }
+.modal-backdrop     { z-index: 10400 !important; }
+.modal-dialog       { z-index: 10500 !important; }
+/* Ensure modals escape any stacking context from navbar/hero transforms */
+body > .modal,
+body > .modal-backdrop { z-index: 10500 !important; }
+
 /* Event Detail Modal */
 .event-modal-banner {
     width: 100%;

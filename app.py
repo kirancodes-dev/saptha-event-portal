@@ -357,6 +357,12 @@ except Exception as exc:
 # =========================================================
 
 # =========================================================
+# TEMPORARY DEBUG ROUTE - remove after fixing
+@app.route('/debug-modal')
+def debug_modal():
+    from flask import render_template
+    return render_template('debug_modal.html')
+
 # NOISE SUPPRESSORS
 # =========================================================
 @app.route('/favicon.ico')

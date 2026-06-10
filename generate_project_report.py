@@ -16,9 +16,7 @@ DATE_STR = NOW.strftime("%d %B %Y")
 
 def draw_cover(canvas_obj, doc):
     canvas_obj.saveState()
-    # Fill background with dark navy blue
-    canvas_obj.setFillColor(colors.HexColor('#0c122b'))
-    canvas_obj.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=True, stroke=False)
+    # Light background (white), no dark background fill!
     
     # Draw a gold accent panel on the left edge (thickness 24 points)
     canvas_obj.setFillColor(colors.HexColor('#c9a45e'))
@@ -32,10 +30,12 @@ def draw_cover(canvas_obj, doc):
     canvas_obj.setLineWidth(1.5)
     canvas_obj.line(54, doc.pagesize[1] - 130, doc.pagesize[0] - 54, doc.pagesize[1] - 130)
     
-    # University logo on top left (white logo looks perfect on the navy background!)
+    # University logo on top left (logo is white-on-transparent, so we draw a dark navy pill behind it)
     logo_path = 'static/snpsu-logo.png'
     if os.path.exists(logo_path):
-        canvas_obj.drawImage(logo_path, 54, doc.pagesize[1] - 85, width=180, height=50, mask='auto')
+        canvas_obj.setFillColor(colors.HexColor('#0c122b'))
+        canvas_obj.roundRect(50, doc.pagesize[1] - 95, 190, 60, 8, fill=True, stroke=False)
+        canvas_obj.drawImage(logo_path, 55, doc.pagesize[1] - 90, width=180, height=50, mask='auto')
         
     canvas_obj.restoreState()
 
@@ -60,7 +60,7 @@ def draw_page_number(canvas_obj, doc):
     canvas_obj.line(54, doc.pagesize[1] - 52, doc.pagesize[0] - 54, doc.pagesize[1] - 52)
     
     # Header Left Text
-    canvas_obj.setFont('Helvetica-Bold', 8)
+    canvas_obj.setFont('Times-Bold', 8)
     canvas_obj.setFillColor(colors.HexColor('#0c122b'))
     canvas_obj.drawString(54, doc.pagesize[1] - 42, "SAPTHAEVENT PORTAL - PROJECT REPORT")
     
@@ -69,7 +69,7 @@ def draw_page_number(canvas_obj, doc):
     canvas_obj.line(54, 55, doc.pagesize[0] - 54, 55)
     
     # Footer text
-    canvas_obj.setFont('Helvetica', 8)
+    canvas_obj.setFont('Times-Roman', 8)
     canvas_obj.setFillColor(colors.HexColor('#64748b'))
     canvas_obj.drawString(54, 42, "Sapthagiri NPS University © 2026")
     canvas_obj.drawRightString(doc.pagesize[0] - 54, 42, f"Page {doc.page}")
@@ -77,25 +77,25 @@ def draw_page_number(canvas_obj, doc):
     canvas_obj.restoreState()
 
 def create_wrapped_table(data, col_widths, header_bg='#0c122b'):
-    """Helper to generate tables where text is auto-wrapped using Paragraph flowables."""
+    """Helper to generate tables where text is auto-wrapped using Paragraph flowables in Times-Roman."""
     formatted_data = []
     
-    # Table header style
+    # Table header style (Times-Bold)
     th_style = ParagraphStyle(
         'TH_Style',
-        fontName='Helvetica-Bold',
-        fontSize=8.5,
-        leading=11,
+        fontName='Times-Bold',
+        fontSize=9,
+        leading=13.5, # 1.5 spacing
         textColor=colors.white,
         alignment=1 # Centered headers
     )
     
-    # Table body cell style
+    # Table body cell style (Times-Roman)
     td_style = ParagraphStyle(
         'TD_Style',
-        fontName='Helvetica',
-        fontSize=8,
-        leading=11,
+        fontName='Times-Roman',
+        fontSize=9,
+        leading=13.5, # 1.5 spacing
         textColor=colors.HexColor('#1e293b')
     )
     
@@ -136,14 +136,14 @@ def create_report():
     
     styles = getSampleStyleSheet()
     
-    # Custom styles
+    # Custom styles - Times-Roman, Times-Bold with 1.5 spacing (leading = fontSize * 1.5)
     title_style = ParagraphStyle(
         'CoverTitle',
         parent=styles['Heading1'],
-        fontName='Helvetica-Bold',
-        fontSize=30,
-        leading=36,
-        textColor=colors.white,
+        fontName='Times-Bold',
+        fontSize=26,
+        leading=39,
+        textColor=colors.HexColor('#0c122b'), # Dark text on light background
         spaceAfter=15,
         spaceBefore=120
     )
@@ -151,52 +151,52 @@ def create_report():
     subtitle_style = ParagraphStyle(
         'CoverSubtitle',
         parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=13,
-        leading=19,
-        textColor=colors.HexColor('#c9a45e'),
+        fontName='Times-Roman',
+        fontSize=12,
+        leading=18,
+        textColor=colors.HexColor('#c9a45e'), # Gold subtitle
         spaceAfter=150
     )
     
     meta_style = ParagraphStyle(
         'CoverMeta',
         parent=styles['Normal'],
-        fontName='Helvetica-Bold',
+        fontName='Times-Bold',
         fontSize=10,
-        leading=16,
-        textColor=colors.HexColor('#cbd5e1')
+        leading=15,
+        textColor=colors.HexColor('#475569') # Dark slate text
     )
     
     h1_style = ParagraphStyle(
         'Header1',
         parent=styles['Heading1'],
-        fontName='Helvetica-Bold',
+        fontName='Times-Bold',
         fontSize=16,
-        leading=20,
+        leading=24, # 1.5 spacing
         textColor=colors.HexColor('#0c122b'),
-        spaceBefore=22,
-        spaceAfter=12,
+        spaceBefore=16,
+        spaceAfter=8,
         keepWithNext=True
     )
     
     h2_style = ParagraphStyle(
         'Header2',
         parent=styles['Heading2'],
-        fontName='Helvetica-Bold',
-        fontSize=12,
-        leading=16,
+        fontName='Times-Bold',
+        fontSize=14,
+        leading=21, # 1.5 spacing
         textColor=colors.HexColor('#c9a45e'),
-        spaceBefore=14,
-        spaceAfter=8,
+        spaceBefore=12,
+        spaceAfter=6,
         keepWithNext=True
     )
     
     body_style = ParagraphStyle(
         'Body',
         parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=9.5,
-        leading=14,
+        fontName='Times-Roman',
+        fontSize=12,
+        leading=18, # 1.5 spacing
         textColor=colors.HexColor('#334155'),
         spaceAfter=10
     )
@@ -204,9 +204,9 @@ def create_report():
     letter_body = ParagraphStyle(
         'LetterBody',
         parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=9.5,
-        leading=15,
+        fontName='Times-Roman',
+        fontSize=12,
+        leading=18, # 1.5 spacing
         textColor=colors.HexColor('#1e293b'),
         spaceAfter=12
     )
@@ -242,14 +242,14 @@ def create_report():
         ["3. Tech Stack & Infrastructure", "Multi-stage stack and database scaling layers.", "Page 4"],
         ["4. Unified Database Adapter", "Relational SQL and Firestore NoSQL dynamic routing.", "Page 5"],
         ["5. Multi-Tenant Operations", "Five-tier user roles and granular capability lock.", "Page 6"],
-        ["6. Responsive Interface Design", "Zero-scroll mobile login page and screen fitting.", "Page 7"],
-        ["7. PWA Update Lifecycle", "Skip-waiting event routing and cache refreshes.", "Page 8"],
-        ["8. Accessibility & Contrasts", "WCAG compliance overlays and input validations.", "Page 9"],
-        ["9. Dynamic Host URLs", "Request-based origin calculation for email links.", "Page 10"],
-        ["10. Commercial Playbook", "ARR subscription models and upsell structures.", "Page 11"],
-        ["11. Q&A Defense Script", "Technical defense answers for institutional trustees.", "Page 12"],
-        ["12. System Verification", "End-to-end testing metrics and load validations.", "Page 13"],
-        ["13. Approval Letter", "Director authorization form and staging sign-off.", "Page 14"]
+        ["6. Responsive Interface Design", "Zero-scroll mobile login page and screen fitting.", "Page 6"],
+        ["7. PWA Update Lifecycle", "Skip-waiting event routing and cache refreshes.", "Page 7"],
+        ["8. Accessibility & Contrasts", "WCAG compliance overlays and input validations.", "Page 7"],
+        ["9. Dynamic Host URLs", "Request-based origin calculation for email links.", "Page 8"],
+        ["10. Commercial Playbook", "ARR subscription models and upsell structures.", "Page 8"],
+        ["11. Q&A Defense Script", "Technical defense answers for institutional trustees.", "Page 9"],
+        ["12. System Verification", "End-to-end testing metrics and load validations.", "Page 10"],
+        ["13. Approval Letter", "Director authorization form and staging sign-off.", "Page 11"]
     ]
     elements.append(create_wrapped_table(toc_data, [150, 254, 100]))
     elements.append(PageBreak())
@@ -275,8 +275,7 @@ def create_report():
         "technical review of the system architecture, core database adapters, interface redesigns, and production release ready state.",
         body_style
     ))
-    elements.append(Spacer(1, 10))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 2: PROBLEM STATEMENT & SCOPE
@@ -304,7 +303,7 @@ def create_report():
         "mobile phones and staff-operated desktops.",
         body_style
     ))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 3: SYSTEM ARCHITECTURE & TECH STACK
@@ -326,8 +325,7 @@ def create_report():
         ["Client Access", "Progressive Web App (PWA)", "Supports instant load, home screen install, and offline ticket viewing."]
     ]
     elements.append(create_wrapped_table(stack_data, [100, 140, 264]))
-    elements.append(Spacer(1, 15))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 4: DATABASE CONSOLIDATION & ADAPTER
@@ -355,7 +353,7 @@ def create_report():
         "consistency.",
         body_style
     ))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 5: AUTHENTICATION & MULTI-TENANCY
@@ -384,7 +382,7 @@ def create_report():
         "and a judge cannot access the administrative billing system.",
         body_style
     ))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 6: RESPONSIVE LOGIN & SCREEN FITTING
@@ -405,8 +403,7 @@ def create_report():
         "media query enables scrolling only if the soft keyboard is open, preserving usability on small displays.",
         body_style
     ))
-    elements.append(Spacer(1, 10))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 7: PWA LIVE UPDATE FLOW
@@ -429,8 +426,7 @@ def create_report():
         "automatically to fetch the latest cached static assets.",
         body_style
     ))
-    elements.append(Spacer(1, 10))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 8: ACCESSIBILITY, CONTRAST, & VALIDATION
@@ -450,8 +446,7 @@ def create_report():
         "team registration rows) and filters out any non-numeric characters in real-time, allowing users to enter only digits.",
         body_style
     ))
-    elements.append(Spacer(1, 10))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 9: TICKET EMAIL DOMAIN CALCULATOR
@@ -471,8 +466,7 @@ def create_report():
         "executed outside a request context (such as from background worker scripts).",
         body_style
     ))
-    elements.append(Spacer(1, 10))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 10: COMMERCIAL BUSINESS PLAYBOOK & MONETIZATION
@@ -501,7 +495,7 @@ def create_report():
         [["Financial Aspect", "Strategic Configuration"]] + info_data,
         [180, 324]
     ))
-    elements.append(Spacer(1, 15))
+    elements.append(Spacer(1, 10))
     
     # Infra Cost Matrix
     infra_data = [
@@ -515,7 +509,7 @@ def create_report():
         [["Tier Description", "Spec Details", "Monthly Cost", "Capacity Limit", "Best Fit"]] + infra_data,
         [80, 120, 80, 100, 124]
     ))
-    elements.append(Spacer(1, 15))
+    elements.append(Spacer(1, 10))
     
     # Pricing models
     pricing_data = [
@@ -528,7 +522,7 @@ def create_report():
         [["Pricing Model", "Initial Setup", "Annual AMC/Sub", "Internal Cost", "Margin", "Strategic Advantage"]] + pricing_data,
         [90, 70, 70, 70, 70, 134]
     ))
-    elements.append(Spacer(1, 15))
+    elements.append(Spacer(1, 10))
     
     # Upsell packages
     pkg_data = [
@@ -542,7 +536,7 @@ def create_report():
         [["Upsell Package Name", "Features Included", "Implementation Fee", "Ongoing Cost"]] + pkg_data,
         [100, 190, 100, 114]
     ))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 11: PITCH & EXPLAINER SCRIPT + HACKATHON DEFENSE Q&A
@@ -554,7 +548,7 @@ def create_report():
         body_style
     ))
     
-    pitch_style = ParagraphStyle("PitchBox", parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=9, leading=13.5, textColor=colors.HexColor("#1e293b"))
+    pitch_style = ParagraphStyle("PitchBox", parent=styles['Normal'], fontName='Times-Italic', fontSize=11, leading=16.5, textColor=colors.HexColor("#1e293b"))
     pitch_text = (
         "<b>Institutional Pitch Explainer Framework:</b><br/>"
         "\"Good morning trustees and principal, when we built SapthaEvent, we prioritized two core pillars: absolute data isolation "
@@ -592,7 +586,7 @@ def create_report():
         elements.append(Paragraph(f"<b>A:</b> {a}", body_style))
         elements.append(Spacer(1, 6))
         
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 12: SYSTEMS INTEGRATION & VERIFICATION
@@ -616,7 +610,7 @@ def create_report():
     ]
     elements.append(Paragraph("<b>Table 5: Quality Assurance Test Registry & Results</b>", h2_style))
     elements.append(create_wrapped_table(test_metrics, [150, 100, 154, 100]))
-    elements.append(Spacer(1, 15))
+    elements.append(Spacer(1, 10))
     
     elements.append(Paragraph(
         "During mock registration runs, the platform maintained sub-second server response times under a simulated load of "
@@ -624,7 +618,7 @@ def create_report():
         "within 1.2 seconds of transaction confirmation.",
         body_style
     ))
-    elements.append(PageBreak())
+    elements.append(Spacer(1, 15)) # Normal flow spacer, no PageBreak!
 
     # ─────────────────────────────────────────────────────────────
     # SECTION 13: PROJECT SUMMARY & PRODUCTION READINESS
@@ -647,13 +641,15 @@ def create_report():
     for m in milestones:
         elements.append(Paragraph(f"✓ {m}", body_style))
         
-    elements.append(Spacer(1, 15))
+    elements.append(Spacer(1, 10))
     elements.append(Paragraph(
         "With these enhancements, SapthaEvent stands as a robust, enterprise-grade, accessible college fest portal. "
         "It successfully balances multi-tenant SPOC autonomy with centralized university compliance. The system is recommended for "
         "immediate migration and production deployment.",
         body_style
     ))
+    
+    # We place a PageBreak only before the formal Approval Letter / Letter of Intent to keep it as a neat separate physical document.
     elements.append(PageBreak())
 
     # ─────────────────────────────────────────────────────────────
@@ -687,7 +683,7 @@ def create_report():
     Sapthagiri NPS University<br/>
     """
     elements.append(Paragraph(letter_text, letter_body))
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 25))
     
     # Signature block
     sig_data = [
@@ -699,7 +695,7 @@ def create_report():
     sig_table = Table(sig_data, colWidths=[240, 240])
     sig_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 25), # spacing for signature
+        ('BOTTOMPADDING', (0, 1), (-1, 1), 20), # spacing for signature
     ]))
     elements.append(sig_table)
 

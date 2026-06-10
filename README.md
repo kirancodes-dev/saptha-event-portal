@@ -298,6 +298,24 @@ Result Published   → Firestore Write → Celery Cert Task → PDF gen → Emai
 SPOC Requests AI   → Gemini API      → Report stored    → Print-to-PDF available
 ```
 
+### 🔄 11. Database Independence & SQLFirestoreAdapter
+The application implements an intermediate database abstraction layer: the `SQLFirestoreAdapter` (`db_adapter.py`). This adapter translates standard NoSQL queries (e.g. `db.collection('users').document(email).get()`) into equivalent relational SQL transactions at runtime. This allows developers to use a unified interface, rendering the application entirely portable between Google Cloud Firestore and standard PostgreSQL.
+
+### 📱 12. Zero-Scroll Mobile Login Page
+The mobile login page features dynamic viewport locking (`100dvh` container height) with hidden scrollbars to prevent scrolling. When a user selects the `Super Admin` role, which requires an additional `Master Secret Key` field, the viewport styles automatically respond via CSS transitions to resize paddings and branding margins, preventing overflow even on small screens.
+
+### 🔄 13. PWA Lifecycle & Live Update Flow
+To keep users in sync without disruptive page refreshes:
+1. Service worker waiting states are explicitly managed.
+2. If an update is detected, the install button changes dynamically to an "Update App" button.
+3. Clicking "Update App" sends a `SKIP_WAITING` message to the service worker, and the client automatically refreshes the window upon `controllerchange`.
+
+### ♿ 14. WCAG Accessibility & Dark Mode High-Contrast Overlays
+To comply with WCAG text-readability rules:
+- Light-red/green Bootstrap validation message overlays are adjusted to high-contrast semi-transparent variables (`rgba(239, 68, 68, 0.18)`) in dark mode (`data-theme="dark"`).
+- Input borders and validation texts are styled to ensure clear visibility without fading.
+- Non-numeric inputs on `type="tel"` elements (e.g., student phone numbers) are stripped in real-time.
+
 ---
 
 ## 🔧 Full Technology Stack
@@ -557,6 +575,37 @@ python app.py
 ```bash
 docker-compose up
 ```
+
+---
+
+## ☁️ Production Cloud Run Deployment
+
+SapthaEvent is ready for direct deployment to Google Cloud Run as a serverless container. Deployments are managed using Google Cloud Build and `gcloud` CLI.
+
+### Prerequisites
+1. Install and initialize the [Google Cloud SDK](https://cloud.google.com/sdk).
+2. Authenticate using:
+   ```bash
+   gcloud auth login
+   ```
+3. Set the target project:
+   ```bash
+   gcloud config set project aurevix
+   ```
+
+### Deploy Command
+To build and deploy the container image directly to Google Cloud Run in the `us-east4` region, run:
+```bash
+gcloud run deploy saptha-event-portal \
+    --source . \
+    --region us-east4 \
+    --allow-unauthenticated
+```
+
+During deployment, Cloud Run will read the multi-stage `Dockerfile`, build the secure production image on Cloud Build, and deploy it to:
+**[https://saptha-event-portal-762269836348.us-east4.run.app](https://saptha-event-portal-762269836348.us-east4.run.app)**
+
+*Note: Environment variables (such as Firestore credentials and API keys) are preserved across deployments on Cloud Run.*
 
 ---
 

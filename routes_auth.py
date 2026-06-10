@@ -5,6 +5,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
 from firebase_admin import auth
 from models import db
+
 from utils import log_action, ROLE_REDIRECTS, validate_password_strength
 import utils_email
 from utils_email import send_password_reset_email
@@ -50,7 +51,7 @@ def login():
         MASTER_KEY = current_app.config.get('MASTER_SECRET_KEY', '')
         if role == 'SuperAdmin' and MASTER_KEY and secret_key != MASTER_KEY:
             flash('🔒 Invalid Master Security Key. Access denied.', 'danger')
-            log_action(db, "LOGIN_FAILED", f"Bad master key attempt for {email}")
+            log_action("LOGIN_FAILED", f"Bad master key attempt for {email}")
             return redirect('/login')
 
         if not email or not password:
@@ -59,39 +60,42 @@ def login():
 
         try:
             user_doc = db.collection('users').document(email).get()
+            user = None
+            if user_doc.exists:
+                user = user_doc.to_dict()
 
-            if not user_doc.exists:
+            if not user:
                 # Auto-create SuperAdmin on very first boot
                 SUPER_EMAIL = current_app.config.get('SUPER_ADMIN_EMAIL', '')
                 SUPER_PASS  = current_app.config.get('SUPER_ADMIN_DEFAULT_PASS', '')
                 if role == 'SuperAdmin' and email == SUPER_EMAIL and password == SUPER_PASS:
                     db.collection('users').document(email).set({
-                        'email':               email,
-                        'name':                'System Super Admin',
-                        'role':                'SuperAdmin',
-                        'category':            'All',
-                        'password':            generate_password_hash(password, method='pbkdf2:sha256'),
-                        'created_at':          datetime.datetime.now().strftime("%Y-%m-%d"),
+                        'name': 'System Super Admin',
+                        'role': 'SuperAdmin',
+                        'category': 'All',
+                        'password': generate_password_hash(password, method='pbkdf2:sha256'),
                         'needs_password_reset': False
                     })
                     _set_session(email, 'System Super Admin', 'SuperAdmin', 'All', remember_me=remember_me)
                     flash("👑 Super Admin account initialised!", "success")
-                    log_action(db, "SUPER_ADMIN_INIT", f"First-boot SuperAdmin created: {email}")
+                    log_action("SUPER_ADMIN_INIT", f"First-boot SuperAdmin created: {email}")
                     return redirect('/admin/dashboard')
 
                 flash('Account not found. Please register or contact admin.', 'warning')
                 return redirect('/login')
 
-            user_data = user_doc.to_dict()
-            db_role = user_data.get('role', '').strip()
+            db_role = user.get('role', 'Participant')
+            if hasattr(db_role, 'value'):
+                db_role = db_role.value
+            db_role = str(db_role).strip()
+
             if db_role == 'Super Admin':
                 db_role = 'SuperAdmin'
             if db_role == 'Coordinator':
                 db_role = 'EventCoordinator'
 
-            # Password verification — hashed only. Legacy plaintext rows are
-            # rejected and flagged for admin-triggered password reset.
-            stored_pw = user_data.get('password', '')
+            # Password verification — hashed only.
+            stored_pw = user.get('password') or user.get('password_hash') or ''
             if isinstance(stored_pw, (int, float)):
                 stored_pw = str(int(stored_pw))
 
@@ -102,28 +106,34 @@ def login():
                 logger.warning(
                     "Login blocked — legacy unhashed password on %s. "
                     "Admin must trigger password reset.", email)
-                log_action(db, "LOGIN_BLOCKED_LEGACY_HASH",
+                log_action("LOGIN_BLOCKED_LEGACY_HASH",
                            f"Unhashed password on account {email}")
 
             if not valid or db_role != role:
                 flash('Incorrect password or wrong role selected.', 'danger')
-                log_action(db, "LOGIN_FAILED", f"Bad credentials for {email} (role={role})")
+                log_action("LOGIN_FAILED", f"Bad credentials for {email} (role={role})")
                 return redirect('/login')
 
+            user_name = user.get('name', 'User')
+            user_category = user.get('category', 'General')
+            if hasattr(user_category, 'value'):
+                user_category = user_category.value
+            user_category = str(user_category)
+
             _set_session(email,
-                         user_data.get('name'),
+                         user_name,
                          role,
-                         user_data.get('category', 'General'),
+                         user_category,
                          remember_me=remember_me)
 
             # Force password reset for auto-generated accounts
-            if user_data.get('needs_password_reset'):
+            if user.get('needs_password_reset', False):
                 session['force_reset'] = True
                 flash("Welcome! You must set a new password before continuing.", "warning")
                 return redirect('/reset_password')
 
-            flash(f"Welcome back, {user_data.get('name')}! 👋", "success")
-            log_action(db, "LOGIN_SUCCESS", f"{email} logged in as {role}")
+            flash(f"Welcome back, {user_name}! 👋", "success")
+            log_action("LOGIN_SUCCESS", f"{email} logged in as {role}")
             return _redirect_by_role(role)
 
         except Exception as exc:
@@ -155,13 +165,15 @@ def reset_password():
 
         try:
             email = session['user_id']
-            db.collection('users').document(email).update({
-                'password':            generate_password_hash(new_pw, method='pbkdf2:sha256'),
-                'needs_password_reset': False
-            })
+            user_ref = db.collection('users').document(email)
+            if user_ref.get().exists:
+                user_ref.update({
+                    'password': generate_password_hash(new_pw, method='pbkdf2:sha256'),
+                    'needs_password_reset': False
+                })
             session.pop('force_reset', None)
             flash("✅ Password updated. Welcome to your dashboard!", "success")
-            log_action(db, "PASSWORD_RESET", f"{email} changed forced password")
+            log_action("PASSWORD_RESET", f"{email} changed forced password")
             return _redirect_by_role(session.get('role', ''))
 
         except Exception as exc:
@@ -195,13 +207,12 @@ def register():
             return redirect('/register')
 
         try:
-            existing = db.collection('users').document(email).get()
-            if existing.exists:
+            existing_doc = db.collection('users').document(email).get()
+            if existing_doc.exists:
                 flash('An account with this email already exists. Please log in.', 'warning')
                 return redirect('/login')
 
             db.collection('users').document(email).set({
-                'email':               email,
                 'name':                name,
                 'usn':                 usn,
                 'phone':               phone,
@@ -212,7 +223,7 @@ def register():
                 'needs_password_reset': False
             })
             _set_session(email, name, 'Student', 'General')
-            log_action(db, "USER_REGISTERED", f"New student self-registered: {email}")
+            log_action("USER_REGISTERED", f"New student self-registered: {email}")
             flash(f"🎉 Welcome, {name}! Your account is ready.", "success")
             return redirect('/participant/dashboard')
 
@@ -247,18 +258,21 @@ def forgot_password():
             user_doc = db.collection('users').document(email).get()
             if not user_doc.exists:
                 flash(generic_msg, "info")
-                log_action(db, "RESET_REQ_NOACCT", f"Reset requested for unknown {email}")
+                log_action("RESET_REQ_NOACCT", f"Reset requested for unknown {email}")
                 return redirect('/forgot_password')
 
-            user_data = user_doc.to_dict()
-            role      = (user_data.get('role', '') or '').strip()
+            user = user_doc.to_dict()
+            role = user.get('role', 'Participant')
+            if hasattr(role, 'value'):
+                role = role.value
+            role = str(role).strip()
             if role == 'Super Admin':
                 role = 'SuperAdmin'
 
             # SuperAdmin cannot reset via email — use master key recovery path
             if role == 'SuperAdmin':
                 flash(generic_msg, "info")
-                log_action(db, "RESET_REQ_BLOCKED_SUPER",
+                log_action("RESET_REQ_BLOCKED_SUPER",
                            f"SuperAdmin {email} attempted email-based reset")
                 return redirect('/forgot_password')
 
@@ -266,14 +280,15 @@ def forgot_password():
             base  = request.host_url.rstrip('/')
             reset_url = f"{base}/reset_token/{token}"
 
+            user_name = user.get('name', 'User')
             sent = send_password_reset_email(email,
-                                             user_data.get('name', ''),
+                                             user_name,
                                              reset_url)
             if sent:
-                log_action(db, "RESET_LINK_SENT",
+                log_action("RESET_LINK_SENT",
                            f"Reset link emailed to {email} (role={role})")
             else:
-                log_action(db, "RESET_LINK_FAIL",
+                log_action("RESET_LINK_FAIL",
                            f"Email send failed for {email}")
 
             flash(generic_msg, "info")
@@ -301,56 +316,62 @@ def reset_token(token):
         flash("Invalid reset link.", "danger")
         return redirect('/forgot_password')
 
-    user_doc = db.collection('users').document(email).get()
-    if not user_doc.exists:
-        flash("Account no longer exists.", "danger")
-        return redirect('/login')
-
-    user_data = user_doc.to_dict()
-    role      = (user_data.get('role', '') or '').strip()
-    if role == 'Super Admin':
-        role = 'SuperAdmin'
-    if role == 'SuperAdmin':
-        flash("SuperAdmin cannot be reset via email.", "danger")
-        return redirect('/login')
-
-    if request.method == 'POST':
-        new_pw     = request.form.get('new_password', '')
-        confirm_pw = request.form.get('confirm_password', '')
-
-        ok, pw_err = validate_password_strength(new_pw)
-        if new_pw != confirm_pw:
-            flash("Passwords do not match.", "danger")
-            return redirect(request.path)
-        if not ok:
-            flash(pw_err, "danger")
-            return redirect(request.path)
-
-        try:
-            db.collection('users').document(email).update({
-                'password':             generate_password_hash(new_pw, method='pbkdf2:sha256'),
-                'needs_password_reset': False
-            })
-            log_action(db, "PASSWORD_RESET_EMAIL",
-                       f"{email} reset password via email token")
-            flash("✅ Password updated. You can now log in.", "success")
+    try:
+        user_doc = db.collection('users').document(email).get()
+        if not user_doc.exists:
+            flash("Account no longer exists.", "danger")
             return redirect('/login')
-        except Exception as exc:
-            current_app.logger.error("Reset-token update error: %s", exc)
-            flash("Could not update password. Try again.", "danger")
-            return redirect(request.path)
+        user = user_doc.to_dict()
 
-    return render_template('reset_password_token.html',
-                           email=email, name=user_data.get('name', ''))
+        role = user.get('role', 'Participant')
+        if hasattr(role, 'value'):
+            role = role.value
+        role = str(role).strip()
+        if role == 'Super Admin':
+            role = 'SuperAdmin'
+        if role == 'SuperAdmin':
+            flash("SuperAdmin cannot be reset via email.", "danger")
+            return redirect('/login')
 
+        if request.method == 'POST':
+            new_pw     = request.form.get('new_password', '')
+            confirm_pw = request.form.get('confirm_password', '')
 
-# =========================================================
-# 6. LOGOUT
+            ok, pw_err = validate_password_strength(new_pw)
+            if new_pw != confirm_pw:
+                flash("Passwords do not match.", "danger")
+                return redirect(request.path)
+            if not ok:
+                flash(pw_err, "danger")
+                return redirect(request.path)
+
+            try:
+                db.collection('users').document(email).update({
+                    'password': generate_password_hash(new_pw, method='pbkdf2:sha256'),
+                    'needs_password_reset': False
+                })
+                log_action("PASSWORD_RESET_EMAIL",
+                           f"{email} reset password via email token")
+                flash("✅ Password updated. You can now log in.", "success")
+                return redirect('/login')
+            except Exception as exc:
+                current_app.logger.error("Reset-token update error: %s", exc)
+                flash("Could not update password. Try again.", "danger")
+                return redirect(request.path)
+
+        user_name = user.get('name', 'User')
+        return render_template('reset_password_token.html',
+                               email=email, name=user_name)
+
+    except Exception as exc:
+        current_app.logger.error("Reset-token flow error: %s", exc)
+        flash("Something went wrong. Please try again.", "danger")
+        return redirect('/forgot_password')
 # =========================================================
 @auth_bp.route('/logout')
 def logout():
     user = session.get('user_id', 'unknown')
-    log_action(db, "LOGOUT", f"{user} logged out")
+    log_action("LOGOUT", f"{user} logged out")
     session.clear()
     flash("You have been logged out.", "info")
     return redirect('/')
@@ -456,9 +477,12 @@ def api_login():
         user_doc = db.collection('users').document(email).get()
         if not user_doc.exists:
             return {"success": False, "message": "Account not found."}, 404
+        user = user_doc.to_dict()
 
-        user_data = user_doc.to_dict()
-        db_role = user_data.get('role', '').strip()
+        db_role = user.get('role', 'Participant')
+        if hasattr(db_role, 'value'):
+            db_role = db_role.value
+        db_role = str(db_role).strip()
         if db_role == 'Super Admin':
             db_role = 'SuperAdmin'
         if db_role == 'Coordinator':
@@ -468,7 +492,7 @@ def api_login():
             return {"success": False, "message": "Incorrect role selected."}, 401
 
         # Check password hash
-        stored_pw = user_data.get('password', '')
+        stored_pw = user.get('password') or user.get('password_hash') or ''
         if isinstance(stored_pw, (int, float)):
             stored_pw = str(int(stored_pw))
 
@@ -489,18 +513,23 @@ def api_login():
             logger.error("API Custom Token generation failed: %s", exc)
             return {"success": False, "message": f"Token generation failed: {exc}"}, 500
 
-        log_action(db, "API_LOGIN_SUCCESS", f"{email} logged in as {role} via Mobile API")
+        log_action("API_LOGIN_SUCCESS", f"{email} logged in as {role} via Mobile API")
+
+        user_category = user.get('category', 'General')
+        if hasattr(user_category, 'value'):
+            user_category = user_category.value
+        user_category = str(user_category)
 
         return {
             "success": True,
             "customToken": custom_token,
             "user": {
                 "email": email,
-                "name": user_data.get('name'),
+                "name": user.get('name', ''),
                 "role": db_role,
-                "category": user_data.get('category', 'General'),
-                "usn": user_data.get('usn', ''),
-                "phone": user_data.get('phone', '')
+                "category": user_category,
+                "usn": user.get('usn') or '',
+                "phone": user.get('phone') or ''
             }
         }
     except Exception as exc:
@@ -525,13 +554,12 @@ def api_register():
         if not ok:
             return {"success": False, "message": pw_err}, 400
 
-        existing = db.collection('users').document(email).get()
-        if existing.exists:
+        existing_doc = db.collection('users').document(email).get()
+        if existing_doc.exists:
             return {"success": False, "message": "An account with this email already exists."}, 400
 
-        # Save to Firestore
+        # Save to active database
         db.collection('users').document(email).set({
-            'email':               email,
             'name':                name,
             'usn':                 usn,
             'phone':               phone,
@@ -551,7 +579,7 @@ def api_register():
             logger.error("API Custom Token generation failed for register: %s", exc)
             return {"success": False, "message": f"Token generation failed: {exc}"}, 500
 
-        log_action(db, "API_USER_REGISTERED", f"New student registered via Mobile API: {email}")
+        log_action("API_USER_REGISTERED", f"New student registered via Mobile API: {email}")
 
         return {
             "success": True,

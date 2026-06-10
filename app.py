@@ -185,10 +185,21 @@ limiter.init_app(app)           # reads RATELIMIT_STORAGE_URL from app.config
 # FIREBASE  —  reads FIREBASE_CREDENTIALS env var on Railway
 #              falls back to local serviceAccountKey.json for dev
 # =========================================================
+def is_valid_firebase_creds(cred_str):
+    """Check if Firebase creds string has required fields (not placeholder)"""
+    try:
+        cred_dict = json.loads(cred_str) if isinstance(cred_str, str) else cred_str
+        required_fields = {'type', 'project_id', 'private_key', 'client_email', 'token_uri'}
+        return required_fields.issubset(cred_dict.keys()) and '...' not in str(cred_dict)
+    except:
+        return False
+
 if not firebase_admin._apps:
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
-    if firebase_creds_json:
-        # Production: Use environment variable
+    firebase_initialized = False
+    
+    if firebase_creds_json and is_valid_firebase_creds(firebase_creds_json):
+        # Production: Use environment variable (if valid)
         try:
             cred_dict = json.loads(firebase_creds_json)
             if isinstance(cred_dict, str):  # double-encoded guard
@@ -196,33 +207,40 @@ if not firebase_admin._apps:
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
             logger.info("Firebase: Initialized with FIREBASE_CREDENTIALS env var")
+            firebase_initialized = True
         except Exception as exc:
             logger.error("FIREBASE_CREDENTIALS parse error: %s", exc)
-            raise
-    else:
-        # Try local file, fall back to Application Default Credentials on GCP/Cloud Run, skip if not available
+            if os.environ.get('FLASK_ENV') == 'production':
+                raise
+    
+    if not firebase_initialized:
+        # Try local file
         key_path = 'serviceAccountKey.json'
         if os.path.exists(key_path):
             try:
                 cred = credentials.Certificate(key_path)
                 firebase_admin.initialize_app(cred)
                 logger.info("Firebase: Initialized with local serviceAccountKey.json")
+                firebase_initialized = True
             except Exception as exc:
                 logger.error("Firebase: Failed to initialize with %s: %s", key_path, exc)
-                raise
-        else:
-            try:
-                firebase_admin.initialize_app()
-                logger.info("Firebase: Initialized with Application Default Credentials (GCP/Cloud Run)")
-            except Exception as exc:
-                if os.environ.get('ENVIRONMENT') == 'production':
-                    logger.critical("ERROR: FIREBASE_CREDENTIALS env var not set in production!")
-                    raise EnvironmentError(
-                        "FIREBASE_CREDENTIALS environment variable is required in production. "
-                        "Set it in Railway Variables with your Firebase service account JSON."
-                    )
-                else:
-                    logger.warning("Firebase: serviceAccountKey.json not found and ADC initialization failed: %s - running in dev mode without Firebase", exc)
+                if os.environ.get('FLASK_ENV') == 'production':
+                    raise
+    
+    if not firebase_initialized:
+        # Try Application Default Credentials on GCP/Cloud Run
+        try:
+            firebase_admin.initialize_app()
+            logger.info("Firebase: Initialized with Application Default Credentials (GCP/Cloud Run)")
+            firebase_initialized = True
+        except Exception as exc:
+            if os.environ.get('FLASK_ENV') == 'production':
+                logger.critical("ERROR: Firebase initialization failed in production!")
+                raise EnvironmentError(
+                    "Firebase credentials required in production. Set FIREBASE_CREDENTIALS env var with valid service account JSON."
+                )
+            else:
+                logger.warning("⚠️  Firebase not initialized for dev mode: %s. DB operations will fail - see docs for setup.", exc)
 
 # Initialize database client (reusing resolution logic in models)
 from models import db

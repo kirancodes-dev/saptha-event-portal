@@ -115,6 +115,26 @@
     --shadow: 0 6px 18px rgba(0,0,0,.3);
     --shadow-md: 0 12px 28px rgba(0,0,0,.35);
     --shadow-lg: 0 24px 48px rgba(0,0,0,.4);
+    
+    /* Soft status colors for dark theme to prevent white-on-white text fields */
+    --success-soft: rgba(16, 185, 129, 0.18);
+    --danger-soft: rgba(239, 68, 68, 0.18);
+    --warning-soft: rgba(245, 158, 11, 0.18);
+    --info-soft: rgba(59, 130, 246, 0.18);
+}
+
+/* Explicit contrast helpers for Bootstrap text utilities in dark mode */
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] .text-muted-opacity,
+[data-theme="dark"] .small.text-muted,
+[data-theme="dark"] span.text-muted {
+    color: var(--ink-600) !important;
+}
+[data-theme="dark"] .text-secondary {
+    color: var(--ink-700) !important;
+}
+[data-theme="dark"] .form-control::placeholder {
+    color: var(--ink-500) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -148,7 +168,9 @@ html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    scrollbar-gutter: stable;
 }
+
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -722,11 +744,14 @@ textarea.form-control { min-height: 100px; resize: vertical; }
     background: linear-gradient(-45deg, #0f1738, #1a2557, #2a3a7a, #c9a45e);
     background-size: 400% 400%;
     animation: authGradient 12s ease infinite;
-    min-height: 100vh;
-    display: flex; align-items: center; justify-content: center;
-    padding: 1.5rem;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
     position: relative;
-    overflow: hidden;
+    overflow: hidden !important;
 }
 @keyframes authGradient {
     0% { background-position: 0% 50%; }
@@ -753,6 +778,7 @@ textarea.form-control { min-height: 100px; resize: vertical; }
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.4);
     animation: authFadeIn .5s var(--ease) both;
+    margin: auto;
 }
 [data-theme="dark"] .auth-card, [data-theme="dark"] .login-card {
     background: rgba(15, 23, 42, 0.78);
@@ -775,6 +801,292 @@ textarea.form-control { min-height: 100px; resize: vertical; }
 }
 [data-theme="dark"] .secret-key-group {
     border-top-color: var(--ink-300);
+}
+
+/* Dual Panel Split Layout for Laptops & Desktops */
+.auth-container {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+    margin: auto;
+}
+.auth-info-panel {
+    display: none;
+}
+.auth-form-panel {
+    width: 100%;
+}
+
+@media (min-width: 992px) {
+    .auth-shell {
+        padding: 2.5rem;
+    }
+    .auth-container {
+        max-width: 1100px;
+        flex-direction: row;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        border-radius: 28px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.22);
+        backdrop-filter: blur(25px) saturate(180%);
+        -webkit-backdrop-filter: blur(25px) saturate(180%);
+        overflow: hidden;
+        min-height: 660px;
+    }
+    [data-theme="dark"] .auth-container {
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45);
+    }
+    .auth-info-panel {
+        display: flex;
+        flex: 1.25;
+        background: linear-gradient(135deg, rgba(13, 27, 62, 0.78) 0%, rgba(26, 37, 87, 0.9) 100%);
+        padding: 4rem 3.5rem;
+        color: #fff;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .auth-info-panel::before {
+        content: '';
+        position: absolute;
+        width: 350px;
+        height: 350px;
+        background: radial-gradient(circle, rgba(201, 164, 94, 0.16) 0%, transparent 70%);
+        top: -100px;
+        left: -100px;
+        pointer-events: none;
+    }
+    .auth-info-content {
+        max-width: 480px;
+        width: 100%;
+        text-align: left;
+    }
+    .info-logo {
+        max-width: 180px;
+        height: auto;
+        margin-bottom: 2rem;
+        filter: drop-shadow(0 8px 16px rgba(0,0,0,0.25));
+    }
+    .info-title {
+        font-size: 2.5rem;
+        font-weight: 850;
+        background: linear-gradient(135deg, #ffffff 40%, #c9a45e 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.8px;
+        font-family: 'Outfit', 'Inter', sans-serif;
+    }
+    .info-subtitle {
+        font-size: 1.05rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 3rem;
+        font-weight: 500;
+        font-family: 'Outfit', 'Inter', sans-serif;
+        letter-spacing: 0.5px;
+    }
+    .feature-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+    .feature-item {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-start;
+    }
+    .feature-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: rgba(201, 164, 94, 0.12);
+        border: 1px solid rgba(201, 164, 94, 0.28);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #c9a45e;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .feature-item:hover .feature-icon {
+        background: #c9a45e;
+        color: #0d1b3e;
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 8px 20px rgba(201, 164, 94, 0.35);
+        border-color: #c9a45e;
+    }
+    .feature-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 0.35rem;
+        font-family: 'Outfit', 'Inter', sans-serif;
+    }
+    .feature-desc {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.62);
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+    .auth-form-panel {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 3rem;
+    }
+    .auth-form-panel .login-card, .auth-form-panel .auth-card {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        padding: 0;
+        max-width: 400px;
+        animation: none;
+    }
+    .auth-card-title {
+        font-size: 1.95rem;
+        font-weight: 800;
+        color: var(--snpsu-blue-dark);
+        margin-bottom: 0.35rem;
+        font-family: 'Outfit', 'Inter', sans-serif;
+    }
+    [data-theme="dark"] .auth-card-title {
+        color: #ffffff;
+    }
+}
+
+/* Short viewports fallback scroll */
+@media (max-height: 640px) {
+    body.auth, .auth-shell, .auth-page {
+        overflow-y: auto !important;
+        align-items: flex-start !important;
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+}
+
+/* Keep container and inner elements scaled for laptops and desktops */
+.auth-container {
+    max-height: 90vh;
+    max-height: 90dvh;
+}
+
+@media (min-width: 992px) {
+    .auth-container {
+        height: 85vh;
+        height: 85dvh;
+        max-height: 750px;
+        min-height: 520px;
+    }
+    .auth-info-panel, .auth-form-panel {
+        height: 100%;
+        overflow-y: auto;
+    }
+}
+
+/* Mobile overrides for login fitting without scroll */
+@media (max-width: 576px) {
+    .auth-form-panel {
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+    }
+
+    .login-card {
+        padding: 1rem 1.25rem !important;
+        border-radius: 16px !important;
+        margin: auto !important;
+        width: 100% !important;
+        max-height: 96vh;
+        max-height: 96dvh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    }
+
+    .login-card .text-center.mb-4.d-lg-none {
+        margin-bottom: 0.5rem !important;
+    }
+
+    .login-card .text-center.mb-4.d-lg-none img {
+        max-width: 140px !important;
+        margin-bottom: 0.15rem !important;
+    }
+
+    .login-card form {
+        display: flex !important;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .login-card .form-group {
+        margin-bottom: 0.45rem !important;
+    }
+    
+    .login-card .form-label {
+        margin-bottom: 0.15rem !important;
+        font-size: 0.78rem !important;
+        font-weight: 700;
+    }
+    
+    .login-card .form-control, 
+    .login-card .form-select {
+        padding: 0.45rem 0.75rem 0.45rem 2rem !important;
+        font-size: 0.82rem !important;
+        height: 38px !important;
+    }
+    
+    .login-card .input-icon-wrap .inp-icon {
+        left: 0.65rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .login-card .pw-toggle {
+        right: 0.65rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .login-card .btn-primary {
+        padding: 0.45rem !important;
+        font-size: 0.85rem !important;
+        margin-top: 0.45rem !important;
+    }
+    
+    .login-card .mt-4.pt-2 {
+        margin-top: 0.5rem !important;
+        padding-top: 0 !important;
+    }
+    
+    /* When Super Admin is selected, reduce spacing/sizes even further to fit everything perfectly */
+    body.super-admin-selected .login-card .text-center.mb-4.d-lg-none img {
+        max-width: 110px !important;
+    }
+    
+    body.super-admin-selected .login-card .form-group {
+        margin-bottom: 0.35rem !important;
+    }
+    
+    body.super-admin-selected .login-card .secret-key-group {
+        margin-top: 0.35rem !important;
+        padding-top: 0.35rem !important;
+    }
+    
+    body.super-admin-selected .login-card {
+        padding: 0.75rem 1rem !important;
+    }
 }
 
 /* --------------------------------------------------------------------------
@@ -2557,8 +2869,8 @@ button, a.btn, .nav-link, input[type="checkbox"] + label, .form-check-label {
 .modal-backdrop     { z-index: 10400 !important; }
 .modal-dialog       { z-index: 10500 !important; }
 /* Ensure modals escape any stacking context from navbar/hero transforms */
-body > .modal,
-body > .modal-backdrop { z-index: 10500 !important; }
+body > .modal       { z-index: 10500 !important; }
+body > .modal-backdrop { z-index: 10400 !important; }
 
 /* Event Detail Modal */
 .event-modal-banner {

@@ -52,11 +52,13 @@ def home():
 
     try:
         if db:
-            events_ref = db.collection('events').where('status', '==', 'active').stream()
+            # Limit events query to prevent freezing with large datasets
+            events_ref = db.collection('events').where('status', '==', 'active').limit(500).stream()
             all_events = []
             for doc in events_ref:
                 data = doc.to_dict()
                 all_events.append(FirebaseWrapper(doc.id, data))
+                # Use stored registration count instead of querying
                 total_regs += data.get('registration_count', 0)
                 cat = data.get('category', '')
                 if cat:
@@ -72,7 +74,7 @@ def home():
             featured_events = [e for e in all_events if getattr(e, 'is_featured', False)][:3]
             upcoming = all_events
     except Exception as e:
-        print(f"Home Page Error: {e}")
+        current_app.logger.error(f"Home Page Error: {e}")
 
     return render_template(
         'public/home.html',
@@ -94,8 +96,19 @@ def event_details(event_id):
 
         event = FirebaseWrapper(event_id, doc.to_dict())
 
-        # Registration count for capacity bar
-        reg_count = len(list(db.collection('registrations').where('event_id', '==', event_id).stream()))
+        # Registration count for capacity bar (use efficient count instead of streaming all docs)
+        try:
+            # Try to use aggregation for efficient count (Firebase feature)
+            reg_count = db.collection('registrations').where('event_id', '==', event_id).count().get().total
+        except:
+            # Fallback: count with limit to prevent freezing with large datasets
+            registrations_list = list(
+                db.collection('registrations')
+                  .where('event_id', '==', event_id)
+                  .limit(10000)  # Safety limit
+                  .stream()
+            )
+            reg_count = len(registrations_list)
 
         is_registered = False
         if session.get('user_id'):

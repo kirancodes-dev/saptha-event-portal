@@ -7,7 +7,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, Image
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
 )
 
 PDF_PATH = 'SAPTHA_EVENT_PORTAL_PROJECT_REPORT.pdf'
@@ -16,20 +16,26 @@ DATE_STR = NOW.strftime("%d %B %Y")
 
 def draw_cover(canvas_obj, doc):
     canvas_obj.saveState()
-    # Decorative Top Gold Bar
+    # Fill background with dark navy blue
+    canvas_obj.setFillColor(colors.HexColor('#0c122b'))
+    canvas_obj.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=True, stroke=False)
+    
+    # Draw a gold accent panel on the left edge (thickness 24 points)
     canvas_obj.setFillColor(colors.HexColor('#c9a45e'))
+    canvas_obj.rect(0, 0, 24, doc.pagesize[1], fill=True, stroke=False)
+    
+    # Draw a matching gold banner at the top edge
     canvas_obj.rect(0, doc.pagesize[1] - 15, doc.pagesize[0], 15, fill=True, stroke=False)
     
-    # Bottom Navy Footer
-    canvas_obj.setFillColor(colors.HexColor('#0c122b'))
-    canvas_obj.rect(0, 0, doc.pagesize[0], 60, fill=True, stroke=False)
+    # Draw a subtle diagonal geometric light line or border in gold
+    canvas_obj.setStrokeColor(colors.HexColor('#c9a45e'))
+    canvas_obj.setLineWidth(1.5)
+    canvas_obj.line(54, doc.pagesize[1] - 130, doc.pagesize[0] - 54, doc.pagesize[1] - 130)
     
-    # Cover page university logo (placed on top left, with a dark navy background pill)
+    # University logo on top left (white logo looks perfect on the navy background!)
     logo_path = 'static/snpsu-logo.png'
     if os.path.exists(logo_path):
-        canvas_obj.setFillColor(colors.HexColor('#0c122b'))
-        canvas_obj.roundRect(50, doc.pagesize[1] - 95, 190, 60, 8, fill=True, stroke=False)
-        canvas_obj.drawImage(logo_path, 55, doc.pagesize[1] - 90, width=180, height=50, mask='auto')
+        canvas_obj.drawImage(logo_path, 54, doc.pagesize[1] - 85, width=180, height=50, mask='auto')
         
     canvas_obj.restoreState()
 
@@ -135,19 +141,19 @@ def create_report():
         'CoverTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=28,
-        leading=34,
-        textColor=colors.HexColor('#0c122b'),
+        fontSize=30,
+        leading=36,
+        textColor=colors.white,
         spaceAfter=15,
-        spaceBefore=110
+        spaceBefore=120
     )
     
     subtitle_style = ParagraphStyle(
         'CoverSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=12,
-        leading=18,
+        fontSize=13,
+        leading=19,
         textColor=colors.HexColor('#c9a45e'),
         spaceAfter=150
     )
@@ -157,8 +163,8 @@ def create_report():
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
         fontSize=10,
-        leading=15,
-        textColor=colors.HexColor('#64748b')
+        leading=16,
+        textColor=colors.HexColor('#cbd5e1')
     )
     
     h1_style = ParagraphStyle(
@@ -270,14 +276,6 @@ def create_report():
         body_style
     ))
     elements.append(Spacer(1, 10))
-    
-    # Campus Image Showcase
-    campus_img_path = 'static/campus.jpg'
-    if os.path.exists(campus_img_path):
-        elements.append(Paragraph("<b>Figure 1: Sapthagiri NPS University Campus Environment</b>", h2_style))
-        elements.append(Image(campus_img_path, width=4.5*inch, height=2.6*inch))
-        elements.append(Spacer(1, 10))
-        
     elements.append(PageBreak())
 
     # ─────────────────────────────────────────────────────────────
@@ -329,14 +327,6 @@ def create_report():
     ]
     elements.append(create_wrapped_table(stack_data, [100, 140, 264]))
     elements.append(Spacer(1, 15))
-    
-    # Showcase image
-    slide_path = 'static/img/event_slide1.png'
-    if os.path.exists(slide_path):
-        elements.append(Paragraph("<b>Figure 2: SapthaEvent Digital Showcase & Interactive Interface</b>", h2_style))
-        elements.append(Image(slide_path, width=4.5*inch, height=2.5*inch))
-        elements.append(Spacer(1, 10))
-        
     elements.append(PageBreak())
 
     # ─────────────────────────────────────────────────────────────
@@ -365,14 +355,6 @@ def create_report():
         "consistency.",
         body_style
     ))
-    
-    # Second slide image
-    slide2_path = 'static/img/event_slide2.png'
-    if os.path.exists(slide2_path):
-        elements.append(Paragraph("<b>Figure 3: Interactive Dynamic Form Builder Panel</b>", h2_style))
-        elements.append(Image(slide2_path, width=4.5*inch, height=2.5*inch))
-        elements.append(Spacer(1, 10))
-        
     elements.append(PageBreak())
 
     # ─────────────────────────────────────────────────────────────
@@ -402,14 +384,6 @@ def create_report():
         "and a judge cannot access the administrative billing system.",
         body_style
     ))
-    
-    # Third slide image
-    slide3_path = 'static/img/event_slide3.png'
-    if os.path.exists(slide3_path):
-        elements.append(Paragraph("<b>Figure 4: Secure Cryptographic QR Ticket Dashboard</b>", h2_style))
-        elements.append(Image(slide3_path, width=4.5*inch, height=2.5*inch))
-        elements.append(Spacer(1, 10))
-        
     elements.append(PageBreak())
 
     # ─────────────────────────────────────────────────────────────
@@ -432,14 +406,6 @@ def create_report():
         body_style
     ))
     elements.append(Spacer(1, 10))
-    
-    # Fourth slide image
-    slide4_path = 'static/img/event_slide4.png'
-    if os.path.exists(slide4_path):
-        elements.append(Paragraph("<b>Figure 5: Live SSE Podium Leaderboard Display</b>", h2_style))
-        elements.append(Image(slide4_path, width=4.5*inch, height=2.5*inch))
-        elements.append(Spacer(1, 10))
-        
     elements.append(PageBreak())
 
     # ─────────────────────────────────────────────────────────────

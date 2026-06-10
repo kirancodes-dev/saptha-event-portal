@@ -450,15 +450,22 @@
       }, false);
     });
 
-    // Realtime feedback for required inputs
+    // Realtime feedback for required inputs (dirty-aware)
     document.querySelectorAll('input[required], select[required], textarea[required]').forEach(function (input) {
+      input.addEventListener('input', function () {
+        input.classList.add('is-dirty');
+      });
+      
       input.addEventListener('blur', function () {
-        if (input.validity.valid) {
-          input.classList.remove('is-invalid');
-          input.classList.add('is-valid');
-        } else {
-          input.classList.remove('is-valid');
-          input.classList.add('is-invalid');
+        // Only show validation feedback if the user has actually interacted with the field (is-dirty) or if it is not empty
+        if (input.value.trim() !== '' || input.classList.contains('is-dirty')) {
+          if (input.validity.valid) {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+          } else {
+            input.classList.remove('is-valid');
+            input.classList.add('is-invalid');
+          }
         }
       });
     });
@@ -487,6 +494,26 @@
     if (document.getElementById('notif-badge')) {
       setInterval(window.updateNotificationBadge, 180000);
     }
-  });
 
+    // ── 18. PHONE NUMBER NUMERIC INPUT CONSTRAINT ──
+    const filterPhoneInput = function(e) {
+      const val = e.target.value;
+      const cleanVal = val.replace(/[^0-9]/g, '');
+      if (val !== cleanVal) {
+        e.target.value = cleanVal;
+      }
+    };
+
+    // Attach to any inputs currently present
+    document.querySelectorAll('input[type="tel"]').forEach(function(input) {
+      input.addEventListener('input', filterPhoneInput);
+    });
+
+    // Delegate listener to handle dynamically appended inputs
+    document.addEventListener('input', function(e) {
+      if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'tel') {
+        filterPhoneInput(e);
+      }
+    });
+  });
 })();

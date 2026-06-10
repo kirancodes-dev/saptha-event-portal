@@ -10,33 +10,115 @@
 
 <script>
 (function () {
-  // ── Service Worker registration ────
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+  if (isStandalone) {
+    localStorage.setItem('pwa_installed', '1');
+  }
+
+  // ── Service Worker registration and Live Updates ────
+  window.pwaRegistration = null;
+  window.pwaUpdateAvailable = false;
+
+  window.applyPwaUpdateUI = function() {
+    if (!window.pwaUpdateAvailable || !window.pwaRegistration) return;
+    const reg = window.pwaRegistration;
+
+    const loginBtn = document.getElementById('loginInstallBtn');
+    if (loginBtn) {
+      loginBtn.style.display = 'inline-block';
+      loginBtn.innerHTML = '<i class="fas fa-sync me-1"></i>Update App';
+      loginBtn.onclick = function(e) {
+        e.preventDefault();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      };
+    }
+
+    const navBtn = document.getElementById('mn-install-btn');
+    if (navBtn) {
+      navBtn.style.display = 'flex';
+      const icon = navBtn.querySelector('i');
+      if (icon) {
+        icon.className = 'fas fa-sync';
+        icon.style.color = '#c9a45e';
+      }
+      const text = navBtn.querySelector('span');
+      if (text) {
+        text.innerText = 'Update';
+        text.style.color = '#c9a45e';
+      }
+      navBtn.onclick = function(e) {
+        e.preventDefault();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      };
+    }
+  };
+
+  window.notifyPwaUpdateAvailable = function(reg) {
+    window.pwaUpdateAvailable = true;
+    window.applyPwaUpdateUI();
+  };
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .then(function(reg) {
-          // Check for updates every 60 minutes
-          setInterval(() => reg.update(), 60 * 60 * 1000);
+          window.pwaRegistration = reg;
+          setInterval(() => reg.update(), 60 * 60 * 1000); // Check for updates hourly
+
+          if (reg.waiting) {
+            window.notifyPwaUpdateAvailable(reg);
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.notifyPwaUpdateAvailable(reg);
+                }
+              });
+            }
+          });
         })
         .catch(function (err) { console.warn('SW registration failed:', err); });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
     });
   }
 
+  // ── Listen for App Installed Event ────
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem('pwa_installed', '1');
+    if (!window.pwaUpdateAvailable) {
+      const loginBtn = document.getElementById('loginInstallBtn');
+      if (loginBtn) loginBtn.style.display = 'none';
+      const navBtn = document.getElementById('mn-install-btn');
+      if (navBtn) navBtn.style.display = 'none';
+    }
+  });
+
   // ── PWA Install Banner (shown on ALL pages to logged-in users) ────
-  // Only show if not already installed as a standalone app
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-                    || window.navigator.standalone === true;
+  const isInstalled = isStandalone || localStorage.getItem('pwa_installed') === '1';
   const dismissed = localStorage.getItem('pwa_banner_dismissed') === '1';
 
-  if (!isStandalone && !dismissed) {
+  if (!isInstalled && !dismissed) {
     let deferredPrompt;
-
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
       window.__pwaPrompt = e; // make globally accessible
 
-      // Show banner after 3 seconds on first visit, immediately on return
       const visits = parseInt(localStorage.getItem('pwa_visit_count') || '0', 10) + 1;
       localStorage.setItem('pwa_visit_count', visits);
       const delay = visits === 1 ? 4000 : 1500;
@@ -47,5 +129,8 @@
       }, delay);
     });
   }
+
+  document.addEventListener('DOMContentLoaded', window.applyPwaUpdateUI);
+  window.addEventListener('load', window.applyPwaUpdateUI);
 })();
 </script>

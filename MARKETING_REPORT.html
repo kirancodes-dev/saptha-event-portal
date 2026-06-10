@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saptha Event Portal - Product Analysis Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px; background-color: #f4f7f9; }
+        .report-container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #1a365d; border-bottom: 3px solid #3182ce; padding-bottom: 10px; text-align: center; }
+        h2 { color: #2c5282; margin-top: 30px; border-left: 5px solid #3182ce; padding-left: 15px; }
+        h3 { color: #4a5568; }
+        .highlight-box { background: #ebf8ff; border: 1px solid #bee3f8; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .usp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .usp-item { background: #fff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; transition: transform 0.2s; }
+        .usp-item:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .usp-title { font-weight: bold; color: #3182ce; display: block; margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #edf2f7; color: #4a5568; }
+        .footer { text-align: center; margin-top: 40px; font-size: 0.9em; color: #718096; }
+        .badge { background: #3182ce; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <h1>Saptha Event Portal</h1>
+        <p style="text-align: center; font-style: italic; color: #718096;">The AI-Powered Ecosystem for Academic & Cultural Event Orchestration</p>
+
+        <div class="highlight-box">
+            <strong>Executive Summary:</strong> The Saptha Event Portal is not just a registration system, but a comprehensive event lifecycle platform. By integrating advanced AI matching, automated narrative reporting, and a robust multi-tenant architecture, it transforms event coordination from a manual administrative burden into a data-driven strategic operation.
+        </div>
+
+        <h2>🚀 Unique Selling Propositions (USPs)</h2>
+        <div class="usp-grid">
+            <div class="usp-item">
+                <span class="usp-title">🧠 AI-Driven Judge Matching</span>
+                Semantic analysis of judge expertise vs. project descriptions to ensure the highest quality of academic evaluation.
+            </div>
+            <div class="usp-item">
+                <span class="usp-title">✍️ Automated Narrative Reports</span>
+                Transforms raw event statistics and registration data into human-readable success stories for institutional reporting.
+            </div>
+            <div class="usp-item">
+                <span class="usp-title">🏢 Multi-Tenant Architecture</span>
+                Supports independent operations for different clubs and departments under a single administrative umbrella.
+            </div>
+            <div class="usp-item">
+                <span class="usp-title">⚡ End-to-End Lifecycle</span>
+                Seamless flow from event discovery → registration → check-in → judging → certification.
+            </div>
+            <div class="usp-item">
+                <span class="usp-title">🛠️ Industrial-Grade Tech Stack</span>
+                Built with Python/Flask, PostgreSQL, and Firebase, ensuring scalability, security, and high availability.
+            </div>
+            <div class="usp-item">
+                <span class="usp-title">📱 Omnichannel Access</span>
+                PWA support ensures a native-app feel on mobile devices for coordinators and participants.
+            </div>
+        </div>
+
+        <h2>👥 User-Centric Capabilities</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Role</th>
+                    <th>Core Value Added</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Super Admin</strong></td>
+                    <td>Global oversight, systemic audit trails, and high-level institutional analytics.</td>
+                </tr>
+                <tr>
+                    <td><strong>Club SPOC</strong></td>
+                    <td>Complete autonomy over event creation, judge assignment, and automated outcome reporting.</td>
+                </tr>
+                <tr>
+                    <td><strong>Coordinator</strong></td>
+                    <td>Real-time attendee management via QR scanning and rapid on-spot registration.</td>
+                </tr>
+                <tr>
+                    <td><strong>Participant</strong></td>
+                    <td>Frictionless discovery, digital dashboard, and instant certificate retrieval.</td>
+                </tr>
+                <tr>
+                    <td><strong>Judge</strong></td>
+                    <td>Focused evaluation portal with streamlined scoring and project review.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🛠️ Technology Highlights</h2>
+        <ul>
+            <li><strong>Intelligence Layer:</strong> Integration of Google Gemini for semantic matching and content generation.</li>
+            <li><strong>Performance Layer:</strong> Celery & Redis for asynchronous processing (Bulk emails, AI analysis).</li>
+            <li><strong>Security Layer:</strong> Implementation of JWT, OAuth, 2FA, and security-hardened headers.</li>
+            <li><strong>Database Layer:</strong> Hybrid persistence model utilizing the power of both NoSQL (Firestore) and Relational (Postgres) data.</li>
+        </ul>
+
+        <div class="footer">
+            Generated by Claude Code Analysis &copy; 2026
+        </div>
+    </div>
+</body>
+</html>

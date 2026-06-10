@@ -195,10 +195,11 @@
   var isChrome  = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
   var isSafari  = /Safari/.test(navigator.userAgent) && !isChrome;
   var isInstalled = window.matchMedia('(display-mode: standalone)').matches
-                 || window.navigator.standalone === true;
+                 || window.navigator.standalone === true
+                 || localStorage.getItem('pwa_installed') === '1';
 
   // ── Hide the Install nav button if already installed ────
-  if (isInstalled) {
+  if (isInstalled && !window.pwaUpdateAvailable) {
     var btn = document.getElementById('mn-install-btn');
     if (btn) btn.style.display = 'none';
   }

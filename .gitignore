@@ -5,6 +5,8 @@
 serviceAccountKey.json
 *.pem
 *.key
+*.keystore
+google-services.json
 
 # Python
 __pycache__/
@@ -37,4 +39,12 @@ flask_session/
 # Scratch & Local Env Configurations
 scratch/env-vars.yaml
 scratch/env-vars.yml
+
+# Node modules
+node_modules/
+
+# Source backups & zips
+saptha-event-portal-source*/
+*.zip
+
 

@@ -70,24 +70,54 @@ def role_required(roles):
 # AUDIT LOGGING
 # =========================================================
 
-def log_action(db, action: str, details: str = ""):
+def log_action(*args, **kwargs):
     """
-    Write an immutable audit entry to Firestore.
+    Write an immutable audit entry.
+    Supports both styles:
+      log_action(action, details)
+      log_action(db, action, details)
+    """
+    from models import db as default_db
+    from flask import request, has_request_context
+    
+    if len(args) == 3:
+        db_client, action, details = args
+    elif len(args) == 2:
+        if isinstance(args[0], str):
+            db_client = default_db
+            action = args[0]
+            details = args[1]
+        else:
+            db_client = args[0]
+            action = args[1]
+            details = ""
+    elif len(args) == 1:
+        db_client = default_db
+        action = args[0]
+        details = ""
+    else:
+        db_client = kwargs.get('db', default_db)
+        action = kwargs.get('action', '')
+        details = kwargs.get('details', '')
 
-    Call this any time a privileged action happens, passing the db client,
-    an action string (e.g. SCORE_SUBMITTED, EVENT_DELETED), and a details string.
-    """
     try:
-        db.collection('audit_log').add({
-            'action':    action,
-            'details':   details,
-            'user':      session.get('user_id', 'anonymous'),
-            'role':      session.get('role', 'unknown'),
-            'ip':        request.remote_addr,
-            'timestamp': datetime.datetime.now(datetime.timezone.utc)
-        })
+        if db_client is not None:
+            ip_addr = '127.0.0.1'
+            if has_request_context():
+                try:
+                    ip_addr = request.remote_addr
+                except Exception:
+                    pass
+            
+            db_client.collection('audit_log').add({
+                'action':    action,
+                'details':   details,
+                'user':      session.get('user_id', 'anonymous'),
+                'role':      session.get('role', 'unknown'),
+                'ip':        ip_addr,
+                'timestamp': datetime.datetime.now(datetime.timezone.utc)
+            })
     except Exception as exc:
-        # Never let logging crash the application
         logger.warning("[AUDIT LOG ERROR] %s", exc)
 
 

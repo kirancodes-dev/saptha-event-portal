@@ -3,7 +3,7 @@
   "appName": "SapthaEvent",
   "webDir": "static",
   "server": {
-    "url": "http://localhost:5001",
+    "url": "https://saptha-portal.railway.app",
     "allowNavigation": [
       "localhost",
       "127.0.0.1",

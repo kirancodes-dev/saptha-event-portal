@@ -47,18 +47,23 @@ LAST_EMAIL_ERROR = ""
 # ─────────────────────────────────────────────────────────────
 
 def _base_url() -> str:
-    # Always prioritize the actual production URL to guarantee images work everywhere
     production_url = 'https://saptha-event-portal-762269836348.us-east4.run.app'
+    try:
+        from flask import request
+        if request and request.url_root:
+            return request.url_root.rstrip('/')
+    except Exception:
+        pass
     try:
         from flask import current_app
         url = current_app.config.get('BASE_URL')
-        if url and '127.0.0.1' not in url and 'localhost' not in url:
-            return url
+        if url:
+            return url.rstrip('/')
     except Exception:
         pass
     url = os.environ.get('BASE_URL')
-    if url and '127.0.0.1' not in url and 'localhost' not in url:
-        return url
+    if url:
+        return url.rstrip('/')
     return production_url
 
 

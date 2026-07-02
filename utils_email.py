@@ -32,6 +32,7 @@ PRIORITY ORDER (auto-detected at runtime):
   3. Neither               → Gmail SMTP       ❌ blocked on Railway
 """
 
+from __future__ import annotations
 import os
 import logging
 import base64
@@ -72,6 +73,31 @@ def _from_address() -> str:
         'MAIL_FROM',
         f"SapthaEvent <{os.environ.get('MAIL_USER', 'sapthhack@gmail.com')}>"
     )
+
+
+def _update_delivery_status(to_email: str, status: str, reg_id: str | None = None):
+    try:
+        from models import db
+        if db is None:
+            return
+        if reg_id:
+            db.collection('registrations').document(reg_id).update({
+                'delivery_status': status
+            })
+            logger.info("Updated registration %s status to %s", reg_id, status)
+        else:
+            from google.cloud.firestore_v1.base_query import FieldFilter
+            regs = list(db.collection('registrations')
+                          .where(filter=FieldFilter('lead_email', '==', to_email))
+                          .stream())
+            if regs:
+                regs.sort(key=lambda x: x.to_dict().get('registered_at', ''), reverse=True)
+                regs[0].reference.update({
+                    'delivery_status': status
+                })
+                logger.info("Updated latest registration for %s status to %s", to_email, status)
+    except Exception as exc:
+        logger.warning("Failed to update email delivery status: %s", exc)
 
 
 def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
@@ -205,7 +231,7 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
 # ─────────────────────────────────────────────────────────────
 
 def _send_via_brevo(to_email, subject: str, html: str,
-                    attachments: list = None) -> bool:
+                    attachments: list | None = None) -> bool:
     global LAST_EMAIL_ERROR
     try:
         import urllib.request
@@ -268,7 +294,7 @@ def _send_via_brevo(to_email, subject: str, html: str,
 
 
 def _send_via_resend(to_email, subject: str, html: str,
-                     attachments: list = None) -> bool:
+                     attachments: list | None = None) -> bool:
     global LAST_EMAIL_ERROR
     try:
         import resend
@@ -296,7 +322,7 @@ def _send_via_resend(to_email, subject: str, html: str,
 # ─────────────────────────────────────────────────────────────
 
 def _send_via_gmail(to_email, subject: str, html: str,
-                    attachments: list = None) -> bool:
+                    attachments: list | None = None) -> bool:
     global LAST_EMAIL_ERROR
     import smtplib
     from email.mime.multipart import MIMEMultipart
@@ -322,7 +348,7 @@ def _send_via_gmail(to_email, subject: str, html: str,
         msg            = MIMEMultipart('mixed')
         msg['From']    = _from_address()
         msg['To']      = ', '.join(to_list)
-        msg['Subject'] = Header(subject, 'utf-8')
+        msg['Subject'] = Header(subject, 'utf-8').encode()
 
         alt = MIMEMultipart('alternative')
         alt.attach(MIMEText(html, 'html', 'utf-8'))
@@ -383,18 +409,27 @@ def _send_via_gmail(to_email, subject: str, html: str,
 # ─────────────────────────────────────────────────────────────
 
 def _send(to_email, subject: str, html: str,
-          attachments: list = None) -> bool:
+          attachments: list | None = None, reg_id: str | None = None) -> bool:
     """
     Priority order (first key found wins):
       1. BREVO_API_KEY  → Brevo HTTP API  (Railway-safe, free 300/day, anyone)
       2. RESEND_API_KEY → Resend HTTP API (free but verified emails only)
       3. neither        → Gmail SMTP      (blocked on Railway)
     """
+    ok = False
     if os.environ.get('BREVO_API_KEY'):
-        return _send_via_brevo(to_email, subject, html, attachments)
-    if os.environ.get('RESEND_API_KEY'):
-        return _send_via_resend(to_email, subject, html, attachments)
-    return _send_via_gmail(to_email, subject, html, attachments)
+        ok = _send_via_brevo(to_email, subject, html, attachments)
+    elif os.environ.get('RESEND_API_KEY'):
+        ok = _send_via_resend(to_email, subject, html, attachments)
+    else:
+        ok = _send_via_gmail(to_email, subject, html, attachments)
+        
+    if ok:
+        to_list = [to_email] if isinstance(to_email, str) else to_email
+        for email in to_list:
+            _update_delivery_status(email, 'Sent', reg_id)
+            
+    return ok
 
 
 # ─────────────────────────────────────────────────────────────
@@ -404,7 +439,7 @@ def _send(to_email, subject: str, html: str,
 def send_registration_confirmed_email(to_email: str, name: str, event_title: str,
                                        event_date: str = '', venue: str = '',
                                        is_new_user: bool = False,
-                                       raw_password: str = None) -> bool:
+                                       raw_password: str | None = None) -> bool:
     """
     Sent immediately at registration. Simple confirmation — no QR, no ticket ID.
     The actual entry ticket (with QR) is sent 1 day before the event.
@@ -451,13 +486,28 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
           Keep an eye on your inbox!
         </p>
     """, f"Registration Confirmed — {event_title}")
-    return _send(to_email, f"Registration Confirmed — {event_title}", html)
+
+    atts = []
+    if event_date:
+        try:
+            ics_data = generate_ics_content(event_title, event_date, venue)
+            ics_b64 = base64.b64encode(ics_data).decode()
+            atts.append({
+                'filename': 'invite.ics',
+                'name':     'invite.ics',
+                'content':  ics_b64,
+                'data':     ics_data
+            })
+        except Exception as e:
+            logger.warning("Failed to create ICS attachment for confirmation email: %s", e)
+
+    return _send(to_email, f"Registration Confirmed — {event_title}", html, attachments=atts or None)
 
 
 def send_ticket_email(to_email: str, name: str, event_title: str,
-                      reg_id: str, qr_bytes: bytes = None,
+                      reg_id: str, qr_bytes: bytes | None = None,
                       is_new_user: bool = False,
-                      raw_password: str = None) -> bool:
+                      raw_password: str | None = None) -> bool:
     base = _base_url()
     credentials_block = ""
     if is_new_user and raw_password:
@@ -503,15 +553,48 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
         </p>
     """, f"Registration Confirmed — {event_title}")
 
-    atts = None
+    atts = []
     if qr_bytes:
-        atts = [{
+        atts.append({
             'filename': 'QR_Ticket.png',
             'name':     'QR_Ticket.png',
             'content':  base64.b64encode(qr_bytes).decode(),
             'data':     qr_bytes,
-        }]
-    return _send(to_email, f"✅ Registered — {event_title}", html, atts)
+        })
+
+    # Attempt to fetch event_date and venue from database using reg_id for calendar invite
+    event_date = ''
+    venue = ''
+    try:
+        from models import db
+        if db is not None:
+            reg_doc = db.collection('registrations').document(reg_id).get()
+            if reg_doc.exists:
+                reg_dict = reg_doc.to_dict()
+                event_id = reg_dict.get('event_id')
+                if event_id:
+                    event_doc = db.collection('events').document(event_id).get()
+                    if event_doc.exists:
+                        event_dict = event_doc.to_dict()
+                        event_date = event_dict.get('date_display') or event_dict.get('date') or ''
+                        venue = event_dict.get('venue') or ''
+    except Exception as e:
+        logger.warning("Failed to fetch event date/venue for ICS ticket email attachment: %s", e)
+
+    if event_date:
+        try:
+            ics_data = generate_ics_content(event_title, event_date, venue)
+            ics_b64 = base64.b64encode(ics_data).decode()
+            atts.append({
+                'filename': 'invite.ics',
+                'name':     'invite.ics',
+                'content':  ics_b64,
+                'data':     ics_data
+            })
+        except Exception as e:
+            logger.warning("Failed to create ICS attachment for ticket email: %s", e)
+
+    return _send(to_email, f"✅ Registered — {event_title}", html, atts or None, reg_id=reg_id)
 
 
 def send_credentials_email(to_email: str, name: str, role: str,
@@ -629,7 +712,7 @@ def send_broadcast_email(to_list: list, subject: str,
 def _send_cert_email(to_email: str, student_name: str,
                      event_title: str, cert_type: str,
                      rank: int, score: float,
-                     pdf_bytes: bytes, reg_id: str = None) -> bool:
+                     pdf_bytes: bytes, reg_id: str | None = None) -> bool:
     rank_labels = {1: '🥇 1st Place Winner', 2: '🥈 2nd Place Winner', 3: '🥉 3rd Place Winner'}
     if cert_type == 'winner':
         subject  = f"🏆 Your Achievement Certificate — {event_title}"
@@ -716,7 +799,7 @@ def _send_cert_email(to_email: str, student_name: str,
     fname = f"Certificate_{label}_{safe}.pdf"
 
     atts = [{'filename': fname, 'name': fname, 'content': b64, 'data': pdf_bytes}]
-    return _send(to_email, subject, html, atts)
+    return _send(to_email, subject, html, atts, reg_id=reg_id)
 
 
 
@@ -790,3 +873,90 @@ def send_advancement_email(to_email: str, name: str, event_title: str,
 # Alias used by utils_certificate.py
 def _get_mail():
     return None
+
+
+def generate_ics_content(event_title: str, date_val: str, venue: str = '') -> bytes:
+    """
+    Generate an RFC 5545 compliant .ics calendar invite as bytes.
+    Accepts ISO dates '2026-06-15' or display dates like 'June 15, 2026 — 9:00 AM'.
+    """
+    import re
+    import datetime
+
+    # Parse date and time
+    time_str = "09:00 AM"
+    date_str = date_val.strip()
+
+    if "—" in date_val:
+        parts = date_val.split("—")
+        date_str = parts[0].strip()
+        time_str = parts[1].strip()
+
+    # Check if ISO format YYYY-MM-DD
+    iso_match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", date_str)
+    if iso_match:
+        year, month, day = map(int, iso_match.groups())
+    else:
+        # Try to parse monthly displays, e.g. "June 15, 2026"
+        try:
+            parsed_date = datetime.datetime.strptime(date_str, "%B %d, %Y")
+            year, month, day = parsed_date.year, parsed_date.month, parsed_date.day
+        except Exception:
+            try:
+                parsed_date = datetime.datetime.strptime(date_str, "%b %d, %Y")
+                year, month, day = parsed_date.year, parsed_date.month, parsed_date.day
+            except Exception:
+                # Fallback to today
+                today = datetime.date.today()
+                year, month, day = today.year, today.month, today.day
+
+    # Parse time
+    hour = 9
+    minute = 0
+    time_match = re.search(r"(\d+):(\d+)\s*(AM|PM)", time_str, re.IGNORECASE)
+    if time_match:
+        h, m, ampm = time_match.groups()
+        hour = int(h)
+        minute = int(m)
+        if ampm.upper() == "PM" and hour < 12:
+            hour += 12
+        elif ampm.upper() == "AM" and hour == 12:
+            hour = 0
+
+    # Format DTSTART (YYYYMMDDTHHMMSS)
+    dtstart = f"{year:04d}{month:02d}{day:02d}T{hour:02d}{minute:02d}00"
+
+    # DTEND is default 3 hours later, capped at 23:59:00
+    end_hour = min(23, hour + 3)
+    dtend = f"{year:04d}{month:02d}{day:02d}T{end_hour:02d}{minute:02d}00"
+
+    # Generate unique UID
+    import uuid
+    uid = f"{uuid.uuid4()}@saptha-event-portal"
+    dtstamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+
+    def clean(text):
+        if not text:
+            return ""
+        return text.replace("\n", "\\n").replace(",", "\\,").replace(";", "\\;")
+
+    ics_lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//SapthaEvent//Event Portal//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        f"SUMMARY:{clean(event_title)}",
+        f"UID:{uid}",
+        "SEQUENCE:0",
+        "STATUS:CONFIRMED",
+        f"DTSTART:{dtstart}",
+        f"DTEND:{dtend}",
+        f"DTSTAMP:{dtstamp}",
+        f"LOCATION:{clean(venue)}",
+        f"DESCRIPTION:Calendar invite for {clean(event_title)}.",
+        "END:VEVENT",
+        "END:VCALENDAR"
+    ]
+    return "\r\n".join(ics_lines).encode("utf-8")

@@ -12,6 +12,8 @@ import os
 
 from flask import (Blueprint, abort, flash, jsonify,
                    redirect, render_template, request, session)
+from itsdangerous import URLSafeSerializer
+from flask import current_app
 
 def _db():
     from app import db
@@ -20,6 +22,23 @@ from utils import login_required, log_action
 from utils_qr import generate_qr_base64, generate_qr_response
 
 ticket_bp = Blueprint('ticket', __name__, url_prefix='/ticket')
+
+
+# ── helpers ──────────────────────────────────────────────
+def _get_serializer():
+    secret = current_app.config.get('SECRET_KEY', 'default_secret_key')
+    return URLSafeSerializer(secret, salt='qr-ticket-salt')
+
+def generate_ticket_token(reg_id: str, event_id: str, lead_name: str) -> str:
+    s = _get_serializer()
+    return s.dumps([reg_id, event_id, lead_name])
+
+def verify_ticket_token(token: str):
+    s = _get_serializer()
+    try:
+        return s.loads(token)
+    except Exception:
+        return None
 
 
 # ── helpers ──────────────────────────────────────────────
@@ -87,7 +106,9 @@ def view_ticket(reg_id):
 
     qr_b64 = verify_url = None
     if show_qr:
-        verify_url = f"{_base_url()}/ticket/verify/{reg_id}"
+        # Generate cryptographically signed token for QR code
+        token = generate_ticket_token(reg_id, reg.get('event_id', ''), reg.get('lead_name', ''))
+        verify_url = f"{_base_url()}/ticket/verify/{token}"
         qr_b64     = generate_qr_base64(verify_url)
 
     return render_template(
@@ -130,7 +151,9 @@ def qr_image(reg_id):
             except ValueError:
                 pass
 
-    verify_url = f"{_base_url()}/ticket/verify/{reg_id}"
+    # Generate cryptographically signed token for QR code
+    token = generate_ticket_token(reg_id, reg.get('event_id', ''), reg.get('lead_name', ''))
+    verify_url = f"{_base_url()}/ticket/verify/{token}"
     return generate_qr_response(verify_url)
 
 
@@ -140,12 +163,106 @@ def qr_image(reg_id):
 #    NO login required — coordinator uses their phone browser.
 #    Auto-marks attendance on successful scan.
 # =========================================================
-@ticket_bp.route('/verify/<reg_id>')
-def verify_ticket(reg_id):
-    reg_doc = _db().collection('registrations').document(reg_id).get()
+@ticket_bp.route('/verify/<reg_id_or_token>')
+def verify_ticket(reg_id_or_token):
+    # 1. Try to decode as token
+    token_data = verify_ticket_token(reg_id_or_token)
+    
+    reg_id = reg_id_or_token
+    event_id = None
+    lead_name = None
+    offline_verified = False
+    
+    if token_data and isinstance(token_data, list) and len(token_data) >= 3:
+        reg_id = token_data[0]
+        event_id = token_data[1]
+        lead_name = token_data[2]
+        offline_verified = True
 
-    # ── Invalid ticket ────────────────────────────────────
-    if not reg_doc.exists:
+    # 2. Try to fetch from database
+    try:
+        reg_doc = _db().collection('registrations').document(reg_id).get()
+        db_exists = reg_doc.exists
+    except Exception as e:
+        # DB offline / network down
+        db_exists = False
+
+    if db_exists:
+        reg       = reg_doc.to_dict()
+        event_doc = _db().collection('events').document(reg.get('event_id', '')).get()
+        event     = event_doc.to_dict() if event_doc.exists else {}
+
+        # ── Payment not confirmed ─────────────────────────────
+        payment_status = reg.get('payment_status', '')
+        is_paid_or_free = payment_status == 'Free' or (payment_status and payment_status.startswith('Paid'))
+        if not is_paid_or_free:
+            return render_template(
+                'coordinator/verify_result.html',
+                status='unpaid',
+                message='Payment pending — entry not allowed.',
+                reg=reg, event=event
+            )
+
+        # ── Already checked in ────────────────────────────────
+        if reg.get('attendance') == 'Present':
+            return render_template(
+                'coordinator/verify_result.html',
+                status='already_in',
+                message='This ticket was already scanned.',
+                reg=reg, event=event
+            )
+
+        # ── All good — mark Present ───────────────────────────
+        checkin_time = _now()
+        try:
+            _db().collection('registrations').document(reg_id).update({
+                'attendance':   'Present',
+                'checkin_time': checkin_time
+            })
+            # Award +150 XP for check-in
+            try:
+                from routes_gamification import award_xp
+                award_xp(reg.get('lead_email'), 150)
+            except Exception as e:
+                pass
+        except Exception as e:
+            pass
+
+        reg['attendance']   = 'Present'
+        reg['checkin_time'] = checkin_time
+
+        try:
+            log_action(_db(), "QR_CHECKIN",
+                       f"Reg {reg_id} checked in via QR scan at {checkin_time}")
+        except Exception:
+            pass
+
+        return render_template(
+            'coordinator/verify_result.html',
+            status='success',
+            message='Entry granted!',
+            reg=reg, event=event
+        )
+    else:
+        # DB offline / not found but offline verified!
+        if offline_verified:
+            reg = {
+                'reg_id': reg_id,
+                'lead_name': lead_name,
+                'attendance': 'Present (Offline)',
+                'payment_status': 'Verified Offline',
+            }
+            event = {
+                'title': f"Event ID: {event_id}" if event_id else "Event"
+            }
+            return render_template(
+                'coordinator/verify_result.html',
+                status='success',
+                message='Entry granted! (Cryptographically Verified Offline)',
+                reg=reg, event=event
+            )
+
+        # Invalid ticket
         return render_template(
             'coordinator/verify_result.html',
             status='invalid',
@@ -153,108 +270,93 @@ def verify_ticket(reg_id):
             reg=None, event=None
         )
 
-    reg       = reg_doc.to_dict()
-    event_doc = _db().collection('events').document(reg.get('event_id', '')).get()
-    event     = event_doc.to_dict() if event_doc.exists else {}
-
-    # ── Payment not confirmed ─────────────────────────────
-    payment_status = reg.get('payment_status', '')
-    is_paid_or_free = payment_status == 'Free' or (payment_status and payment_status.startswith('Paid'))
-    if not is_paid_or_free:
-        return render_template(
-            'coordinator/verify_result.html',
-            status='unpaid',
-            message='Payment pending — entry not allowed.',
-            reg=reg, event=event
-        )
-
-    # ── Already checked in ────────────────────────────────
-    if reg.get('attendance') == 'Present':
-        return render_template(
-            'coordinator/verify_result.html',
-            status='already_in',
-            message='This ticket was already scanned.',
-            reg=reg, event=event
-        )
-
-    # ── All good — mark Present ───────────────────────────
-    checkin_time = _now()
-    _db().collection('registrations').document(reg_id).update({
-        'attendance':   'Present',
-        'checkin_time': checkin_time
-    })
-    # Award +150 XP for check-in
-    try:
-        from routes_gamification import award_xp
-        award_xp(reg.get('lead_email'), 150)
-    except Exception as e:
-        pass
-
-    reg['attendance']   = 'Present'
-    reg['checkin_time'] = checkin_time
-
-    log_action(_db(), "QR_CHECKIN",
-               f"Reg {reg_id} checked in via QR scan at {checkin_time}")
-
-    return render_template(
-        'coordinator/verify_result.html',
-        status='success',
-        message='Entry granted!',
-        reg=reg, event=event
-    )
-
 
 # =========================================================
 # 4. JSON API VERIFY
 #    For custom scanner apps or AJAX-based scanning UIs.
 #    GET /ticket/api/verify/<reg_id>
 # =========================================================
-@ticket_bp.route('/api/verify/<reg_id>')
-def api_verify(reg_id):
-    reg_doc = _db().collection('registrations').document(reg_id).get()
+@ticket_bp.route('/api/verify/<reg_id_or_token>')
+def api_verify(reg_id_or_token):
+    # 1. Try to decode as token
+    token_data = verify_ticket_token(reg_id_or_token)
+    
+    reg_id = reg_id_or_token
+    event_id = None
+    lead_name = None
+    offline_verified = False
+    
+    if token_data and isinstance(token_data, list) and len(token_data) >= 3:
+        reg_id = token_data[0]
+        event_id = token_data[1]
+        lead_name = token_data[2]
+        offline_verified = True
 
-    if not reg_doc.exists:
-        return jsonify({'status': 'invalid', 'message': 'Ticket not found'}), 404
+    try:
+        reg_doc = _db().collection('registrations').document(reg_id).get()
+        db_exists = reg_doc.exists
+    except Exception:
+        db_exists = False
 
-    reg = reg_doc.to_dict()
+    if db_exists:
+        reg = reg_doc.to_dict()
 
-    payment_status = reg.get('payment_status', '')
-    is_paid_or_free = payment_status == 'Free' or (payment_status and payment_status.startswith('Paid'))
-    if not is_paid_or_free:
+        payment_status = reg.get('payment_status', '')
+        is_paid_or_free = payment_status == 'Free' or (payment_status and payment_status.startswith('Paid'))
+        if not is_paid_or_free:
+            return jsonify({
+                'status':  'unpaid',
+                'message': 'Payment pending — entry not allowed'
+            }), 402
+
+        if reg.get('attendance') == 'Present':
+            return jsonify({
+                'status':       'already_in',
+                'message':      'Already checked in',
+                'name':         reg.get('lead_name'),
+                'team':         reg.get('team_name'),
+                'checkin_time': reg.get('checkin_time')
+            }), 200
+
+        # Mark present
+        checkin_time = _now()
+        try:
+            _db().collection('registrations').document(reg_id).update({
+                'attendance':   'Present',
+                'checkin_time': checkin_time
+            })
+            # Award +150 XP for check-in
+            try:
+                from routes_gamification import award_xp
+                award_xp(reg.get('lead_email'), 150)
+            except Exception as e:
+                pass
+        except Exception:
+            pass
+
+        try:
+            log_action(_db(), "API_QR_CHECKIN", f"Reg {reg_id} checked in via API at {checkin_time}")
+        except Exception:
+            pass
+
         return jsonify({
-            'status':  'unpaid',
-            'message': 'Payment pending — entry not allowed'
-        }), 402
-
-    if reg.get('attendance') == 'Present':
-        return jsonify({
-            'status':       'already_in',
-            'message':      'Already checked in',
+            'status':       'success',
+            'message':      'Entry granted',
             'name':         reg.get('lead_name'),
             'team':         reg.get('team_name'),
-            'checkin_time': reg.get('checkin_time')
+            'members':      len(reg.get('members', [])),
+            'checkin_time': checkin_time
         }), 200
+    else:
+        # DB offline / not found but offline verified!
+        if offline_verified:
+            return jsonify({
+                'status':       'success',
+                'message':      'Entry granted (Cryptographically Verified Offline)',
+                'name':         lead_name,
+                'team':         'Unknown (Offline)',
+                'members':      0,
+                'checkin_time': _now()
+            }), 200
 
-    # Mark present
-    checkin_time = _now()
-    _db().collection('registrations').document(reg_id).update({
-        'attendance':   'Present',
-        'checkin_time': checkin_time
-    })
-    # Award +150 XP for check-in
-    try:
-        from routes_gamification import award_xp
-        award_xp(reg.get('lead_email'), 150)
-    except Exception as e:
-        pass
-
-    log_action(_db(), "API_QR_CHECKIN", f"Reg {reg_id} checked in via API at {checkin_time}")
-
-    return jsonify({
-        'status':       'success',
-        'message':      'Entry granted',
-        'name':         reg.get('lead_name'),
-        'team':         reg.get('team_name'),
-        'members':      len(reg.get('members', [])),
-        'checkin_time': checkin_time
-    }), 200
+        return jsonify({'status': 'invalid', 'message': 'Ticket not found'}), 404

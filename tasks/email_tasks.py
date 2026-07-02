@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 @celery.task(
     bind=True,
     queue='email',
-    max_retries=3,
-    default_retry_delay=30,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=5,
     name='tasks.email_tasks.send_ticket_email_task',
 )
 def send_ticket_email_task(self, to_email: str, name: str, event_title: str,
@@ -40,14 +41,15 @@ def send_ticket_email_task(self, to_email: str, name: str, event_title: str,
         logger.info("ticket email sent to %s reg=%s", to_email, reg_id)
     except Exception as exc:
         logger.warning("ticket email failed to %s: %s — retry %d", to_email, exc, self.request.retries)
-        raise self.retry(exc=exc)
+        raise
 
 
 @celery.task(
     bind=True,
     queue='email',
-    max_retries=3,
-    default_retry_delay=60,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=5,
     name='tasks.email_tasks.send_reminder_email_task',
 )
 def send_reminder_email_task(self, to_email: str, name: str, event_title: str,
@@ -62,15 +64,16 @@ def send_reminder_email_task(self, to_email: str, name: str, event_title: str,
         _send(to_email, f"⏰ Reminder: {event_title} is Tomorrow!", html)
         logger.info("reminder email sent to %s for %s", to_email, event_title)
     except Exception as exc:
-        logger.warning("reminder email failed %s: %s", to_email, exc)
-        raise self.retry(exc=exc)
+        logger.warning("reminder email failed to %s: %s — retry %d", to_email, exc, self.request.retries)
+        raise
 
 
 @celery.task(
     bind=True,
     queue='email',
-    max_retries=3,
-    default_retry_delay=30,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=5,
     name='tasks.email_tasks.send_generic_email_task',
 )
 def send_generic_email_task(self, to_email: str, subject: str,
@@ -84,7 +87,7 @@ def send_generic_email_task(self, to_email: str, subject: str,
     except Exception as exc:
         logger.warning("generic email failed to %s: %s — retry %d",
                        to_email, exc, self.request.retries)
-        raise self.retry(exc=exc)
+        raise
 
 
 # ── HTML template helper ──────────────────────────────────

@@ -49,6 +49,27 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% endwith %}
     .alert { border-radius: 10px; }
+    #ai-generator-card .card {
+      background: rgba(255, 255, 255, 0.02) !important;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px dashed rgba(201, 164, 94, 0.3) !important;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      color: var(--text-main);
+    }
+    #ai-generator-card .btn-primary {
+      background: var(--orange) !important;
+      border: none !important;
+      color: #1a2335 !important;
+      font-weight: 600 !important;
+    }
+    #ai-generator-card .btn-primary:hover {
+      background: #d4aa68 !important;
+    }
+    #ai-generator-card .btn-close {
+      filter: invert(1);
+    }
   </style>
 </head>
 <body>
@@ -82,15 +103,41 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="mb-4">
-        <label class="form-label">Event Title</label>
-        <input type="text" name="title" class="form-control"
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <label class="form-label mb-0">Event Title</label>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="ai-generator-toggle" onclick="toggleAIGenerator()" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; color: var(--orange); border-color: rgba(201, 164, 94, 0.4);">
+            <i class="fas fa-wand-magic-sparkles me-1"></i>AI Assist Outline
+          </button>
+        </div>
+        <input type="text" name="title" id="event-title-input" class="form-control"
                value="{{ event.get('title', '') }}" placeholder="Enter event title">
+      </div>
+
+      <!-- INLINE AI GENERATOR BOX -->
+      <div class="col-12 d-none" id="ai-generator-card" style="transition: all 0.3s ease; margin-bottom: 24px;">
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold small text-primary" style="color: var(--orange) !important;"><i class="fas fa-magic me-1"></i>Gemini Event Writer</span>
+            <button type="button" class="btn-close" style="font-size: 10px;" onclick="toggleAIGenerator()"></button>
+          </div>
+          <div class="input-group">
+            <input type="text" id="ai-prompt-input" class="form-control form-control-sm" placeholder="e.g. A 24-hour web dev hackathon on climate changes.">
+            <button type="button" class="btn btn-sm btn-primary" onclick="generateEventOutline()" id="ai-gen-submit-btn">Generate</button>
+          </div>
+          <div class="form-text mt-1 text-muted" style="font-size: 10px;">Autofills description and rules fields using AI.</div>
+        </div>
       </div>
 
       <div class="mb-4">
         <label class="form-label">Description</label>
         <textarea name="description" class="form-control"
                   placeholder="Describe the event...">{{ event.get('description', '') }}</textarea>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">Rules & Guidelines</label>
+        <textarea name="rules" class="form-control"
+                  placeholder="Rules and guidelines for the event...">{{ event.get('rules', '') }}</textarea>
       </div>
 
       <div class="row g-3 mb-4">
@@ -143,5 +190,63 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/static/js/global.js"></script>
+<script>
+    function toggleAIGenerator() {
+        var card = document.getElementById('ai-generator-card');
+        if (card) {
+            card.classList.toggle('d-none');
+        }
+    }
+
+    function generateEventOutline() {
+        var titleInput = document.getElementById('event-title-input');
+        var promptInput = document.getElementById('ai-prompt-input');
+        var submitBtn = document.getElementById('ai-gen-submit-btn');
+        
+        var title = titleInput ? titleInput.value.trim() : '';
+        var prompt = promptInput ? promptInput.value.trim() : '';
+        
+        if (!title) {
+            showToast('Please enter an Event Title first!', 'error');
+            return;
+        }
+        
+        var oldText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        
+        fetch('/spoc/marketing/event_writer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ title: title, prompt: prompt })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.description && data.rules) {
+                var descArea = document.querySelector('textarea[name="description"]');
+                var rulesArea = document.querySelector('textarea[name="rules"]');
+                if (descArea) descArea.value = data.description;
+                if (rulesArea) rulesArea.value = data.rules;
+                
+                showToast('Event details generated successfully!', 'success');
+                toggleAIGenerator();
+            } else {
+                showToast(data.error || 'Failed to generate details', 'error');
+            }
+        })
+        .catch(function() {
+            showToast('Network error generating details', 'error');
+        })
+        .finally(function() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = oldText;
+        });
+    }
+</script>
 </body>
 </html>

@@ -117,7 +117,16 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;color:#1e293b;}
     {% for rev in reviews %}
     <div class="review-card">
       <div class="d-flex justify-content-between align-items-start mb-1">
-        <strong style="font-size:13.5px;color:var(--blue);">{{ rev.user }}</strong>
+        <div class="d-flex align-items-center gap-2">
+          <strong style="font-size:13.5px;color:var(--blue);">{{ rev.user }}</strong>
+          {% if rev.sentiment == 'Positive' %}
+            <span class="badge bg-success" style="font-size: 9px; padding: 2px 6px;">Positive</span>
+          {% elif rev.sentiment == 'Negative' %}
+            <span class="badge bg-danger" style="font-size: 9px; padding: 2px 6px;">Negative</span>
+          {% else %}
+            <span class="badge bg-secondary" style="font-size: 9px; padding: 2px 6px;">Neutral</span>
+          {% endif %}
+        </div>
         <div class="stars">
           {% for i in range(1,6) %}<i class="fa{{ 's' if i <= rev.rating else 'r' }} fa-star"></i>{% endfor %}
         </div>

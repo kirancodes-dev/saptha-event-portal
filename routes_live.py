@@ -81,6 +81,79 @@ def _compute_leaderboard(event_id: str) -> "dict | None":
     }
 
 
+# ── Announcements SSE Stream ──────────────────────────────────────────────
+@live_bp.route('/announcements/stream')
+def announcements_stream():
+    """
+    Streams new announcements in real-time.
+    Accepts `events` query parameter: comma-separated event IDs (e.g. ?events=id1,id2)
+    """
+    from flask import request
+    import datetime
+
+    # Get the comma-separated list of event IDs the user is registered for
+    events_param = request.args.get('events', '')
+    event_ids = [eid.strip() for eid in events_param.split(',') if eid.strip()]
+
+    def generate():
+        # Keep track of the last checked timestamp (in ISO format string)
+        # Using UTC timezone aware datetime to align with post timestamp
+        last_check_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        
+        # Keep connection open for max 5 minutes (similar to leaderboard)
+        max_ticks = 150 # 150 * 2s = 5 minutes
+        for _ in range(max_ticks):
+            try:
+                # Query Firestore / SQL for newer announcements
+                if db:
+                    # Query for announcements newer than the last check time
+                    query = db.collection('announcements').where('timestamp', '>', last_check_time)
+                    announcements_ref = query.stream()
+                    
+                    new_announcements = []
+                    highest_ts = last_check_time
+                    
+                    for doc in announcements_ref:
+                        ad = doc.to_dict()
+                        ts = ad.get('timestamp', '')
+                        if ts > highest_ts:
+                            highest_ts = ts
+                        
+                        # Filter by client's events (if specified)
+                        e_id = ad.get('event_id', '')
+                        if not event_ids or e_id in event_ids:
+                            new_announcements.append({
+                                'id': doc.id,
+                                'message': ad.get('message', ''),
+                                'priority': ad.get('priority', 'info'),
+                                'event_id': e_id,
+                                'event_title': ad.get('event_title', 'General'),
+                                'timestamp': ts
+                            })
+                    
+                    if new_announcements:
+                        last_check_time = highest_ts
+                        # Stream each new announcement to the client
+                        for ann in new_announcements:
+                            yield f"data: {json.dumps(ann)}\n\n"
+            except Exception as e:
+                yield f"data: {{\"error\":\"{str(e)[:60]}\"}}\n\n"
+            
+            time.sleep(2)
+            
+        yield "event: reconnect\ndata: {}\n\n"
+
+    return Response(
+        stream_with_context(generate()),  # type: ignore[arg-type]
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive',
+        }
+    )
+
+
 # ── 1. Full-screen leaderboard page ──────────────────────────────────────
 @live_bp.route('/<event_id>')
 def leaderboard_page(event_id):

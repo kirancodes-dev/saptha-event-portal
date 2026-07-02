@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean, Column, DateTime, Enum, Float, ForeignKey,
-    Integer, String, Text, Date
+    Integer, String, Text, Date, Index
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -96,6 +96,9 @@ class User(Base):
 
 class Event(Base):
     __tablename__ = "events"
+    __table_args__ = (
+        Index("idx_events_status_date", "status", "date"),
+    )
 
     id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title          = Column(String(300), nullable=False)
@@ -143,6 +146,9 @@ class Event(Base):
 
 class Registration(Base):
     __tablename__ = "registrations"
+    __table_args__ = (
+        Index("idx_registrations_event_attendance_status", "eventId", "attendance", "status"),
+    )
 
     id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id       = Column("eventId", UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -269,3 +275,16 @@ class PushSubscription(Base):
     p256dh     = Column(String(255), nullable=False)
     auth_key   = Column("authKey", Text, nullable=False)
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id    = Column("event_id", String(100), nullable=True, index=True)
+    event_title = Column("event_title", String(255), nullable=True)
+    message     = Column(Text, nullable=False)
+    priority    = Column(String(50), nullable=False, default="info")
+    spoc_email  = Column("spoc_email", String(255), nullable=True)
+    timestamp   = Column(String(100), nullable=False)
+

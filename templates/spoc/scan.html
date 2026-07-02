@@ -313,8 +313,20 @@ function renderManualList() {
     const item = document.createElement('div');
     item.className = 'manual-item';
     
+    let deliveryBadge = '';
+    const dStatus = r.delivery_status || 'Unknown';
+    if (dStatus === 'Sent') {
+      deliveryBadge = ` <span class="badge bg-secondary text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-paper-plane me-1"></i>Sent</span>`;
+    } else if (dStatus === 'Delivered') {
+      deliveryBadge = ` <span class="badge bg-info text-dark" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-check-double me-1"></i>Delivered</span>`;
+    } else if (dStatus === 'Opened') {
+      deliveryBadge = ` <span class="badge bg-success text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-envelope-open me-1"></i>Opened</span>`;
+    } else if (dStatus === 'Bounced') {
+      deliveryBadge = ` <span class="badge bg-danger text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-exclamation-triangle me-1"></i>Bounced</span>`;
+    }
+
     const nameStr = r.lead_name + (r.team_name ? ` · <span style="color:var(--orange);">${r.team_name}</span>` : '');
-    const subStr = r.lead_email;
+    const subStr = r.lead_email + deliveryBadge;
     
     let actionHtml = '';
     if (r.attendance === 'Present') {

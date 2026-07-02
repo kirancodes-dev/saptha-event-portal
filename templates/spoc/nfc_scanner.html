@@ -197,6 +197,10 @@
                         <button class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3 wristband-nfc-hotspot" onclick="simulateNFCDetection()">
                             <i class="fas fa-rss me-2 text-white"></i> Tap Mock Wristband (Check-in)
                         </button>
+
+                        <button class="btn btn-outline-info w-100 py-2 rounded-pill fw-bold mt-2" onclick="startWebNFC()">
+                            <i class="fas fa-mobile-screen-button me-2"></i> Start WebNFC Hardware Scan
+                        </button>
                     </div>
                 </div>
             </div>
@@ -231,20 +235,16 @@
             return meta ? meta.getAttribute('content') : '';
         }
 
-        function simulateNFCDetection() {
-            var select = document.getElementById('student-payload');
-            var regId = select.value;
-            if (!regId) return;
-
-            var studentName = select.options[select.selectedIndex].text.split(' (')[0];
+        function performCheckIn(regId, studentName) {
             var statusBox = document.getElementById('scan-status');
             var viewfinder = document.getElementById('viewfinder-content');
+            var select = document.getElementById('student-payload');
 
             // Set scanning visual feedback
             statusBox.innerHTML = `<span class="spinner-border spinner-border-sm text-warning"></span> Reading NFC Card...`;
             viewfinder.style.color = "var(--warning)";
 
-            // Delay checkout action slightly to simulate RFID parsing
+            // Delay check-in action slightly to simulate RFID parsing
             setTimeout(function() {
                 // Post to checkin API
                 fetch(`/spoc/api/checkin/{{ event.id }}/${regId}`, {
@@ -256,7 +256,7 @@
                 })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success || data.message || data.status) {
+                    if (data.status === 'success' || data.success) {
                         // Success Audio signal
                         playRFIDBeep();
 
@@ -279,7 +279,7 @@
                         setTimeout(resetViewfinder, 3000);
                     } else {
                         viewfinder.style.color = "var(--danger)";
-                        statusBox.innerHTML = `<i class="fas fa-circle-xmark text-danger"></i> Read Error!`;
+                        statusBox.innerHTML = `<i class="fas fa-circle-xmark text-danger"></i> ${data.message || 'Read Error!'}`;
                         setTimeout(resetViewfinder, 3000);
                     }
                 })
@@ -291,6 +291,44 @@
                 });
 
             }, 1200);
+        }
+
+        function simulateNFCDetection() {
+            var select = document.getElementById('student-payload');
+            var regId = select.value;
+            if (!regId) return;
+
+            var studentName = select.options[select.selectedIndex].text.split(' (')[0];
+            performCheckIn(regId, studentName);
+        }
+
+        async function startWebNFC() {
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    alert("WebNFC Scanner activated! Bring wristband near device.");
+                    
+                    ndef.addEventListener("readingerror", () => {
+                        alert("NFC Read Error. Try again.");
+                    });
+
+                    ndef.addEventListener("reading", ({ message, serialNumber }) => {
+                        console.log(`NFC Serial Number: ${serialNumber}`);
+                        for (const record of message.records) {
+                            if (record.recordType === "text") {
+                                const textDecoder = new TextDecoder(record.encoding);
+                                const regId = textDecoder.decode(record.data);
+                                performCheckIn(regId, "RFID Participant");
+                            }
+                        }
+                    });
+                } catch (error) {
+                    alert("WebNFC initialization failed: " + error);
+                }
+            } else {
+                alert("WebNFC is not supported on this browser/device. Using emulator.");
+            }
         }
 
         function resetViewfinder() {

@@ -589,6 +589,78 @@ def api_create_org():
     return api_success(org, status=201)
 
 
+
+@api_v1_bp.route("/webhooks/email", methods=["POST"])
+def api_webhook_email():
+    """Webhook handler for Brevo/Resend email delivery events.
+    Updates the delivery status of registrations in Firestore.
+    """
+    data = request.get_json(silent=True) or {}
+    logger.info("Received email webhook event: %s", data)
+    
+    target_email = None
+    status = None
+    
+    # 1. Brevo webhook format
+    if "event" in data:
+        target_email = data.get("email")
+        event = data.get("event")
+        # Map Brevo events to nice display statuses
+        if event == "delivered":
+            status = "Delivered"
+        elif event in ("opened", "clicks", "unique_opened"):
+            status = "Opened"
+        elif event in ("soft_bounce", "hard_bounce", "invalid_email", "blocked"):
+            status = "Bounced"
+        elif event == "request":
+            status = "Sent"
+            
+    # 2. Resend webhook format
+    elif "type" in data:
+        event_type = data.get("type", "")
+        if event_type.startswith("email."):
+            resend_data = data.get("data", {})
+            to_list = resend_data.get("to", [])
+            if to_list:
+                target_email = to_list[0]
+            if event_type == "email.delivered":
+                status = "Delivered"
+            elif event_type == "email.opened":
+                status = "Opened"
+            elif event_type == "email.bounced":
+                status = "Bounced"
+            elif event_type == "email.sent":
+                status = "Sent"
+
+    if not target_email or not status:
+        return api_error("bad_request", "Invalid webhook format or empty data", status=400)
+        
+    db = _db()
+    if db is None:
+        return api_error("service_unavailable", "Database not available", status=503)
+
+    # Find registrations matching lead_email and update delivery_status
+    try:
+        regs = list(
+            db.collection("registrations")
+            .where(filter=FieldFilter("lead_email", "==", target_email))
+            .stream()
+        )
+        if not regs:
+            return api_success({"message": f"No registrations found for {target_email}"})
+            
+        # Update the most recent registration
+        regs.sort(key=lambda x: x.to_dict().get("registered_at", ""), reverse=True)
+        regs[0].reference.update({
+            "delivery_status": status
+        })
+        logger.info("Updated registration %s email status to %s", regs[0].id, status)
+        return api_success({"message": f"Updated status to {status} for {target_email}"})
+    except Exception as exc:
+        logger.error("Failed to update registration status: %s", exc)
+        return api_error("internal_error", str(exc), status=500)
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # HEALTH / DOCS
 # ═══════════════════════════════════════════════════════════════════════════

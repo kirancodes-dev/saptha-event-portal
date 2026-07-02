@@ -133,3 +133,144 @@ def venue_qr(event_id):
     buf.seek(0)
     from flask import Response
     return Response(buf.read(), mimetype='image/png')
+
+
+# ── 5. Live Self-Serve Check-in Kiosk Interface ────────────────────────────
+
+@checkin_bp.route('/kiosk')
+def kiosk_page():
+    return render_template('public/kiosk.html')
+
+
+@checkin_bp.route('/kiosk/search', methods=['POST'])
+def kiosk_search():
+    query = (request.json or {}).get('query', '').strip()
+    if not query:
+        return jsonify({'success': True, 'results': []})
+
+    query_lower = query.lower()
+    results = []
+    seen_ids = set()
+
+    def add_to_results(doc_id, reg_data):
+        if doc_id in seen_ids:
+            return
+        event_id = reg_data.get('event_id')
+        evt_title = 'Event'
+        if event_id:
+            try:
+                evt_doc = db.collection('events').document(str(event_id)).get()
+                if evt_doc.exists:
+                    evt_data = evt_doc.to_dict()
+                    evt_title = evt_data.get('title', 'Event')
+            except Exception:
+                pass
+        results.append({
+            'reg_id': doc_id,
+            'event_title': evt_title,
+            'lead_name': reg_data.get('lead_name', ''),
+            'lead_email': reg_data.get('lead_email', ''),
+            'team_name': reg_data.get('team_name', ''),
+            'attendance': reg_data.get('attendance', 'Pending'),
+            'members': reg_data.get('members', [])
+        })
+        seen_ids.add(doc_id)
+
+    # 1. Exact Reg ID Lookup
+    try:
+        reg_doc = db.collection('registrations').document(query).get()
+        if reg_doc.exists:
+            add_to_results(reg_doc.id, reg_doc.to_dict())
+    except Exception:
+        pass
+
+    # 2. Email Query
+    try:
+        regs = db.collection('registrations').where(filter=FieldFilter('lead_email', '==', query_lower)).stream()
+        for r in regs:
+            add_to_results(r.id, r.to_dict())
+    except Exception:
+        pass
+
+    # 3. Stream check for partial matches (lead name, team name, member USN/email/name)
+    try:
+        regs = db.collection('registrations').stream()
+        for r in regs:
+            reg = r.to_dict()
+            lead_name = reg.get('lead_name', '').lower()
+            team_name = reg.get('team_name', '').lower()
+
+            if query_lower in lead_name or query_lower in team_name:
+                add_to_results(r.id, reg)
+                continue
+
+            for m in reg.get('members', []):
+                m_usn = m.get('usn', '').lower()
+                m_email = m.get('email', '').lower()
+                m_name = m.get('name', '').lower()
+                if query_lower == m_usn or query_lower == m_email or query_lower in m_name:
+                    add_to_results(r.id, reg)
+                    break
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("Error streaming registrations in kiosk search: %s", e)
+
+    return jsonify({'success': True, 'results': results})
+
+
+@checkin_bp.route('/kiosk/confirm/<reg_id>', methods=['POST'])
+def kiosk_confirm(reg_id):
+    try:
+        reg_doc = db.collection('registrations').document(reg_id).get()
+        if not reg_doc.exists:
+            return jsonify({'success': False, 'error': 'Registration not found.'}), 404
+
+        reg = reg_doc.to_dict()
+        event_id = reg.get('event_id')
+        event_title = 'Event'
+        if event_id:
+            try:
+                evt_doc = db.collection('events').document(str(event_id)).get()
+                if evt_doc.exists:
+                    evt = evt_doc.to_dict()
+                    event_title = evt.get('title', 'Event')
+                    if evt.get('status') != 'active':
+                        return jsonify({'success': False, 'error': f"Event '{event_title}' is not active."}), 400
+            except Exception:
+                pass
+
+        if reg.get('attendance') == 'Present':
+            return jsonify({
+                'success': True,
+                'already_present': True,
+                'message': f"{reg.get('lead_name')} is already checked in.",
+                'lead_name': reg.get('lead_name'),
+                'team_name': reg.get('team_name', ''),
+                'event_title': event_title
+            })
+
+        checkin_time = datetime.datetime.now().strftime("%H:%M:%S")
+        db.collection('registrations').document(reg_id).update({
+            'attendance': 'Present',
+            'checkin_time': checkin_time,
+            'kiosk_checkin': True
+        })
+
+        try:
+            from routes_gamification import award_xp
+            award_xp(reg.get('lead_email', ''), 150)
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'message': f"Successfully checked in {reg.get('lead_name')}!",
+            'lead_name': reg.get('lead_name'),
+            'team_name': reg.get('team_name', ''),
+            'checkin_time': checkin_time,
+            'event_title': event_title
+        })
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error("Error in kiosk confirm: %s", exc)
+        return jsonify({'success': False, 'error': str(exc)}), 500

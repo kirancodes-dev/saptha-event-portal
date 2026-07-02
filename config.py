@@ -36,7 +36,7 @@ class Config:
     WTF_CSRF_TIME_LIMIT    = None  # no expiry — token lives with the session
 
     # Enforce HTTPS via Talisman when explicitly set, otherwise production-only
-    FORCE_HTTPS            = os.environ.get('FORCE_HTTPS', 'false').lower() == 'true' or _is_production
+    FORCE_HTTPS            = os.environ.get('FORCE_HTTPS', 'true' if _is_production else 'false').lower() == 'true'
 
     # =========================================================
     # 2. APPLICATION INFO

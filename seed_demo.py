@@ -38,7 +38,7 @@ def init_firebase():
 
 def hashpw(raw):
     from werkzeug.security import generate_password_hash
-    return generate_password_hash(raw)
+    return generate_password_hash(raw, method='pbkdf2:sha256')
 
 
 # =========================================================

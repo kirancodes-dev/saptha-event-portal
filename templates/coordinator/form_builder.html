@@ -272,6 +272,20 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
           <input type="text" id="form-desc" class="prop-input"
                  placeholder="Shown to participants at the top of the form">
         </div>
+        <!-- AI prompt builder -->
+        <div class="col-12 mt-3 pt-3 border-top border-secondary border-opacity-10">
+          <label class="prop-label"><i class="fas fa-wand-magic-sparkles text-primary me-1"></i>Generate Form from AI Prompt</label>
+          <div class="input-group">
+            <input type="text" id="ai-prompt-input" class="prop-input" style="flex:1;"
+                   placeholder="e.g., Build a robotics team form with github url, team size of 4 and dietary preference">
+            <button class="btn btn-primary ms-2 px-4" style="border-radius:20px;" id="btn-ai-gen" onclick="generateFromAI()">
+              <i class="fas fa-bolt me-1"></i> Generate
+            </button>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+            Describe the fields you need, and Gemini will automatically configure the schema.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -769,6 +783,43 @@ async function saveForm() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-save"></i> Save Form';
+  }
+}
+
+async function generateFromAI() {
+  const input = document.getElementById('ai-prompt-input');
+  const btn = document.getElementById('btn-ai-gen');
+  const promptVal = input.value.trim();
+  if (!promptVal) { toast('Please enter a description prompt.', 'error'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+  try {
+    const res = await fetch('/forms/ai_generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        description: promptVal,
+        is_team: fields.some(f => f.id === 'team_name') || promptVal.toLowerCase().includes('team')
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      fields = data.fields;
+      renderCanvas();
+      selectedId = null;
+      renderProps();
+      setFormType('custom', false);
+      toast(`Form generated using ${data.source.toUpperCase()}!`, 'success');
+    } else {
+      toast('AI generation failed: ' + data.message, 'error');
+    }
+  } catch(e) {
+    toast('Network error — please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-bolt me-1"></i> Generate';
   }
 }
 

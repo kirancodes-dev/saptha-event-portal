@@ -3131,3 +3131,337 @@ body > .modal-backdrop { z-index: 10400 !important; }
     }
 }
 
+/* ==========================================================================
+   15. LIQUID GLASSMORPHISM STYLES & DYNAMIC COMPONENT OVERRIDES
+   ========================================================================== */
+
+/* ── LIQUID BLOBS AND TECH GRID BACKDROP ── */
+.grid-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 50px 50px;
+    background-position: center;
+    mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 100%);
+    pointer-events: none;
+}
+
+.liquid-blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: -1;
+    opacity: 0.45;
+    pointer-events: none;
+    transform-origin: center;
+}
+.blob-1 {
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+    top: -100px;
+    right: -50px;
+    animation: floatBlob1 20s infinite ease-in-out;
+}
+.blob-2 {
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.22) 0%, transparent 70%);
+    bottom: 10%;
+    left: -150px;
+    animation: floatBlob2 25s infinite ease-in-out;
+}
+.blob-3 {
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.25) 0%, transparent 70%);
+    top: 40%;
+    right: 15%;
+    animation: floatBlob3 18s infinite ease-in-out alternate;
+}
+.blob-4 {
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, transparent 70%);
+    bottom: -50px;
+    right: -50px;
+    animation: floatBlob4 22s infinite ease-in-out;
+}
+
+@keyframes floatBlob1 {
+    0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    33% { transform: translate(80px, 60px) scale(1.08) rotate(120deg); }
+    66% { transform: translate(-40px, 90px) scale(0.92) rotate(240deg); }
+    100% { transform: translate(0, 0) scale(1) rotate(360deg); }
+}
+@keyframes floatBlob2 {
+    0% { transform: translate(0, 0) scale(1) rotate(360deg); }
+    50% { transform: translate(-60px, -80px) scale(1.15) rotate(180deg); }
+    100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+@keyframes floatBlob3 {
+    0% { transform: translate(0, 0) scale(0.95); }
+    50% { transform: translate(90px, -40px) scale(1.12); }
+    100% { transform: translate(0, 0) scale(0.95); }
+}
+@keyframes floatBlob4 {
+    0% { transform: translate(0, 0) scale(1.08); }
+    50% { transform: translate(-80px, 40px) scale(0.92); }
+    100% { transform: translate(0, 0) scale(1.08); }
+}
+
+/* ── DARK AUTH PAGES OVERHAUL ── */
+body.auth {
+    background: #040715 !important;
+    position: relative;
+    overflow-y: auto !important;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* Auth container glass card */
+body.auth .auth-container {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(25px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 28px;
+    overflow: hidden;
+}
+
+/* Single auth card (Register, forgot password) */
+body.auth .auth-card {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(25px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 24px;
+    padding: 2.5rem 2rem !important;
+    color: #f9fafb !important;
+}
+
+/* Left info panel of login */
+body.auth .auth-info-panel {
+    background: rgba(255, 255, 255, 0.01) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+body.auth .auth-form-panel {
+    background: transparent !important;
+}
+
+body.auth .login-card, body.auth .auth-container .auth-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Inner labels, text and inputs */
+body.auth h1, body.auth h2, body.auth h3, body.auth h4, body.auth h5, body.auth h6,
+body.auth .auth-card-title, body.auth .info-title, body.auth .form-label {
+    color: #fff !important;
+}
+body.auth .text-muted, body.auth p.text-muted {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+body.auth .form-control, body.auth .form-select {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+    border-radius: 12px;
+}
+body.auth .form-control:focus, body.auth .form-select:focus {
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+body.auth .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.35) !important;
+}
+body.auth select.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+body.auth .input-icon-wrap i.inp-icon {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+body.auth .pw-toggle {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+body.auth .pw-toggle:hover {
+    color: #fff !important;
+}
+
+/* Checkbox and links */
+body.auth .form-check-label {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+body.auth a {
+    color: #3b82f6 !important;
+    transition: color 0.2s ease;
+}
+body.auth a:hover {
+    color: #67e8f9 !important;
+}
+
+/* Primary buttons in auth */
+body.auth .btn-primary {
+    background: #f59e0b !important;
+    color: #040715 !important;
+    border: none !important;
+    font-weight: 700 !important;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
+    transition: all 0.2s ease !important;
+}
+body.auth .btn-primary:hover {
+    background: #d97706 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5) !important;
+}
+
+/* Feature list and badges */
+body.auth .feature-icon {
+    background: rgba(245, 158, 11, 0.06) !important;
+    border-color: rgba(245, 158, 11, 0.2) !important;
+    color: #f59e0b !important;
+}
+body.auth .feature-item:hover .feature-icon {
+    background: #f59e0b !important;
+    color: #040715 !important;
+}
+body.auth .badge.bg-primary {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+body.auth .alert {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #fca5a5 !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Skeleton animation overrides */
+body.auth .skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 37%, rgba(255,255,255,0.03) 63%) !important;
+    background-size: 400% 100% !important;
+}
+
+/* ==========================================================================
+   PREMIUM UPGRADES (CATEGORIES B)
+   ========================================================================== */
+
+/* Glassmorphism theme panels */
+.glass-panel, .glass-card {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Zero scroll constraints for mobiles */
+.zero-scroll {
+    height: 100dvh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* View transitions API default styles */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 0.3s;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom command palette overlay */
+.command-palette-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(4, 7, 21, 0.7);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10vh;
+}
+.command-palette-overlay.show {
+    display: flex;
+}
+.command-palette-box {
+    width: 100%;
+    max-width: 600px;
+    background: #0f172a;
+    border: 1px solid rgba(201, 164, 94, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    overflow: hidden;
+    color: white;
+}
+.command-palette-input-wrap {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 14px 20px;
+}
+.command-palette-input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.1rem;
+    outline: none;
+}
+.command-palette-input::placeholder {
+    color: rgba(255,255,255,0.4);
+}
+.command-palette-results {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+}
+.command-palette-item {
+    padding: 12px 16px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    color: rgba(255,255,255,0.8);
+    text-decoration: none !important;
+}
+.command-palette-item:hover, .command-palette-item.active {
+    background: rgba(201, 164, 94, 0.15);
+    color: #f59e0b;
+}
+
+/* Dynamic countdown bands animation */
+.countdown-band {
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+    color: #040715;
+    padding: 8px 16px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(245,158,11,0.25);
+    animation: countdownPulse 2s infinite ease-in-out;
+}
+@keyframes countdownPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.02); opacity: 0.95; }
+}
+

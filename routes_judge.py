@@ -252,3 +252,80 @@ def leaderboard(event_id):
         row['rank'] = i + 1
 
     return jsonify({'status': 'ok', 'data': board})
+
+
+# =========================================================
+# AI SPEECH-TO-SCORE DICTATION PARSER
+# =========================================================
+@judge_bp.route('/speech-to-score', methods=['POST'])
+@login_required
+@role_required(JUDGE_ROLES)
+def speech_to_score():
+    try:
+        body       = request.get_json() or {}
+        transcript = body.get('transcript', '').strip()
+        criteria   = body.get('criteria', ['Overall Score'])
+
+        if not transcript:
+            return jsonify({'status': 'error', 'message': 'No speech transcript received.'}), 400
+
+        api_key = current_app.config.get('GEMINI_API_KEY', '')
+        result  = None
+
+        if api_key:
+            try:
+                from google import genai
+                import json
+                client = genai.Client(api_key=api_key)
+                prompt = (
+                    f"You are a speech-to-score parser for an event judging panel. Extract scores (out of 100) and remarks from this transcript: '{transcript}'.\n"
+                    f"The target criteria are: {criteria}.\n"
+                    f"Return ONLY a JSON object with this exact structure (no markdown fences, no prose):\n"
+                    f"{{\n"
+                    f"  \"scores\": {{\n"
+                    + ",\n".join([f"    \"{c}\": <int>" for c in criteria])
+                    + f"\n  }},\n"
+                    f"  \"remarks\": \"<string: extracted remarks/comments>\"\n"
+                    f"}}\n"
+                )
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt
+                )
+                raw = response.text.strip()
+                if raw.startswith('```'):
+                    raw = raw.split('\n', 1)[1] if '\n' in raw else raw[3:]
+                    raw = raw.rsplit('```', 1)[0].strip()
+                result = json.loads(raw)
+            except Exception as e:
+                current_app.logger.error("Error in speech-to-score Gemini parser: %s", e)
+
+        if not result:
+            # Fallback regex-based parsing
+            import re
+            scores  = {}
+            remarks = ""
+            words   = transcript.lower()
+            for c in criteria:
+                pattern = rf"\b{re.escape(c.lower())}\b.*?(\d+)"
+                match   = re.search(pattern, words)
+                if not match:
+                    pattern = rf"(\d+)\s*(?:points|score)?\s*(?:for|on|in|to)?\s*\b{re.escape(c.lower())}\b"
+                    match   = re.search(pattern, words)
+                if match:
+                    val = int(match.group(1))
+                    if 0 <= val <= 100:
+                        scores[c] = val
+            remarks_match = re.search(r"(?:remarks|comments|comment|remark)\b\s*(?:is|are|was)?\s*(.*)", words, re.IGNORECASE)
+            if remarks_match:
+                remarks = remarks_match.group(1).strip()
+            else:
+                if not scores:
+                    remarks = transcript
+            result = {'scores': scores, 'remarks': remarks}
+
+        return jsonify({'status': 'ok', 'result': result})
+
+    except Exception as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 500
+

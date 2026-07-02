@@ -15,7 +15,7 @@ from sqlalchemy import text
 from db_pg import get_engine, get_session
 from models_pg import (
     Base, User, Event, Registration, TeamMember, Score, EventForm,
-    FormSubmission, AuditLog, PushSubscription, UserRole, EventCategory,
+    FormSubmission, AuditLog, PushSubscription, Announcement, UserRole, EventCategory,
     EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
 )
 
@@ -29,7 +29,8 @@ COLLECTION_MAP = {
     'event_forms': EventForm,
     'form_submissions': FormSubmission,
     'audit_log': AuditLog,
-    'push_subscriptions': PushSubscription
+    'push_subscriptions': PushSubscription,
+    'announcements': Announcement
 }
 
 # Field name translation map: Firestore -> SQLAlchemy/Postgres
@@ -117,11 +118,29 @@ def to_uuid(doc_id):
         return uuid.uuid5(uuid.NAMESPACE_DNS, doc_id)
 
 
+import decimal
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        return super().default(obj)
+
 def safe_str(val) -> str:
     if val is None:
         return ""
     if isinstance(val, (dict, list)):
-        return json.dumps(val)
+        return json.dumps(val, cls=CustomJSONEncoder)
+    if isinstance(val, decimal.Decimal):
+        return str(float(val))
+    if isinstance(val, (datetime, date)):
+        return val.isoformat()
+    if isinstance(val, uuid.UUID):
+        return str(val)
     return str(val)
 
 
@@ -225,6 +244,12 @@ class SQLDocumentReference:
             # handle enums
             if hasattr(val, 'value'):
                 val = val.value
+            # handle UUID
+            if isinstance(val, uuid.UUID):
+                val = str(val)
+            # handle decimal
+            if isinstance(val, decimal.Decimal):
+                val = float(val)
             # handle datetime/date objects to string/isoformat
             if isinstance(val, (datetime, date)):
                 val = val.isoformat()
@@ -293,6 +318,17 @@ class SQLDocumentReference:
                     pass
             d['event_id'] = str(record.event_id)
             d['registration_id'] = str(record.registration_id)
+
+        elif self.collection_name == 'push_subscriptions':
+            d['user_id'] = record.user_email
+            d['subscription'] = {
+                'endpoint': record.endpoint,
+                'keys': {
+                    'p256dh': record.p256dh,
+                    'auth': record.auth_key
+                }
+            }
+            d['updated_at'] = record.created_at.isoformat() if record.created_at else None
 
         return d
 
@@ -385,12 +421,29 @@ class SQLDocumentReference:
 
         elif self.collection_name == 'push_subscriptions':
             kwargs['id'] = to_uuid(self.id)
-            kwargs['user_email'] = safe_str(data.get('user_email', data.get('email', 'unknown')))
-            kwargs['endpoint'] = safe_str(data.get('endpoint', ''))
-            kwargs['p256dh'] = safe_str(data.get('p256dh', ''))
-            kwargs['auth_key'] = safe_str(data.get('auth_key') or data.get('auth') or '')
-            kwargs['created_at'] = self._get_datetime(data.get('created_at', data.get('createdAt')))
+            kwargs['user_email'] = safe_str(data.get('user_id', data.get('user_email', 'unknown')))
+            sub = data.get('subscription', {})
+            if isinstance(sub, str):
+                try:
+                    sub = json.loads(sub)
+                except Exception:
+                    sub = {}
+            kwargs['endpoint'] = safe_str(sub.get('endpoint', data.get('endpoint', '')))
+            keys = sub.get('keys', {})
+            kwargs['p256dh'] = safe_str(keys.get('p256dh', data.get('p256dh', '')))
+            kwargs['auth_key'] = safe_str(keys.get('auth', data.get('auth_key', '')))
+            kwargs['created_at'] = self._get_datetime(data.get('updated_at', data.get('created_at', data.get('createdAt'))))
             return PushSubscription(**kwargs)
+
+        elif self.collection_name == 'announcements':
+            kwargs['id'] = to_uuid(self.id)
+            kwargs['event_id'] = safe_str(data.get('event_id', ''))
+            kwargs['event_title'] = safe_str(data.get('event_title', ''))
+            kwargs['message'] = safe_str(data.get('message', ''))
+            kwargs['priority'] = safe_str(data.get('priority', 'info'))
+            kwargs['spoc_email'] = safe_str(data.get('spoc_email', ''))
+            kwargs['timestamp'] = safe_str(data.get('timestamp', ''))
+            return Announcement(**kwargs)
 
         return None
 
@@ -489,6 +542,13 @@ class SQLDocumentReference:
                             existing_score.criteria = json.dumps(criteria_data)
                             existing_score.feedback = safe_str(s_data.get('remarks') or s_data.get('feedback') or '')
                             existing_score.scored_at = self._get_datetime(s_data.get('timestamp') or s_data.get('submitted_at'))
+
+            elif self.collection_name == 'push_subscriptions':
+                if key == 'subscription' and isinstance(val, dict):
+                    record.endpoint = val.get('endpoint', '')
+                    keys = val.get('keys', {})
+                    record.p256dh = keys.get('p256dh', '')
+                    record.auth_key = keys.get('auth', '')
 
     # Type Resolvers
     def _get_datetime(self, val):

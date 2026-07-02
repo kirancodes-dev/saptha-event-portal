@@ -831,3 +831,19 @@ def ai_generate():
         return jsonify({'status': 'ok', 'source': source, 'fields': fields})
     except Exception as exc:
         return jsonify({'status': 'error', 'message': str(exc)}), 500
+
+
+@forms_bp.route('/create', methods=['GET', 'POST'])
+@login_required
+@role_required(BUILDER_ROLES)
+def create_form():
+    if request.method == 'POST':
+        return ai_generate()
+    event_id = request.args.get('event_id')
+    if event_id:
+        return redirect(f'/forms/builder/{event_id}')
+    role = session.get('role')
+    if role == 'ClubSPOC':
+        return redirect('/spoc/dashboard')
+    return redirect('/coordinator/dashboard')
+

@@ -42,6 +42,7 @@ scratch/env-vars.yml
 
 # Node modules
 node_modules/
+dist/
 
 # Source backups & zips
 saptha-event-portal-source*/

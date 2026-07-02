@@ -198,9 +198,16 @@ def generate_certificate_pdf(
     BORDER_DARK = HexColor('#1a2557')   # border navy
     SILVER      = HexColor('#94a3b8')   # light gray for small text
 
-    # ── 1. Warm cream background ───────────────────────────────────────────────
-    c.setFillColor(CREAM)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
+    # ── 1. Vertical linear gradient background (ivory cream to rich champagne shimmer) ────
+    # Ivory cream: #ffffff (RGB: 255, 255, 255)
+    # Champagne: #fdf3db (RGB: 253, 243, 219)
+    for y in range(int(H)):
+        t = y / H
+        r = 255 + (253 - 255) * t
+        g = 255 + (243 - 255) * t
+        b = 255 + (219 - 255) * t
+        c.setFillColor(HexColor(f"#{int(r):02x}{int(g):02x}{int(b):02x}"))
+        c.rect(0, y, W, 1, fill=1, stroke=0)
 
     # ── 2. Outer decorative border (double-line navy) ──────────────────────────
     margin = 18
@@ -209,7 +216,62 @@ def generate_certificate_pdf(
     c.setStrokeColor(GOLD); c.setLineWidth(1.0)
     c.rect(margin+5, margin+5, W - 2*(margin+5), H - 2*(margin+5), fill=0, stroke=1)
 
-    # ── 3. Diagonal corner accent blocks (like physical cert) ─────────────────
+    # ── 2b. Ornate Vector Corner Flourishes ────────────────────────────────────
+    def _draw_corner_piece(cx, cy, dx, dy):
+        c.saveState()
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1.2)
+        c.setFillColor(GOLD)
+        # Corner lines
+        p = c.beginPath()
+        p.moveTo(cx, cy - dy * 22)
+        p.lineTo(cx, cy)
+        p.lineTo(cx - dx * 22, cy)
+        c.drawPath(p, fill=0, stroke=1)
+        # Elegant inner curves
+        p = c.beginPath()
+        p.moveTo(cx, cy - dy * 12)
+        p.curveTo(cx - dx * 5, cy - dy * 10,
+                  cx - dx * 10, cy - dy * 5,
+                  cx - dx * 12, cy)
+        c.drawPath(p, fill=0, stroke=1)
+        # rosette dots
+        c.circle(cx - dx * 8, cy - dy * 8, 1.8, fill=1, stroke=0)
+        c.restoreState()
+
+    # Draw flourishes inside each of the 4 inner corners (margin + 6)
+    _draw_corner_piece(margin + 6, H - margin - 6, 1, 1)      # Top-Left
+    _draw_corner_piece(W - margin - 6, H - margin - 6, -1, 1)    # Top-Right
+    _draw_corner_piece(margin + 6, margin + 6, 1, -1)        # Bottom-Left
+    _draw_corner_piece(W - margin - 6, margin + 6, -1, -1)      # Bottom-Right
+
+    # ── 3. Central Crest Watermark (high transparency) ────────────────────────
+    c.saveState()
+    c.setFillAlpha(0.035)
+    c.setStrokeAlpha(0.035)
+    c.setFillColor(GOLD)
+    c.setStrokeColor(GOLD)
+    # Concentric rings
+    c.setLineWidth(1.5)
+    c.circle(CX, H/2, 110, fill=0, stroke=1)
+    c.setLineWidth(0.75)
+    c.circle(CX, H/2, 105, fill=0, stroke=1)
+    c.circle(CX, H/2, 75, fill=0, stroke=1)
+    # Rays
+    for i in range(24):
+        angle = math.radians(i * 15)
+        c.line(CX + 80 * math.cos(angle), H/2 + 80 * math.sin(angle),
+               CX + 100 * math.cos(angle), H/2 + 100 * math.sin(angle))
+    # Crest Text
+    c.setFont('Times-Bold', 11)
+    c.drawCentredString(CX, H/2 + 15, 'SAPTHAGIRI NPS UNIVERSITY')
+    c.setFont('Times-Roman', 8)
+    c.drawCentredString(CX, H/2 - 10, 'ESTD 2026')
+    c.setFont('Times-BoldItalic', 28)
+    c.drawCentredString(CX, H/2 - 40, 'S')
+    c.restoreState()
+
+    # ── 4. Diagonal corner accent blocks (like physical cert) ─────────────────
     def _corner_triangle(x1, y1, x2, y2, x3, y3, fill_color):
         c.saveState()
         c.setFillColor(fill_color)
@@ -237,7 +299,7 @@ def generate_certificate_pdf(
                      W-margin-28, H-margin,
                      W-margin, H-margin-28, GOLD)
 
-    # ── 4. Zigzag / notched right edge accent (like cert photo) ───────────────
+    # ── 4b. Zigzag / notched right edge accent (like cert photo) ───────────────
     # Right side decorative notch blocks
     notch_x = W - margin - 5
     for i in range(5):
@@ -264,6 +326,31 @@ def generate_certificate_pdf(
     # ── 5. Gold decorative medallion — top-left ────────────────────────────────
     medal_cx = margin + 56
     medal_cy = H - margin - 56
+
+    # Draw ribbon tails behind medallion
+    c.saveState()
+    # Left tail (navy)
+    p1 = c.beginPath()
+    p1.moveTo(medal_cx - 15, medal_cy - 20)
+    p1.lineTo(medal_cx - 22, medal_cy - 68)
+    p1.lineTo(medal_cx - 13, medal_cy - 62)
+    p1.lineTo(medal_cx - 4, medal_cy - 68)
+    p1.lineTo(medal_cx - 4, medal_cy - 20)
+    p1.close()
+    c.setFillColor(NAVY)
+    c.drawPath(p1, fill=1, stroke=0)
+    
+    # Right tail (gold)
+    p2 = c.beginPath()
+    p2.moveTo(medal_cx + 4, medal_cy - 20)
+    p2.lineTo(medal_cx + 4, medal_cy - 68)
+    p2.lineTo(medal_cx + 13, medal_cy - 62)
+    p2.lineTo(medal_cx + 22, medal_cy - 68)
+    p2.lineTo(medal_cx + 15, medal_cy - 20)
+    p2.close()
+    c.setFillColor(GOLD)
+    c.drawPath(p2, fill=1, stroke=0)
+    c.restoreState()
 
     # Outer gold starburst rays
     for i in range(16):
@@ -315,9 +402,9 @@ def generate_certificate_pdf(
                         preserveAspectRatio=True)
     else:
         # Fallback typography only if logo image cannot load
-        c.setFillColor(PURPLE); c.setFont('Helvetica-Bold', 11)
+        c.setFillColor(PURPLE); c.setFont('Times-Bold', 11)
         c.drawRightString(CONTENT_RIGHT, H - margin - 18, 'SAPTHAGIRI NPS UNIVERSITY')
-        c.setFillColor(NAVY); c.setFont('Helvetica', 8.5)
+        c.setFillColor(NAVY); c.setFont('Times-Roman', 8.5)
         c.drawRightString(CONTENT_RIGHT, H - margin - 30, 'School of Engineering & Technology')
 
     # ── 8. Gold horizontal divider under header ────────────────────────────────
@@ -330,8 +417,8 @@ def generate_certificate_pdf(
     # ── 9. Certificate title ───────────────────────────────────────────────────
     TITLE_Y = H - margin - 118
 
-    # "CERTIFICATE" in large bold
-    c.setFillColor(PURPLE); c.setFont('Helvetica-Bold', 40)
+    # "CERTIFICATE" in large serif Times-Bold
+    c.setFillColor(PURPLE); c.setFont('Times-Bold', 38)
     c.drawCentredString(CX - 10, TITLE_Y, 'CERTIFICATE')
 
     # Subtitle line
@@ -341,32 +428,41 @@ def generate_certificate_pdf(
     else:
         subtitle = 'OF APPRECIATION'
         c.setFillColor(NAVY)
-    c.setFont('Helvetica-Bold', 15)
-    c.drawCentredString(CX - 10, TITLE_Y - 32, subtitle)
+    c.setFont('Times-Bold', 14)
+    c.drawCentredString(CX - 10, TITLE_Y - 30, subtitle)
 
     # Gold ornamental lines flanking subtitle
-    sub_w = c.stringWidth(subtitle, 'Helvetica-Bold', 15)
+    sub_w = c.stringWidth(subtitle, 'Times-Bold', 14)
     c.setStrokeColor(GOLD); c.setLineWidth(1.2)
-    c.line(CX - 10 - sub_w/2 - 70, TITLE_Y - 26,
-           CX - 10 - sub_w/2 - 4,  TITLE_Y - 26)
-    c.line(CX - 10 + sub_w/2 + 4,  TITLE_Y - 26,
-           CX - 10 + sub_w/2 + 70, TITLE_Y - 26)
+    c.line(CX - 10 - sub_w/2 - 70, TITLE_Y - 25,
+           CX - 10 - sub_w/2 - 4,  TITLE_Y - 25)
+    c.line(CX - 10 + sub_w/2 + 4,  TITLE_Y - 25,
+           CX - 10 + sub_w/2 + 70, TITLE_Y - 25)
 
     # ── 10. Body text ─────────────────────────────────────────────────────────
     BODY_Y = TITLE_Y - 64
 
-    c.setFillColor(NAVY); c.setFont('Helvetica', 11)
+    c.setFillColor(NAVY); c.setFont('Times-Roman', 11)
     c.drawCentredString(CX - 10, BODY_Y, 'This certificate is proudly presented to')
 
-    # Recipient name (large, italic-style)
+    # Recipient name (large, Times-BoldItalic with 3D drop shadow)
     name_disp = student_name[:42] + '…' if len(student_name) > 42 else student_name
     name_fs   = 30 if len(student_name) <= 24 else (24 if len(student_name) <= 34 else 18)
     NAME_Y    = BODY_Y - 38
-    c.setFillColor(PURPLE); c.setFont('Helvetica-BoldOblique', name_fs)
+    
+    c.saveState()
+    # 3D shadow offset (1.5pt)
+    c.setFillColor(HexColor('#e2d9c3'))
+    c.setFont('Times-BoldItalic', name_fs)
+    c.drawCentredString(CX - 8.5, NAME_Y - 1.5, name_disp)
+    # Primary front text
+    c.setFillColor(PURPLE)
+    c.setFont('Times-BoldItalic', name_fs)
     c.drawCentredString(CX - 10, NAME_Y, name_disp)
+    c.restoreState()
 
     # Gold underline on name
-    nw = c.stringWidth(name_disp, 'Helvetica-BoldOblique', name_fs)
+    nw = c.stringWidth(name_disp, 'Times-BoldItalic', name_fs)
     c.setStrokeColor(GOLD); c.setLineWidth(1.8)
     c.line(CX - 10 - nw/2, NAME_Y - 6, CX - 10 + nw/2, NAME_Y - 6)
 
@@ -380,11 +476,11 @@ def generate_certificate_pdf(
     else:
         line1 = f'for their active participation in'
 
-    c.setFillColor(NAVY); c.setFont('Helvetica', 11)
+    c.setFillColor(NAVY); c.setFont('Times-Roman', 11)
     c.drawCentredString(CX - 10, NAME_Y - 28, line1)
-    c.setFillColor(PURPLE); c.setFont('Helvetica-Bold', evt_fs)
+    c.setFillColor(PURPLE); c.setFont('Times-Bold', evt_fs)
     c.drawCentredString(CX - 10, NAME_Y - 46, evt_disp)
-    c.setFillColor(NAVY); c.setFont('Helvetica', 10.5)
+    c.setFillColor(NAVY); c.setFont('Times-Roman', 10.5)
     c.drawCentredString(CX - 10, NAME_Y - 62, f'held on  {date_str}')
 
     # Score badge for winners
@@ -392,7 +488,7 @@ def generate_certificate_pdf(
         bx = CX - 10 - 58; by = NAME_Y - 92; bw = 116; bh = 20
         c.setFillColor(NAVY)
         _draw_rounded_rect(c, bx, by, bw, bh, r=10, fill=NAVY)
-        c.setFillColor(GOLD); c.setFont('Helvetica-Bold', 9)
+        c.setFillColor(GOLD); c.setFont('Times-Bold', 9)
         c.drawCentredString(CX - 10, by + 6, f'Score: {score}')
 
     # ── 11. Gold horizontal divider above signatures ───────────────────────────
@@ -496,17 +592,17 @@ def generate_certificate_pdf(
         c.setStrokeColor(NAVY); c.setLineWidth(0.8)
         c.line(sig_x - 62, sig_y_line, sig_x + 62, sig_y_line)
         # Name
-        c.setFillColor(PURPLE); c.setFont('Helvetica-Bold', 8.5)
+        c.setFillColor(PURPLE); c.setFont('Times-Bold', 8.5)
         c.drawCentredString(sig_x, sig_y_name, sig['name'])
         # Role
-        c.setFillColor(NAVY); c.setFont('Helvetica', 7.5)
+        c.setFillColor(NAVY); c.setFont('Times-Roman', 7.5)
         c.drawCentredString(sig_x, sig_y_role, sig['role'])
         # Dept (optional second line)
         if sig['dept']:
-            c.setFont('Helvetica', 7)
+            c.setFont('Times-Roman', 7)
             c.drawCentredString(sig_x, sig_y_dept, sig['dept'])
         # University
-        c.setFillColor(SILVER); c.setFont('Helvetica', 6.5)
+        c.setFillColor(SILVER); c.setFont('Times-Roman', 6.5)
         c.drawCentredString(sig_x, sig_y_univ, sig['univ'])
 
 
@@ -518,16 +614,22 @@ def generate_certificate_pdf(
         qr_size = 58
         qr_x    = CONTENT_RIGHT - qr_size
         qr_y    = margin + 8
+        c.saveState()
+        # Draw background white square with a nice thin gold border
         c.setFillColor(white)
-        c.rect(qr_x - 2, qr_y - 2, qr_size + 4, qr_size + 4, fill=1, stroke=0)
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1.2)
+        c.rect(qr_x - 3, qr_y - 3, qr_size + 6, qr_size + 6, fill=1, stroke=1)
         c.drawImage(qr_img, qr_x, qr_y, width=qr_size, height=qr_size)
-        c.setFillColor(SILVER); c.setFont('Helvetica', 6.5)
-        c.drawCentredString(qr_x + qr_size/2, qr_y - 8, 'Scan to verify')
+        c.restoreState()
+        
+        c.setFillColor(SILVER); c.setFont('Times-Roman', 6.5)
+        c.drawCentredString(qr_x + qr_size/2, qr_y - 10, 'Scan to verify')
     except Exception as exc:
         logger.warning("QR failed: %s", exc)
 
     # ── 14. Footer strip ──────────────────────────────────────────────────────
-    c.setFillColor(SILVER); c.setFont('Helvetica', 6.5)
+    c.setFillColor(SILVER); c.setFont('Times-Roman', 6.5)
     c.drawString(CONTENT_LEFT, margin + 6, f'Certificate ID: {verification_hash[:20]}…  |  Reg: {reg_id}')
     c.drawRightString(CONTENT_RIGHT - qr_size - 6, margin + 6,
                       'SapthaEvent Portal  ·  Sapthagiri NPS University  ·  Bengaluru')

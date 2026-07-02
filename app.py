@@ -243,9 +243,9 @@ if not firebase_admin._apps:
                 logger.warning("⚠️  Firebase not initialized for dev mode: %s. DB operations will fail - see docs for setup.", exc)
 
 # Initialize database client (reusing resolution logic in models)
-from models import db
+from models import db, DATABASE_TYPE
 if db is not None:
-    logger.info("Database: Connected successfully using models.db (Type: %s)", os.environ.get('DATABASE_TYPE', 'firestore').lower())
+    logger.info("Database: Connected successfully using models.db (Type: %s)", DATABASE_TYPE)
 else:
     logger.error("Database: Failed to connect database client from models")
 
@@ -356,7 +356,7 @@ init_security_middleware(app)
 # HTML form-serving blueprints (auth, admin, coordinator, judge, payment,
 # participant, profile, feedback) remain CSRF-protected.
 for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp, api_v1_bp,
-                 notif_v2_bp, waitlist_bp, coupons_bp, compliance_bp):
+                 notif_v2_bp, waitlist_bp, coupons_bp, compliance_bp, checkin_bp):
     try:
         csrf.exempt(_json_bp)
     except Exception as exc:
@@ -364,8 +364,10 @@ for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp, api_v1_bp,
 
 try:
     from routes_auth import api_login, api_register
+    from routes_spoc import blast_preview
     csrf.exempt(api_login)
     csrf.exempt(api_register)
+    csrf.exempt(blast_preview)
 except Exception as exc:
     logger.warning("CSRF exempt failed for API endpoints: %s", exc)
 

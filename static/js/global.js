@@ -39,10 +39,19 @@
   window.toggleTheme = function () {
     const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('ds-theme', next);
-    updateThemeToggleUI(next);
-    showToast(`Switched to ${next} theme`, 'info', 1500);
+    
+    const changeTheme = () => {
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('ds-theme', next);
+      updateThemeToggleUI(next);
+      showToast(`Switched to ${next} theme`, 'info', 1500);
+    };
+
+    if (document.startViewTransition) {
+      document.startViewTransition(changeTheme);
+    } else {
+      changeTheme();
+    }
   };
 
   // Run immediately to prevent flash of wrong theme
@@ -515,5 +524,18 @@
         filterPhoneInput(e);
       }
     });
+
+    // ── 19. AUTH PAGE BACKDROP INJECTION ──
+    if (document.body.classList.contains('auth')) {
+      const grid = document.createElement('div');
+      grid.className = 'grid-bg';
+      document.body.insertBefore(grid, document.body.firstChild);
+      
+      for (let i = 1; i <= 4; i++) {
+        const blob = document.createElement('div');
+        blob.className = `liquid-blob blob-${i}`;
+        document.body.insertBefore(blob, document.body.firstChild);
+      }
+    }
   });
 })();

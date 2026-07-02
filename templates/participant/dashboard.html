@@ -4,523 +4,950 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Dashboard | SapthaEvent</title>
+<meta name="description" content="Your personal event dashboard — manage tickets, track scores, discover events.">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include 'includes/pwa_head.html' %}
+<link href="/static/css/global.css" rel="stylesheet">
+{% include 'includes/pwa_head.html' %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-body {
-  font-family: 'Inter', sans-serif;
-  background-color: var(--bg-app);
-  color: var(--ink-800);
-  min-height: 100vh;
-}
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-weight: 700;
-  color: var(--ink-900);
+/* ═══════════════════════════════════════════════════════════════════════════
+   SAPTHAEVENT STUDENT DASHBOARD — PREMIUM AURORA EDITION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── DESIGN TOKENS ── */
+:root {
+  --bg-void: #030712;
+  --bg-surface: rgba(255,255,255,0.015);
+  --bg-elevated: rgba(255,255,255,0.035);
+  --bg-hover: rgba(255,255,255,0.06);
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-medium: rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.18);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --accent-amber: #f59e0b;
+  --accent-amber-glow: rgba(245,158,11,0.15);
+  --accent-blue: #3b82f6;
+  --accent-violet: #8b5cf6;
+  --accent-emerald: #10b981;
+  --accent-rose: #f43f5e;
+  --accent-cyan: #06b6d4;
+  --glass-blur: blur(20px) saturate(180%);
+  --radius-card: 20px;
+  --radius-pill: 100px;
+  --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
+  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
 }
 
-/* NAV */
+*,*::before,*::after{box-sizing:border-box;}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-void);
+  color: var(--text-secondary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── AURORA BACKGROUND ── */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  animation: aurora-float 20s ease-in-out infinite alternate;
+}
+.aurora-orb:nth-child(1) { width:60vw; height:60vw; top:-20%; left:-10%; background:var(--accent-violet); animation-delay:0s; }
+.aurora-orb:nth-child(2) { width:50vw; height:50vw; top:30%; right:-15%; background:var(--accent-blue); animation-delay:-5s; }
+.aurora-orb:nth-child(3) { width:45vw; height:45vw; bottom:-10%; left:20%; background:var(--accent-emerald); animation-delay:-10s; opacity:0.08; }
+.aurora-orb:nth-child(4) { width:35vw; height:35vw; top:50%; left:50%; background:var(--accent-amber); animation-delay:-15s; opacity:0.06; }
+
+@keyframes aurora-float {
+  0%   { transform: translate(0,0) scale(1); }
+  33%  { transform: translate(5vw,-3vh) scale(1.1); }
+  66%  { transform: translate(-3vw,5vh) scale(0.95); }
+  100% { transform: translate(2vw,-2vh) scale(1.05); }
+}
+
+/* ── GRID OVERLAY ── */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ── SMOOTH SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── NAVIGATION BAR ── */
 .topnav {
-  background: rgba(26, 37, 87, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: var(--shadow-sm);
+  height: 60px;
+  padding: 0 clamp(12px, 3vw, 28px);
+  background: rgba(3,7,18,0.6);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
-.logo-sq {
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-light));
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.brand-mark img { height: 34px; width: auto; }
+.brand-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.nav-items {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 13px;
+  border-radius: 10px;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.nav-btn:hover, .nav-btn.active {
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+.nav-btn i { font-size: 14px; }
+
+/* Cmd+K trigger */
+.cmd-k-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 12px;
   border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cmd-k-trigger:hover {
+  border-color: var(--border-medium);
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.06);
+}
+.cmd-k-trigger kbd {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+@media(max-width:640px){
+  .brand-text { display:none; }
+  .nav-btn span { display:none; }
+  .nav-btn { padding: 7px 9px; }
+  .cmd-k-trigger { display:none; }
+}
+
+/* ── HERO SECTION ── */
+.hero {
+  position: relative;
+  padding: clamp(2.5rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(59,130,246,0.04) 50%, transparent 100%);
+  pointer-events: none;
+}
+.hero-greeting {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.hero-greeting span {
+  background: linear-gradient(135deg, var(--accent-amber), #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin: 6px 0 0;
+  font-weight: 400;
+}
+
+/* ── STAT RINGS ── */
+.stat-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px 12px 16px;
+  border-radius: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s var(--ease-out-expo);
+  cursor: default;
+}
+.stat-card:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.stat-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.stat-ring svg { width:44px; height:44px; transform: rotate(-90deg); }
+.stat-ring-bg { fill:none; stroke:rgba(255,255,255,0.06); stroke-width:4; }
+.stat-ring-fg { fill:none; stroke-width:4; stroke-linecap:round; transition: stroke-dashoffset 1.2s var(--ease-out-expo); }
+.stat-ring-value {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
   font-weight: 800;
-  font-size: 13px;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(201, 164, 94, 0.3);
-}
-.brand {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-weight: 800;
-  font-size: 15px;
   color: #fff;
 }
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.nav-link-item {
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 12.5px;
-  text-decoration: none;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  transition: var(--t-fast);
+.stat-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
   font-weight: 500;
 }
-.nav-link-item:hover, .nav-link-item.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-@media(max-width:600px){
-  .brand { display: none; }
-  .topnav { padding: 0 12px; }
-  .nav-link-item { padding: 6px 8px; font-size: 0; }
-  .nav-link-item i { font-size: 16px; margin: 0 !important; }
-  .nav-links { gap: 2px; }
-}
-
-/* HERO */
-.hero-band {
-  background: linear-gradient(135deg, var(--snpsu-blue-dark) 0%, var(--snpsu-blue) 100%);
-  border-bottom: 1px solid rgba(201, 164, 94, 0.15);
-  padding: 2.5rem 2rem;
-  color: #fff;
-  position: relative;
-}
-.hero-name {
+.stat-num {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 800;
   color: #fff;
-  margin: 0;
-}
-.hero-sub {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 4px 0 0;
-  letter-spacing: 0.5px;
+  line-height: 1;
+  margin-bottom: 2px;
 }
 
-/* STAT PILLS */
-.stat-pills {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 20px;
-}
-.stat-pill {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-pill);
-  padding: 8px 18px;
-  display: flex;
+/* ── XP BAR ── */
+.xp-badge {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: var(--t-fast);
+  padding: 7px 16px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(251,191,36,0.08));
+  border: 1px solid rgba(245,158,11,0.2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-amber);
+  transition: all 0.2s;
 }
-.stat-pill:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-.stat-pill-n {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 16px;
-  font-weight: 800;
-  color: #fff;
-}
-.stat-pill-l {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
+.xp-badge:hover {
+  background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(251,191,36,0.12));
+  transform: scale(1.02);
 }
 
-/* ANNOUNCEMENTS */
-.ann-bar {
-  background: var(--warning-soft);
-  border-left: 4px solid var(--warning);
-  padding: 12px 20px;
-  font-size: 13px;
-  color: #78350f;
+/* ── BADGES ── */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.achievement-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  transition: all 0.2s;
+  cursor: default;
+}
+.achievement-badge:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+/* ── ANNOUNCEMENTS ── */
+.ann-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02));
+  border-left: 3px solid var(--accent-amber);
+  font-size: 13.5px;
+  color: #fde68a;
+  backdrop-filter: blur(8px);
+}
+.ann-strip i { color: var(--accent-amber); flex-shrink: 0; }
+
+/* ── CONTENT AREA ── */
+.content-area {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(1.5rem,4vw,3rem) clamp(1rem,3vw,2rem);
+}
+
+/* ── SECTION HEADERS ── */
+.section-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 2px;
+  margin-top: 2.5rem;
+  margin-bottom: 1.5rem;
 }
-[data-theme="dark"] .ann-bar {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fde68a;
-  border-left-color: var(--warning);
+.section-header:first-child { margin-top: 0; }
+.section-header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
 }
-
-/* CONTENT */
-.content {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-.section-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+.section-header h3 {
   font-size: 16px;
   font-weight: 700;
-  color: var(--ink-900);
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+.section-header .section-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-tertiary);
+  margin-left: auto;
 }
 
-/* TICKET CARD */
+/* ── REFERRAL PANEL ── */
+.referral-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.referral-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), rgba(139,92,246,0.3), transparent);
+}
+.referral-panel:hover {
+  border-color: var(--border-medium);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+/* ── TICKET CARD ── */
 .ticket-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--ink-200);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
   overflow: hidden;
   margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--t), box-shadow var(--t);
+  backdrop-filter: blur(20px);
+  transition: all 0.35s var(--ease-out-expo);
+  position: relative;
+}
+.ticket-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent 40%, transparent 60%, rgba(255,255,255,0.03));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s;
 }
 .ticket-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-4px);
+  border-color: var(--border-medium);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
 }
+.ticket-card:hover::before { opacity: 1; }
+
 .tc-header {
-  background: linear-gradient(90deg, var(--snpsu-blue-dark), var(--snpsu-blue));
-  padding: 16px 20px;
+  padding: 20px 24px 16px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(201, 164, 94, 0.1);
+  gap: 12px;
 }
+.tc-cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  flex-shrink: 0;
+  position: relative;
+  top: -1px;
+}
+.tc-cat-dot.tech { background: var(--accent-blue); box-shadow: 0 0 8px rgba(59,130,246,0.4); }
+.tc-cat-dot.cultural { background: var(--accent-violet); box-shadow: 0 0 8px rgba(139,92,246,0.4); }
+.tc-cat-dot.sports { background: var(--accent-emerald); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+.tc-cat-dot.workshop { background: var(--accent-amber); box-shadow: 0 0 8px rgba(245,158,11,0.4); }
+
 .tc-title {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: #fff;
   margin: 0;
   line-height: 1.3;
+  letter-spacing: -0.2px;
 }
 .tc-meta {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
-  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
-.tc-badge {
+.tc-meta i { font-size: 11px; color: var(--text-tertiary); }
+
+/* Status Badge */
+.status-badge {
   font-size: 11px;
   font-weight: 700;
-  padding: 4px 12px;
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
   white-space: nowrap;
   flex-shrink: 0;
-  margin-left: 8px;
+  letter-spacing: 0.3px;
 }
-.badge-confirmed {
-  background: rgba(16, 185, 129, 0.15);
+.status-badge.paid {
+  background: rgba(16,185,129,0.1);
   color: #34d399;
+  border: 1px solid rgba(16,185,129,0.2);
 }
-.badge-pending {
-  background: rgba(245, 158, 11, 0.15);
+.status-badge.pending {
+  background: rgba(245,158,11,0.1);
   color: #fbbf24;
+  border: 1px solid rgba(245,158,11,0.2);
 }
-.badge-free {
-  background: rgba(59, 130, 246, 0.15);
+.status-badge.free {
+  background: rgba(59,130,246,0.1);
   color: #60a5fa;
-}
-.tc-body {
-  padding: 20px;
-}
-.tc-info-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.tc-info {
-  font-size: 12.5px;
-  color: var(--ink-600);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.tc-info i {
-  color: var(--snpsu-gold);
-  font-size: 12px;
+  border: 1px solid rgba(59,130,246,0.2);
 }
 
-/* QR embed */
-.qr-box {
-  background: var(--bg-soft);
-  border: 1.5px dashed var(--ink-300);
-  border-radius: var(--radius);
-  padding: 16px;
+.tc-body { padding: 0 24px 20px; }
+
+/* Countdown chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  transition: all 0.2s;
+}
+.chip-today     { background:rgba(245,158,11,0.1); color:#fde68a; border:1px solid rgba(245,158,11,0.15); }
+.chip-soon      { background:rgba(239,68,68,0.1);  color:#fca5a5; border:1px solid rgba(239,68,68,0.15); animation: chip-pulse 2s infinite; }
+.chip-upcoming  { background:rgba(59,130,246,0.1);  color:#93c5fd; border:1px solid rgba(59,130,246,0.15); }
+.chip-past      { background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.4); border:1px solid var(--border-subtle); }
+.chip-attended  { background:rgba(16,185,129,0.1);  color:#34d399; border:1px solid rgba(16,185,129,0.15); }
+.chip-absent    { background:rgba(239,68,68,0.1);   color:#fca5a5; border:1px solid rgba(239,68,68,0.15); }
+.chip-room      { background:rgba(99,102,241,0.1);  color:#a5b4fc; border:1px solid rgba(99,102,241,0.15); }
+
+@keyframes chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.15); }
+  50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+/* ── QR CODE BOX ── */
+.qr-container {
+  background: var(--bg-elevated);
+  border: 1.5px dashed var(--border-medium);
+  border-radius: 14px;
+  padding: 18px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  transition: all 0.25s;
 }
-.qr-img {
+.qr-container:hover {
+  border-color: var(--border-strong);
+  background: rgba(255,255,255,0.05);
+}
+.qr-container img {
   width: 100px;
   height: 100px;
-  border-radius: var(--radius-xs);
-  background: white;
+  border-radius: 10px;
+  background: #fff;
   padding: 4px;
 }
-.qr-id {
-  font-family: monospace;
-  font-size: 11px;
-  color: var(--ink-500);
+.qr-container .qr-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-tertiary);
   text-align: center;
 }
-
-/* Countdown */
-.countdown {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--info-soft);
-  border-radius: var(--radius-pill);
-  padding: 4px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #1e40af;
+.qr-locked {
+  text-align: center;
 }
-[data-theme="dark"] .countdown {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
+.qr-locked-icon {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 6px;
 }
-.countdown.today {
-  background: var(--warning-soft);
-  color: #854d0e;
-}
-[data-theme="dark"] .countdown.today {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fde68a;
-}
-.countdown.past {
-  background: var(--bg-soft);
-  color: var(--ink-500);
-}
-.countdown.soon {
-  background: var(--danger-soft);
-  color: #991b1b;
-}
-[data-theme="dark"] .countdown.soon {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
+.qr-locked-text {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  max-width: 90px;
+  line-height: 1.4;
 }
 
-/* Score & rank */
-.score-row {
-  background: var(--success-soft);
-  border: 1px solid rgba(16, 185, 129, 0.15);
-  border-radius: var(--radius);
-  padding: 12px 18px;
+/* ── SCORE DISPLAY ── */
+.score-display {
+  background: rgba(16,185,129,0.04);
+  border: 1px solid rgba(16,185,129,0.12);
+  border-radius: 14px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  transition: var(--t-fast);
+  cursor: pointer;
+  transition: all 0.25s;
+  flex: 1;
+  min-width: 200px;
 }
-.score-row:hover {
-  background: rgba(16, 185, 129, 0.1);
-  transform: translateY(-1px);
+.score-display:hover {
+  background: rgba(16,185,129,0.08);
+  border-color: rgba(16,185,129,0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16,185,129,0.08);
 }
-.score-val {
+.score-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-emerald);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.score-label i { font-size: 9px; opacity: 0.5; }
+.score-value {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
-  color: var(--success);
+  color: var(--accent-emerald);
+  line-height: 1;
 }
-.rank-val {
+.score-value small {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+.rank-chip {
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   font-weight: 700;
-  color: var(--snpsu-blue);
-}
-[data-theme="dark"] .rank-val {
-  color: var(--snpsu-gold-light);
+  color: var(--accent-amber);
 }
 
-/* Action buttons */
-.action-strip {
+/* ── TEAM MEMBERS ── */
+.team-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 12px;
+}
+.member-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.7);
+}
+.member-item:last-child { border-bottom: none; }
+.role-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(99,102,241,0.1);
+  color: #818cf8;
+  border: 1px solid rgba(99,102,241,0.15);
+}
+.role-tag.leader {
+  background: rgba(245,158,11,0.1);
+  color: var(--accent-amber);
+  border-color: rgba(245,158,11,0.2);
+}
+
+/* ── FEEDBACK PROMPT ── */
+.feedback-prompt {
+  background: linear-gradient(90deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02));
+  border: 1px solid rgba(245,158,11,0.12);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+.feedback-prompt:hover {
+  border-color: rgba(245,158,11,0.25);
+  background: linear-gradient(90deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03));
+}
+.feedback-prompt i { color: var(--accent-amber); font-size: 18px; flex-shrink: 0; }
+
+/* ── AI SUMMARY ── */
+.ai-summary {
+  background: rgba(139,92,246,0.04);
+  border: 1px solid rgba(139,92,246,0.12);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+.ai-summary-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent-violet);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ai-summary-headline {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.ai-summary-message {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.6;
+  padding: 10px 14px;
+  background: rgba(139,92,246,0.04);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-violet);
+  margin-bottom: 10px;
+}
+.strength-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+.strength-tag.good { background: rgba(16,185,129,0.1); color: #34d399; }
+.strength-tag.improve { background: rgba(245,158,11,0.1); color: #fbbf24; }
+
+/* ── ACTION BUTTONS ── */
+.action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ink-200);
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 16px;
 }
-.btn-action {
+.btn-act {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
   font-weight: 600;
   padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   text-decoration: none;
   border: none;
   cursor: pointer;
-  transition: var(--t-fast);
+  transition: all 0.2s var(--ease-out-expo);
+  white-space: nowrap;
 }
-.btn-primary-action {
-  background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark));
+.btn-act:hover { transform: translateY(-1px); }
+.btn-act-primary {
+  background: linear-gradient(135deg, var(--accent-amber), #d97706);
+  color: #030712;
+  box-shadow: 0 2px 8px rgba(245,158,11,0.25);
+}
+.btn-act-primary:hover {
+  box-shadow: 0 6px 20px rgba(245,158,11,0.35);
+  color: #030712;
+}
+.btn-act-ghost {
+  background: var(--bg-elevated);
+  color: #fff;
+  border: 1px solid var(--border-subtle);
+}
+.btn-act-ghost:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-medium);
   color: #fff;
 }
-.btn-primary-action:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-gold);
-  color: #fff;
+.btn-act-success {
+  background: rgba(16,185,129,0.08);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.15);
 }
-.btn-secondary-action {
-  background: var(--bg-soft);
-  color: var(--ink-700);
-  border: 1px solid var(--ink-200);
+.btn-act-success:hover {
+  background: rgba(16,185,129,0.14);
+  color: #34d399;
 }
-.btn-secondary-action:hover {
-  background: var(--ink-100);
-  color: var(--ink-900);
+.btn-act-danger {
+  background: rgba(239,68,68,0.06);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.12);
 }
-.btn-green-action {
-  background: var(--success-soft);
-  color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-.btn-green-action:hover {
-  background: rgba(16, 185, 129, 0.15);
+.btn-act-danger:hover {
+  background: rgba(239,68,68,0.12);
+  color: #f87171;
 }
 
-/* Empty */
-.empty-card {
+/* ── EMPTY STATE ── */
+.empty-state {
   text-align: center;
-  padding: 48px 24px;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--ink-200);
-  box-shadow: var(--shadow-sm);
+  padding: 56px 24px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(16px);
 }
-.empty-card i {
-  font-size: 40px;
-  color: var(--ink-300);
-  display: block;
-  margin-bottom: 12px;
+.empty-state-icon {
+  font-size: 44px;
+  color: rgba(255,255,255,0.08);
+  margin-bottom: 16px;
 }
 
-/* Completed events */
-.comp-card {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  border: 1px solid var(--ink-200);
-  padding: 16px;
-  margin-bottom: 12px;
+/* ── COMPLETED EVENTS ── */
+.completed-card {
   display: flex;
   align-items: center;
   gap: 14px;
-  box-shadow: var(--shadow-xs);
-  transition: transform var(--t), box-shadow var(--t);
+  padding: 16px 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  margin-bottom: 10px;
+  backdrop-filter: blur(12px);
+  transition: all 0.25s var(--ease-out-expo);
 }
-.comp-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+.completed-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-medium);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
 }
-.comp-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-soft);
+.completed-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
 }
-.comp-title {
-  font-size: 14px;
+.completed-title {
+  font-size: 14.5px;
   font-weight: 700;
-  color: var(--ink-900);
+  color: #fff;
 }
-.comp-meta {
-  font-size: 12px;
-  color: var(--ink-500);
+.completed-meta {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
   margin-top: 2px;
 }
-.comp-actions {
+.completed-actions {
   margin-left: auto;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
-/* Feedback prompt */
-.fb-prompt {
-  background: var(--warning-soft);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.fb-prompt i {
-  color: var(--warning);
-  font-size: 18px;
-}
+/* ── DISCOVER EVENTS (GRID CARDS) ── */
+.discover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+@media(max-width:420px) { .discover-grid { grid-template-columns: 1fr; } }
 
-/* Upcoming event cards */
-.upcoming-card {
-  background: var(--bg-card);
-  border: 1px solid var(--ink-200);
-  border-radius: var(--radius-lg);
+.discover-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--t), box-shadow var(--t);
+  backdrop-filter: blur(16px);
+  transition: all 0.3s var(--ease-out-expo);
+  position: relative;
 }
-.upcoming-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+.discover-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-card);
+  background: linear-gradient(135deg, rgba(245,158,11,0.15), transparent 40%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 0;
 }
-.upcoming-header {
-  background: linear-gradient(90deg, var(--snpsu-blue-dark), var(--snpsu-blue));
-  padding: 14px 18px;
-  border-bottom: 1px solid rgba(201, 164, 94, 0.1);
+.discover-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: var(--border-medium);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3);
 }
-.upcoming-title {
+.discover-card:hover::after { opacity: 1; }
+.discover-card > * { position: relative; z-index: 1; }
+
+.discover-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.discover-title {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #fff;
   margin: 0;
   line-height: 1.3;
 }
-.upcoming-meta {
+.discover-meta {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--text-tertiary);
   margin-top: 4px;
 }
-.upcoming-body {
-  padding: 16px;
+.discover-body {
+  padding: 16px 18px;
 }
-.upcoming-cat {
+.discover-cat {
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .6px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  background: var(--info-soft);
-  color: #1e40af;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
-  margin-bottom: 8px;
-}
-[data-theme="dark"] .upcoming-cat {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59,130,246,0.1);
   color: #93c5fd;
+  border: 1px solid rgba(59,130,246,0.15);
+  margin-bottom: 10px;
 }
-.upcoming-fee {
-  font-size: 13px;
+.discover-fee {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
   font-weight: 700;
-  color: var(--ink-800);
+  color: #fff;
 }
 .btn-register {
   display: inline-flex;
@@ -529,199 +956,368 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 12px;
   font-weight: 700;
   padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark));
-  color: #fff;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-amber), #d97706);
+  color: #030712;
   text-decoration: none;
-  transition: var(--t-fast);
   border: none;
   cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(245,158,11,0.2);
 }
 .btn-register:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-gold);
+  box-shadow: 0 6px 20px rgba(245,158,11,0.35);
+  color: #030712;
+}
+
+/* ── NOTIFICATION PANEL ── */
+#notif-panel {
+  background: rgba(11,15,25,0.92) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--border-medium) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
+  border-radius: 16px !important;
+}
+
+/* ── COMMAND PALETTE (Cmd+K) ── */
+.cmd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 18vh;
+}
+.cmd-overlay.open { display: flex; animation: cmd-fade-in 0.15s ease; }
+@keyframes cmd-fade-in { from { opacity:0; } to { opacity:1; } }
+
+.cmd-box {
+  width: 560px;
+  max-width: 92vw;
+  background: rgba(15,20,35,0.95);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  animation: cmd-slide-in 0.2s var(--ease-out-expo);
+}
+@keyframes cmd-slide-in { from { opacity:0; transform:scale(0.96) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.cmd-input-wrap {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 10px;
+}
+.cmd-input-wrap i { color: var(--text-tertiary); font-size: 16px; }
+.cmd-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+}
+.cmd-input::placeholder { color: var(--text-tertiary); }
+.cmd-results {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  text-decoration: none;
+}
+.cmd-item:hover, .cmd-item.selected {
+  background: rgba(255,255,255,0.06);
   color: #fff;
 }
-
-/* Team members collapsible */
-.members-collapse {
-  background: var(--bg-soft);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  margin-top: 10px;
-  border: 1px solid var(--ink-200);
-}
-.member-row-sm {
+.cmd-item i {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 12.5px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--ink-100);
-  color: var(--ink-700);
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
 }
-.member-row-sm:last-child {
-  border-bottom: none;
+.cmd-item:hover i, .cmd-item.selected i { color: var(--accent-amber); }
+.cmd-footer {
+  padding: 10px 18px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  display: flex;
+  gap: 16px;
 }
-.role-chip {
+.cmd-footer kbd {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: 'Inter', sans-serif;
   font-size: 10px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #6366f1;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  font-weight: 700;
-}
-.role-chip.lead {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--warning);
 }
 
-@media(max-width:576px){
-  .stat-pills{gap:8px;}
-  .stat-pill{padding:6px 14px;}
-  .content{padding:1.5rem 1rem;}
+/* ── ANNOUNCEMENT TOASTS ── */
+#ann-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 380px;
+  width: calc(100% - 48px);
 }
+.ann-toast {
+  background: rgba(11,15,25,0.9);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  padding: 16px 20px;
+  color: #fff;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+  pointer-events: auto;
+  animation: toast-in 0.3s var(--ease-out-expo) forwards;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ann-toast-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px;
+}
+.ann-toast-icon.info { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
+.ann-toast-icon.warning { background: rgba(239,68,68,0.12); color: var(--accent-rose); }
+.ann-toast-icon.success { background: rgba(16,185,129,0.12); color: var(--accent-emerald); }
+.ann-toast-content { flex: 1; }
+.ann-toast-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13.5px; margin-bottom: 3px; }
+.ann-toast-desc { font-size: 12.5px; color: rgba(255,255,255,0.65); line-height: 1.4; }
+.ann-toast-close { background: none; border: none; color: rgba(255,255,255,0.3); cursor: pointer; padding: 0; font-size: 13px; transition: color 0.2s; }
+.ann-toast-close:hover { color: #fff; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:576px) {
+  .stat-grid { gap: 8px; }
+  .stat-card { padding: 10px 14px; }
+  .content-area { padding: 1.5rem 1rem; }
+  .tc-header { padding: 16px 18px 12px; }
+  .tc-body { padding: 0 18px 16px; }
+  .discover-grid { grid-template-columns: 1fr; }
+}
+
+/* ── SCORE MODAL (Dark Glass) ── */
+.modal-content.glass-modal {
+  background: rgba(11,15,25,0.95);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  color: var(--text-primary);
+}
+.glass-modal .modal-header {
+  background: transparent;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 18px 22px;
+}
+.glass-modal .modal-body {
+  padding: 20px 22px;
+}
+.glass-modal .btn-close { filter: invert(1); }
+
 </style>
 </head>
 <body>
 
+<!-- ═══ AURORA BACKGROUND ═══ -->
+<div class="aurora-bg">
+  <div class="aurora-orb"></div>
+  <div class="aurora-orb"></div>
+  <div class="aurora-orb"></div>
+  <div class="aurora-orb"></div>
+</div>
+<div class="grid-overlay"></div>
+
 {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
-<div class="super-admin-banner" style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-  <span style="display: inline-flex; align-items: center; gap: 6px;">
-    <i class="fas fa-crown" style="color: #c9a45e;"></i>
-    Logged in as <strong style="color: #c9a45e;">Super Admin</strong> (Wildcard Mode)
+<div style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative;">
+  <span style="display:inline-flex;align-items:center;gap:6px;">
+    <i class="fas fa-crown" style="color:#c9a45e;"></i>
+    Logged in as <strong style="color:#c9a45e;">Super Admin</strong> (Wildcard Mode)
   </span>
-  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(201, 164, 94, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+  <a href="/admin/dashboard" class="btn btn-sm fw-bold px-3 py-1 rounded" style="background:#c9a45e;border:none;font-size:12.5px;color:#fff;text-decoration:none;">
     Return to Admin HQ <i class="fas fa-arrow-right"></i>
   </a>
 </div>
 {% endif %}
 
-<!-- NAV -->
+<!-- ═══ NAVIGATION ═══ -->
 <nav class="topnav">
-  <div class="d-flex align-items-center gap-2">
-    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
-    <span class="brand">SapthaEvent</span>
-  </div>
-  <div class="nav-links">
-    <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Events</a>
-    <a href="/calendar" class="nav-link-item"><i class="fas fa-calendar-alt me-1"></i>Calendar</a>
-    <a href="/profile/" class="nav-link-item"><i class="fas fa-user me-1"></i>Profile</a>
-    
-    <!-- Theme Toggle -->
-    <button class="nav-link-item" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; position: relative; padding: 5px 10px;">
+  <a href="/" class="brand-mark">
+    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
+    <span class="brand-text">SapthaEvent</span>
+  </a>
+  <div class="nav-items">
+    <a href="/" class="nav-btn"><i class="fas fa-compass"></i><span>Events</span></a>
+    <a href="/calendar" class="nav-btn"><i class="fas fa-calendar-alt"></i><span>Calendar</span></a>
+    <a href="/profile/" class="nav-btn"><i class="fas fa-user"></i><span>Profile</span></a>
+    <button class="nav-btn" onclick="toggleTheme()" id="theme-toggle" type="button" aria-label="Toggle theme">
       <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
     </button>
-    
-    <!-- Bell -->
+
+    <!-- Cmd+K Palette -->
+    <button class="cmd-k-trigger" onclick="openCmdPalette()" type="button">
+      <i class="fas fa-search" style="font-size:11px;"></i>
+      <kbd>⌘K</kbd>
+    </button>
+
+    <!-- Notifications Bell -->
     <div style="position:relative;display:inline-flex;align-items:center;">
-      <button id="bell-btn" onclick="toggleNotifPanel()" class="nav-link-item" style="background:none;border:none;cursor:pointer;padding:5px 10px;position:relative;">
+      <button id="bell-btn" onclick="toggleNotifPanel()" class="nav-btn" style="position:relative;" type="button">
         <i class="fas fa-bell"></i>
-        <span id="bell-badge" style="display:none;position:absolute;top:2px;right:4px;width:8px;height:8px;background:var(--danger);border-radius:50%;"></span>
+        <span id="bell-badge" style="display:none;position:absolute;top:4px;right:6px;width:7px;height:7px;background:var(--accent-rose);border-radius:50%;"></span>
       </button>
-      <div id="notif-panel" style="display:none;position:absolute;top:44px;right:0;width:320px;background:var(--bg-card);border-radius:14px;box-shadow:var(--shadow-md);border:1px solid var(--ink-200);z-index:999;overflow:hidden;">
-        <div style="background:linear-gradient(90deg, var(--snpsu-blue-dark), var(--snpsu-blue));padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(201,164,94,0.15);">
+      <div id="notif-panel" style="display:none;position:absolute;top:48px;right:0;width:340px;border-radius:16px;z-index:999;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(59,130,246,0.05));padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);">
           <span style="color:#fff;font-weight:700;font-size:13px;"><i class="fas fa-bell me-2"></i>Notifications</span>
-          <button onclick="markAllRead()" style="background:none;border:none;color:rgba(255,255,255,.65);font-size:11px;cursor:pointer;">Mark all read</button>
+          <button onclick="markAllRead()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;">Mark all read</button>
         </div>
-        <div id="notif-list" style="max-height:340px;overflow-y:auto;">
-          <div style="padding:24px;text-align:center;color:var(--ink-400);font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11.5px;font-weight:600;color:var(--text-tertiary);"><i class="fas fa-mobile-alt me-1 text-warning"></i>Device Notifications</span>
+          <div class="form-check form-switch" style="margin:0;padding-left:2.5em;">
+            <input class="form-check-input" type="checkbox" id="push-notif-toggle" style="cursor:pointer;" onchange="togglePushSubscription(this)">
+          </div>
+        </div>
+        <div id="notif-list" style="max-height:360px;overflow-y:auto;">
+          <div style="padding:24px;text-align:center;color:var(--text-tertiary);font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
         </div>
       </div>
     </div>
-    <a href="/logout" class="nav-link-item"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+
+    <a href="/logout" class="nav-btn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
   </div>
 </nav>
 
-<!-- HERO -->
-<div class="hero-band">
-  <p class="hero-name">Hello, {{ user_name }} 👋</p>
+<!-- ═══ HERO SECTION ═══ -->
+<section class="hero reveal">
+  <h1 class="hero-greeting">Hello, <span>{{ user_name }}</span> 👋</h1>
   <p class="hero-sub">Sapthagiri NPS University — Student Portal</p>
-  <div class="stat-pills">
-    <div class="stat-pill">
-      <span class="stat-pill-n">{{ active_tickets|length }}</span>
-      <span class="stat-pill-l">Active events</span>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-ring">
+        <svg viewBox="0 0 44 44"><circle class="stat-ring-bg" cx="22" cy="22" r="18"/><circle class="stat-ring-fg" cx="22" cy="22" r="18" stroke="var(--accent-amber)" stroke-dasharray="113" stroke-dashoffset="113" data-target="{{ active_tickets|length }}" data-max="{{ (active_tickets|length + completed_events|length) or 1 }}"/></svg>
+        <div class="stat-ring-value">{{ active_tickets|length }}</div>
+      </div>
+      <div><div class="stat-num">{{ active_tickets|length }}</div><div class="stat-label">Active Events</div></div>
     </div>
-    <div class="stat-pill">
-      <span class="stat-pill-n">{{ completed_events|length }}</span>
-      <span class="stat-pill-l">Completed</span>
+
+    <div class="stat-card">
+      <div class="stat-ring">
+        <svg viewBox="0 0 44 44"><circle class="stat-ring-bg" cx="22" cy="22" r="18"/><circle class="stat-ring-fg" cx="22" cy="22" r="18" stroke="var(--accent-blue)" stroke-dasharray="113" stroke-dashoffset="113" data-target="{{ completed_events|length }}" data-max="{{ (active_tickets|length + completed_events|length) or 1 }}"/></svg>
+        <div class="stat-ring-value">{{ completed_events|length }}</div>
+      </div>
+      <div><div class="stat-num">{{ completed_events|length }}</div><div class="stat-label">Completed</div></div>
     </div>
-    <div class="stat-pill">
-      <span class="stat-pill-n">
-        {{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}
-      </span>
-      <span class="stat-pill-l">Events attended</span>
+
+    <div class="stat-card">
+      <div class="stat-ring">
+        <svg viewBox="0 0 44 44"><circle class="stat-ring-bg" cx="22" cy="22" r="18"/><circle class="stat-ring-fg" cx="22" cy="22" r="18" stroke="var(--accent-emerald)" stroke-dasharray="113" stroke-dashoffset="113" data-target="{{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}" data-max="{{ (active_tickets|length + completed_events|length) or 1 }}"/></svg>
+        <div class="stat-ring-value">{{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}</div>
+      </div>
+      <div><div class="stat-num">{{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}</div><div class="stat-label">Attended</div></div>
     </div>
+
     {% if user_xp %}
-    <div class="stat-pill" style="background:rgba(201,164,94,.18);border:1px solid rgba(201,164,94,.3);">
-      <span class="stat-pill-n" style="color:var(--orange);">{{ user_xp }}</span>
-      <span class="stat-pill-l" style="color:var(--orange);">XP earned</span>
+    <div class="xp-badge">
+      <i class="fas fa-bolt"></i> {{ user_xp }} XP
     </div>
     {% endif %}
   </div>
+
   {% if user_badges %}
-  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;justify-content:center;">
+  <div class="badge-row">
     {% for badge in user_badges %}
-    <span style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-                 border-radius:100px;padding:4px 12px;font-size:11.5px;font-weight:700;
-                 color:#fff;display:flex;align-items:center;gap:5px;">
-      {{ badge[0] }} {{ badge[1] }}
-    </span>
+    <span class="achievement-badge">{{ badge[0] }} {{ badge[1] }}</span>
     {% endfor %}
   </div>
   {% endif %}
-</div>
+</section>
 
+<!-- ═══ FLASH MESSAGES ═══ -->
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
   <div style="padding:12px 24px;">
     {% for cat, msg in messages %}
-    <div class="alert alert-{{ cat }} alert-dismissible fade show mb-2" style="border-radius:10px;font-size:13.5px;">
-      {{ msg|safe }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="alert alert-{{ cat }} alert-dismissible fade show mb-2" style="border-radius:12px;font-size:13.5px;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);color:var(--text-primary);">
+      {{ msg|safe }}<button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
     </div>
     {% endfor %}
   </div>
   {% endif %}
 {% endwith %}
 
-<!-- ANNOUNCEMENTS -->
+<!-- ═══ ANNOUNCEMENTS ═══ -->
 {% if announcements %}
 {% for ann in announcements %}
-<div class="ann-bar">
-  <i class="fas fa-bullhorn" style="color:var(--orange);flex-shrink:0;"></i>
+<div class="ann-strip">
+  <i class="fas fa-bullhorn" style="flex-shrink:0;"></i>
   {{ ann.message }}
 </div>
 {% endfor %}
 {% endif %}
 
-<div class="content">
+<!-- ═══ MAIN CONTENT ═══ -->
+<div class="content-area">
 
-  <!-- ── REFERRAL PARTNER PANEL ── -->
-  <div class="glass-panel p-4 mb-4 border border-secondary border-opacity-15" style="border-radius:16px; background: rgba(59, 130, 246, 0.05); backdrop-filter: blur(12px);">
-    <div class="row align-items-center g-3 text-start">
+  <!-- ── REFERRAL PANEL ── -->
+  <div class="referral-panel reveal">
+    <div class="row align-items-center g-3">
       <div class="col-md-7">
-        <h5 class="fw-bold text-white mb-2"><i class="fas fa-gift text-primary me-2"></i>Refer Students, Earn Rewards!</h5>
-        <p class="text-muted small mb-0">Share your custom affiliate link. Get ₹50 instantly credited when your friends register and attend fests.</p>
-        
-        <div class="input-group mt-3" style="max-width: 450px;">
-          <input type="text" id="ref-link-val" class="form-control form-control-sm bg-dark border-secondary text-white font-monospace" style="font-size:11px;" readonly value="Loading Link...">
-          <button class="btn btn-primary btn-sm px-3" onclick="copyRefLink()"><i class="fas fa-copy"></i> Copy</button>
+        <h5 style="color:#fff;font-weight:700;font-size:16px;margin-bottom:8px;"><i class="fas fa-gift me-2" style="color:var(--accent-blue);"></i>Refer Students, Earn Rewards!</h5>
+        <p style="color:var(--text-tertiary);font-size:13px;margin:0;">Share your custom affiliate link. Get ₹50 instantly credited when your friends register and attend fests.</p>
+        <div class="input-group mt-3" style="max-width:450px;">
+          <input type="text" id="ref-link-val" class="form-control form-control-sm" style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;" readonly value="Loading Link...">
+          <button class="btn btn-sm px-3" style="background:var(--accent-blue);color:#fff;border:none;font-weight:600;" onclick="copyRefLink()"><i class="fas fa-copy"></i> Copy</button>
         </div>
       </div>
       <div class="col-md-5 text-md-end text-center">
-        <div class="d-inline-flex gap-3 text-center bg-black bg-opacity-30 p-3 rounded-4 border border-secondary border-opacity-10 align-items-center">
+        <div class="d-inline-flex gap-3 text-center p-3 rounded-4 align-items-center" style="background:rgba(0,0,0,0.3);border:1px solid var(--border-subtle);border-radius:16px !important;">
           <div class="px-2">
-            <span class="text-muted small fw-bold" style="font-size: 10px; display:block;">REFERRALS</span>
-            <div class="fs-4 fw-bold text-white mt-1" id="ref-count-val">-</div>
+            <span style="font-size:10px;font-weight:700;color:var(--text-tertiary);display:block;text-transform:uppercase;letter-spacing:0.5px;">Referrals</span>
+            <div style="font-size:22px;font-weight:800;color:#fff;margin-top:4px;font-family:'Plus Jakarta Sans',sans-serif;" id="ref-count-val">—</div>
           </div>
-          <div class="vr bg-secondary opacity-25" style="height: 35px; width: 1px;"></div>
+          <div style="height:35px;width:1px;background:var(--border-subtle);"></div>
           <div class="px-2">
-            <span class="text-muted small fw-bold" style="font-size: 10px; display:block;">EARNED (₹)</span>
-            <div class="fs-4 fw-bold text-emerald mt-1" style="color: #10b981;" id="ref-earned-val">-</div>
+            <span style="font-size:10px;font-weight:700;color:var(--text-tertiary);display:block;text-transform:uppercase;letter-spacing:0.5px;">Earned</span>
+            <div style="font-size:22px;font-weight:800;color:var(--accent-emerald);margin-top:4px;font-family:'Plus Jakarta Sans',sans-serif;" id="ref-earned-val">—</div>
           </div>
-          <div class="vr bg-secondary opacity-25" style="height: 35px; width: 1px;"></div>
+          <div style="height:35px;width:1px;background:var(--border-subtle);"></div>
           <div class="px-2">
-            <button class="btn btn-outline-light btn-xs" style="font-size:10px; padding: 4px 8px;" onclick="claimPayout()">Withdraw</button>
+            <button class="btn-act btn-act-ghost" style="font-size:11px;padding:6px 12px;" onclick="claimPayout()">Withdraw</button>
           </div>
         </div>
       </div>
@@ -729,120 +1325,103 @@ h1, h2, h3, h4, h5, h6 {
   </div>
 
   <!-- ── ACTIVE TICKETS ── -->
-  <div class="section-title">
-    <i class="fas fa-ticket-alt me-2" style="color:var(--orange);"></i>My Tickets
+  <div class="section-header reveal">
+    <div class="section-header-icon" style="background:rgba(245,158,11,0.1);color:var(--accent-amber);"><i class="fas fa-ticket-alt"></i></div>
+    <h3>My Tickets</h3>
+    <span class="section-count">{{ active_tickets|length }}</span>
   </div>
 
   {% if active_tickets %}
   {% for reg in active_tickets %}
-  <div class="ticket-card">
+  <div class="ticket-card reveal">
     <div class="tc-header">
       <div style="flex:1;min-width:0;">
-        <h5 class="tc-title">{{ reg.event_title }}</h5>
+        <h5 class="tc-title">
+          <span class="tc-cat-dot {{ reg.event_cat|lower if reg.event_cat else 'tech' }}"></span>
+          {{ reg.event_title }}
+        </h5>
         <div class="tc-meta">
-          <i class="fas fa-calendar-alt me-1"></i>{{ reg.event_date or 'TBD' }}
+          <i class="fas fa-calendar-alt"></i> {{ reg.event_date or 'TBD' }}
           &nbsp;·&nbsp;
-          <i class="fas fa-map-marker-alt me-1"></i>{{ reg.event_venue or 'SNPSU' }}
+          <i class="fas fa-map-marker-alt"></i> {{ reg.event_venue or 'SNPSU' }}
         </div>
       </div>
       {% set ps = reg.get('payment_status','Free') %}
-      <span class="tc-badge {{ 'badge-confirmed' if ps == 'Paid' else 'badge-pending' if ps == 'Pending' else 'badge-free' }}">
+      <span class="status-badge {{ 'paid' if ps == 'Paid' else 'pending' if ps == 'Pending' else 'free' }}">
         {{ ps }}
       </span>
     </div>
 
     <div class="tc-body">
-      <div class="tc-info-row">
-        <!-- Countdown badge -->
+      <div class="chips-row">
         {% if reg.days_until is not none %}
           {% if reg.days_until == 0 %}
-            <span class="countdown today"><i class="fas fa-star"></i>Today!</span>
+            <span class="chip chip-today"><i class="fas fa-star"></i>Today!</span>
           {% elif reg.days_until < 0 %}
-            <span class="countdown past"><i class="fas fa-check"></i>Completed</span>
+            <span class="chip chip-past"><i class="fas fa-check"></i>Completed</span>
           {% elif reg.days_until <= 3 %}
-            <span class="countdown soon"><i class="fas fa-fire"></i>{{ reg.days_until }} day{{ 's' if reg.days_until != 1 }} away</span>
+            <span class="chip chip-soon"><i class="fas fa-fire"></i>{{ reg.days_until }} day{{ 's' if reg.days_until != 1 }} away</span>
           {% else %}
-            <span class="countdown"><i class="fas fa-clock"></i>{{ reg.days_until }} days away</span>
+            <span class="chip chip-upcoming"><i class="fas fa-clock"></i>{{ reg.days_until }} days away</span>
           {% endif %}
         {% endif %}
 
-        <!-- Attendance -->
         {% if reg.attendance == 'Present' %}
-        <span style="background:#dcfce7;color:#166534;font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:100px;">
-          <i class="fas fa-check me-1"></i>Attended
-        </span>
+          <span class="chip chip-attended"><i class="fas fa-check-circle"></i>Attended</span>
         {% elif reg.attendance == 'Absent' %}
-        <span style="background:#fee2e2;color:#991b1b;font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:100px;">
-          <i class="fas fa-times me-1"></i>Absent
-        </span>
+          <span class="chip chip-absent"><i class="fas fa-times-circle"></i>Absent</span>
         {% endif %}
 
-        <!-- Room assignment -->
         {% if reg.assigned_room %}
-        <span style="background:#eff6ff;color:#1e40af;font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:100px;">
-          <i class="fas fa-door-open me-1"></i>Room {{ reg.assigned_room }}
-        </span>
+          <span class="chip chip-room"><i class="fas fa-door-open"></i>Room {{ reg.assigned_room }}</span>
         {% endif %}
       </div>
 
       <div class="d-flex flex-wrap align-items-start gap-4">
-        <!-- QR code — only visible from 1 day before event -->
         {% if reg.days_until is not none and 0 <= reg.days_until <= 1 %}
-        <div class="qr-box">
-          <img src="/ticket/qr/{{ reg.id }}" alt="QR Code" class="qr-img"
-               onerror="this.style.display='none'">
-          <div class="qr-id">{{ reg.get('reg_id', reg.id)[:20] }}</div>
+        <div class="qr-container">
+          <img src="/ticket/qr/{{ reg.id }}" alt="QR Code" onerror="this.style.display='none'">
+          <div class="qr-label">{{ reg.get('reg_id', reg.id)[:20] }}</div>
         </div>
         {% else %}
-        <div class="qr-box" style="min-width:100px;justify-content:center;">
-          <div style="font-size:28px;line-height:1;">🔒</div>
-          <div style="font-size:10px;color:#94a3b8;text-align:center;max-width:90px;line-height:1.4;">
-            Ticket unlocks<br>1 day before
-          </div>
+        <div class="qr-container qr-locked" style="min-width:100px;justify-content:center;">
+          <div class="qr-locked-icon">🔒</div>
+          <div class="qr-locked-text">Ticket unlocks<br>1 day before</div>
         </div>
         {% endif %}
 
-        <!-- Score if available -->
         {% if reg.my_avg_score is not none %}
-        <div style="flex:1;min-width:180px;">
-          <div class="score-row" title="Click to see judge breakdown"
-               data-scores='{{ reg.get("scores", {})|tojson }}'
-               data-event='{{ reg.event_title|e }}'
-               onclick="openScoreModal(this)">
-            <div>
-              <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">
-                Your Score <i class="fas fa-expand-alt" style="font-size:9px;opacity:.5;margin-left:3px;"></i>
-              </div>
-              <div class="score-val">{{ reg.my_avg_score }}<span style="font-size:14px;color:#94a3b8;">/100</span></div>
-            </div>
-            {% if reg.final_rank %}
-            <div class="rank-val">
-              {% if reg.final_rank == 1 %}🥇 1st
-              {% elif reg.final_rank == 2 %}🥈 2nd
-              {% elif reg.final_rank == 3 %}🥉 3rd
-              {% else %}#{{ reg.final_rank }}
-              {% endif %}
-            </div>
-            {% endif %}
+        <div class="score-display"
+             data-scores='{{ reg.get("scores", {})|tojson }}'
+             data-event='{{ reg.event_title|e }}'
+             onclick="openScoreModal(this)">
+          <div>
+            <div class="score-label">Your Score <i class="fas fa-expand-alt"></i></div>
+            <div class="score-value">{{ reg.my_avg_score }}<small>/100</small></div>
           </div>
+          {% if reg.final_rank %}
+          <div class="rank-chip">
+            {% if reg.final_rank == 1 %}🥇 1st
+            {% elif reg.final_rank == 2 %}🥈 2nd
+            {% elif reg.final_rank == 3 %}🥉 3rd
+            {% else %}#{{ reg.final_rank }}{% endif %}
+          </div>
+          {% endif %}
         </div>
         {% endif %}
       </div>
 
-      <!-- Team members collapsible -->
       {% if reg.get('members') and reg.members|length > 1 %}
-      <div class="mt-2">
-        <button class="btn-action btn-secondary-action" type="button"
-                data-bs-toggle="collapse" data-bs-target="#members-{{ reg.id }}"
-                style="font-size:11.5px;padding:5px 12px;">
+      <div style="margin-top:12px;">
+        <button class="btn-act btn-act-ghost" type="button" data-bs-toggle="collapse" data-bs-target="#members-{{ reg.id }}" style="font-size:11.5px;padding:5px 12px;">
           <i class="fas fa-users"></i> Team ({{ reg.members|length }})
         </button>
         <div class="collapse" id="members-{{ reg.id }}">
-          <div class="members-collapse">
+          <div class="team-section">
             {% for m in reg.members %}
-            <div class="member-row-sm">
+            <div class="member-item">
               <span>{{ m.name }}</span>
-              <span class="role-chip {{ 'lead' if m.role == 'Team Leader' else '' }}">{{ m.role }}</span>
+              <span class="role-tag {{ 'leader' if m.role == 'Team Leader' else '' }}">{{ m.role }}</span>
             </div>
             {% endfor %}
           </div>
@@ -850,73 +1429,50 @@ h1, h2, h3, h4, h5, h6 {
       </div>
       {% endif %}
 
-      <!-- Feedback prompt -->
       {% if reg.attendance == 'Present' and not reg.feedback_done %}
-      <div class="fb-prompt mt-2">
+      <div class="feedback-prompt">
         <i class="fas fa-star"></i>
         <div style="flex:1;">
-          <div style="font-size:12.5px;font-weight:600;color:#78350f;">Rate this event</div>
-          <div style="font-size:11.5px;color:#92400e;">Your feedback helps improve future events.</div>
+          <div style="font-size:13px;font-weight:600;color:var(--accent-amber);">Rate this event</div>
+          <div style="font-size:12px;color:var(--text-tertiary);">Your feedback helps improve future events.</div>
         </div>
-        <a href="/participant/feedback/{{ reg.id }}" class="btn-action btn-primary-action" style="font-size:11.5px;padding:5px 12px;">
+        <a href="/participant/feedback/{{ reg.id }}" class="btn-act btn-act-primary" style="font-size:11.5px;padding:6px 14px;">
           Give Feedback
         </a>
       </div>
       {% endif %}
 
-      <!-- AI summary (shown after results published) -->
       {% if reg.get('ai_summary') %}
       {% set s = reg.ai_summary %}
-      <div style="background:var(--bg-soft);border:1px solid var(--ink-200);border-radius:10px;padding:12px 14px;margin-top:10px;">
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--cat-technical);margin-bottom:7px;display:flex;align-items:center;gap:5px;">
-          <i class="fas fa-brain" style="font-size:11px;"></i> AI Performance Summary
-        </div>
-        {% if s.headline %}
-        <div style="font-size:13px;font-weight:600;color:var(--ink-900);margin-bottom:8px;">
-          {{ s.headline }}
-        </div>
-        {% endif %}
-        {% if s.student_message %}
-        <div style="font-size:12.5px;color:var(--ink-700);font-style:italic;line-height:1.6;margin-bottom:8px;padding:8px 12px;background:var(--bg-card);border-radius:7px;border-left:3px solid var(--cat-technical);">
-          {{ s.student_message }}
-        </div>
-        {% endif %}
+      <div class="ai-summary">
+        <div class="ai-summary-header"><i class="fas fa-brain"></i> AI Performance Summary</div>
+        {% if s.headline %}<div class="ai-summary-headline">{{ s.headline }}</div>{% endif %}
+        {% if s.student_message %}<div class="ai-summary-message">{{ s.student_message }}</div>{% endif %}
         {% if s.strengths %}
-        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+        <div>
           {% for strength in s.strengths[:2] %}
-          <span style="background:var(--success-soft);color:var(--success);font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;">✓ {{ strength }}</span>
+          <span class="strength-tag good">✓ {{ strength }}</span>
           {% endfor %}
           {% for imp in s.improvements[:1] %}
-          <span style="background:var(--warning-soft);color:var(--warning);font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;">→ {{ imp }}</span>
+          <span class="strength-tag improve">→ {{ imp }}</span>
           {% endfor %}
         </div>
         {% endif %}
       </div>
       {% endif %}
 
-      <!-- Actions -->
-      <div class="action-strip">
-        <a href="/ticket/{{ reg.id }}" class="btn-action btn-primary-action">
-          <i class="fas fa-qrcode"></i> Full Ticket
-        </a>
-        <a href="/participant/badge/{{ reg.id }}" class="btn-action btn-secondary-action">
-          <i class="fas fa-id-badge"></i> Badge
-        </a>
-        <a href="/event/{{ reg.event_id }}" class="btn-action btn-secondary-action">
-          <i class="fas fa-info-circle"></i> Event Info
-        </a>
-        <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn-action btn-secondary-action">
-          <i class="fas fa-trophy"></i> Leaderboard
-        </a>
+      <div class="action-row">
+        <a href="/ticket/{{ reg.id }}" class="btn-act btn-act-primary"><i class="fas fa-qrcode"></i> Full Ticket</a>
+        <a href="/participant/badge/{{ reg.id }}" class="btn-act btn-act-ghost"><i class="fas fa-id-badge"></i> Badge</a>
+        <a href="/event/{{ reg.event_id }}" class="btn-act btn-act-ghost"><i class="fas fa-info-circle"></i> Event Info</a>
+        <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn-act btn-act-ghost"><i class="fas fa-trophy"></i> Leaderboard</a>
         {% if reg.cert_eligible %}
-        <a href="/participant/certificate/{{ reg.id }}" class="btn-action btn-green-action">
-          <i class="fas fa-certificate"></i> Certificate
-        </a>
+        <a href="/participant/certificate/{{ reg.id }}" class="btn-act btn-act-success"><i class="fas fa-certificate"></i> Certificate</a>
         {% endif %}
         {% if reg.get('status') != 'Cancelled' and reg.get('attendance') != 'Present' %}
         <form method="POST" action="/participant/cancel/{{ reg.id }}" style="margin:0;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn-action" style="background:var(--danger-soft);color:var(--danger);border:none;"
+          <button type="submit" class="btn-act btn-act-danger"
                   data-confirm="Cancel your registration for {{ reg.event_title|e }}? This cannot be undone."
                   data-loading-text="Cancelling…">
             <i class="fas fa-times-circle"></i> Cancel
@@ -929,105 +1485,94 @@ h1, h2, h3, h4, h5, h6 {
   {% endfor %}
 
   {% else %}
-  <div class="empty-card mb-4">
-    <i class="fas fa-ticket-alt"></i>
-    <h5 class="fw-bold text-secondary mb-2">No Active Tickets</h5>
-    <p class="text-muted mb-3" style="font-size:13.5px;">Register for an upcoming event to get your QR ticket here.</p>
-    <a href="/" class="btn-action btn-primary-action" style="margin:0 auto;">
-      <i class="fas fa-compass"></i> Browse Events
-    </a>
+  <div class="empty-state reveal">
+    <div class="empty-state-icon"><i class="fas fa-ticket-alt"></i></div>
+    <h5 style="font-weight:700;color:var(--text-secondary);margin-bottom:8px;">No Active Tickets</h5>
+    <p style="color:var(--text-tertiary);font-size:13.5px;margin-bottom:20px;">Register for an upcoming event to get your QR ticket here.</p>
+    <a href="/" class="btn-act btn-act-primary"><i class="fas fa-compass"></i> Browse Events</a>
   </div>
   {% endif %}
 
   <!-- ── WAITLIST ── -->
-  <div id="waitlist-section" style="display:none;" class="mb-4">
-    <div class="section-title mt-4">
-      <i class="fas fa-hourglass-half me-2" style="color:var(--warning);"></i>On Waitlist
+  <div id="waitlist-section" style="display:none;">
+    <div class="section-header reveal">
+      <div class="section-header-icon" style="background:rgba(245,158,11,0.1);color:var(--accent-amber);"><i class="fas fa-hourglass-half"></i></div>
+      <h3>On Waitlist</h3>
     </div>
     <div id="waitlist-list"></div>
   </div>
 
   <!-- ── COMPLETED EVENTS ── -->
   {% if completed_events %}
-  <div class="section-title mt-4">
-    <i class="fas fa-history me-2" style="color:var(--orange);"></i>Past Events
+  <div class="section-header reveal">
+    <div class="section-header-icon" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);"><i class="fas fa-history"></i></div>
+    <h3>Past Events</h3>
+    <span class="section-count">{{ completed_events|length }}</span>
   </div>
 
   {% for reg in completed_events %}
-  <div class="comp-card">
-    <div class="comp-icon">
+  <div class="completed-card reveal">
+    <div class="completed-icon">
       {% if reg.attendance == 'Present' %}🎓{% else %}📅{% endif %}
     </div>
     <div style="flex:1;min-width:0;">
-      <div class="comp-title">{{ reg.event_title }}</div>
-      <div class="comp-meta">
+      <div class="completed-title">{{ reg.event_title }}</div>
+      <div class="completed-meta">
         {{ reg.event_date or '' }}
         {% if reg.final_rank %}&nbsp;·&nbsp;
           {% if reg.final_rank == 1 %}🥇 1st Place
           {% elif reg.final_rank == 2 %}🥈 2nd Place
           {% elif reg.final_rank == 3 %}🥉 3rd Place
-          {% else %}Rank #{{ reg.final_rank }}
-          {% endif %}
+          {% else %}Rank #{{ reg.final_rank }}{% endif %}
         {% endif %}
         {% if reg.my_avg_score is not none %}&nbsp;·&nbsp;Score: {{ reg.my_avg_score }}{% endif %}
       </div>
       {% if not reg.feedback_done and reg.attendance == 'Present' %}
-      <a href="/participant/feedback/{{ reg.id }}" style="font-size:11.5px;color:var(--orange);text-decoration:none;">
+      <a href="/participant/feedback/{{ reg.id }}" style="font-size:11.5px;color:var(--accent-amber);text-decoration:none;font-weight:600;">
         <i class="fas fa-star me-1"></i>Rate this event
       </a>
       {% endif %}
     </div>
-    <div class="comp-actions">
+    <div class="completed-actions">
       {% if reg.cert_eligible %}
-      <a href="/participant/certificate/{{ reg.id }}" class="btn-action btn-green-action" style="font-size:11.5px;padding:5px 11px;">
-        <i class="fas fa-certificate"></i>
-      </a>
+      <a href="/participant/certificate/{{ reg.id }}" class="btn-act btn-act-success" style="font-size:11px;padding:5px 11px;"><i class="fas fa-certificate"></i></a>
       {% endif %}
-      <a href="/ticket/{{ reg.id }}" class="btn-action btn-secondary-action" style="font-size:11.5px;padding:5px 11px;">
-        <i class="fas fa-qrcode"></i>
-      </a>
+      <a href="/ticket/{{ reg.id }}" class="btn-act btn-act-ghost" style="font-size:11px;padding:5px 11px;"><i class="fas fa-qrcode"></i></a>
     </div>
   </div>
   {% endfor %}
   {% endif %}
 
-  <!-- ── UPCOMING EVENTS ── -->
+  <!-- ── DISCOVER MORE EVENTS ── -->
   {% if upcoming_events %}
-  <div class="section-title mt-4">
-    <i class="fas fa-calendar-plus me-2" style="color:var(--orange);"></i>Discover More Events
+  <div class="section-header reveal">
+    <div class="section-header-icon" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);"><i class="fas fa-calendar-plus"></i></div>
+    <h3>Discover More Events</h3>
+    <span class="section-count">{{ upcoming_events|length }}</span>
   </div>
-  <div class="row g-3 mb-2">
+  <div class="discover-grid">
     {% for evt in upcoming_events %}
-    <div class="col-md-6 col-lg-4">
-      <div class="upcoming-card">
-        <div class="upcoming-header">
-          <h5 class="upcoming-title">{{ evt.get('title', 'Event') }}</h5>
-          <div class="upcoming-meta">
-            <i class="fas fa-calendar-alt me-1"></i>{{ evt.get('date', 'TBD') }}
-            {% if evt.days_until is not none %}
-              &nbsp;·&nbsp;
-              {% if evt.days_until == 0 %}Today!
-              {% elif evt.days_until > 0 %}{{ evt.days_until }}d away
-              {% endif %}
-            {% endif %}
-          </div>
-        </div>
-        <div class="upcoming-body">
-          {% if evt.get('category') %}
-          <span class="upcoming-cat">{{ evt.category }}</span>
+    <div class="discover-card reveal">
+      <div class="discover-header">
+        <h5 class="discover-title">{{ evt.get('title', 'Event') }}</h5>
+        <div class="discover-meta">
+          <i class="fas fa-calendar-alt me-1"></i>{{ evt.get('date', 'TBD') }}
+          {% if evt.days_until is not none %}
+            &nbsp;·&nbsp;
+            {% if evt.days_until == 0 %}Today!
+            {% elif evt.days_until > 0 %}{{ evt.days_until }}d away{% endif %}
           {% endif %}
-          <div class="d-flex align-items-center justify-content-between mt-1">
-            <div class="upcoming-fee">
-              {% if evt.get('entry_fee') and evt.entry_fee|int > 0 %}
-                ₹{{ evt.entry_fee }}
-              {% else %}
-                Free
-              {% endif %}
-            </div>
-            <a href="/forms/register/{{ evt.id }}" class="btn-register">
-              <i class="fas fa-plus"></i> Register
-            </a>
+        </div>
+      </div>
+      <div class="discover-body">
+        {% if evt.get('category') %}
+        <span class="discover-cat">{{ evt.category }}</span>
+        {% endif %}
+        <div class="d-flex align-items-center justify-content-between mt-1">
+          <div class="discover-fee">
+            {% if evt.get('entry_fee') and evt.entry_fee|int > 0 %}₹{{ evt.entry_fee }}{% else %}Free{% endif %}
           </div>
+          <a href="/forms/register/{{ evt.id }}" class="btn-register"><i class="fas fa-plus"></i> Register</a>
         </div>
       </div>
     </div>
@@ -1035,59 +1580,152 @@ h1, h2, h3, h4, h5, h6 {
   </div>
   {% endif %}
 
-</div><!-- /content -->
+</div><!-- /content-area -->
 
-<!-- Score Breakdown Modal -->
-<div class="modal fade" id="scoreModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border-radius:14px;overflow:hidden;border:none;">
-      <div class="modal-header" style="background:linear-gradient(135deg, var(--snpsu-blue-dark), var(--snpsu-blue));border:none;padding:16px 20px;">
-        <div>
-          <h5 class="modal-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:#fff;margin:0;">
-            <i class="fas fa-chart-bar me-2" style="color:var(--snpsu-gold);"></i>Score Breakdown
-          </h5>
-          <div id="scoreModalEvent" style="font-size:11.5px;color:rgba(255,255,255,.6);margin-top:2px;"></div>
-        </div>
-        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="scoreModalBody" style="padding:20px;max-height:70vh;overflow-y:auto;background:var(--bg-card);">
-      </div>
+<!-- ═══ COMMAND PALETTE ═══ -->
+<div class="cmd-overlay" id="cmd-overlay" onclick="if(event.target===this)closeCmdPalette()">
+  <div class="cmd-box">
+    <div class="cmd-input-wrap">
+      <i class="fas fa-search"></i>
+      <input class="cmd-input" id="cmd-input" type="text" placeholder="Search events, navigate, or type a command…" autocomplete="off">
+    </div>
+    <div class="cmd-results" id="cmd-results">
+      <a class="cmd-item" href="/"><i class="fas fa-compass"></i> Browse All Events</a>
+      <a class="cmd-item" href="/calendar"><i class="fas fa-calendar-alt"></i> Event Calendar</a>
+      <a class="cmd-item" href="/profile/"><i class="fas fa-user"></i> My Profile</a>
+      <a class="cmd-item" href="/participant/dashboard"><i class="fas fa-ticket-alt"></i> My Tickets</a>
+      {% for reg in active_tickets %}
+      <a class="cmd-item" href="/event/{{ reg.event_id }}"><i class="fas fa-star"></i> {{ reg.event_title }}</a>
+      {% endfor %}
+    </div>
+    <div class="cmd-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+      <span><kbd>↵</kbd> Open</span>
+      <span><kbd>Esc</kbd> Close</span>
     </div>
   </div>
 </div>
 
+<!-- ═══ SCORE BREAKDOWN MODAL ═══ -->
+<div class="modal fade" id="scoreModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-modal">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;color:#fff;margin:0;">
+            <i class="fas fa-chart-bar me-2" style="color:var(--accent-amber);"></i>Score Breakdown
+          </h5>
+          <div id="scoreModalEvent" style="font-size:12px;color:var(--text-tertiary);margin-top:3px;"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="scoreModalBody" style="max-height:70vh;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCRIPTS ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/static/js/global.js"></script>
 <script>
+/* ────────────────────────────────────────────────────────────────────────────
+   SCROLL REVEAL
+   ──────────────────────────────────────────────────────────────────────────── */
+(function() {
+  var reveals = document.querySelectorAll('.reveal');
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e,i) {
+      if (e.isIntersecting) {
+        setTimeout(function(){ e.target.classList.add('visible'); }, i * 60);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(function(el){ io.observe(el); });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────────
+   STAT RING ANIMATIONS
+   ──────────────────────────────────────────────────────────────────────────── */
+(function() {
+  document.querySelectorAll('.stat-ring-fg').forEach(function(circle) {
+    var circumference = 2 * Math.PI * 18;
+    var target = parseInt(circle.dataset.target) || 0;
+    var max = parseInt(circle.dataset.max) || 1;
+    var ratio = Math.min(target / max, 1);
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = circumference;
+    setTimeout(function() {
+      circle.style.strokeDashoffset = circumference * (1 - ratio);
+    }, 400);
+  });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────────
+   COMMAND PALETTE (Cmd+K / Ctrl+K)
+   ──────────────────────────────────────────────────────────────────────────── */
+function openCmdPalette() {
+  var overlay = document.getElementById('cmd-overlay');
+  overlay.classList.add('open');
+  setTimeout(function(){ document.getElementById('cmd-input').focus(); }, 100);
+}
+function closeCmdPalette() {
+  document.getElementById('cmd-overlay').classList.remove('open');
+  document.getElementById('cmd-input').value = '';
+  filterCmdResults('');
+}
+
+document.addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    var overlay = document.getElementById('cmd-overlay');
+    if (overlay.classList.contains('open')) { closeCmdPalette(); } else { openCmdPalette(); }
+  }
+  if (e.key === 'Escape') { closeCmdPalette(); }
+});
+
+document.getElementById('cmd-input').addEventListener('input', function(e) {
+  filterCmdResults(e.target.value.toLowerCase());
+});
+
+function filterCmdResults(q) {
+  var items = document.querySelectorAll('#cmd-results .cmd-item');
+  items.forEach(function(item) {
+    var text = item.textContent.toLowerCase();
+    item.style.display = !q || text.includes(q) ? 'flex' : 'none';
+  });
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   SCORE MODAL
+   ──────────────────────────────────────────────────────────────────────────── */
 function openScoreModal(el) {
-  const scores = JSON.parse(el.dataset.scores || '{}');
-  const eventTitle = el.dataset.event || '';
-  const body = document.getElementById('scoreModalBody');
+  var scores = JSON.parse(el.dataset.scores || '{}');
+  var eventTitle = el.dataset.event || '';
+  var body = document.getElementById('scoreModalBody');
   document.getElementById('scoreModalEvent').textContent = eventTitle;
 
-  const entries = Object.entries(scores);
+  var entries = Object.entries(scores);
   if (!entries.length) {
-    body.innerHTML = '<p style="text-align:center;color:var(--ink-500);font-size:13.5px;margin:0;">No score breakdown available.</p>';
+    body.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);font-size:13.5px;margin:0;">No score breakdown available.</p>';
   } else {
-    let html = '';
-    entries.forEach(([, data], i) => {
-      const total = data.total || 0;
-      html += `<div style="background:var(--bg-soft);border:1px solid var(--ink-200);border-radius:10px;padding:13px 15px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-500);">Judge ${i + 1}</span>
-          <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--success);">${total}<span style="font-size:12px;color:var(--ink-400);font-weight:400;">/100</span></span>
-        </div>`;
-      const criteria = data.criteria || {};
-      Object.entries(criteria).forEach(([crit, val]) => {
-        const pct = Math.min(100, Number(val) || 0);
-        html += `<div style="margin-bottom:7px;">
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-700);margin-bottom:3px;">
-            <span>${crit}</span><span style="font-weight:600;color:var(--ink-900);">${val}</span>
-          </div>
-          <div style="height:5px;background:var(--ink-200);border-radius:100px;overflow:hidden;">
-            <div style="height:100%;background:var(--snpsu-gold);width:${pct}%;border-radius:100px;"></div>
-          </div>
-        </div>`;
+    var html = '';
+    entries.forEach(function(entry, i) {
+      var data = entry[1];
+      var total = data.total || 0;
+      html += '<div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;padding:14px 16px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+        '<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-tertiary);">Judge ' + (i + 1) + '</span>' +
+        '<span style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:22px;font-weight:800;color:var(--accent-emerald);">' + total + '<span style="font-size:12px;color:var(--text-tertiary);font-weight:400;">/100</span></span>' +
+        '</div>';
+      var criteria = data.criteria || {};
+      Object.entries(criteria).forEach(function(c) {
+        var pct = Math.min(100, Number(c[1]) || 0);
+        html += '<div style="margin-bottom:8px;">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:4px;">' +
+          '<span>' + c[0] + '</span><span style="font-weight:600;color:var(--text-primary);">' + c[1] + '</span></div>' +
+          '<div style="height:4px;background:var(--border-subtle);border-radius:100px;overflow:hidden;">' +
+          '<div style="height:100%;background:linear-gradient(90deg,var(--accent-amber),var(--accent-emerald));width:' + pct + '%;border-radius:100px;transition:width 0.6s var(--ease-out-expo);"></div></div></div>';
       });
       html += '</div>';
     });
@@ -1096,9 +1734,10 @@ function openScoreModal(el) {
   new bootstrap.Modal(document.getElementById('scoreModal')).show();
 }
 
-// ── NOTIFICATION BELL ──────────────────────────────────────────────────
-var _notifOpen = false;
-var _notifLoaded = false;
+/* ────────────────────────────────────────────────────────────────────────────
+   NOTIFICATION BELL
+   ──────────────────────────────────────────────────────────────────────────── */
+var _notifOpen = false, _notifLoaded = false;
 
 function toggleNotifPanel() {
   var panel = document.getElementById('notif-panel');
@@ -1124,24 +1763,24 @@ function loadNotifs() {
       var unread = items.filter(function(n){ return !n.read; }).length;
       badge.style.display = unread > 0 ? 'block' : 'none';
       if (!items.length) {
-        list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-400);font-size:13px;"><i class="fas fa-check-circle" style="color:var(--success);font-size:20px;display:block;margin-bottom:8px;"></i>All caught up!</div>';
+        list.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text-tertiary);font-size:13px;"><i class="fas fa-check-circle" style="color:var(--accent-emerald);font-size:22px;display:block;margin-bottom:8px;"></i>All caught up!</div>';
         return;
       }
       list.innerHTML = items.map(function(n) {
         var iconMap = { bell:'fa-bell', ticket:'fa-ticket-alt', trophy:'fa-trophy', info:'fa-info-circle', cert:'fa-certificate' };
         var ic = iconMap[n.icon] || 'fa-bell';
-        var bg = n.read ? 'var(--bg-card)' : 'var(--info-soft)';
+        var bg = n.read ? 'transparent' : 'rgba(59,130,246,0.04)';
         var href = n.link ? 'href="' + n.link + '"' : '';
-        return '<a ' + href + ' onclick="markRead(\'' + n.id + '\',this)" style="display:block;padding:12px 16px;border-bottom:1px solid var(--ink-200);background:' + bg + ';text-decoration:none;transition:.15s;" onmouseover="this.style.background=\'var(--bg-soft)\'" onmouseout="this.style.background=\'' + bg + '\'">' +
+        return '<a ' + href + ' onclick="markRead(\'' + n.id + '\',this)" style="display:block;padding:12px 16px;border-bottom:1px solid var(--border-subtle);background:' + bg + ';text-decoration:none;transition:.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'' + bg + '\'">' +
           '<div style="display:flex;gap:10px;align-items:flex-start;">' +
-          '<div style="width:32px;height:32px;border-radius:8px;background:rgba(99, 102, 241, 0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-          '<i class="fas ' + ic + '" style="color:#6366f1;font-size:12px;"></i></div>' +
-          '<div><div style="font-size:13px;font-weight:' + (n.read ? '500' : '700') + ';color:var(--ink-900);">' + n.title + '</div>' +
-          '<div style="font-size:11.5px;color:var(--ink-600);margin-top:2px;">' + n.body + '</div></div></div></a>';
+          '<div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+          '<i class="fas ' + ic + '" style="color:var(--accent-violet);font-size:12px;"></i></div>' +
+          '<div><div style="font-size:13px;font-weight:' + (n.read ? '500' : '700') + ';color:var(--text-primary);">' + n.title + '</div>' +
+          '<div style="font-size:11.5px;color:var(--text-tertiary);margin-top:2px;">' + n.body + '</div></div></div></a>';
       }).join('');
     })
     .catch(function() {
-      document.getElementById('notif-list').innerHTML = '<div style="padding:16px;text-align:center;color:var(--ink-400);font-size:13px;">Could not load notifications.</div>';
+      document.getElementById('notif-list').innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-tertiary);font-size:13px;">Could not load notifications.</div>';
     });
 }
 
@@ -1149,7 +1788,7 @@ function markRead(id, el) {
   fetch('/notifications/mark_read/' + id, { method: 'POST', credentials: 'same-origin',
     headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' }
   });
-  if (el) el.style.background = 'var(--bg-card)';
+  if (el) el.style.background = 'transparent';
 }
 
 function markAllRead() {
@@ -1158,62 +1797,70 @@ function markAllRead() {
   }).then(function() { _notifLoaded = false; loadNotifs(); });
 }
 
-// ── LIVE ANNOUNCEMENTS (poll every 30s for each active event) ────────────
-(function pollAnnouncements() {
+/* ────────────────────────────────────────────────────────────────────────────
+   LIVE ANNOUNCEMENTS (SSE)
+   ──────────────────────────────────────────────────────────────────────────── */
+function showAnnouncementToast(title, desc, priority) {
+  var container = document.getElementById('ann-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'ann-toast-container';
+    document.body.appendChild(container);
+  }
+  var toast = document.createElement('div');
+  toast.className = 'ann-toast';
+  var iconClass = 'fa-info-circle';
+  if (priority === 'warning') iconClass = 'fa-exclamation-triangle';
+  if (priority === 'success') iconClass = 'fa-check-circle';
+  toast.innerHTML =
+    '<div class="ann-toast-icon ' + (priority || 'info') + '"><i class="fas ' + iconClass + '"></i></div>' +
+    '<div class="ann-toast-content"><div class="ann-toast-title">' + title + '</div><div class="ann-toast-desc">' + desc + '</div></div>' +
+    '<button class="ann-toast-close" onclick="this.parentNode.remove()"><i class="fas fa-times"></i></button>';
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.style.opacity = '0'; toast.style.transform = 'translateY(-10px) scale(0.95)';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 6000);
+}
+
+(function initLiveAnnouncements() {
   var eventIds = {{ (active_tickets | map(attribute='event_id') | list) | tojson }};
   if (!eventIds.length) return;
-  var seenIds = new Set(
-    Array.from(document.querySelectorAll('.ann-bar[data-id]')).map(function(el){ return el.dataset.id; })
-  );
-  var container = document.querySelector('.content');
-  var firstChild = container ? container.firstElementChild : null;
-
-  function fetchOne(eid) {
-    fetch('/spoc/announcements/public/' + eid)
-      .then(function(r){ return r.json(); })
-      .then(function(items) {
-        items.forEach(function(item) {
-          if (seenIds.has(item.id)) return;
-          seenIds.add(item.id);
-          var colors = { info:'var(--info-soft)', warning:'var(--danger-soft)', success:'var(--success-soft)' };
-          var textColors = { info:'var(--info)', warning:'var(--danger)', success:'var(--success)' };
-          var bar = document.createElement('div');
-          bar.className = 'ann-bar';
-          bar.dataset.id = item.id;
-          bar.style.background = colors[item.priority] || colors.info;
-          bar.style.color = textColors[item.priority] || 'var(--ink-800)';
-          bar.innerHTML = '<i class="fas fa-bullhorn" style="color:var(--orange);flex-shrink:0;"></i>' +
-            '<span>' + item.message + '</span>';
-          var heroSection = document.querySelector('.hero-band');
-          if (heroSection && heroSection.nextElementSibling) {
-            heroSection.parentNode.insertBefore(bar, heroSection.nextElementSibling);
-          }
-        });
-      }).catch(function(){});
-  }
-
-  eventIds.forEach(fetchOne);
-  setInterval(function(){ eventIds.forEach(fetchOne); }, 30000);
+  var seenIds = new Set(Array.from(document.querySelectorAll('.ann-strip[data-id]')).map(function(el){ return el.dataset.id; }));
+  var sseSource = new EventSource('/live/announcements/stream?events=' + eventIds.join(','));
+  sseSource.onmessage = function(event) {
+    try {
+      var item = JSON.parse(event.data);
+      if (!item || !item.id || seenIds.has(item.id)) return;
+      seenIds.add(item.id);
+      showAnnouncementToast(item.event_title || 'Announcement', item.message, item.priority);
+    } catch (e) { console.error("SSE parse error:", e); }
+  };
+  sseSource.onerror = function() { console.warn("SSE reconnecting..."); };
+  window.addEventListener('beforeunload', function() { sseSource.close(); });
 })();
 
-// ── WAITLIST ──────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────────────────────
+   WAITLIST
+   ──────────────────────────────────────────────────────────────────────────── */
 fetch('/participant/waitlist_status', { credentials: 'same-origin' })
   .then(function(r) { return r.json(); })
   .then(function(items) {
     if (!Array.isArray(items) || !items.length) return;
-    var sec  = document.getElementById('waitlist-section');
+    var sec = document.getElementById('waitlist-section');
     var list = document.getElementById('waitlist-list');
     sec.style.display = '';
     list.innerHTML = items.map(function(w) {
-      return '<div style="background:var(--warning-soft);border:1px solid var(--warning);border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
-        '<div><div style="font-size:13.5px;font-weight:700;color:var(--ink-900);">' + w.event_title + '</div>' +
-        '<div style="font-size:12px;color:var(--ink-600);margin-top:2px;"><i class="fas fa-hourglass-half me-1"></i>Waitlist position #' + w.position + '</div></div>' +
-        '<a href="/event/' + w.event_id + '" style="font-size:12px;font-weight:600;color:var(--snpsu-gold);text-decoration:none;border:1px solid var(--snpsu-gold);padding:5px 12px;border-radius:8px;background:var(--bg-card);">View Event</a>' +
-        '</div>';
+      return '<div style="background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.12);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+        '<div><div style="font-size:14px;font-weight:700;color:var(--text-primary);">' + w.event_title + '</div>' +
+        '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;"><i class="fas fa-hourglass-half me-1"></i>Waitlist position #' + w.position + '</div></div>' +
+        '<a href="/event/' + w.event_id + '" class="btn-act btn-act-ghost" style="font-size:12px;">View Event</a></div>';
     }).join('');
   }).catch(function(){});
 
-// Load unread count on page load (just show badge if any unread)
+/* ────────────────────────────────────────────────────────────────────────────
+   LOAD UNREAD NOTIF COUNT
+   ──────────────────────────────────────────────────────────────────────────── */
 fetch('/notifications/feed', { credentials: 'same-origin' })
   .then(function(r) { return r.json(); })
   .then(function(items) {
@@ -1221,7 +1868,9 @@ fetch('/notifications/feed', { credentials: 'same-origin' })
     if (unread > 0) document.getElementById('bell-badge').style.display = 'block';
   }).catch(function(){});
 
-// Load Referrals
+/* ────────────────────────────────────────────────────────────────────────────
+   REFERRAL SYSTEM
+   ──────────────────────────────────────────────────────────────────────────── */
 fetch('/participant/referrals/api/stats', { credentials: 'same-origin' })
   .then(function(res) { return res.json(); })
   .then(function(data) {
@@ -1234,26 +1883,83 @@ fetch('/participant/referrals/api/stats', { credentials: 'same-origin' })
 
 function copyRefLink() {
   var input = document.getElementById('ref-link-val');
-  navigator.clipboard.writeText(input.value);
-  alert("Referral Link copied to clipboard!");
+  navigator.clipboard.writeText(input.value).then(function() {
+    showToast('Referral link copied to clipboard!', 'success', 2000);
+  });
 }
 
 function claimPayout() {
   fetch('/participant/referrals/api/claim', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : ''
-    }
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' }
   })
   .then(function(res) { return res.json(); })
-  .then(function(data) {
-    if (data.success) {
-      alert(data.message);
-    }
-  });
+  .then(function(data) { if (data.success) showToast(data.message, 'success', 3000); });
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   WEB PUSH NOTIFICATIONS
+   ──────────────────────────────────────────────────────────────────────────── */
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function initPushToggleState() {
+  var toggle = document.getElementById('push-notif-toggle');
+  if (!toggle) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toggle.disabled = true;
+    toggle.parentNode.style.opacity = '0.5';
+    return;
+  }
+  navigator.serviceWorker.ready.then(function(reg) { return reg.pushManager.getSubscription(); })
+    .then(function(sub) { toggle.checked = !!sub; })
+    .catch(function(err) { console.error("Push status check error:", err); });
+}
+
+function togglePushSubscription(el) {
+  if (el.checked) {
+    Notification.requestPermission().then(function(permission) {
+      if (permission !== 'granted') { el.checked = false; return; }
+      fetch('/push/vapid_public_key').then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.key) throw new Error("VAPID key missing");
+          var key = urlBase64ToUint8Array(data.key);
+          return navigator.serviceWorker.ready.then(function(reg) {
+            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+          });
+        })
+        .then(function(sub) {
+          return fetch('/push/subscribe', { method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' },
+            body: JSON.stringify(sub) });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res.ok) showAnnouncementToast("Notifications", "Push notifications enabled!", "success");
+          else throw new Error("Server registration failed");
+        })
+        .catch(function(err) { console.error(err); el.checked = false; });
+    });
+  } else {
+    navigator.serviceWorker.ready.then(function(reg) { return reg.pushManager.getSubscription(); })
+      .then(function(sub) {
+        if (sub) return sub.unsubscribe().then(function() {
+          return fetch('/push/unsubscribe', { method: 'POST', credentials: 'same-origin',
+            headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' } });
+        });
+      })
+      .then(function() { showAnnouncementToast("Notifications", "Push notifications disabled.", "info"); })
+      .catch(function(err) { console.error(err); el.checked = true; });
+  }
+}
+
+window.addEventListener('load', initPushToggleState);
 </script>
 </body>
 </html>

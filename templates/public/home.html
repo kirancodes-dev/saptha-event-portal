@@ -4,192 +4,504 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#1a2557">
+<meta name="theme-color" content="#030712">
 <title>SapthaEvent | Sapthagiri NPS University</title>
 <meta name="description" content="Discover and register for hackathons, cultural fests, sports meets, and workshops at Sapthagiri NPS University.">
 {% include 'includes/pwa_head.html' %}
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="/static/css/global.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;--blue2:#1a4fa0;}
-*{box-sizing:border-box;}
-body{font-family:'Inter',sans-serif;background:#f1f5f9;margin:0;overflow-x:hidden;}
-h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+:root {
+  --bg-dark: #040715;
+  --bg-card: rgba(255, 255, 255, 0.02);
+  --border-light: rgba(255, 255, 255, 0.08);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --orange-glow: #f59e0b;
+  --blue-neon: #3b82f6;
+  --purple-neon: #a78bfa;
+  --green-neon: #4ade80;
+  --cyan-neon: #22d3ee;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-secondary);
+  margin: 0;
+  overflow-x: hidden;
+}
+h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-primary); }
+
+/* ── TECH GRID BACKGROUND ────────────────────────── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: center;
+  mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 100%);
+  pointer-events: none;
+}
+
+/* ── LIQUID GLASS BLOBS ─────────────────────────── */
+.liquid-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  opacity: 0.45;
+  pointer-events: none;
+  transform-origin: center;
+}
+.blob-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+  top: -100px;
+  right: -50px;
+  animation: floatBlob1 20s infinite ease-in-out;
+}
+.blob-2 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.22) 0%, transparent 70%);
+  bottom: 10%;
+  left: -150px;
+  animation: floatBlob2 25s infinite ease-in-out;
+}
+.blob-3 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.25) 0%, transparent 70%);
+  top: 40%;
+  right: 15%;
+  animation: floatBlob3 18s infinite ease-in-out alternate;
+}
+.blob-4 {
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, transparent 70%);
+  bottom: -50px;
+  right: -50px;
+  animation: floatBlob4 22s infinite ease-in-out;
+}
+
+@keyframes floatBlob1 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(80px, 60px) scale(1.08) rotate(120deg); }
+  66% { transform: translate(-40px, 90px) scale(0.92) rotate(240deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(360deg); }
+}
+@keyframes floatBlob2 {
+  0% { transform: translate(0, 0) scale(1) rotate(360deg); }
+  50% { transform: translate(-60px, -80px) scale(1.15) rotate(180deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+@keyframes floatBlob3 {
+  0% { transform: translate(0, 0) scale(0.95); }
+  50% { transform: translate(90px, -40px) scale(1.12); }
+  100% { transform: translate(0, 0) scale(0.95); }
+}
+@keyframes floatBlob4 {
+  0% { transform: translate(0, 0) scale(1.08); }
+  50% { transform: translate(-80px, 40px) scale(0.92); }
+  100% { transform: translate(0, 0) scale(1.08); }
+}
 
 /* ── NAVBAR ─────────────────────────────────────────── */
-.snav{background:var(--blue);position:sticky;top:0;z-index:1050;padding:8px 0;box-shadow:0 4px 20px rgba(26,37,87,.3);}
-.snav .navbar-brand{display:flex;align-items:center;gap:12px;text-decoration:none;}
-.nav-logo-sq{width:40px;height:40px;background:var(--orange);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;}
-.brand-n{font-family:'Poppins',sans-serif;font-weight:800;font-size:17px;color:#fff;line-height:1.1;display:block;}
-.brand-s{font-size:8px;color:rgba(255,255,255,.5);letter-spacing:2px;text-transform:uppercase;display:block;font-weight:600;}
-.snav .nav-link{color:rgba(255,255,255,.8)!important;font-size:13px;font-weight:500;padding:7px 12px!important;border-radius:8px;transition:.2s;}
-.snav .nav-link:hover{color:#fff!important;background:rgba(255,255,255,.1);}
-.snav .btn-login{background:var(--orange);color:#fff!important;font-weight:700;padding:8px 20px;border-radius:8px;text-decoration:none;font-size:13px;transition:.2s;border:none;}
-.snav .btn-login:hover{background:#d95f0f;transform:translateY(-1px);}
-.navbar-toggler{border:1.5px solid rgba(255,255,255,.25)!important;color:#fff;padding:5px 9px;border-radius:8px;background:rgba(255,255,255,.06);}
-.navbar-toggler:focus{box-shadow:none;}
+.snav {
+  background: rgba(4, 7, 21, 0.55);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  position: sticky;
+  top: 0;
+  z-index: 1050;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+.snav .navbar-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand-n { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 18px; color: var(--text-primary); line-height: 1.1; display: block; }
+.brand-s { font-size: 8.5px; color: rgba(255, 255, 255, 0.4); letter-spacing: 2px; text-transform: uppercase; display: block; font-weight: 600; }
+.snav .nav-link { color: rgba(255, 255, 255, 0.7) !important; font-size: 13.5px; font-weight: 500; padding: 8px 14px !important; border-radius: 8px; transition: all 0.2s ease; }
+.snav .nav-link:hover, .snav .nav-link.active { color: #fff !important; background: rgba(255, 255, 255, 0.05); }
+.snav .btn-login { background: var(--orange-glow); color: #030712 !important; font-weight: 700; padding: 8px 22px; border-radius: 10px; text-decoration: none; font-size: 13.5px; transition: all 0.2s ease; border: none; }
+.snav .btn-login:hover { background: #d97706; transform: translateY(-1px); }
+.navbar-toggler { border: 1px solid rgba(255, 255, 255, 0.15) !important; color: #fff; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); }
+.navbar-toggler:focus { box-shadow: none; }
 
 /* ── HERO ───────────────────────────────────────────── */
-.hero{background:linear-gradient(135deg,#0c1535 0%,#1a2557 55%,#1a4fa0 100%);padding:70px 0 80px;position:relative;overflow:hidden;}
-.hero::before{content:'';position:absolute;top:-120px;right:-100px;width:500px;height:500px;border-radius:50%;background:rgba(201,164,94,.08);pointer-events:none;}
-.hero::after{content:'';position:absolute;bottom:-80px;left:-60px;width:350px;height:350px;border-radius:50%;background:rgba(26,79,160,.25);pointer-events:none;}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(201,164,94,.15);border:1px solid rgba(201,164,94,.35);color:var(--orange);font-size:11.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:6px 16px;border-radius:100px;margin-bottom:20px;}
-.hero-title{font-family:'Poppins',sans-serif;font-weight:900;font-size:clamp(2rem,5vw,3.4rem);color:#fff;line-height:1.1;margin-bottom:12px;}
-.hero-sub{font-size:15px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:30px;max-width:480px;}
-.search-wrap{display:flex;gap:0;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.2);max-width:520px;}
-.search-wrap input{flex:1;border:none;padding:14px 20px;font-size:14px;outline:none;color:#1e293b;background:transparent;}
-.search-wrap button{background:var(--orange);border:none;padding:14px 22px;color:#fff;font-size:16px;cursor:pointer;transition:.2s;}
-.search-wrap button:hover{background:#d95f0f;}
+.hero { padding: 90px 0 100px; position: relative; overflow: hidden; }
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 100px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+.hero-title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 900;
+  font-size: clamp(2.5rem, 5.5vw, 3.8rem);
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+.hero-title span {
+  background: linear-gradient(135deg, #f59e0b 0%, #a78bfa 50%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-sub { font-size: 15.5px; color: rgba(255, 255, 255, 0.6); line-height: 1.6; margin-bottom: 36px; max-width: 500px; }
+
+.search-wrap {
+  display: flex;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  max-width: 520px;
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  transition: all 0.3s ease;
+}
+.search-wrap:focus-within {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+.search-wrap input { flex: 1; border: none; padding: 16px 24px; font-size: 14.5px; outline: none; color: #fff; background: transparent; }
+.search-wrap input::placeholder { color: rgba(255, 255, 255, 0.4); }
+.search-wrap button { background: rgba(255, 255, 255, 0.06); border: none; border-left: 1px solid rgba(255, 255, 255, 0.08); padding: 0 24px; color: #fff; font-size: 16px; cursor: pointer; transition: all 0.2s ease; }
+.search-wrap button:hover { background: rgba(255, 255, 255, 0.12); }
 
 /* HERO STATS */
-.hero-stats{display:flex;flex-wrap:wrap;gap:16px;margin-top:36px;}
-.hstat{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px 22px;text-align:center;min-width:110px;flex:1;}
-.hstat-n{font-family:'Poppins',sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;}
-.hstat-l{font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+.hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 48px; }
+@media(max-width: 576px) {
+  .hero-stats { grid-template-columns: repeat(2, 1fr); }
+}
+.hstat {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 18px 12px;
+  text-align: center;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hstat:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-4px);
+}
+.hstat-n { font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 800; color: #fff; line-height: 1; }
+.hstat-l { font-size: 10.5px; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 6px; font-weight: 600; }
 
 /* ── CATEGORY PILLS ─────────────────────────────────── */
-.filter-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:14px 0;position:sticky;top:60px;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.04);}
-.cat-pills{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
-.cat-pills::-webkit-scrollbar{display:none;}
-.cat-pill{background:#f1f5f9;border:1.5px solid transparent;color:#64748b;font-size:12.5px;font-weight:600;padding:7px 18px;border-radius:100px;cursor:pointer;white-space:nowrap;transition:.2s;flex-shrink:0;}
-.cat-pill:hover{background:#e2e8f0;color:var(--blue);}
-.cat-pill.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-.cat-pill[data-cat="Technical"].active{background:#1a2557;}
-.cat-pill[data-cat="Cultural"].active{background:#7c3aed;}
-.cat-pill[data-cat="Sports"].active{background:#16a34a;}
-.cat-pill[data-cat="Management"].active{background:#d97706;}
-.cat-pill[data-cat="Workshop"].active{background:#0891b2;}
+.filter-bar {
+  background: rgba(4, 7, 21, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px 0;
+  position: sticky;
+  top: 67px;
+  z-index: 100;
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+}
+.cat-pills { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+.cat-pills::-webkit-scrollbar { display: none; }
+.cat-pill {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 100px;
+  cursor: pointer;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.cat-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+.cat-pill.active {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(255, 255, 255, 0.08);
+}
 
 /* ── RESULTS INFO ───────────────────────────────────── */
-.results-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;}
-.results-count{font-size:13px;color:#64748b;font-weight:500;}
-.sort-select{font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 10px;color:#334155;background:#fff;cursor:pointer;}
+.results-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 8px; }
+.results-count { font-size: 13.5px; color: rgba(255,255,255,0.45); font-weight: 500; }
+.sort-select {
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 6px 14px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  outline: none;
+  backdrop-filter: blur(10px);
+  transition: border-color 0.2s ease;
+}
+.sort-select:focus {
+  border-color: rgba(255, 255, 255, 0.25);
+}
 
 /* ── EVENT CARDS ────────────────────────────────────── */
-.events-grid{display:grid;gap:20px;grid-template-columns:repeat(2,1fr);}
+.events-grid { display: grid; gap: 24px; grid-template-columns: repeat(2, 1fr); }
 @media(max-width:900px){.events-grid{grid-template-columns:1fr;}}
 
-.ev-card{background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;transition:.3s;position:relative;display:flex;flex-direction:column;}
-.ev-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(26,37,87,.12);border-color:var(--orange);}
+.ev-card {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+}
+.ev-card:hover {
+  transform: translateY(-6px);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
 
-.ev-banner{position:relative;height:170px;overflow:hidden;background:#e2e8f0;}
-.ev-banner img{width:100%;height:100%;object-fit:cover;transition:.4s;}
-.ev-card:hover .ev-banner img{transform:scale(1.05);}
-.ev-banner-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55) 30%,transparent);}
+.ev-banner { position: relative; height: 180px; overflow: hidden; background: rgba(255,255,255,0.02); }
+.ev-banner img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.ev-card:hover .ev-banner img { transform: scale(1.06); }
+.ev-banner-overlay { position: absolute; inset: 0; background: linear-gradient(to top, #040715 0%, rgba(4, 7, 21, 0.2) 60%, transparent 100%); }
 
-.cat-badge{position:absolute;top:12px;left:12px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:4px 12px;border-radius:100px;color:#fff;}
-.cat-Technical{background:#1a2557;}
-.cat-Cultural{background:#7c3aed;}
-.cat-Sports{background:#16a34a;}
-.cat-Management{background:#d97706;}
-.cat-Workshop{background:#0891b2;}
-.cat-General{background:#475569;}
+.cat-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 100px;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(4px);
+}
+.cat-Technical { background: rgba(37, 99, 235, 0.6); }
+.cat-Cultural { background: rgba(124, 58, 237, 0.6); }
+.cat-Sports { background: rgba(22, 163, 74, 0.6); }
+.cat-Management { background: rgba(217, 119, 6, 0.6); }
+.cat-Workshop { background: rgba(8, 145, 178, 0.6); }
+.cat-General { background: rgba(71, 85, 105, 0.6); }
 
-.ev-type{position:absolute;top:12px;right:12px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 10px;border-radius:100px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;backdrop-filter:blur(4px);}
+.ev-type {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
 
 /* Countdown in banner */
-.ev-countdown{position:absolute;bottom:10px;left:12px;display:flex;gap:6px;}
-.cd-unit{background:rgba(0,0,0,.6);backdrop-filter:blur(4px);border-radius:8px;padding:4px 8px;text-align:center;min-width:38px;}
-.cd-num{font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#fff;line-height:1;}
-.cd-lbl{font-size:8px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;}
-.ev-past .ev-countdown{display:none;}
-.ev-today .ev-countdown .cd-unit{background:rgba(201,164,94,.8);}
+.ev-countdown { position: absolute; bottom: 12px; left: 14px; display: flex; gap: 6px; }
+.cd-unit { background: rgba(4, 7, 21, 0.75); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(6px); border-radius: 8px; padding: 4px 8px; text-align: center; min-width: 42px; }
+.cd-num { font-family: 'Poppins', sans-serif; font-size: 13.5px; font-weight: 700; color: #fff; line-height: 1; }
+.cd-lbl { font-size: 8px; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
+.ev-past .ev-countdown { display: none; }
+.ev-today .ev-countdown .cd-unit { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
 
-.ev-body{padding:16px;flex:1;display:flex;flex-direction:column;}
-.ev-title{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);margin:0 0 8px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.ev-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
-.ev-meta-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#64748b;}
-.ev-meta-item i{color:var(--orange);font-size:11px;width:12px;}
+.ev-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
+.ev-title { font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 10px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ev-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.ev-meta-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: rgba(255,255,255,0.6); }
+.ev-meta-item i { color: rgba(255,255,255,0.4); font-size: 12px; width: 12px; }
 
 /* Capacity bar */
-.cap-wrap{margin-bottom:12px;}
-.cap-label{font-size:10.5px;font-weight:600;color:#64748b;display:flex;justify-content:space-between;margin-bottom:4px;}
-.cap-bar{height:5px;background:#e2e8f0;border-radius:100px;overflow:hidden;}
-.cap-fill{height:100%;background:linear-gradient(90deg,#22c55e,var(--orange));border-radius:100px;transition:.5s;}
-.cap-fill.high{background:linear-gradient(90deg,var(--orange),#ef4444);}
+.cap-wrap { margin-bottom: 14px; }
+.cap-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between; margin-bottom: 5px; }
+.cap-bar { height: 5px; background: rgba(255,255,255,0.06); border-radius: 100px; overflow: hidden; }
+.cap-fill { height: 100%; background: linear-gradient(90deg, #10b981, var(--orange-glow)); border-radius: 100px; transition: width 0.5s ease; }
+.cap-fill.high { background: linear-gradient(90deg, var(--orange-glow), #ef4444); }
 
-.ev-footer{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid #f1f5f9;}
-.ev-fee{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);}
-.ev-fee .free{color:#16a34a;}
-.btn-ev{background:var(--blue);color:#fff;font-size:12px;font-weight:700;padding:8px 16px;border-radius:8px;text-decoration:none;transition:.2s;border:none;display:inline-flex;align-items:center;gap:5px;}
-.btn-ev:hover{background:var(--orange);color:#fff;transform:translateY(-1px);}
-.btn-det{background:#f1f5f9;color:var(--blue);font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;border:1.5px solid #e2e8f0;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:5px;flex-shrink:0;}
-.btn-det:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
-/* Detail modal */
-.ev-det-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 8px;text-align:center;}
-.ev-det-box i{font-size:18px;display:block;margin-bottom:6px;}
-.ev-det-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-top:2px;}
-.ev-det-val{font-size:13px;font-weight:700;color:var(--blue);margin-top:3px;word-break:break-word;}
-.prize-box{background:#fff8f0;border:1px solid var(--orange);border-radius:10px;padding:14px 20px;text-align:center;min-width:100px;flex:1;}
-.prize-medal{font-size:26px;display:block;margin-bottom:4px;}
-.prize-rank{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;}
-.prize-val{font-size:14px;font-weight:700;color:var(--blue);margin-top:4px;}
+.ev-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+.ev-fee { font-family: 'Poppins', sans-serif; font-size: 15.5px; font-weight: 700; color: #fff; }
+.ev-fee .free { color: #10b981; display: flex; align-items: center; gap: 4px; }
+
+.btn-ev {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff !important;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-ev::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(45deg);
+  transition: all 0.6s ease;
+  pointer-events: none;
+  opacity: 0;
+}
+.btn-ev:hover::after {
+  opacity: 1;
+  left: 120%;
+  top: 120%;
+}
+.btn-ev:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+.btn-det { background: rgba(255, 255, 255, 0.02); color: rgba(255,255,255,0.8); font-size: 12.5px; font-weight: 700; padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.btn-det:hover { background: rgba(255, 255, 255, 0.08); color: #fff; border-color: rgba(255,255,255,0.12); }
 
 /* Empty state */
-.empty-state{background:#fff;border-radius:16px;padding:60px 24px;text-align:center;border:1px solid #e2e8f0;}
-.empty-state i{font-size:48px;color:#cbd5e1;display:block;margin-bottom:16px;}
-.empty-state h5{color:var(--blue);font-family:'Poppins',sans-serif;font-weight:700;}
-.empty-state p{color:#94a3b8;font-size:13px;}
+.empty-state { background: rgba(255, 255, 255, 0.02); border-radius: 20px; padding: 60px 24px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.06); backdrop-filter: blur(20px); }
+.empty-state i { font-size: 48px; color: rgba(255,255,255,0.15); display: block; margin-bottom: 16px; }
+.empty-state h5 { color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700; }
+.empty-state p { color: rgba(255,255,255,0.4); font-size: 13px; }
 
 /* ── CALENDAR SIDEBAR ───────────────────────────────── */
-.cal-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;position:sticky;top:110px;}
-.cal-header{background:var(--blue);padding:16px 20px;color:#fff;}
-.cal-header h6{font-family:'Poppins',sans-serif;font-weight:700;margin:0;font-size:14px;}
-.cal-body{padding:16px;}
-.fc-toolbar-title{font-size:1rem!important;font-weight:700!important;color:var(--blue)!important;}
-.fc-button{background:transparent!important;border:1px solid #e2e8f0!important;color:var(--blue)!important;font-size:12px!important;padding:4px 8px!important;}
-.fc-button:hover{background:var(--blue)!important;color:#fff!important;}
-.fc-daygrid-event{background:var(--orange)!important;border:none!important;font-size:10px!important;border-radius:3px!important;}
-.fc-day-today{background:rgba(201,164,94,.1)!important;}
+.cal-card { background: rgba(255, 255, 255, 0.02); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.06); overflow: hidden; position: sticky; top: 130px; backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25); }
+.cal-header { background: rgba(255, 255, 255, 0.02); padding: 16px 20px; color: #fff; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.cal-header h6 { font-family: 'Poppins', sans-serif; font-weight: 700; margin: 0; font-size: 14px; }
+.cal-body { padding: 16px; }
+.fc-toolbar-title { font-size: 0.95rem!important; font-weight: 700!important; color: #fff!important; }
+.fc-button { background: rgba(255,255,255,0.03)!important; border: 1px solid rgba(255,255,255,0.06)!important; color:#fff!important; font-size: 11px!important; padding: 4px 8px!important; border-radius: 6px!important; }
+.fc-button:hover { background: rgba(255,255,255,0.08)!important; }
+.fc-daygrid-event { background: rgba(255,255,255,0.15)!important; border: 1px solid rgba(255,255,255,0.25)!important; font-size: 9px!important; border-radius: 4px!important; padding: 2px 4px!important; }
+.fc-day-today { background: rgba(255, 255, 255, 0.05)!important; }
+.fc-theme-standard td, .fc-theme-standard th { border-color: rgba(255, 255, 255, 0.06) !important; }
+.fc-theme-standard .fc-scrollgrid { border-color: rgba(255, 255, 255, 0.06) !important; }
+.fc-daygrid-day-number { color: rgba(255, 255, 255, 0.8) !important; font-size: 11px !important; }
 
 /* Quick stats below calendar */
-.cal-stats{padding:0 16px 16px;}
-.cal-stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px;}
-.cal-stat-row:last-child{border:none;}
-.cal-stat-label{color:#64748b;}
-.cal-stat-val{font-family:'Poppins',sans-serif;font-weight:700;color:var(--blue);}
+.cal-stats { padding: 0 16px 16px; }
+.cal-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12.5px; }
+.cal-stat-row:last-child { border: none; }
+.cal-stat-label { color: rgba(255,255,255,0.4); display: flex; align-items: center; }
+.cal-stat-val { font-family: 'Poppins', sans-serif; font-weight: 700; color: #fff; }
 
 /* ── SPONSOR STRIP ──────────────────────────────────── */
-.sponsor-strip{background:#fff;border-top:1px solid #e2e8f0;padding:40px 0;display:none;}
+.sponsor-strip { background: rgba(255,255,255,0.01); border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 50px 0; display: none; }
 
 /* ── CHATBOT ────────────────────────────────────────── */
-.chat-btn{position:fixed;bottom:28px;right:28px;width:56px;height:56px;background:var(--orange);color:#fff;border-radius:50%;box-shadow:0 6px 20px rgba(201,164,94,.4);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:9999;border:none;transition:.3s;}
-.chat-btn:hover{transform:scale(1.1);background:#d95f0f;}
-.chat-window{position:fixed;bottom:96px;right:28px;width:340px;height:420px;background:#fff;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.15);z-index:9999;display:none;flex-direction:column;overflow:hidden;border:1px solid #e2e8f0;}
-.chat-header{background:var(--blue);color:#fff;padding:14px 16px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;}
-.chat-body{flex:1;padding:14px;overflow-y:auto;background:#f8fafc;display:flex;flex-direction:column;gap:8px;}
-.chat-input-area{padding:10px;border-top:1px solid #e2e8f0;background:#fff;display:flex;gap:8px;}
-.chat-input{flex:1;border:1.5px solid #e2e8f0;border-radius:100px;padding:8px 14px;font-size:13px;outline:none;}
-.chat-send{background:var(--blue);color:#fff;border:none;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.msg{max-width:82%;padding:8px 12px;border-radius:12px;font-size:12.5px;line-height:1.5;}
-.msg-bot{background:#fff;color:#334155;border:1px solid #e2e8f0;align-self:flex-start;border-bottom-left-radius:3px;}
-.msg-user{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
+.chat-btn { position: fixed; bottom: 28px; right: 28px; width: 56px; height: 56px; background: rgba(255, 255, 255, 0.05); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50%; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; z-index: 9999; backdrop-filter: blur(10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.chat-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.12); }
+.chat-window { position: fixed; bottom: 96px; right: 28px; width: 340px; height: 420px; background: rgba(11, 15, 25, 0.7); border-radius: 20px; box-shadow: 0 16px 48px rgba(0,0,0,0.5); z-index: 9999; display: none; flex-direction: column; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(25px); }
+.chat-header { background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); color: #fff; padding: 14px 16px; font-weight: 700; font-size: 13.5px; display: flex; justify-content: space-between; align-items: center; }
+.chat-body { flex: 1; padding: 14px; overflow-y: auto; background: rgba(3,7,18,0.2); display: flex; flex-direction: column; gap: 8px; }
+.chat-input-area { padding: 10px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(11, 15, 25, 0.7); display: flex; gap: 8px; }
+.chat-input { flex: 1; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: #fff; border-radius: 100px; padding: 8px 16px; font-size: 13px; outline: none; }
+.chat-input::placeholder { color: rgba(255, 255, 255, 0.4); }
+.chat-send { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease; }
+.chat-send:hover { background: rgba(255, 255, 255, 0.12); }
+.msg { max-width: 82%; padding: 8px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.5; }
+.msg-bot { background: rgba(255, 255, 255, 0.03); color: #e5e7eb; border: 1px solid rgba(255, 255, 255, 0.04); align-self: flex-start; border-bottom-left-radius: 3px; }
+.msg-user { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
 
 /* ── ANIMATIONS ─────────────────────────────────────── */
-@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.ev-card{animation:fadeInUp .4s ease both;}
-.ev-card:nth-child(2){animation-delay:.05s;}
-.ev-card:nth-child(3){animation-delay:.1s;}
-.ev-card:nth-child(4){animation-delay:.15s;}
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.ev-card { animation: fadeInUp 0.4s ease both; }
+.ev-card:nth-child(2) { animation-delay: .05s; }
+.ev-card:nth-child(3) { animation-delay: .1s; }
+.ev-card:nth-child(4) { animation-delay: .15s; }
+
+/* Details Modal */
+.modal-content { background: rgba(11, 15, 25, 0.7) !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 24px 60px rgba(0,0,0,0.7) !important; backdrop-filter: blur(30px) saturate(180%) !important; -webkit-backdrop-filter: blur(30px) saturate(180%) !important; }
+.modal-header { border-bottom: 1px solid rgba(255,255,255,0.06) !important; background: rgba(255,255,255,0.01) !important; }
+.modal-footer { border-top: 1px solid rgba(255,255,255,0.06) !important; background: rgba(255,255,255,0.01) !important; }
+.ev-det-box { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; padding: 14px 10px; text-align: center; height: 100%; backdrop-filter: blur(10px); }
+.ev-det-box i { font-size: 20px; display: block; margin-bottom: 8px; }
+.ev-det-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+.ev-det-val { font-size: 13.5px; font-weight: 700; color: #fff; margin-top: 4px; }
+.prize-box { background: rgba(245, 158, 11, 0.02); border: 1px solid rgba(245, 158, 11, 0.12); border-radius: 12px; padding: 16px; text-align: center; min-width: 100px; flex: 1; backdrop-filter: blur(10px); }
+.prize-medal { font-size: 28px; display: block; margin-bottom: 4px; }
+.prize-rank { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.4); }
+.prize-val { font-size: 14.5px; font-weight: 700; color: #fff; margin-top: 4px; }
 
 /* ── RESPONSIVE ─────────────────────────────────────── */
-@media(max-width:991px){.cal-card{position:relative;top:0;margin-bottom:24px;}.hero-stats{justify-content:center;}.search-wrap{max-width:100%;}}
-@media(max-width:576px){.hero{padding:50px 0 60px;}.hstat{min-width:80px;}.hstat-n{font-size:20px;}}
-
-/* ── HIDDEN UTILITY ─────────────────────────────────── */
-.d-none-ev{display:none!important;}
+@media(max-width: 991px) { .cal-card { position: relative; top: 0; margin-bottom: 24px; } .hero-stats { justify-content: center; } .search-wrap { max-width: 100%; } }
+@media(max-width: 576px) { .hero { padding: 60px 0 70px; } .hstat-n { font-size: 24px; } }
+.d-none-ev { display: none !important; }
 </style>
 </head>
 <body>
 
+<div class="grid-bg"></div>
+<div class="liquid-blob blob-1"></div>
+<div class="liquid-blob blob-2"></div>
+<div class="liquid-blob blob-3"></div>
+<div class="liquid-blob blob-4"></div>
 
 <!-- ══ NAVBAR ════════════════════════════════════════════ -->
 <nav class="snav navbar navbar-expand-lg">
 <div class="container">
   <a class="navbar-brand" href="/">
-    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:42px;width:auto;object-fit:contain;">
+    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:42px;width:auto;object-fit:contain;filter: drop-shadow(0 0 8px rgba(255,255,255,0.15));">
     <div>
       <span class="brand-n">SapthaEvent</span>
       <span class="brand-s">Sapthagiri NPS University</span>
@@ -204,36 +516,33 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
       <li class="nav-item"><a href="/verify" class="nav-link">Verify Ticket</a></li>
       {% if session.get('user_id') %}
         <li class="nav-item dropdown ms-2">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" style="background:rgba(255,255,255,.1);border-radius:8px;padding:7px 14px!important;">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:7px 14px!important;color:#fff!important;">
             <i class="fas fa-user-circle me-1"></i> {{ session.get('name', 'My Account') | truncate(16,True,'…') }}
           </a>
-          <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius:12px;min-width:180px;">
+          <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius:12px;min-width:180px;background:rgba(11, 15, 25, 0.85);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(20px);">
             {% if session.get('role') == 'Student' %}
-              <li><a class="dropdown-item" href="/participant/dashboard"><i class="fas fa-ticket-alt me-2 text-primary"></i>My Dashboard</a></li>
+              <li><a class="dropdown-item text-white" href="/participant/dashboard" style="background:none;"><i class="fas fa-ticket-alt me-2 text-primary"></i>My Dashboard</a></li>
             {% elif session.get('role') == 'ClubSPOC' %}
-              <li><a class="dropdown-item" href="/spoc/dashboard"><i class="fas fa-chart-bar me-2 text-primary"></i>Club Console</a></li>
+              <li><a class="dropdown-item text-white" href="/spoc/dashboard" style="background:none;"><i class="fas fa-chart-bar me-2 text-primary"></i>Club Console</a></li>
             {% elif session.get('role') == 'SuperAdmin' %}
-              <li><a class="dropdown-item" href="/super_admin/dashboard"><i class="fas fa-shield-alt me-2 text-danger"></i>Super Admin</a></li>
-              <li><a class="dropdown-item" href="/admin/dashboard"><i class="fas fa-cog me-2 text-secondary"></i>Admin Panel</a></li>
-              <li><a class="dropdown-item" href="/spoc/dashboard"><i class="fas fa-chart-bar me-2 text-primary"></i>SPOC Console</a></li>
+              <li><a class="dropdown-item text-white" href="/super_admin/dashboard" style="background:none;"><i class="fas fa-shield-alt me-2 text-danger"></i>Super Admin</a></li>
+              <li><a class="dropdown-item text-white" href="/admin/dashboard" style="background:none;"><i class="fas fa-cog me-2 text-secondary"></i>Admin Panel</a></li>
+              <li><a class="dropdown-item text-white" href="/spoc/dashboard" style="background:none;"><i class="fas fa-chart-bar me-2 text-primary"></i>SPOC Console</a></li>
             {% elif session.get('role') == 'Admin' %}
-              <li><a class="dropdown-item" href="/admin/dashboard"><i class="fas fa-cog me-2 text-secondary"></i>Admin Panel</a></li>
+              <li><a class="dropdown-item text-white" href="/admin/dashboard" style="background:none;"><i class="fas fa-cog me-2 text-secondary"></i>Admin Panel</a></li>
             {% endif %}
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+            <li><hr class="dropdown-divider" style="background-color:rgba(255,255,255,0.08);"></li>
+            <li><a class="dropdown-item text-danger" href="/logout" style="background:none;"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
           </ul>
         </li>
       {% else %}
         <li class="nav-item ms-2"><a href="/login" class="snav btn-login">Login</a></li>
-        <li class="nav-item ms-1"><a href="/register" class="snav btn-login" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);">Register</a></li>
+        <li class="nav-item ms-1"><a href="/register" class="snav btn-login" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff!important;">Register</a></li>
       {% endif %}
     </ul>
   </div>
 </div>
 </nav>
-
-<!-- ══ CAMPUS SLIDER (photos to be added) ══════════════ -->
-<!-- Placeholder: upload your photos, then they will be wired in here -->
 
 <!-- ══ HERO ══════════════════════════════════════════════ -->
 <section class="hero">
@@ -241,7 +550,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   <div class="row align-items-center g-5">
     <div class="col-lg-6">
       <div class="hero-badge"><i class="fas fa-university"></i> Official University Portal</div>
-      <h1 class="hero-title">Discover &amp;<br>Register for<br><span style="color:var(--orange);">Amazing Events</span></h1>
+      <h1 class="hero-title">Discover &amp;<br>Register for<br><span>Amazing Events</span></h1>
       <p class="hero-sub">Hackathons, cultural fests, sports meets, workshops &amp; more — all in one place. Get instant QR tickets &amp; real-time updates.</p>
       <div class="search-wrap">
         <input type="text" id="searchInput" placeholder="Search events by name or venue…" autocomplete="off">
@@ -266,28 +575,82 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
         </div>
       </div>
     </div>
+    
     <div class="col-lg-6 d-none d-lg-flex justify-content-end">
-      <!-- Floating event preview cards -->
-      <div style="position:relative;width:380px;height:320px;">
-        <div style="position:absolute;top:0;left:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:16px 20px;backdrop-filter:blur(8px);width:240px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-            <div style="width:36px;height:36px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-laptop-code text-white"></i></div>
-            <div><div style="color:#fff;font-size:13px;font-weight:700;">Hackathon 2026</div><div style="color:rgba(255,255,255,.5);font-size:10px;">Technical · 48 Teams</div></div>
+      <!-- Floating event preview cards or actual featured events -->
+      <div style="position:relative;width:400px;height:340px;">
+        {% if featured_events %}
+          {% for fev in featured_events %}
+            {% set index = loop.index0 %}
+            <div style="position:absolute;
+                        {% if index == 0 %}top:0;left:0;z-index:3;
+                        {% elif index == 1 %}top:80px;right:0;z-index:2;
+                        {% else %}bottom:0;left:30px;z-index:1;{% endif %}
+                        background:rgba(255, 255, 255, 0.02);
+                        border:1px solid rgba(255, 255, 255, 0.08);
+                        border-radius:18px;
+                        padding:16px 20px;
+                        backdrop-filter:blur(25px) saturate(180%);
+                        -webkit-backdrop-filter:blur(25px) saturate(180%);
+                        width:260px;
+                        box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        cursor: pointer;"
+                 onclick="window.location.href='/event/{{ fev.id }}'"
+                 onmouseover="this.style.transform='translateY(-6px) scale(1.02)'; this.style.borderColor='rgba(255,255,255,0.2)';"
+                 onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.08)';"
+                 class="floating-featured-card">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div style="width:40px;height:40px;
+                            background: {% if fev.category == 'Technical' %}rgba(37, 99, 235, 0.4)
+                                       {% elif fev.category == 'Cultural' %}rgba(124, 58, 237, 0.4)
+                                       {% elif fev.category == 'Sports' %}rgba(22, 163, 74, 0.4)
+                                       {% elif fev.category == 'Management' %}rgba(217, 119, 6, 0.4)
+                                       {% else %}rgba(8, 145, 178, 0.4){% endif %};
+                            border: 1px solid rgba(255, 255, 255, 0.15);
+                            border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                  <i class="fas {% if fev.category == 'Technical' %}fa-laptop-code
+                               {% elif fev.category == 'Cultural' %}fa-music
+                               {% elif fev.category == 'Sports' %}fa-running
+                               {% elif fev.category == 'Management' %}fa-briefcase
+                               {% else %}fa-calendar-alt{% endif %} text-white"></i>
+                </div>
+                <div>
+                  <div style="color:#fff;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">{{ fev.title }}</div>
+                  <div style="color:rgba(255,255,255,0.45);font-size:10px;">{{ fev.category }} · {{ fev.participation_type }}</div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:between;align-items:center;margin-top:8px;">
+                <span style="color:rgba(255,255,255,0.5);font-size:11px;"><i class="fas fa-map-marker-alt me-1 text-warning"></i>{{ fev.venue | truncate(15,True,'…') }}</span>
+                <a href="/event/{{ fev.id }}" style="color:#fff;font-size:11px;font-weight:700;text-decoration:none;margin-left:auto;">Join <i class="fas fa-chevron-right" style="font-size:9px;"></i></a>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <!-- Fallback to hardcoded elegant floating cards -->
+          <div style="position:absolute;top:0;left:0;background:rgba(255, 255, 255, 0.02);border:1px solid rgba(255, 255, 255, 0.08);border-radius:18px;padding:16px 20px;backdrop-filter:blur(25px);width:260px;box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+              <div style="width:40px;height:40px;background:rgba(37,99,235,0.4);border:1px solid rgba(255,255,255,0.12);border-radius:10px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-laptop-code text-white"></i></div>
+              <div>
+                <div style="color:#fff;font-size:13px;font-weight:700;">Hackathon 2026</div>
+                <div style="color:rgba(255,255,255,0.45);font-size:10px;">Technical · 48 Teams</div>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.06);border-radius:8px;height:4px;"><div style="width:72%;background:rgba(255,255,255,0.4);height:100%;border-radius:8px;"></div></div>
+            <div style="color:rgba(255,255,255,0.45);font-size:10px;margin-top:6px;">72% seats filled</div>
           </div>
-          <div style="background:rgba(255,255,255,.1);border-radius:8px;height:4px;"><div style="width:72%;background:var(--orange);height:100%;border-radius:8px;"></div></div>
-          <div style="color:rgba(255,255,255,.5);font-size:10px;margin-top:6px;">72% seats filled</div>
-        </div>
-        <div style="position:absolute;top:80px;right:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:16px 20px;backdrop-filter:blur(8px);width:220px;">
-          <div style="color:rgba(255,255,255,.5);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Next Event</div>
-          <div style="color:#fff;font-weight:700;font-size:14px;margin-bottom:4px;">Cultural Fest</div>
-          <div style="color:var(--orange);font-size:11px;"><i class="fas fa-calendar me-1"></i> Coming Soon</div>
-        </div>
-        <div style="position:absolute;bottom:0;left:20px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:12px 16px;backdrop-filter:blur(8px);">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <i class="fas fa-check-circle text-success"></i>
-            <span style="color:#fff;font-size:12px;font-weight:600;">QR Ticket Confirmed!</span>
+          <div style="position:absolute;top:100px;right:0;background:rgba(255, 255, 255, 0.02);border:1px solid rgba(255, 255, 255, 0.08);border-radius:18px;padding:16px 20px;backdrop-filter:blur(25px);width:240px;box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);">
+            <div style="color:rgba(255,255,255,0.45);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Next Event</div>
+            <div style="color:#fff;font-weight:700;font-size:14px;margin-bottom:4px;">Cultural Fest</div>
+            <div style="color:rgba(255,255,255,0.5);font-size:11px;"><i class="fas fa-calendar me-1"></i> Coming Soon</div>
           </div>
-        </div>
+          <div style="position:absolute;bottom:0;left:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 18px;backdrop-filter:blur(15px);box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-check-circle text-success"></i>
+              <span style="color:#fff;font-size:12px;font-weight:600;">QR Ticket Confirmed!</span>
+            </div>
+          </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -298,12 +661,12 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <div class="filter-bar">
 <div class="container">
   <div class="cat-pills">
-    <button class="cat-pill active" data-cat="all"><i class="fas fa-th-large me-1"></i>All Events</button>
-    <button class="cat-pill" data-cat="Technical"><i class="fas fa-laptop-code me-1"></i>Technical</button>
-    <button class="cat-pill" data-cat="Cultural"><i class="fas fa-music me-1"></i>Cultural</button>
-    <button class="cat-pill" data-cat="Sports"><i class="fas fa-running me-1"></i>Sports</button>
-    <button class="cat-pill" data-cat="Management"><i class="fas fa-briefcase me-1"></i>Management</button>
-    <button class="cat-pill" data-cat="Workshop"><i class="fas fa-tools me-1"></i>Workshop</button>
+    <button class="cat-pill active" data-cat="all"><i class="fas fa-th-large"></i>All Events</button>
+    <button class="cat-pill" data-cat="Technical"><i class="fas fa-laptop-code"></i>Technical</button>
+    <button class="cat-pill" data-cat="Cultural"><i class="fas fa-music"></i>Cultural</button>
+    <button class="cat-pill" data-cat="Sports"><i class="fas fa-running"></i>Sports</button>
+    <button class="cat-pill" data-cat="Management"><i class="fas fa-briefcase"></i>Management</button>
+    <button class="cat-pill" data-cat="Workshop"><i class="fas fa-tools"></i>Workshop</button>
   </div>
 </div>
 </div>
@@ -417,19 +780,19 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
       </div>
       <div class="cal-stats">
         <div class="cal-stat-row">
-          <span class="cal-stat-label"><i class="fas fa-calendar-check me-1 text-primary"></i> Active Events</span>
+          <span class="cal-stat-label"><i class="fas fa-calendar-check me-2 text-primary"></i> Active Events</span>
           <span class="cal-stat-val">{{ total_events | default(0) }}</span>
         </div>
         <div class="cal-stat-row">
-          <span class="cal-stat-label"><i class="fas fa-users me-1 text-success"></i> Registrations</span>
+          <span class="cal-stat-label"><i class="fas fa-users me-2 text-success"></i> Registrations</span>
           <span class="cal-stat-val">{{ total_regs | default(0) }}</span>
         </div>
         <div class="cal-stat-row">
-          <span class="cal-stat-label"><i class="fas fa-door-open me-1 text-warning"></i> Open Now</span>
+          <span class="cal-stat-label"><i class="fas fa-door-open me-2 text-warning"></i> Open Now</span>
           <span class="cal-stat-val" id="calOpenCount">{{ total_events | default(0) }}</span>
         </div>
         <div class="cal-stat-row" style="border:none;">
-          <button class="btn btn-sm w-100 mt-2" id="calResetBtn" onclick="resetFilter()" style="background:var(--blue);color:#fff;border-radius:8px;font-size:12px;font-weight:600;padding:8px;display:none;">
+          <button class="btn btn-sm w-100 mt-2" id="calResetBtn" onclick="resetFilter()" style="background:rgba(255, 255, 255, 0.05);color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px;border:1px solid rgba(255,255,255,0.08);display:none;">
             <i class="fas fa-times me-1"></i> Clear Date Filter
           </button>
         </div>
@@ -437,26 +800,26 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
     </div>
 
     <!-- Quick Links -->
-    <div class="mt-3 p-3 bg-white rounded-3 border" style="border-color:#e2e8f0!important;">
-      <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Quick Links</div>
+    <div class="mt-3 p-3 rounded-4 border" style="background:var(--bg-card);border-color:var(--border-light)!important;backdrop-filter:blur(8px);">
+      <div style="font-size:11.5px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Quick Links</div>
       <div class="d-flex flex-column gap-2">
         {% if not session.get('user_id') %}
-        <a href="/login" class="d-flex align-items-center gap-2 text-decoration-none p-2 rounded-2" style="color:#334155;background:#f8fafc;">
-          <i class="fas fa-sign-in-alt text-primary" style="width:16px;"></i><span style="font-size:12.5px;">Login to your account</span>
+        <a href="/login" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+          <i class="fas fa-sign-in-alt text-primary" style="width:16px;"></i><span style="font-size:13px;">Login to your account</span>
         </a>
-        <a href="/register" class="d-flex align-items-center gap-2 text-decoration-none p-2 rounded-2" style="color:#334155;background:#f8fafc;">
-          <i class="fas fa-user-plus text-success" style="width:16px;"></i><span style="font-size:12.5px;">Register as Student</span>
+        <a href="/register" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+          <i class="fas fa-user-plus text-success" style="width:16px;"></i><span style="font-size:13px;">Register as Student</span>
         </a>
         {% else %}
-        <a href="/participant/dashboard" class="d-flex align-items-center gap-2 text-decoration-none p-2 rounded-2" style="color:#334155;background:#f8fafc;">
-          <i class="fas fa-ticket-alt text-primary" style="width:16px;"></i><span style="font-size:12.5px;">My Tickets</span>
+        <a href="/participant/dashboard" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+          <i class="fas fa-ticket-alt text-primary" style="width:16px;"></i><span style="font-size:13px;">My Tickets / Dashboard</span>
         </a>
         {% endif %}
-        <a href="/verify" class="d-flex align-items-center gap-2 text-decoration-none p-2 rounded-2" style="color:#334155;background:#f8fafc;">
-          <i class="fas fa-qrcode text-warning" style="width:16px;"></i><span style="font-size:12.5px;">Verify Ticket</span>
+        <a href="/verify" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+          <i class="fas fa-qrcode text-warning" style="width:16px;"></i><span style="font-size:13px;">Verify Ticket</span>
         </a>
-        <a href="/results" class="d-flex align-items-center gap-2 text-decoration-none p-2 rounded-2" style="color:#334155;background:#f8fafc;">
-          <i class="fas fa-trophy text-warning" style="width:16px;"></i><span style="font-size:12.5px;">View Results</span>
+        <a href="/results" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+          <i class="fas fa-trophy text-warning" style="width:16px;"></i><span style="font-size:13px;">View Results</span>
         </a>
       </div>
     </div>
@@ -468,11 +831,11 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <!-- ══ SPONSOR STRIP ═════════════════════════════════════ -->
 <section class="sponsor-strip" id="sponsorStrip">
 <div class="container">
-  <div class="text-center mb-4">
-    <small style="text-transform:uppercase;letter-spacing:2px;color:var(--orange);font-weight:700;">Proudly Supported By</small>
-    <h3 style="color:var(--blue);font-family:'Poppins',sans-serif;font-weight:700;margin-top:4px;">Our Sponsors &amp; Partners</h3>
+  <div class="text-center mb-5">
+    <small style="text-transform:uppercase;letter-spacing:3px;color:rgba(255,255,255,0.4);font-weight:700;">Proudly Supported By</small>
+    <h3 style="color:#fff;font-family:'Poppins',sans-serif;font-weight:800;margin-top:8px;">Our Sponsors &amp; Partners</h3>
   </div>
-  <div id="sponsorRow" class="d-flex flex-wrap justify-content-center align-items-center" style="gap:36px;"></div>
+  <div id="sponsorRow" class="d-flex flex-wrap justify-content-center align-items-center" style="gap:40px;"></div>
 </div>
 </section>
 
@@ -482,7 +845,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 </button>
 <div class="chat-window" id="chatWindow">
   <div class="chat-header">
-    <span><i class="fas fa-robot me-2"></i>Event Assistant</span>
+    <span><i class="fas fa-robot me-2 text-warning"></i>Event Assistant</span>
     <button onclick="toggleChat()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;"><i class="fas fa-times"></i></button>
   </div>
   <div class="chat-body" id="chatBody">
@@ -498,14 +861,14 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <div class="modal fade" id="eventDetailsModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 rounded-4 shadow-lg">
-      <div class="modal-header border-0" style="background:var(--blue);color:#fff;border-radius:16px 16px 0 0;padding:20px 24px;">
-        <h5 class="modal-title fw-bold" id="detailModalTitle" style="font-family:'Poppins',sans-serif;font-size:18px;"></h5>
+      <div class="modal-header border-0" style="padding:20px 24px;">
+        <h5 class="modal-title fw-bold" id="detailModalTitle" style="font-family:'Poppins',sans-serif;font-size:18.5px;color:#fff;"></h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body p-4" id="detailModalBody" style="max-height:65vh;overflow-y:auto;"></div>
-      <div class="modal-footer border-0 bg-light" style="border-radius:0 0 16px 16px;padding:16px 24px;">
-        <button class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
-        <a href="#" id="detailModalRegBtn" class="btn rounded-pill px-4 fw-bold" style="background:var(--blue);color:#fff;">
+      <div class="modal-body p-4" id="detailModalBody" style="max-height:65vh;overflow-y:auto;color:var(--text-secondary);"></div>
+      <div class="modal-footer border-0" style="padding:16px 24px;">
+        <button class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal" style="border-color:rgba(255,255,255,0.15);color:#fff;">Close</button>
+        <a href="#" id="detailModalRegBtn" class="btn rounded-pill px-4 fw-bold" style="background:rgba(255, 255, 255, 0.05);border: 1px solid rgba(255, 255, 255, 0.1);color:#fff;">
           <i class="fas fa-arrow-right me-1"></i> View &amp; Register
         </a>
       </div>
@@ -531,28 +894,28 @@ function showDetails(eventId) {
   document.getElementById('detailModalRegBtn').href = '/event/' + eventId;
   let html = '';
   if (ev.banner_url) {
-    html += `<img src="${ev.banner_url}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:10px;margin-bottom:16px;" onerror="this.style.display='none'">`;
+    html += `<img src="${ev.banner_url}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:16px;" onerror="this.style.display='none'">`;
   }
   // Info grid
-  html += `<div class="row g-2 mb-4">`;
+  html += `<div class="row g-3 mb-4">`;
   if (ev.date) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-calendar-alt text-primary"></i><div class="ev-det-label">Date</div><div class="ev-det-val">${ev.date}</div></div></div>`;
-  if (ev.time) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-clock" style="color:var(--orange)"></i><div class="ev-det-label">Time</div><div class="ev-det-val">${ev.time}</div></div></div>`;
+  if (ev.time) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-clock" style="color:var(--orange-glow)"></i><div class="ev-det-label">Time</div><div class="ev-det-val">${ev.time}</div></div></div>`;
   if (ev.venue) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-map-marker-alt text-danger"></i><div class="ev-det-label">Venue</div><div class="ev-det-val">${ev.venue}</div></div></div>`;
   if (ev.participation_type) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-users text-success"></i><div class="ev-det-label">Format</div><div class="ev-det-val">${ev.participation_type}</div></div></div>`;
   if (ev.reg_deadline) html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-hourglass-end text-warning"></i><div class="ev-det-label">Deadline</div><div class="ev-det-val">${ev.reg_deadline}</div></div></div>`;
   html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-tag text-success"></i><div class="ev-det-label">Entry Fee</div><div class="ev-det-val">${ev.fee > 0 ? '₹' + ev.fee : 'Free'}</div></div></div>`;
   html += `</div>`;
   if (ev.description) {
-    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-info-circle me-2"></i>About</h6><p style="color:#475569;font-size:14px;line-height:1.8;">${ev.description}</p></div>`;
+    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-info-circle me-2 text-warning"></i>About</h6><p style="color:var(--text-secondary);font-size:14px;line-height:1.8;">${ev.description}</p></div>`;
   }
   if (ev.rules) {
-    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-list-ul me-2"></i>Rules &amp; Guidelines</h6><div style="color:#475569;font-size:14px;line-height:1.9;white-space:pre-line;">${ev.rules}</div></div>`;
+    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-list-ul me-2 text-warning"></i>Rules &amp; Guidelines</h6><div style="color:var(--text-secondary);font-size:14px;line-height:1.9;white-space:pre-line;">${ev.rules}</div></div>`;
   }
   const prizes = ev.prizes || {};
   const hasPrizes = prizes['1st'] || prizes['2nd'] || prizes['3rd'] || ev.prize_pool;
   if (hasPrizes) {
-    html += `<div class="mb-2"><h6 class="fw-bold mb-3" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-trophy me-2" style="color:var(--orange)"></i>Prizes`;
-    if (ev.prize_pool) html += ` <span style="font-size:12px;font-weight:500;color:var(--orange);">(${ev.prize_pool})</span>`;
+    html += `<div class="mb-2"><h6 class="fw-bold mb-3" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-trophy me-2" style="color:var(--orange-glow)"></i>Prizes`;
+    if (ev.prize_pool) html += ` <span style="font-size:12px;font-weight:500;color:var(--orange-glow);">(${ev.prize_pool})</span>`;
     html += `</h6><div class="d-flex gap-3 flex-wrap">`;
     if (prizes['1st']) html += `<div class="prize-box"><span class="prize-medal">🥇</span><div class="prize-rank">1st Place</div><div class="prize-val">${prizes['1st']}</div></div>`;
     if (prizes['2nd']) html += `<div class="prize-box"><span class="prize-medal">🥈</span><div class="prize-rank">2nd Place</div><div class="prize-val">${prizes['2nd']}</div></div>`;
@@ -673,7 +1036,7 @@ function updateCountdowns() {
     const diff = target - now;
     if (diff <= 0) {
       box.closest('.ev-card').classList.add('ev-past');
-      box.innerHTML = '<div class="cd-unit" style="background:rgba(201,164,94,.7);"><div class="cd-num" style="font-size:10px;">LIVE / DONE</div></div>';
+      box.innerHTML = '<div class="cd-unit" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.1);"><div class="cd-num" style="font-size:10.5px;color:#fff;">LIVE / DONE</div></div>';
       return;
     }
     const days  = Math.floor(diff / 86400000);
@@ -698,13 +1061,13 @@ setInterval(updateCountdowns, 30000);
       const a   = document.createElement('a');
       a.href    = s.website || '#';
       if (s.website) { a.target = '_blank'; a.rel = 'noopener'; }
-      a.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#475569;';
+      a.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:rgba(255,255,255,0.6);';
       const img = document.createElement('img');
       img.src   = s.logo_url || '/static/snpsu-logo.png';
       img.alt   = s.name;
-      img.style.cssText = 'height:48px;max-width:150px;object-fit:contain;filter:grayscale(.2);transition:.3s;';
-      img.onmouseover = () => { img.style.filter = 'grayscale(0)'; img.style.transform = 'scale(1.05)'; };
-      img.onmouseout  = () => { img.style.filter = 'grayscale(.2)'; img.style.transform = 'scale(1)'; };
+      img.style.cssText = 'height:48px;max-width:150px;object-fit:contain;filter:grayscale(.4) brightness(0.8);transition:.3s;';
+      img.onmouseover = () => { img.style.filter = 'grayscale(0) brightness(1)'; img.style.transform = 'scale(1.05)'; };
+      img.onmouseout  = () => { img.style.filter = 'grayscale(.4) brightness(0.8)'; img.style.transform = 'scale(1)'; };
       img.onerror     = () => { img.style.display = 'none'; };
       const lbl = document.createElement('span');
       lbl.textContent = s.name;
@@ -749,6 +1112,49 @@ function sendMessage() {
     return of_(i, n);
   };
 })();
+
+// Typing effect for search input
+const placeholders = [
+  "Search hackathons...",
+  "Search cultural fests...",
+  "Search workshops...",
+  "Search sports meets...",
+  "Search by venue..."
+];
+let currentWordIndex = 0;
+let currentCharIndex = 0;
+let isDeleting = false;
+const searchInput = document.getElementById('searchInput');
+
+function typeSearchPlaceholder() {
+  if (!searchInput) return;
+  const currentWord = placeholders[currentWordIndex];
+  
+  if (isDeleting) {
+    searchInput.placeholder = currentWord.substring(0, currentCharIndex - 1);
+    currentCharIndex--;
+  } else {
+    searchInput.placeholder = currentWord.substring(0, currentCharIndex + 1);
+    currentCharIndex++;
+  }
+  
+  let typingSpeed = 100;
+  if (isDeleting) typingSpeed = 50;
+  
+  if (!isDeleting && currentCharIndex === currentWord.length) {
+    typingSpeed = 2000; // Pause at end
+    isDeleting = true;
+  } else if (isDeleting && currentCharIndex === 0) {
+    isDeleting = false;
+    currentWordIndex = (currentWordIndex + 1) % placeholders.length;
+    typingSpeed = 500; // Pause before next word
+  }
+  
+  setTimeout(typeSearchPlaceholder, typingSpeed);
+}
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(typeSearchPlaceholder, 1000);
+});
 </script>
 <script src="/static/js/global.js"></script>
 </body>

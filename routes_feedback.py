@@ -44,12 +44,44 @@ def submit_feedback(reg_id):
             flash("Please select a valid rating (1–5).", "warning")
             return redirect(f'/feedback/submit/{reg_id}')
 
+        sentiment = "Neutral"
+        try:
+            rating_val = int(rating)
+            if rating_val >= 4:
+                sentiment = "Positive"
+            elif rating_val <= 2:
+                sentiment = "Negative"
+        except ValueError:
+            pass
+
+        from flask import current_app
+        api_key = current_app.config.get('GEMINI_API_KEY', '')
+        if api_key and comments:
+            try:
+                from google import genai
+                client = genai.Client(api_key=api_key)
+                prompt = (
+                    f"Perform sentiment analysis on the following feedback comments: '{comments}'\n"
+                    f"Classify the sentiment strictly as one of: 'Positive', 'Neutral', or 'Negative'.\n"
+                    f"Respond ONLY with the sentiment label and nothing else."
+                )
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt
+                )
+                res_text = response.text.strip()
+                if res_text in ('Positive', 'Neutral', 'Negative'):
+                    sentiment = res_text
+            except Exception as e:
+                pass
+
         reg_ref.update({
             'feedback': {
                 'rating':    int(rating),
                 'comments':  comments,
                 'tags':      tags,
                 'timestamp': datetime.datetime.now(datetime.timezone.utc),
+                'sentiment': sentiment,
             }
         })
         flash("Thank you for your feedback!", "success")
@@ -79,6 +111,7 @@ def view_feedback(event_id):
             'rating':  fb.get('rating', 0),
             'comment': fb.get('comments', ''),
             'tags':    fb.get('tags', []),
+            'sentiment': fb.get('sentiment', 'Neutral'),
         })
         total_rating += fb.get('rating', 0)
         for t in fb.get('tags', []):
@@ -120,6 +153,7 @@ def feedback_analytics(event_id):
             'rating':  rating,
             'comment': fb.get('comments', ''),
             'tags':    fb.get('tags', []),
+            'sentiment': fb.get('sentiment', 'Neutral'),
         })
         for t in fb.get('tags', []):
             tag_counter[t] += 1

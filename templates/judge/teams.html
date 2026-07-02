@@ -220,6 +220,22 @@ function openScoreModal(regId) {
       <textarea class="form-control mt-1" id="remarksField" rows="2"
                 placeholder="Optional feedback for this team..."
                 style="border-radius:9px;font-size:13px;">${existing.remarks || ''}</textarea>
+    </div>
+    <!-- Voice Dictation -->
+    <div class="mt-3 p-3" style="background:#f0fdf4; border:1px dashed #bbf7d0; border-radius:10px;">
+      <label style="font-size:12px;font-weight:700;color:#166534;
+                    text-transform:uppercase;letter-spacing:.6px;">
+        <i class="fas fa-microphone me-1"></i>Voice Dictation Scoring
+      </label>
+      <div style="display:flex; gap:8px; margin-top:6px;">
+        <button type="button" class="btn btn-success btn-sm px-3" style="font-size:12px; border-radius:20px;" id="micBtn" onclick="toggleDictation()">
+          <i class="fas fa-microphone"></i> Dictate Score
+        </button>
+        <div id="dictationStatus" class="small text-success d-flex align-items-center" style="font-size:11px;">Ready</div>
+      </div>
+      <div style="font-size:10px;color:#166534;margin-top:4px;opacity:0.85;">
+        E.g.: "give Innovation score 85, Presentation 90, remarks project is excellent"
+      </div>
     </div>`;
 
   document.getElementById('scoreModalBody').innerHTML = html;
@@ -326,6 +342,99 @@ async function fetchLeaderboard() {
       'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   } catch (e) {
     console.error('Leaderboard fetch failed', e);
+  }
+}
+
+let recognition = null;
+let dictating = false;
+
+function toggleDictation() {
+  const btn = document.getElementById('micBtn');
+  const status = document.getElementById('dictationStatus');
+
+  if (dictating) {
+    if (recognition) recognition.stop();
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Speech recognition is not supported in this browser. Please use Google Chrome or Safari.");
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    dictating = true;
+    btn.innerHTML = '<i class="fas fa-stop"></i> Stop';
+    btn.className = 'btn btn-danger btn-sm px-3';
+    status.textContent = 'Listening...';
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    status.textContent = 'Parsing speech...';
+    
+    // Call backend parser
+    fetch('/judge/speech-to-score', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        transcript: transcript,
+        criteria: CRITERIA
+      })
+    })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        const res = data.result;
+        CRITERIA.forEach(c => {
+          const key = 'score-' + c.replace(/\s/g,'_');
+          if (res.scores && res.scores[c] !== undefined) {
+            const el = document.getElementById(key);
+            if (el) el.value = res.scores[c];
+          }
+        });
+        if (res.remarks) {
+          const remEl = document.getElementById('remarksField');
+          if (remEl) remEl.value = res.remarks;
+        }
+        updateTotal();
+        status.textContent = 'Speech parsed successfully!';
+      } else {
+        status.textContent = 'Parsing failed.';
+      }
+    })
+    .catch(err => {
+      status.textContent = 'Error parsing speech.';
+    });
+  };
+
+  recognition.onerror = (e) => {
+    console.error(e);
+    status.textContent = 'Error: ' + e.error;
+    stopDictation();
+  };
+
+  recognition.onend = () => {
+    stopDictation();
+  };
+
+  recognition.start();
+}
+
+function stopDictation() {
+  dictating = false;
+  const btn = document.getElementById('micBtn');
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-microphone"></i> Dictate Score';
+    btn.className = 'btn btn-success btn-sm px-3';
   }
 }
 

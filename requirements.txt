@@ -21,6 +21,7 @@ cryptography
 Flask-Mail
 resend
 twilio
+pywebpush
 
 # Async task queue
 celery

@@ -233,6 +233,32 @@ def enhanced_init_scheduler(flask_app, enable_threading: bool = True):
         max_instances=1
     )
 
+    # Upgrade 7: Automated DB backup cron job daily at 3 AM
+    scheduler.add_job(
+        func=_create_backup_job(flask_app),
+        trigger='cron',
+        hour=3,
+        minute=0,
+        timezone='Asia/Kolkata',
+        id='db_backup',
+        name='Daily database backup to Cloud Storage',
+        replace_existing=True,
+        max_instances=1
+    )
+
+    # Upgrade 50: Daily operations briefing emails daily at 6 AM
+    scheduler.add_job(
+        func=_create_daily_briefing_job(flask_app),
+        trigger='cron',
+        hour=6,
+        minute=0,
+        timezone='Asia/Kolkata',
+        id='daily_briefing',
+        name='Daily operations briefings emails',
+        replace_existing=True,
+        max_instances=1
+    )
+
     #scheduler.start()
     logger.info("✅ Enhanced scheduler started with retry logic and monitoring")
 
@@ -351,6 +377,126 @@ def _create_cleanup_job(flask_app):
             return deleted_count
 
     return cleanup_job
+
+
+def _create_backup_job(flask_app):
+    """Create backup job to dump database and upload to storage"""
+
+    @safe_job('db_backup')
+    @retry_with_backoff(max_retries=2, initial_delay=5)
+    def backup_job():
+        with flask_app.app_context():
+            from models import db
+            from utils_storage import upload_file
+            import json
+
+            logger.info("Starting database backup...")
+            backup_data = {}
+
+            # Dump all mapped collections
+            from db_adapter import COLLECTION_MAP
+            for collection_name in COLLECTION_MAP.keys():
+                docs = db.collection(collection_name).stream()
+                backup_data[collection_name] = [doc.to_dict() for doc in docs]
+
+            # Convert to formatted JSON
+            backup_json = json.dumps(backup_data, indent=2)
+            backup_bytes = backup_json.encode('utf-8')
+
+            # Destination filename
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"backups/db_backup_{timestamp}.json"
+
+            # Upload using utils_storage
+            url = upload_file(backup_bytes, filename, 'application/json')
+            logger.info(f"Database backup uploaded successfully: {url}")
+            return url
+
+    return backup_job
+
+
+def _create_daily_briefing_job(flask_app):
+    """Compile daily coordinator schedules/briefings and email them to staff"""
+
+    @safe_job('daily_briefing')
+    @retry_with_backoff(max_retries=2, initial_delay=5)
+    def daily_briefing_job():
+        with flask_app.app_context():
+            from models import db
+            from utils_email import send_email
+
+            logger.info("Compiling daily operations briefs...")
+
+            # Get IST date for today
+            ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+            today_str = datetime.datetime.now(ist).strftime("%Y-%m-%d")
+
+            # Fetch active events happening today
+            events = db.collection('events').where('status', '==', 'active').stream()
+            briefing_sent_count = 0
+
+            for event_doc in events:
+                event = event_doc.to_dict()
+                event_date = str(event.get('date', ''))[:10]
+                if event_date != today_str:
+                    continue
+
+                coord_email = event.get('coordinator_id')
+                if not coord_email or '@' not in coord_email:
+                    coord_email = "admin@university.edu"
+
+                # Get registrations for this event to compile team checklist
+                registrations = db.collection('registrations')\
+                    .where('event_id', '==', event_doc.id)\
+                    .where('status', '==', 'confirmed')\
+                    .stream()
+
+                teams_list = []
+                for reg_doc in registrations:
+                    reg = reg_doc.to_dict()
+                    teams_list.append(f"- {reg.get('team_name') or 'Solo'} (Lead: {reg.get('lead_name')}, Email: {reg.get('lead_email')})")
+
+                teams_block = "\n".join(teams_list) if teams_list else "No registrations confirmed yet."
+
+                subject = f"SapthaEvent Briefing: {event.get('title')} Operations Checklist"
+                body = f"""
+                Hello Coordinator/Staff,
+
+                Here is your operational briefing checklist for today's event: {event.get('title')}.
+
+                Event Details:
+                - Title: {event.get('title')}
+                - Venue: {event.get('venue')}
+                - Date: {event.get('date')}
+                - Entry Fee: {event.get('fee')} INR
+
+                Confirmed Registrations/Teams:
+                {teams_block}
+
+                Action Items for Today:
+                1. Perform NFC/QR check-in verification at the venue entrance.
+                2. Allocate teams to rooms and assign judges.
+                3. Update scores and progress rounds in the SPOC console.
+                4. Mark attendance for all present participants.
+
+                Have a successful event!
+                SapthaEvent Team
+                """
+
+                try:
+                    send_email(
+                        recipient=coord_email,
+                        subject=subject,
+                        body=body
+                    )
+                    briefing_sent_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to send briefing email to {coord_email}: {e}")
+
+            logger.info(f"Dispatched {briefing_sent_count} briefing emails.")
+            return briefing_sent_count
+
+    return daily_briefing_job
 
 
 if __name__ == '__main__':

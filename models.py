@@ -23,7 +23,7 @@ import os
 # =========================================================
 # DATABASE RESOLUTION (Firestore vs. Supabase SQL)
 # =========================================================
-DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'firestore').lower()
+DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'postgres').lower()
 
 db: Any = None
 

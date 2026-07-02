@@ -4,7 +4,7 @@
   "private": true,
   "description": "Capacitor wrapper for the SapthaEvent web portal",
   "scripts": {
-    "build": "echo 'No build step required for the Flask web app wrapper.'",
+    "build": "node -e \"fs.mkdirSync('dist', { recursive: true })\"",
     "cap:init": "npx cap init sapthaevent com.sapthaevent.app --web-dir=static",
     "cap:add-android": "npx cap add android",
     "cap:copy": "npx cap copy android",

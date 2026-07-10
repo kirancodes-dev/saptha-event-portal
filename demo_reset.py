@@ -20,6 +20,9 @@ import sys
 import datetime
 sys.path.insert(0, '.')
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from models import db
 from werkzeug.security import generate_password_hash
 
@@ -28,19 +31,19 @@ T         = lambda days: str(TODAY + datetime.timedelta(days=days))
 NOW_STR   = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 TODAY_STR = str(TODAY)
 
-TOMORROW = T(1)
-PLUS3    = T(3)
-PLUS4    = T(4)
-PLUS7    = T(7)
-PLUS10   = T(10)
-PLUS14   = T(14)
+TOMORROW = T(1)    # July 6
+PLUS3    = T(8)    # July 13
+PLUS4    = T(15)   # July 20
+PLUS7    = T(25)   # July 30
+PLUS10   = T(40)   # August 14
+PLUS14   = T(55)   # August 29
 
-DL0  = TODAY_STR   # reg closes today
-DL2  = T(2)
-DL3  = T(3)
-DL6  = T(6)
-DL9  = T(9)
-DL13 = T(13)
+DL0  = T(-2)       # Reg closed
+DL2  = T(5)        # Reg closes July 10
+DL3  = T(12)       # Reg closes July 17
+DL6  = T(22)       # Reg closes July 27
+DL9  = T(37)       # Reg closes August 11
+DL13 = T(52)       # Reg closes August 26
 
 
 # =========================================================
@@ -463,7 +466,7 @@ def wipe():
     for col in WIPE_COLLECTIONS:
         count = 0
         for doc in db.collection(col).stream():
-            doc.reference.delete()
+            db.collection(col).document(doc.id).delete()
             count += 1
         print(f'  deleted {count:>4}  docs  from  {col}')
 
@@ -475,7 +478,7 @@ def wipe():
             kept += 1
             print(f'  kept SuperAdmin: {doc.id}')
         else:
-            doc.reference.delete()
+            db.collection('users').document(doc.id).delete()
             deleted += 1
     print(f'  deleted {deleted:>4}  users  (kept {kept} SuperAdmin accounts)')
 
@@ -483,6 +486,190 @@ def wipe():
 # =========================================================
 # SEED
 # =========================================================
+def seed_registrations(db, event_id, ev):
+    import random
+    import time
+    
+    is_team = ev.get('is_team_event', False)
+    limits = ev.get('limits', {})
+    team_min = limits.get('team_min', 1)
+    team_max = limits.get('team_max', 1)
+    fee = ev.get('fees', {}).get('regular', 0)
+    event_title = ev['title']
+    event_date_str = ev['date']
+    
+    # Select a random subset of our 20 students to participate (at least team_min, up to team_max * 2)
+    min_reg_size = team_min if is_team else 1
+    max_reg_size = max(min_reg_size, min(team_max * 3, 20))
+    num_students_to_register = random.randint(min_reg_size, max_reg_size)
+    
+    shuffled_students = list(STUDENTS)
+    random.shuffle(shuffled_students)
+    event_students = shuffled_students[:num_students_to_register]
+    
+    registrations = []
+    
+    if not is_team:
+        # Solo event
+        for student in event_students:
+            registrations.append({
+                'lead_name': student['name'],
+                'lead_email': student['email'],
+                'lead_usn': student['usn'],
+                'lead_phone': student['phone'],
+                'team_name': 'Individual',
+                'members': [],
+                'member_count': 1
+            })
+    else:
+        # Team event
+        idx = 0
+        team_idx = 1
+        while idx < len(event_students):
+            remaining = len(event_students) - idx
+            if remaining < team_min:
+                # If remaining students are too few to form a new team, add them to the last team
+                if registrations:
+                    for m in event_students[idx:]:
+                        registrations[-1]['members'].append({
+                            'role': 'Member',
+                            'name': m['name'],
+                            'email': m['email'],
+                            'phone': m['phone'],
+                            'usn': m['usn']
+                        })
+                    registrations[-1]['member_count'] = len(registrations[-1]['members'])
+                break
+            
+            team_size = random.randint(team_min, min(team_max, remaining))
+            # If the left-over students cannot form another team, consume them all in this team
+            if 0 < remaining - team_size < team_min:
+                team_size = remaining
+                
+            team_members = event_students[idx : idx + team_size]
+            idx += team_size
+            
+            lead = team_members[0]
+            extra_members = []
+            for m in team_members[1:]:
+                extra_members.append({
+                    'role': 'Member',
+                    'name': m['name'],
+                    'email': m['email'],
+                    'phone': m['phone'],
+                    'usn': m['usn']
+                })
+            
+            registrations.append({
+                'lead_name': lead['name'],
+                'lead_email': lead['email'],
+                'lead_usn': lead['usn'],
+                'lead_phone': lead['phone'],
+                'team_name': f'Team {team_idx} - {event_title[:12]}',
+                'members': [{
+                    'role': 'Lead',
+                    'name': lead['name'],
+                    'email': lead['email'],
+                    'phone': lead['phone'],
+                    'usn': lead['usn']
+                }] + extra_members,
+                'member_count': len(team_members)
+            })
+            team_idx += 1
+            
+    count = 0
+    now = datetime.datetime.now()
+    
+    # Determine if event is in the past / currently happening
+    event_date = datetime.datetime.strptime(event_date_str, '%Y-%m-%d').date()
+    is_past_or_current = event_date <= TODAY + datetime.timedelta(days=3)
+    
+    reg_docs = []
+    
+    for r in registrations:
+        reg_id = f"REG-{event_id[:5].upper()}-{random.randint(1000, 9999)}-{int(time.time()*1000)%1000}"
+        time.sleep(0.001)
+        
+        payment_status = 'Paid' if fee > 0 else 'Free'
+        amount_paid = fee if fee > 0 else 0
+        
+        if is_past_or_current:
+            attendance = 'Present' if random.random() < 0.85 else 'Absent'
+        else:
+            attendance = 'Pending'
+            
+        reg_doc = {
+            'reg_id':          reg_id,
+            'event_id':        event_id,
+            'event_title':     event_title,
+            'lead_name':       r['lead_name'],
+            'lead_email':      r['lead_email'],
+            'lead_usn':        r['lead_usn'],
+            'lead_phone':      r['lead_phone'],
+            'team_name':       r['team_name'],
+            'members':         r['members'],
+            'member_count':    r['member_count'],
+            'status':          'Confirmed',
+            'payment_status':  payment_status,
+            'amount_paid':     amount_paid,
+            'registered_at':   (now - datetime.timedelta(days=random.randint(1, 5))).strftime("%Y-%m-%d %H:%M:%S"),
+            'attendance':      attendance,
+            'checkin_time':    '09:30:00' if attendance == 'Present' else '',
+            'is_eliminated':   False,
+            'current_round':   1,
+            'scores':          {},
+            'final_score':     None,
+            'final_rank':      None
+        }
+        
+        # Add mock scores for present teams in completed/current events
+        if attendance == 'Present' and is_past_or_current:
+            num_judges = random.randint(2, 3)
+            selected_judges = random.sample(JUDGES, num_judges)
+            criteria = ['Innovation', 'Technical Complexity', 'Impact', 'Presentation']
+            
+            scores_map = {}
+            for j in selected_judges:
+                score_details = {}
+                total_score = 0
+                for c in criteria:
+                    val = random.randint(65, 98)
+                    score_details[c] = val
+                    total_score += val
+                avg_score = round(total_score / len(criteria), 1)
+                scores_map[j['email']] = {
+                    'details': score_details,
+                    'total': avg_score,
+                    'raw_total': total_score,
+                    'judge_name': j['name'],
+                    'submitted_at': now.strftime("%Y-%m-%d %H:%M:%S")
+                }
+            reg_doc['scores'] = scores_map
+            
+            if scores_map:
+                reg_doc['final_score'] = round(sum(s['total'] for s in scores_map.values()) / len(scores_map), 1)
+        
+        db.collection('registrations').document(reg_id).set(reg_doc)
+        reg_docs.append(reg_doc)
+        count += 1
+        
+    db.collection('events').document(event_id).update({
+        'registration_count': count
+    })
+    
+    # Rank and publish results for key past events
+    if is_past_or_current and len(reg_docs) > 1 and event_title in ('Solo Singing Championship', 'Code Sprint — 2 Hour Challenge'):
+        present_regs = [r for r in reg_docs if r['attendance'] == 'Present' and r.get('final_score') is not None]
+        present_regs.sort(key=lambda x: x['final_score'], reverse=True)
+        for rank, r in enumerate(present_regs, start=1):
+            db.collection('registrations').document(r['reg_id']).update({
+                'final_rank': rank
+            })
+        db.collection('events').document(event_id).update({
+            'results_published': True
+        })
+        print(f"    [RESULTS PUBLISHED] ranked {len(present_regs)} teams for {event_title}")
+
 def seed():
     print('\n[SEED] Creating users...')
 
@@ -492,7 +679,7 @@ def seed():
         db.collection('users').document(u['email']).set({
             'email':    u['email'],
             'name':     u['name'],
-            'password': generate_password_hash(u['password']),
+            'password': generate_password_hash(u['password'], method='pbkdf2:sha256'),
             'role':     u['role'],
             'category': u.get('category', 'General'),
             'club':     u.get('club', ''),
@@ -506,7 +693,7 @@ def seed():
         db.collection('users').document(s['email']).set({
             'email':    s['email'],
             'name':     s['name'],
-            'password': generate_password_hash(s['password']),
+            'password': generate_password_hash(s['password'], method='pbkdf2:sha256'),
             'role':     'Student',
             'category': 'General',
             'usn':      s['usn'],
@@ -516,11 +703,12 @@ def seed():
         })
     print(f'  {"Student":<20} student001–{len(STUDENTS):03d}@snpsu.edu.in        pw: Student@1234')
 
-    print('\n[SEED] Creating events...')
+    print('\n[SEED] Creating events and registrations...')
     events = build_events()
     for ev in events:
         _, ref = db.collection('events').add(ev)
         print(f'  [{ev["category"]:<10}] {ev["title"][:45]:<45} date={ev["date"]}  fee=₹{ev["fees"]["regular"]}')
+        seed_registrations(db, ref.id, ev)
 
     return events
 
@@ -574,7 +762,12 @@ if __name__ == '__main__':
 
     print('SapthaEvent — Demo Reset')
     print('This will WIPE all data (except SuperAdmin) and re-seed.')
-    confirm = input('Type YES to continue: ').strip()
+    
+    if len(sys.argv) > 1 and sys.argv[1] == '--yes':
+        confirm = 'YES'
+    else:
+        confirm = input('Type YES to continue: ').strip()
+        
     if confirm != 'YES':
         print('Aborted.')
         sys.exit(0)

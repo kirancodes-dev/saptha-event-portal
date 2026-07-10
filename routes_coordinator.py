@@ -60,11 +60,17 @@ def dashboard():
         events = []; total_regs = 0; total_staff = 0
         for e in all_events_ref:
             d = e.to_dict(); d['id'] = e.id
-            # Non-superadmin coordinators only see events they are assigned to
+            # Non-superadmin coordinators only see events they are assigned to and not completed
             if not is_super:
                 in_staff = any(s.get('email') == user_email for s in d.get('staff', []))
                 in_coords = user_email in d.get('coordinators', [])
                 if not in_staff and not in_coords:
+                    continue
+                
+                # Hide completed events
+                current_date = datetime.date.today().strftime("%Y-%m-%d")
+                event_date = d.get('date', '9999-99-99')
+                if event_date < current_date:
                     continue
             total_regs  += d.get('registration_count', 0)
             total_staff += len(d.get('staff', []))

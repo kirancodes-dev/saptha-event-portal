@@ -543,14 +543,21 @@ def home():
             d.setdefault('registration_count', 0)
             d.setdefault('entry_fee',          0)
             d.setdefault('category',           'General')
+            
+            # Delete/hide completed events
+            event_date = d.get('date', '9999-99-99')
+            if event_date < current_date:
+                continue
+                
+            # Registration closed check
+            deadline = d.get('deadline') or d.get('reg_deadline', '')
+            d['is_closed'] = bool(deadline and current_date > deadline)
+            
             all_active.append(d)
 
-        # Prefer upcoming/ongoing events; fall back to most-recent past events
-        # so the homepage is never empty when active events exist.
-        future = [d for d in all_active if d.get('date', '9999-99-99') >= current_date]
-        events = future if future else sorted(
-            all_active, key=lambda x: x.get('date', ''), reverse=True
-        )[:6]
+        # Sort the upcoming events by date
+        all_active.sort(key=lambda x: x.get('date', '9999-99-99'))
+        events = all_active
 
         for d in events:
             cat = d.get('category', 'General')
@@ -561,7 +568,6 @@ def home():
                 'color': color_map.get(cat, '#0d2d62'),
             })
 
-        events.sort(key=lambda x: x.get('date', '9999-99-99'))
         for d in events[:10]:
             raw_date = d.get('date', '')
             try:

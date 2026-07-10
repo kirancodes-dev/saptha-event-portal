@@ -86,9 +86,12 @@ def _build_engine():
                 pool_recycle=PGBOUNCER_POOL_RECYCLE,
                 connect_args=connect_args
             )
-        except ImportError:
+            # Verify connection immediately (e.g. TLSv1.3 check)
+            with _engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        except Exception as exc:
             import logging
-            logging.getLogger(__name__).warning("google-cloud-sql-connector not installed. Falling back to local SQLite: sqlite:///saptha_fallback.db")
+            logging.getLogger(__name__).warning("Cloud SQL connection failed: %s. Falling back to local SQLite: sqlite:///saptha_fallback.db", exc)
             _engine = create_engine("sqlite:///saptha_fallback.db", pool_pre_ping=True)
 
     else:

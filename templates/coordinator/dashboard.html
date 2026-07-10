@@ -203,13 +203,40 @@
     <div class="row g-4">
         {% for event in events %}
         <div class="col-lg-4 col-md-6">
-            <div class="event-card d-flex flex-column h-100">
+            <div class="ev-card d-flex flex-column h-100">
 
-                <!-- Card header -->
-                <div class="p-4 border-bottom bg-light d-flex justify-content-between align-items-start gap-2">
-                    <div>
-                        <h5 class="fw-bold m-0 mb-1" style="color:var(--snpsu-blue);">{{ event.title }}</h5>
-                        <!-- Form type badge -->
+                <!-- Card Banner (matches Home Page UI) -->
+                <div class="ev-banner" aria-hidden="true" style="height: 160px; position: relative;">
+                    {% if event.get('banner_url') %}
+                        <img src="{{ event.banner_url }}" alt="" loading="lazy" onerror="this.style.display='none'">
+                        <div class="ev-overlay"></div>
+                    {% endif %}
+                    {% set cat = event.get('category','General') %}
+                    {% if   cat == 'Technical'  %}<div class="ev-banner-icon" style="font-size: 2.5rem;">💻</div>
+                    {% elif cat == 'Cultural'   %}<div class="ev-banner-icon" style="font-size: 2.5rem;">🎭</div>
+                    {% elif cat == 'Sports'     %}<div class="ev-banner-icon" style="font-size: 2.5rem;">⚽</div>
+                    {% elif cat == 'Management' %}<div class="ev-banner-icon" style="font-size: 2.5rem;">📊</div>
+                    {% else                     %}<div class="ev-banner-icon" style="font-size: 2.5rem;">🌟</div>{% endif %}
+                    <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
+                    {% if event.status == 'active' %}
+                        <span class="badge bg-success" style="position: absolute; top: 12px; right: 12px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; padding: 4px 10px; z-index: 3;">
+                            Live (Round {{ event.active_round | default(1) }})
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary" style="position: absolute; top: 12px; right: 12px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; padding: 4px 10px; z-index: 3;">
+                            Closed
+                        </span>
+                    {% endif %}
+                </div>
+
+                <!-- Card body (matches Home Page ev-body style but with coordinator actions) -->
+                <div class="ev-body d-flex flex-column flex-grow-1" style="padding: 24px;">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <h5 class="ev-title fw-bold m-0" style="color:var(--snpsu-blue); font-size: 1.15rem;">{{ event.title }}</h5>
+                    </div>
+                    
+                    <!-- Form type badge -->
+                    <div class="mb-3">
                         {% if event.get('form_type') == 'custom' %}
                             <span class="form-builder-badge custom">
                                 <i class="fas fa-paint-brush"></i> Custom Form
@@ -224,33 +251,25 @@
                             </span>
                         {% endif %}
                     </div>
-                    {% if event.status == 'active' %}
-                        <span class="badge bg-success flex-shrink-0">
-                            Live (Round {{ event.active_round | default(1) }})
-                        </span>
-                    {% else %}
-                        <span class="badge bg-secondary flex-shrink-0">Closed</span>
-                    {% endif %}
-                </div>
 
-                <!-- Card body -->
-                <div class="p-4 d-flex flex-column flex-grow-1">
-                    <p class="text-muted small mb-1">
-                        <i class="far fa-clock me-1 text-primary"></i>
-                        <strong>Event:</strong> {{ event.date }}
-                    </p>
-                    <p class="text-danger small mb-3">
-                        <i class="fas fa-exclamation-circle me-1"></i>
-                        <strong>Deadline:</strong> {{ event.deadline if event.deadline else 'Not Set' }}
-                    </p>
+                    <div class="ev-meta mb-3">
+                        <p class="text-muted small mb-1">
+                            <i class="far fa-clock me-1 text-primary"></i>
+                            <strong>Event:</strong> {{ event.date }}
+                        </p>
+                        <p class="text-danger small mb-0">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            <strong>Deadline:</strong> {{ event.deadline if event.deadline else 'Not Set' }}
+                        </p>
+                    </div>
 
                     <div class="d-flex justify-content-between mb-4 bg-light rounded p-2 border">
                         <div class="text-center w-50 border-end">
-                            <small class="text-muted d-block fw-bold">Participants</small>
+                            <small class="text-muted d-block fw-bold" style="font-size: 11px;">Participants</small>
                             <span class="fw-bold fs-5">{{ event.registration_count }}</span>
                         </div>
                         <div class="text-center w-50">
-                            <small class="text-muted d-block fw-bold">Staff</small>
+                            <small class="text-muted d-block fw-bold" style="font-size: 11px;">Staff</small>
                             <span class="fw-bold fs-5 text-warning">{{ event.staff|length }}</span>
                         </div>
                     </div>

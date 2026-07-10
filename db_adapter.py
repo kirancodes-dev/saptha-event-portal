@@ -478,6 +478,9 @@ class SQLDocumentReference:
                     elif col.type.__class__.__name__ in ('UUID', 'PgUUID'):
                         if val:
                             val = to_uuid(val)
+                    # Handle dict/list values for String/Text columns
+                    elif isinstance(val, (dict, list)):
+                        val = safe_str(val)
                     
                     setattr(record, mapped_key, val)
 

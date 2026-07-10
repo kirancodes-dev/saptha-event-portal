@@ -1,31 +1,48 @@
 <div align="center">
 
-<img src="static/snpsu-logo.png" width="320" alt="Sapthagiri NPS University" style="background:#1a2557; padding:16px 28px; border-radius:14px;" />
+<a href="https://saptha-event-portal-762269836348.us-east4.run.app/" target="_blank">
+  <img src="static/img/hero-banner.png" width="800" alt="SapthaEvent Banner" style="border-radius:14px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);" />
+</a>
 
 <br/><br/>
 
-# ⚡ SapthaEvent
+# [⚡ SapthaEvent](https://saptha-event-portal-762269836348.us-east4.run.app/)
 ### *Enterprise Event Intelligence & Orchestration Platform*
 
 <p align="center">
   <b>Sapthagiri NPS University &nbsp;•&nbsp; Bengaluru, Karnataka &nbsp;•&nbsp; 2026</b>
 </p>
 
----
-
 [![Live Portal](https://img.shields.io/badge/🌐_Live_Portal-ONLINE-22c55e?style=for-the-badge&logo=google-cloud&logoColor=white)](https://saptha-event-portal-762269836348.us-east4.run.app/)
 [![Python](https://img.shields.io/badge/Python-3.12-c9a45e?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
 [![Firebase](https://img.shields.io/badge/Firestore-NoSQL-FF6F00?style=for-the-badge&logo=firebase&logoColor=white)](https://firebase.google.com)
 [![Gemini AI](https://img.shields.io/badge/Gemini_2.5_Flash-AI_Engine-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
-[![Tests](https://img.shields.io/badge/Tests-143_Passing-1a2557?style=for-the-badge&logo=pytest&logoColor=white)](#)
-[![License](https://img.shields.io/badge/License-MIT-c9a45e?style=for-the-badge)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-145_Passing-1a2557?style=for-the-badge&logo=pytest&logoColor=white)](#)
 
 <br/>
 
-> **🚀 [Click here to access the Live Production Portal](https://saptha-event-portal-762269836348.us-east4.run.app/)**
->
-> *Built for real events, real people, real scale. Spreadsheets don't belong at hackathons.*
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <h3>📲 Scan to Visit</h3>
+      <a href="https://saptha-event-portal-762269836348.us-east4.run.app/" target="_blank">
+        <img src="static/img/portal-qr.png" width="180" alt="Scan QR Code to Visit" style="border: 4px solid #1a2557; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+      </a>
+      <br/>
+      <p><i>Point your camera scanner here to launch the live platform</i></p>
+    </td>
+    <td align="center" width="50%" valign="middle">
+      <h3>🚀 Quick Launch</h3>
+      <br/>
+      <a href="https://saptha-event-portal-762269836348.us-east4.run.app/" target="_blank" style="text-decoration:none;">
+        <img src="https://img.shields.io/badge/LAUNCH_LIVE_PORTAL-1a2557?style=for-the-badge&logo=rocket&logoColor=white" alt="Launch Live Portal" />
+      </a>
+      <br/><br/>
+      <p>Click the button above or the title "SapthaEvent" to access the live cloud environment.</p>
+    </td>
+  </tr>
+</table>
 
 </div>
 
@@ -35,9 +52,7 @@
 
 ## 📸 Platform Showcase
 
-| Home Portal | Live Leaderboard | Certificate Verification |
-|:-----------:|:----------------:|:------------------------:|
-| Real-time events, hero stats, club feeds | Projector-ready SSE rankings board | Confetti animation + cryptographic proof |
+<img src="static/img/feature-showcase.png" width="850" alt="Feature Showcase" style="border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2);" />
 
 </div>
 
@@ -56,6 +71,7 @@
 - [📡 API Reference](#-api-reference)
 - [⚙️ CI/CD & Security](#️-cicd--security)
 - [🤝 Contributing](#-contributing)
+- [📜 License](#-license)
 
 ---
 
@@ -354,6 +370,9 @@ To comply with WCAG text-readability rules:
 | Rate Limiting | **Flask-Limiter** | DDoS protection, brute-force prevention |
 | HTTPS Headers | **Flask-Talisman** | CSP, HSTS, XSS protection headers |
 | CSRF | **Flask-WTF** | Form submission protection |
+| Input Validation | **Server-side sanitization** | Security validation middleware |
+| Audit Trail | **Audit Logger** | Record critical actions with IP mapping |
+| Secrets | **Environment variables** | Conf and API key protection |
 
 ### Documents & Media
 | Component | Technology | Purpose |
@@ -377,19 +396,6 @@ To comply with WCAG text-readability rules:
 | WhatsApp | **Twilio Business API** | Optional event reminders |
 | Push Notifications | **Web Push API** | Browser push (mobile-friendly) |
 
-### DevOps & Monitoring
-| Component | Technology | Purpose |
-|:----------|:-----------|:--------|
-| Container | **Docker** + `Dockerfile` | Reproducible builds |
-| Orchestration | **Docker Compose** | Local multi-service dev stack |
-| CI Pipeline | **GitHub Actions** | Lint → Test → Security scan → Deploy |
-| Code Quality | **Ruff** | Ultra-fast Python linter |
-| Security Scan | **Bandit** | Static security analysis |
-| Error Tracking | **Sentry SDK** | Production exception capture |
-| Logging | **python-json-logger** | Structured JSON log output |
-| Task Monitor | **Flower** | Celery task queue UI |
-| Deployment | **Google Cloud Run** | Serverless auto-scaling container |
-
 ---
 
 ## 📁 Repository Structure
@@ -406,11 +412,11 @@ saptha-event-portal/
 │
 ├── 🛣️ Route Modules (40+ blueprints)
 │   ├── routes_auth.py            # Login, logout, registration, password reset, 2FA
-│   ├── routes_spoc.py            # Club SPOC full event lifecycle (73KB!)
-│   ├── routes_coordinator.py     # Check-in scanner, attendance, walk-ins (39KB)
-│   ├── routes_admin.py           # Admin dashboard, user management (24KB)
-│   ├── routes_participant.py     # Student dashboard, registration (22KB)
-│   ├── routes_forms.py           # Dynamic form schema engine (33KB)
+│   ├── routes_spoc.py            # Club SPOC full event lifecycle
+│   ├── routes_coordinator.py     # Check-in scanner, attendance, walk-ins
+│   ├── routes_admin.py           # Admin dashboard, user management
+│   ├── routes_participant.py     # Student dashboard, registration
+│   ├── routes_forms.py           # Dynamic form schema engine
 │   ├── routes_verification.py    # Certificate verify, preview, download
 │   ├── routes_live.py            # SSE real-time leaderboard streaming
 │   ├── routes_judge.py           # Judge scoring interface
@@ -419,13 +425,11 @@ saptha-event-portal/
 │   ├── routes_teams.py           # Team creation, invites, management
 │   ├── routes_analytics.py       # Analytics dashboard data APIs
 │   ├── routes_gamification.py    # XP, badges, achievements
-│   ├── routes_api_v1.py          # Public REST API (23KB)
-│   ├── routes_notifications.py   # SSE push notification system
-│   └── ... 25+ more modules
+│   └── routes_notifications.py   # SSE push notification system
 │
 ├── 🛠️ Utilities
-│   ├── utils_email.py            # HTML email templates + multi-provider send (38KB)
-│   ├── utils_certificate.py      # ReportLab PDF certificate generation (26KB)
+│   ├── utils_email.py            # HTML email templates + multi-provider send
+│   ├── utils_certificate.py      # ReportLab PDF certificate generation
 │   ├── utils_qr.py               # QR code generation with logo
 │   ├── utils_validation.py       # Form validation, sanitization
 │   ├── utils_whatsapp.py         # Twilio WhatsApp helpers
@@ -444,7 +448,7 @@ saptha-event-portal/
 │   └── auth_oauth.py             # Google OAuth2 SSO integration
 │
 ├── 🗄️ Database
-│   ├── db_adapter.py             # Firestore ↔ PostgreSQL adapter (33KB)
+│   ├── db_adapter.py             # Firestore ↔ PostgreSQL adapter
 │   ├── models_pg.py              # SQLAlchemy ORM models for PostgreSQL
 │   └── firestore.rules           # Firestore security rules
 │
@@ -453,26 +457,9 @@ saptha-event-portal/
 │   ├── static/js/                # Vanilla JS modules (scanner, charts, SSE)
 │   └── static/snpsu-logo.png     # University logo (navy-transparent)
 │
-├── 📄 Templates (22 subdirectories)
-│   ├── templates/public/         # Home, event details, verify, leaderboard
-│   ├── templates/spoc/           # Club SPOC management interface
-│   ├── templates/admin/          # Admin control panels
-│   ├── templates/coordinator/    # Check-in scanner templates
-│   ├── templates/participant/    # Student dashboard, portfolio
-│   ├── templates/judge/          # Scoring interface
-│   ├── templates/live/           # SSE projector leaderboard
-│   └── templates/payment/        # Razorpay/Stripe checkout
-│
-├── 🧪 Tests
-│   ├── tests/                    # 143 unit + integration tests
-│   └── pytest.ini                # Test configuration
-│
-└── 🐳 Infrastructure
-    ├── Dockerfile                # Multi-stage container build
-    ├── docker-compose.yml        # Local dev: Flask + Redis + Celery + Flower
-    ├── gunicorn.conf.py          # Production WSGI server config
-    ├── nginx.conf                # Reverse proxy config
-    └── .github/workflows/        # GitHub Actions CI/CD pipelines
+└── 🧪 Tests
+    ├── tests/                    # 145 unit + integration tests
+    └── pytest.ini                # Test configuration
 ```
 
 ---
@@ -504,44 +491,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
-
-```env
-# ── Flask ──────────────────────────────────────
-FLASK_ENV=development
-SECRET_KEY=generate-a-64-char-random-hex-string
-
-# ── Firebase ───────────────────────────────────
-FIREBASE_KEY_PATH=serviceAccountKey.json
-
-# ── Super Admin ────────────────────────────────
-SUPER_ADMIN_EMAIL=admin@snpsu.edu.in
-SUPER_ADMIN_PASS=YourSecurePassword@2026
-MASTER_SECRET_KEY=YOUR_MASTER_KEY
-
-# ── Email (pick one) ───────────────────────────
-BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxx        # Recommended
-# RESEND_API_KEY=re_xxxxxxxxxxxx              # Alternative
-# MAIL_USER=you@gmail.com                    # Dev fallback
-# MAIL_PASS=your-16-char-app-password
-
-# ── Base URL ───────────────────────────────────
-BASE_URL=http://127.0.0.1:5001
-
-# ── AI (optional) ──────────────────────────────
-GEMINI_API_KEY=your-gemini-api-key
-
-# ── Payments (optional) ────────────────────────
-# RAZORPAY_KEY_ID=rzp_test_xxxx
-# RAZORPAY_KEY_SECRET=xxxx
-```
+Edit `.env` with your values (ensure no API keys are exposed publicly).
 
 ### Step 3 — Firebase Credentials
 
-Download your Firebase service account JSON from:
-> **Firebase Console → Project Settings → Service Accounts → Generate new private key**
-
-Save it as `serviceAccountKey.json` in the project root.
+Download your Firebase service account JSON from the Firebase console, rename it to `serviceAccountKey.json`, and place it in the project root.
 
 ### Step 4 — Initialize Super Admin
 
@@ -549,52 +503,21 @@ Save it as `serviceAccountKey.json` in the project root.
 python fix_superadmin.py
 ```
 
-This creates the Super Admin account in Firestore using `SUPER_ADMIN_EMAIL` and `SUPER_ADMIN_PASS` from your `.env`.
-
 ### Step 5 — Start Development Server
 
-**Simple start (no Celery — emails send synchronously):**
 ```bash
 python app.py
-```
-Open **[http://127.0.0.1:5001](http://127.0.0.1:5001)** ✅
-
-**Full stack with async email queue (recommended):**
-```bash
-# Terminal 1: Redis (requires Docker)
-docker run -p 6379:6379 redis:alpine
-
-# Terminal 2: Celery worker
-celery -A celery_app.celery worker --loglevel=info -Q email,certificates
-
-# Terminal 3: Flask app
-python app.py
-```
-
-**Or use Docker Compose (starts everything at once):**
-```bash
-docker-compose up
 ```
 
 ---
 
 ## ☁️ Production Cloud Run Deployment
 
-SapthaEvent is ready for direct deployment to Google Cloud Run as a serverless container. Deployments are managed using Google Cloud Build and `gcloud` CLI.
-
-### Prerequisites
-1. Install and initialize the [Google Cloud SDK](https://cloud.google.com/sdk).
-2. Authenticate using:
-   ```bash
-   gcloud auth login
-   ```
-3. Set the target project:
-   ```bash
-   gcloud config set project aurevix
-   ```
+Deployment configurations and scripts are designed to build and scale containers efficiently using Google Cloud Build.
 
 ### Deploy Command
-To build and deploy the container image directly to Google Cloud Run in the `us-east4` region, run:
+
+To build and deploy the container image directly to Google Cloud Run:
 ```bash
 gcloud run deploy saptha-event-portal \
     --source . \
@@ -602,17 +525,11 @@ gcloud run deploy saptha-event-portal \
     --allow-unauthenticated
 ```
 
-During deployment, Cloud Run will read the multi-stage `Dockerfile`, build the secure production image on Cloud Build, and deploy it to:
-**[https://saptha-event-portal-762269836348.us-east4.run.app](https://saptha-event-portal-762269836348.us-east4.run.app)**
-
-*Note: Environment variables (such as Firestore credentials and API keys) are preserved across deployments on Cloud Run.*
-
 ---
 
 ## 🔑 Demo Sandbox Accounts
 
-Test the full system live on our production sandbox:
-**[https://saptha-event-portal-762269836348.us-east4.run.app/login](https://saptha-event-portal-762269836348.us-east4.run.app/login)**
+Test the system on our production sandbox.
 
 | 🎭 Role | 📧 Email | 🔑 Password | 🔗 Dashboard |
 |:--------|:---------|:------------|:------------|
@@ -622,13 +539,13 @@ Test the full system live on our production sandbox:
 | **Coordinator** | `coordinator@demo.com` | `Demo1234` | `/coordinator/dashboard` |
 | **Admin** | `admin@demo.com` | `Demo1234` | `/admin/dashboard` |
 
-> ⚠️ **Demo accounts are read-protected** — you can browse all views but destructive actions (delete, email blast) are disabled.
+*Note: Destructive operations are restricted on demo accounts to preserve state integrity.*
 
 ---
 
 ## 📡 API Reference
 
-SapthaEvent exposes a **public REST API** at `/api/v1/`:
+Interactive endpoints are documented at `/developer/api-docs` (access via the portal once running).
 
 | Method | Endpoint | Description |
 |:-------|:---------|:------------|
@@ -636,93 +553,28 @@ SapthaEvent exposes a **public REST API** at `/api/v1/`:
 | `GET` | `/api/v1/events/<id>` | Event details + registration stats |
 | `GET` | `/api/v1/events/<id>/leaderboard` | Live ranked leaderboard |
 | `GET` | `/api/v1/verify/<cert_hash>` | Certificate verification |
-| `POST` | `/api/v1/register` | Register for an event (auth required) |
-| `GET` | `/api/v1/student/<id>/portfolio` | Student achievement portfolio |
-
-**Authentication:** Bearer token (`Authorization: Bearer <jwt_token>`)
-
-Full interactive API docs: **[/developer/api-docs](https://saptha-event-portal-762269836348.us-east4.run.app/developer/api-docs)**
 
 ---
 
 ## ⚙️ CI/CD & Security
 
-### GitHub Actions Pipeline
+### Automated Workflow Pipeline
 
-```
-Push to master
-    │
-    ├─ 🔍 ruff check .                → Lint all Python files
-    ├─ 🛡️ bandit -r . -ll             → Security vulnerability scan  
-    ├─ 🧪 pytest tests/ --cov         → 143 unit + integration tests
-    └─ 🐳 docker build + push         → Container image to registry
-                │
-                └─ ☁️ Deploy to Google Cloud Run (auto on success)
-```
-
-### Security Architecture
-
-| Layer | Protection |
-|:------|:----------|
-| **Transport** | TLS 1.3 enforced via Flask-Talisman + Cloud Run |
-| **Headers** | CSP, HSTS, X-Frame-Options, XSS-Protection |
-| **Authentication** | scrypt password hashing, session tokens, optional TOTP 2FA |
-| **Authorization** | Role decorators on every protected route |
-| **Rate Limiting** | 500 req/day, 100 req/hour per IP (Flask-Limiter) |
-| **CSRF** | Flask-WTF tokens on all state-changing forms |
-| **Input Validation** | Server-side sanitization via `utils_validation.py` |
-| **Audit Trail** | Every admin action timestamped with IP in Firestore |
-| **Secrets** | Zero secrets in code — all from environment variables |
-
-### Test Coverage
-
-```bash
-pytest tests/ -v --tb=short
-# ✅ 143 tests passing
-# Covers: Auth flows, SPOC features, Coordinator scan, API endpoints,
-#         Certificate generation, Email dispatch, Payment webhooks
-```
+- **Linter**: `ruff` static code analysis.
+- **Security Audit**: `bandit` vulnerability detection.
+- **Testing**: `pytest` running all 145 checks across core functions.
+- **Continuous Deployment**: Automated integration with Google Cloud Run.
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Here's how to get started:
-
-```bash
-# 1. Fork the repository
-# 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/saptha-event-portal.git
-
-# 3. Create a feature branch
-git checkout -b feature/your-amazing-feature
-
-# 4. Make your changes and run checks
-ruff check .                    # Lint
-bandit -r . -ll                 # Security scan
-pytest tests/ --tb=short        # Tests
-
-# 5. Commit with a descriptive message
-git commit -m "feat(spoc): add bulk participant import via CSV"
-
-# 6. Push and open a Pull Request
-git push origin feature/your-amazing-feature
-```
-
-**Commit message convention:**
-- `feat(scope):` — new feature
-- `fix(scope):` — bug fix
-- `docs:` — documentation only
-- `style:` — formatting, no logic change
-- `refactor:` — code restructure
-- `test:` — adding tests
-- `chore:` — build, CI, dependencies
+We welcome contributions! Please open an issue or submit a pull request matching our project architecture.
 
 ---
 
 ## 📜 License
 
-```
 MIT License
 
 Copyright (c) 2026 Sapthagiri NPS University
@@ -736,13 +588,10 @@ furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
-```
 
 ---
 
 <div align="center">
-
----
 
 <img src="static/snpsu-logo.png" width="200" alt="Sapthagiri NPS University" style="background:#1a2557; padding:10px 20px; border-radius:10px;" />
 
@@ -751,14 +600,6 @@ copies or substantial portions of the Software.
 **Built with ❤️ at Sapthagiri NPS University, Bengaluru**
 
 *Python · Flask · Firestore · Gemini AI · Celery · Brevo · ReportLab · Cloud Run*
-
-<br/>
-
-[![Live Portal](https://img.shields.io/badge/🌐_Try_It_Live-saptha--event--portal-1a2557?style=for-the-badge&logo=google-cloud&logoColor=white)](https://saptha-event-portal-762269836348.us-east4.run.app/)
-
-<br/>
-
-> *"SapthaEvent — Because spreadsheets don't belong at hackathons."*
 
 <br/>
 

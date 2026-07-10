@@ -42,7 +42,13 @@
 <link href="/static/css/global.css?v=1.0.2" rel="stylesheet">
 <link href="/static/css/mobile.css?v=1.0.2" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME PAGE — PREMIUM DARK AURORA VOID THEME
+   Matches the student dashboard design language
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .skip-link{position:absolute;top:-40px;left:0;background:var(--blue);color:#fff;padding:8px 16px;text-decoration:none;z-index:100;border-radius:0 0 4px 0;}
 .skip-link:focus{top:0;}
 
@@ -62,29 +68,100 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .btn-reg,.h-btn-primary,.modal-btn-primary{border:2px solid currentColor;}
 }
 
-/* Dark mode support */
-@media(prefers-color-scheme:dark){
-  body{background:#1a1a1a;color:#e0e0e0;}
-  .sec-p{color:#b0b0b0;}
+/* ── DARK AURORA BODY ── */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background: #030712 !important;
+  color: #9ca3af !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Sleek Search Box and Filter controls */
+/* ── AURORA BACKGROUND ── */
+.aurora-bg-home {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-orb-home {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  animation: aurora-float-home 20s ease-in-out infinite alternate;
+}
+.aurora-orb-home:nth-child(1) { width:60vw; height:60vw; top:-20%; left:-10%; background:#8b5cf6; animation-delay:0s; }
+.aurora-orb-home:nth-child(2) { width:50vw; height:50vw; top:30%; right:-15%; background:#3b82f6; animation-delay:-5s; }
+.aurora-orb-home:nth-child(3) { width:45vw; height:45vw; bottom:-10%; left:20%; background:#10b981; animation-delay:-10s; opacity:0.08; }
+.aurora-orb-home:nth-child(4) { width:35vw; height:35vw; top:50%; left:50%; background:#f59e0b; animation-delay:-15s; opacity:0.06; }
+
+@keyframes aurora-float-home {
+  0%   { transform: translate(0,0) scale(1); }
+  33%  { transform: translate(5vw,-3vh) scale(1.1); }
+  66%  { transform: translate(-3vw,5vh) scale(0.95); }
+  100% { transform: translate(2vw,-2vh) scale(1.05); }
+}
+
+/* ── GRID OVERLAY ── */
+.grid-overlay-home {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ── DARK SECTION OVERRIDES ── */
+#events {
+  background: transparent !important;
+}
+.social-proof-section {
+  background: transparent !important;
+}
+.hiw-section {
+  background: rgba(255,255,255,0.02) !important;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.hiw-section::before {
+  background: radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%) !important;
+}
+
+/* ── DARK SECTION HEADINGS ── */
+.sec-eyebrow { color: #f59e0b !important; }
+.sec-h { color: #f9fafb !important; }
+.sec-p { color: #9ca3af !important; }
+
+/* Sleek Search Box and Filter controls — DARK */
 .search-box input {
-    background: var(--bg-card);
-    border: 1px solid var(--ink-200);
-    color: var(--ink-900);
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    color: #f9fafb !important;
     padding: 0.6rem 1rem 0.6rem 2.5rem;
     font-size: 0.9rem;
     border-radius: var(--radius-pill);
     transition: var(--t-fast);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.search-box input::placeholder {
+    color: #6b7280 !important;
 }
 .search-box input:focus {
-    border-color: var(--snpsu-gold);
-    box-shadow: 0 0 0 3px rgba(201, 164, 94, 0.15);
+    border-color: rgba(245,158,11,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.1) !important;
     outline: none;
+    background: rgba(255,255,255,0.06) !important;
 }
 .search-box i {
-    color: var(--ink-400);
+    color: #6b7280 !important;
     z-index: 10;
 }
 
@@ -108,7 +185,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     }
 }
 
-/* Load More Button style */
+/* Load More Button style — DARK */
 .load-more-container {
     display: flex;
     justify-content: center;
@@ -116,46 +193,49 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     margin-bottom: 1rem;
 }
 .btn-load-more {
-    background: var(--bg-card);
-    border: 2px solid var(--snpsu-blue);
-    color: var(--snpsu-blue);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #f9fafb;
     font-weight: 700;
     font-size: 0.95rem;
     padding: 0.75rem 2.25rem;
     border-radius: var(--radius-pill);
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
     transition: var(--t-fast);
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
+    backdrop-filter: blur(12px);
 }
 .btn-load-more:hover {
-    background: var(--snpsu-blue);
-    color: white;
-    box-shadow: var(--shadow-brand);
+    background: rgba(245,158,11,0.15);
+    border-color: rgba(245,158,11,0.4);
+    color: #fbbf24;
     transform: translateY(-2px);
 }
 .btn-load-more:active {
     transform: translateY(0);
 }
 
-/* Sticky Controls Wrapper styling */
+/* Sticky Controls Wrapper styling — DARK */
 .sticky-controls-wrapper {
     position: sticky;
-    top: 58px; /* Sticks right below the sticky navbar */
+    top: 58px;
     z-index: 1010;
-    background: #f8f9fa;
+    background: rgba(3,7,18,0.7) !important;
     padding: 12px 0;
     transition: box-shadow var(--t-fast), border-color var(--t-fast), background var(--t-fast);
     border-bottom: 1px solid transparent;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 .sticky-controls-wrapper.is-sticky {
-    box-shadow: 0 8px 24px -8px rgba(15, 23, 56, 0.08);
-    border-bottom: 1px solid var(--ink-200);
-    background: rgba(248, 249, 250, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px -8px rgba(0,0,0,0.5) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    background: rgba(3,7,18,0.92) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 /* Clear Search Button style */
@@ -171,7 +251,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     transform: scale(1.1);
 }
 
-/* Category capsule scrolling container & hints */
+/* Category capsule scrolling container & hints — DARK */
 .ftabs-scroll-container {
     position: relative;
     display: flex;
@@ -192,11 +272,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 .ftabs-scroll-container::before {
     left: 0;
-    background: linear-gradient(to right, #f8f9fa 20%, transparent);
+    background: linear-gradient(to right, rgba(3,7,18,0.95) 20%, transparent);
 }
 .ftabs-scroll-container::after {
     right: 0;
-    background: linear-gradient(to left, #f8f9fa 20%, transparent);
+    background: linear-gradient(to left, rgba(3,7,18,0.95) 20%, transparent);
 }
 .ftabs-scroll-container.can-scroll-left::before {
     opacity: 1;
@@ -205,34 +285,36 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     opacity: 1;
 }
 
-/* Inactive vs Active tab capsules */
+/* Inactive vs Active tab capsules — DARK */
 .ftab {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--ink-200) !important;
-    color: var(--ink-700) !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: #9ca3af !important;
     padding: 0.5rem 1.25rem;
     font-size: 0.85rem;
     font-weight: 700;
     border-radius: var(--radius-pill);
     transition: var(--t-fast);
-    box-shadow: var(--shadow-xs);
+    box-shadow: none;
 }
 .ftab:hover {
-    border-color: var(--snpsu-gold-light) !important;
-    color: var(--snpsu-blue-light) !important;
+    border-color: rgba(245,158,11,0.3) !important;
+    color: #f9fafb !important;
+    background: rgba(255,255,255,0.06) !important;
 }
 .ftab.active {
-    background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-light)) !important;
-    border-color: var(--snpsu-blue) !important;
-    color: white !important;
-    box-shadow: 0 4px 12px rgba(26, 37, 87, 0.2);
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    border-color: #f59e0b !important;
+    color: #030712 !important;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.25);
+    font-weight: 800;
 }
 
-/* Quick Filter Pills */
+/* Quick Filter Pills — DARK */
 .q-filter-pill {
-    background: var(--bg-card);
-    border: 1px solid var(--ink-200);
-    color: var(--ink-600);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #9ca3af;
     padding: 4px 14px;
     border-radius: var(--radius-pill);
     font-size: 0.78rem;
@@ -244,72 +326,178 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     transition: all var(--t-fast) ease;
     cursor: pointer;
     min-height: 32px !important;
-    box-shadow: var(--shadow-xs);
+    box-shadow: none;
 }
 .q-filter-pill:hover {
-    border-color: var(--ink-400);
-    color: var(--ink-800);
+    border-color: rgba(255,255,255,0.15);
+    color: #f9fafb;
 }
 .q-filter-pill.active {
-    background: var(--snpsu-blue-light);
-    border-color: var(--snpsu-blue);
-    color: white !important;
-    box-shadow: 0 4px 10px rgba(26, 37, 87, 0.15);
+    background: rgba(59,130,246,0.2);
+    border-color: rgba(59,130,246,0.4);
+    color: #93c5fd !important;
+    box-shadow: 0 4px 10px rgba(59,130,246,0.15);
 }
 /* Individual Color coding for active states */
 .q-filter-pill.active#qfFree {
-    background: var(--success) !important;
-    border-color: var(--success) !important;
+    background: rgba(16,185,129,0.2) !important;
+    border-color: rgba(16,185,129,0.4) !important;
+    color: #6ee7b7 !important;
 }
 .q-filter-pill.active#qfSoon {
-    background: var(--warning) !important;
-    border-color: var(--warning) !important;
+    background: rgba(245,158,11,0.2) !important;
+    border-color: rgba(245,158,11,0.4) !important;
+    color: #fbbf24 !important;
 }
 
-/* Mobile responsive compact styling overrides */
+/* Mobile responsive compact styling overrides — DARK */
 @media (max-width: 991.98px) {
     .sticky-controls-wrapper {
-        top: 54px; /* sticks right under mobile navbar */
+        top: 54px;
         padding: 8px 0;
     }
     .ftabs-scroll-container::before {
-        background: linear-gradient(to right, #f8f9fa 10%, transparent);
+        background: linear-gradient(to right, rgba(3,7,18,0.95) 10%, transparent);
     }
     .ftabs-scroll-container::after {
-        background: linear-gradient(to left, #f8f9fa 10%, transparent);
+        background: linear-gradient(to left, rgba(3,7,18,0.95) 10%, transparent);
     }
 }
 
-/* Dark mode overrides */
-@media(prefers-color-scheme:dark){
-    .sticky-controls-wrapper {
-        background: #1a1a1a !important;
+/* ── DARK EVENT CARDS ── */
+.ev-card {
+    background: rgba(255,255,255,0.035) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 20px !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2) !important;
+}
+.ev-card:hover {
+    background: rgba(255,255,255,0.06) !important;
+    border-color: rgba(245,158,11,0.2) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35) !important;
+}
+.ev-title {
+    color: #f9fafb !important;
+}
+.ev-desc {
+    color: #9ca3af !important;
+}
+.ev-meta span {
+    color: #6b7280 !important;
+}
+.ev-meta {
+    border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+.ev-fee-free {
+    color: #34d399 !important;
+}
+.ev-fee-paid {
+    color: #93c5fd !important;
+}
+.ev-reg-count {
+    color: #6b7280 !important;
+}
+.btn-reg {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: #030712 !important;
+    font-weight: 800 !important;
+}
+.btn-reg:hover {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+    color: #030712 !important;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.35) !important;
+}
+.no-events-box {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+}
+.no-events-box i { color: #6b7280 !important; }
+.no-events-box h5 { color: #9ca3af !important; }
+.no-events-box p { color: #6b7280 !important; }
+#noSearchResults .no-events-box {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+}
+#noSearchResults h5 { color: #9ca3af !important; }
+#noSearchResults p { color: #6b7280 !important; }
+#noSearchResults i { color: #6b7280 !important; }
+
+/* ── DARK TESTIMONIAL CARDS ── */
+.testimonial-card {
+    background: rgba(255,255,255,0.035) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2) !important;
+}
+.testimonial-card:hover {
+    background: rgba(255,255,255,0.06) !important;
+    border-color: rgba(245,158,11,0.2) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35) !important;
+}
+.testimonial-name { color: #f9fafb !important; }
+.testimonial-role { color: #6b7280 !important; }
+.testimonial-text { color: #9ca3af !important; }
+.testimonial-quote { color: rgba(245,158,11,0.08) !important; }
+.testimonial-avatar {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* ── DARK SKELETON CARDS ── */
+.skeleton-card {
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 20px !important;
+}
+.skeleton {
+    background: rgba(255,255,255,0.06) !important;
+}
+
+/* ── DARK EVENT MODAL ── */
+#eventModal .modal-content {
+    background: rgba(15,20,40,0.95) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: #9ca3af;
+}
+#eventModal .modal-header {
+    border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+#eventModal .modal-title {
+    color: #f9fafb !important;
+}
+#eventModal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+}
+#eventModal .event-modal-meta-item { color: #9ca3af; }
+#eventModal .event-modal-meta-item i { color: #f59e0b; }
+#eventModal .event-modal-section h5 { color: #f9fafb; }
+#eventModal .event-modal-section p { color: #9ca3af; }
+#eventModal .modal-btn-primary {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: #030712 !important;
+}
+#eventModal .modal-btn-secondary {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: #9ca3af !important;
+}
+/* Mobile bottom drawer modal dark */
+@media (max-width: 576px) {
+    #eventModal .modal-content {
+        border-top: 1px solid rgba(255,255,255,0.08) !important;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.5) !important;
     }
-    .sticky-controls-wrapper.is-sticky {
-        background: rgba(26, 26, 26, 0.96) !important;
-        border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-    }
-    .ftabs-scroll-container::before {
-        background: linear-gradient(to right, #1a1a1a 20%, transparent);
-    }
-    .ftabs-scroll-container::after {
-        background: linear-gradient(to left, #1a1a1a 20%, transparent);
-    }
-    .ftab {
-        background: #2a2a2a !important;
-        border-color: #3d3d3d !important;
-        color: #d0d0d0 !important;
-    }
-    .q-filter-pill {
-        background: #2a2a2a;
-        border-color: #3d3d3d;
-        color: #d0d0d0;
-    }
-    .q-filter-pill:hover {
-        border-color: #5d5d5d;
-        color: #f0f0f0;
+    #eventModal .modal-content::before {
+        background: rgba(255,255,255,0.15) !important;
     }
 }
+
+/* ── DARK FLASH MESSAGES ── */
+.alert { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.1) !important; color: #f9fafb !important; }
 
 /* Event detail modal styled like a premium bottom drawer on mobile */
 @media (max-width: 576px) {
@@ -357,8 +545,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     justify-content: center;
 }
 .btn-voice-search:hover {
-    color: var(--snpsu-blue) !important;
-    background: rgba(0, 0, 0, 0.05);
+    color: #f59e0b !important;
+    background: rgba(245, 158, 11, 0.1);
 }
 .btn-voice-search.listening {
     color: #ef4444 !important;
@@ -449,11 +637,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     opacity: 1 !important;
 }
 
-/* ── PHOTO COLLAGE GALLERY ─────────────────────── */
+/* ── PHOTO COLLAGE GALLERY — DARK ─────────────────────── */
 .photo-collage-section {
   padding: 64px 0 32px;
-  background: linear-gradient(180deg, #f8f9fa 0%, #0d1120 30%, #0d1120 80%, #f8f9fa 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(13,17,32,0.5) 20%, rgba(13,17,32,0.5) 80%, transparent 100%) !important;
   overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
 /* Marquee container */
@@ -471,8 +661,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   z-index: 2;
   pointer-events: none;
 }
-.marquee-outer::before { left: 0; background: linear-gradient(to right, #0d1120 0%, transparent 100%); }
-.marquee-outer::after  { right: 0; background: linear-gradient(to left, #0d1120 0%, transparent 100%); }
+.marquee-outer::before { left: 0; background: linear-gradient(to right, #030712 0%, transparent 100%); }
+.marquee-outer::after  { right: 0; background: linear-gradient(to left, #030712 0%, transparent 100%); }
 
 .marquee-track {
   display: flex;
@@ -607,6 +797,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 </head>
 <body>
+
+<!-- ═══ AURORA BACKGROUND ═══ -->
+<div class="aurora-bg-home" aria-hidden="true">
+  <div class="aurora-orb-home"></div>
+  <div class="aurora-orb-home"></div>
+  <div class="aurora-orb-home"></div>
+  <div class="aurora-orb-home"></div>
+</div>
+<div class="grid-overlay-home" aria-hidden="true"></div>
 
 <!-- ═══ SKIP NAVIGATION LINK ═══ -->
 <a href="#main-content" class="skip-link">Skip to Main Content</a>
@@ -818,7 +1017,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 
 <!-- ═══ EVENTS ═══ -->
-<section id="events" class="py-5" style="background:#f8f9fa;" role="region" aria-label="Upcoming events for registration">
+<section id="events" class="py-5" role="region" aria-label="Upcoming events for registration">
   <div class="container-xl px-3">
 
     <!-- Heading Row -->
@@ -904,7 +1103,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       {% endfor %}
     </div>
 
-    <!-- Actual Events Grid (shown after load) -->
     <div class="row g-4" id="evGrid" role="region" aria-label="Upcoming events" style="display:none;">
       {% for event in events %}
       <div class="col-12 col-sm-6 col-lg-4 ev-col scroll-animator" 
@@ -914,6 +1112,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
            data-team="{{ 'true' if event.get('is_team_event') else 'false' }}"
            data-date="{{ event.get('date', '') }}"
            data-registered="{% if registered_event_ids and event.id in registered_event_ids %}true{% else %}false{% endif %}"
+           data-reg-closed="{% if event.is_closed %}true{% else %}false{% endif %}"
            data-reg-id="{{ registered_events_map.get(event.id, '') }}"
            data-search="{{ event.title.lower() }} {{ event.get('description','').lower() }} {{ event.get('venue','').lower() }} {{ event.get('category','').lower() }}">
         <div class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100 ev-card-clickable" 
@@ -940,7 +1139,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
             {% elif cat == 'Management' %}<div class="ev-banner-icon">📊</div>
             {% else                     %}<div class="ev-banner-icon">🌟</div>{% endif %}
             <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
-            {% if event.get('date','') < current_date %}
+            {% if event.is_closed %}
+            <span class="ev-deadline" style="background:#ef4444; color:#fff;"><i class="fas fa-lock"></i> Registration Closed</span>
+            {% elif event.get('date','') < current_date %}
             <span class="ev-deadline" style="background:rgba(108,117,125,.85);"><i class="fas fa-history"></i>Recently Past</span>
             {% elif event.get('deadline') %}
             <span class="ev-deadline"><i class="fas fa-clock"></i>Deadline: {{ event.deadline }}</span>
@@ -970,6 +1171,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
               {% if registered_event_ids and event.id in registered_event_ids %}
               <a href="/ticket/{{ registered_events_map.get(event.id, '') }}" class="btn-reg text-decoration-none" onclick="event.stopPropagation();">
                 <i class="fas fa-ticket-alt" aria-hidden="true"></i>Ticket
+              </a>
+              {% elif event.is_closed %}
+              <a href="javascript:void(0);" class="btn-reg text-decoration-none btn-reg-closed" onclick="event.stopPropagation(); alert('Registration is closed for this event.');" style="background: #ef4444 !important; color: white !important;">
+                <i class="fas fa-lock" aria-hidden="true"></i>Closed
               </a>
               {% else %}
               <a href="/forms/register/{{ event.id }}" class="btn-reg text-decoration-none" onclick="event.stopPropagation();">
@@ -1073,7 +1278,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   </div>
 
   <div class="gallery-cta text-center mt-4">
-    <a href="#events" class="btn btn-outline-secondary btn-sm" style="border-radius: var(--radius-pill); padding: 8px 24px; font-size:13px; font-weight:600; border-color: var(--ink-300); color: var(--ink-500);">
+    <a href="#events" class="btn btn-sm" style="border-radius: var(--radius-pill); padding: 8px 24px; font-size:13px; font-weight:600; border: 1px solid rgba(255,255,255,0.12); color: #9ca3af; background: rgba(255,255,255,0.04);">
       <i class="fas fa-arrow-down me-2"></i>Explore Events
     </a>
   </div>
@@ -1314,14 +1519,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <script>
 // ── SKELETON LOADER & INITIALIZATION ────
 document.addEventListener('DOMContentLoaded',function(){
-  setTimeout(function(){
-    const skeleton=document.getElementById('evGridSkeleton');
-    const grid=document.getElementById('evGrid');
-    if(grid){
-      grid.style.display='';
-      if(skeleton)skeleton.remove();
-    }
-  },300);
+  const skeleton=document.getElementById('evGridSkeleton');
+  const grid=document.getElementById('evGrid');
+  if(grid){
+    grid.style.display='';
+    if(skeleton)skeleton.remove();
+  }
   initVoiceSearch();
   initChatPrompt();
 });
@@ -1400,6 +1603,11 @@ document.addEventListener('click', function(e){
   var col = card.closest('.ev-col');
   if(!col){ _dbgToast('Could not find .ev-col parent', true); return; }
   
+  if(col.dataset.regClosed === 'true'){
+    alert('Registration is closed for this event.');
+    return;
+  }
+  
   _dbgToast('Clicked event: ' + (col.dataset.id || 'NO-ID'));
   
   try {
@@ -1414,7 +1622,15 @@ document.addEventListener('keydown', function(e){
   var card = e.target.closest('.ev-card-clickable');
   if(!card) return;
   var col = card.closest('.ev-col');
-  if(col){ e.preventDefault(); showEventModalFromCol(col); }
+  if(col){
+    if(col.dataset.regClosed === 'true'){
+      e.preventDefault();
+      alert('Registration is closed for this event.');
+      return;
+    }
+    e.preventDefault();
+    showEventModalFromCol(col);
+  }
 });
 
 // ── EVENT MODAL ────────────────────────────────────────────────────────────
@@ -1510,7 +1726,13 @@ function showEventModalFromCol(col){
 // Legacy alias
 function showEventModal(eventId){
   var col = document.querySelector('.ev-col[data-id="' + CSS.escape(eventId) + '"]');
-  if(col) showEventModalFromCol(col);
+  if(col) {
+    if(col.dataset.regClosed === 'true'){
+      alert('Registration is closed for this event.');
+      return;
+    }
+    showEventModalFromCol(col);
+  }
   else if(eventId) window.location.href = '/forms/register/' + eventId;
 }
 

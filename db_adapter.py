@@ -651,7 +651,7 @@ class SQLQuery:
         if filter is not None:
             # Handles FieldFilter objects
             f_path = getattr(filter, 'field_path', None) or getattr(filter, 'field', None)
-            f_op = getattr(filter, 'op', None) or getattr(filter, 'operator', None)
+            f_op = getattr(filter, 'op_string', None) or getattr(filter, 'op', None) or getattr(filter, 'operator', None)
             f_val = getattr(filter, 'value', None)
             self.filters.append((f_path, f_op, f_val))
         else:

@@ -112,10 +112,12 @@ def verify_and_align_schema():
 def to_uuid(doc_id):
     if not doc_id:
         return None
+    if isinstance(doc_id, uuid.UUID):
+        return doc_id
     try:
-        return uuid.UUID(doc_id)
-    except ValueError:
-        return uuid.uuid5(uuid.NAMESPACE_DNS, doc_id)
+        return uuid.UUID(str(doc_id))
+    except (ValueError, TypeError, AttributeError):
+        return uuid.uuid5(uuid.NAMESPACE_DNS, str(doc_id))
 
 
 import decimal
@@ -639,6 +641,23 @@ class SQLDocumentReference:
         return status_map.get(cleaned, AttendanceStatus.Pending)
 
 
+def _cast_value(col_attr, val):
+    if val is None:
+        return None
+    # Check if the column is of type UUID
+    is_uuid_col = False
+    if hasattr(col_attr, 'type') and col_attr.type is not None:
+        type_name = col_attr.type.__class__.__name__
+        if 'UUID' in type_name:
+            is_uuid_col = True
+            
+    if is_uuid_col:
+        if isinstance(val, (list, tuple)):
+            return [to_uuid(v) for v in val]
+        return to_uuid(val)
+    return val
+
+
 class SQLQuery:
     """Mock Query builder translating filters to SQLAlchemy query objects."""
     def __init__(self, collection):
@@ -680,21 +699,23 @@ class SQLQuery:
                 if col_attr is None:
                     continue
 
+                casted_val = _cast_value(col_attr, val)
+
                 # Parse operators
                 if op == '==':
-                    query = query.filter(col_attr == val)
+                    query = query.filter(col_attr == casted_val)
                 elif op == '!=':
-                    query = query.filter(col_attr != val)
+                    query = query.filter(col_attr != casted_val)
                 elif op == '>':
-                    query = query.filter(col_attr > val)
+                    query = query.filter(col_attr > casted_val)
                 elif op == '<':
-                    query = query.filter(col_attr < val)
+                    query = query.filter(col_attr < casted_val)
                 elif op == '>=':
-                    query = query.filter(col_attr >= val)
+                    query = query.filter(col_attr >= casted_val)
                 elif op == '<=':
-                    query = query.filter(col_attr <= val)
+                    query = query.filter(col_attr <= casted_val)
                 elif op == 'in':
-                    query = query.filter(col_attr.in_(val))
+                    query = query.filter(col_attr.in_(casted_val))
 
             # Apply order columns
             for field, direction in self.orders:

@@ -3465,3 +3465,43 @@ body.auth .skeleton {
     50% { transform: scale(1.02); opacity: 0.95; }
 }
 
+/* ── GLOBAL AURORA & GRID OVERLAY THEME (Home/Auth/Dashboards) ── */
+.aurora-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+.aurora-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.12;
+    animation: auroraFloatGlobal 20s ease-in-out infinite alternate;
+}
+.aurora-orb:nth-child(1) { width: 60vw; height: 60vw; top: -20%; left: -10%; background: #8b5cf6; animation-delay: 0s; }
+.aurora-orb:nth-child(2) { width: 50vw; height: 50vw; top: 30%; right: -15%; background: #3b82f6; animation-delay: -5s; }
+.aurora-orb:nth-child(3) { width: 45vw; height: 45vw; bottom: -10%; left: 20%; background: #10b981; animation-delay: -10s; opacity: 0.08; }
+.aurora-orb:nth-child(4) { width: 35vw; height: 35vw; top: 50%; left: 50%; background: #f59e0b; animation-delay: -15s; opacity: 0.06; }
+
+@keyframes auroraFloatGlobal {
+    0%   { transform: translate(0, 0) scale(1); }
+    33%  { transform: translate(5vw, -3vh) scale(1.1); }
+    66%  { transform: translate(-3vw, 5vh) scale(0.95); }
+    100% { transform: translate(2vw, -2vh) scale(1.05); }
+}
+
+.grid-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+

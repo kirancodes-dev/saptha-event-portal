@@ -1,0 +1,137 @@
+{% extends "spoc/base.html" %}
+
+{% block title %}{{ event.title }} — Live Proctoring Monitor | SapthaEvent{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- HEADER & SUMMARY -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-white font-weight-bold mb-1">
+                <i class="fas fa-desktop text-warning me-2"></i>Live Proctoring Control Room
+            </h3>
+            <p class="text-muted mb-0">Real-time anti-cheat monitoring for <strong>{{ event.title }}</strong></p>
+        </div>
+        <div class="d-flex gap-3">
+            <span class="badge bg-primary px-3 py-2 fs-6">
+                <i class="fas fa-user-clock me-1"></i> Active Testers: <strong id="activeCount">{{ active_count }}</strong>
+            </span>
+            <span class="badge bg-success px-3 py-2 fs-6">
+                <i class="fas fa-check-circle me-1"></i> Completed: <strong id="completedCount">{{ completed_count }}</strong>
+            </span>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <!-- LIVE PROCTORING ALERT CONSOLE -->
+        <div class="col-lg-7 mb-4">
+            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
+                <div class="card-header bg-secondary bg-opacity-10 border-secondary d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-warning font-weight-bold">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Real-Time Violation Feed (SSE Push)
+                    </h6>
+                    <span class="badge bg-danger animate-pulse">LIVE FEED</span>
+                </div>
+                <div class="card-body p-0" style="max-height: 480px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush bg-dark" id="violationFeed">
+                        <li class="list-group-item bg-dark text-muted text-center py-4" id="emptyFeedMessage">
+                            <i class="fas fa-shield-alt fa-2x mb-2 text-secondary"></i>
+                            <p class="mb-0">Monitoring candidate sessions. Proctoring alerts will stream here live...</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANDIDATE STATUS GRID -->
+        <div class="col-lg-5 mb-4">
+            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
+                <div class="card-header bg-secondary bg-opacity-10 border-secondary">
+                    <h6 class="mb-0 text-white font-weight-bold">
+                        <i class="fas fa-users-cog me-2"></i>Candidate Session Overview
+                    </h6>
+                </div>
+                <div class="card-body p-0" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <thead>
+                            <tr class="text-secondary border-secondary">
+                                <th>Candidate</th>
+                                <th>Status</th>
+                                <th>Violations</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in attempts %}
+                            <tr class="border-secondary">
+                                <td>
+                                    <span class="text-white font-weight-bold d-block">{{ a.user_email }}</span>
+                                    <span class="text-muted small">Started: {{ a.started_at[:16] if a.started_at else 'N/A' }}</span>
+                                </td>
+                                <td>
+                                    {% if a.status == 'active' %}
+                                        <span class="badge bg-primary">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Submitted</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set v_len = a.violations|length if a.violations else 0 %}
+                                    <span class="badge {{ 'bg-danger' if v_len > 2 else ('bg-warning' if v_len > 0 else 'bg-secondary') }}">
+                                        {{ v_len }} Warnings
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-3">No test sessions recorded yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- SSE STREAM SCRIPT -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const eventId = "{{ event.id }}";
+    const feed = document.getElementById('violationFeed');
+    const emptyMsg = document.getElementById('emptyFeedMessage');
+
+    const evtSource = new EventSource(`/spoc/proctor/stream/${eventId}`);
+
+    evtSource.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'PROCTOR_VIOLATION') {
+                if (emptyMsg) emptyMsg.remove();
+
+                const li = document.createElement('li');
+                li.className = 'list-group-item bg-dark border-secondary text-light d-flex justify-content-between align-items-center py-3';
+                li.innerHTML = `
+                    <div>
+                        <span class="badge bg-danger me-2">${data.violation_type}</span>
+                        <strong class="text-white">${data.user_email}</strong>
+                        <p class="mb-0 text-muted small mt-1">${data.detail}</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-warning text-dark">${data.total_violations} Warnings</span>
+                        <span class="d-block text-muted small mt-1">${data.timestamp}</span>
+                    </div>
+                `;
+                feed.prepend(li);
+            }
+        } catch(e) {
+            console.error('SSE Error:', e);
+        }
+    };
+});
+</script>
+{% endblock %}

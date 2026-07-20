@@ -190,6 +190,11 @@ def app(mock_db):
                         import app as app_module
                         importlib.reload(app_module)
                         app_module.db = mock_db
+                        try:
+                            import routes_exams
+                            routes_exams.db = mock_db
+                        except Exception:
+                            pass
 
                         flask_app = app_module.app
                         flask_app.config["TESTING"] = True

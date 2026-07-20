@@ -56,7 +56,8 @@ FIELD_MAP = {
     'answersJson': 'answers_json',
     'answers': 'answers_json',
     'actorEmail': 'actor_email',
-    'targetId': 'target_id'
+    'targetId': 'target_id',
+    'student_email': 'lead_email'
 }
 
 
@@ -280,6 +281,7 @@ class SQLDocumentReference:
             d['overview'] = record.description
 
         elif self.collection_name == 'registrations':
+            d['student_email'] = record.lead_email
             # Retrieve nested team members
             m_list = []
             for m in record.members:

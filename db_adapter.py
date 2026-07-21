@@ -152,15 +152,24 @@ def safe_str(val) -> str:
 PURE_FIRESTORE_COLLECTIONS = {'push_subscriptions', 'announcements', 'deletion_requests', 'user_consent'}
 
 def _ensure_native_table(session):
-    """Ensure persistent native document table exists."""
+    """Ensure persistent native document table exists with audit timestamp."""
     session.execute(text("""
         CREATE TABLE IF NOT EXISTS native_document_store (
             collection_name VARCHAR(64),
             doc_id VARCHAR(128),
             data_json TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (collection_name, doc_id)
         )
     """))
+
+def _db_dialect_name():
+    """Return the SQLAlchemy dialect name of the active engine ('postgresql' or 'sqlite')."""
+    try:
+        engine = get_engine()
+        return engine.dialect.name
+    except Exception:
+        return 'sqlite'
 
 def _get_native_doc(collection_name, doc_id):
     """Retrieve document from shared multi-worker persistent store."""
@@ -189,7 +198,11 @@ def _get_native_doc(collection_name, doc_id):
     return None
 
 def _set_native_doc(collection_name, doc_id, data, merge=True):
-    """Persist document to shared multi-worker storage with error propagation."""
+    """Persist document via atomic upsert with error propagation.
+
+    Uses INSERT ... ON CONFLICT DO UPDATE (Postgres) or INSERT OR REPLACE (SQLite)
+    to avoid the race condition of separate DELETE + INSERT under concurrent writers.
+    """
     final_data = (data or {}).copy()
     if merge:
         existing = _get_native_doc(collection_name, doc_id) or {}
@@ -207,14 +220,25 @@ def _set_native_doc(collection_name, doc_id, data, merge=True):
     except Exception as exc:
         logger.warning("Redis sync warning for %s/%s: %s", collection_name, doc_id, exc)
 
+    dialect = _db_dialect_name()
     try:
         with get_session() as session:
             _ensure_native_table(session)
-            session.execute(text("DELETE FROM native_document_store WHERE collection_name=:col AND doc_id=:id"),
-                            {"col": collection_name, "id": str(doc_id)})
-            session.execute(text("INSERT INTO native_document_store (collection_name, doc_id, data_json) VALUES (:col, :id, :data)"),
-                            {"col": collection_name, "id": str(doc_id), "data": data_json})
-            session.commit()
+            params = {"col": collection_name, "id": str(doc_id), "data": data_json}
+            if dialect == 'postgresql':
+                # Atomic upsert — single statement, no race window
+                session.execute(text(
+                    "INSERT INTO native_document_store (collection_name, doc_id, data_json, updated_at) "
+                    "VALUES (:col, :id, :data, CURRENT_TIMESTAMP) "
+                    "ON CONFLICT (collection_name, doc_id) "
+                    "DO UPDATE SET data_json = EXCLUDED.data_json, updated_at = CURRENT_TIMESTAMP"
+                ), params)
+            else:
+                # SQLite: INSERT OR REPLACE is atomic against the composite PK
+                session.execute(text(
+                    "INSERT OR REPLACE INTO native_document_store (collection_name, doc_id, data_json, updated_at) "
+                    "VALUES (:col, :id, :data, CURRENT_TIMESTAMP)"
+                ), params)
     except Exception as exc:
         logger.error("Database write failed for native doc %s/%s: %s", collection_name, doc_id, exc)
         raise RuntimeError(f"Database write failed for {collection_name}/{doc_id}: {exc}") from exc

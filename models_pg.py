@@ -288,3 +288,30 @@ class Announcement(Base):
     spoc_email  = Column("spoc_email", String(255), nullable=True)
     timestamp   = Column(String(100), nullable=False)
 
+
+class ProjectSubmission(Base):
+    __tablename__ = "project_submissions"
+
+    id                = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id          = Column("eventId", UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    registration_id   = Column("registrationId", UUID(as_uuid=True), ForeignKey("registrations.id", ondelete="CASCADE"), nullable=False, index=True)
+    team_name         = Column("teamName", String(200), nullable=False)
+    project_title     = Column("projectTitle", String(255), nullable=False)
+    tagline           = Column(String(500))
+    problem_statement = Column("problemStatement", Text)
+    solution_overview = Column("solutionOverview", Text)
+    tech_stack        = Column("techStack", String(500))
+    github_url        = Column("githubUrl", String(500))
+    demo_url          = Column("demoUrl", String(500))
+    video_url         = Column("videoUrl", String(500))
+    slide_deck_url    = Column("slideDeckUrl", String(500))
+    milestone_stage   = Column("milestoneStage", String(50), nullable=False, default="Ideation")
+    score_impact      = Column("scoreImpact", Float, default=0.0)
+    score_tech        = Column("scoreTech", Float, default=0.0)
+    score_ux          = Column("scoreUx", Float, default=0.0)
+    score_pitch       = Column("scorePitch", Float, default=0.0)
+    total_score       = Column("totalScore", Float, default=0.0)
+    submitted_at      = Column("submittedAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at        = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+

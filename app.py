@@ -324,6 +324,7 @@ from routes_ai_features     import ai_features_bp      # noqa: E402
 from routes_onboarding      import onboarding_bp       # noqa: E402
 from routes_gamification    import gamification_bp     # noqa: E402
 from routes_exams           import exams_bp            # noqa: E402
+from routes_hackathon       import hackathon_bp        # noqa: E402
 
 app.register_blueprint(api_v1_bp)
 app.register_blueprint(notif_v2_bp)
@@ -342,6 +343,7 @@ app.register_blueprint(ai_features_bp)
 app.register_blueprint(onboarding_bp)
 app.register_blueprint(gamification_bp)
 app.register_blueprint(exams_bp)
+app.register_blueprint(hackathon_bp)
 
 # Initialise internationalization helpers on app
 init_i18n(app)

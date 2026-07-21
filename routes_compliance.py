@@ -149,15 +149,18 @@ def request_deletion():
     now = datetime.datetime.now(datetime.timezone.utc)
     scheduled_at = now + datetime.timedelta(days=30)
 
-    db.collection("deletion_requests").document(req_id).set({
-        "id": req_id,
-        "email": email,
-        "reason": reason,
-        "status": "pending",
-        "requested_at": now.isoformat(),
-        "scheduled_deletion_at": scheduled_at.isoformat(),
-        "cancelled_at": None,
-    })
+    try:
+        db.collection("deletion_requests").document(req_id).set({
+            "id": req_id,
+            "email": email,
+            "reason": reason,
+            "status": "pending",
+            "requested_at": now.isoformat(),
+            "scheduled_deletion_at": scheduled_at.isoformat(),
+            "cancelled_at": None,
+        })
+    except Exception as exc:
+        return jsonify({"error": "Failed to persist deletion request", "detail": str(exc)}), 500
 
     # Notify user
     try:
@@ -257,7 +260,10 @@ def update_consent():
     updates = {k: bool(v) for k, v in data.items() if k in allowed}
     updates["consent_updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    db.collection("user_consent").document(email).set(updates, merge=True)
+    try:
+        db.collection("user_consent").document(email).set(updates, merge=True)
+    except Exception as exc:
+        return jsonify({"error": "Failed to update consent preferences", "detail": str(exc)}), 500
 
     # Log consent change
     try:

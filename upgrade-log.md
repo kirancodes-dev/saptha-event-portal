@@ -6,10 +6,10 @@ This log tracks all upgrade cycles, verified diffs, test runs, and status transi
 
 ## Upgrade Cycle — July 21, 2026
 
-### 1. State Snapshot
-- **Commit SHA**: `9ec5be37a20e6b01d2564a8cc7f7077e71353a5c`
-- **Confirmed Open Items**:
-  - `Database Consolidation`: 🔴 **OPEN / IN PROGRESS** — `SQLFirestoreAdapter` in `db_adapter.py` remains the active compatibility bridge. Sole DB source of truth decision awaiting Guardrail input.
+### 1. State Snapshot & Architectural Decision
+- **Commit SHA**: `98ffd8e`
+- **Database Architecture Decision**: **OPTION B (Pure Firestore Native) CONFIRMED**
+  - **Rationale**: Firestore is the active production DB on Cloud Run, natively powering real-time SSE leaderboards and proctoring streams without observed consistency or latency issues. Option B avoids touching query logic across 40+ route files, eliminates dual-path adapter complexity, and matches live infrastructure.
 - **Confirmed Resolved Items**:
   - `Legal & Privacy Compliance Suite (DPDP Act 2023 & GDPR)`: ✅ **RESOLVED** — Verified via routes `/terms`, `/privacy`, `/compliance/settings`, `/compliance/export-data`, `/compliance/delete-request`, and navigation links across all Jinja2 templates.
 
@@ -23,4 +23,4 @@ This log tracks all upgrade cycles, verified diffs, test runs, and status transi
   - `templates/marketing/landing.html` ➔ Updated footer links.
 
 ### 3. Next Action / Priority
-- **Database Consolidation**: Execute Guardrail decision on target database architecture (PostgreSQL ORM vs Firestore) before initiating direct model migration across remaining blueprints.
+- **Database Consolidation**: Streamline `db_adapter.py` for pure Firestore NoSQL execution and deprecate dual-path SQL abstraction code.

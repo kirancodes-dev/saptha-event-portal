@@ -3,7 +3,7 @@
 The Saptha Event Portal has a strong functional foundation. To transition from a working project to a market-ready product, technical, architectural, and legal compliance gaps are tracked below.
 
 ## 1. Technical & Architectural Gaps 🛠️
-- **Database Consolidation (OPEN / IN PROGRESS):** The `SQLFirestoreAdapter` in `db_adapter.py` acts as a temporary compatibility bridge translating dictionary operations to PostgreSQL/SQLAlchemy ORM models with SQLite fallback. Full decommission of the adapter bridge in favor of direct SQLAlchemy ORM sessions across all routes is currently open.
+- **[DECISION CONFIRMED — OPTION B] Database Consolidation (Pure Firestore Native):** Confirmed decision to standardize on Google Cloud Firestore as the single source of truth. Firestore natively powers the live Cloud Run deployment and real-time SSE leaderboards without consistency bugs. The `SQLFirestoreAdapter` in `db_adapter.py` will be streamlined to pure Firestore document semantics, removing unused relational translation overhead.
 - **CI/CD Automation:** Implement a full deployment pipeline (e.g., GitHub Actions) including:
     - Automated linting and formatting.
     - Automated unit and integration tests.
@@ -34,7 +34,7 @@ The Saptha Event Portal has a strong functional foundation. To transition from a
 ### Summary Priority Matrix
 | Priority | Gap | Status | Impact | Effort |
 | :--- | :--- | :--- | :--- | :--- |
-| 🔴 **Critical** | Database Consolidation | Open / In Progress | High (Stability) | Medium |
+| 🔴 **Critical** | Database Consolidation (Pure Firestore) | Option B Standardized | High (Cleanliness) | Low |
 | ✅ **Resolved** | Legal/Privacy Compliance (DPDP & GDPR) | Completed | High (Risk) | Low |
 | 🟡 **High** | Design System/UX Polish | In Progress | High (Perception) | High |
 | 🟡 **High** | CI/CD Pipeline | Planned | Medium (Quality) | Medium |

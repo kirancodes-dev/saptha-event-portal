@@ -189,7 +189,7 @@ def _get_native_doc(collection_name, doc_id):
     return None
 
 def _set_native_doc(collection_name, doc_id, data, merge=True):
-    """Persist document to shared multi-worker storage."""
+    """Persist document to shared multi-worker storage with error propagation."""
     final_data = (data or {}).copy()
     if merge:
         existing = _get_native_doc(collection_name, doc_id) or {}
@@ -204,8 +204,8 @@ def _set_native_doc(collection_name, doc_id, data, merge=True):
             import redis
             r = redis.Redis.from_url(redis_url, decode_responses=True)
             r.set(f"doc:{collection_name}:{doc_id}", data_json)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Redis sync warning for %s/%s: %s", collection_name, doc_id, exc)
 
     try:
         with get_session() as session:
@@ -216,18 +216,19 @@ def _set_native_doc(collection_name, doc_id, data, merge=True):
                             {"col": collection_name, "id": str(doc_id), "data": data_json})
             session.commit()
     except Exception as exc:
-        logger.error("Error saving native doc %s/%s: %s", collection_name, doc_id, exc)
+        logger.error("Database write failed for native doc %s/%s: %s", collection_name, doc_id, exc)
+        raise RuntimeError(f"Database write failed for {collection_name}/{doc_id}: {exc}") from exc
 
 def _delete_native_doc(collection_name, doc_id):
-    """Delete document from shared multi-worker storage."""
+    """Delete document from shared multi-worker storage with error propagation."""
     try:
         redis_url = os.environ.get('REDIS_URL') or os.environ.get('RATELIMIT_STORAGE_URL')
         if redis_url and redis_url.startswith('redis'):
             import redis
             r = redis.Redis.from_url(redis_url, decode_responses=True)
             r.delete(f"doc:{collection_name}:{doc_id}")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Redis delete warning for %s/%s: %s", collection_name, doc_id, exc)
 
     try:
         with get_session() as session:
@@ -236,7 +237,8 @@ def _delete_native_doc(collection_name, doc_id):
                             {"col": collection_name, "id": str(doc_id)})
             session.commit()
     except Exception as exc:
-        logger.error("Error deleting native doc %s/%s: %s", collection_name, doc_id, exc)
+        logger.error("Database delete failed for native doc %s/%s: %s", collection_name, doc_id, exc)
+        raise RuntimeError(f"Database delete failed for {collection_name}/{doc_id}: {exc}") from exc
 
 def _query_native_docs(collection_name, filters=None, limit=None):
     """Query documents from shared persistent storage."""

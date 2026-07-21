@@ -91,3 +91,35 @@ class TestDeletionRequest:
         })
         doc = mock_db.collection("deletion_requests").document("del_001").get()
         assert doc.to_dict()["status"] == "cancelled"
+
+
+def test_deletion_request_write_failure_returns_500(auth_client, monkeypatch):
+    """If database write fails during deletion request, return HTTP 500 error."""
+    def mock_raise_set(*args, **kwargs):
+        raise RuntimeError("Database connection dropped")
+
+    import tests.conftest as cft
+    import db_adapter
+    monkeypatch.setattr(cft.MockDocumentReference, "set", mock_raise_set)
+    monkeypatch.setattr(db_adapter.SQLDocumentReference, "set", mock_raise_set)
+
+    resp = auth_client.post("/compliance/delete-request", json={"reason": "Testing error handling"})
+    assert resp.status_code == 500
+    data = resp.get_json()
+    assert "Failed to persist deletion request" in data.get("error", "")
+
+
+def test_update_consent_write_failure_returns_500(auth_client, monkeypatch):
+    """If database write fails during consent update, return HTTP 500 error."""
+    def mock_raise_set(*args, **kwargs):
+        raise RuntimeError("Database lock timeout")
+
+    import tests.conftest as cft
+    import db_adapter
+    monkeypatch.setattr(cft.MockDocumentReference, "set", mock_raise_set)
+    monkeypatch.setattr(db_adapter.SQLDocumentReference, "set", mock_raise_set)
+
+    resp = auth_client.put("/compliance/consent", json={"email_marketing": False})
+    assert resp.status_code == 500
+    data = resp.get_json()
+    assert "Failed to update consent preferences" in data.get("error", "")

@@ -33,6 +33,13 @@ def sla_page():
     return render_template("compliance/sla.html", services=services)
 
 
+@compliance_bp.route("/settings", methods=["GET"])
+@login_required
+def privacy_settings_page():
+    """GET /compliance/settings — Privacy & DPDP Act 2023 User Controls."""
+    return render_template("compliance/privacy_settings.html")
+
+
 def _db():
     from app import db
     return db

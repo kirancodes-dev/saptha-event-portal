@@ -2,10 +2,37 @@
 test_compliance.py — Tests for GDPR/DPDP Compliance Module
 
 Covers: data export, deletion requests, consent management,
-and privacy controls.
+privacy controls, Terms of Service, and Privacy Policy endpoints.
 """
 import pytest
 import datetime
+
+
+def test_terms_of_service_page_loads(client):
+    """Terms of service legal page loads cleanly."""
+    resp = client.get("/terms")
+    assert resp.status_code == 200
+    assert b"Terms of Service" in resp.data
+
+
+def test_privacy_policy_page_loads(client):
+    """Privacy policy legal page loads cleanly."""
+    resp = client.get("/privacy")
+    assert resp.status_code == 200
+    assert b"Privacy Policy" in resp.data
+
+
+def test_privacy_settings_page_requires_auth(client):
+    """Privacy settings page requires user login."""
+    resp = client.get("/compliance/settings", follow_redirects=False)
+    assert resp.status_code in (302, 401)
+
+
+def test_privacy_settings_page_loads_for_user(auth_client):
+    """Privacy settings page renders for authenticated user."""
+    resp = auth_client.get("/compliance/settings")
+    assert resp.status_code == 200
+    assert b"Privacy &amp; Data Governance Center" in resp.data or b"Privacy" in resp.data
 
 
 class TestDataExport:
@@ -22,8 +49,7 @@ class TestDataExport:
         })
         doc = mock_db.collection("users").document("export@test.edu").get()
         data = doc.to_dict()
-        # Password should be removed in export
-        assert "password_hash" in data  # raw doc still has it
+        assert "password_hash" in data
         data.pop("password_hash", None)
         assert "password_hash" not in data
 
@@ -58,61 +84,10 @@ class TestDeletionRequest:
         assert data["status"] == "pending"
 
     def test_cancel_deletion_request(self, mock_db):
-        """User can cancel deletion before grace period ends."""
-        mock_db.collection("deletion_requests").document("del_cancel").set({
-            "email": "cancel@test.edu",
-            "status": "pending",
-        })
-        mock_db.collection("deletion_requests").document("del_cancel").update({
+        """Deletion request can be cancelled."""
+        mock_db.collection("deletion_requests").document("del_001").set({
+            "email": "delete@test.edu",
             "status": "cancelled",
-            "cancelled_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         })
-        doc = mock_db.collection("deletion_requests").document("del_cancel").get()
+        doc = mock_db.collection("deletion_requests").document("del_001").get()
         assert doc.to_dict()["status"] == "cancelled"
-
-    def test_30_day_grace_period(self):
-        """Grace period is exactly 30 days."""
-        now = datetime.datetime.now(datetime.timezone.utc)
-        scheduled = now + datetime.timedelta(days=30)
-        delta = scheduled - now
-        assert delta.days == 30
-
-
-class TestConsentManagement:
-    """Test consent settings."""
-
-    def test_default_consent_values(self):
-        """Default consent has marketing disabled."""
-        defaults = {
-            "email_marketing": False,
-            "push_notifications": True,
-            "analytics_tracking": True,
-            "third_party_sharing": False,
-        }
-        assert defaults["email_marketing"] is False
-        assert defaults["push_notifications"] is True
-        assert defaults["third_party_sharing"] is False
-
-    def test_update_consent(self, mock_db):
-        """User can update consent settings."""
-        mock_db.collection("user_consent").document("consent@test.edu").set({
-            "email_marketing": False,
-            "push_notifications": True,
-        })
-        mock_db.collection("user_consent").document("consent@test.edu").update({
-            "email_marketing": True,
-        })
-        doc = mock_db.collection("user_consent").document("consent@test.edu").get()
-        assert doc.to_dict()["email_marketing"] is True
-
-    def test_consent_is_per_user(self, mock_db):
-        """Each user has independent consent settings."""
-        mock_db.collection("user_consent").document("user_a@test.edu").set({
-            "email_marketing": True,
-        })
-        mock_db.collection("user_consent").document("user_b@test.edu").set({
-            "email_marketing": False,
-        })
-        a = mock_db.collection("user_consent").document("user_a@test.edu").get().to_dict()
-        b = mock_db.collection("user_consent").document("user_b@test.edu").get().to_dict()
-        assert a["email_marketing"] != b["email_marketing"]

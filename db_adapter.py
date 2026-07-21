@@ -148,9 +148,139 @@ def safe_str(val) -> str:
     return str(val)
 
 
-# ── Native Firestore Store for Non-Relational Collections ────────────────────
-_NATIVE_FIRESTORE_STORE = {}
+# ── Native Firestore Store (Multi-Worker Durable Document Store) ────────────
 PURE_FIRESTORE_COLLECTIONS = {'push_subscriptions', 'announcements', 'deletion_requests', 'user_consent'}
+
+def _ensure_native_table(session):
+    """Ensure persistent native document table exists."""
+    session.execute(text("""
+        CREATE TABLE IF NOT EXISTS native_document_store (
+            collection_name VARCHAR(64),
+            doc_id VARCHAR(128),
+            data_json TEXT,
+            PRIMARY KEY (collection_name, doc_id)
+        )
+    """))
+
+def _get_native_doc(collection_name, doc_id):
+    """Retrieve document from shared multi-worker persistent store."""
+    try:
+        redis_url = os.environ.get('REDIS_URL') or os.environ.get('RATELIMIT_STORAGE_URL')
+        if redis_url and redis_url.startswith('redis'):
+            import redis
+            r = redis.Redis.from_url(redis_url, decode_responses=True)
+            raw = r.get(f"doc:{collection_name}:{doc_id}")
+            if raw:
+                return json.loads(raw)
+    except Exception:
+        pass
+
+    try:
+        with get_session() as session:
+            _ensure_native_table(session)
+            res = session.execute(
+                text("SELECT data_json FROM native_document_store WHERE collection_name=:col AND doc_id=:id"),
+                {"col": collection_name, "id": str(doc_id)}
+            ).fetchone()
+            if res and res[0]:
+                return json.loads(res[0])
+    except Exception as exc:
+        logger.error("Error reading native doc %s/%s: %s", collection_name, doc_id, exc)
+    return None
+
+def _set_native_doc(collection_name, doc_id, data, merge=True):
+    """Persist document to shared multi-worker storage."""
+    final_data = (data or {}).copy()
+    if merge:
+        existing = _get_native_doc(collection_name, doc_id) or {}
+        existing.update(final_data)
+        final_data = existing
+
+    data_json = json.dumps(final_data, cls=CustomJSONEncoder)
+
+    try:
+        redis_url = os.environ.get('REDIS_URL') or os.environ.get('RATELIMIT_STORAGE_URL')
+        if redis_url and redis_url.startswith('redis'):
+            import redis
+            r = redis.Redis.from_url(redis_url, decode_responses=True)
+            r.set(f"doc:{collection_name}:{doc_id}", data_json)
+    except Exception:
+        pass
+
+    try:
+        with get_session() as session:
+            _ensure_native_table(session)
+            session.execute(text("DELETE FROM native_document_store WHERE collection_name=:col AND doc_id=:id"),
+                            {"col": collection_name, "id": str(doc_id)})
+            session.execute(text("INSERT INTO native_document_store (collection_name, doc_id, data_json) VALUES (:col, :id, :data)"),
+                            {"col": collection_name, "id": str(doc_id), "data": data_json})
+            session.commit()
+    except Exception as exc:
+        logger.error("Error saving native doc %s/%s: %s", collection_name, doc_id, exc)
+
+def _delete_native_doc(collection_name, doc_id):
+    """Delete document from shared multi-worker storage."""
+    try:
+        redis_url = os.environ.get('REDIS_URL') or os.environ.get('RATELIMIT_STORAGE_URL')
+        if redis_url and redis_url.startswith('redis'):
+            import redis
+            r = redis.Redis.from_url(redis_url, decode_responses=True)
+            r.delete(f"doc:{collection_name}:{doc_id}")
+    except Exception:
+        pass
+
+    try:
+        with get_session() as session:
+            _ensure_native_table(session)
+            session.execute(text("DELETE FROM native_document_store WHERE collection_name=:col AND doc_id=:id"),
+                            {"col": collection_name, "id": str(doc_id)})
+            session.commit()
+    except Exception as exc:
+        logger.error("Error deleting native doc %s/%s: %s", collection_name, doc_id, exc)
+
+def _query_native_docs(collection_name, filters=None, limit=None):
+    """Query documents from shared persistent storage."""
+    docs = []
+    try:
+        with get_session() as session:
+            _ensure_native_table(session)
+            rows = session.execute(
+                text("SELECT doc_id, data_json FROM native_document_store WHERE collection_name=:col"),
+                {"col": collection_name}
+            ).fetchall()
+            for r in rows:
+                if r[1]:
+                    docs.append((r[0], json.loads(r[1])))
+    except Exception as exc:
+        logger.error("Error querying native docs for %s: %s", collection_name, exc)
+
+    results = []
+    for doc_id, data in docs:
+        match = True
+        if filters:
+            for field, op, val in filters:
+                doc_val = data.get(field)
+                if op == '==' and doc_val != val:
+                    match = False; break
+                elif op == '!=' and doc_val == val:
+                    match = False; break
+                elif op == '>' and (doc_val is None or doc_val <= val):
+                    match = False; break
+                elif op == '<' and (doc_val is None or doc_val >= val):
+                    match = False; break
+                elif op == '>=' and (doc_val is None or doc_val < val):
+                    match = False; break
+                elif op == '<=' and (doc_val is None or doc_val > val):
+                    match = False; break
+                elif op == 'in' and (doc_val not in val if val else True):
+                    match = False; break
+        if match:
+            results.append(SQLDocumentSnapshot(doc_id, data.copy(), exists=True))
+
+    if limit is not None:
+        results = results[:limit]
+    return iter(results)
+
 
 # ── Mock Classes Mimicking Firestore ─────────────────────────────────────────
 
@@ -183,10 +313,10 @@ class SQLDocumentReference:
 
     def get(self):
         if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
-            doc_data = _NATIVE_FIRESTORE_STORE.get(self.collection_name, {}).get(self.id)
+            doc_data = _get_native_doc(self.collection_name, self.id)
             if doc_data is None:
                 return SQLDocumentSnapshot(self.id, None, exists=False)
-            return SQLDocumentSnapshot(self.id, doc_data.copy(), exists=True)
+            return SQLDocumentSnapshot(self.id, doc_data, exists=True)
 
         if not self.model_class:
             return SQLDocumentSnapshot(self.id, None, exists=False)
@@ -208,14 +338,7 @@ class SQLDocumentReference:
 
     def set(self, data, merge=True):
         if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
-            if self.collection_name not in _NATIVE_FIRESTORE_STORE:
-                _NATIVE_FIRESTORE_STORE[self.collection_name] = {}
-            if merge:
-                existing = _NATIVE_FIRESTORE_STORE[self.collection_name].get(self.id, {})
-                existing.update(data)
-                _NATIVE_FIRESTORE_STORE[self.collection_name][self.id] = existing
-            else:
-                _NATIVE_FIRESTORE_STORE[self.collection_name][self.id] = (data or {}).copy()
+            _set_native_doc(self.collection_name, self.id, data, merge=merge)
             return
 
         if not self.model_class:
@@ -246,8 +369,7 @@ class SQLDocumentReference:
 
     def delete(self):
         if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
-            if self.collection_name in _NATIVE_FIRESTORE_STORE:
-                _NATIVE_FIRESTORE_STORE[self.collection_name].pop(self.id, None)
+            _delete_native_doc(self.collection_name, self.id)
             return
 
         if not self.model_class:
@@ -716,31 +838,7 @@ class SQLQuery:
 
     def stream(self):
         if self.collection.id in PURE_FIRESTORE_COLLECTIONS:
-            col_dict = _NATIVE_FIRESTORE_STORE.get(self.collection.id, {})
-            results = []
-            for doc_id, data in col_dict.items():
-                match = True
-                for field, op, val in self.filters:
-                    doc_val = data.get(field)
-                    if op == '==' and doc_val != val:
-                        match = False; break
-                    elif op == '!=' and doc_val == val:
-                        match = False; break
-                    elif op == '>' and (doc_val is None or doc_val <= val):
-                        match = False; break
-                    elif op == '<' and (doc_val is None or doc_val >= val):
-                        match = False; break
-                    elif op == '>=' and (doc_val is None or doc_val < val):
-                        match = False; break
-                    elif op == '<=' and (doc_val is None or doc_val > val):
-                        match = False; break
-                    elif op == 'in' and (doc_val not in val if val else True):
-                        match = False; break
-                if match:
-                    results.append(SQLDocumentSnapshot(doc_id, data.copy(), exists=True))
-            if self._limit is not None:
-                results = results[:self._limit]
-            return iter(results)
+            return _query_native_docs(self.collection.id, filters=self.filters, limit=self._limit)
 
         if not self.collection.model:
             return iter([])

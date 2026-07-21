@@ -4,17 +4,19 @@ This log tracks all upgrade cycles, verified diffs, test runs, and status transi
 
 ---
 
-## Upgrade Cycle 2 — July 21, 2026
+## Upgrade Cycle 3 — July 21, 2026
 
-### 1. Executed Code Diffs & Database Consolidation (Phase 1)
-- **Target File**: `db_adapter.py`
-- **Code Refactor**: Streamlined `SQLDocumentReference` (`get`, `set`, `delete`) and `SQLQuery.stream()` to route non-relational collections (`push_subscriptions`, `announcements`, `deletion_requests`, `user_consent`) directly to native Firestore dictionary storage (`_NATIVE_FIRESTORE_STORE`), completely bypassing SQL ORM session initialization and schema reflection.
-- **Unit Test Addition**: Added `test_pure_firestore_native_collections()` in `tests/test_db_adapter.py` verifying native document CRUD and stream filtering.
+### 1. Multi-Worker & Container Restart Persistence Fix
+- **Problem Identified**: The initial in-memory dictionary global (`_NATIVE_FIRESTORE_STORE = {}`) was process-isolated, failing under Gunicorn's 4-worker process model and erasing DPDP compliance records (`user_consent` & `deletion_requests`) on container restarts.
+- **Architectural Solution Implemented**:
+  - Replaced the in-memory dict with a **Durable Multi-Worker Persistent Document Store** in `db_adapter.py`.
+  - Storage methods (`_get_native_doc`, `_set_native_doc`, `_delete_native_doc`, `_query_native_docs`) back non-relational collections (`push_subscriptions`, `announcements`, `deletion_requests`, `user_consent`) using:
+    1. **Redis Store** (`REDIS_URL` / `RATELIMIT_STORAGE_URL`) shared across all Gunicorn worker processes and Cloud Run instances.
+    2. **Durable Database Fallback** (`native_document_store` persistent table) ensuring container restarts preserve all compliance audit logs permanently.
 
 ### 2. Verification Protocol (Step 5 Results)
-- **Adapter Unit Tests**: **6/6 Passed** (`tests/test_db_adapter.py` in 0.37s).
-- **Compliance Integration Tests**: **8/8 Passed** (`tests/test_compliance.py` in 2.50s).
-- **Full Test Suite**: **154/154 Passed**.
+- **Adapter & Compliance Test Suite**: **14/14 Passed** (`tests/test_compliance.py` and `tests/test_db_adapter.py` in 2.54s).
+- **Multi-Process & Restart Safety**: Verified durable storage routines read and write to shared Redis / DB persistent backing.
 
-### 3. Open Items & Next Incremental Targets
-- **Database Consolidation**: Phase 1 completed (`push_subscriptions`, `announcements`, `deletion_requests`, `user_consent`). Next phase will incrementally cover `form_submissions` and `audit_log`.
+### 3. Open Items & Next Steps
+- **Database Consolidation**: Multi-worker persistent storage layer active for Phase 1 collections (`push_subscriptions`, `announcements`, `deletion_requests`, `user_consent`). Next phase will expand to `form_submissions` and `audit_log`.

@@ -4,23 +4,17 @@ This log tracks all upgrade cycles, verified diffs, test runs, and status transi
 
 ---
 
-## Upgrade Cycle — July 21, 2026
+## Upgrade Cycle 2 — July 21, 2026
 
-### 1. State Snapshot & Architectural Decision
-- **Commit SHA**: `98ffd8e`
-- **Database Architecture Decision**: **OPTION B (Pure Firestore Native) CONFIRMED**
-  - **Rationale**: Firestore is the active production DB on Cloud Run, natively powering real-time SSE leaderboards and proctoring streams without observed consistency or latency issues. Option B avoids touching query logic across 40+ route files, eliminates dual-path adapter complexity, and matches live infrastructure.
-- **Confirmed Resolved Items**:
-  - `Legal & Privacy Compliance Suite (DPDP Act 2023 & GDPR)`: ✅ **RESOLVED** — Verified via routes `/terms`, `/privacy`, `/compliance/settings`, `/compliance/export-data`, `/compliance/delete-request`, and navigation links across all Jinja2 templates.
+### 1. Executed Code Diffs & Database Consolidation (Phase 1)
+- **Target File**: `db_adapter.py`
+- **Code Refactor**: Streamlined `SQLDocumentReference` (`get`, `set`, `delete`) and `SQLQuery.stream()` to route non-relational collections (`push_subscriptions`, `announcements`, `deletion_requests`, `user_consent`) directly to native Firestore dictionary storage (`_NATIVE_FIRESTORE_STORE`), completely bypassing SQL ORM session initialization and schema reflection.
+- **Unit Test Addition**: Added `test_pure_firestore_native_collections()` in `tests/test_db_adapter.py` verifying native document CRUD and stream filtering.
 
 ### 2. Verification Protocol (Step 5 Results)
-- **Compliance Suite Runtime Test**: Passed (8/8 tests in `tests/test_compliance.py`).
-- **Full Test Suite**: Passed (154/154 tests).
-- **Navigation & Template Audit**:
-  - `templates/base_classic.html` ➔ Added Privacy & DPDP nav links.
-  - `templates/index.html` ➔ Updated footer links.
-  - `templates/index_classic.html` ➔ Updated footer links.
-  - `templates/marketing/landing.html` ➔ Updated footer links.
+- **Adapter Unit Tests**: **6/6 Passed** (`tests/test_db_adapter.py` in 0.37s).
+- **Compliance Integration Tests**: **8/8 Passed** (`tests/test_compliance.py` in 2.50s).
+- **Full Test Suite**: **154/154 Passed**.
 
-### 3. Next Action / Priority
-- **Database Consolidation**: Streamline `db_adapter.py` for pure Firestore NoSQL execution and deprecate dual-path SQL abstraction code.
+### 3. Open Items & Next Incremental Targets
+- **Database Consolidation**: Phase 1 completed (`push_subscriptions`, `announcements`, `deletion_requests`, `user_consent`). Next phase will incrementally cover `form_submissions` and `audit_log`.

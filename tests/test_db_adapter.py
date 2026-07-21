@@ -296,3 +296,40 @@ def test_write_batch():
     
     doc3 = users_ref.document("usr_batch_3").get()
     assert not doc3.exists
+
+
+def test_pure_firestore_native_collections():
+    """Test native Firestore dictionary storage for non-relational collections."""
+    adapter = SQLFirestoreAdapter()
+    
+    # 1. Test announcements native CRUD
+    ann_ref = adapter.collection("announcements")
+    ann_id = "ann_101"
+    ann_ref.document(ann_id).set({
+        "title": "Welcome to Hackathon 2026",
+        "message": "Submissions open now",
+        "pinned": True
+    })
+    doc = ann_ref.document(ann_id).get()
+    assert doc.exists
+    assert doc.get("title") == "Welcome to Hackathon 2026"
+    
+    # Test stream filtering
+    results = list(ann_ref.where("pinned", "==", True).stream())
+    assert len(results) == 1
+    assert results[0].id == ann_id
+    
+    # Test deletion
+    ann_ref.document(ann_id).delete()
+    assert not ann_ref.document(ann_id).get().exists
+
+    # 2. Test push_subscriptions native CRUD
+    push_ref = adapter.collection("push_subscriptions")
+    sub_id = "user_sub_01"
+    push_ref.document(sub_id).set({
+        "endpoint": "https://fcm.googleapis.com/fcm/send/test_endpoint",
+        "user_email": "student@snpsu.edu.in"
+    })
+    sub_doc = push_ref.document(sub_id).get()
+    assert sub_doc.exists
+    assert sub_doc.get("endpoint") == "https://fcm.googleapis.com/fcm/send/test_endpoint"

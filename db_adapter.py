@@ -148,6 +148,10 @@ def safe_str(val) -> str:
     return str(val)
 
 
+# ── Native Firestore Store for Non-Relational Collections ────────────────────
+_NATIVE_FIRESTORE_STORE = {}
+PURE_FIRESTORE_COLLECTIONS = {'push_subscriptions', 'announcements', 'deletion_requests', 'user_consent'}
+
 # ── Mock Classes Mimicking Firestore ─────────────────────────────────────────
 
 class SQLDocumentSnapshot:
@@ -178,6 +182,12 @@ class SQLDocumentReference:
         self.model_class = COLLECTION_MAP.get(collection_name)
 
     def get(self):
+        if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
+            doc_data = _NATIVE_FIRESTORE_STORE.get(self.collection_name, {}).get(self.id)
+            if doc_data is None:
+                return SQLDocumentSnapshot(self.id, None, exists=False)
+            return SQLDocumentSnapshot(self.id, doc_data.copy(), exists=True)
+
         if not self.model_class:
             return SQLDocumentSnapshot(self.id, None, exists=False)
 
@@ -197,6 +207,17 @@ class SQLDocumentReference:
             return SQLDocumentSnapshot(self.id, data, exists=True)
 
     def set(self, data, merge=True):
+        if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
+            if self.collection_name not in _NATIVE_FIRESTORE_STORE:
+                _NATIVE_FIRESTORE_STORE[self.collection_name] = {}
+            if merge:
+                existing = _NATIVE_FIRESTORE_STORE[self.collection_name].get(self.id, {})
+                existing.update(data)
+                _NATIVE_FIRESTORE_STORE[self.collection_name][self.id] = existing
+            else:
+                _NATIVE_FIRESTORE_STORE[self.collection_name][self.id] = (data or {}).copy()
+            return
+
         if not self.model_class:
             return
 
@@ -224,6 +245,11 @@ class SQLDocumentReference:
         self.set(data, merge=True)
 
     def delete(self):
+        if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
+            if self.collection_name in _NATIVE_FIRESTORE_STORE:
+                _NATIVE_FIRESTORE_STORE[self.collection_name].pop(self.id, None)
+            return
+
         if not self.model_class:
             return
 
@@ -689,6 +715,33 @@ class SQLQuery:
         return self
 
     def stream(self):
+        if self.collection.id in PURE_FIRESTORE_COLLECTIONS:
+            col_dict = _NATIVE_FIRESTORE_STORE.get(self.collection.id, {})
+            results = []
+            for doc_id, data in col_dict.items():
+                match = True
+                for field, op, val in self.filters:
+                    doc_val = data.get(field)
+                    if op == '==' and doc_val != val:
+                        match = False; break
+                    elif op == '!=' and doc_val == val:
+                        match = False; break
+                    elif op == '>' and (doc_val is None or doc_val <= val):
+                        match = False; break
+                    elif op == '<' and (doc_val is None or doc_val >= val):
+                        match = False; break
+                    elif op == '>=' and (doc_val is None or doc_val < val):
+                        match = False; break
+                    elif op == '<=' and (doc_val is None or doc_val > val):
+                        match = False; break
+                    elif op == 'in' and (doc_val not in val if val else True):
+                        match = False; break
+                if match:
+                    results.append(SQLDocumentSnapshot(doc_id, data.copy(), exists=True))
+            if self._limit is not None:
+                results = results[:self._limit]
+            return iter(results)
+
         if not self.collection.model:
             return iter([])
 

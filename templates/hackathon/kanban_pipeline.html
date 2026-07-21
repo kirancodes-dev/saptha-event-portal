@@ -1,0 +1,153 @@
+{% extends "base_classic.html" %}
+
+{% block title %}{{ event.title }} — Hackathon Kanban Pipeline | SapthaEvent{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-white font-weight-bold mb-1">
+                <i class="fas fa-columns text-warning me-2"></i>Hackathon Innovation Pipeline
+            </h3>
+            <p class="text-secondary mb-0">Milestone Stage Tracker & Submission Board for <strong>{{ event.title }}</strong></p>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+            <span class="badge bg-primary px-3 py-2 fs-6">
+                <i class="fas fa-layer-group me-1"></i> Total Submissions: <strong>{{ total_submissions }}</strong>
+            </span>
+            {% if session.get('role') == 'Student' %}
+            <a href="{{ url_for('hackathon.submit_project', event_id=event.id) }}" class="btn btn-warning text-dark font-weight-bold">
+                <i class="fas fa-plus me-1"></i> Submit / Edit Project
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- KANBAN BOARD COLUMNS -->
+    <div class="row g-3">
+
+        <!-- IDEATION STAGE -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
+                <div class="card-header bg-secondary bg-opacity-20 border-secondary d-flex justify-content-between align-items-center">
+                    <span class="font-weight-bold text-info"><i class="fas fa-lightbulb me-2"></i>1. Ideation</span>
+                    <span class="badge bg-info text-dark font-weight-bold">{{ pipeline.Ideation|length }}</span>
+                </div>
+                <div class="card-body p-2 overflow-auto" style="max-height: 600px;">
+                    {% for p in pipeline.Ideation %}
+                        {{ render_project_card(p) }}
+                    {% else %}
+                        <div class="text-center text-muted py-4 small">No projects in Ideation stage yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- PROTOTYPE STAGE -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
+                <div class="card-header bg-warning bg-opacity-20 border-secondary d-flex justify-content-between align-items-center">
+                    <span class="font-weight-bold text-warning"><i class="fas fa-cogs me-2"></i>2. Prototype</span>
+                    <span class="badge bg-warning text-dark font-weight-bold">{{ pipeline.Prototype|length }}</span>
+                </div>
+                <div class="card-body p-2 overflow-auto" style="max-height: 600px;">
+                    {% for p in pipeline.Prototype %}
+                        {{ render_project_card(p) }}
+                    {% else %}
+                        <div class="text-center text-muted py-4 small">No projects in Prototype stage yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- FINALIST STAGE -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
+                <div class="card-header bg-primary bg-opacity-20 border-secondary d-flex justify-content-between align-items-center">
+                    <span class="font-weight-bold text-primary"><i class="fas fa-award me-2"></i>3. Finalist</span>
+                    <span class="badge bg-primary font-weight-bold">{{ pipeline.Finalist|length }}</span>
+                </div>
+                <div class="card-body p-2 overflow-auto" style="max-height: 600px;">
+                    {% for p in pipeline.Finalist %}
+                        {{ render_project_card(p) }}
+                    {% else %}
+                        <div class="text-center text-muted py-4 small">No finalist projects selected yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- WINNER STAGE -->
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
+                <div class="card-header bg-success bg-opacity-20 border-secondary d-flex justify-content-between align-items-center">
+                    <span class="font-weight-bold text-success"><i class="fas fa-trophy me-2"></i>4. Winners</span>
+                    <span class="badge bg-success font-weight-bold">{{ pipeline.Winner|length }}</span>
+                </div>
+                <div class="card-body p-2 overflow-auto" style="max-height: 600px;">
+                    {% for p in pipeline.Winner %}
+                        {{ render_project_card(p) }}
+                    {% else %}
+                        <div class="text-center text-muted py-4 small">Winners will be announced here.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+{% macro render_project_card(p) %}
+<div class="card bg-dark border-secondary mb-2 p-3 text-light shadow-sm hover-lift">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <h6 class="mb-0 text-white font-weight-bold">
+            <a href="{{ url_for('hackathon.project_detail', submission_id=p.id) }}" class="text-white text-decoration-none">
+                {{ p.project_title }}
+            </a>
+        </h6>
+        <span class="badge bg-secondary border border-secondary text-info">{{ p.total_score or '0.0' }} / 10</span>
+    </div>
+    <p class="small text-secondary mb-2">{{ p.tagline or (p.solution_overview[:80] ~ '...') }}</p>
+    <div class="d-flex justify-content-between align-items-center small text-muted">
+        <span><i class="fas fa-users me-1"></i> {{ p.team_name }}</span>
+        {% if p.github_url %}
+        <a href="{{ p.github_url }}" target="_blank" class="text-secondary"><i class="fab fa-github"></i> Repo</a>
+        {% endif %}
+    </div>
+
+    {% if session.get('role') in ['ClubSPOC', 'Admin', 'SuperAdmin'] %}
+    <div class="mt-2 pt-2 border-top border-secondary d-flex justify-content-between align-items-center">
+        <span class="small text-muted">Move Stage:</span>
+        <select class="form-select form-select-sm bg-dark text-light border-secondary py-0 px-2 w-auto" 
+                onchange="updateStage('{{ p.id }}', this.value)">
+            <option value="Ideation" {{ 'selected' if p.milestone_stage == 'Ideation' }}>Ideation</option>
+            <option value="Prototype" {{ 'selected' if p.milestone_stage == 'Prototype' }}>Prototype</option>
+            <option value="Finalist" {{ 'selected' if p.milestone_stage == 'Finalist' }}>Finalist</option>
+            <option value="Winner" {{ 'selected' if p.milestone_stage == 'Winner' }}>Winner</option>
+        </select>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<script>
+function updateStage(subId, stage) {
+    fetch(`/api/hackathon/stage/${subId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: stage })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            location.reload();
+        } else {
+            alert(d.message || 'Failed to update stage');
+        }
+    });
+}
+</script>
+{% endblock %}

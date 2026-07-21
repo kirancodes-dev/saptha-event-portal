@@ -193,6 +193,8 @@ def app(mock_db):
                         try:
                             import routes_exams
                             routes_exams.db = mock_db
+                            import routes_hackathon
+                            routes_hackathon.db = mock_db
                         except Exception:
                             pass
 

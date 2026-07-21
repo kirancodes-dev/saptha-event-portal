@@ -15,7 +15,7 @@ from sqlalchemy import text
 from db_pg import get_engine, get_session
 from models_pg import (
     Base, User, Event, Registration, TeamMember, Score, EventForm,
-    FormSubmission, AuditLog, PushSubscription, Announcement, UserRole, EventCategory,
+    FormSubmission, AuditLog, PushSubscription, Announcement, ProjectSubmission, UserRole, EventCategory,
     EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
 )
 
@@ -30,7 +30,8 @@ COLLECTION_MAP = {
     'form_submissions': FormSubmission,
     'audit_log': AuditLog,
     'push_subscriptions': PushSubscription,
-    'announcements': Announcement
+    'announcements': Announcement,
+    'project_submissions': ProjectSubmission
 }
 
 # Field name translation map: Firestore -> SQLAlchemy/Postgres

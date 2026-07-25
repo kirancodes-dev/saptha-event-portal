@@ -1,561 +1,509 @@
 <!DOCTYPE html>
 <html lang="en" class="dark-mode">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#040715">
-    <title>SapthaEvent Portal | Sapthagiri NPS University</title>
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="Discover and register for hackathons, cultural fests, sports meets, and workshops at Sapthagiri NPS University. Powered by Zoho Catalyst & QuickML AI.">
-    <meta name="author" content="Sapthagiri NPS University">
-    
-    <!-- Google Fonts & FontAwesome -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-dark: #040715;
-            --bg-card: rgba(255, 255, 255, 0.02);
-            --gold: #c9a45e;
-            --gold-glow: rgba(201, 164, 94, 0.15);
-            --blue: #1e3a8a;
-            --blue-light: #3b82f6;
-            --purple-light: #8b5cf6;
-            --green-light: #10b981;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --border-glow: rgba(255, 255, 255, 0.08);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#030712">
+<title>SapthaEvent | Sapthagiri NPS University</title>
+<meta name="description" content="Discover and register for hackathons, cultural fests, sports meets, and workshops at Sapthagiri NPS University. Powered by Zoho Catalyst & QuickML AI.">
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
-        }
+<style>
+:root {
+  --bg-dark: #040715;
+  --bg-card: rgba(255, 255, 255, 0.02);
+  --border-light: rgba(255, 255, 255, 0.08);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --orange-glow: #f59e0b;
+  --blue-neon: #3b82f6;
+  --purple-neon: #a78bfa;
+  --green-neon: #4ade80;
+  --cyan-neon: #22d3ee;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-secondary);
+  margin: 0;
+  overflow-x: hidden;
+}
+h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-primary); }
 
-        /* Ambient background glow */
-        .glow-orb-1 {
-            position: fixed;
-            top: -100px;
-            left: -100px;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(0,0,0,0) 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .glow-orb-2 {
-            position: fixed;
-            bottom: -150px;
-            right: -150px;
-            width: 700px;
-            height: 700px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(0,0,0,0) 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-        }
+/* ── TECH GRID BACKGROUND ────────────────────────── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: center;
+  pointer-events: none;
+}
 
-        /* Tech Grid overlay */
-        .tech-grid {
-            position: fixed;
-            inset: 0;
-            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-            background-size: 40px 40px;
-            z-index: 0;
-            pointer-events: none;
-        }
+/* ── LIQUID GLASS BLOBS ─────────────────────────── */
+.liquid-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.blob-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+  top: -100px; right: -50px;
+}
+.blob-2 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.22) 0%, transparent 70%);
+  bottom: 10%; left: -150px;
+}
 
-        /* NAVBAR */
-        .navbar-custom {
-            background: rgba(4, 7, 21, 0.85);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border-glow);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            padding: 1rem 0;
-        }
+/* ── NAVBAR ─────────────────────────────────────────── */
+.snav {
+  background: rgba(4, 7, 21, 0.85);
+  backdrop-filter: blur(25px);
+  position: sticky;
+  top: 0;
+  z-index: 1050;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.snav .navbar-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand-n { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 20px; color: var(--text-primary); }
+.brand-s { font-size: 9px; color: rgba(255, 255, 255, 0.45); letter-spacing: 2px; text-transform: uppercase; font-weight: 600; }
 
-        .navbar-brand img {
-            height: 42px;
-            width: auto;
-            object-fit: contain;
-        }
+.btn-nav-action {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff !important;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.btn-nav-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.btn-nav-gold {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  color: #000 !important;
+  font-weight: 700;
+}
 
-        .nav-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            padding: 0.5rem 1.25rem;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .nav-btn:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: #fff;
-            transform: translateY(-2px);
-        }
-        .nav-btn-primary {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            border: none;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
-        }
-        .nav-btn-primary:hover {
-            background: linear-gradient(135deg, #1d4ed8, #1e40af);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
-        }
+/* ── HERO ───────────────────────────────────────────── */
+.hero { padding: 70px 0 60px; position: relative; text-align: center; }
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 100px;
+  margin-bottom: 24px;
+}
+.hero-h1 {
+  font-size: 48px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -1px;
+  line-height: 1.15;
+  margin-bottom: 18px;
+}
+.hero-h1 span {
+  background: linear-gradient(135deg, #f59e0b, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-sub {
+  font-size: 17px;
+  color: var(--text-secondary);
+  max-width: 680px;
+  margin: 0 auto 36px;
+  line-height: 1.6;
+}
 
-        /* HERO */
-        .hero-banner {
-            padding: 4rem 0 2rem;
-            position: relative;
-            z-index: 1;
-            text-align: center;
-        }
-        .hero-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 3rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
-        }
-        .hero-subtitle {
-            font-size: 1.15rem;
-            color: var(--text-secondary);
-            max-width: 750px;
-            margin: 0 auto 2rem;
-            line-height: 1.6;
-        }
+/* ── SEARCH & CATEGORIES ───────────────────────────── */
+.search-container {
+  max-width: 720px;
+  margin: 0 auto 30px;
+  position: relative;
+}
+.search-input-box {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 14px 20px 14px 48px;
+  border-radius: 16px;
+  font-size: 15px;
+  outline: none;
+  backdrop-filter: blur(20px);
+}
+.search-container i {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+}
 
-        /* SEARCH & FILTER BAR */
-        .search-filter-box {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-glow);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 1rem;
-            margin-bottom: 3rem;
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .search-input-wrap {
-            flex: 1;
-            position: relative;
-            min-width: 260px;
-        }
-        .search-input-wrap i {
-            position: absolute;
-            left: 1.25rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary);
-        }
-        .search-input {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            padding: 0.85rem 1rem 0.85rem 3rem;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-        .search-input:focus {
-            border-color: var(--blue-light);
-            background: rgba(255, 255, 255, 0.08);
-        }
+.cat-pills { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px; }
+.cat-pill {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.cat-pill.active, .cat-pill:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #fff;
+}
 
-        .filter-pills {
-            display: flex;
-            gap: 0.5rem;
-            overflow-x: auto;
-            padding-bottom: 0.25rem;
-        }
-        .filter-pill {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: var(--text-secondary);
-            padding: 0.6rem 1.25rem;
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.25s ease;
-        }
-        .filter-pill.active, .filter-pill:hover {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--blue-light);
-            color: #fff;
-        }
+/* ── EVENT CARDS GRID ───────────────────────────────── */
+.events-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom: 60px; }
+.ev-card {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(25px);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+.ev-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.ev-banner { height: 180px; position: relative; overflow: hidden; }
+.ev-banner img { width: 100%; height: 100%; object-fit: cover; }
+.cat-tag {
+  position: absolute;
+  top: 14px; left: 14px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 100px; color: #fff;
+  background: rgba(37, 99, 235, 0.85); backdrop-filter: blur(6px);
+}
 
-        /* EVENT CARDS GRID */
-        .events-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 1.75rem;
-            margin-bottom: 4rem;
-            position: relative;
-            z-index: 1;
-        }
+.ev-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
+.ev-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.ev-info { font-size: 13px; color: rgba(255,255,255,0.6); display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.ev-info-item { display: flex; align-items: center; gap: 8px; }
+.ev-info-item i { color: #3b82f6; width: 14px; }
 
-        .event-card {
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid var(--border-glow);
-            border-radius: 20px;
-            overflow: hidden;
-            backdrop-filter: blur(20px);
-            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-        .event-card:hover {
-            transform: translateY(-8px);
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-        }
-        .card-img-wrap {
-            height: 180px;
-            position: relative;
-            overflow: hidden;
-            background: #0f172a;
-        }
-        .card-img-wrap img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s ease;
-        }
-        .event-card:hover .card-img-wrap img {
-            transform: scale(1.08);
-        }
-        .card-badge {
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            background: rgba(37, 99, 235, 0.85);
-            backdrop-filter: blur(8px);
-            color: #fff;
-            padding: 0.35rem 0.85rem;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .card-body-custom {
-            padding: 1.5rem;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .event-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 0.75rem;
-        }
-        .event-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            font-size: 0.88rem;
-            color: var(--text-secondary);
-            margin-bottom: 1.25rem;
-        }
-        .event-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-        .event-meta-item i {
-            color: var(--blue-light);
-            width: 16px;
-        }
-        .card-footer-custom {
-            margin-top: auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .event-price {
-            font-family: 'Poppins', sans-serif;
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--green-light);
-        }
-        .btn-register {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: #fff;
-            border: none;
-            padding: 0.55rem 1.25rem;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.88rem;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        .btn-register:hover {
-            background: linear-gradient(135deg, #059669, #047857);
-            color: #fff;
-            transform: scale(1.03);
-        }
+.ev-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+.ev-price { font-size: 16px; font-weight: 700; color: #10b981; }
 
-        /* SPARKY AI WIDGET */
-        .ai-chat-btn {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 1.5rem;
-            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.5);
-            cursor: pointer;
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-        .ai-chat-btn:hover {
-            transform: scale(1.1) rotate(10deg);
-        }
+.btn-register-event {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+}
+.btn-register-event:hover { background: #059669; }
 
-        /* FOOTER */
-        footer {
-            border-top: 1px solid var(--border-glow);
-            padding: 3rem 0;
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            position: relative;
-            z-index: 1;
-        }
-    </style>
+/* ── MODAL STYLES ────────────────────────────────────── */
+.modal-content-dark {
+  background: #090d16;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  border-radius: 20px;
+}
+.form-control-dark {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.form-control-dark:focus {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border-color: #3b82f6;
+  box-shadow: none;
+}
+
+/* ── SPARKY FLOATING BOT ────────────────────────────── */
+.bot-float-btn {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
+  cursor: pointer;
+  z-index: 1100;
+  border: none;
+}
+</style>
 </head>
 <body>
 
-    <div class="glow-orb-1"></div>
-    <div class="glow-orb-2"></div>
-    <div class="tech-grid"></div>
+<div class="grid-bg"></div>
+<div class="liquid-blob blob-1"></div>
+<div class="liquid-blob blob-2"></div>
 
-    <!-- NAVBAR -->
-    <nav class="navbar-custom">
-        <div class="container-xl d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University Logo">
-                <span style="font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 1.4rem; color: #fff;">
-                    Saptha<span style="color: #f59e0b;">Event</span>
-                </span>
-            </a>
-            
-            <div class="d-flex align-items-center gap-3">
-                <a href="/login" class="nav-btn">
-                    <i class="fa-solid fa-right-to-bracket"></i> Login
-                </a>
-                <a href="/register" class="nav-btn nav-btn-primary">
-                    <i class="fa-solid fa-user-plus"></i> Register
-                </a>
-            </div>
-        </div>
-    </nav>
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg snav">
+  <div class="container-xl">
+    <a class="navbar-brand" href="/">
+      <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University Logo" style="height: 38px;">
+      <div>
+        <span class="brand-n">Saptha<span style="color:#f59e0b;">Event</span></span>
+        <span class="brand-s">Sapthagiri NPS University</span>
+      </div>
+    </a>
+    
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <button class="btn-nav-action" data-bs-toggle="modal" data-bs-target="#loginModal">
+        <i class="fa-solid fa-right-to-bracket"></i> Login
+      </button>
+      <button class="btn-nav-action btn-nav-gold" data-bs-toggle="modal" data-bs-target="#regModal">
+        <i class="fa-solid fa-user-plus"></i> Student Register
+      </button>
+    </div>
+  </div>
+</nav>
 
-    <!-- HERO HEADER -->
-    <div class="container-xl">
-        <header class="hero-banner">
-            <h1 class="hero-title">Discover & Compete in Campus Events</h1>
-            <p class="hero-subtitle">
-                Official Event Orchestration Platform for Sapthagiri NPS University. 
-                Register for Hackathons, Cultural Fests, Sports & Technical Workshops. 
-                Powered by Zoho Catalyst & QuickML AI.
-            </p>
-        </header>
+<!-- HERO HEADER -->
+<section class="hero">
+  <div class="container-xl">
+    <div class="hero-badge">
+      <i class="fa-solid fa-bolt" style="color:#f59e0b;"></i> Enterprise Event Intelligence & Orchestration Platform
+    </div>
+    <h1 class="hero-h1">Sapthagiri NPS University <span>Event Portal</span></h1>
+    <p class="hero-sub">
+      Discover and register for upcoming Hackathons, Cultural Fests, Sports Leagues, and Technical Workshops.
+      Live attendance check-in with QR tickets & Zoho QuickML AI Matchmaker.
+    </p>
 
-        <!-- SEARCH & FILTER BAR -->
-        <div class="search-filter-box">
-            <div class="search-input-wrap">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="event-search" class="search-input" placeholder="Search events by name, track, or keyword...">
-            </div>
-            
-            <div class="filter-pills">
-                <button class="filter-pill active" onclick="filterCategory('all')">All Events</button>
-                <button class="filter-pill" onclick="filterCategory('Hackathon')">🚀 Hackathons</button>
-                <button class="filter-pill" onclick="filterCategory('Technical')">💻 Technical</button>
-                <button class="filter-pill" onclick="filterCategory('Cultural')">🎨 Cultural</button>
-                <button class="filter-pill" onclick="filterCategory('Sports')">🏆 Sports</button>
-                <button class="filter-pill" onclick="filterCategory('Workshop')">📚 Workshops</button>
-            </div>
-        </div>
-
-        <!-- LIVE EVENTS GRID -->
-        <div class="events-grid" id="events-grid">
-
-            <!-- Event Card 1: Hackathon -->
-            <div class="event-card" data-category="Hackathon">
-                <div class="card-img-wrap">
-                    <img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80" alt="CodeSprint 2026">
-                    <span class="card-badge" style="background: rgba(139, 92, 246, 0.85);">Hackathon</span>
-                </div>
-                <div class="card-body-custom">
-                    <h3 class="event-title">Sapthagiri AI CodeSprint 2026</h3>
-                    <div class="event-meta">
-                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Oct 15 - Oct 17, 2026</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> CS Labs, Main Block (Zone A)</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-users"></i> Team size: 2–4 Members</div>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="event-price">Free Entry</div>
-                        <a href="/register" class="btn-register">Register Now <i class="fa-solid fa-arrow-right"></i></a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Event Card 2: Cultural Fest -->
-            <div class="event-card" data-category="Cultural">
-                <div class="card-img-wrap">
-                    <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80" alt="Saptha Utsav">
-                    <span class="card-badge" style="background: rgba(236, 72, 153, 0.85);">Cultural</span>
-                </div>
-                <div class="card-body-custom">
-                    <h3 class="event-title">Saptha Utsav 2026 Grand Night</h3>
-                    <div class="event-meta">
-                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Nov 05, 2026</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> Open Air Theater (Zone D)</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-music"></i> Concert & Dance Battle</div>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="event-price">₹ 150 / Ticket</div>
-                        <a href="/register" class="btn-register">Get Ticket <i class="fa-solid fa-arrow-right"></i></a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Event Card 3: Technical Workshop -->
-            <div class="event-card" data-category="Workshop">
-                <div class="card-img-wrap">
-                    <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80" alt="Zoho Cloud Workshop">
-                    <span class="card-badge" style="background: rgba(16, 185, 129, 0.85);">Workshop</span>
-                </div>
-                <div class="card-body-custom">
-                    <h3 class="event-title">Zoho Catalyst & Cloud AI Workshop</h3>
-                    <div class="event-meta">
-                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Sep 28, 2026</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> Seminar Hall (Zone B)</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-certificate"></i> Verified Certificate</div>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="event-price">Free Entry</div>
-                        <a href="/register" class="btn-register">Join Workshop <i class="fa-solid fa-arrow-right"></i></a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Event Card 4: Sports Championship -->
-            <div class="event-card" data-category="Sports">
-                <div class="card-img-wrap">
-                    <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=600&q=80" alt="Inter-College Football">
-                    <span class="card-badge" style="background: rgba(245, 158, 11, 0.85);">Sports</span>
-                </div>
-                <div class="card-body-custom">
-                    <h3 class="event-title">Sapthagiri Inter-College Football League</h3>
-                    <div class="event-meta">
-                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Dec 01 - Dec 04, 2026</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> Main Sports Arena</div>
-                        <div class="event-meta-item"><i class="fa-solid fa-trophy"></i> Cash Prize Pool ₹ 50,000</div>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="event-price">₹ 300 / Team</div>
-                        <a href="/register" class="btn-register">Register Team <i class="fa-solid fa-arrow-right"></i></a>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    <!-- SEARCH BAR -->
+    <div class="search-container">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="eventSearch" class="search-input-box" placeholder="Search events by title, track, or keywords...">
     </div>
 
-    <!-- SPARKY AI CHATBOT BUTTON -->
-    <a href="/login" class="ai-chat-btn" title="Sparky AI Assistant (Zoho QuickML)">
-        <i class="fa-solid fa-robot"></i>
-    </a>
+    <!-- CATEGORY PILLS -->
+    <div class="cat-pills">
+      <button class="cat-pill active" onclick="filterCat('all')">All Events</button>
+      <button class="cat-pill" onclick="filterCat('Hackathon')">🚀 Hackathons</button>
+      <button class="cat-pill" onclick="filterCat('Technical')">💻 Technical</button>
+      <button class="cat-pill" onclick="filterCat('Cultural')">🎨 Cultural</button>
+      <button class="cat-pill" onclick="filterCat('Sports')">🏆 Sports</button>
+      <button class="cat-pill" onclick="filterCat('Workshop')">📚 Workshops</button>
+    </div>
+  </div>
+</section>
 
-    <!-- FOOTER -->
-    <footer>
-        <div class="container-xl">
-            <p>© 2026 Sapthagiri NPS University — SapthaEvent Orchestration Portal</p>
-            <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">
-                Powered by Zoho Catalyst Serverless, Slate & QuickML AI Model VL-Qwen3.6-35B-A3B.
-            </p>
+<!-- LIVE EVENTS GRID -->
+<section class="container-xl">
+  <div class="events-grid" id="eventsGrid">
+
+    <!-- Card 1 -->
+    <div class="ev-card" data-cat="Hackathon">
+      <div class="ev-banner">
+        <img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80" alt="CodeSprint 2026">
+        <span class="cat-tag">Hackathon</span>
+      </div>
+      <div class="ev-body">
+        <h3 class="ev-title">Sapthagiri AI CodeSprint 2026</h3>
+        <div class="ev-info">
+          <div class="ev-info-item"><i class="fa-solid fa-calendar-days"></i> Oct 15 – Oct 17, 2026</div>
+          <div class="ev-info-item"><i class="fa-solid fa-location-dot"></i> CS Labs, Main Block (Zone A)</div>
+          <div class="ev-info-item"><i class="fa-solid fa-users"></i> Team Size: 2–4 Members</div>
         </div>
-    </footer>
+        <div class="ev-footer">
+          <div class="ev-price">Free Entry</div>
+          <button class="btn-register-event" data-bs-toggle="modal" data-bs-target="#regModal">Register <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
 
-    <!-- INTERACTIVE FILTER SCRIPT -->
-    <script>
-        function filterCategory(cat) {
-            // Update active pill styling
-            const pills = document.querySelectorAll('.filter-pill');
-            pills.forEach(p => p.classList.remove('active'));
-            event.target.classList.add('active');
+    <!-- Card 2 -->
+    <div class="ev-card" data-cat="Cultural">
+      <div class="ev-banner">
+        <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80" alt="Saptha Utsav">
+        <span class="cat-tag" style="background: rgba(236, 72, 153, 0.85);">Cultural</span>
+      </div>
+      <div class="ev-body">
+        <h3 class="ev-title">Saptha Utsav 2026 Grand Night</h3>
+        <div class="ev-info">
+          <div class="ev-info-item"><i class="fa-solid fa-calendar-days"></i> Nov 05, 2026</div>
+          <div class="ev-info-item"><i class="fa-solid fa-location-dot"></i> Open Air Amphitheater</div>
+          <div class="ev-info-item"><i class="fa-solid fa-music"></i> Live Band & DJ Night</div>
+        </div>
+        <div class="ev-footer">
+          <div class="ev-price">₹ 150 / Ticket</div>
+          <button class="btn-register-event" data-bs-toggle="modal" data-bs-target="#regModal">Get Ticket <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
 
-            // Filter cards
-            const cards = document.querySelectorAll('.event-card');
-            cards.forEach(card => {
-                if (cat === 'all' || card.getAttribute('data-category') === cat) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
+    <!-- Card 3 -->
+    <div class="ev-card" data-cat="Workshop">
+      <div class="ev-banner">
+        <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80" alt="Zoho Cloud Workshop">
+        <span class="cat-tag" style="background: rgba(16, 185, 129, 0.85);">Workshop</span>
+      </div>
+      <div class="ev-body">
+        <h3 class="ev-title">Zoho Catalyst & Cloud AI Workshop</h3>
+        <div class="ev-info">
+          <div class="ev-info-item"><i class="fa-solid fa-calendar-days"></i> Sep 28, 2026</div>
+          <div class="ev-info-item"><i class="fa-solid fa-location-dot"></i> Seminar Hall (Zone B)</div>
+          <div class="ev-info-item"><i class="fa-solid fa-certificate"></i> Verified Certificate Included</div>
+        </div>
+        <div class="ev-footer">
+          <div class="ev-price">Free Entry</div>
+          <button class="btn-register-event" data-bs-toggle="modal" data-bs-target="#regModal">Join Workshop <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
 
-        // Live search listener
-        document.getElementById('event-search').addEventListener('input', function(e) {
-            const query = e.target.value.toLowerCase();
-            const cards = document.querySelectorAll('.event-card');
-            cards.forEach(card => {
-                const title = card.querySelector('.event-title').textContent.toLowerCase();
-                const meta = card.querySelector('.event-meta').textContent.toLowerCase();
-                if (title.includes(query) || meta.includes(query)) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        });
-    </script>
+    <!-- Card 4 -->
+    <div class="ev-card" data-cat="Sports">
+      <div class="ev-banner">
+        <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=600&q=80" alt="Football League">
+        <span class="cat-tag" style="background: rgba(245, 158, 11, 0.85);">Sports</span>
+      </div>
+      <div class="ev-body">
+        <h3 class="ev-title">Sapthagiri Inter-College Football League</h3>
+        <div class="ev-info">
+          <div class="ev-info-item"><i class="fa-solid fa-calendar-days"></i> Dec 01 – Dec 04, 2026</div>
+          <div class="ev-info-item"><i class="fa-solid fa-location-dot"></i> Main Sports Arena</div>
+          <div class="ev-info-item"><i class="fa-solid fa-trophy"></i> Prize Pool: ₹ 50,000</div>
+        </div>
+        <div class="ev-footer">
+          <div class="ev-price">₹ 300 / Team</div>
+          <button class="btn-register-event" data-bs-toggle="modal" data-bs-target="#regModal">Register Team <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- LOGIN MODAL -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-dark p-4">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-white"><i class="fa-solid fa-right-to-bracket text-warning me-2"></i> Portal Login</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="/login" method="POST">
+          <div class="mb-3">
+            <label class="form-label text-secondary small">Email Address</label>
+            <input type="email" name="email" class="form-control form-control-dark" placeholder="student@snpsu.edu.in" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-secondary small">Password</label>
+            <input type="password" name="password" class="form-control form-control-dark" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-warning w-100 fw-bold py-2 rounded-3 mt-2">Sign In</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTRATION MODAL -->
+<div class="modal fade" id="regModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-dark p-4">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-white"><i class="fa-solid fa-user-plus text-success me-2"></i> Student Registration</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="/register" method="POST">
+          <div class="mb-3">
+            <label class="form-label text-secondary small">Full Name</label>
+            <input type="text" name="name" class="form-control form-control-dark" placeholder="John Doe" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-secondary small">University Email</label>
+            <input type="email" name="email" class="form-control form-control-dark" placeholder="student@snpsu.edu.in" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-secondary small">USN / Roll Number</label>
+            <input type="text" name="usn" class="form-control form-control-dark" placeholder="1SG22CS001" required>
+          </div>
+          <button type="submit" class="btn btn-success w-100 fw-bold py-2 rounded-3 mt-2">Complete Registration</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SPARKY FLOATING AI ASSISTANT -->
+<button class="bot-float-btn" data-bs-toggle="modal" data-bs-target="#loginModal" title="Sparky AI Assistant (Zoho QuickML)">
+  <i class="fa-solid fa-robot"></i>
+</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function filterCat(cat) {
+    const pills = document.querySelectorAll('.cat-pill');
+    pills.forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const cards = document.querySelectorAll('.ev-card');
+    cards.forEach(card => {
+      if (cat === 'all' || card.getAttribute('data-cat') === cat) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  document.getElementById('eventSearch').addEventListener('input', function(e) {
+    const q = e.target.value.toLowerCase();
+    const cards = document.querySelectorAll('.ev-card');
+    cards.forEach(card => {
+      const txt = card.textContent.toLowerCase();
+      card.style.display = txt.includes(q) ? 'flex' : 'none';
+    });
+  });
+</script>
 </body>
 </html>

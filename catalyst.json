@@ -1,13 +1,10 @@
 {
-  "project": {
-    "name": "saptha-event-portal"
+  "functions": {
+    "targets": [
+      "saptha_app"
+    ]
   },
-  "web": {
-    "stack": "python3.9",
-    "entrypoint": "app:app",
-    "command": "gunicorn -c gunicorn.conf.py app:app"
-  },
-  "app": {
-    "command": "gunicorn -c gunicorn.conf.py app:app"
+  "client": {
+    "source": "dist"
   }
 }

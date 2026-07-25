@@ -157,3 +157,26 @@ def match_teams_zia(judges: List[Dict[str, Any]], teams: List[Dict[str, Any]]) -
         "matches": matches,
         "reasoning": "\n".join(reasoning_lines)
     }
+
+
+def search_catalyst_data(search_word: str, table_name: str = "events", column_name: str = "title") -> List[Any]:
+    """
+    Executes full-text search across Zoho Catalyst Data Store tables
+    using the official zcatalyst_sdk Search API.
+    """
+    try:
+        import zcatalyst_sdk
+        app = zcatalyst_sdk.initialize()
+        config = {
+            "search": search_word,
+            "search_table_columns": {
+                table_name: [column_name]
+            }
+        }
+        search_service = app.search()
+        result = search_service.execute_search_query(config)
+        return result
+    except Exception as exc:
+        logger.warning("Zoho Catalyst SDK Search API skipped: %s", exc)
+        return []
+

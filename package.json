@@ -2,9 +2,9 @@
   "name": "saptha-event",
   "version": "1.0.0",
   "private": true,
-  "description": "SapthaEvent Enterprise Event Portal — Zoho Catalyst Deployment",
+  "description": "SapthaEvent Enterprise Event Portal",
   "scripts": {
     "start": "python app.py",
-    "build": "node build_slate.js"
+    "build": "echo 'Building SapthaEvent App...'"
   }
 }

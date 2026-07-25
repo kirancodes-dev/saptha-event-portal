@@ -1,8 +1,0 @@
-{
-  "execution": {
-    "main": "main.py",
-    "name": "saptha_app",
-    "stack": "python3.9",
-    "type": "advancedio"
-  }
-}

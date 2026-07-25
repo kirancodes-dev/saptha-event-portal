@@ -2,12 +2,8 @@
   "name": "saptha-event",
   "version": "1.0.0",
   "private": true,
-  "description": "SapthaEvent Enterprise Event Portal — Zoho Catalyst Deployment",
+  "description": "SapthaEvent Enterprise Event Portal",
   "scripts": {
-    "start": "gunicorn -c gunicorn.conf.py app:app",
-    "build": "node build_dist.js"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "start": "python app.py"
   }
 }

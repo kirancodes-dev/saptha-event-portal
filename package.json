@@ -5,7 +5,7 @@
   "description": "SapthaEvent Enterprise Event Portal — Zoho Catalyst Deployment",
   "scripts": {
     "start": "gunicorn -c gunicorn.conf.py app:app",
-    "build": "echo 'Building SapthaEvent Python Application for Zoho Catalyst...'"
+    "build": "node build_dist.js"
   },
   "engines": {
     "node": ">=18.0.0"

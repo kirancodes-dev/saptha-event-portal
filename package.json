@@ -2,16 +2,12 @@
   "name": "saptha-event",
   "version": "1.0.0",
   "private": true,
-  "description": "Capacitor wrapper for the SapthaEvent web portal",
+  "description": "SapthaEvent Enterprise Event Portal — Zoho Catalyst Deployment",
   "scripts": {
-    "build": "node build_static.js",
-    "cap:init": "npx cap init sapthaevent com.sapthaevent.app --web-dir=static",
-    "cap:add-android": "npx cap add android",
-    "cap:copy": "npx cap copy android",
-    "cap:open": "npx cap open android"
+    "start": "gunicorn -c gunicorn.conf.py app:app",
+    "build": "pip install -r requirements.txt"
   },
-  "devDependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/cli": "^6.0.0"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -1,729 +1,561 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-mode">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#040715">
     <title>SapthaEvent Portal | Sapthagiri NPS University</title>
     
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Welcome to the SapthaEvent Portal of Sapthagiri NPS University. Access the live event management system, view interactive reports, and download mobile client.">
+    <meta name="description" content="Discover and register for hackathons, cultural fests, sports meets, and workshops at Sapthagiri NPS University. Powered by Zoho Catalyst & QuickML AI.">
     <meta name="author" content="Sapthagiri NPS University">
     
     <!-- Google Fonts & FontAwesome -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <style>
         :root {
-            --bg-dark: #090d16;
-            --bg-card: rgba(15, 23, 42, 0.45);
+            --bg-dark: #040715;
+            --bg-card: rgba(255, 255, 255, 0.02);
             --gold: #c9a45e;
             --gold-glow: rgba(201, 164, 94, 0.15);
             --blue: #1e3a8a;
             --blue-light: #3b82f6;
+            --purple-light: #8b5cf6;
+            --green-light: #10b981;
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --border-glow: rgba(255, 255, 255, 0.08);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--bg-dark);
+            background: var(--bg-dark);
             color: var(--text-primary);
             min-height: 100vh;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
             position: relative;
+            overflow-x: hidden;
         }
 
-        /* Animated Grid & Glow Backgrounds */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: 
-                linear-gradient(rgba(201, 164, 94, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(201, 164, 94, 0.03) 1px, transparent 1px);
+        /* Ambient background glow */
+        .glow-orb-1 {
+            position: fixed;
+            top: -100px;
+            left: -100px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glow-orb-2 {
+            position: fixed;
+            bottom: -150px;
+            right: -150px;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Tech Grid overlay */
+        .tech-grid {
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
             background-size: 40px 40px;
             z-index: 0;
             pointer-events: none;
         }
 
-        .glow-orb-1 {
-            position: absolute;
-            top: -10%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: radial-gradient(circle, rgba(30, 58, 138, 0.25) 0%, transparent 70%);
-            z-index: 0;
-            pointer-events: none;
-            filter: blur(80px);
-        }
-
-        .glow-orb-2 {
-            position: absolute;
-            bottom: 10%;
-            right: -10%;
-            width: 45vw;
-            height: 45vw;
-            background: radial-gradient(circle, rgba(201, 164, 94, 0.12) 0%, transparent 70%);
-            z-index: 0;
-            pointer-events: none;
-            filter: blur(80px);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            z-index: 1;
-            position: relative;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 3.5rem;
-            animation: fadeInDown 0.8s ease-out;
-        }
-
-        .logo-container {
-            display: inline-block;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--gold);
-            padding: 1.25rem 2rem;
-            border-radius: 20px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 20px var(--gold-glow);
-            transition: var(--transition);
-        }
-
-        .logo-container:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(201, 164, 94, 0.25), inset 0 0 25px var(--gold-glow);
-        }
-
-        .logo-container img {
-            max-height: 50px;
-            vertical-align: middle;
-        }
-
-        h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 3.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #ffffff 40%, var(--gold) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.03em;
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            color: var(--text-secondary);
-            font-size: 1.25rem;
-            font-weight: 400;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-        }
-
-        /* Hero Main Section Grid */
-        .hero-section {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 2.5rem;
-            margin-bottom: 3rem;
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        @media (max-width: 968px) {
-            .hero-section {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .glass-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border-glow);
-            border-radius: 24px;
-            padding: 2.5rem;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-            transition: var(--transition);
-        }
-
-        .glass-card::before {
-            content: '';
-            position: absolute;
+        /* NAVBAR */
+        .navbar-custom {
+            background: rgba(4, 7, 21, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glow);
+            position: sticky;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
-            pointer-events: none;
+            z-index: 100;
+            padding: 1rem 0;
         }
 
-        .glass-card:hover {
-            border-color: rgba(201, 164, 94, 0.3);
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4), 0 0 30px rgba(201, 164, 94, 0.05);
+        .navbar-brand img {
+            height: 42px;
+            width: auto;
+            object-fit: contain;
         }
 
-        .card-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .card-title i {
-            color: var(--gold);
-        }
-
-        .hero-description {
-            color: var(--text-secondary);
-            font-size: 1.05rem;
-            line-height: 1.7;
-            margin-bottom: 2rem;
-        }
-
-        /* Interactive CTAs */
-        .cta-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.25rem;
-            margin-bottom: 2rem;
-        }
-
-        @media (max-width: 576px) {
-            .cta-group {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-            padding: 1.1rem 1.5rem;
-            border-radius: 16px;
-            font-weight: 600;
-            font-size: 1.05rem;
-            text-decoration: none;
-            cursor: pointer;
-            transition: var(--transition);
-            border: 1px solid transparent;
-            text-align: center;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--gold) 0%, #a98039 100%);
-            color: #0b0f19;
-            box-shadow: 0 4px 20px rgba(201, 164, 94, 0.35);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(201, 164, 94, 0.5);
-            background: linear-gradient(135deg, #ffd17b 0%, var(--gold) 100%);
-        }
-
-        .btn-secondary {
-            background: rgba(30, 58, 138, 0.3);
-            color: var(--text-primary);
-            border-color: rgba(59, 130, 246, 0.3);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-secondary:hover {
-            transform: translateY(-3px);
-            background: rgba(30, 58, 138, 0.5);
-            border-color: var(--blue-light);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--text-primary);
-            border-color: var(--border-glow);
-        }
-
-        .btn-outline:hover {
-            transform: translateY(-3px);
+        .nav-btn {
             background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Quick Info Grid */
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.25rem;
-        }
-
-        .info-item {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 1.25rem;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            transition: var(--transition);
-        }
-
-        .info-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: var(--gold-glow);
-            transform: translateX(5px);
-        }
-
-        .info-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            background: rgba(201, 164, 94, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--gold);
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-
-        .info-content h4 {
-            font-size: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 0.5rem 1.25rem;
+            border-radius: 10px;
             font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-
-        .info-content p {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-
-        /* Reports Card Sidebar */
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .report-link-card {
-            background: rgba(15, 23, 42, 0.35);
-            border: 1px solid var(--border-glow);
-            padding: 1.5rem;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            font-size: 0.9rem;
             text-decoration: none;
-            color: inherit;
-            transition: var(--transition);
-        }
-
-        .report-link-card:hover {
-            background: rgba(201, 164, 94, 0.05);
-            border-color: rgba(201, 164, 94, 0.3);
-            transform: scale(1.02);
-        }
-
-        .report-info {
-            display: flex;
-            align-items: center;
-            gap: 1.2rem;
-        }
-
-        .report-icon-container {
-            width: 50px;
-            height: 50px;
-            border-radius: 14px;
-            background: rgba(59, 130, 246, 0.1);
-            color: var(--blue-light);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .report-link-card:hover .report-icon-container {
-            background: rgba(201, 164, 94, 0.15);
-            color: var(--gold);
-        }
-
-        .report-details h3 {
-            font-size: 1.05rem;
-            font-weight: 600;
-            margin-bottom: 0.3rem;
-        }
-
-        .report-details p {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-
-        .arrow-icon {
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            transition: var(--transition);
-        }
-
-        .report-link-card:hover .arrow-icon {
-            color: var(--gold);
-            transform: translateX(5px);
-        }
-
-        /* Live Event Feed Widget */
-        .live-feed-card {
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 24px;
-            padding: 2rem;
-            margin-top: 1rem;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-            animation: fadeInUp 1s ease-out;
-        }
-
-        .feed-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            padding-bottom: 0.75rem;
-        }
-
-        .feed-header h3 {
-            font-size: 1.25rem;
-            font-family: 'Outfit', sans-serif;
-            display: flex;
+            transition: all 0.3s ease;
+            display: inline-flex;
             align-items: center;
             gap: 0.5rem;
         }
-
-        .pulse-indicator {
-            width: 8px;
-            height: 8px;
-            background-color: #22c55e;
-            border-radius: 50%;
-            display: inline-block;
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-            animation: pulse 1.6s infinite;
-        }
-
-        .events-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.25rem;
-        }
-
-        @media (max-width: 768px) {
-            .events-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .event-feed-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 1.25rem;
-            transition: var(--transition);
-        }
-
-        .event-feed-card:hover {
-            background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(201, 164, 94, 0.25);
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
             transform: translateY(-2px);
         }
-
-        .ev-cat {
-            display: inline-block;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--gold);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-            background: rgba(201, 164, 94, 0.1);
-            padding: 0.25rem 0.6rem;
-            border-radius: 8px;
+        .nav-btn-primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border: none;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+        }
+        .nav-btn-primary:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
         }
 
-        .ev-title {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #ffffff;
-        }
-
-        .ev-desc {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        footer {
+        /* HERO */
+        .hero-banner {
+            padding: 4rem 0 2rem;
+            position: relative;
+            z-index: 1;
             text-align: center;
-            padding: 2.5rem;
+        }
+        .hero-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .hero-subtitle {
+            font-size: 1.15rem;
             color: var(--text-secondary);
+            max-width: 750px;
+            margin: 0 auto 2rem;
+            line-height: 1.6;
+        }
+
+        /* SEARCH & FILTER BAR */
+        .search-filter-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-glow);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 1rem;
+            margin-bottom: 3rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-input-wrap {
+            flex: 1;
+            position: relative;
+            min-width: 260px;
+        }
+        .search-input-wrap i {
+            position: absolute;
+            left: 1.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+        .search-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 0.85rem 1rem 0.85rem 3rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            border-color: var(--blue-light);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .filter-pills {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.25rem;
+        }
+        .filter-pill {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            padding: 0.6rem 1.25rem;
+            border-radius: 50px;
             font-size: 0.85rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.03);
-            margin-top: auto;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.25s ease;
+        }
+        .filter-pill.active, .filter-pill:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--blue-light);
+            color: #fff;
+        }
+
+        /* EVENT CARDS GRID */
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.75rem;
+            margin-bottom: 4rem;
+            position: relative;
             z-index: 1;
         }
 
-        /* Animations */
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .event-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .event-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        }
+        .card-img-wrap {
+            height: 180px;
+            position: relative;
+            overflow: hidden;
+            background: #0f172a;
+        }
+        .card-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        .event-card:hover .card-img-wrap img {
+            transform: scale(1.08);
+        }
+        .card-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(37, 99, 235, 0.85);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 0.35rem 0.85rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card-body-custom {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .event-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.75rem;
+        }
+        .event-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+        }
+        .event-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .event-meta-item i {
+            color: var(--blue-light);
+            width: 16px;
+        }
+        .card-footer-custom {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .event-price {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--green-light);
+        }
+        .btn-register {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            border: none;
+            padding: 0.55rem 1.25rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .btn-register:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: #fff;
+            transform: scale(1.03);
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* SPARKY AI WIDGET */
+        .ai-chat-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.5);
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        .ai-chat-btn:hover {
+            transform: scale(1.1) rotate(10deg);
         }
 
-        @keyframes pulse {
-            0% {
-                transform: scale(0.95);
-                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-            }
-            70% {
-                transform: scale(1);
-                box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
-            }
-            100% {
-                transform: scale(0.95);
-                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-            }
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--border-glow);
+            padding: 3rem 0;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
         }
     </style>
 </head>
 <body>
+
     <div class="glow-orb-1"></div>
     <div class="glow-orb-2"></div>
+    <div class="tech-grid"></div>
 
-    <div class="container">
-        <!-- HEADER -->
-        <header>
-            <div class="logo-container">
+    <!-- NAVBAR -->
+    <nav class="navbar-custom">
+        <div class="container-xl d-flex align-items-center justify-content-between">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
                 <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University Logo">
+                <span style="font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 1.4rem; color: #fff;">
+                    Saptha<span style="color: #f59e0b;">Event</span>
+                </span>
+            </a>
+            
+            <div class="d-flex align-items-center gap-3">
+                <a href="/login" class="nav-btn">
+                    <i class="fa-solid fa-right-to-bracket"></i> Login
+                </a>
+                <a href="/register" class="nav-btn nav-btn-primary">
+                    <i class="fa-solid fa-user-plus"></i> Register
+                </a>
             </div>
-            <h1>SapthaEvent</h1>
-            <div class="subtitle">Enterprise Event Intelligence & Orchestration Platform</div>
+        </div>
+    </nav>
+
+    <!-- HERO HEADER -->
+    <div class="container-xl">
+        <header class="hero-banner">
+            <h1 class="hero-title">Discover & Compete in Campus Events</h1>
+            <p class="hero-subtitle">
+                Official Event Orchestration Platform for Sapthagiri NPS University. 
+                Register for Hackathons, Cultural Fests, Sports & Technical Workshops. 
+                Powered by Zoho Catalyst & QuickML AI.
+            </p>
         </header>
 
-        <!-- HERO SECTION -->
-        <div class="hero-section">
-            <!-- Main Actions -->
-            <div class="glass-card">
-                <h2 class="card-title">
-                    <i class="fa-solid fa-rocket"></i> Launch Production Portal
-                </h2>
-                <p class="hero-description">
-                    Access the live multi-role environment where coordinators build forms, judges submit real-time scores via projector boards, SPOCs coordinate gates with NFC scan check-ins, and students track achievements.
-                </p>
-
-                <div class="cta-group">
-                    <a href="/login" class="btn btn-primary" id="launch-zoho-btn" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; font-weight: 700;">
-                        <i class="fa-solid fa-bolt"></i> Launch Live Portal (Zoho Catalyst)
-                    </a>
-                    <a href="/register" class="btn btn-secondary" id="register-btn">
-                        <i class="fa-solid fa-user-plus"></i> Student Registration
-                    </a>
-                </div>
-
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
-                        <div class="info-content">
-                            <h4>PWA & Capacitor App</h4>
-                            <p>Full support for native notifications & offline QR ticketing.</p>
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-icon"><i class="fa-solid fa-robot"></i></div>
-                        <div class="info-content">
-                            <h4>Gemini AI Integration</h4>
-                            <p>Autopairs hackathon teams and generates event reports.</p>
-                        </div>
-                    </div>
-                </div>
+        <!-- SEARCH & FILTER BAR -->
+        <div class="search-filter-box">
+            <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="event-search" class="search-input" placeholder="Search events by name, track, or keyword...">
             </div>
-
-            <!-- Documents & Resources Sidebar -->
-            <div class="sidebar">
-                <div class="glass-card" style="padding: 1.75rem;">
-                    <h2 class="card-title" style="font-size: 1.4rem; margin-bottom: 1.25rem;">
-                        <i class="fa-solid fa-folder-open"></i> Project Assets
-                    </h2>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-                        <a href="/SapthaEvent_Project_Report.html" class="report-link-card" id="project-report-link">
-                            <div class="report-info">
-                                <div class="report-icon-container"><i class="fa-solid fa-file-pdf"></i></div>
-                                <div class="report-details">
-                                    <h3>Project Report</h3>
-                                    <p>Architecture & Spec Documentation</p>
-                                </div>
-                            </div>
-                            <div class="arrow-icon"><i class="fa-solid fa-chevron-right"></i></div>
-                        </a>
-
-                        <a href="/MARKETING_REPORT.html" class="report-link-card" id="marketing-report-link">
-                            <div class="report-info">
-                                <div class="report-icon-container"><i class="fa-solid fa-chart-line"></i></div>
-                                <div class="report-details">
-                                    <h3>Marketing & SEO</h3>
-                                    <p>SEO Audits & Core Web Vitals</p>
-                                </div>
-                            </div>
-                            <div class="arrow-icon"><i class="fa-solid fa-chevron-right"></i></div>
-                        </a>
-
-                        <a href="https://github.com/kirancodes-dev/saptha-event-portal" target="_blank" rel="noopener noreferrer" class="report-link-card" id="github-link">
-                            <div class="report-info">
-                                <div class="report-icon-container" style="color: #ffffff; background: rgba(255,255,255,0.05);"><i class="fa-brands fa-github"></i></div>
-                                <div class="report-details">
-                                    <h3>Git Repository</h3>
-                                    <p>Browse the source code</p>
-                                </div>
-                            </div>
-                            <div class="arrow-icon"><i class="fa-solid fa-chevron-right"></i></div>
-                        </a>
-                    </div>
-                </div>
+            
+            <div class="filter-pills">
+                <button class="filter-pill active" onclick="filterCategory('all')">All Events</button>
+                <button class="filter-pill" onclick="filterCategory('Hackathon')">🚀 Hackathons</button>
+                <button class="filter-pill" onclick="filterCategory('Technical')">💻 Technical</button>
+                <button class="filter-pill" onclick="filterCategory('Cultural')">🎨 Cultural</button>
+                <button class="filter-pill" onclick="filterCategory('Sports')">🏆 Sports</button>
+                <button class="filter-pill" onclick="filterCategory('Workshop')">📚 Workshops</button>
             </div>
         </div>
 
-        <!-- LIVE EVENT FEED -->
-        <div class="live-feed-card">
-            <div class="feed-header">
-                <h3><span class="pulse-indicator"></span> Dynamic Live Events</h3>
-                <span style="font-size: 0.8rem; color: var(--text-secondary);" id="feed-status">Syncing with live backend...</span>
-            </div>
-            
-            <div class="events-container" id="events-feed">
-                <!-- Fallback/Default cards will be replaced dynamically if API succeeds -->
-                <div class="event-feed-card">
-                    <span class="ev-cat">Hackathon</span>
-                    <h4 class="ev-title">Mega Hackathon 2026</h4>
-                    <p class="ev-desc">Ultimate 36-hour build marathon where students create real-world impact apps. Powered by Gemini matching engine.</p>
+        <!-- LIVE EVENTS GRID -->
+        <div class="events-grid" id="events-grid">
+
+            <!-- Event Card 1: Hackathon -->
+            <div class="event-card" data-category="Hackathon">
+                <div class="card-img-wrap">
+                    <img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80" alt="CodeSprint 2026">
+                    <span class="card-badge" style="background: rgba(139, 92, 246, 0.85);">Hackathon</span>
                 </div>
-                
-                <div class="event-feed-card">
-                    <span class="ev-cat">Cultural</span>
-                    <h4 class="ev-title">Saptha Tarang 2026</h4>
-                    <p class="ev-desc">Annual cultural showcase featuring choreography, acoustic bands, and dramatic events across multiple stages.</p>
-                </div>
-                
-                <div class="event-feed-card">
-                    <span class="ev-cat">Sports</span>
-                    <h4 class="ev-title">Athletic Championship</h4>
-                    <p class="ev-desc">Track and field meets, indoor sporting matches, and digital real-time scoring projectors for all sports fixtures.</p>
+                <div class="card-body-custom">
+                    <h3 class="event-title">Sapthagiri AI CodeSprint 2026</h3>
+                    <div class="event-meta">
+                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Oct 15 - Oct 17, 2026</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> CS Labs, Main Block (Zone A)</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-users"></i> Team size: 2–4 Members</div>
+                    </div>
+                    <div class="card-footer-custom">
+                        <div class="event-price">Free Entry</div>
+                        <a href="/register" class="btn-register">Register Now <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
                 </div>
             </div>
+
+            <!-- Event Card 2: Cultural Fest -->
+            <div class="event-card" data-category="Cultural">
+                <div class="card-img-wrap">
+                    <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80" alt="Saptha Utsav">
+                    <span class="card-badge" style="background: rgba(236, 72, 153, 0.85);">Cultural</span>
+                </div>
+                <div class="card-body-custom">
+                    <h3 class="event-title">Saptha Utsav 2026 Grand Night</h3>
+                    <div class="event-meta">
+                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Nov 05, 2026</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> Open Air Theater (Zone D)</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-music"></i> Concert & Dance Battle</div>
+                    </div>
+                    <div class="card-footer-custom">
+                        <div class="event-price">₹ 150 / Ticket</div>
+                        <a href="/register" class="btn-register">Get Ticket <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Card 3: Technical Workshop -->
+            <div class="event-card" data-category="Workshop">
+                <div class="card-img-wrap">
+                    <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80" alt="Zoho Cloud Workshop">
+                    <span class="card-badge" style="background: rgba(16, 185, 129, 0.85);">Workshop</span>
+                </div>
+                <div class="card-body-custom">
+                    <h3 class="event-title">Zoho Catalyst & Cloud AI Workshop</h3>
+                    <div class="event-meta">
+                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Sep 28, 2026</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> Seminar Hall (Zone B)</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-certificate"></i> Verified Certificate</div>
+                    </div>
+                    <div class="card-footer-custom">
+                        <div class="event-price">Free Entry</div>
+                        <a href="/register" class="btn-register">Join Workshop <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Card 4: Sports Championship -->
+            <div class="event-card" data-category="Sports">
+                <div class="card-img-wrap">
+                    <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=600&q=80" alt="Inter-College Football">
+                    <span class="card-badge" style="background: rgba(245, 158, 11, 0.85);">Sports</span>
+                </div>
+                <div class="card-body-custom">
+                    <h3 class="event-title">Sapthagiri Inter-College Football League</h3>
+                    <div class="event-meta">
+                        <div class="event-meta-item"><i class="fa-solid fa-calendar-days"></i> Dec 01 - Dec 04, 2026</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-location-dot"></i> Main Sports Arena</div>
+                        <div class="event-meta-item"><i class="fa-solid fa-trophy"></i> Cash Prize Pool ₹ 50,000</div>
+                    </div>
+                    <div class="card-footer-custom">
+                        <div class="event-price">₹ 300 / Team</div>
+                        <a href="/register" class="btn-register">Register Team <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
+    <!-- SPARKY AI CHATBOT BUTTON -->
+    <a href="/login" class="ai-chat-btn" title="Sparky AI Assistant (Zoho QuickML)">
+        <i class="fa-solid fa-robot"></i>
+    </a>
+
     <!-- FOOTER -->
     <footer>
-        <p>&copy; 2026 Sapthagiri NPS University. All Rights Reserved.</p>
-        <p style="margin-top: 0.4rem; font-size: 0.75rem; color: rgba(148, 163, 184, 0.4);">Deployed statically via Zoho Catalyst Slate</p>
+        <div class="container-xl">
+            <p>© 2026 Sapthagiri NPS University — SapthaEvent Orchestration Portal</p>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">
+                Powered by Zoho Catalyst Serverless, Slate & QuickML AI Model VL-Qwen3.6-35B-A3B.
+            </p>
+        </div>
     </footer>
 
-    <!-- DYNAMIC EVENT FEED SCRIPT -->
+    <!-- INTERACTIVE FILTER SCRIPT -->
     <script>
-        async function fetchLiveEvents() {
-            const feedContainer = document.getElementById('events-feed');
-            const feedStatus = document.getElementById('feed-status');
-            
-            // Try Cloud Run API endpoint first, fallback to Railway
-            const endpoints = [
-                'https://saptha-event-portal-762269836348.us-east4.run.app/api/v1/events?status=active',
-                'https://saptha-portal.railway.app/api/v1/events?status=active'
-            ];
+        function filterCategory(cat) {
+            // Update active pill styling
+            const pills = document.querySelectorAll('.filter-pill');
+            pills.forEach(p => p.classList.remove('active'));
+            event.target.classList.add('active');
 
-            for (const url of endpoints) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    
-                    if (response.ok) {
-                        const json = await response.json();
-                        const events = json.data || [];
-                        
-                        if (events.length > 0) {
-                            feedContainer.innerHTML = ''; // Clear default fallback cards
-                            events.slice(0, 3).forEach(ev => {
-                                const card = document.createElement('div');
-                                card.className = 'event-feed-card';
-                                
-                                const category = ev.category || 'General';
-                                const desc = ev.description || 'No description provided.';
-                                
-                                card.innerHTML = `
-                                    <span class="ev-cat">${category}</span>
-                                    <h4 class="ev-title">${ev.title}</h4>
-                                    <p class="ev-desc">${desc.substring(0, 120)}${desc.length > 120 ? '...' : ''}</p>
-                                `;
-                                feedContainer.appendChild(card);
-                            });
-                            feedStatus.textContent = 'Synchronized with Live Portal API';
-                            return; // Success, stop trying other endpoints
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`Failed to fetch from ${url}:`, e);
+            // Filter cards
+            const cards = document.querySelectorAll('.event-card');
+            cards.forEach(card => {
+                if (cat === 'all' || card.getAttribute('data-category') === cat) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
                 }
-            }
-            
-            // If all endpoints failed or returned empty list
-            feedStatus.textContent = 'Active (Offline Preview Mode)';
+            });
         }
 
-        // Run on load
-        window.addEventListener('DOMContentLoaded', fetchLiveEvents);
+        // Live search listener
+        document.getElementById('event-search').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.event-card');
+            cards.forEach(card => {
+                const title = card.querySelector('.event-title').textContent.toLowerCase();
+                const meta = card.querySelector('.event-meta').textContent.toLowerCase();
+                if (title.includes(query) || meta.includes(query)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
     </script>
 </body>
 </html>

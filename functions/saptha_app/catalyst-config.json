@@ -1,6 +1,6 @@
 {
-  "runtime": "python3.9",
-  "entrypoint": "main.handler",
-  "memory": 256,
-  "timeout": 30
+  "name": "saptha_app",
+  "type": "advancedio",
+  "stack": "python3.9",
+  "entry": "main.py"
 }

@@ -1,13 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="csrf-token" content="IjYzNjczZWI3MTExZTZiNGRiYjFiZmIwZGMyY2I4NGIwNGVhNzQ2Njgi.amTxiA.c_5vA-TZCmSj7ocHyQAmMLvn_zs">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#030712">
 <title>SapthaEvent | Sapthagiri NPS University</title>
 <meta name="description" content="Discover and register for hackathons, cultural fests, sports meets, and workshops at Sapthagiri NPS University.">
-{% include 'includes/pwa_head.html' %}
+<!-- ══ PWA: manifest, theme-color, iOS meta, service worker ══ -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1a2557">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SapthaEvent">
+<link rel="apple-touch-icon" href="/static/app-icon.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/static/app-icon.png">
+
+<script>
+(function () {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+  if (isStandalone) {
+    localStorage.setItem('pwa_installed', '1');
+  }
+
+  // ── Service Worker registration and Live Updates ────
+  window.pwaRegistration = null;
+  window.pwaUpdateAvailable = false;
+
+  window.applyPwaUpdateUI = function() {
+    if (!window.pwaUpdateAvailable || !window.pwaRegistration) return;
+    const reg = window.pwaRegistration;
+
+    const loginBtn = document.getElementById('loginInstallBtn');
+    if (loginBtn) {
+      loginBtn.style.display = 'inline-block';
+      loginBtn.innerHTML = '<i class="fas fa-sync me-1"></i>Update App';
+      loginBtn.onclick = function(e) {
+        e.preventDefault();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      };
+    }
+
+    const navBtn = document.getElementById('mn-install-btn');
+    if (navBtn) {
+      navBtn.style.display = 'flex';
+      const icon = navBtn.querySelector('i');
+      if (icon) {
+        icon.className = 'fas fa-sync';
+        icon.style.color = '#c9a45e';
+      }
+      const text = navBtn.querySelector('span');
+      if (text) {
+        text.innerText = 'Update';
+        text.style.color = '#c9a45e';
+      }
+      navBtn.onclick = function(e) {
+        e.preventDefault();
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      };
+    }
+  };
+
+  window.notifyPwaUpdateAvailable = function(reg) {
+    window.pwaUpdateAvailable = true;
+    window.applyPwaUpdateUI();
+  };
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function(reg) {
+          window.pwaRegistration = reg;
+          setInterval(() => reg.update(), 60 * 60 * 1000); // Check for updates hourly
+
+          if (reg.waiting) {
+            window.notifyPwaUpdateAvailable(reg);
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.notifyPwaUpdateAvailable(reg);
+                }
+              });
+            }
+          });
+        })
+        .catch(function (err) { console.warn('SW registration failed:', err); });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+    });
+  }
+
+  // ── Listen for App Installed Event ────
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem('pwa_installed', '1');
+    if (!window.pwaUpdateAvailable) {
+      const loginBtn = document.getElementById('loginInstallBtn');
+      if (loginBtn) loginBtn.style.display = 'none';
+      const navBtn = document.getElementById('mn-install-btn');
+      if (navBtn) navBtn.style.display = 'none';
+    }
+  });
+
+  // ── PWA Install Banner (shown on ALL pages to logged-in users) ────
+  const isInstalled = isStandalone || localStorage.getItem('pwa_installed') === '1';
+  const dismissed = localStorage.getItem('pwa_banner_dismissed') === '1';
+
+  if (!isInstalled && !dismissed) {
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      window.__pwaPrompt = e; // make globally accessible
+
+      const visits = parseInt(localStorage.getItem('pwa_visit_count') || '0', 10) + 1;
+      localStorage.setItem('pwa_visit_count', visits);
+      const delay = visits === 1 ? 4000 : 1500;
+
+      setTimeout(() => {
+        const banner = document.getElementById('pwaInstallBanner');
+        if (banner) banner.style.display = 'block';
+      }, delay);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', window.applyPwaUpdateUI);
+  window.addEventListener('load', window.applyPwaUpdateUI);
+})();
+</script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="/static/css/global.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -514,31 +649,10 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
     <ul class="navbar-nav ms-auto align-items-center gap-1">
       <li class="nav-item"><a href="/" class="nav-link active">Home</a></li>
       <li class="nav-item"><a href="/verify" class="nav-link">Verify Ticket</a></li>
-      {% if session.get('user_id') %}
-        <li class="nav-item dropdown ms-2">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:7px 14px!important;color:#fff!important;">
-            <i class="fas fa-user-circle me-1"></i> {{ session.get('name', 'My Account') | truncate(16,True,'…') }}
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius:12px;min-width:180px;background:rgba(11, 15, 25, 0.85);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(20px);">
-            {% if session.get('role') == 'Student' %}
-              <li><a class="dropdown-item text-white" href="/participant/dashboard" style="background:none;"><i class="fas fa-ticket-alt me-2 text-primary"></i>My Dashboard</a></li>
-            {% elif session.get('role') == 'ClubSPOC' %}
-              <li><a class="dropdown-item text-white" href="/spoc/dashboard" style="background:none;"><i class="fas fa-chart-bar me-2 text-primary"></i>Club Console</a></li>
-            {% elif session.get('role') == 'SuperAdmin' %}
-              <li><a class="dropdown-item text-white" href="/super_admin/dashboard" style="background:none;"><i class="fas fa-shield-alt me-2 text-danger"></i>Super Admin</a></li>
-              <li><a class="dropdown-item text-white" href="/admin/dashboard" style="background:none;"><i class="fas fa-cog me-2 text-secondary"></i>Admin Panel</a></li>
-              <li><a class="dropdown-item text-white" href="/spoc/dashboard" style="background:none;"><i class="fas fa-chart-bar me-2 text-primary"></i>SPOC Console</a></li>
-            {% elif session.get('role') == 'Admin' %}
-              <li><a class="dropdown-item text-white" href="/admin/dashboard" style="background:none;"><i class="fas fa-cog me-2 text-secondary"></i>Admin Panel</a></li>
-            {% endif %}
-            <li><hr class="dropdown-divider" style="background-color:rgba(255,255,255,0.08);"></li>
-            <li><a class="dropdown-item text-danger" href="/logout" style="background:none;"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
-          </ul>
-        </li>
-      {% else %}
+      
         <li class="nav-item ms-2"><a href="/login" class="snav btn-login">Login</a></li>
         <li class="nav-item ms-1"><a href="/register" class="snav btn-login" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff!important;">Register</a></li>
-      {% endif %}
+      
     </ul>
   </div>
 </div>
@@ -558,19 +672,19 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
       </div>
       <div class="hero-stats">
         <div class="hstat">
-          <div class="hstat-n counter" data-target="{{ total_events | default(0) }}">0</div>
+          <div class="hstat-n counter" data-target="17">0</div>
           <div class="hstat-l">Live Events</div>
         </div>
         <div class="hstat">
-          <div class="hstat-n counter" data-target="{{ total_regs | default(0) }}">0</div>
+          <div class="hstat-n counter" data-target="2450">0</div>
           <div class="hstat-l">Registrations</div>
         </div>
         <div class="hstat">
-          <div class="hstat-n counter" data-target="{{ total_categories | default(4) }}">0</div>
+          <div class="hstat-n counter" data-target="4">0</div>
           <div class="hstat-l">Categories</div>
         </div>
         <div class="hstat">
-          <div class="hstat-n counter" data-target="{{ total_spocs | default(3) }}">0</div>
+          <div class="hstat-n counter" data-target="3">0</div>
           <div class="hstat-l">Clubs</div>
         </div>
       </div>
@@ -579,13 +693,12 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
     <div class="col-lg-6 d-none d-lg-flex justify-content-end">
       <!-- Floating event preview cards or actual featured events -->
       <div style="position:relative;width:400px;height:340px;">
-        {% if featured_events %}
-          {% for fev in featured_events %}
-            {% set index = loop.index0 %}
+        
+          
+            
             <div style="position:absolute;
-                        {% if index == 0 %}top:0;left:0;z-index:3;
-                        {% elif index == 1 %}top:80px;right:0;z-index:2;
-                        {% else %}bottom:0;left:30px;z-index:1;{% endif %}
+                        top:0;left:0;z-index:3;
+                        
                         background:rgba(255, 255, 255, 0.02);
                         border:1px solid rgba(255, 255, 255, 0.08);
                         border-radius:18px;
@@ -596,61 +709,31 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
                         box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);
                         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         cursor: pointer;"
-                 onclick="window.location.href='/event/{{ fev.id }}'"
+                 onclick="window.location.href='/event/'"
                  onmouseover="this.style.transform='translateY(-6px) scale(1.02)'; this.style.borderColor='rgba(255,255,255,0.2)';"
                  onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.08)';"
                  class="floating-featured-card">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                 <div style="width:40px;height:40px;
-                            background: {% if fev.category == 'Technical' %}rgba(37, 99, 235, 0.4)
-                                       {% elif fev.category == 'Cultural' %}rgba(124, 58, 237, 0.4)
-                                       {% elif fev.category == 'Sports' %}rgba(22, 163, 74, 0.4)
-                                       {% elif fev.category == 'Management' %}rgba(217, 119, 6, 0.4)
-                                       {% else %}rgba(8, 145, 178, 0.4){% endif %};
+                            background: rgba(37, 99, 235, 0.4)
+                                       ;
                             border: 1px solid rgba(255, 255, 255, 0.15);
                             border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                  <i class="fas {% if fev.category == 'Technical' %}fa-laptop-code
-                               {% elif fev.category == 'Cultural' %}fa-music
-                               {% elif fev.category == 'Sports' %}fa-running
-                               {% elif fev.category == 'Management' %}fa-briefcase
-                               {% else %}fa-calendar-alt{% endif %} text-white"></i>
+                  <i class="fas fa-laptop-code
+                                text-white"></i>
                 </div>
                 <div>
-                  <div style="color:#fff;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">{{ fev.title }}</div>
-                  <div style="color:rgba(255,255,255,0.45);font-size:10px;">{{ fev.category }} · {{ fev.participation_type }}</div>
+                  <div style="color:#fff;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">Sapthagiri AI CodeSprint 2026</div>
+                  <div style="color:rgba(255,255,255,0.45);font-size:10px;">Technical · Team</div>
                 </div>
               </div>
               <div style="display:flex;justify-content:between;align-items:center;margin-top:8px;">
-                <span style="color:rgba(255,255,255,0.5);font-size:11px;"><i class="fas fa-map-marker-alt me-1 text-warning"></i>{{ fev.venue | truncate(15,True,'…') }}</span>
-                <a href="/event/{{ fev.id }}" style="color:#fff;font-size:11px;font-weight:700;text-decoration:none;margin-left:auto;">Join <i class="fas fa-chevron-right" style="font-size:9px;"></i></a>
+                <span style="color:rgba(255,255,255,0.5);font-size:11px;"><i class="fas fa-map-marker-alt me-1 text-warning"></i>CS Labs</span>
+                <a href="/event/" style="color:#fff;font-size:11px;font-weight:700;text-decoration:none;margin-left:auto;">Join <i class="fas fa-chevron-right" style="font-size:9px;"></i></a>
               </div>
             </div>
-          {% endfor %}
-        {% else %}
-          <!-- Fallback to hardcoded elegant floating cards -->
-          <div style="position:absolute;top:0;left:0;background:rgba(255, 255, 255, 0.02);border:1px solid rgba(255, 255, 255, 0.08);border-radius:18px;padding:16px 20px;backdrop-filter:blur(25px);width:260px;box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-              <div style="width:40px;height:40px;background:rgba(37,99,235,0.4);border:1px solid rgba(255,255,255,0.12);border-radius:10px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-laptop-code text-white"></i></div>
-              <div>
-                <div style="color:#fff;font-size:13px;font-weight:700;">Hackathon 2026</div>
-                <div style="color:rgba(255,255,255,0.45);font-size:10px;">Technical · 48 Teams</div>
-              </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.06);border-radius:8px;height:4px;"><div style="width:72%;background:rgba(255,255,255,0.4);height:100%;border-radius:8px;"></div></div>
-            <div style="color:rgba(255,255,255,0.45);font-size:10px;margin-top:6px;">72% seats filled</div>
-          </div>
-          <div style="position:absolute;top:100px;right:0;background:rgba(255, 255, 255, 0.02);border:1px solid rgba(255, 255, 255, 0.08);border-radius:18px;padding:16px 20px;backdrop-filter:blur(25px);width:240px;box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);">
-            <div style="color:rgba(255,255,255,0.45);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Next Event</div>
-            <div style="color:#fff;font-weight:700;font-size:14px;margin-bottom:4px;">Cultural Fest</div>
-            <div style="color:rgba(255,255,255,0.5);font-size:11px;"><i class="fas fa-calendar me-1"></i> Coming Soon</div>
-          </div>
-          <div style="position:absolute;bottom:0;left:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 18px;backdrop-filter:blur(15px);box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <i class="fas fa-check-circle text-success"></i>
-              <span style="color:#fff;font-size:12px;font-weight:600;">QR Ticket Confirmed!</span>
-            </div>
-          </div>
-        {% endif %}
+          
+        
       </div>
     </div>
   </div>
@@ -686,27 +769,27 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
     </div>
 
     <div class="events-grid" id="eventsGrid">
-      {% for event in events %}
-      {% set cat = event.category | default('General') %}
-      {% set ptype = event.participation_type | default('Solo') %}
-      {% set max_p = (event.limits or {}).get('max_participants', 0) %}
-      {% set reg_count = event.registration_count | default(0) %}
+      
+      
+      
+      
+      
       <div class="ev-card"
-           data-cat="{{ cat }}"
-           data-title="{{ event.title | lower }}"
-           data-venue="{{ (event.venue or '') | lower }}"
-           data-date="{{ event.date | default('9999-12-31') }}">
+           data-cat="Cultural"
+           data-title="fashion show extravaganza"
+           data-venue="main auditorium"
+           data-date="2026-07-25">
 
         <!-- Banner -->
         <div class="ev-banner">
-          <img src="{{ event.banner_url | default('') }}"
-               alt="{{ event.title }}"
+          <img src=""
+               alt="Fashion Show Extravaganza"
                onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=60';">
           <div class="ev-banner-overlay"></div>
-          <span class="cat-badge cat-{{ cat }}">{{ cat }}</span>
-          <span class="ev-type">{{ ptype }}</span>
+          <span class="cat-badge cat-Cultural">Cultural</span>
+          <span class="ev-type">Individual</span>
           <!-- Countdown -->
-          <div class="ev-countdown" data-event-date="{{ event.date | default('') }}" data-event-time="{{ event.time | default('09:00') }}">
+          <div class="ev-countdown" data-event-date="2026-07-25" data-event-time="09:00">
             <div class="cd-unit"><div class="cd-num cd-days">--</div><div class="cd-lbl">days</div></div>
             <div class="cd-unit"><div class="cd-num cd-hours">--</div><div class="cd-lbl">hrs</div></div>
             <div class="cd-unit"><div class="cd-num cd-mins">--</div><div class="cd-lbl">min</div></div>
@@ -715,49 +798,167 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 
         <!-- Body -->
         <div class="ev-body">
-          <h3 class="ev-title">{{ event.title }}</h3>
+          <h3 class="ev-title">Fashion Show Extravaganza</h3>
           <div class="ev-meta">
-            <span class="ev-meta-item"><i class="fas fa-calendar-alt"></i>{{ event.date | default('TBA') }}</span>
-            <span class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>{{ event.venue | default('SNPSU Campus') | truncate(22,True,'…') }}</span>
-            {% if event.time %}<span class="ev-meta-item"><i class="fas fa-clock"></i>{{ event.time }}</span>{% endif %}
+            <span class="ev-meta-item"><i class="fas fa-calendar-alt"></i>2026-07-25</span>
+            <span class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>Main Auditorium</span>
+            
           </div>
 
-          {% if max_p > 0 %}
-          {% set pct = ((reg_count / max_p) * 100) | int %}
+          
+          
           <div class="cap-wrap">
             <div class="cap-label">
-              <span>{{ reg_count }} registered</span>
-              <span>{{ max_p - reg_count }} left</span>
+              <span>142 registered</span>
+              <span>58 left</span>
             </div>
             <div class="cap-bar">
-              {% set pct_w = [pct, 100] | min %}
-              <div class="cap-fill {% if pct > 75 %}high{% endif %}" data-pct="{{ pct_w }}"></div>
+              
+              <div class="cap-fill " data-pct="71"></div>
             </div>
           </div>
-          {% endif %}
+          
 
           <div class="ev-footer">
             <div class="ev-fee">
-              {% if event.fees and event.fees.regular and event.fees.regular > 0 %}
-                ₹{{ event.fees.regular }}
-              {% else %}
+              
                 <span class="free"><i class="fas fa-tag me-1"></i>Free</span>
-              {% endif %}
+              
             </div>
             <div class="d-flex gap-2 align-items-center">
-              <button class="btn-det" onclick="showDetails('{{ event.id }}')"><i class="fas fa-info-circle"></i> Details</button>
-              <a href="/event/{{ event.id }}" class="btn-ev">Register <i class="fas fa-arrow-right"></i></a>
+              <button class="btn-det" onclick="showDetails('1')"><i class="fas fa-info-circle"></i> Details</button>
+              <a href="/event/1" class="btn-ev">Register <i class="fas fa-arrow-right"></i></a>
             </div>
           </div>
         </div>
       </div>
-      {% else %}
-      <div class="empty-state" id="emptyDefault" style="grid-column:1/-1;">
-        <i class="fas fa-calendar-times"></i>
-        <h5>No Events Yet</h5>
-        <p>New events will appear here. Check back soon!</p>
+      
+      
+      
+      
+      
+      <div class="ev-card"
+           data-cat="Technical"
+           data-title="ai hackathon 2026"
+           data-venue="cs labs (zone a)"
+           data-date="2026-08-15">
+
+        <!-- Banner -->
+        <div class="ev-banner">
+          <img src=""
+               alt="AI Hackathon 2026"
+               onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=60';">
+          <div class="ev-banner-overlay"></div>
+          <span class="cat-badge cat-Technical">Technical</span>
+          <span class="ev-type">Team</span>
+          <!-- Countdown -->
+          <div class="ev-countdown" data-event-date="2026-08-15" data-event-time="09:00">
+            <div class="cd-unit"><div class="cd-num cd-days">--</div><div class="cd-lbl">days</div></div>
+            <div class="cd-unit"><div class="cd-num cd-hours">--</div><div class="cd-lbl">hrs</div></div>
+            <div class="cd-unit"><div class="cd-num cd-mins">--</div><div class="cd-lbl">min</div></div>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="ev-body">
+          <h3 class="ev-title">AI Hackathon 2026</h3>
+          <div class="ev-meta">
+            <span class="ev-meta-item"><i class="fas fa-calendar-alt"></i>2026-08-15</span>
+            <span class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>CS Labs (Zone A)</span>
+            
+          </div>
+
+          
+          
+          <div class="cap-wrap">
+            <div class="cap-label">
+              <span>48 registered</span>
+              <span>12 left</span>
+            </div>
+            <div class="cap-bar">
+              
+              <div class="cap-fill high" data-pct="80"></div>
+            </div>
+          </div>
+          
+
+          <div class="ev-footer">
+            <div class="ev-fee">
+              
+                <span class="free"><i class="fas fa-tag me-1"></i>Free</span>
+              
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <button class="btn-det" onclick="showDetails('2')"><i class="fas fa-info-circle"></i> Details</button>
+              <a href="/event/2" class="btn-ev">Register <i class="fas fa-arrow-right"></i></a>
+            </div>
+          </div>
+        </div>
       </div>
-      {% endfor %}
+      
+      
+      
+      
+      
+      <div class="ev-card"
+           data-cat="Sports"
+           data-title="football 5-a-side cup"
+           data-venue="football ground"
+           data-date="2026-07-25">
+
+        <!-- Banner -->
+        <div class="ev-banner">
+          <img src=""
+               alt="Football 5-A-Side Cup"
+               onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=60';">
+          <div class="ev-banner-overlay"></div>
+          <span class="cat-badge cat-Sports">Sports</span>
+          <span class="ev-type">Team</span>
+          <!-- Countdown -->
+          <div class="ev-countdown" data-event-date="2026-07-25" data-event-time="09:00">
+            <div class="cd-unit"><div class="cd-num cd-days">--</div><div class="cd-lbl">days</div></div>
+            <div class="cd-unit"><div class="cd-num cd-hours">--</div><div class="cd-lbl">hrs</div></div>
+            <div class="cd-unit"><div class="cd-num cd-mins">--</div><div class="cd-lbl">min</div></div>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="ev-body">
+          <h3 class="ev-title">Football 5-A-Side Cup</h3>
+          <div class="ev-meta">
+            <span class="ev-meta-item"><i class="fas fa-calendar-alt"></i>2026-07-25</span>
+            <span class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>Football Ground</span>
+            
+          </div>
+
+          
+          
+          <div class="cap-wrap">
+            <div class="cap-label">
+              <span>32 registered</span>
+              <span>8 left</span>
+            </div>
+            <div class="cap-bar">
+              
+              <div class="cap-fill high" data-pct="80"></div>
+            </div>
+          </div>
+          
+
+          <div class="ev-footer">
+            <div class="ev-fee">
+              
+                <span class="free"><i class="fas fa-tag me-1"></i>Free</span>
+              
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <button class="btn-det" onclick="showDetails('3')"><i class="fas fa-info-circle"></i> Details</button>
+              <a href="/event/3" class="btn-ev">Register <i class="fas fa-arrow-right"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
     </div>
 
     <!-- Dynamic empty state (shown by JS filter) -->
@@ -781,15 +982,15 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
       <div class="cal-stats">
         <div class="cal-stat-row">
           <span class="cal-stat-label"><i class="fas fa-calendar-check me-2 text-primary"></i> Active Events</span>
-          <span class="cal-stat-val">{{ total_events | default(0) }}</span>
+          <span class="cal-stat-val">17</span>
         </div>
         <div class="cal-stat-row">
           <span class="cal-stat-label"><i class="fas fa-users me-2 text-success"></i> Registrations</span>
-          <span class="cal-stat-val">{{ total_regs | default(0) }}</span>
+          <span class="cal-stat-val">2450</span>
         </div>
         <div class="cal-stat-row">
           <span class="cal-stat-label"><i class="fas fa-door-open me-2 text-warning"></i> Open Now</span>
-          <span class="cal-stat-val" id="calOpenCount">{{ total_events | default(0) }}</span>
+          <span class="cal-stat-val" id="calOpenCount">17</span>
         </div>
         <div class="cal-stat-row" style="border:none;">
           <button class="btn btn-sm w-100 mt-2" id="calResetBtn" onclick="resetFilter()" style="background:rgba(255, 255, 255, 0.05);color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px;border:1px solid rgba(255,255,255,0.08);display:none;">
@@ -803,18 +1004,14 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
     <div class="mt-3 p-3 rounded-4 border" style="background:var(--bg-card);border-color:var(--border-light)!important;backdrop-filter:blur(8px);">
       <div style="font-size:11.5px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Quick Links</div>
       <div class="d-flex flex-column gap-2">
-        {% if not session.get('user_id') %}
+        
         <a href="/login" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
           <i class="fas fa-sign-in-alt text-primary" style="width:16px;"></i><span style="font-size:13px;">Login to your account</span>
         </a>
         <a href="/register" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
           <i class="fas fa-user-plus text-success" style="width:16px;"></i><span style="font-size:13px;">Register as Student</span>
         </a>
-        {% else %}
-        <a href="/participant/dashboard" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
-          <i class="fas fa-ticket-alt text-primary" style="width:16px;"></i><span style="font-size:13px;">My Tickets / Dashboard</span>
-        </a>
-        {% endif %}
+        
         <a href="/verify" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
           <i class="fas fa-qrcode text-warning" style="width:16px;"></i><span style="font-size:13px;">Verify Ticket</span>
         </a>
@@ -880,7 +1077,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script type="application/json" id="eventsDataJson">
-[{% for event in events %}{"id":{{ event.id|tojson }},"title":{{ (event.title or '')|tojson }},"description":{{ (event.description or '')|tojson }},"rules":{{ (event.rules or '')|tojson }},"prizes":{{ (event.prizes or {})|tojson }},"prize_pool":{{ (event.prize_pool or '')|tojson }},"date":{{ (event.date or 'TBA')|tojson }},"time":{{ (event.time or '')|tojson }},"venue":{{ (event.venue or '')|tojson }},"fee":{{ ((event.fees or {}).get('regular',0))|tojson }},"participation_type":{{ (event.participation_type or 'Individual')|tojson }},"reg_deadline":{{ (event.reg_deadline or '')|tojson }},"banner_url":{{ (event.banner_url or '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]
+[{"id":1,"title":"Fashion Show Extravaganza","description":"","rules":"","prizes":{},"prize_pool":"","date":"2026-07-25","time":"","venue":"Main Auditorium","fee":0,"participation_type":"Individual","reg_deadline":"","banner_url":""},{"id":2,"title":"AI Hackathon 2026","description":"","rules":"","prizes":{},"prize_pool":"","date":"2026-08-15","time":"","venue":"CS Labs (Zone A)","fee":0,"participation_type":"Team","reg_deadline":"","banner_url":""},{"id":3,"title":"Football 5-A-Side Cup","description":"","rules":"","prizes":{},"prize_pool":"","date":"2026-07-25","time":"","venue":"Football Ground","fee":0,"participation_type":"Team","reg_deadline":"","banner_url":""}]
 </script>
 <script>
 // ── EVENT DATA FOR DETAILS MODAL ─────────────────────────

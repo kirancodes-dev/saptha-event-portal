@@ -4,7 +4,7 @@
   "private": true,
   "description": "Capacitor wrapper for the SapthaEvent web portal",
   "scripts": {
-    "build": "echo 'Building SapthaEvent Python Application for Zoho Catalyst...'",
+    "build": "node build_static.js",
     "cap:init": "npx cap init sapthaevent com.sapthaevent.app --web-dir=static",
     "cap:add-android": "npx cap add android",
     "cap:copy": "npx cap copy android",

@@ -152,14 +152,31 @@ CAMPUS LOGISTICS & FAQ:
             f"Student's question: {user_message}"
         )
 
-        response = _get_client().models.generate_content(
-            model='gemini-2.5-flash',
-            contents=system_prompt
-        )
-        return jsonify({'reply': response.text})
+        # Try Zoho Zia AI first
+        try:
+            from zoho_zia import ask_zia_chatbot
+            reply_text = ask_zia_chatbot(user_message, system_prompt)
+            if reply_text:
+                return jsonify({'reply': reply_text})
+        except Exception as z_err:
+            logger.warning("Zoho Zia primary call skipped: %s. Falling back to Gemini Client.", z_err)
+
+        # Gemini Client fallback
+        try:
+            response = _get_client().models.generate_content(
+                model='gemini-2.5-flash',
+                contents=system_prompt
+            )
+            return jsonify({'reply': response.text})
+        except Exception as g_err:
+            logger.warning("Gemini API fallback error: %s", g_err)
+            return jsonify({
+                'reply': f"Hello! Sparky (Zoho Zia AI) here! 🤖\n\nRegarding '{user_message}': Please check your student dashboard for live updates or contact support@snpsu.edu.in."
+            })
 
     except Exception as exc:
         logger.error("Chatbot error: %s", exc)
         return jsonify({
-            'reply': "Oops! My AI brain is rebooting. Please try again in a moment! 🤖⚡"
+            'reply': "Oops! My Zoho Zia AI brain is rebooting. Please try again in a moment! 🤖⚡"
         })
+

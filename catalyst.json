@@ -1,5 +1,17 @@
 {
   "functions": {
     "targets": ["saptha_app"]
+  },
+  "routes": {
+    "functions": [
+      {
+        "path": "/server/saptha_app/*",
+        "target": "saptha_app"
+      },
+      {
+        "path": "/*",
+        "target": "saptha_app"
+      }
+    ]
   }
 }

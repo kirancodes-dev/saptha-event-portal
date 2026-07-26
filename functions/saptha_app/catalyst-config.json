@@ -2,5 +2,13 @@
   "name": "saptha_app",
   "type": "advancedio",
   "stack": "python3.9",
-  "entry": "main.py"
+  "entry": "main.py",
+  "execution": {
+    "main": "main.py"
+  },
+  "deployment": {
+    "stack": "python3.9",
+    "type": "advancedio",
+    "name": "saptha_app"
+  }
 }

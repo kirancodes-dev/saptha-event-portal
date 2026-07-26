@@ -2,8 +2,13 @@ import os
 import json
 import datetime
 import logging
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+except ImportError:
+    firebase_admin = None
+    credentials = None
+    firestore = None
 from typing import Any, cast
 from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
 from flask_mail import Mail
@@ -194,15 +199,14 @@ def is_valid_firebase_creds(cred_str):
     except:
         return False
 
-if not firebase_admin._apps:
+if firebase_admin and not getattr(firebase_admin, '_apps', None):
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
     firebase_initialized = False
     
     if firebase_creds_json and is_valid_firebase_creds(firebase_creds_json):
-        # Production: Use environment variable (if valid)
         try:
             cred_dict = json.loads(firebase_creds_json)
-            if isinstance(cred_dict, str):  # double-encoded guard
+            if isinstance(cred_dict, str):
                 cred_dict = json.loads(cred_dict)
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
@@ -210,11 +214,8 @@ if not firebase_admin._apps:
             firebase_initialized = True
         except Exception as exc:
             logger.error("FIREBASE_CREDENTIALS parse error: %s", exc)
-            if os.environ.get('FLASK_ENV') == 'production':
-                raise
     
-    if not firebase_initialized:
-        # Try local file
+    if not firebase_initialized and credentials:
         key_path = 'serviceAccountKey.json'
         if os.path.exists(key_path):
             try:
@@ -224,22 +225,14 @@ if not firebase_admin._apps:
                 firebase_initialized = True
             except Exception as exc:
                 logger.error("Firebase: Failed to initialize with %s: %s", key_path, exc)
-                if os.environ.get('FLASK_ENV') == 'production':
-                    raise
     
-    if not firebase_initialized:
-        # Try Application Default Credentials on GCP/Cloud Run
+    if not firebase_initialized and firebase_admin:
         try:
             firebase_admin.initialize_app()
-            logger.info("Firebase: Initialized with Application Default Credentials (GCP/Cloud Run)")
+            logger.info("Firebase: Initialized with Application Default Credentials")
             firebase_initialized = True
         except Exception as exc:
-            if os.environ.get('DATABASE_TYPE') == 'postgres' or os.environ.get('SUPABASE_URL'):
-                logger.info("Firebase: Skipped (using PostgreSQL/Supabase database engine)")
-            elif os.environ.get('FLASK_ENV') == 'production':
-                logger.warning("Firebase credentials warning: %s. Continuing with database adapter.", exc)
-            else:
-                logger.warning("⚠️  Firebase not initialized for dev mode: %s.", exc)
+            logger.info("Firebase: Skipped (using PostgreSQL/Supabase database engine)")
 
 # Initialize database client (reusing resolution logic in models)
 from models import db, DATABASE_TYPE

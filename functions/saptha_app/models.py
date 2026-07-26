@@ -14,8 +14,13 @@ warnings.filterwarnings(
     module="google.cloud.firestore"
 )
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+    from firebase_admin import credentials, firestore
+except ImportError:
+    firebase_admin = None
+    credentials = None
+    firestore = None
 from typing import Any, cast
 import os
 
@@ -37,7 +42,7 @@ if DATABASE_TYPE in ('postgres', 'postgresql', 'supabase'):
         logging.getLogger(__name__).error("Failed to initialize SQL Firestore Adapter: %s", exc)
 else:
     # Initialize standard Firebase Firestore
-    if not firebase_admin._apps:
+    if firebase_admin and not getattr(firebase_admin, '_apps', None):
         key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
         if os.path.exists(key_path):
             cred = credentials.Certificate(key_path)

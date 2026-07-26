@@ -11,12 +11,39 @@ except ImportError:
     firestore = None
 from typing import Any, cast
 from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
-from flask_mail import Mail
-from flask_wtf.csrf import CSRFProtect, CSRFError
-from flask_session import Session
-from flask_talisman import Talisman
+try:
+    from flask_mail import Mail
+except ImportError:
+    class Mail:
+        def __init__(self, app=None): pass
+        def send(self, msg): pass
+
+try:
+    from flask_wtf.csrf import CSRFProtect, CSRFError
+except ImportError:
+    class CSRFProtect:
+        def __init__(self, app=None): pass
+        def exempt(self, view): return view
+    class CSRFError(Exception): pass
+
+try:
+    from flask_session import Session
+except ImportError:
+    class Session:
+        def __init__(self, app=None): pass
+
+try:
+    from flask_talisman import Talisman
+except ImportError:
+    class Talisman:
+        def __init__(self, app=None, **kwargs): pass
+
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
+
 from werkzeug.middleware.proxy_fix import ProxyFix
-from google.cloud.firestore_v1.base_query import FieldFilter
 from dotenv import load_dotenv
 load_dotenv()
 

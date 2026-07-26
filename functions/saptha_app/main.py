@@ -88,18 +88,44 @@ def handler(req, res=None):
 
         body_content = body_bytes.decode('utf-8', errors='replace')
         headers_dict = {k: v for k, v in response_headers}
+        if 'Content-Type' not in headers_dict and 'content-type' not in headers_dict:
+            headers_dict['Content-Type'] = 'text/html; charset=utf-8'
 
-        if res and hasattr(res, 'send'):
-            res.set_status_code(response_status[0])
+        if res is not None:
+            if hasattr(res, 'set_status_code'):
+                try: res.set_status_code(response_status[0])
+                except Exception: pass
+            elif hasattr(res, 'status'):
+                try: res.status(response_status[0])
+                except Exception: pass
+
+            ct_set = False
             for k, v in response_headers:
-                res.set_header(k, v)
-            res.send(body_content)
-            return
+                if hasattr(res, 'set_header'):
+                    try: res.set_header(k, v)
+                    except Exception: pass
+                if k.lower() == 'content-type':
+                    ct_set = True
+            
+            if not ct_set and hasattr(res, 'set_header'):
+                try: res.set_header('Content-Type', 'text/html; charset=utf-8')
+                except Exception: pass
+
+            if hasattr(res, 'send'):
+                res.send(body_content)
+                return
+            elif hasattr(res, 'write'):
+                res.write(body_content)
+                if hasattr(res, 'end'):
+                    res.end()
+                return
 
         return {
             'statusCode': response_status[0],
+            'status_code': response_status[0],
             'headers': headers_dict,
-            'body': body_content
+            'body': body_content,
+            'output': body_content
         }
     except Exception as exc:
         import traceback

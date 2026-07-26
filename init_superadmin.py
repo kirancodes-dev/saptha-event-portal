@@ -20,8 +20,14 @@ import os
 import sys
 import json
 import datetime
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+except ImportError:
+    firebase_admin = None
+try:
+    from firebase_admin import credentials, firestore
+except ImportError:
+    credentials = firestore = auth = None
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 

@@ -12,7 +12,10 @@ import datetime
 import uuid
 
 from flask import Blueprint, request, session, jsonify, render_template
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 from utils import login_required
 

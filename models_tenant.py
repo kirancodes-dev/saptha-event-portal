@@ -13,7 +13,10 @@ import uuid
 import secrets
 from datetime import datetime, timezone
 from typing import Optional
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 
 # ---------------------------------------------------------------------------

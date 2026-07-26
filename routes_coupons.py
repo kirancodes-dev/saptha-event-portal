@@ -12,7 +12,10 @@ import uuid
 import secrets
 
 from flask import Blueprint, request, session, jsonify
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 from utils import login_required, role_required
 

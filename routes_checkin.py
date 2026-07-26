@@ -9,7 +9,10 @@ When disabled, only the coordinator scanner can mark attendance.
 import datetime
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 from models import db
 from utils import login_required, role_required

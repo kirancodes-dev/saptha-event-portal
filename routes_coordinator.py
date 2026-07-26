@@ -12,8 +12,14 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from flask import (Blueprint, Response, flash, jsonify,
                    redirect, render_template, request, session)
-from google.cloud import firestore
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud import firestore
+except ImportError:
+    firestore = None
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 from werkzeug.security import generate_password_hash
 from models import db
 from utils import login_required, role_required, log_action, safe_int

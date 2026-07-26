@@ -11,7 +11,10 @@ import datetime
 
 from flask import Blueprint, request, g
 from werkzeug.security import generate_password_hash, check_password_hash
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 from auth_jwt import (
     jwt_required, jwt_roles_required,

@@ -16,8 +16,14 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+except ImportError:
+    firebase_admin = None
+try:
+    from firebase_admin import credentials, firestore
+except ImportError:
+    credentials = firestore = auth = None
 
 # ── Init Firebase ────────────────────────────────────────────────────────────
 KEY_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'serviceAccountKey.json')

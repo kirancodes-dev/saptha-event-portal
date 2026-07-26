@@ -1,5 +1,11 @@
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+except ImportError:
+    firebase_admin = None
+try:
+    from firebase_admin import credentials, firestore
+except ImportError:
+    credentials = firestore = auth = None
 import datetime
 
 # 1. Initialize Firestore

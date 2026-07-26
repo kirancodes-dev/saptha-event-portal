@@ -3,7 +3,10 @@ import logging
 from flask import Blueprint, render_template, request, redirect, session, flash, current_app
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
-from firebase_admin import auth
+try:
+    from firebase_admin import auth
+except ImportError:
+    auth = None
 from models import db
 
 from utils import log_action, ROLE_REDIRECTS, validate_password_strength

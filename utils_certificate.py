@@ -9,15 +9,20 @@ Two modes:
 import io
 import os
 import logging
-import qrcode
-from datetime import datetime
-from typing import Optional
-from qrcode.image.pil import PilImage
+try:
+    import qrcode
+    from qrcode.image.pil import PilImage
+except ImportError:
+    qrcode = None
+    PilImage = None
 
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.colors import HexColor, white
-from reportlab.pdfgen import canvas as rl_canvas
-from reportlab.lib.utils import ImageReader
+try:
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.colors import HexColor, white
+    from reportlab.pdfgen import canvas as rl_canvas
+    from reportlab.lib.utils import ImageReader
+except ImportError:
+    A4 = landscape = HexColor = white = rl_canvas = ImageReader = None
 
 from utils_email import _send_cert_email
 

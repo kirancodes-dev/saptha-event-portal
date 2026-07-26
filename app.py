@@ -44,8 +44,11 @@ except ImportError:
     FieldFilter = None
 
 from werkzeug.middleware.proxy_fix import ProxyFix
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    def load_dotenv(*args, **kwargs): pass
 
 from config import Config
 from utils import ROLE_REDIRECTS  # single source of truth

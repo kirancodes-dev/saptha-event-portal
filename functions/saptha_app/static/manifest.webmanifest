@@ -1,0 +1,83 @@
+{
+  "name": "SapthaEvent — Sapthagiri NPS University",
+  "short_name": "SapthaEvent",
+  "description": "Official event management platform for Sapthagiri NPS University — register for events, get QR tickets, view live leaderboards, and download certificates.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c122b",
+  "theme_color": "#1a2557",
+  "lang": "en-IN",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/static/app-icon.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/app-icon.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/app-icon.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/app-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/app-icon.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Events",
+      "short_name": "Events",
+      "description": "Discover and register for campus events",
+      "url": "/#events",
+      "icons": [{ "src": "/static/app-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your registrations and tickets",
+      "url": "/participant/dashboard",
+      "icons": [{ "src": "/static/app-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Certificates",
+      "short_name": "Certs",
+      "description": "Download and verify your achievement certificates",
+      "url": "/participant/dashboard#certificates",
+      "icons": [{ "src": "/static/app-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Login",
+      "short_name": "Login",
+      "description": "Sign in to your account",
+      "url": "/login",
+      "icons": [{ "src": "/static/app-icon.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

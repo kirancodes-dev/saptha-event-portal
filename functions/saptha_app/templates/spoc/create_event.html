@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Event Wizard | SapthaEvent</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-body: #0d1525;
+            --bg-card: #1a2335;
+            --bg-input: #0f1c2e;
+            --primary: #1a2557;
+            --primary-hover: #0a2352;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #2d3d55;
+            --success: #10b981;
+            --blue: #1a2557;
+            --orange: #c9a45e;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            padding-bottom: 100px;
+        }
+
+        /* --- INPUTS --- */
+        .form-control, .form-select {
+            background-color: var(--bg-input) !important;
+            border: 1px solid var(--border) !important;
+            color: #e2e8f0 !important;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .form-control option, .form-select option { background: #1a2335; color: #e2e8f0; }
+
+        /* Visible Placeholders */
+        .form-control::placeholder {
+            color: #64748b !important;
+            opacity: 1;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--orange) !important;
+            box-shadow: 0 0 0 2px rgba(201,164,94, 0.25) !important;
+            color: #f1f5f9 !important;
+            background-color: var(--bg-input) !important;
+        }
+
+        /* Wizard Progress Bar */
+        .wizard-progress {
+            background: #111827;
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        
+        .step-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255,255,255,.45);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: 0.25s;
+            cursor: pointer;
+            user-select: none;
+            padding: 4px 6px;
+            border-radius: 8px;
+        }
+        .step:hover { color: rgba(255,255,255,.8); }
+
+        .step.active {
+            color: #fff;
+            font-weight: 700;
+        }
+        .step.visited { color: rgba(255,255,255,.65); }
+
+        .step-num {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,.6);
+            transition: .25s;
+            flex-shrink: 0;
+        }
+
+        .step.active .step-num {
+            background: var(--orange);
+            color: #fff;
+            box-shadow: 0 0 14px rgba(201,164,94,.5);
+        }
+        .step.visited .step-num {
+            background: rgba(201,164,94,.25);
+            color: var(--orange);
+        }
+
+        /* Main Container */
+        .wizard-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .wizard-step-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .wizard-step-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px dashed var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e2e8f0;
+        }
+        .section-title i { color: var(--orange); }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #c9a45e;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Dynamic Tables */
+        .dynamic-table { width: 100%; border-collapse: separate; border-spacing: 0 5px; }
+        .dynamic-table td { padding: 5px; }
+        
+        .btn-add-row {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            border: 1px dashed var(--primary);
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+        .btn-add-row:hover { background: var(--primary); color: white; }
+        
+        .btn-remove { color: #ef4444; background: rgba(239, 68, 68, 0.1); border: none; width: 40px; height: 40px; border-radius: 8px; }
+        .btn-remove:hover { background: #ef4444; color: white; }
+
+        /* Footer Action Bar */
+        .action-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .btn-nav {
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            transition: 0.3s;
+        }
+        .btn-prev { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+        .btn-prev:hover { border-color: white; color: white; }
+        .btn-next { background: var(--primary); color: white; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .btn-next:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .btn-publish { background: var(--success); color: white; display: none; }
+        .btn-publish:hover { background: #059669; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+
+        /* ── FORM BUILDER (light card, high contrast) ─── */
+        /* ── Light step override (Step 2) ─────────────────── */
+        .light-step .section-card {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+        .light-step .section-title { color: #1a2557 !important; border-bottom-color: #f1f5f9; }
+        .light-step .form-label { color: #475569 !important; }
+        .light-step .form-control,
+        .light-step .form-select {
+            background-color: #fff !important;
+            border: 1.5px solid #e2e8f0 !important;
+            color: #1e293b !important;
+        }
+        .light-step .form-control::placeholder { color: #94a3b8 !important; }
+        .light-step .form-control:focus,
+        .light-step .form-select:focus {
+            border-color: #1a2557 !important;
+            box-shadow: 0 0 0 3px rgba(26,37,87,.1) !important;
+            color: #1e293b !important;
+        }
+        .light-step .form-text { color: #94a3b8 !important; }
+        .light-step .form-check-label { color: #475569 !important; }
+        .light-step .input-group-text { background: #f8fafc; border-color: #e2e8f0; color: #64748b; }
+
+        /* ── Judging Criteria Rows ─────────────────────────── */
+        .criteria-row {
+            display: flex; gap: 10px; align-items: center;
+            background: #f8fafc; border: 1.5px solid #e2e8f0;
+            border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;
+            transition: .15s;
+        }
+        .criteria-row:hover { border-color: var(--orange); }
+        .criteria-row .cr-input {
+            background: #fff !important; border: 1.5px solid #e2e8f0 !important;
+            color: #1e293b !important; font-size: 13px;
+        }
+        .criteria-row .cr-input:focus { border-color: #1a2557 !important; box-shadow: none !important; }
+
+        .fb-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 12px rgba(0,0,0,.08);
+        }
+        .fb-card-title {
+            font-size: 1rem; font-weight: 700; color: #1a2557;
+            margin-bottom: 16px; padding-bottom: 12px;
+            border-bottom: 2px solid #f1f5f9;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .fb-card-title i { color: var(--orange); }
+        .fb-card .form-label {
+            font-size: .78rem; font-weight: 700; color: #475569;
+            text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px;
+        }
+
+        .fb-palette { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+        .fb-type-btn {
+            background: #f1f5f9;
+            border: 1.5px solid #e2e8f0;
+            color: #1a2557;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .15s;
+            white-space: nowrap;
+        }
+        .fb-type-btn:hover { background: #1a2557; color: #fff; border-color: #1a2557; }
+        .fb-type-btn.danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+        .fb-type-btn.danger:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+        .fb-type-btn.info   { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+        .fb-type-btn.info:hover { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+
+        .fb-canvas {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 160px;
+        }
+        .fb-canvas-empty { text-align:center; padding: 32px 16px; color: #94a3b8; }
+        .fb-canvas-empty i { font-size: 2rem; display: block; margin-bottom: 8px; opacity:.4; }
+        .fb-canvas-empty span { font-size: 13px; }
+
+        .fb-field-row {
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: grab;
+            transition: .15s;
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+        }
+        .fb-field-row:hover { border-color: var(--orange); }
+        .fb-field-row.fb-selected { border-color: #1a2557; box-shadow: 0 0 0 3px rgba(26,37,87,.1); }
+        .fb-drag-handle { color: #cbd5e1; font-size: 13px; flex-shrink: 0; }
+        .fb-field-info { flex: 1; min-width: 0; cursor: pointer; }
+        .fb-field-lbl { font-size: 13.5px; font-weight: 700; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fb-field-typ { font-size: 11px; color: #94a3b8; margin-left: 6px; }
+        .fb-req-badge { background: #fee2e2; color: #dc2626; font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 100px; border: 1px solid #fecaca; flex-shrink: 0; }
+        .fb-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .fb-actions button { background: none; border: none; color: #94a3b8; padding: 4px 7px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: .12s; }
+        .fb-actions button:hover { color: #1a2557; background: #f1f5f9; }
+        .fb-del:hover { color: #dc2626 !important; background: #fee2e2 !important; }
+
+        .fb-props-wrap {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 12px;
+        }
+        .fb-props-wrap .form-label { font-size:.8rem; color:#475569; font-weight:600; text-transform:none; letter-spacing:0; margin-bottom:5px; }
+        .fb-props-wrap .form-control {
+            background:#fff !important; border:1.5px solid #e2e8f0 !important;
+            color:#1e293b !important; font-size:13px;
+        }
+        .fb-props-wrap .form-control:focus {
+            border-color:#1a2557 !important;
+            box-shadow: 0 0 0 3px rgba(26,37,87,.1) !important;
+        }
+        .fb-props-title { font-size:.85rem; font-weight:700; color:#1a2557; margin:0; }
+        .fb-req-label { font-size:.85rem; color:#1e293b; font-weight:500; }
+
+        /* ── CRITERIA ROW — always wrappable ───────────────── */
+        .criteria-row { flex-wrap: wrap; }
+
+        /* ── MOBILE ≤ 768px ─────────────────────────────────── */
+        @media (max-width: 768px) {
+            body { padding-bottom: 76px; }
+
+            /* Step bar */
+            .step-indicators { gap: 4px; padding: 0 6px; justify-content: space-around; }
+            .step { flex-direction: column; gap: 3px; font-size: 0.62rem; padding: 2px 4px;
+                    text-align: center; min-width: 0; }
+            .step-label { display: block; line-height: 1.1; }
+            .step-num { width: 26px; height: 26px; font-size: 0.75rem; }
+            .wizard-progress { padding: 10px 0; }
+
+            /* Container */
+            .wizard-container { margin: 14px auto; padding: 0 10px; }
+
+            /* Cards */
+            .section-card { padding: 16px 14px; border-radius: 12px; margin-bottom: 14px; }
+            .fb-card { padding: 14px 12px; border-radius: 12px; }
+            .section-title { font-size: 0.95rem; gap: 7px; margin-bottom: 14px; padding-bottom: 10px; }
+
+            /* Inputs */
+            .form-control, .form-select { padding: 10px 12px; font-size: 14px; }
+
+            /* Criteria rows — stack on mobile */
+            .criteria-row { gap: 8px; }
+            .criteria-row .criteria-name { flex: 1 1 100% !important; min-width: 0 !important; }
+            .criteria-row .criteria-desc { flex: 1 1 100% !important; min-width: 0 !important; }
+            .criteria-row .cr-pts-group  { max-width: none !important; flex: 1 1 auto !important; }
+
+            /* Form builder palette */
+            .fb-palette { gap: 5px; }
+            .fb-type-btn { padding: 5px 10px; font-size: 11.5px; }
+
+            /* FB field rows */
+            .fb-field-row { padding: 8px 10px; gap: 7px; }
+            .fb-field-lbl { font-size: 13px; }
+
+            /* Banner */
+            #bannerPreview { height: 140px !important; }
+
+            /* Sponsor table — horizontal scroll */
+            .dynamic-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch;
+                             white-space: nowrap; }
+            .dynamic-table td { white-space: normal; min-width: 120px; }
+
+            /* Footer */
+            .action-footer { padding: 10px 12px; }
+            .btn-nav { padding: 9px 16px; font-size: 13px; }
+
+            /* Review step */
+            .section-card.text-center.py-5 { padding-top: 28px !important; padding-bottom: 28px !important; }
+
+            /* Props panel */
+            .fb-props-wrap { padding: 14px; }
+        }
+
+        /* ── VERY SMALL ≤ 400px ─────────────────────────────── */
+        @media (max-width: 400px) {
+            .step-label { display: none; }   /* numbers only, no text */
+            .step-num { width: 30px; height: 30px; font-size: 0.8rem; }
+            .step { padding: 2px; }
+            .btn-nav { padding: 8px 12px; font-size: 12px; }
+            .action-footer { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wizard-progress">
+        <div class="step-indicators">
+            <div class="step active" id="ind-1" onclick="goToStep(1)" title="Go to Basics"><div class="step-num" id="snum-1">1</div><span class="step-label">Basics</span></div>
+            <div class="step" id="ind-2" onclick="goToStep(2)" title="Go to Logistics"><div class="step-num" id="snum-2">2</div><span class="step-label">Logistics</span></div>
+            <div class="step" id="ind-3" onclick="goToStep(3)" title="Go to Rules &amp; Prizes"><div class="step-num" id="snum-3">3</div><span class="step-label">Rules</span></div>
+            <div class="step" id="ind-4" onclick="goToStep(4)" title="Go to Registration Form"><div class="step-num" id="snum-4">4</div><span class="step-label">Form</span></div>
+            <div class="step" id="ind-5" onclick="goToStep(5)" title="Review &amp; Publish"><div class="step-num" id="snum-5">5</div><span class="step-label">Review</span></div>
+        </div>
+    </div>
+
+    <form action="/spoc/create_event" method="POST" id="mainForm" class="wizard-container" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="wizard-step-content light-step active" id="step-1">
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-fingerprint"></i> Core Identity</h3>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">Event Title *</label>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="ai-generator-toggle" onclick="toggleAIGenerator()" style="font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                                <i class="fas fa-wand-magic-sparkles me-1"></i>AI Assist Outline
+                            </button>
+                        </div>
+                        <input type="text" name="title" id="event-title-input" class="form-control form-control-lg" placeholder="e.g. HackOverflow 2026" required>
+                    </div>
+                    
+                    <!-- INLINE AI GENERATOR BOX -->
+                    <div class="col-12 d-none" id="ai-generator-card" style="transition: all 0.3s ease;">
+                        <div class="card p-3" style="background: rgba(99, 102, 241, 0.05); border: 1.5px dashed rgba(99, 102, 241, 0.25); border-radius: var(--radius); margin-bottom: 12px;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold small text-primary"><i class="fas fa-magic me-1"></i>Gemini Event Writer</span>
+                                <button type="button" class="btn-close" style="font-size: 10px;" onclick="toggleAIGenerator()"></button>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="ai-prompt-input" class="form-control form-control-sm" placeholder="e.g. A 24-hour web dev hackathon on climate changes.">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="generateEventOutline()" id="ai-gen-submit-btn">Generate</button>
+                            </div>
+                            <div class="form-text mt-1 text-muted" style="font-size: 10px;">Autofills description and rules fields using AI.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Category *</label>
+                        <select name="category" class="form-select" required>
+                            <option value="">Select Category</option>
+                            <option value="Tech">Technical / Hackathon</option>
+                            <option value="Cultural">Cultural / Arts</option>
+                            <option value="Sports">Sports / E-Sports</option>
+                            <option value="Workshop">Workshop / Bootcamp</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Visibility</label>
+                        <select name="visibility" class="form-select">
+                            <option value="Public">Public (Visible to All)</option>
+                            <option value="Private">Private (Link Only)</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Short Description</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="A catchy summary for the event cards..." required></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-step-content light-step" id="step-2">
+
+            <!-- Date & Venue -->
+            <div class="section-card">
+                <h3 class="section-title"><i class="far fa-calendar-alt"></i> Date &amp; Venue</h3>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Event Date</label>
+                        <input type="date" name="date" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Start Time</label>
+                        <input type="time" name="time" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Registration Deadline</label>
+                        <input type="date" name="reg_deadline" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Venue Name</label>
+                        <input type="text" name="venue" class="form-control" placeholder="e.g. Block A Auditorium">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Google Maps Link <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>
+                        <input type="url" name="map_link" class="form-control" placeholder="https://goo.gl/maps/...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Judging Criteria -->
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-gavel"></i> Judging Criteria
+                    <span style="font-size:.75rem;font-weight:400;color:#94a3b8;margin-left:8px;">Judges score each submission on these</span>
+                </h3>
+                <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+                    Define what judges will evaluate and the maximum score per criterion. Leave empty if this is not a judged event.
+                </p>
+
+                <input type="hidden" name="judging_criteria_json" id="judgingCriteriaJson">
+
+                <div id="criteriaRows"></div>
+
+                <div class="d-flex gap-2 mt-2 align-items-center flex-wrap">
+                    <button type="button" class="fb-type-btn info" onclick="addCriteria('','',10)">
+                        <i class="fas fa-plus me-1"></i>Add Criterion
+                    </button>
+                    <button type="button" class="fb-type-btn" onclick="loadDefaultCriteria()" style="color:#475569;">
+                        <i class="fas fa-magic me-1"></i>Load Defaults
+                    </button>
+                    <button type="button" class="fb-type-btn danger" onclick="clearCriteria()">
+                        <i class="fas fa-trash me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="wizard-step-content light-step" id="step-3">
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-scroll"></i> Rules &amp; Guidelines</h3>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Event Rules</label>
+                        <textarea name="rules" class="form-control" rows="5" placeholder="List all rules, regulations, and guidelines for participants. Each rule on a new line."></textarea>
+                        <div class="form-text text-muted" style="font-size:.8rem;">These rules will be shown to participants on the event details page.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-users-cog"></i> Participation Logic</h3>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Style</label>
+                        <select name="participation_type" id="partType" class="form-select" onchange="toggleTeams()">
+                            <option value="Individual">Individual Only</option>
+                            <option value="Team">Team Based</option>
+                            <option value="Both">Flexible</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 team-field" style="display:none;">
+                        <label class="form-label">Min Members</label>
+                        <input type="number" name="team_min" class="form-control" value="2">
+                    </div>
+                    <div class="col-md-4 team-field" style="display:none;">
+                        <label class="form-label">Max Members</label>
+                        <input type="number" name="team_max" class="form-control" value="4">
+                    </div>
+                    
+                    <div class="col-12 pt-3">
+                        <label class="form-label mb-3">Who can apply?</label>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_1" checked>
+                                <label class="form-check-label">1st Year</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_2" checked>
+                                <label class="form-check-label">2nd Year</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_3" checked>
+                                <label class="form-check-label">3rd Year</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="year_4" checked>
+                                <label class="form-check-label">4th Year</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-rupee-sign"></i> Fees & Prizes</h3>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Registration Fee (₹)</label>
+                        <input type="number" name="reg_fee" class="form-control" value="0">
+                        <div class="form-text text-muted">Set to 0 for free events.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Total Prize Pool</label>
+                        <input type="text" name="prize_pool" class="form-control" placeholder="e.g. ₹50,000 Worth">
+                    </div>
+                    <div class="col-12 mt-3">
+                        <label class="form-label">Podium Prizes</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text" style="background:#fef9c3;border-color:#e2e8f0;color:#92400e;font-weight:700;">🥇 1st</span>
+                            <input type="text" name="prize_1" class="form-control" placeholder="Winner Reward">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text" style="background:#f1f5f9;border-color:#e2e8f0;color:#475569;font-weight:700;">🥈 2nd</span>
+                            <input type="text" name="prize_2" class="form-control" placeholder="Runner Up">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text" style="background:#fff1f0;border-color:#e2e8f0;color:#b45309;font-weight:700;">🥉 3rd</span>
+                            <input type="text" name="prize_3" class="form-control" placeholder="Second Runner Up">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-step-content light-step" id="step-4">
+
+            <input type="hidden" name="auto_form_json" id="autoFormJson">
+
+            <!-- ── Registration Form Builder ─────────────────── -->
+            <div class="fb-card">
+                <div class="fb-card-title">
+                    <i class="fas fa-wpforms"></i> Registration Form Builder
+                    <span style="font-size:.75rem;font-weight:500;color:#94a3b8;margin-left:auto;">Fields participants fill when registering</span>
+                </div>
+                <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+                    Build the form participants see when they register. Click a field type to add it, drag rows to reorder, click any row to edit its properties.
+                    <strong style="color:#1a2557;">This form is optional</strong> — you can also skip and add/edit it later.
+                </p>
+
+                <!-- Field type palette -->
+                <div class="form-label" style="color:#475569;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Add Field</div>
+                <div class="fb-palette">
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('text')"><i class="fas fa-font me-1"></i>Text</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('email')"><i class="fas fa-envelope me-1"></i>Email</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('tel')"><i class="fas fa-phone me-1"></i>Phone</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('number')"><i class="fas fa-hashtag me-1"></i>Number</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('textarea')"><i class="fas fa-align-left me-1"></i>Long Text</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('select')"><i class="fas fa-caret-down me-1"></i>Dropdown</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('radio')"><i class="fas fa-dot-circle me-1"></i>Radio</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('checkbox')"><i class="fas fa-check-square me-1"></i>Checkbox</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('date')"><i class="fas fa-calendar me-1"></i>Date</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('url')"><i class="fas fa-link me-1"></i>URL</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('heading')"><i class="fas fa-heading me-1"></i>Heading</button>
+                    <button type="button" class="fb-type-btn" onclick="fb_addField('divider')"><i class="fas fa-minus me-1"></i>Divider</button>
+                </div>
+
+                <!-- Canvas -->
+                <div class="fb-canvas" id="fb_canvas">
+                    <div id="fb_empty" class="fb-canvas-empty">
+                        <i class="fas fa-hand-pointer"></i>
+                        <span>Click any field type above to start building your registration form</span>
+                    </div>
+                </div>
+
+                <!-- Inline Properties Panel -->
+                <div id="fb_props_wrap" class="fb-props-wrap" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="fb-props-title mb-0"><i class="fas fa-sliders-h me-2" style="color:var(--orange);"></i>Edit Field</p>
+                        <button type="button" class="fb-type-btn" style="padding:3px 10px;font-size:12px;" onclick="fb_closeProps()">
+                            <i class="fas fa-times me-1"></i>Close
+                        </button>
+                    </div>
+                    <div id="fb_props_body"></div>
+                </div>
+
+                <!-- Bottom toolbar -->
+                <div class="d-flex gap-2 mt-3 align-items-center flex-wrap">
+                    <button type="button" class="fb-type-btn info" onclick="fb_loadTemplate()">
+                        <i class="fas fa-magic me-1"></i>Load Default Template
+                    </button>
+                    <button type="button" class="fb-type-btn danger" onclick="fb_clearAll()">
+                        <i class="fas fa-trash me-1"></i>Clear All
+                    </button>
+                    <span style="font-size:12px;color:#94a3b8;margin-left:auto;" id="fb_field_count">0 fields</span>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-sliders-h"></i> Registration Settings</h3>
+                <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Configure additional submission requirements for registration.</p>
+
+                <div class="row g-4">
+                    <div class="col-12">
+                        <label class="form-label">Required Submission (At Registration)</label>
+                        <select name="submission_type" class="form-select">
+                            <option value="none">No Submission Required</option>
+                            <option value="github">GitHub / URL Link</option>
+                            <option value="drive">Google Drive Link (Abstracts / PPT)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 team-field" style="display:none;">
+                        <label class="form-label" style="color:#92400e!important;">Team Member Requirements</label>
+                        <div class="p-3 border rounded" style="background:#fafafa;border-color:#e2e8f0!important;">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_lead_whatsapp" checked>
+                                <label class="form-check-label">Ask Team Leader WhatsApp</label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_member_usn" checked>
+                                <label class="form-check-label">Ask Every Member's USN / SRN</label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_member_email">
+                                <label class="form-check-label">Ask Every Member's Email ID</label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="req_member_whatsapp">
+                                <label class="form-check-label">Ask Every Member's WhatsApp</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-image"></i> Media &amp; Sponsors</h3>
+                <label class="form-label">Banner Image URL</label>
+                <input type="url" name="banner_url" class="form-control mb-3" placeholder="https://imgur.com/..." oninput="previewBanner(this.value)">
+                <img id="bannerPreview" src="" style="width:100%;height:200px;object-fit:cover;border-radius:8px;display:none;border:1px solid #e2e8f0;">
+
+                <h5 class="mt-4 mb-2" style="color:#1a2557;font-family:'Poppins',sans-serif;font-weight:700;">Sponsors</h5>
+                <table class="dynamic-table" id="sponsorTable">
+                    <tbody id="sponsorBody"></tbody>
+                </table>
+                <button type="button" class="btn-add-row mt-2" onclick="addSponsorRow()">+ Add Sponsor</button>
+                <input type="hidden" name="sponsors_json" id="sponsorsJson">
+            </div>
+        </div>
+
+        <div class="wizard-step-content light-step" id="step-5">
+            <div class="section-card text-center py-5">
+                <div style="width:80px;height:80px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+                    <i class="fas fa-rocket" style="font-size:2rem;color:#16a34a;"></i>
+                </div>
+                <h2 style="color:#1a2557;font-family:'Poppins',sans-serif;font-weight:800;">Ready to Launch?</h2>
+                <p style="color:#64748b;font-size:14px;margin-bottom:24px;">Your event is configured. Hit <strong style="color:#1a2557;">Publish Event</strong> to make it live.</p>
+
+                <div class="d-inline-block text-start mt-2 p-4 rounded-3" style="max-width:480px;width:100%;background:#fffbeb;border:1.5px solid #fcd34d;">
+                    <p style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:10px;">
+                        <i class="fas fa-clipboard-check me-2"></i>Pre-flight Checklist
+                    </p>
+                    <div style="font-size:13px;color:#78350f;line-height:2;">
+                        <div><i class="fas fa-check-circle me-2" style="color:#d97706;"></i>Venue is confirmed and booked</div>
+                        <div><i class="fas fa-check-circle me-2" style="color:#d97706;"></i>Registration deadline is set correctly</div>
+                        <div><i class="fas fa-check-circle me-2" style="color:#d97706;"></i>Entry fee and prizes are configured</div>
+                        <div><i class="fas fa-check-circle me-2" style="color:#d97706;"></i>Registration form fields are added</div>
+                        <div><i class="fas fa-check-circle me-2" style="color:#d97706;"></i>Judging criteria are defined (if applicable)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </form>
+
+    <div class="action-footer">
+        <button class="btn btn-nav btn-prev" id="btnPrev" onclick="changeStep(-1)">Cancel</button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-nav btn-next" id="btnNext" onclick="changeStep(1)">Next Step <i class="fas fa-arrow-right ms-2"></i></button>
+            <button class="btn btn-nav btn-publish" id="btnPublish" onclick="submitForm()">🚀 Publish Event</button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 5;
+        const visitedSteps = new Set([1]);
+        let fb_step4_init = false;
+
+        // ── Toast ─────────────────────────────────────────────
+        function showToast(msg, type) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+                background:${type==='error'?'#dc2626':'#10b981'};color:#fff;padding:10px 22px;
+                border-radius:8px;font-weight:600;font-size:14px;z-index:9999;
+                box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:1;transition:.3s;`;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2800);
+        }
+
+        // ── Navigate to a specific step directly ─────────────
+        function goToStep(n) {
+            if (n === currentStep) return;
+            currentStep = n;
+            _updateUI();
+        }
+
+        // ── Next / Back buttons ───────────────────────────────
+        function changeStep(direction) {
+            if (direction === -1 && currentStep === 1) {
+                window.location.href = '/spoc/dashboard';
+                return;
+            }
+            const next = currentStep + direction;
+            if (next < 1 || next > totalSteps) return;
+            currentStep = next;
+            _updateUI();
+        }
+
+        // ── Central UI updater ────────────────────────────────
+        function _updateUI() {
+            visitedSteps.add(currentStep);
+
+            // Show correct step content
+            document.querySelectorAll('.wizard-step-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('step-' + currentStep).classList.add('active');
+
+            // Step indicator states
+            for (let i = 1; i <= totalSteps; i++) {
+                const el = document.getElementById('ind-' + i);
+                el.classList.remove('active', 'visited');
+                if (i === currentStep) el.classList.add('active');
+                else if (visitedSteps.has(i)) el.classList.add('visited');
+            }
+
+            // Footer buttons
+            const btnNext    = document.getElementById('btnNext');
+            const btnPrev    = document.getElementById('btnPrev');
+            const btnPublish = document.getElementById('btnPublish');
+            btnPrev.innerText = currentStep === 1 ? 'Cancel' : 'Back';
+            if (currentStep === totalSteps) {
+                btnNext.style.display    = 'none';
+                btnPublish.style.display = 'block';
+            } else {
+                btnNext.style.display    = 'block';
+                btnPublish.style.display = 'none';
+            }
+
+            // Auto-init judging criteria on first visit to step 2
+            if (currentStep === 2 && !cr_step2_init) {
+                cr_step2_init = true;
+                if (document.querySelectorAll('#criteriaRows .criteria-row').length === 0) {
+                    loadDefaultCriteria();
+                }
+            }
+            // Auto-init form builder with default template on first visit to step 4
+            if (currentStep === 4 && !fb_step4_init) {
+                fb_step4_init = true;
+                if (fb_fields.length === 0) fb_loadTemplate();
+            }
+
+            window.scrollTo(0, 0);
+        }
+
+        // 3. Dynamic Rows: SPONSORS
+        function addSponsorRow() {
+            const tbody = document.getElementById('sponsorBody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="form-control sp-name" placeholder="Company Name"></td>
+                <td><select class="form-select sp-tier"><option>Gold</option><option>Silver</option><option>Bronze</option></select></td>
+                <td><input type="url" class="form-control sp-logo" placeholder="Logo URL"></td>
+                <td><button type="button" class="btn-remove" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        // ── Data Aggregation & Submit ─────────────────────────
+        function submitForm() {
+            // Collect sponsors
+            const sponsors = [];
+            document.querySelectorAll('#sponsorBody tr').forEach(tr => {
+                sponsors.push({
+                    name: tr.querySelector('.sp-name').value,
+                    tier: tr.querySelector('.sp-tier').value,
+                    logo: tr.querySelector('.sp-logo').value
+                });
+            });
+            document.getElementById('sponsorsJson').value = JSON.stringify(sponsors);
+            // Sync form builder fields
+            document.getElementById('autoFormJson').value = JSON.stringify(fb_fields);
+            document.getElementById('mainForm').submit();
+        }
+
+        // ── Judging Criteria ──────────────────────────────────
+        let cr_step2_init = false;
+
+        function addCriteria(name, desc, maxScore) {
+            const container = document.getElementById('criteriaRows');
+            const uid = 'cr_' + Date.now() + '_' + Math.random().toString(36).slice(2,5);
+            const row = document.createElement('div');
+            row.className = 'criteria-row';
+            row.id = uid;
+            row.innerHTML = `
+                <i class="fas fa-grip-vertical" style="color:#cbd5e1;flex-shrink:0;"></i>
+                <input type="text" class="form-control cr-input criteria-name"
+                       placeholder="Criterion name (e.g. Innovation)" value="${name || ''}"
+                       oninput="syncCriteria()" style="flex:2;">
+                <input type="text" class="form-control cr-input criteria-desc"
+                       placeholder="What judges look for (optional)" value="${desc || ''}"
+                       oninput="syncCriteria()" style="flex:3;">
+                <div class="input-group cr-pts-group" style="max-width:120px;flex-shrink:0;">
+                    <input type="number" class="form-control cr-input criteria-max"
+                           value="${maxScore||10}" min="1" max="100" oninput="syncCriteria()">
+                    <span class="input-group-text" style="background:#f8fafc;border:1.5px solid #e2e8f0;color:#64748b;font-size:11px;font-weight:700;">pts</span>
+                </div>
+                <button type="button" class="fb-type-btn danger" style="padding:7px 12px;flex-shrink:0;"
+                        onclick="document.getElementById('${uid}').remove();syncCriteria()">
+                    <i class="fas fa-trash"></i>
+                </button>`;
+            container.appendChild(row);
+            syncCriteria();
+        }
+
+        function syncCriteria() {
+            const criteria = [];
+            document.querySelectorAll('#criteriaRows .criteria-row').forEach(function(row) {
+                const name = row.querySelector('.criteria-name').value.trim();
+                const desc = row.querySelector('.criteria-desc').value.trim();
+                const max  = parseInt(row.querySelector('.criteria-max').value) || 10;
+                if (name) criteria.push({ name: name, description: desc, max_score: max });
+            });
+            document.getElementById('judgingCriteriaJson').value = JSON.stringify(criteria);
+        }
+
+        function loadDefaultCriteria() {
+            document.getElementById('criteriaRows').innerHTML = '';
+            addCriteria('Innovation',      'Originality and creativity of the idea',          10);
+            addCriteria('Technical Depth', 'Quality and complexity of implementation',         10);
+            addCriteria('Presentation',    'Clarity and quality of demo or pitch',              5);
+            addCriteria('Impact',          'Real-world usefulness and potential scalability',   5);
+        }
+
+        function clearCriteria() {
+            if (document.querySelectorAll('#criteriaRows .criteria-row').length === 0) return;
+            if (!confirm('Remove all judging criteria?')) return;
+            document.getElementById('criteriaRows').innerHTML = '';
+            syncCriteria();
+        }
+
+        // 5. Helpers
+        function previewBanner(url) {
+            const img = document.getElementById('bannerPreview');
+            if(url.length > 5) { img.src = url; img.style.display = 'block'; }
+            else img.style.display = 'none';
+        }
+
+        function toggleTeams() {
+            const val = document.getElementById('partType').value;
+            const fields = document.querySelectorAll('.team-field');
+            fields.forEach(f => f.style.display = (val === 'Individual') ? 'none' : 'block');
+        }
+
+        toggleTeams();
+
+        // ── MANUAL FORM BUILDER ──────────────────────────────
+        let fb_fields = [];
+        let fb_selectedId = null;
+
+        const FB_TYPE_LABELS = {
+            text:'Short Text', textarea:'Long Text', email:'Email', tel:'Phone',
+            number:'Number', date:'Date', url:'URL', select:'Dropdown',
+            radio:'Multiple Choice', checkbox:'Checkbox', heading:'Heading', divider:'Divider'
+        };
+        const FB_DEFAULTS = {
+            text:     { label:'Short Answer',    placeholder:'Type your answer' },
+            textarea: { label:'Long Answer',     placeholder:'Type your answer here...' },
+            email:    { label:'Email Address',   placeholder:'you@example.com' },
+            tel:      { label:'Phone Number',    placeholder:'e.g. 9876543210' },
+            number:   { label:'Number',          placeholder:'Enter a number' },
+            date:     { label:'Date',            placeholder:'' },
+            url:      { label:'Website / Link',  placeholder:'https://' },
+            select:   { label:'Dropdown',        placeholder:'Select option', options:['Option 1','Option 2','Option 3'] },
+            radio:    { label:'Multiple Choice', placeholder:'', options:['Option 1','Option 2','Option 3'] },
+            checkbox: { label:'I agree to the terms', placeholder:'' },
+            heading:  { label:'Section Heading', placeholder:'' },
+            divider:  { label:'', placeholder:'' },
+        };
+
+        function fb_uid() { return 'f_' + Math.random().toString(36).slice(2, 8); }
+
+        function fb_addField(type) {
+            const def = FB_DEFAULTS[type] || {};
+            fb_fields.push({
+                id: fb_uid(), type, required: false,
+                label: def.label || type,
+                placeholder: def.placeholder || '',
+                options: (def.options || []).slice(),
+                help_text: ''
+            });
+            fb_renderCanvas();
+            fb_selectField(fb_fields[fb_fields.length - 1].id);
+            fb_sync();
+        }
+
+        function fb_renderCanvas() {
+            const canvas = document.getElementById('fb_canvas');
+            canvas.querySelectorAll('.fb-field-row').forEach(el => el.remove());
+            document.getElementById('fb_empty').style.display = fb_fields.length ? 'none' : 'block';
+            fb_fields.forEach((f, idx) => {
+                const row = document.createElement('div');
+                row.className = 'fb-field-row' + (f.id === fb_selectedId ? ' fb-selected' : '');
+                row.dataset.id = f.id;
+                row.draggable = true;
+                row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', String(idx)); setTimeout(() => row.style.opacity = '0.5', 0); });
+                row.addEventListener('dragend', () => { row.style.opacity = '1'; });
+                row.addEventListener('dragover', e => { e.preventDefault(); row.style.borderColor = 'var(--orange)'; });
+                row.addEventListener('dragleave', () => { row.style.borderColor = ''; });
+                row.addEventListener('drop', e => {
+                    e.preventDefault(); row.style.borderColor = '';
+                    const from = parseInt(e.dataTransfer.getData('text/plain'));
+                    if (from !== idx) { const m = fb_fields.splice(from, 1)[0]; fb_fields.splice(idx, 0, m); fb_renderCanvas(); fb_sync(); }
+                });
+                row.innerHTML = `
+                    <span class="fb-drag-handle"><i class="fas fa-grip-vertical"></i></span>
+                    <div class="fb-field-info" style="cursor:pointer;" onclick="fb_selectField('${f.id}')">
+                        <span class="fb-field-lbl">${fb_esc(f.label || f.type)}</span>
+                        <span class="fb-field-typ">${FB_TYPE_LABELS[f.type] || f.type}</span>
+                    </div>
+                    ${f.required ? '<span class="fb-req-badge">Required</span>' : ''}
+                    <div class="fb-actions">
+                        <button type="button" title="Edit" onclick="fb_selectField('${f.id}')"><i class="fas fa-edit"></i></button>
+                        <button type="button" title="Delete" class="fb-del" onclick="fb_deleteField('${f.id}')"><i class="fas fa-trash"></i></button>
+                    </div>`;
+                canvas.appendChild(row);
+            });
+            const countEl = document.getElementById('fb_field_count');
+            if (countEl) countEl.textContent = fb_fields.length + ' field' + (fb_fields.length !== 1 ? 's' : '');
+        }
+
+        function fb_selectField(id) {
+            fb_selectedId = id;
+            fb_renderCanvas();
+            fb_renderProps();
+        }
+
+        function fb_closeProps() {
+            fb_selectedId = null;
+            document.getElementById('fb_props_wrap').style.display = 'none';
+            fb_renderCanvas();
+        }
+
+        function fb_renderProps() {
+            const f = fb_fields.find(x => x.id === fb_selectedId);
+            if (!f) { document.getElementById('fb_props_wrap').style.display = 'none'; return; }
+            document.getElementById('fb_props_wrap').style.display = 'block';
+            const needsOptions = ['select','radio','checkbox_group'].includes(f.type);
+            const isLayout = ['heading','divider'].includes(f.type);
+            let html = '<div class="row g-3">';
+            if (f.type !== 'divider') {
+                html += `<div class="col-md-6"><label class="form-label">Label</label><input type="text" class="form-control" value="${fb_esc(f.label)}" oninput="fb_setProp('label',this.value)" placeholder="Field label"></div>`;
+            }
+            if (!isLayout && f.type !== 'checkbox') {
+                html += `<div class="col-md-6"><label class="form-label">Placeholder</label><input type="text" class="form-control" value="${fb_esc(f.placeholder)}" oninput="fb_setProp('placeholder',this.value)" placeholder="Hint shown inside field"></div>`;
+            }
+            if (!isLayout) {
+                html += `<div class="col-md-6"><label class="form-label">Help Text</label><input type="text" class="form-control" value="${fb_esc(f.help_text || '')}" oninput="fb_setProp('help_text',this.value)" placeholder="Optional description"></div>`;
+                html += `<div class="col-md-6 d-flex align-items-end pb-1">
+                           <div class="form-check form-switch mb-0">
+                             <input type="checkbox" id="fb_req_chk" class="form-check-input" style="width:40px;height:22px;cursor:pointer;" ${f.required?'checked':''} onchange="fb_setProp('required',this.checked)">
+                             <label for="fb_req_chk" class="fb-req-label ms-2">Required field</label>
+                           </div>
+                         </div>`;
+            }
+            html += '</div>';
+            if (needsOptions) {
+                html += `<div class="mt-3"><label class="form-label d-block" style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#475569;">Options</label><div id="fb_opt_list">`;
+                f.options.forEach((opt, i) => {
+                    html += `<div class="d-flex gap-2 mb-2"><input type="text" class="form-control form-control-sm" style="background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important;" value="${fb_esc(opt)}" oninput="fb_setOpt(${i},this.value)"><button type="button" class="fb-type-btn danger" style="padding:4px 10px;" onclick="fb_removeOpt(${i})"><i class="fas fa-times"></i></button></div>`;
+                });
+                html += `</div><button type="button" class="fb-type-btn info mt-1" onclick="fb_addOpt()"><i class="fas fa-plus me-1"></i>Add Option</button></div>`;
+            }
+            document.getElementById('fb_props_body').innerHTML = html;
+        }
+
+        function fb_setProp(key, val) {
+            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
+            f[key] = val; fb_renderCanvas(); fb_sync();
+        }
+        function fb_addOpt() {
+            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
+            f.options.push('Option ' + (f.options.length + 1)); fb_renderProps(); fb_sync();
+        }
+        function fb_removeOpt(idx) {
+            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
+            f.options.splice(idx, 1); fb_renderProps(); fb_sync();
+        }
+        function fb_setOpt(idx, val) {
+            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
+            f.options[idx] = val; fb_sync();
+        }
+        function fb_deleteField(id) {
+            fb_fields = fb_fields.filter(f => f.id !== id);
+            if (fb_selectedId === id) { fb_selectedId = null; document.getElementById('fb_props_wrap').style.display = 'none'; }
+            fb_renderCanvas(); fb_sync();
+        }
+        function fb_clearAll() {
+            if (fb_fields.length && !confirm('Remove all fields?')) return;
+            fb_fields = []; fb_selectedId = null;
+            fb_renderCanvas();
+            document.getElementById('fb_props_wrap').style.display = 'none';
+            fb_sync();
+        }
+        function fb_loadTemplate() {
+            fb_fields = [
+                { id:'full_name', type:'text',  label:'Full Name',    placeholder:'Enter your full name', required:true,  options:[], help_text:'' },
+                { id:'email',     type:'email', label:'Email Address', placeholder:'you@example.com',    required:true,  options:[], help_text:'' },
+                { id:'phone',     type:'tel',   label:'Phone Number',  placeholder:'10-digit mobile',    required:true,  options:[], help_text:'' },
+                { id:'usn',       type:'text',  label:'USN / Roll No', placeholder:'e.g. 1SN21CS001',    required:false, options:[], help_text:'' },
+            ];
+            fb_renderCanvas(); fb_sync();
+            showToast('Template loaded!', 'success');
+        }
+        function fb_sync() {
+            document.getElementById('autoFormJson').value = JSON.stringify(fb_fields);
+        }
+        function fb_esc(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        // ── GEMINI AI EVENT WRITER JS ──
+        function toggleAIGenerator() {
+            var card = document.getElementById('ai-generator-card');
+            if (card) {
+                card.classList.toggle('d-none');
+            }
+        }
+
+        function generateEventOutline() {
+            var titleInput = document.getElementById('event-title-input');
+            var promptInput = document.getElementById('ai-prompt-input');
+            var submitBtn = document.getElementById('ai-gen-submit-btn');
+            
+            var title = titleInput ? titleInput.value.trim() : '';
+            var prompt = promptInput ? promptInput.value.trim() : '';
+            
+            if (!title) {
+                showToast('Please enter an Event Title first!', 'error');
+                return;
+            }
+            
+            var oldText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+            
+            fetch('/spoc/marketing/event_writer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ title: title, prompt: prompt })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.description && data.rules) {
+                    var descArea = document.querySelector('textarea[name="description"]');
+                    var rulesArea = document.querySelector('textarea[name="rules"]');
+                    if (descArea) descArea.value = data.description;
+                    if (rulesArea) rulesArea.value = data.rules;
+                    
+                    showToast('Event details generated successfully!', 'success');
+                    toggleAIGenerator();
+                } else {
+                    showToast(data.error || 'Failed to generate details', 'error');
+                }
+            })
+            .catch(function() {
+                showToast('Network error generating details', 'error');
+            })
+            .finally(function() {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = oldText;
+            });
+        }
+    </script>
+<script src="/static/js/global.js"></script>
+</body>
+</html>

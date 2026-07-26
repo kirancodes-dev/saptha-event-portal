@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        #admin-key-group { display: none; } 
+    </style>
+</head>
+<body class="auth-shell">
+
+<div class="login-card">
+    <div style="text-align:center;margin-bottom:20px;">
+        <img src="/static/snpsu-logo.png"
+             alt="Sapthagiri NPS University"
+             style="height:45px;width:auto;object-fit:contain;"
+             onerror="this.style.display='none'">
+    </div>
+    <p class="text-center text-muted small mb-4">Official Event Management Portal</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} small py-2">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form action="/login" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="small fw-bold text-muted">Select Role</label>
+        <select name="role" id="roleSelect" class="form-select mb-3" onchange="toggleAdminKey()">
+            <option value="Student">Student / Participant</option>
+            <option value="Coordinator">Event Coordinator</option>
+            <option value="ClubSPOC">Club SPOC</option>
+            <option value="Judge">Event Judge</option> <option value="SuperAdmin">Super Admin</option>
+        </select>
+
+        <input type="email" name="email" class="form-control" placeholder="Email Address" required>
+        <input type="password" name="password" class="form-control" placeholder="Password" required>
+
+        <div id="admin-key-group">
+            <input type="password" name="admin_key" class="form-control border-danger" placeholder="Enter Admin Secret Key">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+
+    <div class="text-center mt-4">
+        <small class="text-muted">New Student? <a href="/register" class="fw-bold text-decoration-none" style="color: var(--orange);">Register Here</a></small>
+    </div>
+</div>
+
+<script src="/static/js/global.js"></script>
+<script>
+    function toggleAdminKey() {
+        var role = document.getElementById("roleSelect").value;
+        var keyGroup = document.getElementById("admin-key-group");
+        // Show Key field only for Super Admin
+        if (role === "SuperAdmin") {
+            keyGroup.style.display = "block";
+        } else {
+            keyGroup.style.display = "none";
+        }
+    }
+</script>
+
+</body>
+</html>

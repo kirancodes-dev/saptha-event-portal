@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-mode">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>API Documentation | SapthaEvent Developer Portal</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <link href="/static/css/developer.css" rel="stylesheet">
+  <style>
+    .sticky-top-bar {
+      position: sticky;
+      top: 0;
+      background: var(--dev-sidebar);
+      border-bottom: 1px solid var(--dev-border);
+      padding: 16px 24px;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body class="dev-portal">
+
+  <div class="dev-container">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-title">
+        <img src="/static/snpsu-logo.png" alt="SapthaEvent" style="height: 30px;">
+        <span>SapthaEvent API</span>
+      </div>
+      
+      <ul class="dev-sidebar-menu">
+        <li class="dev-menu-item active" data-target="introduction">
+          <a href="#introduction"><i class="fas fa-book-open"></i> Introduction</a>
+        </li>
+        <li class="dev-menu-item" data-target="authentication">
+          <a href="#authentication"><i class="fas fa-key"></i> Authentication</a>
+        </li>
+        
+        <div class="dev-menu-section">Authentication API</div>
+        <li class="dev-menu-item" data-target="auth-login">
+          <a href="#auth-login"><i class="fas fa-sign-in-alt"></i> Login</a>
+        </li>
+        <li class="dev-menu-item" data-target="auth-register">
+          <a href="#auth-register"><i class="fas fa-user-plus"></i> Register</a>
+        </li>
+        <li class="dev-menu-item" data-target="auth-me">
+          <a href="#auth-me"><i class="fas fa-user-shield"></i> Me (Current User)</a>
+        </li>
+        
+        <div class="dev-menu-section">Events API</div>
+        <li class="dev-menu-item" data-target="events-list">
+          <a href="#events-list"><i class="fas fa-list"></i> List Events</a>
+        </li>
+        <li class="dev-menu-item" data-target="events-create">
+          <a href="#events-create"><i class="fas fa-plus-circle"></i> Create Event</a>
+        </li>
+        <li class="dev-menu-item" data-target="events-register">
+          <a href="#events-register"><i class="fas fa-user-check"></i> Register for Event</a>
+        </li>
+
+        <div class="dev-menu-section">Organizations API</div>
+        <li class="dev-menu-item" data-target="orgs-list">
+          <a href="#orgs-list"><i class="fas fa-building"></i> List Orgs</a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- MAIN MAIN VIEW -->
+    <main class="w-100">
+      
+      <!-- STICKY TOP BAR -->
+      <div class="sticky-top-bar">
+        <div class="d-flex align-items-center gap-3">
+          <a href="/" class="text-white-50 text-decoration-none small"><i class="fas fa-arrow-left"></i> Main Site</a>
+          <span class="text-secondary">|</span>
+          <span class="text-white small fw-bold">v1.0 API Sandbox</span>
+        </div>
+        
+        <!-- Auth token key input -->
+        <div class="d-flex align-items-center gap-2">
+          <label for="api-global-token" class="small text-white-50 text-nowrap">Authorization Token:</label>
+          <input type="text" id="api-global-token" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Bearer JWT..." style="width: 250px;">
+        </div>
+      </div>
+
+      <!-- PAGE CONTENT -->
+      <div class="dev-content">
+        
+        <!-- INTRODUCTION -->
+        <section id="introduction" class="endpoint-section">
+          <h2 class="text-white fw-bold mb-3">Developer API Reference</h2>
+          <p class="text-white-50">
+            Welcome to the SapthaEvent REST API Sandbox. Here you can explore documentation for all platform routes, interact with the actual endpoints, and generate client boilerplate codes automatically.
+          </p>
+          <div class="alert alert-info bg-opacity-10 text-info border-info border-opacity-25 mt-3">
+            <i class="fas fa-info-circle me-2"></i> All requests must include the CSRF header token for browser authentication when using session cookies. For stateless API clients, supply the Bearer JWT token.
+          </div>
+        </section>
+
+        <!-- AUTHENTICATION -->
+        <section id="authentication" class="endpoint-section">
+          <h3 class="text-white fw-bold mb-3">Authentication Protocol</h3>
+          <p class="text-white-50">
+            Authenticating with the API requires issuing a POST login command. The returned credentials contains an <code>access_token</code> which must be included inside the <code>Authorization: Bearer &lt;Token&gt;</code> header on all secure routes.
+          </p>
+        </section>
+
+        <!-- LOGIN ENDPOINT -->
+        <section id="auth-login" class="endpoint-section">
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="mb-3">
+                <span class="method-badge post">POST</span>
+                <span class="endpoint-url">/api/v1/auth/login</span>
+              </div>
+              <h4 class="text-white fw-bold">User Login</h4>
+              <p class="text-white-50 small">Generates a JWT access and refresh token using user email and password.</p>
+              
+              <!-- Interactive Try Box -->
+              <div class="try-panel">
+                <h5 class="text-white small fw-bold mb-3">Try It Out</h5>
+                <form class="try-api-form" data-endpoint-id="login" data-method="POST" data-path="/api/v1/auth/login">
+                  <div class="mb-3">
+                    <label class="form-label small text-white-50">Email Address</label>
+                    <input type="email" name="email" class="form-control form-control-sm bg-dark text-white border-secondary" required value="admin@sapthaevent.com">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small text-white-50">Password</label>
+                    <input type="password" name="password" class="form-control form-control-sm bg-dark text-white border-secondary" required value="Admin@123">
+                  </div>
+                  <button type="submit" class="btn-execute">Send Request</button>
+                </form>
+              </div>
+            </div>
+            
+            <div class="col-lg-6">
+              <h5 class="text-white small fw-bold">Client Boilerplate</h5>
+              <div class="code-block-wrap">
+                <div class="code-header">
+                  <div class="code-lang-tabs">
+                    <button class="code-tab active" data-lang="curl">cURL</button>
+                    <button class="code-tab" data-lang="js">JavaScript</button>
+                    <button class="code-tab" data-lang="py">Python</button>
+                  </div>
+                  <button class="copy-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
+                </div>
+                
+                <!-- cURL -->
+                <pre class="code-snippet code-pre" data-lang="curl"><code>curl -X POST http://127.0.0.1:5001/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@sapthaevent.com", "password":"Admin@123"}'</code></pre>
+                
+                <!-- JavaScript -->
+                <pre class="code-snippet code-pre d-none" data-lang="js"><code>fetch('http://127.0.0.1:5001/api/v1/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'admin@sapthaevent.com',
+    password: 'Admin@123'
+  })
+}).then(r => r.json()).then(console.log);</code></pre>
+                
+                <!-- Python -->
+                <pre class="code-snippet code-pre d-none" data-lang="py"><code>import requests
+
+res = requests.post(
+    "http://127.0.0.1:5001/api/v1/auth/login",
+    json={"email": "admin@sapthaevent.com", "password": "Admin@123"}
+)
+print(res.json())</code></pre>
+              </div>
+
+              <!-- Output Box -->
+              <h5 class="text-white small fw-bold mt-4">API Response</h5>
+              <pre class="code-pre bg-dark rounded border border-secondary border-opacity-25" id="response-login" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ME ENDPOINT -->
+        <section id="auth-me" class="endpoint-section">
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="mb-3">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-url">/api/v1/auth/me</span>
+              </div>
+              <h4 class="text-white fw-bold">Get Profile Details</h4>
+              <p class="text-white-50 small">Returns payload validation parameters of the currently authenticated user.</p>
+              
+              <div class="try-panel">
+                <h5 class="text-white small fw-bold mb-3">Try It Out</h5>
+                <form class="try-api-form" data-endpoint-id="me" data-method="GET" data-path="/api/v1/auth/me">
+                  <p class="text-white-50 small">Secure route. Insert Bearer Token inside the header box above before sending.</p>
+                  <button type="submit" class="btn-execute">Send Request</button>
+                </form>
+              </div>
+            </div>
+            
+            <div class="col-lg-6">
+              <h5 class="text-white small fw-bold">Client Boilerplate</h5>
+              <div class="code-block-wrap">
+                <div class="code-header">
+                  <div class="code-lang-tabs">
+                    <button class="code-tab active" data-lang="curl">cURL</button>
+                    <button class="code-tab" data-lang="js">JavaScript</button>
+                    <button class="code-tab" data-lang="py">Python</button>
+                  </div>
+                  <button class="copy-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
+                </div>
+                
+                <pre class="code-snippet code-pre" data-lang="curl"><code>curl http://127.0.0.1:5001/api/v1/auth/me \
+  -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
+                
+                <pre class="code-snippet code-pre d-none" data-lang="js"><code>fetch('http://127.0.0.1:5001/api/v1/auth/me', {
+  headers: { 'Authorization': 'Bearer <TOKEN>' }
+}).then(r => r.json()).then(console.log);</code></pre>
+                
+                <pre class="code-snippet code-pre d-none" data-lang="py"><code>import requests
+
+res = requests.get(
+    "http://127.0.0.1:5001/api/v1/auth/me",
+    headers={"Authorization": "Bearer <TOKEN>"}
+)
+print(res.json())</code></pre>
+              </div>
+
+              <h5 class="text-white small fw-bold mt-4">API Response</h5>
+              <pre class="code-pre bg-dark rounded border border-secondary border-opacity-25" id="response-me" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- EVENTS LIST -->
+        <section id="events-list" class="endpoint-section">
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="mb-3">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-url">/api/v1/events</span>
+              </div>
+              <h4 class="text-white fw-bold">List All Events</h4>
+              <p class="text-white-50 small">Returns list of registered active university events with pagination support.</p>
+              
+              <div class="try-panel">
+                <h5 class="text-white small fw-bold mb-3">Try It Out</h5>
+                <form class="try-api-form" data-endpoint-id="events-list" data-method="GET" data-path="/api/v1/events">
+                  <div class="row g-2 mb-3">
+                    <div class="col-6">
+                      <label class="form-label small text-white-50">Limit</label>
+                      <input type="number" name="limit" data-param-type="query" class="form-control form-control-sm bg-dark text-white border-secondary" value="10">
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small text-white-50">Category</label>
+                      <select name="category" data-param-type="query" class="form-select form-select-sm bg-dark text-white border-secondary">
+                        <option value="">All</option>
+                        <option value="Technical">Technical</option>
+                        <option value="Cultural">Cultural</option>
+                        <option value="Sports">Sports</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn-execute">Send Request</button>
+                </form>
+              </div>
+            </div>
+            
+            <div class="col-lg-6">
+              <h5 class="text-white small fw-bold">Client Boilerplate</h5>
+              <div class="code-block-wrap">
+                <div class="code-header">
+                  <div class="code-lang-tabs">
+                    <button class="code-tab active" data-lang="curl">cURL</button>
+                    <button class="code-tab" data-lang="js">JavaScript</button>
+                    <button class="code-tab" data-lang="py">Python</button>
+                  </div>
+                  <button class="copy-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
+                </div>
+                
+                <pre class="code-snippet code-pre" data-lang="curl"><code>curl http://127.0.0.1:5001/api/v1/events?limit=10</code></pre>
+                
+                <pre class="code-snippet code-pre d-none" data-lang="js"><code>fetch('http://127.0.0.1:5001/api/v1/events?limit=10')
+  .then(r => r.json()).then(console.log);</code></pre>
+                
+                <pre class="code-snippet code-pre d-none" data-lang="py"><code>import requests
+
+res = requests.get("http://127.0.0.1:5001/api/v1/events", params={"limit": 10})
+print(res.json())</code></pre>
+              </div>
+
+              <h5 class="text-white small fw-bold mt-4">API Response</h5>
+              <pre class="code-pre bg-dark rounded border border-secondary border-opacity-25" id="response-events-list" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/api_explorer.js"></script>
+</body>
+</html>

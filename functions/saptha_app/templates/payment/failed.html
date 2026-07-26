@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Payment Failed — SapthaEvent{% endblock %}
+{% block content %}
+<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;padding:40px 16px;">
+  <div style="max-width:480px;width:100%;background:#fff;border-radius:16px;
+              border:1px solid #fecaca;box-shadow:0 8px 32px rgba(239,68,68,.1);padding:40px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:72px;height:72px;background:#fef2f2;border-radius:50%;
+                  display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <span style="font-size:36px;">❌</span>
+      </div>
+      <h1 style="color:#dc2626;font-size:22px;font-weight:700;margin:0 0 8px;">Payment Failed</h1>
+      <p style="color:#6b7280;font-size:14px;margin:0;">
+        {{ reason }}
+      </p>
+    </div>
+
+    <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:16px;margin:20px 0;">
+      <p style="color:#713f12;font-size:13px;margin:0 0 8px;font-weight:700;">💡 What to do next:</p>
+      <ul style="color:#713f12;font-size:13px;margin:0;padding-left:18px;line-height:2;">
+        <li>Check that your card details are correct and try again</li>
+        <li>Make sure your bank hasn't blocked the transaction</li>
+        <li>Try a different payment method (UPI, Net Banking)</li>
+        <li>Your money has <strong>not</strong> been deducted</li>
+      </ul>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="javascript:history.back()"
+         style="background:#1a2557;color:#fff;padding:10px 24px;border-radius:8px;
+                text-decoration:none;font-weight:700;font-size:14px;">
+        ← Try Again
+      </a>
+      <a href="/"
+         style="background:#f1f5f9;color:#1a2557;padding:10px 24px;border-radius:8px;
+                text-decoration:none;font-weight:600;font-size:14px;">
+        Back to Home
+      </a>
+    </div>
+
+    <p style="color:#9ca3af;font-size:12px;text-align:center;margin:20px 0 0;">
+      Need help? Email us at
+      <a href="mailto:sapthhack@gmail.com" style="color:#1a2557;">sapthhack@gmail.com</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "base_classic.html" %}
+
+{% block title %}{{ project.project_title }} — Hackathon Project Showcase | SapthaEvent{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="mb-4">
+        <a href="{{ url_for('hackathon.kanban_pipeline', event_id=project.event_id) }}" class="text-secondary text-decoration-none small">
+            <i class="fas fa-arrow-left me-1"></i> Back to Kanban Pipeline
+        </a>
+    </div>
+
+    <div class="row">
+
+        <!-- MAIN PROJECT INFO -->
+        <div class="col-lg-8">
+            <div class="card bg-dark text-light border-secondary shadow-lg mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="badge bg-warning text-dark me-2">{{ project.milestone_stage or 'Ideation' }}</span>
+                            <h2 class="text-white font-weight-bold display-6 mb-1">{{ project.project_title }}</h2>
+                            <p class="text-info fs-5 mb-0">{{ project.tagline or '' }}</p>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-secondary border border-secondary text-warning p-2 fs-5">
+                                <i class="fas fa-star me-1 text-warning"></i> {{ project.total_score or '0.0' }} / 10
+                            </span>
+                        </div>
+                    </div>
+
+                    <p class="text-secondary mb-4"><i class="fas fa-users text-warning me-1"></i> Team: <strong>{{ project.team_name }}</strong></p>
+
+                    <!-- RESOURCE LINKS -->
+                    <div class="d-flex flex-wrap gap-3 mb-4">
+                        {% if project.github_url %}
+                        <a href="{{ project.github_url }}" target="_blank" class="btn btn-outline-light btn-sm">
+                            <i class="fab fa-github me-1"></i> GitHub Repository
+                        </a>
+                        {% endif %}
+
+                        {% if project.demo_url %}
+                        <a href="{{ project.demo_url }}" target="_blank" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-external-link-alt me-1"></i> Live Demo
+                        </a>
+                        {% endif %}
+
+                        {% if project.video_url %}
+                        <a href="{{ project.video_url }}" target="_blank" class="btn btn-outline-danger btn-sm">
+                            <i class="fab fa-youtube me-1"></i> Video Pitch
+                        </a>
+                        {% endif %}
+
+                        {% if project.slide_deck_url %}
+                        <a href="{{ project.slide_deck_url }}" target="_blank" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-file-pdf me-1"></i> Presentation Deck
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <hr class="border-secondary my-4">
+
+                    <!-- PROBLEM STATEMENT & SOLUTION -->
+                    <div class="mb-4">
+                        <h5 class="text-white font-weight-bold"><i class="fas fa-exclamation-circle text-danger me-2"></i>Problem Statement</h5>
+                        <p class="text-secondary">{{ project.problem_statement or 'No problem statement provided.' }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5 class="text-white font-weight-bold"><i class="fas fa-cogs text-info me-2"></i>Solution Overview</h5>
+                        <p class="text-secondary">{{ project.solution_overview or 'No solution overview provided.' }}</p>
+                    </div>
+
+                    {% if project.tech_stack %}
+                    <div>
+                        <h5 class="text-white font-weight-bold"><i class="fas fa-layer-group text-warning me-2"></i>Tech Stack</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for tech in project.tech_stack.split(',') %}
+                            <span class="badge bg-secondary border border-secondary px-3 py-2 fs-6">{{ tech.strip() }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- JUDGE MULTI-CRITERION SCORING RUBRIC -->
+        <div class="col-lg-4">
+            <div class="card bg-dark text-light border-secondary shadow-lg">
+                <div class="card-header bg-secondary bg-opacity-20 border-secondary">
+                    <h5 class="mb-0 text-white font-weight-bold">
+                        <i class="fas fa-clipboard-check text-warning me-2"></i>Multi-Criterion Judging Rubric
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+
+                    <div class="mb-3">
+                        <label class="form-label text-light d-flex justify-content-between">
+                            <span>Impact & Innovation</span>
+                            <strong id="impactVal">{{ project.score_impact or 0.0 }}</strong>
+                        </label>
+                        <input type="range" class="form-range" id="scoreImpact" min="0" max="10" step="0.5" 
+                               value="{{ project.score_impact or 0.0 }}" oninput="updateRubric()">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-light d-flex justify-content-between">
+                            <span>Technical Complexity</span>
+                            <strong id="techVal">{{ project.score_tech or 0.0 }}</strong>
+                        </label>
+                        <input type="range" class="form-range" id="scoreTech" min="0" max="10" step="0.5" 
+                               value="{{ project.score_tech or 0.0 }}" oninput="updateRubric()">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-light d-flex justify-content-between">
+                            <span>UI/UX & Design</span>
+                            <strong id="uxVal">{{ project.score_ux or 0.0 }}</strong>
+                        </label>
+                        <input type="range" class="form-range" id="scoreUx" min="0" max="10" step="0.5" 
+                               value="{{ project.score_ux or 0.0 }}" oninput="updateRubric()">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-light d-flex justify-content-between">
+                            <span>Pitch & Presentation</span>
+                            <strong id="pitchVal">{{ project.score_pitch or 0.0 }}</strong>
+                        </label>
+                        <input type="range" class="form-range" id="scorePitch" min="0" max="10" step="0.5" 
+                               value="{{ project.score_pitch or 0.0 }}" oninput="updateRubric()">
+                    </div>
+
+                    <div class="p-3 bg-secondary bg-opacity-10 border border-secondary rounded text-center mb-4">
+                        <span class="text-secondary small d-block mb-1">Calculated Average Score</span>
+                        <h3 class="text-warning font-weight-bold mb-0" id="totalScoreVal">{{ project.total_score or 0.0 }} / 10</h3>
+                    </div>
+
+                    {% if session.get('role') in ['Judge', 'ClubSPOC', 'Admin', 'SuperAdmin'] %}
+                    <button class="btn btn-success w-100 font-weight-bold py-2" onclick="saveRubricScore()">
+                        <i class="fas fa-save me-2"></i> Save Rubric Scores
+                    </button>
+                    {% else %}
+                    <p class="text-muted small text-center mb-0"><i class="fas fa-lock me-1"></i> Log in as a Judge or SPOC to evaluate scores.</p>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+function updateRubric() {
+    const impact = parseFloat(document.getElementById('scoreImpact').value);
+    const tech = parseFloat(document.getElementById('scoreTech').value);
+    const ux = parseFloat(document.getElementById('scoreUx').value);
+    const pitch = parseFloat(document.getElementById('scorePitch').value);
+
+    document.getElementById('impactVal').innerText = impact;
+    document.getElementById('techVal').innerText = tech;
+    document.getElementById('uxVal').innerText = ux;
+    document.getElementById('pitchVal').innerText = pitch;
+
+    const total = ((impact + tech + ux + pitch) / 4.0).toFixed(2);
+    document.getElementById('totalScoreVal').innerText = total + ' / 10';
+}
+
+function saveRubricScore() {
+    const impact = parseFloat(document.getElementById('scoreImpact').value);
+    const tech = parseFloat(document.getElementById('scoreTech').value);
+    const ux = parseFloat(document.getElementById('scoreUx').value);
+    const pitch = parseFloat(document.getElementById('scorePitch').value);
+
+    fetch(`/api/hackathon/score/{{ project.id }}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ impact: impact, tech: tech, ux: ux, pitch: pitch })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            alert('✅ Rubric evaluation saved successfully!');
+            location.reload();
+        } else {
+            alert(d.message || 'Failed to save rubric scores');
+        }
+    });
+}
+</script>
+{% endblock %}

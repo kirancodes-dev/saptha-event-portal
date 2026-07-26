@@ -1,0 +1,1965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Dashboard | SapthaEvent</title>
+<meta name="description" content="Your personal event dashboard — manage tickets, track scores, discover events.">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+{% include 'includes/pwa_head.html' %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   SAPTHAEVENT STUDENT DASHBOARD — PREMIUM AURORA EDITION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── DESIGN TOKENS ── */
+:root {
+  --bg-void: #030712;
+  --bg-surface: rgba(255,255,255,0.015);
+  --bg-elevated: rgba(255,255,255,0.035);
+  --bg-hover: rgba(255,255,255,0.06);
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-medium: rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.18);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --accent-amber: #f59e0b;
+  --accent-amber-glow: rgba(245,158,11,0.15);
+  --accent-blue: #3b82f6;
+  --accent-violet: #8b5cf6;
+  --accent-emerald: #10b981;
+  --accent-rose: #f43f5e;
+  --accent-cyan: #06b6d4;
+  --glass-blur: blur(20px) saturate(180%);
+  --radius-card: 20px;
+  --radius-pill: 100px;
+  --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
+  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+}
+
+*,*::before,*::after{box-sizing:border-box;}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-void);
+  color: var(--text-secondary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── AURORA BACKGROUND ── */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  animation: aurora-float 20s ease-in-out infinite alternate;
+}
+.aurora-orb:nth-child(1) { width:60vw; height:60vw; top:-20%; left:-10%; background:var(--accent-violet); animation-delay:0s; }
+.aurora-orb:nth-child(2) { width:50vw; height:50vw; top:30%; right:-15%; background:var(--accent-blue); animation-delay:-5s; }
+.aurora-orb:nth-child(3) { width:45vw; height:45vw; bottom:-10%; left:20%; background:var(--accent-emerald); animation-delay:-10s; opacity:0.08; }
+.aurora-orb:nth-child(4) { width:35vw; height:35vw; top:50%; left:50%; background:var(--accent-amber); animation-delay:-15s; opacity:0.06; }
+
+@keyframes aurora-float {
+  0%   { transform: translate(0,0) scale(1); }
+  33%  { transform: translate(5vw,-3vh) scale(1.1); }
+  66%  { transform: translate(-3vw,5vh) scale(0.95); }
+  100% { transform: translate(2vw,-2vh) scale(1.05); }
+}
+
+/* ── GRID OVERLAY ── */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ── SMOOTH SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── NAVIGATION BAR ── */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 clamp(12px, 3vw, 28px);
+  background: rgba(3,7,18,0.6);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.brand-mark img { height: 34px; width: auto; }
+.brand-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.nav-items {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 13px;
+  border-radius: 10px;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.nav-btn:hover, .nav-btn.active {
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+.nav-btn i { font-size: 14px; }
+
+/* Cmd+K trigger */
+.cmd-k-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cmd-k-trigger:hover {
+  border-color: var(--border-medium);
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.06);
+}
+.cmd-k-trigger kbd {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+@media(max-width:640px){
+  .brand-text { display:none; }
+  .nav-btn span { display:none; }
+  .nav-btn { padding: 7px 9px; }
+  .cmd-k-trigger { display:none; }
+}
+
+/* ── HERO SECTION ── */
+.hero {
+  position: relative;
+  padding: clamp(2.5rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(59,130,246,0.04) 50%, transparent 100%);
+  pointer-events: none;
+}
+.hero-greeting {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.hero-greeting span {
+  background: linear-gradient(135deg, var(--accent-amber), #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin: 6px 0 0;
+  font-weight: 400;
+}
+
+/* ── STAT RINGS ── */
+.stat-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px 12px 16px;
+  border-radius: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s var(--ease-out-expo);
+  cursor: default;
+}
+.stat-card:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.stat-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.stat-ring svg { width:44px; height:44px; transform: rotate(-90deg); }
+.stat-ring-bg { fill:none; stroke:rgba(255,255,255,0.06); stroke-width:4; }
+.stat-ring-fg { fill:none; stroke-width:4; stroke-linecap:round; transition: stroke-dashoffset 1.2s var(--ease-out-expo); }
+.stat-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.stat-num {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+/* ── XP BAR ── */
+.xp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(251,191,36,0.08));
+  border: 1px solid rgba(245,158,11,0.2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-amber);
+  transition: all 0.2s;
+}
+.xp-badge:hover {
+  background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(251,191,36,0.12));
+  transform: scale(1.02);
+}
+
+/* ── BADGES ── */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.achievement-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  transition: all 0.2s;
+  cursor: default;
+}
+.achievement-badge:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+/* ── ANNOUNCEMENTS ── */
+.ann-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02));
+  border-left: 3px solid var(--accent-amber);
+  font-size: 13.5px;
+  color: #fde68a;
+  backdrop-filter: blur(8px);
+}
+.ann-strip i { color: var(--accent-amber); flex-shrink: 0; }
+
+/* ── CONTENT AREA ── */
+.content-area {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(1.5rem,4vw,3rem) clamp(1rem,3vw,2rem);
+}
+
+/* ── SECTION HEADERS ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+.section-header:first-child { margin-top: 0; }
+.section-header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.section-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+.section-header .section-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+/* ── REFERRAL PANEL ── */
+.referral-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.referral-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), rgba(139,92,246,0.3), transparent);
+}
+.referral-panel:hover {
+  border-color: var(--border-medium);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+/* ── TICKET CARD ── */
+.ticket-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  margin-bottom: 20px;
+  backdrop-filter: blur(20px);
+  transition: all 0.35s var(--ease-out-expo);
+  position: relative;
+}
+.ticket-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent 40%, transparent 60%, rgba(255,255,255,0.03));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+.ticket-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-medium);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+}
+.ticket-card:hover::before { opacity: 1; }
+
+.tc-header {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tc-cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  flex-shrink: 0;
+  position: relative;
+  top: -1px;
+}
+.tc-cat-dot.tech { background: var(--accent-blue); box-shadow: 0 0 8px rgba(59,130,246,0.4); }
+.tc-cat-dot.cultural { background: var(--accent-violet); box-shadow: 0 0 8px rgba(139,92,246,0.4); }
+.tc-cat-dot.sports { background: var(--accent-emerald); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+.tc-cat-dot.workshop { background: var(--accent-amber); box-shadow: 0 0 8px rgba(245,158,11,0.4); }
+
+.tc-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+}
+.tc-meta {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tc-meta i { font-size: 11px; color: var(--text-tertiary); }
+
+/* Status Badge */
+.status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+.status-badge.paid {
+  background: rgba(16,185,129,0.1);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.2);
+}
+.status-badge.pending {
+  background: rgba(245,158,11,0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(245,158,11,0.2);
+}
+.status-badge.free {
+  background: rgba(59,130,246,0.1);
+  color: #60a5fa;
+  border: 1px solid rgba(59,130,246,0.2);
+}
+
+.tc-body { padding: 0 24px 20px; }
+
+/* Countdown chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  transition: all 0.2s;
+}
+.chip-today     { background:rgba(245,158,11,0.1); color:#fde68a; border:1px solid rgba(245,158,11,0.15); }
+.chip-soon      { background:rgba(239,68,68,0.1);  color:#fca5a5; border:1px solid rgba(239,68,68,0.15); animation: chip-pulse 2s infinite; }
+.chip-upcoming  { background:rgba(59,130,246,0.1);  color:#93c5fd; border:1px solid rgba(59,130,246,0.15); }
+.chip-past      { background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.4); border:1px solid var(--border-subtle); }
+.chip-attended  { background:rgba(16,185,129,0.1);  color:#34d399; border:1px solid rgba(16,185,129,0.15); }
+.chip-absent    { background:rgba(239,68,68,0.1);   color:#fca5a5; border:1px solid rgba(239,68,68,0.15); }
+.chip-room      { background:rgba(99,102,241,0.1);  color:#a5b4fc; border:1px solid rgba(99,102,241,0.15); }
+
+@keyframes chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.15); }
+  50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+/* ── QR CODE BOX ── */
+.qr-container {
+  background: var(--bg-elevated);
+  border: 1.5px dashed var(--border-medium);
+  border-radius: 14px;
+  padding: 18px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s;
+}
+.qr-container:hover {
+  border-color: var(--border-strong);
+  background: rgba(255,255,255,0.05);
+}
+.qr-container img {
+  width: 100px;
+  height: 100px;
+  border-radius: 10px;
+  background: #fff;
+  padding: 4px;
+}
+.qr-container .qr-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.qr-locked {
+  text-align: center;
+}
+.qr-locked-icon {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.qr-locked-text {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  max-width: 90px;
+  line-height: 1.4;
+}
+
+/* ── SCORE DISPLAY ── */
+.score-display {
+  background: rgba(16,185,129,0.04);
+  border: 1px solid rgba(16,185,129,0.12);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.25s;
+  flex: 1;
+  min-width: 200px;
+}
+.score-display:hover {
+  background: rgba(16,185,129,0.08);
+  border-color: rgba(16,185,129,0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16,185,129,0.08);
+}
+.score-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-emerald);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.score-label i { font-size: 9px; opacity: 0.5; }
+.score-value {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent-emerald);
+  line-height: 1;
+}
+.score-value small {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+.rank-chip {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-amber);
+}
+
+/* ── TEAM MEMBERS ── */
+.team-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 12px;
+}
+.member-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.7);
+}
+.member-item:last-child { border-bottom: none; }
+.role-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(99,102,241,0.1);
+  color: #818cf8;
+  border: 1px solid rgba(99,102,241,0.15);
+}
+.role-tag.leader {
+  background: rgba(245,158,11,0.1);
+  color: var(--accent-amber);
+  border-color: rgba(245,158,11,0.2);
+}
+
+/* ── FEEDBACK PROMPT ── */
+.feedback-prompt {
+  background: linear-gradient(90deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02));
+  border: 1px solid rgba(245,158,11,0.12);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+.feedback-prompt:hover {
+  border-color: rgba(245,158,11,0.25);
+  background: linear-gradient(90deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03));
+}
+.feedback-prompt i { color: var(--accent-amber); font-size: 18px; flex-shrink: 0; }
+
+/* ── AI SUMMARY ── */
+.ai-summary {
+  background: rgba(139,92,246,0.04);
+  border: 1px solid rgba(139,92,246,0.12);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+.ai-summary-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent-violet);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ai-summary-headline {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.ai-summary-message {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.6;
+  padding: 10px 14px;
+  background: rgba(139,92,246,0.04);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-violet);
+  margin-bottom: 10px;
+}
+.strength-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+.strength-tag.good { background: rgba(16,185,129,0.1); color: #34d399; }
+.strength-tag.improve { background: rgba(245,158,11,0.1); color: #fbbf24; }
+
+/* ── ACTION BUTTONS ── */
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 16px;
+}
+.btn-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 10px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out-expo);
+  white-space: nowrap;
+}
+.btn-act:hover { transform: translateY(-1px); }
+.btn-act-primary {
+  background: linear-gradient(135deg, var(--accent-amber), #d97706);
+  color: #030712;
+  box-shadow: 0 2px 8px rgba(245,158,11,0.25);
+}
+.btn-act-primary:hover {
+  box-shadow: 0 6px 20px rgba(245,158,11,0.35);
+  color: #030712;
+}
+.btn-act-ghost {
+  background: var(--bg-elevated);
+  color: #fff;
+  border: 1px solid var(--border-subtle);
+}
+.btn-act-ghost:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-medium);
+  color: #fff;
+}
+.btn-act-success {
+  background: rgba(16,185,129,0.08);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.15);
+}
+.btn-act-success:hover {
+  background: rgba(16,185,129,0.14);
+  color: #34d399;
+}
+.btn-act-danger {
+  background: rgba(239,68,68,0.06);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.12);
+}
+.btn-act-danger:hover {
+  background: rgba(239,68,68,0.12);
+  color: #f87171;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 56px 24px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(16px);
+}
+.empty-state-icon {
+  font-size: 44px;
+  color: rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+
+/* ── COMPLETED EVENTS ── */
+.completed-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  margin-bottom: 10px;
+  backdrop-filter: blur(12px);
+  transition: all 0.25s var(--ease-out-expo);
+}
+.completed-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-medium);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+}
+.completed-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.completed-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+}
+.completed-meta {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.completed-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── DISCOVER EVENTS (GRID CARDS) ── */
+.discover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+@media(max-width:420px) { .discover-grid { grid-template-columns: 1fr; } }
+
+.discover-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+  transition: all 0.3s var(--ease-out-expo);
+  position: relative;
+}
+.discover-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-card);
+  background: linear-gradient(135deg, rgba(245,158,11,0.15), transparent 40%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 0;
+}
+.discover-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: var(--border-medium);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+}
+.discover-card:hover::after { opacity: 1; }
+.discover-card > * { position: relative; z-index: 1; }
+
+.discover-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.discover-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+}
+.discover-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+.discover-body {
+  padding: 16px 18px;
+}
+.discover-cat {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(59,130,246,0.1);
+  color: #93c5fd;
+  border: 1px solid rgba(59,130,246,0.15);
+  margin-bottom: 10px;
+}
+.discover-fee {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.btn-register {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-amber), #d97706);
+  color: #030712;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(245,158,11,0.2);
+}
+.btn-register:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(245,158,11,0.35);
+  color: #030712;
+}
+
+/* ── NOTIFICATION PANEL ── */
+#notif-panel {
+  background: rgba(11,15,25,0.92) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--border-medium) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
+  border-radius: 16px !important;
+}
+
+/* ── COMMAND PALETTE (Cmd+K) ── */
+.cmd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 18vh;
+}
+.cmd-overlay.open { display: flex; animation: cmd-fade-in 0.15s ease; }
+@keyframes cmd-fade-in { from { opacity:0; } to { opacity:1; } }
+
+.cmd-box {
+  width: 560px;
+  max-width: 92vw;
+  background: rgba(15,20,35,0.95);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  animation: cmd-slide-in 0.2s var(--ease-out-expo);
+}
+@keyframes cmd-slide-in { from { opacity:0; transform:scale(0.96) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.cmd-input-wrap {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 10px;
+}
+.cmd-input-wrap i { color: var(--text-tertiary); font-size: 16px; }
+.cmd-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+}
+.cmd-input::placeholder { color: var(--text-tertiary); }
+.cmd-results {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  text-decoration: none;
+}
+.cmd-item:hover, .cmd-item.selected {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+.cmd-item i {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+.cmd-item:hover i, .cmd-item.selected i { color: var(--accent-amber); }
+.cmd-footer {
+  padding: 10px 18px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  display: flex;
+  gap: 16px;
+}
+.cmd-footer kbd {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+}
+
+/* ── ANNOUNCEMENT TOASTS ── */
+#ann-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 380px;
+  width: calc(100% - 48px);
+}
+.ann-toast {
+  background: rgba(11,15,25,0.9);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  padding: 16px 20px;
+  color: #fff;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+  pointer-events: auto;
+  animation: toast-in 0.3s var(--ease-out-expo) forwards;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ann-toast-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px;
+}
+.ann-toast-icon.info { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
+.ann-toast-icon.warning { background: rgba(239,68,68,0.12); color: var(--accent-rose); }
+.ann-toast-icon.success { background: rgba(16,185,129,0.12); color: var(--accent-emerald); }
+.ann-toast-content { flex: 1; }
+.ann-toast-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13.5px; margin-bottom: 3px; }
+.ann-toast-desc { font-size: 12.5px; color: rgba(255,255,255,0.65); line-height: 1.4; }
+.ann-toast-close { background: none; border: none; color: rgba(255,255,255,0.3); cursor: pointer; padding: 0; font-size: 13px; transition: color 0.2s; }
+.ann-toast-close:hover { color: #fff; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:576px) {
+  .stat-grid { gap: 8px; }
+  .stat-card { padding: 10px 14px; }
+  .content-area { padding: 1.5rem 1rem; }
+  .tc-header { padding: 16px 18px 12px; }
+  .tc-body { padding: 0 18px 16px; }
+  .discover-grid { grid-template-columns: 1fr; }
+}
+
+/* ── SCORE MODAL (Dark Glass) ── */
+.modal-content.glass-modal {
+  background: rgba(11,15,25,0.95);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  color: var(--text-primary);
+}
+.glass-modal .modal-header {
+  background: transparent;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 18px 22px;
+}
+.glass-modal .modal-body {
+  padding: 20px 22px;
+}
+.glass-modal .btn-close { filter: invert(1); }
+
+</style>
+</head>
+<body>
+
+<!-- ═══ AURORA BACKGROUND ═══ -->
+<div class="aurora-bg">
+  <div class="aurora-orb"></div>
+  <div class="aurora-orb"></div>
+  <div class="aurora-orb"></div>
+  <div class="aurora-orb"></div>
+</div>
+<div class="grid-overlay"></div>
+
+{% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
+<div style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative;">
+  <span style="display:inline-flex;align-items:center;gap:6px;">
+    <i class="fas fa-crown" style="color:#c9a45e;"></i>
+    Logged in as <strong style="color:#c9a45e;">Super Admin</strong> (Wildcard Mode)
+  </span>
+  <a href="/admin/dashboard" class="btn btn-sm fw-bold px-3 py-1 rounded" style="background:#c9a45e;border:none;font-size:12.5px;color:#fff;text-decoration:none;">
+    Return to Admin HQ <i class="fas fa-arrow-right"></i>
+  </a>
+</div>
+{% endif %}
+
+<!-- ═══ NAVIGATION ═══ -->
+<nav class="topnav">
+  <a href="/" class="brand-mark">
+    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
+    <span class="brand-text">SapthaEvent</span>
+  </a>
+  <div class="nav-items">
+    <a href="/" class="nav-btn"><i class="fas fa-compass"></i><span>Events</span></a>
+    <a href="/calendar" class="nav-btn"><i class="fas fa-calendar-alt"></i><span>Calendar</span></a>
+    <a href="/profile/" class="nav-btn"><i class="fas fa-user"></i><span>Profile</span></a>
+    <button class="nav-btn" onclick="toggleTheme()" id="theme-toggle" type="button" aria-label="Toggle theme">
+      <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
+    </button>
+
+    <!-- Cmd+K Palette -->
+    <button class="cmd-k-trigger" onclick="openCmdPalette()" type="button">
+      <i class="fas fa-search" style="font-size:11px;"></i>
+      <kbd>⌘K</kbd>
+    </button>
+
+    <!-- Notifications Bell -->
+    <div style="position:relative;display:inline-flex;align-items:center;">
+      <button id="bell-btn" onclick="toggleNotifPanel()" class="nav-btn" style="position:relative;" type="button">
+        <i class="fas fa-bell"></i>
+        <span id="bell-badge" style="display:none;position:absolute;top:4px;right:6px;width:7px;height:7px;background:var(--accent-rose);border-radius:50%;"></span>
+      </button>
+      <div id="notif-panel" style="display:none;position:absolute;top:48px;right:0;width:340px;border-radius:16px;z-index:999;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(59,130,246,0.05));padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);">
+          <span style="color:#fff;font-weight:700;font-size:13px;"><i class="fas fa-bell me-2"></i>Notifications</span>
+          <button onclick="markAllRead()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;">Mark all read</button>
+        </div>
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11.5px;font-weight:600;color:var(--text-tertiary);"><i class="fas fa-mobile-alt me-1 text-warning"></i>Device Notifications</span>
+          <div class="form-check form-switch" style="margin:0;padding-left:2.5em;">
+            <input class="form-check-input" type="checkbox" id="push-notif-toggle" style="cursor:pointer;" onchange="togglePushSubscription(this)">
+          </div>
+        </div>
+        <div id="notif-list" style="max-height:360px;overflow-y:auto;">
+          <div style="padding:24px;text-align:center;color:var(--text-tertiary);font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <a href="/logout" class="nav-btn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+  </div>
+</nav>
+
+<!-- ═══ HERO SECTION ═══ -->
+<section class="hero reveal">
+  <h1 class="hero-greeting">Hello, <span>{{ user_name }}</span> 👋</h1>
+  <p class="hero-sub">Sapthagiri NPS University — Student Portal</p>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-ring">
+        <svg viewBox="0 0 44 44"><circle class="stat-ring-bg" cx="22" cy="22" r="18"/><circle class="stat-ring-fg" cx="22" cy="22" r="18" stroke="var(--accent-amber)" stroke-dasharray="113" stroke-dashoffset="113" data-target="{{ active_tickets|length }}" data-max="{{ (active_tickets|length + completed_events|length) or 1 }}"/></svg>
+        <div class="stat-ring-value">{{ active_tickets|length }}</div>
+      </div>
+      <div><div class="stat-num">{{ active_tickets|length }}</div><div class="stat-label">Active Events</div></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-ring">
+        <svg viewBox="0 0 44 44"><circle class="stat-ring-bg" cx="22" cy="22" r="18"/><circle class="stat-ring-fg" cx="22" cy="22" r="18" stroke="var(--accent-blue)" stroke-dasharray="113" stroke-dashoffset="113" data-target="{{ completed_events|length }}" data-max="{{ (active_tickets|length + completed_events|length) or 1 }}"/></svg>
+        <div class="stat-ring-value">{{ completed_events|length }}</div>
+      </div>
+      <div><div class="stat-num">{{ completed_events|length }}</div><div class="stat-label">Completed</div></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-ring">
+        <svg viewBox="0 0 44 44"><circle class="stat-ring-bg" cx="22" cy="22" r="18"/><circle class="stat-ring-fg" cx="22" cy="22" r="18" stroke="var(--accent-emerald)" stroke-dasharray="113" stroke-dashoffset="113" data-target="{{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}" data-max="{{ (active_tickets|length + completed_events|length) or 1 }}"/></svg>
+        <div class="stat-ring-value">{{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}</div>
+      </div>
+      <div><div class="stat-num">{{ (active_tickets + completed_events) | selectattr('attendance','equalto','Present') | list | length }}</div><div class="stat-label">Attended</div></div>
+    </div>
+
+    {% if user_xp %}
+    <div class="xp-badge">
+      <i class="fas fa-bolt"></i> {{ user_xp }} XP
+    </div>
+    {% endif %}
+  </div>
+
+  {% if user_badges %}
+  <div class="badge-row">
+    {% for badge in user_badges %}
+    <span class="achievement-badge">{{ badge[0] }} {{ badge[1] }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<!-- ═══ FLASH MESSAGES ═══ -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div style="padding:12px 24px;">
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show mb-2" style="border-radius:12px;font-size:13.5px;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);color:var(--text-primary);">
+      {{ msg|safe }}<button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ═══ ANNOUNCEMENTS ═══ -->
+{% if announcements %}
+{% for ann in announcements %}
+<div class="ann-strip">
+  <i class="fas fa-bullhorn" style="flex-shrink:0;"></i>
+  {{ ann.message }}
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<div class="content-area">
+
+  <!-- ── REFERRAL PANEL ── -->
+  <div class="referral-panel reveal">
+    <div class="row align-items-center g-3">
+      <div class="col-md-7">
+        <h5 style="color:#fff;font-weight:700;font-size:16px;margin-bottom:8px;"><i class="fas fa-gift me-2" style="color:var(--accent-blue);"></i>Refer Students, Earn Rewards!</h5>
+        <p style="color:var(--text-tertiary);font-size:13px;margin:0;">Share your custom affiliate link. Get ₹50 instantly credited when your friends register and attend fests.</p>
+        <div class="input-group mt-3" style="max-width:450px;">
+          <input type="text" id="ref-link-val" class="form-control form-control-sm" style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;" readonly value="Loading Link...">
+          <button class="btn btn-sm px-3" style="background:var(--accent-blue);color:#fff;border:none;font-weight:600;" onclick="copyRefLink()"><i class="fas fa-copy"></i> Copy</button>
+        </div>
+      </div>
+      <div class="col-md-5 text-md-end text-center">
+        <div class="d-inline-flex gap-3 text-center p-3 rounded-4 align-items-center" style="background:rgba(0,0,0,0.3);border:1px solid var(--border-subtle);border-radius:16px !important;">
+          <div class="px-2">
+            <span style="font-size:10px;font-weight:700;color:var(--text-tertiary);display:block;text-transform:uppercase;letter-spacing:0.5px;">Referrals</span>
+            <div style="font-size:22px;font-weight:800;color:#fff;margin-top:4px;font-family:'Plus Jakarta Sans',sans-serif;" id="ref-count-val">—</div>
+          </div>
+          <div style="height:35px;width:1px;background:var(--border-subtle);"></div>
+          <div class="px-2">
+            <span style="font-size:10px;font-weight:700;color:var(--text-tertiary);display:block;text-transform:uppercase;letter-spacing:0.5px;">Earned</span>
+            <div style="font-size:22px;font-weight:800;color:var(--accent-emerald);margin-top:4px;font-family:'Plus Jakarta Sans',sans-serif;" id="ref-earned-val">—</div>
+          </div>
+          <div style="height:35px;width:1px;background:var(--border-subtle);"></div>
+          <div class="px-2">
+            <button class="btn-act btn-act-ghost" style="font-size:11px;padding:6px 12px;" onclick="claimPayout()">Withdraw</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ACTIVE TICKETS ── -->
+  <div class="section-header reveal">
+    <div class="section-header-icon" style="background:rgba(245,158,11,0.1);color:var(--accent-amber);"><i class="fas fa-ticket-alt"></i></div>
+    <h3>My Tickets</h3>
+    <span class="section-count">{{ active_tickets|length }}</span>
+  </div>
+
+  {% if active_tickets %}
+  {% for reg in active_tickets %}
+  <div class="ticket-card reveal">
+    <div class="tc-header">
+      <div style="flex:1;min-width:0;">
+        <h5 class="tc-title">
+          <span class="tc-cat-dot {{ reg.event_cat|lower if reg.event_cat else 'tech' }}"></span>
+          {{ reg.event_title }}
+        </h5>
+        <div class="tc-meta">
+          <i class="fas fa-calendar-alt"></i> {{ reg.event_date or 'TBD' }}
+          &nbsp;·&nbsp;
+          <i class="fas fa-map-marker-alt"></i> {{ reg.event_venue or 'SNPSU' }}
+        </div>
+      </div>
+      {% set ps = reg.get('payment_status','Free') %}
+      <span class="status-badge {{ 'paid' if ps == 'Paid' else 'pending' if ps == 'Pending' else 'free' }}">
+        {{ ps }}
+      </span>
+    </div>
+
+    <div class="tc-body">
+      <div class="chips-row">
+        {% if reg.days_until is not none %}
+          {% if reg.days_until == 0 %}
+            <span class="chip chip-today"><i class="fas fa-star"></i>Today!</span>
+          {% elif reg.days_until < 0 %}
+            <span class="chip chip-past"><i class="fas fa-check"></i>Completed</span>
+          {% elif reg.days_until <= 3 %}
+            <span class="chip chip-soon"><i class="fas fa-fire"></i>{{ reg.days_until }} day{{ 's' if reg.days_until != 1 }} away</span>
+          {% else %}
+            <span class="chip chip-upcoming"><i class="fas fa-clock"></i>{{ reg.days_until }} days away</span>
+          {% endif %}
+        {% endif %}
+
+        {% if reg.attendance == 'Present' %}
+          <span class="chip chip-attended"><i class="fas fa-check-circle"></i>Attended</span>
+        {% elif reg.attendance == 'Absent' %}
+          <span class="chip chip-absent"><i class="fas fa-times-circle"></i>Absent</span>
+        {% endif %}
+
+        {% if reg.assigned_room %}
+          <span class="chip chip-room"><i class="fas fa-door-open"></i>Room {{ reg.assigned_room }}</span>
+        {% endif %}
+      </div>
+
+      <div class="d-flex flex-wrap align-items-start gap-4">
+        {% if reg.days_until is not none and 0 <= reg.days_until <= 1 %}
+        <div class="qr-container">
+          <img src="/ticket/qr/{{ reg.id }}" alt="QR Code" onerror="this.style.display='none'">
+          <div class="qr-label">{{ reg.get('reg_id', reg.id)[:20] }}</div>
+        </div>
+        {% else %}
+        <div class="qr-container qr-locked" style="min-width:100px;justify-content:center;">
+          <div class="qr-locked-icon">🔒</div>
+          <div class="qr-locked-text">Ticket unlocks<br>1 day before</div>
+        </div>
+        {% endif %}
+
+        {% if reg.my_avg_score is not none %}
+        <div class="score-display"
+             data-scores='{{ reg.get("scores", {})|tojson }}'
+             data-event='{{ reg.event_title|e }}'
+             onclick="openScoreModal(this)">
+          <div>
+            <div class="score-label">Your Score <i class="fas fa-expand-alt"></i></div>
+            <div class="score-value">{{ reg.my_avg_score }}<small>/100</small></div>
+          </div>
+          {% if reg.final_rank %}
+          <div class="rank-chip">
+            {% if reg.final_rank == 1 %}🥇 1st
+            {% elif reg.final_rank == 2 %}🥈 2nd
+            {% elif reg.final_rank == 3 %}🥉 3rd
+            {% else %}#{{ reg.final_rank }}{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if reg.get('members') and reg.members|length > 1 %}
+      <div style="margin-top:12px;">
+        <button class="btn-act btn-act-ghost" type="button" data-bs-toggle="collapse" data-bs-target="#members-{{ reg.id }}" style="font-size:11.5px;padding:5px 12px;">
+          <i class="fas fa-users"></i> Team ({{ reg.members|length }})
+        </button>
+        <div class="collapse" id="members-{{ reg.id }}">
+          <div class="team-section">
+            {% for m in reg.members %}
+            <div class="member-item">
+              <span>{{ m.name }}</span>
+              <span class="role-tag {{ 'leader' if m.role == 'Team Leader' else '' }}">{{ m.role }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if reg.attendance == 'Present' and not reg.feedback_done %}
+      <div class="feedback-prompt">
+        <i class="fas fa-star"></i>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent-amber);">Rate this event</div>
+          <div style="font-size:12px;color:var(--text-tertiary);">Your feedback helps improve future events.</div>
+        </div>
+        <a href="/participant/feedback/{{ reg.id }}" class="btn-act btn-act-primary" style="font-size:11.5px;padding:6px 14px;">
+          Give Feedback
+        </a>
+      </div>
+      {% endif %}
+
+      {% if reg.get('ai_summary') %}
+      {% set s = reg.ai_summary %}
+      <div class="ai-summary">
+        <div class="ai-summary-header"><i class="fas fa-brain"></i> AI Performance Summary</div>
+        {% if s.headline %}<div class="ai-summary-headline">{{ s.headline }}</div>{% endif %}
+        {% if s.student_message %}<div class="ai-summary-message">{{ s.student_message }}</div>{% endif %}
+        {% if s.strengths %}
+        <div>
+          {% for strength in s.strengths[:2] %}
+          <span class="strength-tag good">✓ {{ strength }}</span>
+          {% endfor %}
+          {% for imp in s.improvements[:1] %}
+          <span class="strength-tag improve">→ {{ imp }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="action-row">
+        <a href="/ticket/{{ reg.id }}" class="btn-act btn-act-primary"><i class="fas fa-qrcode"></i> Full Ticket</a>
+        <a href="/participant/badge/{{ reg.id }}" class="btn-act btn-act-ghost"><i class="fas fa-id-badge"></i> Badge</a>
+        <a href="/event/{{ reg.event_id }}" class="btn-act btn-act-ghost"><i class="fas fa-info-circle"></i> Event Info</a>
+        <a href="/participant/leaderboard/{{ reg.event_id }}" class="btn-act btn-act-ghost"><i class="fas fa-trophy"></i> Leaderboard</a>
+        {% if reg.cert_eligible %}
+        <a href="/participant/certificate/{{ reg.id }}" class="btn-act btn-act-success"><i class="fas fa-certificate"></i> Certificate</a>
+        {% endif %}
+        {% if reg.get('status') != 'Cancelled' and reg.get('attendance') != 'Present' %}
+        <form method="POST" action="/participant/cancel/{{ reg.id }}" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-act btn-act-danger"
+                  data-confirm="Cancel your registration for {{ reg.event_title|e }}? This cannot be undone."
+                  data-loading-text="Cancelling…">
+            <i class="fas fa-times-circle"></i> Cancel
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="empty-state reveal">
+    <div class="empty-state-icon"><i class="fas fa-ticket-alt"></i></div>
+    <h5 style="font-weight:700;color:var(--text-secondary);margin-bottom:8px;">No Active Tickets</h5>
+    <p style="color:var(--text-tertiary);font-size:13.5px;margin-bottom:20px;">Register for an upcoming event to get your QR ticket here.</p>
+    <a href="/" class="btn-act btn-act-primary"><i class="fas fa-compass"></i> Browse Events</a>
+  </div>
+  {% endif %}
+
+  <!-- ── WAITLIST ── -->
+  <div id="waitlist-section" style="display:none;">
+    <div class="section-header reveal">
+      <div class="section-header-icon" style="background:rgba(245,158,11,0.1);color:var(--accent-amber);"><i class="fas fa-hourglass-half"></i></div>
+      <h3>On Waitlist</h3>
+    </div>
+    <div id="waitlist-list"></div>
+  </div>
+
+  <!-- ── COMPLETED EVENTS ── -->
+  {% if completed_events %}
+  <div class="section-header reveal">
+    <div class="section-header-icon" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);"><i class="fas fa-history"></i></div>
+    <h3>Past Events</h3>
+    <span class="section-count">{{ completed_events|length }}</span>
+  </div>
+
+  {% for reg in completed_events %}
+  <div class="completed-card reveal">
+    <div class="completed-icon">
+      {% if reg.attendance == 'Present' %}🎓{% else %}📅{% endif %}
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="completed-title">{{ reg.event_title }}</div>
+      <div class="completed-meta">
+        {{ reg.event_date or '' }}
+        {% if reg.final_rank %}&nbsp;·&nbsp;
+          {% if reg.final_rank == 1 %}🥇 1st Place
+          {% elif reg.final_rank == 2 %}🥈 2nd Place
+          {% elif reg.final_rank == 3 %}🥉 3rd Place
+          {% else %}Rank #{{ reg.final_rank }}{% endif %}
+        {% endif %}
+        {% if reg.my_avg_score is not none %}&nbsp;·&nbsp;Score: {{ reg.my_avg_score }}{% endif %}
+      </div>
+      {% if not reg.feedback_done and reg.attendance == 'Present' %}
+      <a href="/participant/feedback/{{ reg.id }}" style="font-size:11.5px;color:var(--accent-amber);text-decoration:none;font-weight:600;">
+        <i class="fas fa-star me-1"></i>Rate this event
+      </a>
+      {% endif %}
+    </div>
+    <div class="completed-actions">
+      {% if reg.cert_eligible %}
+      <a href="/participant/certificate/{{ reg.id }}" class="btn-act btn-act-success" style="font-size:11px;padding:5px 11px;"><i class="fas fa-certificate"></i></a>
+      {% endif %}
+      <a href="/ticket/{{ reg.id }}" class="btn-act btn-act-ghost" style="font-size:11px;padding:5px 11px;"><i class="fas fa-qrcode"></i></a>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- ── DISCOVER MORE EVENTS ── -->
+  {% if upcoming_events %}
+  <div class="section-header reveal">
+    <div class="section-header-icon" style="background:rgba(16,185,129,0.1);color:var(--accent-emerald);"><i class="fas fa-calendar-plus"></i></div>
+    <h3>Discover More Events</h3>
+    <span class="section-count">{{ upcoming_events|length }}</span>
+  </div>
+  <div class="discover-grid">
+    {% for evt in upcoming_events %}
+    <div class="discover-card reveal">
+      <div class="discover-header">
+        <h5 class="discover-title">{{ evt.get('title', 'Event') }}</h5>
+        <div class="discover-meta">
+          <i class="fas fa-calendar-alt me-1"></i>{{ evt.get('date', 'TBD') }}
+          {% if evt.days_until is not none %}
+            &nbsp;·&nbsp;
+            {% if evt.days_until == 0 %}Today!
+            {% elif evt.days_until > 0 %}{{ evt.days_until }}d away{% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <div class="discover-body">
+        {% if evt.get('category') %}
+        <span class="discover-cat">{{ evt.category }}</span>
+        {% endif %}
+        <div class="d-flex align-items-center justify-content-between mt-1">
+          <div class="discover-fee">
+            {% if evt.get('entry_fee') and evt.entry_fee|int > 0 %}₹{{ evt.entry_fee }}{% else %}Free{% endif %}
+          </div>
+          <a href="/forms/register/{{ evt.id }}" class="btn-register"><i class="fas fa-plus"></i> Register</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div><!-- /content-area -->
+
+<!-- ═══ COMMAND PALETTE ═══ -->
+<div class="cmd-overlay" id="cmd-overlay" onclick="if(event.target===this)closeCmdPalette()">
+  <div class="cmd-box">
+    <div class="cmd-input-wrap">
+      <i class="fas fa-search"></i>
+      <input class="cmd-input" id="cmd-input" type="text" placeholder="Search events, navigate, or type a command…" autocomplete="off">
+    </div>
+    <div class="cmd-results" id="cmd-results">
+      <a class="cmd-item" href="/"><i class="fas fa-compass"></i> Browse All Events</a>
+      <a class="cmd-item" href="/calendar"><i class="fas fa-calendar-alt"></i> Event Calendar</a>
+      <a class="cmd-item" href="/profile/"><i class="fas fa-user"></i> My Profile</a>
+      <a class="cmd-item" href="/participant/dashboard"><i class="fas fa-ticket-alt"></i> My Tickets</a>
+      {% for reg in active_tickets %}
+      <a class="cmd-item" href="/event/{{ reg.event_id }}"><i class="fas fa-star"></i> {{ reg.event_title }}</a>
+      {% endfor %}
+    </div>
+    <div class="cmd-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+      <span><kbd>↵</kbd> Open</span>
+      <span><kbd>Esc</kbd> Close</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCORE BREAKDOWN MODAL ═══ -->
+<div class="modal fade" id="scoreModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-modal">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;color:#fff;margin:0;">
+            <i class="fas fa-chart-bar me-2" style="color:var(--accent-amber);"></i>Score Breakdown
+          </h5>
+          <div id="scoreModalEvent" style="font-size:12px;color:var(--text-tertiary);margin-top:3px;"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="scoreModalBody" style="max-height:70vh;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCRIPTS ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/global.js"></script>
+<script>
+/* ────────────────────────────────────────────────────────────────────────────
+   SCROLL REVEAL
+   ──────────────────────────────────────────────────────────────────────────── */
+(function() {
+  var reveals = document.querySelectorAll('.reveal');
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e,i) {
+      if (e.isIntersecting) {
+        setTimeout(function(){ e.target.classList.add('visible'); }, i * 60);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(function(el){ io.observe(el); });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────────
+   STAT RING ANIMATIONS
+   ──────────────────────────────────────────────────────────────────────────── */
+(function() {
+  document.querySelectorAll('.stat-ring-fg').forEach(function(circle) {
+    var circumference = 2 * Math.PI * 18;
+    var target = parseInt(circle.dataset.target) || 0;
+    var max = parseInt(circle.dataset.max) || 1;
+    var ratio = Math.min(target / max, 1);
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = circumference;
+    setTimeout(function() {
+      circle.style.strokeDashoffset = circumference * (1 - ratio);
+    }, 400);
+  });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────────
+   COMMAND PALETTE (Cmd+K / Ctrl+K)
+   ──────────────────────────────────────────────────────────────────────────── */
+function openCmdPalette() {
+  var overlay = document.getElementById('cmd-overlay');
+  overlay.classList.add('open');
+  setTimeout(function(){ document.getElementById('cmd-input').focus(); }, 100);
+}
+function closeCmdPalette() {
+  document.getElementById('cmd-overlay').classList.remove('open');
+  document.getElementById('cmd-input').value = '';
+  filterCmdResults('');
+}
+
+document.addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    var overlay = document.getElementById('cmd-overlay');
+    if (overlay.classList.contains('open')) { closeCmdPalette(); } else { openCmdPalette(); }
+  }
+  if (e.key === 'Escape') { closeCmdPalette(); }
+});
+
+document.getElementById('cmd-input').addEventListener('input', function(e) {
+  filterCmdResults(e.target.value.toLowerCase());
+});
+
+function filterCmdResults(q) {
+  var items = document.querySelectorAll('#cmd-results .cmd-item');
+  items.forEach(function(item) {
+    var text = item.textContent.toLowerCase();
+    item.style.display = !q || text.includes(q) ? 'flex' : 'none';
+  });
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   SCORE MODAL
+   ──────────────────────────────────────────────────────────────────────────── */
+function openScoreModal(el) {
+  var scores = JSON.parse(el.dataset.scores || '{}');
+  var eventTitle = el.dataset.event || '';
+  var body = document.getElementById('scoreModalBody');
+  document.getElementById('scoreModalEvent').textContent = eventTitle;
+
+  var entries = Object.entries(scores);
+  if (!entries.length) {
+    body.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);font-size:13.5px;margin:0;">No score breakdown available.</p>';
+  } else {
+    var html = '';
+    entries.forEach(function(entry, i) {
+      var data = entry[1];
+      var total = data.total || 0;
+      html += '<div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;padding:14px 16px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+        '<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-tertiary);">Judge ' + (i + 1) + '</span>' +
+        '<span style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:22px;font-weight:800;color:var(--accent-emerald);">' + total + '<span style="font-size:12px;color:var(--text-tertiary);font-weight:400;">/100</span></span>' +
+        '</div>';
+      var criteria = data.criteria || {};
+      Object.entries(criteria).forEach(function(c) {
+        var pct = Math.min(100, Number(c[1]) || 0);
+        html += '<div style="margin-bottom:8px;">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:4px;">' +
+          '<span>' + c[0] + '</span><span style="font-weight:600;color:var(--text-primary);">' + c[1] + '</span></div>' +
+          '<div style="height:4px;background:var(--border-subtle);border-radius:100px;overflow:hidden;">' +
+          '<div style="height:100%;background:linear-gradient(90deg,var(--accent-amber),var(--accent-emerald));width:' + pct + '%;border-radius:100px;transition:width 0.6s var(--ease-out-expo);"></div></div></div>';
+      });
+      html += '</div>';
+    });
+    body.innerHTML = html;
+  }
+  new bootstrap.Modal(document.getElementById('scoreModal')).show();
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   NOTIFICATION BELL
+   ──────────────────────────────────────────────────────────────────────────── */
+var _notifOpen = false, _notifLoaded = false;
+
+function toggleNotifPanel() {
+  var panel = document.getElementById('notif-panel');
+  _notifOpen = !_notifOpen;
+  panel.style.display = _notifOpen ? 'block' : 'none';
+  if (_notifOpen && !_notifLoaded) { loadNotifs(); _notifLoaded = true; }
+}
+
+document.addEventListener('click', function(e) {
+  if (!document.getElementById('bell-btn').contains(e.target) &&
+      !document.getElementById('notif-panel').contains(e.target)) {
+    document.getElementById('notif-panel').style.display = 'none';
+    _notifOpen = false;
+  }
+});
+
+function loadNotifs() {
+  fetch('/notifications/feed', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(items) {
+      var list = document.getElementById('notif-list');
+      var badge = document.getElementById('bell-badge');
+      var unread = items.filter(function(n){ return !n.read; }).length;
+      badge.style.display = unread > 0 ? 'block' : 'none';
+      if (!items.length) {
+        list.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text-tertiary);font-size:13px;"><i class="fas fa-check-circle" style="color:var(--accent-emerald);font-size:22px;display:block;margin-bottom:8px;"></i>All caught up!</div>';
+        return;
+      }
+      list.innerHTML = items.map(function(n) {
+        var iconMap = { bell:'fa-bell', ticket:'fa-ticket-alt', trophy:'fa-trophy', info:'fa-info-circle', cert:'fa-certificate' };
+        var ic = iconMap[n.icon] || 'fa-bell';
+        var bg = n.read ? 'transparent' : 'rgba(59,130,246,0.04)';
+        var href = n.link ? 'href="' + n.link + '"' : '';
+        return '<a ' + href + ' onclick="markRead(\'' + n.id + '\',this)" style="display:block;padding:12px 16px;border-bottom:1px solid var(--border-subtle);background:' + bg + ';text-decoration:none;transition:.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'' + bg + '\'">' +
+          '<div style="display:flex;gap:10px;align-items:flex-start;">' +
+          '<div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+          '<i class="fas ' + ic + '" style="color:var(--accent-violet);font-size:12px;"></i></div>' +
+          '<div><div style="font-size:13px;font-weight:' + (n.read ? '500' : '700') + ';color:var(--text-primary);">' + n.title + '</div>' +
+          '<div style="font-size:11.5px;color:var(--text-tertiary);margin-top:2px;">' + n.body + '</div></div></div></a>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('notif-list').innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-tertiary);font-size:13px;">Could not load notifications.</div>';
+    });
+}
+
+function markRead(id, el) {
+  fetch('/notifications/mark_read/' + id, { method: 'POST', credentials: 'same-origin',
+    headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' }
+  });
+  if (el) el.style.background = 'transparent';
+}
+
+function markAllRead() {
+  fetch('/notifications/mark_all_read', { method: 'POST', credentials: 'same-origin',
+    headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' }
+  }).then(function() { _notifLoaded = false; loadNotifs(); });
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LIVE ANNOUNCEMENTS (SSE)
+   ──────────────────────────────────────────────────────────────────────────── */
+function showAnnouncementToast(title, desc, priority) {
+  var container = document.getElementById('ann-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'ann-toast-container';
+    document.body.appendChild(container);
+  }
+  var toast = document.createElement('div');
+  toast.className = 'ann-toast';
+  var iconClass = 'fa-info-circle';
+  if (priority === 'warning') iconClass = 'fa-exclamation-triangle';
+  if (priority === 'success') iconClass = 'fa-check-circle';
+  toast.innerHTML =
+    '<div class="ann-toast-icon ' + (priority || 'info') + '"><i class="fas ' + iconClass + '"></i></div>' +
+    '<div class="ann-toast-content"><div class="ann-toast-title">' + title + '</div><div class="ann-toast-desc">' + desc + '</div></div>' +
+    '<button class="ann-toast-close" onclick="this.parentNode.remove()"><i class="fas fa-times"></i></button>';
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.style.opacity = '0'; toast.style.transform = 'translateY(-10px) scale(0.95)';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 6000);
+}
+
+(function initLiveAnnouncements() {
+  var eventIds = {{ (active_tickets | map(attribute='event_id') | list) | tojson }};
+  if (!eventIds.length) return;
+  var seenIds = new Set(Array.from(document.querySelectorAll('.ann-strip[data-id]')).map(function(el){ return el.dataset.id; }));
+  var sseSource = new EventSource('/live/announcements/stream?events=' + eventIds.join(','));
+  sseSource.onmessage = function(event) {
+    try {
+      var item = JSON.parse(event.data);
+      if (!item || !item.id || seenIds.has(item.id)) return;
+      seenIds.add(item.id);
+      showAnnouncementToast(item.event_title || 'Announcement', item.message, item.priority);
+    } catch (e) { console.error("SSE parse error:", e); }
+  };
+  sseSource.onerror = function() { console.warn("SSE reconnecting..."); };
+  window.addEventListener('beforeunload', function() { sseSource.close(); });
+})();
+
+/* ────────────────────────────────────────────────────────────────────────────
+   WAITLIST
+   ──────────────────────────────────────────────────────────────────────────── */
+fetch('/participant/waitlist_status', { credentials: 'same-origin' })
+  .then(function(r) { return r.json(); })
+  .then(function(items) {
+    if (!Array.isArray(items) || !items.length) return;
+    var sec = document.getElementById('waitlist-section');
+    var list = document.getElementById('waitlist-list');
+    sec.style.display = '';
+    list.innerHTML = items.map(function(w) {
+      return '<div style="background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.12);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+        '<div><div style="font-size:14px;font-weight:700;color:var(--text-primary);">' + w.event_title + '</div>' +
+        '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;"><i class="fas fa-hourglass-half me-1"></i>Waitlist position #' + w.position + '</div></div>' +
+        '<a href="/event/' + w.event_id + '" class="btn-act btn-act-ghost" style="font-size:12px;">View Event</a></div>';
+    }).join('');
+  }).catch(function(){});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LOAD UNREAD NOTIF COUNT
+   ──────────────────────────────────────────────────────────────────────────── */
+fetch('/notifications/feed', { credentials: 'same-origin' })
+  .then(function(r) { return r.json(); })
+  .then(function(items) {
+    var unread = Array.isArray(items) ? items.filter(function(n){ return !n.read; }).length : 0;
+    if (unread > 0) document.getElementById('bell-badge').style.display = 'block';
+  }).catch(function(){});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   REFERRAL SYSTEM
+   ──────────────────────────────────────────────────────────────────────────── */
+fetch('/participant/referrals/api/stats', { credentials: 'same-origin' })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.success) {
+      document.getElementById('ref-link-val').value = data.referral_link;
+      document.getElementById('ref-count-val').innerText = data.count;
+      document.getElementById('ref-earned-val').innerText = '₹' + data.earned;
+    }
+  }).catch(function(err) { console.error("Referral stats fail:", err); });
+
+function copyRefLink() {
+  var input = document.getElementById('ref-link-val');
+  navigator.clipboard.writeText(input.value).then(function() {
+    showToast('Referral link copied to clipboard!', 'success', 2000);
+  });
+}
+
+function claimPayout() {
+  fetch('/participant/referrals/api/claim', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) { if (data.success) showToast(data.message, 'success', 3000); });
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   WEB PUSH NOTIFICATIONS
+   ──────────────────────────────────────────────────────────────────────────── */
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function initPushToggleState() {
+  var toggle = document.getElementById('push-notif-toggle');
+  if (!toggle) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toggle.disabled = true;
+    toggle.parentNode.style.opacity = '0.5';
+    return;
+  }
+  navigator.serviceWorker.ready.then(function(reg) { return reg.pushManager.getSubscription(); })
+    .then(function(sub) { toggle.checked = !!sub; })
+    .catch(function(err) { console.error("Push status check error:", err); });
+}
+
+function togglePushSubscription(el) {
+  if (el.checked) {
+    Notification.requestPermission().then(function(permission) {
+      if (permission !== 'granted') { el.checked = false; return; }
+      fetch('/push/vapid_public_key').then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.key) throw new Error("VAPID key missing");
+          var key = urlBase64ToUint8Array(data.key);
+          return navigator.serviceWorker.ready.then(function(reg) {
+            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+          });
+        })
+        .then(function(sub) {
+          return fetch('/push/subscribe', { method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' },
+            body: JSON.stringify(sub) });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res.ok) showAnnouncementToast("Notifications", "Push notifications enabled!", "success");
+          else throw new Error("Server registration failed");
+        })
+        .catch(function(err) { console.error(err); el.checked = false; });
+    });
+  } else {
+    navigator.serviceWorker.ready.then(function(reg) { return reg.pushManager.getSubscription(); })
+      .then(function(sub) {
+        if (sub) return sub.unsubscribe().then(function() {
+          return fetch('/push/unsubscribe', { method: 'POST', credentials: 'same-origin',
+            headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '' } });
+        });
+      })
+      .then(function() { showAnnouncementToast("Notifications", "Push notifications disabled.", "info"); })
+      .catch(function(err) { console.error(err); el.checked = true; });
+  }
+}
+
+window.addEventListener('load', initPushToggleState);
+</script>
+</body>
+</html>

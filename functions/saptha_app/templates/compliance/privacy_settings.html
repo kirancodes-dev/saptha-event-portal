@@ -1,0 +1,195 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Privacy & DPDP Compliance Settings | SapthaEvent{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="mb-4">
+                <span class="badge bg-primary px-3 py-2 fs-6 mb-2"><i class="fas fa-shield-alt me-1"></i> DPDP Act 2023 & GDPR Compliant</span>
+                <h2 class="text-white font-weight-bold display-6 mb-1">Privacy & Data Governance Center</h2>
+                <p class="text-secondary">Manage your consent preferences, download personal data archives, and control your data privacy rights.</p>
+            </div>
+
+            <div class="row g-4">
+
+                <!-- CONSENT MANAGEMENT CARD -->
+                <div class="col-md-6">
+                    <div class="card bg-dark text-light border-secondary shadow-lg h-100">
+                        <div class="card-header bg-secondary bg-opacity-20 border-secondary py-3">
+                            <h5 class="mb-0 text-white font-weight-bold">
+                                <i class="fas fa-sliders-h text-warning me-2"></i>Data Processing Preferences
+                            </h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <form id="consentForm">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="email_marketing" role="switch">
+                                    <label class="form-check-label text-light font-weight-bold" for="email_marketing">Email Marketing & Announcements</label>
+                                    <p class="small text-secondary mb-0">Receive promotional emails and event updates.</p>
+                                </div>
+                                <hr class="border-secondary my-3">
+
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="push_notifications" role="switch" checked>
+                                    <label class="form-check-label text-light font-weight-bold" for="push_notifications">Browser Push Notifications</label>
+                                    <p class="small text-secondary mb-0">Receive instant alerts for live round schedules and proctoring warnings.</p>
+                                </div>
+                                <hr class="border-secondary my-3">
+
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="analytics_tracking" role="switch" checked>
+                                    <label class="form-check-label text-light font-weight-bold" for="analytics_tracking">Analytics & Usage Telemetry</label>
+                                    <p class="small text-secondary mb-0">Allow anonymous telemetry to improve platform responsiveness.</p>
+                                </div>
+                                <hr class="border-secondary my-3">
+
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="third_party_sharing" role="switch">
+                                    <label class="form-check-label text-light font-weight-bold" for="third_party_sharing">Sponsor Data Sharing</label>
+                                    <p class="small text-secondary mb-0">Share registration details with verified hackathon sponsors.</p>
+                                </div>
+
+                                <div class="mt-4 pt-2">
+                                    <button type="button" class="btn btn-warning text-dark font-weight-bold w-100" onclick="saveConsent()">
+                                        <i class="fas fa-save me-1"></i> Save Consent Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT TO DATA PORTABILITY & ERASURE CARD -->
+                <div class="col-md-6">
+                    <div class="card bg-dark text-light border-secondary shadow-lg h-100">
+                        <div class="card-header bg-secondary bg-opacity-20 border-secondary py-3">
+                            <h5 class="mb-0 text-white font-weight-bold">
+                                <i class="fas fa-user-shield text-info me-2"></i>Data Rights & Erasure Suite
+                            </h5>
+                        </div>
+                        <div class="card-body p-4 d-flex flex-column justify-content-between">
+
+                            <!-- EXPORT SECTION -->
+                            <div class="mb-4">
+                                <h6 class="text-white font-weight-bold mb-1"><i class="fas fa-file-download text-success me-2"></i>Data Portability (GDPR Art. 20)</h6>
+                                <p class="small text-secondary mb-3">Export a machine-readable JSON copy of your profile, event registrations, certificates, and activity logs.</p>
+                                <button class="btn btn-outline-success font-weight-bold w-100" onclick="exportData()">
+                                    <i class="fas fa-download me-1"></i> Export My Personal Data
+                                </button>
+                            </div>
+
+                            <hr class="border-secondary my-3">
+
+                            <!-- DELETION SECTION -->
+                            <div>
+                                <h6 class="text-white font-weight-bold mb-1"><i class="fas fa-user-times text-danger me-2"></i>Right to be Forgotten (GDPR Art. 17)</h6>
+                                <p class="small text-secondary mb-3">Request permanent erasure of your account. Requests include a 30-day grace period during which erasure can be cancelled.</p>
+                                
+                                <div id="deletionStatusBox" class="mb-3">
+                                    <button class="btn btn-outline-danger font-weight-bold w-100" onclick="requestDeletion()">
+                                        <i class="fas fa-trash-alt me-1"></i> Request Account Deletion
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', loadConsent);
+
+function loadConsent() {
+    fetch('/compliance/consent')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('email_marketing').checked = !!d.email_marketing;
+            document.getElementById('push_notifications').checked = !!d.push_notifications;
+            document.getElementById('analytics_tracking').checked = !!d.analytics_tracking;
+            document.getElementById('third_party_sharing').checked = !!d.third_party_sharing;
+
+            if (d.deletion_pending) {
+                document.getElementById('deletionStatusBox').innerHTML = `
+                    <div class="alert alert-warning border-warning text-dark mb-2 py-2 px-3 small">
+                        <strong><i class="fas fa-clock me-1"></i> Deletion Scheduled:</strong> Your account erasure is pending.
+                    </div>
+                    <button class="btn btn-outline-warning w-100 font-weight-bold" onclick="cancelDeletion()">
+                        <i class="fas fa-undo me-1"></i> Cancel Pending Deletion
+                    </button>
+                `;
+            }
+        });
+}
+
+function saveConsent() {
+    const payload = {
+        email_marketing: document.getElementById('email_marketing').checked,
+        push_notifications: document.getElementById('push_notifications').checked,
+        analytics_tracking: document.getElementById('analytics_tracking').checked,
+        third_party_sharing: document.getElementById('third_party_sharing').checked
+    };
+
+    fetch('/compliance/consent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+        alert('✅ Consent preferences updated!');
+    });
+}
+
+function exportData() {
+    fetch('/compliance/export-data', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(d, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `sapthaevent_personal_data_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+}
+
+function requestDeletion() {
+    const reason = prompt("Optional: Please provide a reason for account deletion:");
+    if (reason === null) return;
+
+    fetch('/compliance/delete-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.message) {
+            alert('⚠️ ' + d.message);
+            loadConsent();
+        } else {
+            alert(d.error || 'Failed to request deletion');
+        }
+    });
+}
+
+function cancelDeletion() {
+    fetch('/compliance/cancel-deletion', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            alert('✅ ' + (d.message || 'Deletion cancelled'));
+            loadConsent();
+        });
+}
+</script>
+{% endblock %}

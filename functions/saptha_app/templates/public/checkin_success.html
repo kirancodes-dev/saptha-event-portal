@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checked In!</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;}
+body{background:linear-gradient(135deg,var(--blue),#1a4fa0);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Segoe UI',sans-serif;}
+.card{background:#fff;border-radius:20px;width:100%;max-width:380px;padding:40px 32px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.4);}
+.check-icon{width:80px;height:80px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px;}
+h2{font-size:22px;font-weight:700;color:var(--blue);margin-bottom:6px;}
+.sub{font-size:14px;color:#64748b;margin-bottom:20px;}
+.info-row{background:#f8fafc;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;font-size:13.5px;}
+.info-label{color:#94a3b8;font-weight:600;}
+.info-val{color:#1e293b;font-weight:700;}
+.btn-home{display:inline-block;margin-top:20px;background:var(--orange);color:#fff;padding:11px 28px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;transition:.2s;}
+.btn-home:hover{background:#b8903f;color:#fff;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="check-icon">✅</div>
+  <h2>You're In, {{ name }}!</h2>
+  <p class="sub">Your attendance has been recorded for <strong>{{ event.title }}</strong>.</p>
+  <div class="info-row"><span class="info-label">Team</span><span class="info-val">{{ team or 'Individual' }}</span></div>
+  <div class="info-row"><span class="info-label">Check-in Time</span><span class="info-val">{{ checkin_time }}</span></div>
+  <a href="/" class="btn-home"><i class="fas fa-home me-2"></i>Portal Home</a>
+</div>
+</body>
+</html>

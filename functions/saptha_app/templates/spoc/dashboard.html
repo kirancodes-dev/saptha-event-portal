@@ -1,0 +1,3487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>Club Dashboard | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html {
+  overflow-x: hidden;
+}
+body {
+  background-color: var(--bg-app);
+  color: var(--ink-800);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--ink-900);
+}
+
+/* TOPNAV */
+.topnav {
+  background: rgba(26, 37, 87, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.brand { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #fff; margin-left: 10px; }
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-link-item { color: rgba(255, 255, 255, 0.75); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: var(--radius-sm); transition: var(--t-fast); font-weight: 500; }
+.nav-link-item:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.nav-link-item.btn-orange { background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color: #fff; font-weight: 700; border: none; }
+.nav-link-item.btn-orange:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold); color: #fff; }
+
+/* Dashboard Two-Column Layout */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  height: calc(100vh - 100px);
+  margin-top: 8px;
+  overflow: hidden;
+}
+@media (max-width: 992px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+}
+
+/* Sidebar Column */
+.sidebar-column {
+  background: var(--bg-card);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  transition: border-color var(--t);
+}
+.sidebar-column:focus-within {
+  border-color: var(--ink-300);
+}
+.search-box-container {
+  position: relative;
+  margin-bottom: 12px;
+}
+.search-icon-inside {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-400);
+  pointer-events: none;
+}
+.search-input-field {
+  padding-left: 36px !important;
+  font-size: 13.5px !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+/* Filter pills */
+.filter-pills-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.filter-pill-btn {
+  flex: 1;
+  border: 1px solid var(--ink-200);
+  background: var(--bg-soft);
+  color: var(--ink-600);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  text-align: center;
+}
+.filter-pill-btn:hover {
+  background: var(--bg-muted);
+  color: var(--ink-800);
+}
+.filter-pill-btn.active {
+  background: var(--snpsu-blue);
+  color: #fff;
+  border-color: var(--snpsu-blue);
+}
+[data-theme="dark"] .filter-pill-btn.active {
+  background: var(--snpsu-gold);
+  color: var(--snpsu-blue-dark);
+  border-color: var(--snpsu-gold);
+}
+
+/* Scrollable events list */
+.sidebar-events-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.sidebar-events-list::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-events-list::-webkit-scrollbar-thumb {
+  background: var(--ink-300);
+  border-radius: var(--radius-pill);
+}
+
+/* Global Overview button */
+.global-control-card {
+  background: linear-gradient(135deg, var(--snpsu-blue-dark), var(--snpsu-blue));
+  color: #ffffff !important;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all var(--t);
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.global-control-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.global-control-card.active {
+  background: var(--bg-card);
+  color: var(--snpsu-blue) !important;
+  border-color: var(--snpsu-blue);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(26,37,87,0.15);
+}
+[data-theme="dark"] .global-control-card {
+  background: linear-gradient(135deg, #151b2e, #1e2540);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .global-control-card.active {
+  color: var(--snpsu-gold) !important;
+  border-color: var(--snpsu-gold);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(201,164,94,0.15);
+}
+.global-card-icon {
+  font-size: 18px;
+  color: var(--snpsu-gold);
+}
+
+/* Event List Card */
+.sidebar-event-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all var(--t);
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.sidebar-event-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--ink-300);
+  box-shadow: var(--shadow-xs);
+}
+.sidebar-event-card.active {
+  background: var(--bg-card);
+  border-color: var(--snpsu-blue);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(26, 37, 87, 0.15);
+}
+[data-theme="dark"] .sidebar-event-card.active {
+  border-color: var(--snpsu-gold);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(201, 164, 94, 0.15);
+}
+.sidebar-event-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+.sidebar-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-500);
+  margin-bottom: 6px;
+}
+.sidebar-event-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sidebar-event-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  gap: 8px;
+}
+.sidebar-event-progress {
+  flex: 1;
+  height: 4px;
+  background: var(--ink-200);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.sidebar-event-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--snpsu-blue), var(--snpsu-gold));
+  border-radius: var(--radius-pill);
+}
+[data-theme="dark"] .sidebar-event-fill {
+  background: linear-gradient(90deg, var(--snpsu-gold), var(--info));
+}
+.sidebar-event-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-800);
+  white-space: nowrap;
+}
+
+/* Detail Column */
+.detail-column {
+  background: var(--bg-card);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+  position: relative;
+}
+@media (max-width: 992px) {
+  .detail-column {
+    display: none;
+    padding: 16px;
+    height: auto;
+    overflow: visible;
+  }
+}
+
+/* Segmented Tabs Control */
+.tabs-navigation {
+  display: flex;
+  background: var(--bg-soft);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  flex: 1;
+  min-width: 100px;
+  border: none;
+  background: transparent;
+  color: var(--ink-600);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+.tab-btn:hover {
+  background: rgba(0,0,0,0.03);
+  color: var(--ink-900);
+}
+[data-theme="dark"] .tab-btn:hover {
+  background: rgba(255,255,255,0.03);
+  color: var(--ink-900);
+}
+.tab-btn.active {
+  background: var(--snpsu-blue);
+  color: #ffffff !important;
+  box-shadow: var(--shadow-sm);
+}
+.tab-btn.active:hover {
+  background: var(--snpsu-blue);
+  color: #ffffff !important;
+}
+[data-theme="dark"] .tab-btn.active {
+  background: var(--snpsu-gold);
+  color: var(--snpsu-blue-dark) !important;
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="dark"] .tab-btn.active:hover {
+  background: var(--snpsu-gold);
+  color: var(--snpsu-blue-dark) !important;
+}
+.tab-pane {
+  display: none;
+  animation: fadeInUp 0.3s var(--ease) forwards;
+}
+.tab-pane.active {
+  display: block;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stats Mini cards */
+.event-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 768px) {
+  .event-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .event-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+.event-stat-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: transform var(--t);
+}
+.event-stat-card:hover {
+  transform: translateY(-1px);
+}
+.event-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.event-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--ink-500);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.event-stat-val {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink-900);
+  line-height: 1.1;
+}
+
+/* Blueprint SVG Map Visuals */
+.wayfinder-card-wrapper {
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+/* Collapsible Wayfinder Map styles */
+.wayfinder-toggle-container {
+  margin-top: 12px;
+}
+.wayfinder-toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  color: var(--snpsu-blue);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.wayfinder-toggle-btn:hover {
+  background: var(--snpsu-blue);
+  color: #fff;
+  border-color: var(--snpsu-blue);
+}
+[data-theme="dark"] .wayfinder-toggle-btn {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.08);
+  color: var(--snpsu-gold-light);
+}
+[data-theme="dark"] .wayfinder-toggle-btn:hover {
+  background: var(--snpsu-gold);
+  color: var(--snpsu-blue-dark);
+  border-color: var(--snpsu-gold);
+}
+.wayfinder-collapsible-content {
+  display: none;
+  margin-top: 12px;
+  animation: fadeIn 0.25s ease-out;
+}
+.wayfinder-collapsible-content.show {
+  display: block;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.wayfinder-svg {
+  background: #0b0f19;
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+.wayfinder-room-g {
+  transition: all var(--t);
+}
+.wayfinder-room-rect {
+  transition: all var(--t);
+  stroke-width: 1.5;
+}
+.wayfinder-room-g:hover .wayfinder-room-rect {
+  fill-opacity: 0.35 !important;
+  stroke: var(--snpsu-gold) !important;
+}
+.wayfinder-room-g.active .wayfinder-room-rect {
+  fill-opacity: 0.45 !important;
+  stroke: var(--snpsu-gold) !important;
+  stroke-width: 2.5;
+}
+.wayfinder-room-text {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  fill: #ffffff;
+}
+.wayfinder-room-subtext {
+  font-family: monospace;
+  font-weight: bold;
+}
+
+/* Global Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 24px; }
+@media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+.stat-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 20px;
+  border: 1px solid var(--ink-200);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: transform var(--t), box-shadow var(--t);
+  box-shadow: var(--shadow-xs);
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+.stat-icon { width: 48px; height: 48px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.si-blue { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.si-green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.si-orange { background: rgba(201, 164, 94, 0.2); color: var(--snpsu-gold); }
+.si-purple { background: rgba(124, 58, 237, 0.15); color: #8b5cf6; }
+.si-cyan { background: rgba(8, 145, 178, 0.15); color: #0891b2; }
+.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-500); font-weight: 600; margin-bottom: 4px; }
+.stat-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--ink-900); line-height: 1; }
+
+/* Chart and Wayfinder Containers */
+.chart-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--ink-200); padding: 20px 24px; box-shadow: var(--shadow-xs); }
+.chart-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink-900); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+/* General tables */
+.ev-table-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--ink-200); overflow: hidden; box-shadow: var(--shadow-xs); }
+.ev-table-header { background: var(--snpsu-blue); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+.ev-table-header h6 { color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; margin: 0; font-size: 14px; }
+
+/* Status badges */
+.badge-active { background: rgba(16, 185, 129, 0.15); color: var(--success); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill); }
+.badge-completed { background: rgba(59, 130, 246, 0.15); color: var(--info); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill); }
+.status-active { display: inline-flex; align-items: center; background: rgba(16, 185, 129, 0.12); color: var(--success); font-size: 11.5px; font-weight: 700; padding: 4px 12px; border-radius: var(--radius-pill); white-space: nowrap; }
+.status-completed { display: inline-flex; align-items: center; background: rgba(100, 116, 139, 0.12); color: var(--ink-600); font-size: 11.5px; font-weight: 700; padding: 4px 12px; border-radius: var(--radius-pill); white-space: nowrap; }
+
+/* Action Buttons */
+.action-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; border: 1.5px solid transparent; cursor: pointer; text-decoration: none; transition: var(--t-fast); white-space: nowrap; font-family: 'Inter', sans-serif; line-height: 1.2; }
+/* Clean standard styled outlines */
+.btn-forms-builder,
+.btn-purple-outline,
+.btn-blue-outline,
+.btn-sky-outline,
+.btn-green-outline,
+.btn-outline {
+  background: var(--bg-soft) !important;
+  border: 1px solid var(--ink-200) !important;
+  color: var(--snpsu-blue) !important;
+}
+[data-theme="dark"] .btn-forms-builder,
+[data-theme="dark"] .btn-purple-outline,
+[data-theme="dark"] .btn-blue-outline,
+[data-theme="dark"] .btn-sky-outline,
+[data-theme="dark"] .btn-green-outline,
+[data-theme="dark"] .btn-outline {
+  background: rgba(255,255,255,0.02) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  color: var(--snpsu-gold-light) !important;
+}
+
+.btn-forms-builder:hover,
+.btn-purple-outline:hover,
+.btn-blue-outline:hover,
+.btn-sky-outline:hover,
+.btn-green-outline:hover,
+.btn-outline:hover {
+  background: var(--snpsu-blue) !important;
+  color: #fff !important;
+  border-color: var(--snpsu-blue) !important;
+}
+[data-theme="dark"] .btn-forms-builder:hover,
+[data-theme="dark"] .btn-purple-outline:hover,
+[data-theme="dark"] .btn-blue-outline:hover,
+[data-theme="dark"] .btn-sky-outline:hover,
+[data-theme="dark"] .btn-green-outline:hover,
+[data-theme="dark"] .btn-outline:hover {
+  background: var(--snpsu-gold) !important;
+  color: var(--snpsu-blue-dark) !important;
+  border-color: var(--snpsu-gold) !important;
+}
+
+/* Solid/accent colored buttons */
+.btn-green, .btn-emerald, .btn-teal-on, .btn-cyan, .btn-purple, .btn-amber {
+  background: var(--snpsu-blue) !important;
+  border-color: var(--snpsu-blue) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .btn-green, 
+[data-theme="dark"] .btn-emerald, 
+[data-theme="dark"] .btn-teal-on, 
+[data-theme="dark"] .btn-cyan, 
+[data-theme="dark"] .btn-purple, 
+[data-theme="dark"] .btn-amber {
+  background: var(--snpsu-gold) !important;
+  border-color: var(--snpsu-gold) !important;
+  color: var(--snpsu-blue-dark) !important;
+}
+
+.btn-green:hover, .btn-emerald:hover, .btn-teal-on:hover, .btn-cyan:hover, .btn-purple:hover, .btn-amber:hover {
+  background: var(--snpsu-blue-light) !important;
+  border-color: var(--snpsu-blue-light) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .btn-green:hover, 
+[data-theme="dark"] .btn-emerald:hover, 
+[data-theme="dark"] .btn-teal-on:hover, 
+[data-theme="dark"] .btn-cyan:hover, 
+[data-theme="dark"] .btn-purple:hover, 
+[data-theme="dark"] .btn-amber:hover {
+  background: var(--snpsu-gold-light) !important;
+  border-color: var(--snpsu-gold-light) !important;
+  color: var(--snpsu-blue-dark) !important;
+}
+
+/* Danger actions remain red/soft red */
+.btn-red, .btn-delete-event {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  color: #dc2626 !important;
+}
+[data-theme="dark"] .btn-red, 
+[data-theme="dark"] .btn-delete-event {
+  color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+.btn-red:hover, .btn-delete-event:hover {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border-color: #dc2626 !important;
+}
+[data-theme="dark"] .btn-red:hover, 
+[data-theme="dark"] .btn-delete-event:hover {
+  background: #ef4444 !important;
+  color: #fff !important;
+  border-color: #ef4444 !important;
+}
+
+/* Modals & Popups styling */
+.spoc-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 16px; }
+.spoc-modal.open { display: flex !important; }
+.spoc-modal-box { background: var(--bg-card); border-radius: var(--radius-lg); width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--ink-200); color: var(--ink-800); }
+.spoc-modal-hdr { padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.spoc-modal-close { background: rgba(255, 255, 255, 0.2); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 18px; cursor: pointer; line-height: 1; transition: background var(--t-fast); display: flex; align-items: center; justify-content: center; }
+.spoc-modal-close:hover { background: rgba(255, 255, 255, 0.3); }
+.modal-btn-primary { background: var(--snpsu-blue) !important; color: #fff !important; border: none !important; border-radius: var(--radius-sm) !important; padding: 10px 22px !important; font-weight: 600 !important; font-size: 13.5px !important; cursor: pointer !important; transition: var(--t-fast) !important; }
+.modal-btn-primary:hover { background: var(--snpsu-blue-light) !important; }
+.modal-btn-secondary { background: var(--bg-soft) !important; color: var(--ink-700) !important; border: 1px solid var(--ink-300) !important; border-radius: var(--radius-sm) !important; padding: 10px 18px !important; font-weight: 600 !important; font-size: 13.5px !important; cursor: pointer !important; transition: var(--t-fast) !important; }
+.modal-btn-secondary:hover { background: var(--bg-muted) !important; }
+
+/* Coordinator chip */
+.coord-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--info); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-pill); }
+
+/* Danger Zone */
+.danger-zone { background: var(--danger-soft); padding: 18px; border: 1px solid rgba(239, 68, 68, 0.2) !important; border-radius: var(--radius); }
+
+/* Guided Onboarding Tour Styles */
+#tour-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(12, 18, 34, 0.65);
+  backdrop-filter: blur(2.5px);
+  z-index: 1050;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+#tour-tooltip {
+  position: absolute;
+  background: var(--bg-card);
+  border: 1px solid var(--ink-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 320px;
+  max-width: 90vw;
+  z-index: 1060;
+  padding: 20px;
+  display: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s var(--ease-spring);
+}
+.tour-highlight {
+  position: relative;
+  z-index: 1055 !important;
+  box-shadow: 0 0 0 4px var(--snpsu-gold), 0 8px 30px rgba(0,0,0,0.2) !important;
+  pointer-events: none !important;
+  background: var(--bg-card) !important;
+}
+[data-theme="dark"] .tour-highlight {
+  box-shadow: 0 0 0 4px var(--snpsu-gold), 0 8px 30px rgba(0,0,0,0.45) !important;
+}
+.tour-tooltip-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+}
+.tour-tooltip-btn {
+  padding: 6px 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.tour-tooltip-btn.primary {
+  background: var(--snpsu-blue);
+  color: white;
+}
+.tour-tooltip-btn.primary:hover {
+  background: var(--snpsu-blue-light);
+}
+[data-theme="dark"] .tour-tooltip-btn.primary {
+  background: var(--snpsu-gold);
+  color: var(--snpsu-blue-dark);
+}
+[data-theme="dark"] .tour-tooltip-btn.primary:hover {
+  background: var(--snpsu-gold-light);
+}
+.tour-tooltip-btn.secondary {
+  background: var(--bg-soft);
+  color: var(--ink-700);
+  border: 1px solid var(--ink-300);
+}
+.tour-tooltip-btn.secondary:hover {
+  background: var(--bg-muted);
+}
+
+/* ==========================================
+   MOBILE & RESPONSIVE REFINEMENTS
+   ========================================== */
+
+/* Topnav Refinements on Mobile */
+@media (max-width: 768px) {
+  .topnav {
+    padding: 0 12px !important;
+    height: 52px !important;
+  }
+  .topnav-logo {
+    height: 30px !important;
+    max-width: 120px !important;
+  }
+  .btn-help-tour {
+    display: none !important; /* Hide Tour button on mobile */
+  }
+  .nav-link-item {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+  }
+  .nav-links {
+    gap: 4px !important;
+  }
+}
+@media (max-width: 380px) {
+  .nav-link-item[title="Portal"] {
+    display: none !important; /* Hide portal link on very narrow mobile screens */
+  }
+}
+
+/* Horizontal Scrollable Segmented Tabs on Mobile */
+@media (max-width: 768px) {
+  .tabs-navigation {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  .tabs-navigation::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+  }
+  .tab-btn {
+    flex: 0 0 auto !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .tab-btn {
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
+    min-width: auto !important;
+  }
+}
+
+/* Announcement Form on Mobile */
+@media (max-width: 576px) {
+  #ann-form > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  #ann-form > div > div {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+  #ann-form button {
+    width: 100% !important;
+    margin-top: 8px;
+  }
+}
+
+/* Stat Cards adjustments on small screens */
+@media (max-width: 576px) {
+  .event-stat-card {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+  .event-stat-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 13px !important;
+  }
+  .event-stat-val {
+    font-size: 15px !important;
+  }
+  .event-stat-label {
+    font-size: 9px !important;
+  }
+}
+
+/* Responsive Modal Grids & Rows */
+.modal-grid-body {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  color: var(--ink-800);
+}
+@media (max-width: 768px) {
+  .modal-grid-body {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+    padding: 16px;
+  }
+}
+
+.modal-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 576px) {
+  .modal-row-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Modal Buttons Stack on Mobile */
+@media (max-width: 576px) {
+  .modal-btn-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
+  .modal-btn-row > button,
+  .modal-btn-row > a {
+    width: 100% !important;
+  }
+  
+  .spoc-modal-box {
+    max-height: 95vh !important;
+  }
+}
+
+/* Action Buttons wrapping text on mobile */
+@media (max-width: 576px) {
+  .action-btn {
+    white-space: normal !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+}
+
+  /* CSS-based display toggling for Master-Detail Layout on Mobile */
+  @media (max-width: 992px) {
+    .dashboard-layout:not(.show-detail) .sidebar-column {
+      display: flex !important;
+    }
+    .dashboard-layout:not(.show-detail) .detail-column {
+      display: none !important;
+    }
+    .dashboard-layout.show-detail .sidebar-column {
+      display: none !important;
+    }
+    .dashboard-layout.show-detail .detail-column {
+      display: flex !important;
+      height: auto !important;
+    }
+    .dashboard-layout {
+      gap: 16px !important;
+    }
+  }
+
+  /* ── PREMIUM GLASSMORPHISM & TRANSITIONS ── */
+  .sidebar-column, .detail-column, .stat-card, .chart-card, .ev-table-card {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(26, 37, 87, 0.08) !important;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04) !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  [data-theme="dark"] .sidebar-column, 
+  [data-theme="dark"] .detail-column, 
+  [data-theme="dark"] .stat-card, 
+  [data-theme="dark"] .chart-card, 
+  [data-theme="dark"] .ev-table-card {
+    background: rgba(26, 32, 56, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25) !important;
+  }
+  
+  .stat-card:hover, .sidebar-event-card:hover, .global-control-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 24px rgba(31, 38, 135, 0.08) !important;
+    border-color: rgba(26, 37, 87, 0.2) !important;
+  }
+  [data-theme="dark"] .stat-card:hover, 
+  [data-theme="dark"] .sidebar-event-card:hover, 
+  [data-theme="dark"] .global-control-card:hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+    border-color: rgba(201, 164, 94, 0.4) !important;
+  }
+
+  /* ── FLOATING SPEED DIAL QUICK ACTIONS ── */
+  .speed-dial {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 12px;
+  }
+  .speed-dial-trigger {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--snpsu-blue-lighter), var(--snpsu-blue));
+    color: #fff;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(26, 37, 87, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+  }
+  [data-theme="dark"] .speed-dial-trigger {
+    background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark));
+    color: var(--snpsu-blue-dark);
+    box-shadow: 0 4px 15px rgba(201, 164, 94, 0.3);
+  }
+  .speed-dial-trigger:hover {
+    transform: scale(1.1) rotate(15deg);
+  }
+  .speed-dial.open .speed-dial-trigger {
+    transform: rotate(45deg);
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+  }
+  .speed-dial-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px) scale(0.9);
+    transition: opacity 0.25s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .speed-dial.open .speed-dial-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+  .speed-dial-item {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--radius-pill);
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+  }
+  .speed-dial-item:hover {
+    transform: translateX(-4px) scale(1.05);
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* ── CSS TOAST SYSTEM ── */
+  .toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+    width: 100%;
+    pointer-events: none;
+  }
+  .custom-toast {
+    background: var(--bg-card);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(120%);
+    opacity: 0;
+    pointer-events: auto;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s;
+  }
+  .custom-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  .toast-icon {
+    font-size: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .toast-success .toast-icon { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+  .toast-error .toast-icon { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+  .toast-info .toast-icon { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+  .toast-content {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-800);
+    flex: 1;
+    line-height: 1.4;
+  }
+
+  /* ── LIVE ACTIVITY TIMELINE ── */
+  .activity-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--bg-soft);
+    border: 1px solid var(--ink-100);
+    border-radius: var(--radius);
+    transition: transform var(--t), background var(--t);
+  }
+  .activity-item:hover {
+    transform: translateX(6px);
+    background: var(--bg-muted);
+  }
+  .activity-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-xs);
+  }
+  .activity-icon-checkin {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+  }
+  .activity-icon-reg {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--info);
+  }
+  .activity-details {
+    flex: 1;
+    font-size: 13px;
+    color: var(--ink-800);
+  }
+  .activity-time {
+    font-size: 11px;
+    color: var(--ink-500);
+    font-family: monospace;
+    font-weight: 700;
+  }
+  .anim-pulse {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 0.6; }
+  }
+
+  /* ── INTERACTIVE COMMAND PALETTE (SPOTLIGHT) ── */
+  .cmd-palette-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1060;
+    background: rgba(12, 18, 34, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 80px 16px 16px 16px;
+    opacity: 0;
+    transition: opacity 0.2s var(--ease);
+  }
+  .cmd-palette-backdrop.open {
+    display: flex;
+    opacity: 1;
+  }
+  .cmd-palette-box {
+    width: 100%;
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(26, 37, 87, 0.12);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg), 0 20px 25px -5px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transform: translateY(-20px) scale(0.98);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .cmd-palette-backdrop.open .cmd-palette-box {
+    transform: translateY(0) scale(1);
+  }
+  [data-theme="dark"] .cmd-palette-box {
+    background: rgba(26, 32, 56, 0.95);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .cmd-palette-search-wrapper {
+    position: relative;
+    border-bottom: 1px solid var(--ink-200);
+    display: flex;
+    align-items: center;
+  }
+  .cmd-palette-search-icon {
+    position: absolute;
+    left: 18px;
+    color: var(--ink-500);
+    font-size: 16px;
+    pointer-events: none;
+  }
+  .cmd-palette-input {
+    width: 100%;
+    padding: 16px 16px 16px 48px;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 14.5px;
+    color: var(--ink-900);
+    font-weight: 500;
+  }
+  .cmd-palette-input::placeholder {
+    color: var(--ink-500);
+  }
+  .cmd-palette-results {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .cmd-section-header {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--ink-500);
+    margin: 8px 0 4px 8px;
+  }
+  .cmd-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--t-fast);
+    color: var(--ink-800);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+  }
+  .cmd-item:hover, .cmd-item.active {
+    background: var(--bg-soft);
+    color: var(--ink-900);
+  }
+  [data-theme="dark"] .cmd-item:hover, [data-theme="dark"] .cmd-item.active {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .cmd-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .cmd-item-icon {
+    font-size: 14px;
+    color: var(--ink-500);
+    width: 20px;
+    text-align: center;
+  }
+  .cmd-item.active .cmd-item-icon, .cmd-item:hover .cmd-item-icon {
+    color: var(--snpsu-blue-lighter);
+  }
+  [data-theme="dark"] .cmd-item.active .cmd-item-icon, [data-theme="dark"] .cmd-item:hover .cmd-item-icon {
+    color: var(--snpsu-gold);
+  }
+  .cmd-item-title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .cmd-item-badge {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: var(--radius-xs);
+    background: var(--bg-muted);
+    color: var(--ink-600);
+  }
+  .cmd-item-shortcut {
+    font-family: monospace;
+    font-size: 10.5px;
+    font-weight: bold;
+    color: var(--ink-400);
+    background: rgba(0,0,0,0.04);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  [data-theme="dark"] .cmd-item-shortcut {
+    background: rgba(255,255,255,0.06);
+    color: var(--ink-500);
+  }
+  .cmd-palette-footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--ink-200);
+    background: var(--bg-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--ink-500);
+  }
+  [data-theme="dark"] .cmd-palette-footer {
+    background: rgba(0,0,0,0.1);
+  }
+  .cmd-palette-keys {
+    display: flex;
+    gap: 12px;
+  }
+  .cmd-key-helper {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .cmd-key {
+    font-family: monospace;
+    font-weight: bold;
+    background: var(--bg-card);
+    border: 1px solid var(--ink-300);
+    padding: 0 4px;
+    border-radius: 3px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+  }
+</style>
+</head>
+<body>
+
+{% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
+<div class="super-admin-banner" style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+  <span style="display: inline-flex; align-items: center; gap: 6px;">
+    <i class="fas fa-crown" style="color: #c9a45e;"></i>
+    Logged in as <strong style="color: #c9a45e;">Super Admin</strong> (Wildcard Mode)
+  </span>
+  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(201, 164, 94, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+    Return to Admin HQ <i class="fas fa-arrow-right"></i>
+  </a>
+</div>
+{% endif %}
+
+<!-- TOPNAV -->
+<div class="topnav">
+  <div class="d-flex align-items-center gap-2">
+    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="topnav-logo" style="height:38px;width:auto;object-fit:contain;">
+    <span class="brand d-none d-sm-inline">Club Dashboard</span>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link-item" onclick="openCommandPalette()" title="Command Palette (Cmd+K)" style="background:none; border:none; cursor:pointer; color:rgba(255,255,255,.75); display:inline-flex; align-items:center; gap:4px;">
+      <i class="fas fa-terminal"></i><span class="d-none d-lg-inline ms-1" style="font-size:11px; opacity:0.6; background:rgba(255,255,255,0.15); padding:1px 5px; border-radius:4px; font-weight:bold;">⌘K</span>
+    </button>
+    <a href="/" class="nav-link-item" title="Portal"><i class="fas fa-home"></i><span class="d-none d-sm-inline ms-1">Portal</span></a>
+    <a href="/spoc/profile" class="nav-link-item" title="My Profile"><i class="fas fa-user-circle"></i><span class="d-none d-sm-inline ms-1">Profile</span></a>
+    {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
+    <a href="/admin/dashboard" class="nav-link-item" style="color:var(--snpsu-gold);font-weight:700;" title="Admin HQ">
+      <i class="fas fa-crown"></i><span class="d-none d-sm-inline ms-1">Admin</span>
+    </a>
+    {% endif %}
+    <button class="nav-link-item btn-help-tour" onclick="startTour()" style="background: none; border: 1.5px solid var(--snpsu-gold); border-radius: var(--radius-sm); color: var(--snpsu-gold); font-weight: 700; cursor: pointer; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;">
+      <i class="fas fa-question-circle"></i><span class="d-none d-md-inline ms-1">Tour Guide</span>
+    </button>
+    <a href="/spoc/create_event" class="nav-link-item btn-orange" title="Create Event"><i class="fas fa-plus"></i><span class="d-none d-sm-inline ms-1">Create</span></a>
+    <button class="nav-link-item" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; padding: 5px 10px; color: rgba(255,255,255,.75); display: inline-flex; align-items: center; justify-content: center;">
+      <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
+    </button>
+    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+  </div>
+</div>
+
+<div class="container-fluid px-3 px-sm-4 py-3">
+
+  <!-- Master-Detail Grid Container -->
+  <div class="dashboard-layout">
+    
+    <!-- LEFT COLUMN: SIDEBAR -->
+    <div class="sidebar-column" id="tour-sidebar">
+      <div class="event-search-wrapper" id="tour-search">
+        <div class="search-box-container">
+          <i class="fas fa-search search-icon-inside"></i>
+          <input type="text" id="event-search" class="form-control search-input-field" placeholder="Search events title, venue..." oninput="applySearchAndFilter()">
+        </div>
+      </div>
+      
+      <div class="filter-pills-row">
+        <button class="filter-pill-btn active" data-filter="all" onclick="setFilter(this)">All</button>
+        <button class="filter-pill-btn" data-filter="active" onclick="setFilter(this)">Active</button>
+        <button class="filter-pill-btn" data-filter="completed" onclick="setFilter(this)">Ended</button>
+      </div>
+      
+      <div class="sidebar-events-list">
+        <!-- Persistent Global Dashboard toggle card -->
+        <div class="global-control-card active" id="tour-global-btn" onclick="selectGlobalOverview()">
+          <i class="fas fa-chart-line global-card-icon"></i>
+          <div style="flex:1;">
+            <div style="font-weight:700; font-size:13px; line-height:1.2;">Global Overview</div>
+            <div style="font-size:10px; opacity:0.8; font-weight:500;">Aggregated statistics &amp; layouts</div>
+          </div>
+          <i class="fas fa-chevron-right fa-xs"></i>
+        </div>
+        
+        {% if events %}
+          {% for event in events %}
+          {% set max_p = (event.limits or {}).get('max_participants', 0) %}
+          {% set rc = event.registration_count | default(0) %}
+          {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}
+          <div class="sidebar-event-card" id="card-{{ event.id }}" data-title="{{ event.title | e }}" data-category="{{ event.category | e }}" data-venue="{{ event.venue | e }}" data-status="{{ event.status }}" onclick="selectEvent('{{ event.id }}')">
+            <div class="sidebar-event-title">{{ event.title }}</div>
+            <div class="sidebar-event-meta">
+              <span><i class="fas fa-tag" style="color:var(--snpsu-gold);"></i>{{ event.category }}</span>
+              <span><i class="fas fa-calendar" style="color:var(--snpsu-blue-lighter);"></i>{{ event.date | default('TBA') }}</span>
+            </div>
+            
+            <div class="sidebar-event-footer">
+              <div class="sidebar-event-progress">
+                <div class="sidebar-event-fill" style="width: {{ fill_pct }}%;"></div>
+              </div>
+              <div class="sidebar-event-count">{{ rc }}{% if max_p > 0 %}/{{ max_p }}{% endif %}</div>
+              <span class="badge {{ 'bg-success' if event.status == 'active' else 'bg-secondary' }}" style="font-size: 9px; padding: 2px 6px;">
+                {{ event.status | capitalize }}
+              </span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-4 text-muted small">No events created yet.</div>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- RIGHT COLUMN: DETAILS COMMAND CENTER -->
+    <div class="detail-column">
+      
+      <!-- Panel 1: Global Overview Panel -->
+      <div id="global-panel" class="event-detail-panel-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="mb-1" style="color:var(--ink-900);font-weight:800;">{{ session.get('name', 'SPOC') }}'s Console</h4>
+            <p class="text-muted mb-0" style="font-size:13px;">{{ category }} Division · {{ events | length }} event{{ 's' if events | length != 1 }}</p>
+          </div>
+          <a href="/spoc/create_event" class="btn btn-sm" style="background:var(--snpsu-blue);color:#fff;font-weight:700;border-radius:var(--radius-sm);padding:8px 14px;font-size:12.5px;border:none;">
+            <i class="fas fa-plus me-1"></i> Create Event
+          </a>
+        </div>
+        
+        <!-- STATS GRID -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon si-blue"><i class="fas fa-calendar-alt"></i></div>
+            <div>
+              <div class="stat-label">Total Events</div>
+              <div class="stat-val" id="stat-total-events">{{ stats.total_events }}</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-green"><i class="fas fa-users"></i></div>
+            <div>
+              <div class="stat-label">Registrations</div>
+              <div class="stat-val" id="stat-total-regs">{{ stats.total_regs }}</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-orange"><i class="fas fa-user-check"></i></div>
+            <div>
+              <div class="stat-label">Attendance</div>
+              <div class="stat-val" id="stat-present">{{ stats.present_count | default(0) }}</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-green">
+              <i class="fas fa-rupee-sign"></i>
+            </div>
+            <div>
+              <div class="stat-label">Revenue</div>
+              <div class="stat-val" style="font-size:20px;">₹{{ "{:,}".format(stats.total_revenue | default(0)) }}</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-purple"><i class="fas fa-user-tie"></i></div>
+            <div>
+              <div class="stat-label">Staff Assigned</div>
+              <div class="stat-val">{{ stats.staff_count | default(0) }}</div>
+            </div>
+          </div>
+          <div class="stat-card" style="position:relative;">
+            <div class="stat-icon si-cyan">
+              <i class="fas fa-tag"></i>
+            </div>
+            <div>
+              <div class="stat-label">Division</div>
+              <div class="stat-val" style="font-size:16px;">{{ category }}</div>
+            </div>
+            <span id="stats-refresh-badge" title="Stats auto-refresh every 30 s"
+                  style="position:absolute;top:10px;right:12px;font-size:10px;color:var(--ink-500);display:flex;align-items:center;gap:3px;">
+              <i class="fas fa-sync-alt fa-xs" id="stats-sync-icon"></i> Live
+            </span>
+          </div>
+        </div>
+        
+        <!-- CHARTS ROW -->
+        {% if events %}
+        <div class="row g-4 mb-4">
+          <div class="col-lg-7">
+            <div class="chart-card h-100">
+              <div class="chart-title"><i class="fas fa-chart-bar" style="color:var(--orange);"></i> Registrations per Event</div>
+              <canvas id="regChart" height="200"></canvas>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="chart-card h-100">
+              <div class="chart-title"><i class="fas fa-chart-pie" style="color:#7c3aed;"></i> Attendance Overview</div>
+              <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
+                <canvas id="attChart"></canvas>
+                <div id="attCenter" style="position:absolute;text-align:center;pointer-events:none;">
+                  <div style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">{{ stats.present_count | default(0) }}</div>
+                  <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Present</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- LIVE ACTIVITY FEED -->
+        <div class="card p-4 mb-4" style="border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--ink-200);">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0" style="font-size: 14px; color: var(--ink-900);">
+              <i class="fas fa-satellite-dish me-2 text-primary anim-pulse"></i>Live Activity Feed
+            </h6>
+            <span class="badge bg-primary" style="font-size: 9px;" id="activity-sync-badge">Auto-sync Active</span>
+          </div>
+          <div class="activity-timeline" id="live-activity-feed">
+            <div class="text-center py-3 text-muted small"><i class="fas fa-spinner fa-spin me-2"></i>Loading live events...</div>
+          </div>
+        </div>
+        
+        <!-- Live Room Capacity & Wayfinder (Unified Blueprint Map) -->
+        <div class="wayfinder-toggle-container mb-4">
+          <button class="wayfinder-toggle-btn" onclick="toggleWayfinderMap(this, 'global-wayfinder-content')" data-show-text="Show Campus Venue Wayfinder Map" data-hide-text="Hide Campus Venue Wayfinder Map">
+            <span><i class="fas fa-map-location-dot me-2"></i><span class="toggle-text">Show Campus Venue Wayfinder Map</span></span>
+            <i class="fas fa-chevron-down toggle-icon ms-2"></i>
+          </button>
+          <div id="global-wayfinder-content" class="wayfinder-collapsible-content">
+            <div class="wayfinder-card-wrapper p-3">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0 text-white font-monospace" style="color: var(--ink-900) !important;"><i class="fas fa-map-location-dot me-2 text-primary"></i>Live Room Capacity Wayfinder</h6>
+                <span class="badge bg-success" style="font-size:10px;">Tactical Console Layout</span>
+              </div>
+              <div class="row align-items-center g-3">
+                <div class="col-md-7">
+                  <svg viewBox="0 0 600 300" width="100%" height="auto" class="wayfinder-svg" id="global-svg-wayfinder">
+                    <defs>
+                      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#grid)" rx="10" />
+                    <rect x="10" y="10" width="580" height="280" rx="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+                    
+                    <!-- Main Auditorium -->
+                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Main Auditorium', 310, 400, this)" data-room-name="Main Auditorium">
+                      <rect x="30" y="30" width="220" height="150" rx="10" class="wayfinder-room-rect" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" />
+                      <text x="140" y="100" class="wayfinder-label" font-size="14" text-anchor="middle">Main Auditorium</text>
+                      <text x="140" y="125" class="wayfinder-sublabel text-success" fill="#10b981" font-size="11" text-anchor="middle">310 / 400 (77%)</text>
+                    </g>
+
+                    <!-- CS Lab -->
+                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('CS Lab', 48, 50, this)" data-room-name="CS Lab">
+                      <rect x="270" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" />
+                      <text x="340" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">CS Lab (Zone C)</text>
+                      <text x="340" y="100" class="wayfinder-sublabel text-danger" fill="#ef4444" font-size="10" text-anchor="middle">48 / 50 (96% FULL)</text>
+                    </g>
+
+                    <!-- Seminar Hall -->
+                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Seminar Hall', 120, 150, this)" data-room-name="Seminar Hall">
+                      <rect x="430" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(245, 158, 11, 0.1)" stroke="#f59e0b" stroke-dasharray="4" />
+                      <text x="500" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">Seminar Hall</text>
+                      <text x="500" y="100" class="wayfinder-sublabel text-warning" fill="#f59e0b" font-size="10" text-anchor="middle">120 / 150 (80%)</text>
+                    </g>
+
+                    <path d="M 30 220 L 570 220" stroke="rgba(255,255,255,0.12)" stroke-width="4" stroke-dasharray="8 4" />
+                    <text x="300" y="245" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle" font-family="monospace">MAIN LOGISTICS PASSAGEWAY</text>
+
+                    <!-- Sports Arena -->
+                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Sports Arena', 85, 200, this)" data-room-name="Sports Arena">
+                      <rect x="270" y="160" width="300" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6" />
+                      <text x="420" y="210" class="wayfinder-label" font-size="14" text-anchor="middle">Sports Arena (Zone D)</text>
+                      <text x="420" y="230" class="wayfinder-sublabel text-info" fill="#3b82f6" font-size="11" text-anchor="middle">85 / 200 (42%)</text>
+                    </g>
+                  </svg>
+                </div>
+                <div class="col-md-5">
+                  <div class="p-3 rounded h-100" style="background:rgba(255,255,255,0.03); border: 1px solid var(--ink-200);">
+                    <h6 class="fw-bold mb-2" style="font-size:13px; color:var(--ink-900);"><i class="fas fa-circle-info me-2 text-primary"></i>Wayfinder Inspector</h6>
+                    <div class="room-details-content text-muted small" style="line-height:1.45;">
+                      <p class="mb-0">Select a zone on the blueprint layout map to inspect real-time logistics details, capacity threshold alarms, and shift recommendations.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if events %}
+        <!-- Live Announcement Panel -->
+        <div class="ev-table-card">
+          <div class="ev-table-header" style="background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-dark)); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+            <h6><i class="fas fa-bullhorn me-2"></i>Post Live Announcement</h6>
+            <span style="font-size:12px;color:rgba(255,255,255,.6);">Appears instantly on participant dashboards</span>
+          </div>
+          <div style="padding:20px;">
+            <form method="POST" action="/spoc/announce/{{ events[0].id }}" id="ann-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="d-flex gap-2 flex-wrap align-items-end">
+                <div style="flex: 0 1 250px;">
+                  <label class="form-label" style="margin-bottom:6px; display:block;">Select Event</label>
+                  <select name="event_id" id="ann-event-select" class="form-select" style="font-size:13.5px;"
+                          onchange="document.getElementById('ann-form').action='/spoc/announce/'+this.value">
+                    {% for event in events %}
+                    <option value="{{ event.id }}">{{ event.title[:30] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                  <label class="form-label" style="margin-bottom:6px; display:block;">Announcement Message</label>
+                  <input type="text" name="message" placeholder="Type your announcement…"
+                         class="form-control" style="font-size:13.5px;" required>
+                </div>
+                <div style="flex: 0 1 140px;">
+                  <label class="form-label" style="margin-bottom:6px; display:block;">Priority</label>
+                  <select name="priority" class="form-select" style="font-size:13.5px;">
+                    <option value="info">Info</option>
+                    <option value="warning">Warning</option>
+                    <option value="success">Success</option>
+                  </select>
+                </div>
+                <button type="submit" class="modal-btn-primary" style="height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                  <i class="fas fa-paper-plane"></i> Post
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Panel 2: Single Event Detailed Panel Command Center Loop -->
+      {% if events %}
+        {% for event in events %}
+        {% set max_p = (event.limits or {}).get('max_participants', 0) %}
+        {% set rc = event.registration_count | default(0) %}
+        {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}
+        {% set fee = ((event.fees or {}).get('regular', 0) or event.get('entry_fee', 0) or 0) | int %}
+        {% set p_count = event.get('attendance_count', 0) or 0 %}
+        {% set att_pct = ((p_count / rc * 100) | round | int) if rc > 0 else 0 %}
+        
+        <div id="detail-panel-{{ event.id }}" class="event-detail-panel event-detail-panel-container" style="display:none;">
+          
+          <!-- MOBILE BACK BUTTON -->
+          <button class="btn btn-outline-secondary btn-sm mb-3 d-lg-none" onclick="showMasterList()">
+            <i class="fas fa-arrow-left"></i> Back to Events List
+          </button>
+          
+          <!-- EVENT PRIMARY HEADER -->
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:12px; color:var(--ink-500); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+                <span class="badge bg-primary me-2">{{ event.category }}</span> 
+                <span>Venue: <strong>{{ event.venue | default('TBA') }}</strong></span>
+              </div>
+              <h3 class="fw-extrabold mb-1" style="color:var(--ink-900); font-family:'Plus Jakarta Sans'; font-size:24px;">{{ event.title }}</h3>
+              <div class="small text-muted">
+                <i class="fas fa-calendar-alt me-1"></i>{{ event.date }} &nbsp;·&nbsp; <i class="fas fa-clock me-1"></i>{{ event.time | default('TBA') }}
+              </div>
+            </div>
+            
+            <div class="d-flex flex-column align-items-end">
+              <span class="badge {{ 'bg-success' if event.status == 'active' else 'bg-secondary' }} px-3 py-2 fs-7" style="border-radius:100px;">
+                <i class="fas fa-{{ 'circle fa-xs' if event.status == 'active' else 'check-circle' }} me-1"></i>
+                {{ event.status | capitalize }}
+              </span>
+            </div>
+          </div>
+          
+          <!-- Event Segmented Tab Controls -->
+          <div class="tabs-navigation" id="tour-tabs-nav">
+            <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview', this)">
+              <i class="fas fa-home"></i> Overview
+            </button>
+            <button class="tab-btn" data-tab="logistics" onclick="switchTab('logistics', this)">
+              <i class="fas fa-qrcode"></i> Logistics &amp; QR
+            </button>
+            <button class="tab-btn" data-tab="comms" onclick="switchTab('comms', this)">
+              <i class="fas fa-paper-plane"></i> Blast &amp; Alert
+            </button>
+            <button class="tab-btn" data-tab="certs" onclick="switchTab('certs', this)">
+              <i class="fas fa-gavel"></i> Judges &amp; Certs
+            </button>
+            <button class="tab-btn text-danger" data-tab="settings" onclick="switchTab('settings', this)">
+              <i class="fas fa-cog"></i> Settings
+            </button>
+          </div>
+          
+          <!-- TAB 1: OVERVIEW & STATS -->
+          <div class="tab-pane active" data-tab-pane="overview">
+            
+            <!-- Event-specific Stats Grid -->
+            <div class="event-stats-grid" id="tour-stats-row">
+              <div class="event-stat-card">
+                <div class="event-stat-icon si-blue"><i class="fas fa-users"></i></div>
+                <div>
+                  <div class="event-stat-label">Registrations</div>
+                  <div class="event-stat-val">{{ rc }}{% if max_p > 0 %}<span style="font-size:11px; font-weight:500; color:var(--ink-400);">/{{ max_p }}</span>{% endif %}</div>
+                </div>
+              </div>
+              <div class="event-stat-card">
+                <div class="event-stat-icon si-green"><i class="fas fa-user-check"></i></div>
+                <div>
+                  <div class="event-stat-label">Attendance</div>
+                  <div class="event-stat-val">{{ p_count }} <span style="font-size:11px; font-weight:500; color:var(--ink-400);">({{ att_pct }}%)</span></div>
+                </div>
+              </div>
+              <div class="event-stat-card">
+                <div class="event-stat-icon si-orange"><i class="fas fa-wallet"></i></div>
+                <div>
+                  <div class="event-stat-label">Est. Revenue</div>
+                  <div class="event-stat-val">₹{{ "{:,}".format(fee * rc) }}</div>
+                </div>
+              </div>
+              <div class="event-stat-card">
+                <div class="event-stat-icon si-purple"><i class="fas fa-user-tie"></i></div>
+                <div>
+                  <div class="event-stat-label">Staff Count</div>
+                  <div class="event-stat-val">{{ event.get('staff', []) | length }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Registration Progress Meter -->
+            {% if max_p > 0 %}
+            <div class="p-3 border rounded mb-4" style="background:var(--bg-soft);">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small fw-bold text-muted">Registration Capacity Meter</span>
+                <span class="small fw-bold {{ 'fill-pct-high' if fill_pct >= 90 else ('fill-pct-mid' if fill_pct >= 70 else 'fill-pct-low') }}">{{ fill_pct }}% Filled</span>
+              </div>
+              <div class="progress" style="height: 8px; border-radius: 100px;">
+                <div class="progress-bar {{ 'bg-danger' if fill_pct >= 90 else ('bg-warning' if fill_pct >= 70 else 'bg-success') }}" style="width: {{ fill_pct }}%; border-radius: 100px;"></div>
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Assigned Coordinators list -->
+            <div class="card p-3 mb-4" style="border-radius: var(--radius); background: var(--bg-card);">
+              <h6 class="fw-bold mb-2" style="font-size: 13.5px;"><i class="fas fa-user-tie me-2 text-primary"></i>Assigned Coordinators</h6>
+              <div class="d-flex flex-wrap gap-2 align-items-center">
+                {% set coords = event.get('coordinators', []) %}
+                {% if coords %}
+                  {% for coord_email in coords %}
+                  <span class="coord-chip">
+                    <i class="fas fa-user-check"></i>{{ coord_email }}
+                  </span>
+                  {% endfor %}
+                {% else %}
+                  <span style="font-size:12.5px;color:#94a3b8;font-style:italic;">
+                    <i class="fas fa-info-circle me-1"></i>No coordinators assigned yet.
+                  </span>
+                {% endif %}
+                <button class="action-btn btn-blue-outline ms-auto" onclick="openModal('assignCoordModal-{{ event.id }}')">
+                  <i class="fas fa-user-plus"></i> Assign Coordinator
+                </button>
+              </div>
+                        <!-- SVG Room Allocation Wayfinder map focusing on event venue -->
+            <div class="wayfinder-toggle-container">
+              <button class="wayfinder-toggle-btn" onclick="toggleWayfinderMap(this, 'event-wayfinder-content-{{ event.id }}')" data-show-text="Show Venue Wayfinder Map" data-hide-text="Hide Venue Wayfinder Map">
+                <span><i class="fas fa-location-crosshairs me-2"></i><span class="toggle-text">Show Venue Wayfinder Map</span></span>
+                <i class="fas fa-chevron-down toggle-icon ms-2"></i>
+              </button>
+              <div id="event-wayfinder-content-{{ event.id }}" class="wayfinder-collapsible-content">
+                <div class="wayfinder-card-wrapper p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 text-white font-monospace" style="color: var(--ink-900) !important;"><i class="fas fa-location-crosshairs me-2 text-primary"></i>Wayfinder Location (Venue: <span class="event-venue-text">{{ event.venue | default('Main Auditorium') }}</span>)</h6>
+                    <span class="badge bg-primary" style="font-size: 9px;">Location Pin Active</span>
+                  </div>
+                  <div class="row align-items-center g-3">
+                    <div class="col-md-7">
+                      <svg viewBox="0 0 600 300" width="100%" height="auto" class="wayfinder-svg">
+                        <rect width="100%" height="100%" fill="url(#grid)" rx="10" />
+                        <rect x="10" y="10" width="580" height="280" rx="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+                        
+                        <!-- Main Auditorium -->
+                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Main Auditorium', 310, 400, this)" data-room-name="Main Auditorium">
+                          <rect x="30" y="30" width="220" height="150" rx="10" class="wayfinder-room-rect" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" />
+                          <text x="140" y="100" class="wayfinder-label" font-size="14" text-anchor="middle">Main Auditorium</text>
+                          <text x="140" y="125" class="wayfinder-sublabel text-success" fill="#10b981" font-size="11" text-anchor="middle">310 / 400 (77%)</text>
+                        </g>
+
+                        <!-- CS Lab -->
+                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('CS Lab', 48, 50, this)" data-room-name="CS Lab">
+                          <rect x="270" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" />
+                          <text x="340" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">CS Lab (Zone C)</text>
+                          <text x="340" y="100" class="wayfinder-sublabel text-danger" fill="#ef4444" font-size="10" text-anchor="middle">48 / 50 (96% FULL)</text>
+                        </g>
+
+                        <!-- Seminar Hall -->
+                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Seminar Hall', 120, 150, this)" data-room-name="Seminar Hall">
+                          <rect x="430" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(245, 158, 11, 0.1)" stroke="#f59e0b" stroke-dasharray="4" />
+                          <text x="500" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">Seminar Hall</text>
+                          <text x="500" y="100" class="wayfinder-sublabel text-warning" fill="#f59e0b" font-size="10" text-anchor="middle">120 / 150 (80%)</text>
+                        </g>
+
+                        <path d="M 30 220 L 570 220" stroke="rgba(255,255,255,0.12)" stroke-width="4" stroke-dasharray="8 4" />
+
+                        <!-- Sports Arena -->
+                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Sports Arena', 85, 200, this)" data-room-name="Sports Arena">
+                          <rect x="270" y="160" width="300" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6" />
+                          <text x="420" y="210" class="wayfinder-label" font-size="14" text-anchor="middle">Sports Arena (Zone D)</text>
+                          <text x="420" y="230" class="wayfinder-sublabel text-info" fill="#3b82f6" font-size="11" text-anchor="middle">85 / 200 (42%)</text>
+                        </g>
+                      </svg>
+                    </div>
+                    <div class="col-md-5">
+                      <div class="p-3 rounded h-100" style="background:rgba(255,255,255,0.03); border: 1px solid var(--ink-200);">
+                        <h6 class="fw-bold mb-2" style="font-size:13px; color:var(--ink-900);"><i class="fas fa-map-location-dot me-2 text-primary"></i>Wayfinder Inspector</h6>
+                        <div class="room-details-content text-muted small" style="line-height:1.45;">
+                          <p class="mb-0">Select a zone on the blueprint layout map to inspect real-time logistics details, capacity threshold alarms, and shift recommendations.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>  </div>
+          </div>
+          
+          <!-- TAB 2: LOGISTICS & QR -->
+          <div class="tab-pane" data-tab-pane="logistics">
+            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-qrcode me-2 text-success"></i>Live Check-in &amp; Logistics</h6>
+            
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
+                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Live Actions</div>
+                  <div class="d-flex flex-column gap-2">
+                    <a href="/spoc/scan/{{ event.id }}" class="action-btn btn-green justify-content-start">
+                      <i class="fas fa-qrcode"></i> QR Ticket Scanner
+                    </a>
+                    {% if event.status == 'active' %}
+                    <form method="POST" action="/checkin/toggle/{{ event.id }}" style="display:contents;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="action-btn {{ 'btn-teal-on' if event.get('allow_self_checkin') else 'btn-outline' }} justify-content-start">
+                        <i class="fas fa-{{ 'toggle-on' if event.get('allow_self_checkin') else 'toggle-off' }}"></i>
+                        Self Check-in Portal: {% if event.get('allow_self_checkin') %}<strong>ON</strong>{% else %}OFF{% endif %}
+                      </button>
+                    </form>
+                    {% if event.get('allow_self_checkin') %}
+                    <a href="/checkin/venue_qr/{{ event.id }}" target="_blank" class="action-btn btn-amber justify-content-start">
+                      <i class="fas fa-qrcode"></i> Get Venue Standee QR Code
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
+                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Venues &amp; Optimization</div>
+                  <div class="d-flex flex-column gap-2">
+                    <button class="action-btn btn-outline justify-content-start" onclick="openModal('roomModal-{{ event.id }}')">
+                      <i class="fas fa-door-open"></i> Rooms &amp; Capacities Configuration
+                    </button>
+                    <a href="/spoc/room_allocation/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-table"></i> View Auto-Allocated Rooms
+                    </a>
+                    <a href="/spoc/round_panel/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
+                      <i class="fas fa-layer-group"></i> Round &amp; Elimination Manager
+                    </a>
+                    <a href="/spoc/schedule/optimize/{{ event.id }}" class="action-btn btn-blue-outline justify-content-start">
+                      <i class="fas fa-shuffle"></i> Run AI Schedule Optimizer
+                    </a>
+                    <a href="/spoc/ticket/nfc-verify/{{ event.id }}" class="action-btn btn-green-outline justify-content-start">
+                      <i class="fas fa-rss"></i> NFC Check-in Simulator
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- TAB 3: COMMUNICATIONS -->
+          <div class="tab-pane" data-tab-pane="comms">
+            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-paper-plane me-2 text-primary"></i>Communications Center</h6>
+            
+            <div class="row g-3">
+              <div class="col-md-6">
+                <!-- Post Announcement -->
+                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
+                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Send Dashboard Notification Alert</div>
+                  <form method="POST" action="/spoc/announce/{{ event.id }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-2">
+                      <input type="text" name="message" placeholder="Type notification broadcast message…" class="form-control" style="font-size:13px;" required>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                      <select name="priority" class="form-select py-1" style="font-size:12px; height: 34px;">
+                        <option value="info">Info Priority</option>
+                        <option value="warning">Warning Priority</option>
+                        <option value="success">Success Priority</option>
+                      </select>
+                      <button type="submit" class="modal-btn-primary py-1 px-3" style="height:34px; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+                        <i class="fas fa-paper-plane"></i> Broadcast
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <!-- Registration Forms & Email Broadcasts -->
+                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
+                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Form Builder &amp; Email Broadcasts</div>
+                  <div class="d-flex flex-column gap-2">
+                    <button class="action-btn btn-emerald justify-content-start" onclick="openBlastModal('{{ event.id }}', '{{ event.title | e }}')">
+                      <i class="fas fa-paper-plane"></i> Bulk Email Broadcast (AI Assist)
+                    </button>
+                    <a href="/forms/builder/{{ event.id }}" class="action-btn btn-forms-builder justify-content-start">
+                      <i class="fas fa-wpforms"></i> {{ 'Edit Registration Form Builder' if event.get('has_custom_form') else 'Build Custom Registration Form' }}
+                    </a>
+                    <a href="/spoc/agenda/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-calendar-check"></i> Edit Public Agenda / Schedule
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- TAB 4: JUDGES & ROUNDS -->
+          <div class="tab-pane" data-tab-pane="certs">
+            <h6 class="fw-bold mb-3" style="font-size:14px;"><i class="fas fa-gavel me-2 text-purple"></i>Judges &amp; Certificates</h6>
+            
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
+                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Judge Evaluations</div>
+                  <div class="d-flex flex-column gap-2">
+                    <button class="action-btn btn-sky-outline justify-content-start" onclick="openModal('judgeModal-{{ event.id }}')">
+                      <i class="fas fa-users-cog"></i> Add / Manage Judges &amp; CSV Rosters
+                    </button>
+                    
+                    <form method="POST" action="/spoc/toggle_openhall/{{ event.id }}" style="display:contents;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="action-btn {{ 'btn-teal-on' if event.get('open_hall_mode') else 'btn-outline' }} justify-content-start">
+                        <i class="fas fa-{{ 'toggle-on' if event.get('open_hall_mode') else 'toggle-off' }}"></i>
+                        OpenHall Mode (Everyone grades everyone): {% if event.get('open_hall_mode') %}<strong>ON</strong>{% else %}OFF{% endif %}
+                      </button>
+                    </form>
+                    
+                    <a href="/spoc/results/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-trophy"></i> Live Leaderboard &amp; Judging Scores
+                    </a>
+                    <a href="/spoc/judging/audit/{{ event.id }}" class="action-btn btn-purple-outline justify-content-start">
+                      <i class="fas fa-scale-balanced"></i> Run Judging Strictness Audit
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
+                  <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Certificate Setup</div>
+                  <div class="d-flex flex-column gap-2">
+                    <button class="action-btn btn-purple-outline justify-content-start" onclick="openModal('certModal-{{ event.id }}')">
+                      <i class="fas fa-certificate"></i> Configure Visual Cert Templates
+                    </button>
+                    
+                    <form method="POST" action="/spoc/bulk_certs/{{ event.id }}" style="display:contents;"
+                          onsubmit="return confirm('Send participation certificates to all checked-in attendees of \'{{ event.title | e }}\'?')">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="action-btn btn-purple-outline justify-content-start">
+                        <i class="fas fa-certificate"></i> Bulk Send Certs to Checked-in Users
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- TAB 5: SETTINGS & DANGER ZONE -->
+          <div class="tab-pane" data-tab-pane="settings">
+            <h6 class="fw-bold mb-3 text-danger" style="font-size:14px;"><i class="fas fa-cog me-2"></i>Event Settings</h6>
+            
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <a href="/spoc/edit_event/{{ event.id }}" class="action-btn btn-outline">
+                <i class="fas fa-edit"></i> Edit Event Details
+              </a>
+              <form method="POST" action="/spoc/clone_event/{{ event.id }}" style="display:contents;"
+                    onsubmit="return confirm('Clone \'{{ event.title | e }}\'? You can edit the date and details after.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="action-btn btn-outline">
+                  <i class="fas fa-copy"></i> Clone Event
+                </button>
+              </form>
+              <form method="POST" action="/spoc/toggle_status/{{ event.id }}" style="display:contents;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="action-btn {{ 'btn-amber' if event.status == 'active' else 'btn-outline' }}"
+                        onclick="return confirm(this.dataset.msg)"
+                        data-msg="Mark '{{ event.title | e }}' as {{ 'Completed' if event.status == 'active' else 'Active' }}?">
+                  <i class="fas fa-{{ 'flag-checkered' if event.status == 'active' else 'redo' }}"></i>
+                  Mark Event {{ 'Completed' if event.status == 'active' else 'Re-open' }}
+                </button>
+              </form>
+            </div>
+            
+            <!-- Danger Zone -->
+            <div class="danger-zone">
+              <div class="fw-bold text-danger mb-2" style="font-size: 13.5px;"><i class="fas fa-exclamation-triangle me-2"></i>Danger Zone Actions</div>
+              <p class="small text-muted mb-3">These actions have significant impacts on event state, participant scores, and database consistency. Proceed with caution.</p>
+              
+              <div class="d-flex flex-wrap gap-3 align-items-center">
+                {% if event.status == 'active' %}
+                <button class="action-btn btn-red" onclick="confirmEndEvent('{{ event.id }}', '{{ event.title | e }}')">
+                  <i class="fas fa-flag-checkered"></i> End Event &amp; Bulk Dispatch Certs
+                </button>
+                {% endif %}
+                <a href="/spoc/delete_event/{{ event.id }}"
+                   class="action-btn btn-delete-event"
+                   onclick="return confirm('Delete \'{{ event.title | e }}\' and all its data? This cannot be undone.')">
+                  <i class="fas fa-trash"></i> Delete Event Permanently
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /event-detail-panel -->
+
+        <!-- ── ASSIGN COORDINATOR MODAL ── -->
+        <div id="assignCoordModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+          <div class="spoc-modal-box" style="max-width:480px;">
+            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+              <span><i class="fas fa-user-plus me-2"></i>Assign Coordinator — {{ event.title }}</span>
+              <button onclick="closeModal('assignCoordModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+            </div>
+            <div style="padding:24px;">
+              <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">
+                Type an email — existing coordinators appear as suggestions. New emails get an account created automatically.
+              </p>
+              <form method="POST" action="/spoc/assign_coordinator/{{ event.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div style="margin-bottom:14px;">
+                  <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">
+                    Coordinator Name <span style="color:var(--ink-400);font-weight:400;">(for new accounts)</span>
+                  </label>
+                  <input type="text" name="coordinator_name" id="coordName-{{ event.id }}" class="form-control"
+                         placeholder="Full name">
+                </div>
+                <div style="margin-bottom:16px;">
+                  <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">
+                    Coordinator Email
+                  </label>
+                  <input type="email" name="coordinator_email" id="coordEmail-{{ event.id }}" class="form-control" required
+                         placeholder="coordinator@example.com"
+                         list="coordSuggestions"
+                         autocomplete="off"
+                         oninput="autoFillCoordName(this.value, 'coordName-{{ event.id }}')">
+                  <div class="modal-btn-row" style="display:flex;gap:10px;margin-top:16px;">
+                    <button type="submit" class="modal-btn-primary flex-fill">
+                      <i class="fas fa-user-plus me-1"></i> Assign
+                    </button>
+                    <button type="button" onclick="closeModal('assignCoordModal-{{ event.id }}')" class="modal-btn-secondary flex-fill">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── JUDGE MODAL ── -->
+        <div id="judgeModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+          <div class="spoc-modal-box" style="max-width:520px;">
+            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+              <span><i class="fas fa-users-cog me-2"></i>Manage Judges — {{ event.title }}</span>
+              <button onclick="closeModal('judgeModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+            </div>
+            <div style="padding:24px;">
+              <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">Upload a CSV with columns: <code>name,email,expertise</code>. Each judge gets login credentials emailed.</p>
+              <form method="POST" action="/spoc/upload_judges_csv/{{ event.id }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label style="font-size:12px;font-weight:700;color:var(--snpsu-blue);display:block;margin-bottom:6px;">CSV File</label>
+                <input type="file" name="judges_csv" accept=".csv" required class="form-control mb-3">
+                <button type="submit" class="modal-btn-primary w-100">
+                  <i class="fas fa-upload me-1"></i> Upload &amp; Create Judge Logins
+                </button>
+              </form>
+              <hr style="margin:18px 0;">
+              <h6 style="font-size:12px;font-weight:700;color:var(--ink-500);text-transform:uppercase;margin-bottom:10px;">Or Add Single Judge</h6>
+              <form method="POST" action="/spoc/add_judge/{{ event.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-row-grid" style="margin-bottom:10px;">
+                  <input type="text" name="judge_name" placeholder="Full Name" class="form-control">
+                  <input type="email" name="judge_email" placeholder="Email" class="form-control">
+                </div>
+                <input type="text" name="expertise" placeholder="Expertise (e.g. AI, Robotics)" class="form-control mb-3">
+                <button type="submit" class="modal-btn-primary w-100" style="background:var(--snpsu-blue-dark) !important;">
+                  Add Judge &amp; Send Login
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ROOM SETUP MODAL ── -->
+        <div id="roomModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+          <div class="spoc-modal-box" style="max-width:540px;">
+            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+              <span><i class="fas fa-door-open me-2"></i>Room Setup — {{ event.title }}</span>
+              <button onclick="closeModal('roomModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+            </div>
+            <div style="padding:24px;">
+              <p style="font-size:13px;color:var(--ink-600);margin-bottom:4px;">Define rooms and their capacity. The system auto-allocates registered participants evenly.</p>
+              <p style="font-size:12px;color:var(--ink-400);margin-bottom:16px;">Registered: <strong style="color:var(--success);">{{ event.registration_count }}</strong></p>
+              <form method="POST" action="/spoc/setup_rooms/{{ event.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="roomRows-{{ event.id }}">
+                  <div class="room-row" style="display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;">
+                    <input type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">
+                    <input type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">
+                    <button type="button" onclick="addRoomRow('{{ event.id }}')"
+                            style="background:var(--success);color:#fff;border:none;border-radius:7px;font-size:16px;cursor:pointer;">+</button>
+                  </div>
+                </div>
+                <div class="modal-btn-row" style="display:flex;gap:10px;margin-top:14px;">
+                  <button type="submit" name="action" value="save" class="modal-btn-primary flex-1">
+                    <i class="fas fa-save me-1"></i> Save Rooms
+                  </button>
+                  <button type="submit" name="action" value="allocate" class="modal-btn-primary flex-1" style="background:var(--ink-900) !important;">
+                    <i class="fas fa-magic me-1"></i> Save &amp; Auto-Allocate
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CERT TEMPLATES MODAL ── -->
+        <div id="certModal-{{ event.id }}" class="spoc-modal" style="display:none;">
+          <div class="spoc-modal-box" style="max-width:560px;">
+            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+              <span><i class="fas fa-certificate me-2"></i>Certificate Templates — {{ event.title }}</span>
+              <button onclick="closeModal('certModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+            </div>
+            <div style="padding:24px;">
+              <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">
+                Upload PNG/JPG certificate templates. Participant names will be automatically overlaid
+                in the centre and emailed when you click <strong>End Event</strong>.
+                Max file size: 800 KB each.
+              </p>
+              <form method="POST" action="/spoc/upload_cert_templates/{{ event.id }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% set ctypes = [('participation','Participation (all attendees)','participation'),
+                                 ('winner_1','1st Place Winner','winner1'),
+                                 ('winner_2','2nd Place Winner','winner2'),
+                                 ('winner_3','3rd Place Winner','winner3')] %}
+                {% for ckey, clabel, ccls in ctypes %}
+                <div style="margin-bottom:16px;">
+                  <label class="ct-{{ ccls }}" style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                    {% if loop.index == 1 %}<i class="fas fa-users"></i>{% else %}<i class="fas fa-trophy"></i>{% endif %}
+                    {{ clabel }}
+                    {% if event.get('cert_templates', {}).get(ckey) %}
+                    <span style="font-size:10px;background:rgba(16, 185, 129, 0.15);color:var(--success);padding:2px 7px;border-radius:100px;font-weight:600;">Uploaded</span>
+                    {% endif %}
+                  </label>
+                  <input type="file" name="{{ ckey }}" accept="image/png,image/jpeg"
+                         class="ct-{{ ccls }}-border form-control">
+                </div>
+                {% endfor %}
+                <div style="margin-bottom:14px;padding:12px;background:var(--bg-soft);border-radius:8px;border:1px solid var(--ink-200);">
+                  <label style="font-size:12px;font-weight:700;color:var(--snpsu-blue);display:block;margin-bottom:6px;">Name Position (% from top of certificate)</label>
+                  <div class="modal-row-grid">
+                    <div>
+                      <label style="font-size:11px;color:var(--ink-500);">Horizontal % (50 = centre)</label>
+                      <input type="number" name="name_x_pct" value="{{ event.get('cert_name_pos',{}).get('x',50) }}" min="10" max="90" class="form-control">
+                    </div>
+                    <div>
+                      <label style="font-size:11px;color:var(--ink-500);">Vertical % (42 = middle-ish)</label>
+                      <input type="number" name="name_y_pct" value="{{ event.get('cert_name_pos',{}).get('y',42) }}" min="10" max="90" class="form-control">
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" class="modal-btn-primary w-100">
+                  <i class="fas fa-upload me-1"></i> Upload Templates &amp; Save Position
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        {% endfor %}
+      {% endif %}
+      
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Hidden form for End Event POST -->
+<form id="end-event-form" method="POST" style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="template_id" id="end-event-template-id" value="1">
+  <input type="hidden" name="issued_by" id="end-event-issued-by" value="Dean of Student Affairs">
+</form>
+
+<!-- ── END EVENT / CERT SELECTOR MODAL ── -->
+<div id="endEventModal" class="spoc-modal" style="display:none;">
+  <div class="spoc-modal-box" style="max-width:750px;width:95%;padding:0;">
+    <!-- Header -->
+    <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;">
+        <i class="fas fa-flag-checkered me-2"></i>End Event &amp; Configure Certificates
+      </span>
+      <button type="button" onclick="closeModal('endEventModal')" style="background:transparent;border:none;color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>
+    </div>
+    
+    <!-- Body -->
+    <div class="modal-grid-body" style="color:#334155;">
+      <!-- Left side: Form options -->
+      <div style="display:flex;flex-direction:column;gap:18px;text-align:left;">
+        <div>
+          <h5 style="font-family:'Poppins',sans-serif;font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
+          <div style="font-weight:600;font-size:16px;color:#1e293b;" id="modalEventTitle">Event Title</div>
+        </div>
+        
+        <div>
+          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
+          <select id="certTemplateSelect" onchange="updateCertPreview()" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+            <option value="1">Classic Navy (Default SNPSU)</option>
+            <option value="2">Tech Blue (Hackathons)</option>
+            <option value="3">Cultural Gold (Arts &amp; Fests)</option>
+            <option value="4">Sports Green (Athletics)</option>
+            <option value="5">Management Purple (Business/Pitch)</option>
+          </select>
+          <div style="font-size:11px;color:#64748b;margin-top:5px;line-height:1.4;" id="certTemplateDesc">Navy &amp; orange themed standard design.</div>
+        </div>
+        
+        <div>
+          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
+          <input type="text" id="certSignatoryInput" oninput="updateCertPreview()" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+        </div>
+        
+        <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2e8f0;font-size:12px;color:#64748b;line-height:1.5;">
+          <i class="fas fa-info-circle me-1" style="color:var(--orange);"></i>
+          This action will mark the event as <strong>completed</strong>, award XP/badges, and bulk email PDF certificates to all checked-in attendees.
+        </div>
+      </div>
+      
+      <!-- Right side: Visual Live Preview -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
+        
+        <!-- CSS Cert Preview Card -->
+        <div id="certPreviewCard" style="width:100%;max-width:380px;aspect-ratio:1.414/1;border:8px solid #0d2d62;background:#ffffff;border-radius:8px;padding:16px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-sizing:border-box;">
+          
+          <!-- Decorative Corners -->
+          <div id="certCornerTL" style="position:absolute;top:0;left:0;width:30px;height:30px;background:linear-gradient(135deg, #0d2d62 50%, transparent 50%);"></div>
+          <div id="certCornerBR" style="position:absolute;bottom:0;right:0;width:30px;height:30px;background:linear-gradient(-45deg, #0d2d62 50%, transparent 50%);"></div>
+          
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:0.5px solid #e2e8f0;padding-bottom:3px;">
+            <span style="font-size:7px;font-weight:700;color:#0d2d62;letter-spacing:0.3px;">%100;SAPTHAGIRI NPS UNIVERSITY</span>
+            <span style="font-size:6px;color:#64748b;font-weight:500;">SapthaEvent Portal</span>
+          </div>
+          
+          <!-- Content -->
+          <div style="text-align:center;margin:6px 0;display:flex;flex-direction:column;gap:3px;">
+            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family:'Poppins',sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
+            <div style="font-size:6px;color:#64748b;font-style:italic;">This is to certify that</div>
+            <div style="font-size:11px;font-weight:700;color:#1e293b;border-bottom:1px solid #cbd5e1;width:fit-content;margin:0 auto;padding-bottom:1px;min-width:110px;line-height:1.2;">John Doe</div>
+            <div style="font-size:6px;color:#64748b;">has successfully participated in</div>
+            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family:'Poppins',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
+          </div>
+          
+          <!-- Footer -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+            <div style="text-align:left;display:flex;flex-direction:column;gap:1px;">
+              <span id="previewIssuedBy" style="font-size:7px;font-weight:700;color:#1e293b;border-bottom:0.5px solid #64748b;min-width:70px;padding-bottom:1px;display:block;white-space:nowrap;">Dean of Student Affairs</span>
+              <span style="font-size:5px;color:#64748b;">Authorized Signatory</span>
+            </div>
+            
+            <!-- Mock QR -->
+            <div style="width:20px;height:20px;border:0.5px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;border-radius:3px;">
+              <i class="fas fa-qrcode" style="font-size:12px;color:#1e293b;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="spoc-modal-ftr modal-btn-row" style="border-top:1px solid #e2e8f0;padding:12px 20px;display:flex;justify-content:flex-end;gap:10px;background:#f8fafc;border-radius:0 0 12px 12px;">
+      <button type="button" class="action-btn" onclick="closeModal('endEventModal')" style="padding:10px 18px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;">Cancel</button>
+      <button type="button" class="action-btn" id="btnConfirmEndEvent" onclick="submitEndEvent()" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        <i class="fas fa-flag-checkered"></i> Confirm &amp; End Event
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Datalist for coordinator email autocomplete -->
+<datalist id="coordSuggestions"></datalist>
+
+<!-- ── BLAST EMAIL MODAL ── -->
+<div id="blastModal" class="spoc-modal" style="display:none;">
+  <div class="spoc-modal-box" style="max-width:520px;">
+    <!-- Header -->
+    <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+      <div>
+        <span style="font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+          <i class="fas fa-paper-plane me-2"></i>Email All Registrants
+        </span>
+        <div id="blastEventName" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;"></div>
+      </div>
+      <button onclick="closeBlastModal()" class="spoc-modal-close">×</button>
+    </div>
+    <!-- Body -->
+    <form id="blastForm" method="POST" style="padding:24px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="margin-bottom:16px;">
+        <label class="form-label" style="display:block;margin-bottom:6px;">Audience</label>
+        <div style="display:flex;gap:16px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink-800);">
+            <input type="radio" name="audience" value="confirmed" checked style="accent-color:var(--snpsu-blue);"> Confirmed only
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink-800);">
+            <input type="radio" name="audience" value="all" style="accent-color:var(--snpsu-blue);"> All registrants
+          </label>
+        </div>
+      </div>
+      <!-- AI Copywriter Assistant -->
+      <div style="margin-bottom:16px; padding:10px; background:rgba(59,130,246,0.05); border:1px dashed rgba(59,130,246,0.2); border-radius:8px;">
+        <label style="font-size:11px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">
+          <i class="fas fa-wand-magic-sparkles me-1"></i>AI Copywriter Assistant
+        </label>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="ai-copy-prompt" placeholder="e.g. Friendly reminder to complete profiles..." class="form-control form-control-sm" style="font-size:12px; height:32px;">
+          <button type="button" class="btn btn-primary btn-sm px-3" style="border-radius:20px; font-size:12px; height:32px; background:#3b82f6; border:none;" onclick="generateAICopy()">Generate</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label class="form-label" style="display:block;margin-bottom:6px;">Subject</label>
+        <input type="text" name="subject" id="blast-subject-input" required maxlength="150"
+               placeholder="e.g. Important update about the event"
+               class="form-control">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label class="form-label" style="display:block;margin-bottom:6px;">Message</label>
+        <textarea name="body" id="blast-body-input" required rows="6" maxlength="5000"
+                  placeholder="Write your message here…"
+                  class="form-control" style="resize:vertical;"></textarea>
+        <div style="font-size:11px;color:var(--ink-400);margin-top:4px;">
+          Each registrant receives a personalised email with their name.
+        </div>
+      </div>
+      <div class="modal-btn-row" style="display:flex;gap:10px;margin-bottom:12px;">
+        <button type="button" onclick="previewBlastEmail()" class="modal-btn-primary flex-1" style="background:#0284c7 !important;">
+          <i class="fas fa-eye me-2"></i>Preview
+        </button>
+        <button type="submit" class="modal-btn-primary flex-1">
+          <i class="fas fa-paper-plane me-2"></i>Send Emails
+        </button>
+      </div>
+      <div class="modal-btn-row" style="display:flex;gap:10px;">
+        <button type="button" onclick="closeBlastModal()" class="modal-btn-secondary w-100">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── BLAST PREVIEW MODAL ── -->
+<div id="blastPreviewModal" class="spoc-modal" style="display:none; z-index: 2000;">
+  <div class="spoc-modal-box" style="max-width:680px; width:95%; height:80vh; padding:0; display:flex; flex-direction:column;">
+    <div class="spoc-modal-hdr" style="background:var(--snpsu-blue); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+        <i class="fas fa-eye me-2"></i>Email Broadcast Live Preview
+      </span>
+      <button onclick="closeModal('blastPreviewModal')" class="spoc-modal-close">×</button>
+    </div>
+    <div style="flex:1; padding:16px; background:#f1f5f9; display:flex; flex-direction:column; overflow:hidden;">
+      <iframe id="blastPreviewIframe" style="width:100%; flex:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff;"></iframe>
+    </div>
+    <div class="spoc-modal-ftr" style="border-top:1px solid #e2e8f0; padding:12px 20px; display:flex; justify-content:flex-end; background:#f8fafc;">
+      <button type="button" onclick="closeModal('blastPreviewModal')" class="modal-btn-secondary">Close Preview</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── GUIDED ONBOARDING TOUR OVERLAYS ── -->
+<div id="tour-overlay" onclick="exitTour()"></div>
+<div id="tour-tooltip" role="dialog" aria-labelledby="tour-title" aria-describedby="tour-content">
+  <h6 id="tour-title" style="margin-top:0; font-weight:700;">Guided Step</h6>
+  <p id="tour-content" style="margin-bottom:12px; font-size:12.5px;"></p>
+  <div class="tour-tooltip-actions">
+    <button type="button" class="tour-tooltip-btn secondary" id="tour-btn-prev" onclick="prevTourStep()">Back</button>
+    <div style="display:flex; gap:6px;">
+      <button type="button" class="tour-tooltip-btn secondary" onclick="exitTour()">Skip</button>
+      <button type="button" class="tour-tooltip-btn primary" id="tour-btn-next" onclick="nextTourStep()">Next</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script id="spoc-chart-data" type="application/json">{"labels":{{ chart_labels | tojson }},"regs":{{ chart_regs | tojson }},"present":{{ stats.present_count | default(0) }},"totalRegs":{{ stats.total_regs | default(0) }},"hasEvents":{{ 'true' if events else 'false' }}}</script>
+
+<script>
+// CSRF configuration for ajax requests
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+// Load initial chart data
+var _cd = JSON.parse(document.getElementById('spoc-chart-data').textContent);
+
+if (_cd.hasEvents) {
+  // ── REGISTRATION BAR CHART ──
+  var regCtx = document.getElementById('regChart');
+  if (regCtx) {
+    const ctx = regCtx.getContext('2d');
+    // Create blue gradient
+    const gradientBlue = ctx.createLinearGradient(0, 0, 0, 200);
+    gradientBlue.addColorStop(0, 'rgba(59, 130, 246, 0.9)');
+    gradientBlue.addColorStop(1, 'rgba(26, 37, 87, 0.7)');
+    
+    // Create gold gradient
+    const gradientGold = ctx.createLinearGradient(0, 0, 0, 200);
+    gradientGold.addColorStop(0, 'rgba(245, 158, 11, 0.9)');
+    gradientGold.addColorStop(1, 'rgba(201, 164, 94, 0.7)');
+
+    new Chart(regCtx, {
+      type: 'bar',
+      data: {
+        labels: _cd.labels,
+        datasets: [{
+          label: 'Registrations',
+          data: _cd.regs,
+          backgroundColor: _cd.labels.map(function(_, i) {
+            return i % 2 === 0 ? gradientBlue : gradientGold;
+          }),
+          borderRadius: 8,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: 'rgba(226, 232, 240, 0.4)' }, ticks: { stepSize: 1, font: { size: 11 } }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // ── ATTENDANCE DONUT ──
+  var present = _cd.present;
+  var pending  = Math.max(0, _cd.totalRegs - present);
+  var attCtx   = document.getElementById('attChart');
+  if (attCtx) {
+    const ctx = attCtx.getContext('2d');
+    // Create green gradient
+    const gradientGreen = ctx.createLinearGradient(0, 0, 0, 200);
+    gradientGreen.addColorStop(0, 'rgba(16, 185, 129, 0.95)');
+    gradientGreen.addColorStop(1, 'rgba(4, 120, 87, 0.8)');
+
+    // Create grey gradient
+    const gradientGrey = ctx.createLinearGradient(0, 0, 0, 200);
+    gradientGrey.addColorStop(0, 'rgba(226, 232, 240, 0.9)');
+    gradientGrey.addColorStop(1, 'rgba(203, 213, 225, 0.8)');
+
+    new Chart(attCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Present', 'Pending'],
+        datasets: [{
+          data: [present, pending],
+          backgroundColor: [gradientGreen, gradientGrey],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '72%',
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, boxWidth: 12 } } }
+      }
+    });
+  }
+}
+
+// ── MASTER-DETAIL & TAB LOGIC ──
+let activeEventId = null;
+
+function selectEvent(eventId) {
+  activeEventId = eventId;
+  
+  // Hide global panel
+  document.getElementById('global-panel').style.display = 'none';
+  document.getElementById('tour-global-btn').classList.remove('active');
+  
+  // Hide all details panels
+  document.querySelectorAll('.event-detail-panel').forEach(pane => {
+    pane.style.display = 'none';
+  });
+  
+  // Show target panel
+  const panel = document.getElementById('detail-panel-' + eventId);
+  if (panel) {
+    panel.style.display = 'block';
+    
+    // Highlight venue on map automatically
+    const venueTextEl = panel.querySelector('.event-venue-text');
+    if (venueTextEl) {
+      highlightEventVenue(venueTextEl.textContent, panel);
+    }
+  }
+  
+  // Highlight card in list
+  document.querySelectorAll('.sidebar-event-card').forEach(card => {
+    card.classList.remove('active');
+  });
+  const card = document.getElementById('card-' + eventId);
+  if (card) {
+    card.classList.add('active');
+  }
+  
+  // Update URL hash
+  window.location.hash = 'event-' + eventId;
+  
+  // Toggle detail view in CSS via class
+  const layout = document.querySelector('.dashboard-layout');
+  if (layout) layout.classList.add('show-detail');
+}
+
+function selectGlobalOverview() {
+  activeEventId = null;
+  
+  // Hide all panels
+  document.querySelectorAll('.event-detail-panel').forEach(pane => {
+    pane.style.display = 'none';
+  });
+  
+  // Show global panel
+  document.getElementById('global-panel').style.display = 'block';
+  
+  // Update active card selections
+  document.getElementById('tour-global-btn').classList.add('active');
+  document.querySelectorAll('.sidebar-event-card').forEach(card => {
+    card.classList.remove('active');
+  });
+  
+  // Update URL hash
+  window.location.hash = 'overview';
+  
+  // Toggle detail view in CSS via class
+  const layout = document.querySelector('.dashboard-layout');
+  if (layout) layout.classList.add('show-detail');
+}
+
+function showMasterList() {
+  const layout = document.querySelector('.dashboard-layout');
+  if (layout) layout.classList.remove('show-detail');
+}
+
+function switchTab(tabName, btnElement) {
+  const container = btnElement.closest('.event-detail-panel');
+  if (!container) return;
+  
+  // Reset tab buttons
+  container.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  btnElement.classList.add('active');
+  
+  // Reset tab panes
+  container.querySelectorAll('.tab-pane').forEach(pane => {
+    pane.classList.remove('active');
+  });
+  const pane = container.querySelector(`.tab-pane[data-tab-pane="${tabName}"]`);
+  if (pane) {
+    pane.classList.add('active');
+  }
+}
+
+// ── SEARCH & FILTER LOGIC ──
+let activeFilter = 'all';
+
+function setFilter(btn) {
+  document.querySelectorAll('.filter-pill-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.filter;
+  applySearchAndFilter();
+}
+
+function applySearchAndFilter() {
+  const query = document.getElementById('event-search').value.toLowerCase().trim();
+  
+  document.querySelectorAll('.sidebar-event-card').forEach(card => {
+    const title = card.dataset.title.toLowerCase();
+    const category = card.dataset.category.toLowerCase();
+    const venue = card.dataset.venue.toLowerCase();
+    const status = card.dataset.status; // 'active', 'completed'
+    
+    const matchesSearch = title.includes(query) || category.includes(query) || venue.includes(query);
+    const matchesFilter = activeFilter === 'all' || status === activeFilter;
+    
+    if (matchesSearch && matchesFilter) {
+      card.style.setProperty('display', 'flex', 'important');
+    } else {
+      card.style.setProperty('display', 'none', 'important');
+    }
+  });
+}
+
+// ── WAYFINDER CAPACITY MAP LOGIC ──
+function selectRoom(name, cap, max, element) {
+  const pct = Math.round((cap / max) * 100);
+  let statusClass = "text-success";
+  let statusMsg = "Optimized Capacity. No action needed.";
+  if (pct >= 95) {
+    statusClass = "text-danger fw-bold";
+    statusMsg = "Critical Level. Shift overflowing participants to Seminar Hall.";
+  } else if (pct >= 80) {
+    statusClass = "text-warning";
+    statusMsg = "Warning: Approaching max capacity bounds soon.";
+  }
+  
+  const container = element.closest('.wayfinder-card-wrapper');
+  if (container) {
+    const detailsContent = container.querySelector('.room-details-content');
+    if (detailsContent) {
+      detailsContent.innerHTML = `
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Zone ID:</strong> ${name}</div>
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Live Capacity:</strong> ${cap} / ${max} (${pct}%)</div>
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Status:</strong> <span class="${statusClass}">${pct}% Filled</span></div>
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Recommendation:</strong><br>${statusMsg}</div>
+      `;
+    }
+    
+    container.querySelectorAll('.wayfinder-room-g').forEach(g => {
+      g.classList.remove('active');
+    });
+    element.classList.add('active');
+  }
+}
+
+function highlightEventVenue(venueName, panel) {
+  if (!venueName) return;
+  const name = venueName.toLowerCase();
+  let roomName = '';
+  let cap = 0;
+  let max = 0;
+  
+  if (name.includes('auditorium')) {
+    roomName = 'Main Auditorium'; cap = 310; max = 400;
+  } else if (name.includes('lab') || name.includes('cs')) {
+    roomName = 'CS Lab'; cap = 48; max = 50;
+  } else if (name.includes('seminar') || name.includes('hall')) {
+    roomName = 'Seminar Hall'; cap = 120; max = 150;
+  } else if (name.includes('sports') || name.includes('arena')) {
+    roomName = 'Sports Arena'; cap = 85; max = 200;
+  }
+  
+  if (roomName) {
+    const roomG = panel.querySelector(`.wayfinder-room-g[data-room-name="${roomName}"]`);
+    if (roomG) {
+      selectRoom(roomName, cap, max, roomG);
+    }
+  }
+}
+
+function toggleWayfinderMap(btn, contentId) {
+  const content = document.getElementById(contentId);
+  if (!content) return;
+  const isExpanded = content.classList.contains('show');
+  
+  if (isExpanded) {
+    content.classList.remove('show');
+    btn.querySelector('.toggle-text').textContent = btn.getAttribute('data-show-text');
+    btn.querySelector('.toggle-icon').className = 'fas fa-chevron-down toggle-icon ms-2';
+  } else {
+    content.classList.add('show');
+    btn.querySelector('.toggle-text').textContent = btn.getAttribute('data-hide-text');
+    btn.querySelector('.toggle-icon').className = 'fas fa-chevron-up toggle-icon ms-2';
+  }
+}
+
+// Initialize layout on load
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#event-')) {
+    const eventId = hash.replace('#event-', '');
+    selectEvent(eventId);
+  } else {
+    if (window.innerWidth <= 992) {
+      showMasterList();
+    } else {
+      selectGlobalOverview();
+    }
+  }
+});
+</script>
+
+<script>
+// ── END EVENT & CERT SELECTOR MODAL CONFIG ──
+const CERT_TEMPLATES = {
+  1: { name: 'Classic Navy', desc: 'Navy & orange themed standard design.', primary: '#0d2d62', accent: '#f37021' },
+  2: { name: 'Tech Blue', desc: 'Dark slate & cyan themed tech design.', primary: '#0f172a', accent: '#06b6d4' },
+  3: { name: 'Cultural Gold', desc: 'Maroon & amber gold themed cultural design.', primary: '#7f1d1d', accent: '#d97706' },
+  4: { name: 'Sports Green', desc: 'Forest & emerald green sports design.', primary: '#14532d', accent: '#16a34a' },
+  5: { name: 'Management Purple', desc: 'Deep purple & violet business design.', primary: '#3b0764', accent: '#7c3aed' }
+};
+
+let currentTargetEventId = null;
+
+function confirmEndEvent(eventId, eventTitle) {
+  currentTargetEventId = eventId;
+  document.getElementById('modalEventTitle').textContent = eventTitle;
+  document.getElementById('previewEventTitle').textContent = eventTitle;
+  document.getElementById('certSignatoryInput').value = "Dean of Student Affairs";
+  document.getElementById('certTemplateSelect').value = "1";
+  updateCertPreview();
+  openModal('endEventModal');
+}
+
+function updateCertPreview() {
+  const tId = document.getElementById('certTemplateSelect').value;
+  const signatory = document.getElementById('certSignatoryInput').value.trim() || 'Dean of Student Affairs';
+  const theme = CERT_TEMPLATES[tId] || CERT_TEMPLATES[1];
+  
+  document.getElementById('certTemplateDesc').textContent = theme.desc;
+  document.getElementById('previewIssuedBy').textContent = signatory;
+  
+  const card = document.getElementById('certPreviewCard');
+  card.style.borderColor = theme.primary;
+  
+  const cornerTL = document.getElementById('certCornerTL');
+  cornerTL.style.background = `linear-gradient(135deg, ${theme.primary} 50%, transparent 50%)`;
+  
+  const cornerBR = document.getElementById('certCornerBR');
+  cornerBR.style.background = `linear-gradient(-45deg, ${theme.primary} 50%, transparent 50%)`;
+  
+  document.getElementById('previewCertType').style.color = theme.primary;
+  document.getElementById('previewEventTitle').style.color = theme.primary;
+}
+
+function submitEndEvent() {
+  if (!currentTargetEventId) return;
+  const tId = document.getElementById('certTemplateSelect').value;
+  const signatory = document.getElementById('certSignatoryInput').value.trim() || 'Dean of Student Affairs';
+  
+  document.getElementById('end-event-template-id').value = tId;
+  document.getElementById('end-event-issued-by').value = signatory;
+  
+  const form = document.getElementById('end-event-form');
+  form.action = '/spoc/end_event/' + currentTargetEventId;
+  
+  closeModal('endEventModal');
+  form.submit();
+}
+
+// Modal helper controls
+function openModal(id) {
+  var m = document.getElementById(id);
+  if (m) { m.classList.add('open'); m.style.display = 'flex'; }
+}
+function closeModal(id) {
+  var m = document.getElementById(id);
+  if (m) { m.classList.remove('open'); m.style.display = 'none'; }
+}
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('spoc-modal')) closeModal(e.target.id);
+});
+
+// Dynamic room row adder
+function addRoomRow(eventId) {
+  var container = document.getElementById('roomRows-' + eventId);
+  var row = document.createElement('div');
+  row.className = 'room-row';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;';
+  row.innerHTML = '<input type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">'
+    + '<input type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">'
+    + '<button type="button" onclick="this.closest(\'.room-row\').remove()" style="background:#dc2626;color:#fff;border:none;border-radius:7px;font-size:14px;cursor:pointer;">&times;</button>';
+  container.appendChild(row);
+}
+</script>
+
+<script>
+// ── EMAIL BROADCAST (BLAST) CONTROLS ──
+function openBlastModal(eventId, eventTitle) {
+  document.getElementById('blastForm').action = '/spoc/blast_email/' + eventId;
+  document.getElementById('blastEventName').textContent = eventTitle;
+  openModal('blastModal');
+}
+function closeBlastModal() {
+  closeModal('blastModal');
+  document.getElementById('blastForm').reset();
+}
+function previewBlastEmail() {
+  const form = document.getElementById('blastForm');
+  const actionParts = form.action.split('/');
+  const eventId = actionParts[actionParts.length - 1];
+  const subject = form.querySelector('input[name="subject"]').value.trim();
+  const body = form.querySelector('textarea[name="body"]').value.trim();
+  
+  if (!subject || !body) {
+    showToast("Subject and Message body are required for preview.", "error");
+    return;
+  }
+  
+  fetch('/spoc/blast_preview/' + eventId, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN || ''
+    },
+    body: JSON.stringify({ subject: subject, body: body })
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    if (data.html) {
+      const iframe = document.getElementById('blastPreviewIframe');
+      iframe.srcdoc = data.html;
+      openModal('blastPreviewModal');
+    } else {
+      showToast("Error generating preview: " + (data.error || "unknown error"), "error");
+    }
+  })
+  .catch(err => {
+    showToast("Network error. Could not load preview.", "error");
+  });
+}
+
+function generateAICopy() {
+  const promptInput = document.getElementById('ai-copy-prompt');
+  const prompt = promptInput.value.trim();
+  const form = document.getElementById('blastForm');
+  const actionParts = form.action.split('/');
+  const eventId = actionParts[actionParts.length - 1];
+
+  if (!prompt) {
+    showToast("Please enter a copywriting prompt description.", "error");
+    return;
+  }
+
+  const btn = document.querySelector('button[onclick="generateAICopy()"]');
+  const oldText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  fetch('/spoc/marketing/copywriter', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN || ''
+    },
+    body: JSON.stringify({ prompt: prompt, event_id: eventId })
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    if (data.subject && data.body) {
+      document.getElementById('blast-subject-input').value = data.subject;
+      document.getElementById('blast-body-input').value = data.body;
+      promptInput.value = '';
+      showToast("AI copy generated successfully!", "success");
+    } else {
+      showToast("Error: " + (data.error || "failed to generate"), "error");
+    }
+  })
+  .catch(err => {
+    showToast("Network error.", "error");
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = oldText;
+  });
+}
+</script>
+
+<script>
+// ── COORDINATOR AUTOCOMPLETE ──
+var _coordCache = [];
+(function loadCoordinators() {
+  fetch('/spoc/api/coordinators')
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .then(function(list) {
+      _coordCache = list;
+      var dl = document.getElementById('coordSuggestions');
+      if (!dl) return;
+      dl.innerHTML = '';
+      list.forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c.email;
+        opt.label = c.name ? c.name + ' (' + c.email + ')' : c.email;
+        dl.appendChild(opt);
+      });
+    })
+    .catch(function() {});
+})();
+
+function autoFillCoordName(email, nameFieldId) {
+  var match = _coordCache.find(function(c) { return c.email === email; });
+  if (match && match.name) {
+    var f = document.getElementById(nameFieldId);
+    if (f && !f.value) f.value = match.name;
+  }
+}
+
+// ── TOAST NOTIFICATION UTILITY ──
+function showToast(message, type = 'success', duration = 3500) {
+  var container = document.getElementById('toast-container-holder');
+  if (!container) return;
+  
+  var toast = document.createElement('div');
+  toast.className = `custom-toast toast-${type}`;
+  
+  var icon = 'fa-check-circle';
+  if (type === 'error') icon = 'fa-exclamation-circle';
+  if (type === 'info') icon = 'fa-info-circle';
+  
+  toast.innerHTML = `
+    <div class="toast-icon">
+      <i class="fas ${icon}"></i>
+    </div>
+    <div class="toast-content">${message}</div>
+  `;
+  
+  container.appendChild(toast);
+  
+  // Trigger animation next frame
+  requestAnimationFrame(function() {
+    toast.classList.add('show');
+  });
+  
+  // Autoclose
+  setTimeout(function() {
+    toast.classList.remove('show');
+    setTimeout(function() {
+      toast.remove();
+    }, 400);
+  }, duration);
+}
+
+// ── FLOATING SPEED DIAL INTERACTION ──
+function toggleSpeedDial() {
+  var sd = document.getElementById('dashboard-speed-dial');
+  var icon = document.getElementById('speed-dial-trigger-icon');
+  if (!sd) return;
+  
+  var isOpen = sd.classList.contains('open');
+  if (isOpen) {
+    sd.classList.remove('open');
+    if (icon) icon.className = 'fas fa-bolt';
+  } else {
+    sd.classList.add('open');
+    if (icon) icon.className = 'fas fa-times';
+  }
+}
+
+// Close speed dial when clicking outside
+document.addEventListener('click', function(e) {
+  var sd = document.getElementById('dashboard-speed-dial');
+  if (sd && sd.classList.contains('open') && !sd.contains(e.target)) {
+    toggleSpeedDial();
+  }
+});
+
+// ── LIVE STATS AUTO-REFRESH ──
+var _syncIcon = document.getElementById('stats-sync-icon');
+function refreshStats() {
+  if (_syncIcon) _syncIcon.style.animation = 'spin 1s linear infinite';
+  fetch('/spoc/api/stats')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (!data) return;
+      var te = document.getElementById('stat-total-events');
+      var tr = document.getElementById('stat-total-regs');
+      var pr = document.getElementById('stat-present');
+      if (te) te.textContent = data.total_events;
+      if (tr) tr.textContent = data.total_regs;
+      if (pr) pr.textContent = data.present_count;
+      
+      // Update Live Activity Feed
+      var feedContainer = document.getElementById('live-activity-feed');
+      if (feedContainer && data.recent_activity) {
+        if (data.recent_activity.length === 0) {
+          feedContainer.innerHTML = '<div class="text-center py-3 text-muted small"><i class="fas fa-info-circle me-1"></i>No recent activity logged.</div>';
+          return;
+        }
+        
+        feedContainer.innerHTML = '';
+        data.recent_activity.forEach(function(act) {
+          var item = document.createElement('div');
+          item.className = 'activity-item';
+          
+          var badgeClass = act.type === 'checkin' ? 'activity-icon-checkin' : 'activity-icon-reg';
+          var iconClass = act.type === 'checkin' ? 'fa-user-check' : 'fa-user-plus';
+          
+          item.innerHTML = `
+            <div class="activity-icon-badge ${badgeClass}">
+              <i class="fas ${iconClass}"></i>
+            </div>
+            <div class="activity-details">
+              <div class="fw-bold text-white" style="color: var(--ink-900) !important;">${act.name}</div>
+              <div class="text-muted small">${act.details} in <span class="fw-semibold text-primary" style="color: var(--snpsu-blue-lighter) !important;">${act.event}</span></div>
+            </div>
+            <div class="activity-time">${act.time}</div>
+          `;
+          feedContainer.appendChild(item);
+        });
+      }
+    })
+    .catch(function() {})
+    .finally(function() {
+      if (_syncIcon) _syncIcon.style.animation = '';
+    });
+}
+setInterval(refreshStats, 30000);
+window.addEventListener('DOMContentLoaded', refreshStats);
+
+// ── INTERACTIVE COMMAND PALETTE (SPOTLIGHT) JS ──
+let paletteOpen = false;
+let paletteItems = [];
+let highlightedIndex = 0;
+
+function openCommandPalette() {
+  paletteOpen = true;
+  var backdrop = document.getElementById('cmd-palette');
+  backdrop.classList.add('open');
+  var input = document.getElementById('cmd-palette-input');
+  input.value = '';
+  input.focus();
+  
+  buildPaletteCommands();
+  filterPaletteCommands();
+}
+
+function closeCommandPalette() {
+  paletteOpen = false;
+  var backdrop = document.getElementById('cmd-palette');
+  backdrop.classList.remove('open');
+}
+
+function handlePaletteBackdropClick(e) {
+  if (e.target.id === 'cmd-palette') {
+    closeCommandPalette();
+  }
+}
+
+// Build list of all commands dynamically
+function buildPaletteCommands() {
+  paletteItems = [];
+  
+  // 1. Navigation items (Events)
+  document.querySelectorAll('.sidebar-event-card').forEach(function(card) {
+    var id = card.id.replace('card-', '');
+    var title = card.dataset.title;
+    var category = card.dataset.category;
+    paletteItems.push({
+      type: 'event',
+      title: 'Switch to: ' + title,
+      category: category,
+      icon: 'fa-calendar-alt',
+      action: function() { selectEvent(id); }
+    });
+  });
+  
+  // 2. Event context-specific actions (only if an event is currently active)
+  if (activeEventId) {
+    var activeCard = document.getElementById('card-' + activeEventId);
+    var activeTitle = activeCard ? activeCard.dataset.title : 'Selected Event';
+    
+    paletteItems.push({
+      type: 'context',
+      title: `[${activeTitle}] Export Registrations (CSV)`,
+      icon: 'fa-file-csv',
+      action: function() { window.location.href = '/spoc/export_csv/' + activeEventId; }
+    });
+    paletteItems.push({
+      type: 'context',
+      title: `[${activeTitle}] Launch Live Leaderboard`,
+      icon: 'fa-tv',
+      action: function() { window.open('/live/' + activeEventId, '_blank'); }
+    });
+    paletteItems.push({
+      type: 'context',
+      title: `[${activeTitle}] Open Check-in Scanner`,
+      icon: 'fa-qrcode',
+      action: function() { window.location.href = '/spoc/scan/' + activeEventId; }
+    });
+    paletteItems.push({
+      type: 'context',
+      title: `[${activeTitle}] Broadcast Alert Email`,
+      icon: 'fa-paper-plane',
+      action: function() { openBlastModal(activeEventId, activeTitle); }
+    });
+    paletteItems.push({
+      type: 'context',
+      title: `[${activeTitle}] Manage Judges & Round Scoring`,
+      icon: 'fa-gavel',
+      action: function() {
+        var pane = document.getElementById('detail-panel-' + activeEventId);
+        if (pane) {
+          var btn = pane.querySelector('.tab-btn[data-tab="certs"]');
+          if (btn) switchTab('certs', btn);
+        }
+      }
+    });
+    paletteItems.push({
+      type: 'context',
+      title: `[${activeTitle}] Manage Rooms & Wayfinder`,
+      icon: 'fa-building',
+      action: function() {
+        var pane = document.getElementById('detail-panel-' + activeEventId);
+        if (pane) {
+          var btn = pane.querySelector('.tab-btn[data-tab="logistics"]');
+          if (btn) switchTab('logistics', btn);
+        }
+      }
+    });
+    paletteItems.push({
+      type: 'context',
+      title: `[${activeTitle}] Show Event Settings`,
+      icon: 'fa-cog',
+      action: function() {
+        var pane = document.getElementById('detail-panel-' + activeEventId);
+        if (pane) {
+          var btn = pane.querySelector('.tab-btn[data-tab="settings"]');
+          if (btn) switchTab('settings', btn);
+        }
+      }
+    });
+  }
+  
+  // 3. Global settings and utilities
+  paletteItems.push({
+    type: 'global',
+    title: 'Show Global Overview Hub',
+    icon: 'fa-chart-line',
+    action: function() { selectGlobalOverview(); }
+  });
+  paletteItems.push({
+    type: 'global',
+    title: 'Create New Event',
+    icon: 'fa-plus',
+    action: function() { window.location.href = '/spoc/create_event'; }
+  });
+  paletteItems.push({
+    type: 'global',
+    title: 'Toggle Dark / Light Mode',
+    icon: 'fa-circle-half-stroke',
+    action: function() { toggleTheme(); }
+  });
+  paletteItems.push({
+    type: 'global',
+    title: 'Launch Onboarding Tour Guide',
+    icon: 'fa-flag',
+    action: function() { startTour(); }
+  });
+  paletteItems.push({
+    type: 'global',
+    title: 'Sync Live Console Stats',
+    icon: 'fa-sync-alt',
+    action: function() { refreshStats(); showToast('Statistics sync completed!', 'success'); }
+  });
+  paletteItems.push({
+    type: 'global',
+    title: 'System Log Out',
+    icon: 'fa-sign-out-alt',
+    action: function() { window.location.href = '/logout'; }
+  });
+}
+
+function filterPaletteCommands() {
+  var query = document.getElementById('cmd-palette-input').value.toLowerCase().trim();
+  var container = document.getElementById('cmd-palette-results');
+  if (!container) return;
+  
+  var filtered = paletteItems.filter(function(item) {
+    return item.title.toLowerCase().includes(query) || (item.category && item.category.toLowerCase().includes(query));
+  });
+  
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="text-center py-4 text-muted small"><i class="fas fa-info-circle me-1"></i>No commands match your query.</div>';
+    highlightedIndex = 0;
+    return;
+  }
+  
+  container.innerHTML = '';
+  
+  // Group by type for visual headers
+  var lastType = '';
+  var itemIndex = 0;
+  
+  filtered.forEach(function(item) {
+    var typeTitle = '';
+    if (item.type !== lastType) {
+      if (item.type === 'event') typeTitle = 'Events Directory';
+      if (item.type === 'context') typeTitle = 'Selected Event Actions';
+      if (item.type === 'global') typeTitle = 'System Commands';
+      
+      var header = document.createElement('div');
+      header.className = 'cmd-section-header';
+      header.textContent = typeTitle;
+      container.appendChild(header);
+      lastType = item.type;
+    }
+    
+    var el = document.createElement('button');
+    el.className = 'cmd-item';
+    el.dataset.index = itemIndex;
+    if (itemIndex === highlightedIndex) el.classList.add('active');
+    
+    el.innerHTML = `
+      <div class="cmd-item-left">
+        <i class="fas ${item.icon} cmd-item-icon"></i>
+        <span class="cmd-item-title">${item.title}</span>
+      </div>
+      <div>
+        ${item.category ? `<span class="cmd-item-badge">${item.category}</span>` : ''}
+        ${itemIndex === 0 ? '<span class="cmd-item-shortcut">Enter</span>' : ''}
+      </div>
+    `;
+    
+    var curIdx = itemIndex;
+    el.onclick = function() {
+      item.action();
+      closeCommandPalette();
+    };
+    
+    container.appendChild(el);
+    itemIndex++;
+  });
+  
+  // Keep index within bounds
+  if (highlightedIndex >= itemIndex) {
+    highlightedIndex = 0;
+    var firstEl = container.querySelector('.cmd-item');
+    if (firstEl) firstEl.classList.add('active');
+  }
+}
+
+// Keyboard shortcuts and navigation listeners
+document.addEventListener('keydown', function(e) {
+  // 1. Toggle Palette: Cmd+K / Ctrl+K
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (paletteOpen) {
+      closeCommandPalette();
+    } else {
+      openCommandPalette();
+    }
+    return;
+  }
+  
+  if (!paletteOpen) return;
+  
+  // 2. Navigation keys inside open palette
+  var results = document.getElementById('cmd-palette-results');
+  if (!results) return;
+  var items = results.querySelectorAll('.cmd-item');
+  if (items.length === 0) return;
+  
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeCommandPalette();
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    items[highlightedIndex].classList.remove('active');
+    highlightedIndex = (highlightedIndex + 1) % items.length;
+    items[highlightedIndex].classList.add('active');
+    items[highlightedIndex].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    items[highlightedIndex].classList.remove('active');
+    highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
+    items[highlightedIndex].classList.add('active');
+    items[highlightedIndex].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    items[highlightedIndex].click();
+  }
+});
+</script>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<!-- ── GUIDED ONBOARDING TOUR JAVASCRIPT ── -->
+<script>
+const tourSteps = [
+  {
+    element: '#tour-global-btn',
+    title: 'Global Overview Hub 🌐',
+    content: 'Click this button to see the cumulative statistics across all your events, active room allocations, and visual charts.'
+  },
+  {
+    element: '#event-search',
+    title: 'Instant Search 🔍',
+    content: 'Type any title, category, or venue to search and filter your events list in real-time as you type.'
+  },
+  {
+    element: '.filter-pill-btn[data-filter="active"]',
+    title: 'Event Filters 📊',
+    content: 'Quickly narrow down your events to view only Active or Completed configurations.'
+  },
+  {
+    element: '.sidebar-event-card',
+    title: 'Master Event Cards 📇',
+    content: 'Select an event from the list to load its dedicated Event Command Center details.'
+  },
+  {
+    element: '#tour-stats-row',
+    title: 'Live Statistics Gauge 📈',
+    content: 'Monitor real-time registrations, present attendees count, revenue, and staff assigned specifically to this event.',
+    requiresEvent: true
+  },
+  {
+    element: '#tour-tabs-nav',
+    title: 'Event Management Tabs 🛠️',
+    content: 'Switch tabs to access QR scanning, logistical maps, communication tools, judge configurations, and settings.',
+    requiresEvent: true
+  },
+  {
+    element: '.tab-btn[data-tab="logistics"]',
+    title: 'Logistics & QR Scanning 🎫',
+    content: 'Manage real-time ticket scanning, venue codes, round qualifications, NFC simulations, and room setups here.',
+    requiresEvent: true
+  },
+  {
+    element: '.tab-btn[data-tab="certs"]',
+    title: 'Judges & Certifications 🎓',
+    content: 'Manage judge rosters, open-hall grading modes, visual certificate templates, and bulk certificate delivery.',
+    requiresEvent: true
+  },
+  {
+    element: '#theme-toggle',
+    title: 'Adaptive Themes 🌓',
+    content: 'Toggle between dark and light modes. The dashboard is optimized to remain clear and high-contrast in either setting.'
+  }
+];
+
+let currentTourStep = 0;
+
+function startTour() {
+  currentTourStep = 0;
+  document.getElementById('tour-overlay').style.display = 'block';
+  document.getElementById('tour-tooltip').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('tour-overlay').style.opacity = '1';
+    document.getElementById('tour-tooltip').style.opacity = '1';
+  }, 50);
+  showTourStep();
+}
+
+function exitTour() {
+  document.getElementById('tour-overlay').style.opacity = '0';
+  document.getElementById('tour-tooltip').style.opacity = '0';
+  document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+  setTimeout(() => {
+    document.getElementById('tour-overlay').style.display = 'none';
+    document.getElementById('tour-tooltip').style.display = 'none';
+  }, 300);
+  localStorage.setItem('spoc-dashboard-tour-completed', 'true');
+}
+
+function showTourStep() {
+  const step = tourSteps[currentTourStep];
+  if (!step) {
+    exitTour();
+    return;
+  }
+  
+  // If step requires active event, make sure one is selected
+  if (step.requiresEvent && !activeEventId) {
+    const firstCard = document.querySelector('.sidebar-event-card');
+    if (firstCard) {
+      const firstEventId = firstCard.id.replace('card-', '');
+      selectEvent(firstEventId);
+    } else {
+      currentTourStep++;
+      showTourStep();
+      return;
+    }
+  }
+  
+  // Handle tab switching for specific steps
+  if (step.element === '.tab-btn[data-tab="logistics"]') {
+    const tabEl = document.querySelector(`#detail-panel-${activeEventId} .tab-btn[data-tab="logistics"]`);
+    if (tabEl) switchTab('logistics', tabEl);
+  } else if (step.element === '.tab-btn[data-tab="certs"]') {
+    const tabEl = document.querySelector(`#detail-panel-${activeEventId} .tab-btn[data-tab="certs"]`);
+    if (tabEl) switchTab('certs', tabEl);
+  }
+  
+  const el = document.querySelector(step.element);
+  if (!el || el.offsetParent === null) {
+    currentTourStep++;
+    showTourStep();
+    return;
+  }
+  
+  document.querySelectorAll('.tour-highlight').forEach(x => x.classList.remove('tour-highlight'));
+  el.classList.add('tour-highlight');
+  
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-content').textContent = step.content;
+  
+  document.getElementById('tour-btn-prev').style.visibility = currentTourStep === 0 ? 'hidden' : 'visible';
+  document.getElementById('tour-btn-next').textContent = currentTourStep === tourSteps.length - 1 ? 'Finish' : 'Next';
+  
+  // Position tooltip
+  const rect = el.getBoundingClientRect();
+  const tooltip = document.getElementById('tour-tooltip');
+  
+  let top = rect.bottom + window.scrollY + 12;
+  let left = rect.left + window.scrollX;
+  
+  if (left + 320 > window.innerWidth) {
+    left = window.innerWidth - 340;
+  }
+  if (left < 10) left = 10;
+  
+  if (rect.bottom + 180 > window.innerHeight) {
+    top = rect.top + window.scrollY - tooltip.offsetHeight - 12;
+  }
+  
+  tooltip.style.top = top + 'px';
+  tooltip.style.left = left + 'px';
+  
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function nextTourStep() {
+  if (currentTourStep < tourSteps.length - 1) {
+    currentTourStep++;
+    showTourStep();
+  } else {
+    exitTour();
+    if (window.showToast) {
+      showToast('Tour completed! Let us know if you need anything else.', 'success', 3000);
+    }
+  }
+}
+
+function prevTourStep() {
+  if (currentTourStep > 0) {
+    currentTourStep--;
+    showTourStep();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!localStorage.getItem('spoc-dashboard-tour-completed')) {
+    setTimeout(startTour, 1500);
+  }
+});
+</script>
+
+<!-- FLOATING SPEED DIAL QUICK ACTIONS -->
+<div class="speed-dial" id="dashboard-speed-dial">
+  <button class="speed-dial-trigger" onclick="toggleSpeedDial()" title="Quick Actions">
+    <i class="fas fa-bolt" id="speed-dial-trigger-icon"></i>
+  </button>
+  <div class="speed-dial-menu">
+    <a href="/spoc/create_event" class="speed-dial-item text-white" style="background:#3b82f6;" title="Create Event">
+      <i class="fas fa-plus"></i> <span>Create Event</span>
+    </a>
+    <button onclick="startTour()" class="speed-dial-item text-white" style="background:#f59e0b;" title="Guided Onboarding">
+      <i class="fas fa-flag"></i> <span>Onboarding Tour</span>
+    </button>
+    <button onclick="refreshStats()" class="speed-dial-item text-white" style="background:#10b981;" title="Sync Live Stats">
+      <i class="fas fa-sync-alt"></i> <span>Sync Live Stats</span>
+    </button>
+  </div>
+</div>
+
+<!-- COMMAND PALETTE (SPOTLIGHT OVERLAY) -->
+<div class="cmd-palette-backdrop" id="cmd-palette" onclick="handlePaletteBackdropClick(event)">
+  <div class="cmd-palette-box">
+    <div class="cmd-palette-search-wrapper">
+      <i class="fas fa-search cmd-palette-search-icon"></i>
+      <input type="text" id="cmd-palette-input" class="cmd-palette-input" placeholder="Type a command or event title..." oninput="filterPaletteCommands()" autocomplete="off">
+    </div>
+    <div class="cmd-palette-results" id="cmd-palette-results">
+      <!-- Generated dynamically by JS -->
+    </div>
+    <div class="cmd-palette-footer">
+      <div class="cmd-palette-keys">
+        <span class="cmd-key-helper"><span class="cmd-key">↑↓</span> Navigate</span>
+        <span class="cmd-key-helper"><span class="cmd-key">Enter</span> Select</span>
+        <span class="cmd-key-helper"><span class="cmd-key">Esc</span> Close</span>
+      </div>
+      <div>SapthaEvent Spotlight</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER FOR FLOATING NOTIFICATIONS -->
+<div class="toast-container" id="toast-container-holder"></div>
+
+<script src="/static/js/global.js"></script>
+</body>
+</html>

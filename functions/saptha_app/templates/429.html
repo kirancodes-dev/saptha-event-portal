@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- ═══ SEO Meta Tags ═══ -->
+<meta name="description" content="Rate limit exceeded on SapthaEvent. Too many requests detected. Please wait a moment and try again.">
+<meta name="robots" content="noindex, nofollow">
+<!-- ═══ Canonical ═══ -->
+<link rel="canonical" href="https://events.snpsu.edu.in">
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<title>429 - Too Many Requests | SapthaEvent</title>
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;transition:background var(--t);}
+.card{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--ink-200);padding:48px 36px;max-width:480px;width:100%;text-align:center;box-shadow:var(--shadow-md);transition:all var(--t);}
+.code{font-family:'Plus Jakarta Sans',sans-serif;font-size:72px;font-weight:800;color:var(--warning);line-height:1;margin-bottom:8px;}
+.title{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:var(--ink-900);margin-bottom:12px;}
+.desc{font-size:14.5px;color:var(--ink-500);line-height:1.65;margin-bottom:28px;}
+.countdown-box{background:var(--warning-soft);border:1px solid var(--warning);border-radius:var(--radius);padding:16px;margin-bottom:24px;transition:all var(--t);}
+[data-theme="dark"] .countdown-box{background:rgba(245, 158, 11, 0.1);border-color:rgba(245, 158, 11, 0.3);}
+.countdown-n{font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;color:var(--warning);}
+.countdown-l{font-size:13px;color:var(--ink-700);}
+.btn-home{display:inline-flex;align-items:center;gap:8px;background:var(--snpsu-blue);color:#fff !important;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 28px;border-radius:var(--radius-sm);text-decoration:none;transition:var(--t-fast);}
+.btn-home:hover{background:var(--snpsu-blue-light);color:#fff !important;transform:translateY(-1px);box-shadow:var(--shadow-brand);}
+.uni{font-size:12px;color:var(--ink-400);margin-top:20px;font-weight:500;}
+/* ── ACCESSIBILITY ────────────────────── */
+*:focus-visible{outline:3px solid var(--snpsu-gold);outline-offset:2px;}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+</style>
+</head>
+<body role="main" aria-label="429 Rate Limit Error">
+<div class="card" role="region" aria-live="polite" aria-label="Rate limit error message">
+  <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:52px;width:auto;object-fit:contain;margin-bottom:12px;" aria-hidden="true">
+  <div class="code" aria-label="Error code">429</div>
+  <h1 class="title">Slow Down!</h1>
+  <p class="desc">You've made too many requests in a short time. Please wait a moment before trying again.</p>
+  <div class="countdown-box">
+    <div class="countdown-n" id="timer">60</div>
+    <div class="countdown-l">seconds until you can try again</div>
+  </div>
+  <a href="/" class="btn-home">↩ Return Home</a>
+  <div style="text-align:center;margin-bottom:8px;margin-top:24px;">
+    <img src="/static/snpsu-logo.png"
+         alt="Sapthagiri NPS University"
+         style="height:24px;width:auto;object-fit:contain;"
+         onerror="this.style.display='none'">
+  </div>
+  <p class="uni">Sapthagiri NPS University, Bengaluru</p>
+</div>
+<script>
+let t = 60;
+const el = document.getElementById('timer');
+const iv = setInterval(() => {
+  t--;
+  el.textContent = t;
+  if (t <= 0) { clearInterval(iv); window.location.href = '/'; }
+}, 1000);
+</script>
+</body>
+</html>

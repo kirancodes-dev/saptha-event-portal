@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin HQ | Sapthagiri NPS University</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/global.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── STAT CARDS ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 1400px) { .stat-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+    
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 20px;
+      border: 1px solid var(--ink-200);
+      position: relative;
+      overflow: hidden;
+      transition: transform var(--t), box-shadow var(--t);
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .si-blue { background: rgba(26, 37, 87, 0.1); color: var(--snpsu-blue-light); }
+    .si-green { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .si-orange { background: rgba(201, 164, 94, 0.15); color: var(--snpsu-gold); }
+    .si-purple { background: rgba(99, 102, 241, 0.1); color: var(--cat-technical); }
+    .si-cyan { background: rgba(8, 145, 178, 0.1); color: var(--cat-management); }
+    .si-red { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    
+    .stat-val {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--ink-900);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 11.5px;
+      color: var(--ink-500);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .stat-sub {
+      font-size: 11px;
+      color: var(--ink-400);
+      margin-top: 4px;
+    }
+
+    /* ── QUICK ACCESS ── */
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 1200px) { .quick-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) { .quick-grid { grid-template-columns: repeat(2, 1fr); } }
+    
+    .quick-card {
+      background: var(--bg-card);
+      border: 1px solid var(--ink-200);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      text-decoration: none;
+      color: var(--ink-800);
+      transition: all var(--t);
+      display: block;
+      box-shadow: var(--shadow-xs);
+    }
+    .quick-card:hover {
+      background: var(--snpsu-blue);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-brand);
+      border-color: var(--snpsu-blue);
+    }
+    .quick-card:hover .quick-icon {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+    .quick-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-xs);
+      background: var(--ink-100);
+      color: var(--snpsu-blue-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      margin: 0 auto 8px;
+      transition: all var(--t);
+    }
+    .quick-label {
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* ── SECTION CARD ── */
+    .section-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--ink-200);
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+    .section-hdr {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--ink-200);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-hdr h6 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--ink-900);
+      margin: 0;
+    }
+
+    /* ── EVENT TABLE ── */
+    .ev-table th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--ink-500);
+      font-weight: 700;
+      padding: 12px 14px;
+      border-color: var(--ink-200);
+      background: var(--bg-soft);
+    }
+    .ev-table td {
+      padding: 14px;
+      border-color: var(--ink-200);
+      vertical-align: middle;
+      font-size: 13.5px;
+      color: var(--ink-700);
+    }
+    .ev-table tr:hover td {
+      background: var(--bg-soft);
+    }
+    .ev-title {
+      font-weight: 700;
+      color: var(--ink-900);
+      font-size: 14px;
+    }
+    .ev-cat {
+      font-size: 11.5px;
+      color: var(--ink-500);
+      font-weight: 500;
+    }
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      white-space: nowrap;
+    }
+    .pill-active {
+      background: var(--success-soft);
+      color: var(--success);
+    }
+    .pill-done {
+      background: var(--ink-100);
+      color: var(--ink-600);
+    }
+    .action-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--ink-200);
+      background: transparent;
+      color: var(--ink-600);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all var(--t-fast);
+      text-decoration: none;
+    }
+    .action-btn:hover {
+      background: var(--snpsu-blue);
+      color: #fff;
+      border-color: var(--snpsu-blue);
+    }
+    .action-btn.red:hover {
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+    .action-btn.green:hover {
+      background: var(--success);
+      border-color: var(--success);
+    }
+
+    /* ── AUDIT LOG ── */
+    .log-row {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--ink-200);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .log-row:last-child {
+      border-bottom: none;
+    }
+    .log-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--snpsu-gold);
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .log-action {
+      font-weight: 700;
+      color: var(--ink-900);
+      font-size: 12px;
+    }
+    .log-detail {
+      color: var(--ink-700);
+      margin-top: 2px;
+    }
+    .log-time {
+      color: var(--ink-400);
+      font-size: 11px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* ── MODALS ── */
+    .modal-content {
+      border: none;
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+      box-shadow: var(--shadow-lg);
+    }
+    .modal-header {
+      background: var(--snpsu-blue);
+      color: #fff;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .modal-header.danger {
+      background: var(--danger);
+    }
+    .modal-header.warning {
+      background: var(--warning);
+    }
+    .btn-close {
+      filter: invert(1) brightness(200%);
+    }
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-800);
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      margin-bottom: 5px;
+    }
+    .form-control, .form-select {
+      background: var(--bg-soft);
+      border: 1px solid var(--ink-200);
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      padding: 10px 12px;
+      color: var(--ink-900);
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--bg-card);
+      border-color: var(--snpsu-gold);
+      color: var(--ink-900);
+      box-shadow: 0 0 0 3px rgba(201,164,94,.15);
+    }
+
+    /* ── SEARCH ── */
+    #eventSearch {
+      padding: 10px 16px 10px 38px;
+      border: 1px solid var(--ink-200);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--ink-900);
+      font-size: 13px;
+      width: 220px;
+      transition: all var(--t);
+    }
+    #eventSearch:focus {
+      border-color: var(--snpsu-gold);
+      width: 260px;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(201,164,94,.15);
+    }
+    .search-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .search-wrap i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-400);
+      font-size: 13px;
+    }
+
+    /* ── CHART CARD ── */
+    .chart-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--ink-200);
+      padding: 20px 24px;
+      box-shadow: var(--shadow-sm);
+    }
+    .chart-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--ink-900);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Mobile adjustments */
+    @media(max-width:992px) {
+      .main-content { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<div class="sidebar-overlay"></div>
+<aside class="sidebar">
+  <div class="sidebar-brand d-flex flex-column align-items-start justify-content-center" style="height: auto; padding: 24px; border-bottom: 1px solid rgba(201,164,94,.2);">
+    <div class="d-flex align-items-center gap-2">
+      <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 32px; width: auto; object-fit: contain;">
+      <div class="brand-text">Saptha<span>Event</span></div>
+    </div>
+    <div class="role-badge mt-2" style="font-size: 10px; color: var(--snpsu-gold); font-weight: 700; text-transform: uppercase; letter-spacing: .5px;"><i class="fas fa-crown me-1"></i> Super Admin</div>
+    <div class="user-name text-white mt-1" style="font-size: 13px; font-weight: 600;">{{ user_name }}</div>
+  </div>
+
+  <nav class="sidebar-menu">
+    <div class="nav-section">
+      <div class="nav-section-title">Portal</div>
+      <a href="/admin/dashboard" class="nav-link active">
+        <i class="fas fa-home"></i> <span>Dashboard</span>
+      </a>
+      <a href="/admin/analytics" class="nav-link">
+        <i class="fas fa-chart-line"></i> <span>Analytics</span>
+      </a>
+      <a href="/admin/report" class="nav-link">
+        <i class="fas fa-file-alt"></i> <span>A4 Report</span>
+      </a>
+      <a href="/admin/send_email" class="nav-link">
+        <i class="fas fa-envelope"></i> <span>Blast Email</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Manage</div>
+      <a href="/spoc/dashboard" class="nav-link">
+        <i class="fas fa-user-shield"></i> <span>SPOC Console</span>
+      </a>
+      <a href="/coordinator/dashboard" class="nav-link">
+        <i class="fas fa-clipboard-check"></i> <span>Coordinator</span>
+      </a>
+      <a href="/judge/dashboard" class="nav-link">
+        <i class="fas fa-gavel"></i> <span>Judge Panel</span>
+      </a>
+      <a href="/participant/dashboard" class="nav-link">
+        <i class="fas fa-users"></i> <span>Student View</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Settings</div>
+      <a href="/diag/email" class="nav-link">
+        <i class="fas fa-stethoscope"></i> <span>Email Diag</span>
+      </a>
+      <a href="/admin/audit_log" class="nav-link">
+        <i class="fas fa-history"></i> <span>Audit Log</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer d-flex flex-column gap-1">
+    <a href="/" class="nav-link py-1" style="font-size: 12px; color: rgba(255,255,255,.5);"><i class="fas fa-globe me-2"></i> Public Portal</a>
+    <a href="/logout" class="nav-link py-1" style="font-size: 12px; color: #f87171;"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div class="main-content">
+  <header class="top-header">
+    <div class="header-left">
+      <button class="menu-toggle btn btn-sm d-lg-none text-muted me-2" aria-label="Toggle Sidebar" type="button">
+        <i class="fas fa-bars fa-lg" aria-hidden="true"></i>
+      </button>
+      <h1 class="header-title"><i class="fas fa-crown me-2" style="color:var(--snpsu-gold);"></i>Super Admin HQ</h1>
+    </div>
+    <div class="header-right">
+      <span class="text-muted d-none d-md-inline" style="font-size:12px;">{{ today }}</span>
+      <!-- Theme Toggle -->
+      <button class="btn btn-icon-link me-2" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
+        <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
+      </button>
+      <button class="btn btn-sm btn-outline-primary fw-bold ms-2" data-bs-toggle="modal" data-bs-target="#appointSpocModal">
+        <i class="fas fa-user-shield me-1"></i> New SPOC
+      </button>
+      <button class="btn btn-sm ms-1 fw-bold text-white" style="background:var(--snpsu-gold);" data-bs-toggle="modal" data-bs-target="#createEventModal">
+        <i class="fas fa-plus me-1"></i> New Event
+      </button>
+    </div>
+  </header>
+
+  <main class="content-wrapper" id="main-content">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} fw-bold mb-3"><i class="fas fa-info-circle me-2"></i>{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- ── STAT CARDS ── -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon si-blue"><i class="fas fa-calendar-alt"></i></div>
+        <div class="stat-val">{{ events|length }}</div>
+        <div class="stat-label">Total Events</div>
+        <div class="stat-sub">{{ events|selectattr('status','equalto','active')|list|length }} active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-green"><i class="fas fa-users"></i></div>
+        <div class="stat-val">{{ total_regs }}</div>
+        <div class="stat-label">Registrations</div>
+        <div class="stat-sub">{{ user_stats.students|default(0) }} students total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-orange"><i class="fas fa-rupee-sign"></i></div>
+        <div class="stat-val">₹{{ "{:,}".format(total_revenue) }}</div>
+        <div class="stat-label">Revenue</div>
+        <div class="stat-sub">from paid events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-purple"><i class="fas fa-user-tie"></i></div>
+        <div class="stat-val">{{ total_staff }}</div>
+        <div class="stat-label">Unique Staff</div>
+        <div class="stat-sub">{{ user_stats.judges|default(0) }} judges · {{ user_stats.coordinators|default(0) }} coords</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-cyan"><i class="fas fa-user-shield"></i></div>
+        <div class="stat-val">{{ user_stats.spocs|default(0) }}</div>
+        <div class="stat-label">Club SPOCs</div>
+        <div class="stat-sub">event organisers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-red"><i class="fas fa-user-graduate"></i></div>
+        <div class="stat-val">{{ user_stats.students|default(0) }}</div>
+        <div class="stat-label">Students</div>
+        <div class="stat-sub">{{ user_stats.total|default(0) }} accounts total</div>
+      </div>
+    </div>
+
+    <!-- ── QUICK ACCESS ── -->
+    <h6 class="fw-bold mb-3" style="color:var(--blue);font-size:13px;text-transform:uppercase;letter-spacing:.5px;">
+      <i class="fas fa-bolt me-2" style="color:var(--orange);"></i>Quick Access
+    </h6>
+    <div class="quick-grid mb-4">
+      <a href="/spoc/dashboard" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-user-shield"></i></div>
+        <div class="quick-label">SPOC Console</div>
+      </a>
+      <a href="/coordinator/dashboard" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-clipboard-list"></i></div>
+        <div class="quick-label">Coordinator</div>
+      </a>
+      <a href="/judge/dashboard" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-gavel"></i></div>
+        <div class="quick-label">Judge Panel</div>
+      </a>
+      <a href="/admin/analytics" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="quick-label">Analytics</div>
+      </a>
+      <a href="/admin/report" class="quick-card">
+        <div class="quick-icon"><i class="fas fa-file-pdf"></i></div>
+        <div class="quick-label">Print Report</div>
+      </a>
+    </div>
+
+    <!-- ── CHARTS ROW ── -->
+    {% if events %}
+    <div class="row g-4 mb-4">
+      <div class="col-lg-7">
+        <div class="chart-card h-100">
+          <div class="chart-title"><i class="fas fa-chart-bar" style="color:var(--orange);"></i>Registrations per Event</div>
+          <canvas id="adminRegChart" height="220"></canvas>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="chart-card h-100">
+          <div class="chart-title"><i class="fas fa-chart-pie" style="color:var(--purple);"></i>Category Distribution</div>
+          <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
+            <canvas id="adminCatChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── EVENT CONTROL CENTER ── -->
+    <div class="section-card">
+      <div class="section-hdr">
+        <h6><i class="fas fa-calendar-check me-2" style="color:var(--orange);"></i>Event Control Center</h6>
+        <div class="d-flex align-items-center gap-2">
+          <div class="search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="eventSearch" placeholder="Search events…">
+          </div>
+          <select id="statusFilter" class="form-select form-select-sm" style="width:120px;font-size:12px;">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table ev-table mb-0" id="eventsTable">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Regs</th>
+              <th>Fee</th>
+              <th>Staff</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in events %}
+            <tr data-title="{{ event.title|lower }}" data-status="{{ event.status }}">
+              <td>
+                <div class="ev-title">{{ event.title }}</div>
+                <div class="ev-cat"><i class="fas fa-map-marker-alt me-1"></i>{{ event.venue|default('TBA') }}</div>
+              </td>
+              <td style="white-space:nowrap;font-size:12.5px;">{{ event.date|default('TBA') }}</td>
+              <td><span class="status-pill" style="background:rgba(124,58,237,.08);color:var(--purple);">{{ event.category|default('General') }}</span></td>
+              <td>
+                <span class="status-pill {{ 'pill-active' if event.status == 'active' else 'pill-done' }}">
+                  <i class="fas fa-circle fa-xs me-1"></i>{{ event.status|capitalize }}
+                </span>
+              </td>
+              <td><strong style="color:var(--blue);">{{ event.registration_count|default(0) }}</strong></td>
+              <td style="font-size:12.5px;">
+                {% set fee = (event.fees or {}).get('regular', 0) or event.entry_fee or 0 %}
+                {% if fee %}₹{{ fee }}{% else %}<span class="text-success fw-bold">Free</span>{% endif %}
+              </td>
+              <td style="font-size:12.5px;">{{ event.staff|default([])|length }}</td>
+              <td>
+                <div class="d-flex gap-1 flex-wrap">
+                  {% if event.status == 'active' %}
+                  <button class="action-btn" title="Edit Event" data-bs-toggle="modal" data-bs-target="#editEventModal{{ event.id }}"><i class="fas fa-edit"></i></button>
+                  <button class="action-btn green" title="Appoint Staff" data-bs-toggle="modal" data-bs-target="#assignStaffModal{{ event.id }}"><i class="fas fa-user-plus"></i></button>
+                  <button class="action-btn" title="Allocate Rooms" style="color:#0891b2;border-color:#bae6fd;" data-bs-toggle="modal" data-bs-target="#allocateModal{{ event.id }}"><i class="fas fa-network-wired"></i></button>
+                  <button class="action-btn" title="Next Round" style="color:#f59e0b;border-color:#fde68a;" data-bs-toggle="modal" data-bs-target="#eliminateModal{{ event.id }}"><i class="fas fa-filter"></i></button>
+                  <button class="action-btn" title="Publish Results" style="color:#dc2626;border-color:#fecaca;" data-bs-toggle="modal" data-bs-target="#publishModal{{ event.id }}"><i class="fas fa-trophy"></i></button>
+                  {% endif %}
+                  <a href="/coordinator/export_registrations/{{ event.id }}" class="action-btn green" title="Export Excel"><i class="fas fa-file-excel"></i></a>
+                  <a href="/coordinator/delete_event/{{ event.id }}" class="action-btn red" title="Delete"
+                     onclick="return confirm('Delete {{ event.title }}?')"><i class="fas fa-trash"></i></a>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-muted py-5">No events yet. Create one to get started!</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── AUDIT LOG ── -->
+    {% if audit_log %}
+    <div class="section-card">
+      <div class="section-hdr">
+        <h6><i class="fas fa-history me-2" style="color:var(--purple);"></i>Recent Activity</h6>
+        <a href="/admin/audit_log" class="btn btn-sm btn-outline-primary fw-bold" style="font-size:12px;">View All</a>
+      </div>
+      <div>
+        {% for log in audit_log[:15] %}
+        <div class="log-row">
+          <div class="log-dot"></div>
+          <div>
+            <div class="log-action">{{ log.action|default('ACTION') }}</div>
+            <div class="log-detail">{{ log.detail|default(log.message|default('—')) }}</div>
+          </div>
+          <div class="log-time">{{ log.timestamp|default('')|string|truncate(16,True,'') }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </main><!-- /content-wrapper -->
+</div><!-- /main-content -->
+
+<!-- ───────────── MODALS ───────────── -->
+
+<!-- Appoint SPOC -->
+<div class="modal fade" id="appointSpocModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Appoint Club SPOC</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form action="/admin/appoint_spoc" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3"><label class="form-label">Full Name</label><input class="form-control" name="name" required placeholder="Kiran Biradar"></div>
+          <div class="mb-3"><label class="form-label">Email (Login ID)</label><input class="form-control" type="email" name="email" required placeholder="spoc@snpsu.edu.in"></div>
+          <div class="mb-3"><label class="form-label">Password</label><input class="form-control" type="password" name="password" required placeholder="Min 6 characters"></div>
+          <div class="mb-4"><label class="form-label">Division</label>
+            <select class="form-select" name="category" required>
+              <option value="Technical">Technical Division</option>
+              <option value="Cultural">Cultural Division</option>
+              <option value="Sports">Sports Division</option>
+              <option value="General">General Events</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Create SPOC Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Event -->
+<div class="modal fade" id="createEventModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Create New Event</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/create_event" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" placeholder="Hackathon 2026" required></div>
+            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="0" min="0"></div>
+            <div class="col-md-4"><label class="form-label">Date</label><input type="text" name="date" class="form-control" placeholder="2026-05-10" required></div>
+            <div class="col-md-4"><label class="form-label">Deadline</label><input type="text" name="deadline" class="form-control" placeholder="2026-05-09" required></div>
+            <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" placeholder="Main Auditorium" required></div>
+            <div class="col-12"><label class="form-label">Primary Image URL</label>
+              <div id="createAdminMediaContainer">
+                <div class="input-group mb-2">
+                  <input type="url" name="media_urls[]" class="form-control" placeholder="https://…" required>
+                  <button class="btn btn-outline-primary" type="button" onclick="addMediaField('createAdminMediaContainer')"><i class="fas fa-plus"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="col-12"><label class="form-label">Overview</label><textarea name="overview" class="form-control" rows="3" required></textarea></div>
+            <div class="col-md-6"><label class="form-label">Rules</label><textarea name="rules" class="form-control" rows="3"></textarea></div>
+            <div class="col-md-6"><label class="form-label">Prizes</label><textarea name="prizes" class="form-control" rows="3"></textarea></div>
+            <div class="col-12"><label class="form-label">Judging Criteria (comma-separated)</label><input type="text" name="criteria" class="form-control" placeholder="Innovation, Code Quality, Presentation" required></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn fw-bold text-white" style="background:var(--orange);">Publish Event <i class="fas fa-rocket ms-1"></i></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Per-event modals -->
+{% for event in events %}
+
+<div class="modal fade" id="assignStaffModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Appoint Staff — {{ event.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form action="/coordinator/assign_staff/{{ event.id }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3"><label class="form-label">Role</label>
+            <select name="role" class="form-select">
+              <option value="EventCoordinator">Registration Coordinator</option>
+              <option value="Judge">Event Judge</option>
+            </select>
+          </div>
+          <div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div>
+          <div class="mb-4"><label class="form-label">Email</label><input type="email" name="email" class="form-control" required></div>
+          <button type="submit" class="btn btn-primary w-100 fw-bold">Assign & Email Credentials</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="eliminateModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-danger">
+      <div class="modal-header danger">
+        <h5 class="modal-title"><i class="fas fa-filter me-2"></i>Next Round / Eliminate — {{ event.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="alert alert-warning text-center">
+            <strong>Current Round: {{ event.active_round|default(1) }}</strong><br>
+            <small>Teams at or above the cut-off advance to Round {{ (event.active_round|default(1)) + 1 }}.</small>
+          </div>
+          <label class="form-label text-danger">Cut-off Score</label>
+          <input type="number" step="0.1" name="cutoff_score" class="form-control form-control-lg text-center fw-bold border-danger" placeholder="e.g. 75" required>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger w-100 fw-bold"
+                  onclick="return confirm('Permanently eliminate teams below cut-off?')">
+            Execute Elimination <i class="fas fa-skull-crossbones ms-2"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="allocateModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#0891b2;">
+        <h5 class="modal-title"><i class="fas fa-network-wired me-2"></i>Auto Room Allocation — {{ event.title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/allocate_rooms/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="alert alert-info"><strong>Registered:</strong> {{ event.registration_count|default(0) }} teams/participants</div>
+          <div id="roomContainer{{ event.id }}">
+            <div class="row g-2 mb-3 align-items-end room-row">
+              <div class="col-7"><label class="form-label">Room / Venue Name</label><input type="text" name="room_name[]" class="form-control" placeholder="Room 101" required></div>
+              <div class="col-4"><label class="form-label">Capacity</label><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div>
+              <div class="col-1 pb-1"><button type="button" class="btn btn-primary w-100" onclick="addRoomField('roomContainer{{ event.id }}')"><i class="fas fa-plus"></i></button></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn fw-bold text-white w-100" style="background:#0891b2;">Auto-Allocate <i class="fas fa-magic ms-1"></i></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="publishModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center p-5">
+        <i class="fas fa-trophy fa-4x mb-3" style="color:var(--orange);"></i>
+        <h4 class="fw-bold">Conclude &amp; Publish Results?</h4>
+        <p class="text-muted mb-4">This generates the final leaderboard and closes registrations permanently.</p>
+        <form action="/coordinator/publish_results/{{ event.id }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn w-100 py-3 fw-bold text-white" style="background:var(--orange);">Publish Final Results</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editEventModal{{ event.id }}" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#334155;">
+        <h4 class="modal-title"><i class="fas fa-edit me-2"></i>Edit: {{ event.title }}</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/coordinator/edit_event/{{ event.id }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-8"><label class="form-label">Title</label><input type="text" name="title" class="form-control" value="{{ event.title }}" required></div>
+            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee|default(0) }}"></div>
+            <div class="col-md-4"><label class="form-label">Date</label><input type="text" name="date" class="form-control" value="{{ event.date }}" required></div>
+            <div class="col-md-4"><label class="form-label">Deadline</label><input type="text" name="deadline" class="form-control" value="{{ event.deadline|default('') }}" required></div>
+            <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" value="{{ event.venue|default('') }}" required></div>
+            <div class="col-12"><label class="form-label">Judging Criteria (comma-separated)</label>
+              <input type="text" name="criteria" class="form-control" value="{{ event.judging_criteria|default([])|join(', ') }}" required>
+            </div>
+            <div class="col-12"><label class="form-label">Overview</label><textarea name="overview" class="form-control" rows="3">{{ event.overview|default('') }}</textarea></div>
+            <div class="col-md-6"><label class="form-label">Rules</label><textarea name="rules" class="form-control" rows="3">{{ event.rules|default('') }}</textarea></div>
+            <div class="col-md-6"><label class="form-label">Prizes</label><textarea name="prizes" class="form-control" rows="3">{{ event.prizes|default('') }}</textarea></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-dark px-5 fw-bold">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endfor %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script id="adminChartData" type="application/json">{"labels":{{ events|map(attribute='title')|list|tojson }},"regs":{{ events|map(attribute='registration_count')|list|tojson }},"cats":{{ cat_counts|tojson }}}</script>
+<script>
+// ── CHARTS ──
+var _chartData = JSON.parse(document.getElementById('adminChartData').textContent);
+
+if (_chartData.labels.length) {
+  var labels = _chartData.labels.map(function(l){ return l.length>18?l.slice(0,18)+'…':l; });
+  var rc = document.getElementById('adminRegChart');
+  
+  // Theme check
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(11, 21, 48, 0.06)';
+  var textColor = isDark ? '#cbd5e1' : '#64748b';
+  
+  if (rc) {
+    new Chart(rc, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{
+        label: 'Registrations', data: _chartData.regs,
+        backgroundColor: labels.map(function(_,i){ return i%2===0?'rgba(26,37,87,.85)':'rgba(201,164,94,.85)'; }),
+        borderRadius: 6, borderSkipped: false
+      }]},
+      options: { responsive:true, plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:textColor,font:{size:10}}},
+          y:{grid:{color:gridColor},ticks:{color:textColor,stepSize:1,font:{size:10}},beginAtZero:true}
+        } }
+    });
+  }
+  var cc = document.getElementById('adminCatChart');
+  if (cc && Object.keys(_chartData.cats).length) {
+    var catLabels = Object.keys(_chartData.cats);
+    var catVals   = Object.values(_chartData.cats);
+    new Chart(cc, {
+      type: 'doughnut',
+      data: { labels: catLabels, datasets: [{
+        data: catVals,
+        backgroundColor: ['#1a2557','#c9a45e','#10b981','#6366f1','#0891b2'],
+        borderWidth: 0, hoverOffset: 4
+      }]},
+      options: { responsive:true, cutout:'68%',
+        plugins:{legend:{position:'bottom',labels:{color:textColor,font:{size:11},boxWidth:10}}} }
+    });
+  }
+}
+
+// ── SEARCH & FILTER ──
+var searchInput = document.getElementById('eventSearch');
+var statusFilter = document.getElementById('statusFilter');
+function filterTable() {
+  var q = (searchInput.value||'').toLowerCase();
+  var s = (statusFilter.value||'').toLowerCase();
+  document.querySelectorAll('#eventsTable tbody tr[data-title]').forEach(function(row) {
+    var title  = row.getAttribute('data-title')||'';
+    var status = row.getAttribute('data-status')||'';
+    var show = title.includes(q) && (!s || status === s);
+    row.style.display = show ? '' : 'none';
+  });
+}
+if (searchInput) searchInput.addEventListener('input', filterTable);
+if (statusFilter) statusFilter.addEventListener('change', filterTable);
+
+// ── MEDIA FIELD ──
+function addMediaField(containerId) {
+  var c = document.getElementById(containerId);
+  var d = document.createElement('div');
+  d.className = 'input-group mb-2';
+  d.innerHTML = '<input type="url" name="media_urls[]" class="form-control" placeholder="Image URL" required>' +
+    '<button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>';
+  c.appendChild(d);
+}
+
+// ── ROOM FIELD ──
+function addRoomField(containerId) {
+  var c = document.getElementById(containerId);
+  var d = document.createElement('div');
+  d.className = 'row g-2 mb-3 align-items-end room-row';
+  d.innerHTML = '<div class="col-7"><input type="text" name="room_name[]" class="form-control" placeholder="Room 102" required></div>' +
+    '<div class="col-4"><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div>' +
+    '<div class="col-1 pb-1"><button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-trash"></i></button></div>';
+  c.appendChild(d);
+}
+
+// ── MOBILE SIDEBAR TOGGLE ──
+document.addEventListener('DOMContentLoaded', function() {
+  var menuToggle = document.querySelector('.menu-toggle');
+  var sidebar = document.querySelector('.sidebar');
+  var overlay = document.querySelector('.sidebar-overlay');
+  if (menuToggle && sidebar) {
+    menuToggle.addEventListener('click', function() {
+      sidebar.classList.toggle('active');
+      if (overlay) overlay.classList.toggle('active');
+    });
+  }
+  if (overlay) {
+    overlay.addEventListener('click', function() {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+    });
+  }
+});
+</script>
+<script src="/static/js/global.js"></script>
+</body>
+</html>

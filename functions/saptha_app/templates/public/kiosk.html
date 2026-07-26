@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SapthaEvent Gate Kiosk</title>
+    <!-- Outfit Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap CSS (Optional Grid, but we use custom styles mostly) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --glass-bg: rgba(17, 25, 40, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --primary: #8b5cf6;
+            --primary-glow: rgba(139, 92, 246, 0.4);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.3);
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-hover-bg: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Abstract glowing blobs for premium visual feel */
+        body::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(80px);
+        }
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            right: -10%;
+            width: 45vw;
+            height: 45vw;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+            z-index: -1;
+            filter: blur(80px);
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+        }
+
+        /* Pulsing indicator */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            display: inline-block;
+            box-shadow: 0 0 10px var(--success-glow);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.9);
+                opacity: 0.6;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+                box-shadow: 0 0 14px var(--success-glow);
+            }
+            100% {
+                transform: scale(0.9);
+                opacity: 0.6;
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Top Kiosk Header */
+        .kiosk-header {
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Large search console */
+        .console-container {
+            max-width: 900px;
+            margin: 2.5rem auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .search-input-field {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 1.2rem 1.5rem 1.2rem 3.5rem;
+            color: #fff;
+            font-size: 1.3rem;
+            font-weight: 500;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        /* Virtual Keyboard Grid */
+        .keyboard-wrapper {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            padding: 1rem;
+            border: 1px solid var(--glass-border);
+            margin-top: 1.5rem;
+        }
+
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .keyboard-key {
+            flex: 1;
+            max-width: 75px;
+            height: 52px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease;
+        }
+
+        .keyboard-key:active, .keyboard-key.active {
+            transform: scale(0.92);
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .keyboard-key.wide {
+            flex: 2.2;
+            max-width: 160px;
+        }
+
+        .keyboard-key.spacebar {
+            flex: 5;
+            max-width: 380px;
+        }
+
+        .keyboard-key.special {
+            background: rgba(255, 255, 255, 0.08);
+            font-size: 0.95rem;
+        }
+
+        /* Search Results Panel */
+        .results-viewport {
+            max-height: 320px;
+            overflow-y: auto;
+            margin-top: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+
+        .result-item {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-item:hover {
+            background: var(--card-hover-bg);
+        }
+
+        .info-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.2rem;
+        }
+
+        .info-sub {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+
+        .badge-status {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 0.35rem 0.7rem;
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-status.pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .badge-status.present {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        /* Stunning Fullscreen Badge Printing Overlay */
+        .badge-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 7, 12, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .badge-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Badge Printer Slots Simulation */
+        .printer-container {
+            width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            perspective: 800px;
+        }
+
+        .printer-slot {
+            width: 320px;
+            height: 30px;
+            background: #1e293b;
+            border-radius: 10px 10px 0 0;
+            border: 3px solid #334155;
+            border-bottom: 6px solid #0f172a;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .printer-slot::after {
+            content: '';
+            position: absolute;
+            width: 250px;
+            height: 4px;
+            background: #000;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+
+        /* Sliding out Badge styling */
+        .badge-card {
+            width: 290px;
+            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 0 0 20px 20px;
+            padding: 1.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            position: relative;
+            transform: translateY(-90%);
+            opacity: 0;
+            z-index: 5;
+            transition: transform 1.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease;
+        }
+
+        .badge-card.print-active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .badge-header {
+            border-bottom: 2px dashed rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .badge-logo {
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+        }
+
+        .badge-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .badge-role-pill {
+            display: inline-block;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.7rem;
+            padding: 0.25rem 0.8rem;
+            border-radius: 20px;
+            margin-top: 0.5rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .badge-details {
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .badge-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.6rem;
+        }
+
+        .badge-lbl {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .badge-val {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Mock barcode */
+        .barcode-mock {
+            height: 45px;
+            background: linear-gradient(90deg, 
+                #fff 0%, #fff 5%, #000 5%, #000 10%, 
+                #fff 10%, #fff 12%, #000 12%, #000 20%, 
+                #fff 20%, #fff 25%, #000 25%, #000 30%, 
+                #fff 30%, #fff 35%, #000 35%, #000 45%, 
+                #fff 45%, #fff 50%, #000 50%, #000 55%, 
+                #fff 55%, #fff 60%, #000 60%, #000 70%, 
+                #fff 70%, #fff 75%, #000 75%, #000 80%, 
+                #fff 80%, #fff 85%, #000 85%, #000 95%, 
+                #fff 95%, #fff 100%
+            );
+            border-radius: 4px;
+            margin: 1rem 0 0.5rem 0;
+            border: 4px solid #fff;
+        }
+
+        .success-checkmark {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem auto;
+            background: rgba(16, 185, 129, 0.1);
+            border: 3px solid var(--success);
+            color: var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+            box-shadow: 0 0 20px var(--success-glow);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 0.9; }
+            80% { transform: scale(0.89); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Reset screen overlay styles */
+        .printing-status-text {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Kiosk header -->
+    <header class="kiosk-header glass-panel m-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary bg-opacity-20 p-3 rounded-4 border border-primary border-opacity-35">
+                <i class="fas fa-tablet-screen-button text-primary fs-3"></i>
+            </div>
+            <div>
+                <h1 class="h4 fw-bold m-0 tracking-wide text-white">SAPTHAGIRI ACCESS TERMINAL</h1>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="status-dot"></span>
+                    <span class="small text-muted font-monospace">STATION-01 // KIOSK ONLINE</span>
+                </div>
+            </div>
+        </div>
+        <div class="text-end">
+            <div class="h5 fw-bold text-white mb-0" id="live-clock">--:--:--</div>
+            <div class="small text-muted" id="live-date">--- --, ----</div>
+        </div>
+    </header>
+
+    <!-- Console Container -->
+    <main class="console-container glass-panel">
+        <h2 class="text-center fw-bold text-white mb-3">Self-Serve Lookup & Check-In</h2>
+        <p class="text-center text-muted small mb-4">Type your Registration ID, Email, Lead Name, or Team Name to fetch your ticket</p>
+
+        <!-- Search Input -->
+        <div class="search-input-wrapper">
+            <i class="fas fa-magnifying-glass search-icon"></i>
+            <input type="text" id="kiosk-search-input" class="search-input-field" placeholder="Lookup registration details..." readonly>
+        </div>
+
+        <!-- Search Results Viewport -->
+        <div class="results-viewport" id="kiosk-results">
+            <!-- Populated dynamically -->
+        </div>
+
+        <!-- On-Screen Keyboard -->
+        <div class="keyboard-wrapper">
+            <!-- Row 1 -->
+            <div class="keyboard-row">
+                <div class="keyboard-key" data-key="1">1</div>
+                <div class="keyboard-key" data-key="2">2</div>
+                <div class="keyboard-key" data-key="3">3</div>
+                <div class="keyboard-key" data-key="4">4</div>
+                <div class="keyboard-key" data-key="5">5</div>
+                <div class="keyboard-key" data-key="6">6</div>
+                <div class="keyboard-key" data-key="7">7</div>
+                <div class="keyboard-key" data-key="8">8</div>
+                <div class="keyboard-key" data-key="9">9</div>
+                <div class="keyboard-key" data-key="0">0</div>
+            </div>
+            <!-- Row 2 -->
+            <div class="keyboard-row">
+                <div class="keyboard-key" data-key="Q">Q</div>
+                <div class="keyboard-key" data-key="W">W</div>
+                <div class="keyboard-key" data-key="E">E</div>
+                <div class="keyboard-key" data-key="R">R</div>
+                <div class="keyboard-key" data-key="T">T</div>
+                <div class="keyboard-key" data-key="Y">Y</div>
+                <div class="keyboard-key" data-key="U">U</div>
+                <div class="keyboard-key" data-key="I">I</div>
+                <div class="keyboard-key" data-key="O">O</div>
+                <div class="keyboard-key" data-key="P">P</div>
+            </div>
+            <!-- Row 3 -->
+            <div class="keyboard-row">
+                <div class="keyboard-key" data-key="A">A</div>
+                <div class="keyboard-key" data-key="S">S</div>
+                <div class="keyboard-key" data-key="D">D</div>
+                <div class="keyboard-key" data-key="F">F</div>
+                <div class="keyboard-key" data-key="G">G</div>
+                <div class="keyboard-key" data-key="H">H</div>
+                <div class="keyboard-key" data-key="J">J</div>
+                <div class="keyboard-key" data-key="K">K</div>
+                <div class="keyboard-key" data-key="L">L</div>
+                <div class="keyboard-key special" data-key="BACKSPACE"><i class="fas fa-backspace"></i></div>
+            </div>
+            <!-- Row 4 -->
+            <div class="keyboard-row">
+                <div class="keyboard-key special" data-key="CLEAR">CLEAR</div>
+                <div class="keyboard-key" data-key="Z">Z</div>
+                <div class="keyboard-key" data-key="X">X</div>
+                <div class="keyboard-key" data-key="C">C</div>
+                <div class="keyboard-key" data-key="V">V</div>
+                <div class="keyboard-key" data-key="B">B</div>
+                <div class="keyboard-key" data-key="N">N</div>
+                <div class="keyboard-key" data-key="M">M</div>
+                <div class="keyboard-key" data-key="@">@</div>
+                <div class="keyboard-key" data-key=".">.</div>
+            </div>
+            <!-- Row 5 -->
+            <div class="keyboard-row">
+                <div class="keyboard-key spacebar" data-key=" ">SPACE</div>
+                <div class="keyboard-key special wide" data-key="ENTER" style="background: var(--primary); font-weight:700;"><i class="fas fa-magnifying-glass me-1"></i> SEARCH</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Badge Printing Animated Overlay -->
+    <div class="badge-modal-overlay" id="badge-overlay">
+        <div class="printer-container" id="printer-box">
+            <!-- Success Icon (revealed after print completed) -->
+            <div class="success-checkmark" id="print-success-check" style="display: none;">
+                <i class="fas fa-check"></i>
+            </div>
+            
+            <div class="printer-slot"></div>
+            
+            <!-- Badge Card -->
+            <div class="badge-card" id="badge-ticket">
+                <div class="badge-header">
+                    <div class="badge-logo">Sapthagiri Fest</div>
+                    <div class="badge-title" id="lbl-badge-event">EVENT TITLE</div>
+                    <span class="badge-role-pill">PARTICIPANT</span>
+                </div>
+                <div class="badge-details">
+                    <div class="badge-row">
+                        <span class="badge-lbl">Name</span>
+                        <span class="badge-val" id="lbl-badge-name">Kiran Biradar</span>
+                    </div>
+                    <div class="badge-row" id="badge-row-team">
+                        <span class="badge-lbl">Team</span>
+                        <span class="badge-val" id="lbl-badge-team">Alpha Crew</span>
+                    </div>
+                    <div class="badge-row">
+                        <span class="badge-lbl">Time</span>
+                        <span class="badge-val" id="lbl-badge-time">18:45:00</span>
+                    </div>
+                    <div class="badge-row">
+                        <span class="badge-lbl">Gate</span>
+                        <span class="badge-val">STATION-01</span>
+                    </div>
+                </div>
+                
+                <div class="barcode-mock"></div>
+                <div class="text-center font-monospace mt-1" style="font-size: 10px; color: var(--text-muted);" id="lbl-badge-regid">REG-123456789</div>
+            </div>
+            
+            <div class="printing-status-text text-white" id="lbl-print-status">
+                <i class="fas fa-spinner fa-spin me-2 text-primary"></i>Checking in & generating badge...
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Kiosk Clock
+        function updateClock() {
+            var now = new Date();
+            var hours = String(now.getHours()).padStart(2, '0');
+            var minutes = String(now.getMinutes()).padStart(2, '0');
+            var seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('live-clock').textContent = hours + ':' + minutes + ':' + seconds;
+
+            var options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('live-date').textContent = now.toLocaleDateString('en-US', options);
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Kiosk Input and Keyboard Logic
+        var searchInput = document.getElementById('kiosk-search-input');
+        var keys = document.querySelectorAll('.keyboard-key');
+
+        keys.forEach(function(key) {
+            key.addEventListener('click', function() {
+                var keyValue = key.getAttribute('data-key');
+                if (keyValue === 'BACKSPACE') {
+                    searchInput.value = searchInput.value.slice(0, -1);
+                } else if (keyValue === 'CLEAR') {
+                    searchInput.value = '';
+                    hideResults();
+                } else if (keyValue === 'ENTER') {
+                    triggerSearch();
+                } else {
+                    searchInput.value += keyValue;
+                }
+                
+                // Add keypress click animation simulation
+                key.classList.add('active');
+                setTimeout(function() {
+                    key.classList.remove('active');
+                }, 150);
+            });
+        });
+
+        // Search trigger
+        function triggerSearch() {
+            var val = searchInput.value.trim();
+            if (!val) return;
+
+            var resultsPanel = document.getElementById('kiosk-results');
+            resultsPanel.innerHTML = '<div class="text-center p-4 text-muted"><i class="fas fa-spinner fa-spin fs-4 mb-2"></i> Querying Access Records...</div>';
+            resultsPanel.style.display = 'block';
+
+            fetch('/checkin/kiosk/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: val })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.results.length > 0) {
+                    renderSearchResults(data.results);
+                } else {
+                    resultsPanel.innerHTML = '<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>No active registrations found. Please verify details.</div>';
+                }
+            })
+            .catch(err => {
+                console.error("Search error:", err);
+                resultsPanel.innerHTML = '<div class="text-center p-4 text-danger"><i class="fas fa-circle-xmark fs-3 mb-2"></i><br>Error connecting to access node.</div>';
+            });
+        }
+
+        function hideResults() {
+            var resultsPanel = document.getElementById('kiosk-results');
+            resultsPanel.style.display = 'none';
+            resultsPanel.innerHTML = '';
+        }
+
+        function renderSearchResults(results) {
+            var resultsPanel = document.getElementById('kiosk-results');
+            resultsPanel.innerHTML = '';
+
+            results.forEach(function(item) {
+                var row = document.createElement('div');
+                row.className = 'result-item';
+
+                var info = document.createElement('div');
+                var teamText = item.team_name ? ` // Team: ${item.team_name}` : '';
+                info.innerHTML = `
+                    <div class="info-title">${item.lead_name}${teamText}</div>
+                    <div class="info-sub"><i class="fas fa-award text-primary me-1"></i>${item.event_title} &bull; <i class="fas fa-fingerprint me-1"></i>${item.reg_id}</div>
+                `;
+
+                var actionWrapper = document.createElement('div');
+                actionWrapper.className = 'd-flex align-items-center gap-3';
+
+                var statusBadge = document.createElement('span');
+                statusBadge.className = 'badge-status ' + item.attendance.toLowerCase();
+                statusBadge.textContent = item.attendance;
+
+                var checkInBtn = document.createElement('button');
+                checkInBtn.className = 'btn btn-primary rounded-pill btn-sm px-3 fw-bold';
+                checkInBtn.innerHTML = '<i class="fas fa-check-double me-1"></i> Check In';
+                checkInBtn.onclick = function() {
+                    confirmCheckIn(item.reg_id);
+                };
+
+                actionWrapper.appendChild(statusBadge);
+                if (item.attendance !== 'Present') {
+                    actionWrapper.appendChild(checkInBtn);
+                }
+
+                row.appendChild(info);
+                row.appendChild(actionWrapper);
+                resultsPanel.appendChild(row);
+            });
+        }
+
+        // Confirm Kiosk Check-In with badge print animation
+        function confirmCheckIn(regId) {
+            var overlay = document.getElementById('badge-overlay');
+            var printerBox = document.getElementById('printer-box');
+            var checkmark = document.getElementById('print-success-check');
+            var badge = document.getElementById('badge-ticket');
+            var statusText = document.getElementById('lbl-print-status');
+
+            // Reset animation states
+            overlay.classList.add('active');
+            checkmark.style.display = 'none';
+            badge.classList.remove('print-active');
+            statusText.innerHTML = '<i class="fas fa-spinner fa-spin me-2 text-primary"></i>Accessing server database...';
+
+            fetch(`/checkin/kiosk/confirm/${regId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Pre-fill Badge details
+                    document.getElementById('lbl-badge-name').textContent = data.lead_name;
+                    document.getElementById('lbl-badge-event').textContent = data.event_title;
+                    document.getElementById('lbl-badge-regid').textContent = regId;
+                    
+                    var teamRow = document.getElementById('badge-row-team');
+                    if (data.team_name) {
+                        document.getElementById('lbl-badge-team').textContent = data.team_name;
+                        teamRow.style.display = 'flex';
+                    } else {
+                        teamRow.style.display = 'none';
+                    }
+                    
+                    var checkinTime = data.checkin_time || new Date().toLocaleTimeString();
+                    document.getElementById('lbl-badge-time').textContent = checkinTime;
+
+                    // Start badge print animation sequence
+                    setTimeout(function() {
+                        statusText.innerHTML = '<i class="fas fa-print fa-bounce me-2 text-primary"></i>Printing gate badge... Please wait';
+                        badge.classList.add('print-active');
+                    }, 800);
+
+                    // Complete animation sequence
+                    setTimeout(function() {
+                        statusText.innerHTML = '<i class="fas fa-circle-check text-success me-2"></i>Attendance Confirmed! Access Granted.';
+                        checkmark.style.display = 'flex';
+                        
+                        // Flash success glow
+                        checkmark.style.animation = 'bounceIn 0.5s ease both';
+                    }, 2800);
+
+                    // Auto-reset kiosk after 6 seconds
+                    setTimeout(function() {
+                        overlay.classList.remove('active');
+                        searchInput.value = '';
+                        hideResults();
+                    }, 8000);
+
+                } else {
+                    statusText.innerHTML = `<i class="fas fa-triangle-exclamation text-danger me-2"></i>Error: ${data.error}`;
+                    setTimeout(function() {
+                        overlay.classList.remove('active');
+                    }, 4000);
+                }
+            })
+            .catch(err => {
+                console.error("Check-in error:", err);
+                statusText.innerHTML = '<i class="fas fa-circle-xmark text-danger me-2"></i>Network communication failure.';
+                setTimeout(function() {
+                    overlay.classList.remove('active');
+                }, 4000);
+            });
+        }
+    </script>
+</body>
+</html>

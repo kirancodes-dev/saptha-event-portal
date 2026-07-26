@@ -4,18 +4,27 @@ import os
 import time
 import datetime
 
-import razorpay
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
-                   request, session)
-from google.cloud import firestore
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    import razorpay
+except ImportError:
+    razorpay = None
 
-def _db():
-    from app import db
-    return db
-from utils import log_action
-from tasks.email_tasks import send_ticket_email_task
-from tasks.notification_tasks import send_ticket_whatsapp_task, send_payment_receipt_whatsapp_task
+try:
+    from google.cloud import firestore
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    firestore = FieldFilter = None
+
+try:
+    from tasks.email_tasks import send_ticket_email_task
+except ImportError:
+    def send_ticket_email_task(*a, **kw): pass
+
+try:
+    from tasks.notification_tasks import send_ticket_whatsapp_task, send_payment_receipt_whatsapp_task
+except ImportError:
+    def send_ticket_whatsapp_task(*a, **kw): pass
+    def send_payment_receipt_whatsapp_task(*a, **kw): pass
 
 payment_bp = Blueprint('payment', __name__, url_prefix='/payment')
 

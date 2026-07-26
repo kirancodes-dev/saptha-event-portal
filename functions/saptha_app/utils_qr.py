@@ -15,8 +15,12 @@ Usage as a route:
 """
 import io
 import base64
-import qrcode
-from qrcode.image.pil import PilImage
+try:
+    import qrcode
+    from qrcode.image.pil import PilImage
+except ImportError:
+    qrcode = None
+    PilImage = None
 from flask import Response
 
 

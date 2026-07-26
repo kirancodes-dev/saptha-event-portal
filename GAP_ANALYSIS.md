@@ -3,17 +3,18 @@
 The Saptha Event Portal has a strong functional foundation. To transition from a working project to a market-ready product, technical, architectural, and legal compliance gaps are tracked below.
 
 ## 1. Technical & Architectural Gaps 🛠️
-- **[DECISION CONFIRMED — OPTION B] Database Consolidation (Pure Firestore Native):** Confirmed decision to standardize on Google Cloud Firestore as the single source of truth. Firestore natively powers the live Cloud Run deployment and real-time SSE leaderboards without consistency bugs. The `SQLFirestoreAdapter` in `db_adapter.py` will be streamlined to pure Firestore document semantics, removing unused relational translation overhead.
-- **CI/CD Automation:** Implement a full deployment pipeline (e.g., GitHub Actions) including:
-    - Automated linting and formatting.
-    - Automated unit and integration tests.
-    - Staging vs. Production environment separation.
+- **[PHASE 1 COMPLETE] Database Consolidation (Pure Firestore Native):** Confirmed decision to standardize on Google Cloud Firestore as the single source of truth. Phase 1 delivers durable multi-worker persistent document store for compliance collections (`user_consent`, `deletion_requests`, `push_subscriptions`, `announcements`) with atomic upsert (Postgres `ON CONFLICT` / SQLite `INSERT OR REPLACE`), error propagation to route handlers, and `updated_at` audit timestamps. Phase 2 will expand to `form_submissions` and `audit_log`.
+- **[RESOLVED] CI/CD Automation:** Full GitHub Actions pipeline live in `.github/workflows/ci.yml`:
+    - **Lint**: ruff (E/W/F rules)
+    - **Test**: pytest with coverage + Codecov upload, Redis service container
+    - **Docker Build**: BuildKit with GHA cache (main/master only)
+    - **Security Scan**: bandit static analysis
 - **API Specification:** No formal API documentation exists. A Swagger/OpenAPI specification is required for any external integrations or mobile app developers.
 - **Scaling Strategy:** While Celery is used, a formal load-testing report and auto-scaling configuration for web servers are missing.
 
 ## 2. User Experience (UX) & Interface Gaps 🎨
 - **Design System:** Jinja2 base templates upgraded to modern dark/neon theme system (`base_classic.html`) with glassmorphism and aurora overlay elements.
-- **Accessibility (a11y):** ARIA labels and keyboard navigation audit for institutional software compliance.
+- **Accessibility (a11y):** ARIA labels present in core templates. Full keyboard navigation audit pending for institutional software compliance.
 - **Onboarding Flow:** Interactive onboarding wizard (`/onboarding/wizard`) available for SPOCs and self-service organizations.
 - **Mobile Polish:** PWA support with mobile navigation drawer and responsive dashboard widgets.
 
@@ -25,7 +26,7 @@ The Saptha Event Portal has a strong functional foundation. To transition from a
 
 ## 4. Business & Compliance Gaps ⚖️
 - **[RESOLVED] Legal Framework:** Added dedicated Terms of Service (`/terms`) and Privacy Policy (`/privacy`) pages, linked cleanly across all site navigation and footers (`base_classic.html`, `index.html`, `landing.html`).
-- **[RESOLVED] Data Compliance:** Implemented full Indian DPDP Act 2023 & GDPR Article 17 / Article 20 compliance suite (`/compliance/settings`, `/compliance/export-data`, `/compliance/delete-request`, `/compliance/consent`).
+- **[RESOLVED] Data Compliance:** Implemented full Indian DPDP Act 2023 & GDPR Article 17 / Article 20 compliance suite (`/compliance/settings`, `/compliance/export-data`, `/compliance/delete-request`, `/compliance/consent`). Write failures return HTTP 500 (not false-positive 200).
 - **SLA & Support:** Public SLA status dashboard (`/compliance/sla`).
 - **Monetization Engine:** Organization multi-tenancy and tier subscription billing (`middleware_tenant.py`).
 
@@ -34,9 +35,10 @@ The Saptha Event Portal has a strong functional foundation. To transition from a
 ### Summary Priority Matrix
 | Priority | Gap | Status | Impact | Effort |
 | :--- | :--- | :--- | :--- | :--- |
-| 🔴 **Critical** | Database Consolidation (Pure Firestore) | Option B Standardized | High (Cleanliness) | Low |
+| ✅ **Resolved** | Database Consolidation (Phase 1) | Phase 1 Complete | High (Cleanliness) | Low |
 | ✅ **Resolved** | Legal/Privacy Compliance (DPDP & GDPR) | Completed | High (Risk) | Low |
+| ✅ **Resolved** | CI/CD Pipeline | Live (ci.yml) | Medium (Quality) | Done |
 | 🟡 **High** | Design System/UX Polish | In Progress | High (Perception) | High |
-| 🟡 **High** | CI/CD Pipeline | Planned | Medium (Quality) | Medium |
+| 🟡 **High** | Accessibility (a11y) Audit | Partial | Medium (Compliance) | Medium |
 | 🟢 **Medium** | Calendar Integrations | Planned | Medium (Value) | Medium |
-| 🟢 **Medium** | API Documentation | Planned | Low (Scale) | Medium |
+| 🟢 **Medium** | API Documentation (OpenAPI) | Planned | Low (Scale) | Medium |

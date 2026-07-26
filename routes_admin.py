@@ -3,7 +3,10 @@ import datetime
 import json
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session
-from google.cloud import firestore
+try:
+    from google.cloud import firestore
+except ImportError:
+    firestore = None
 from werkzeug.security import generate_password_hash
 
 from models import db

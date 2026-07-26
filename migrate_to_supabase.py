@@ -20,8 +20,14 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+except ImportError:
+    firebase_admin = None
+try:
+    from firebase_admin import credentials, firestore
+except ImportError:
+    credentials = firestore = auth = None
 from sqlalchemy.orm import Session
 
 # Import SQLAlchemy DB helpers and Models

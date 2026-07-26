@@ -5,7 +5,10 @@ Shows a shareable profile of a student's events, certificates, and achievements.
 Public read-only; no auth required. Only publishes confirmed + attended events.
 """
 from flask import Blueprint, abort, render_template
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 from models import db
 

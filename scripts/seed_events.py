@@ -5,8 +5,14 @@ Run from project root: python scripts/seed_events.py
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+except ImportError:
+    firebase_admin = None
+try:
+    from firebase_admin import credentials, firestore
+except ImportError:
+    credentials = firestore = auth = None
 from werkzeug.security import generate_password_hash
 from datetime import date, timedelta
 

@@ -53,8 +53,14 @@ import json
 import logging
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
-from google import genai
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google import genai
+except ImportError:
+    genai = None
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 from models import db
 from utils import login_required, role_required, log_action

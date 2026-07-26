@@ -1,7 +1,10 @@
 # routes_dynamic_pricing.py — Surge Pricing & Dynamic Ticket Engine Blueprint
 import logging
 from flask import Blueprint, jsonify
-from google.cloud.firestore_v1.base_query import FieldFilter
+try:
+    from google.cloud.firestore_v1.base_query import FieldFilter
+except ImportError:
+    FieldFilter = None
 
 dynamic_pricing_bp = Blueprint('dynamic_pricing', __name__, url_prefix='/api/pricing')
 logger = logging.getLogger(__name__)

@@ -4,7 +4,10 @@
 import json
 import logging
 from flask import Blueprint, request, jsonify, current_app, session
-from google import genai
+try:
+    from google import genai
+except ImportError:
+    genai = None
 def _db():
     from app import db
     return db

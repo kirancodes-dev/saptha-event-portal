@@ -30,8 +30,14 @@ sys.path.insert(0, '.')
 from werkzeug.security import generate_password_hash
 
 # ── Firebase init (reuse models.py pattern) ───────────────────────────────────
-import firebase_admin
-from firebase_admin import credentials, firestore
+try:
+    import firebase_admin
+except ImportError:
+    firebase_admin = None
+try:
+    from firebase_admin import credentials, firestore
+except ImportError:
+    credentials = firestore = auth = None
 
 if not firebase_admin._apps:
     key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')

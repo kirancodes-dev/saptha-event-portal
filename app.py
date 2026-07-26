@@ -234,13 +234,12 @@ if not firebase_admin._apps:
             logger.info("Firebase: Initialized with Application Default Credentials (GCP/Cloud Run)")
             firebase_initialized = True
         except Exception as exc:
-            if os.environ.get('FLASK_ENV') == 'production':
-                logger.critical("ERROR: Firebase initialization failed in production!")
-                raise EnvironmentError(
-                    "Firebase credentials required in production. Set FIREBASE_CREDENTIALS env var with valid service account JSON."
-                )
+            if os.environ.get('DATABASE_TYPE') == 'postgres' or os.environ.get('SUPABASE_URL'):
+                logger.info("Firebase: Skipped (using PostgreSQL/Supabase database engine)")
+            elif os.environ.get('FLASK_ENV') == 'production':
+                logger.warning("Firebase credentials warning: %s. Continuing with database adapter.", exc)
             else:
-                logger.warning("⚠️  Firebase not initialized for dev mode: %s. DB operations will fail - see docs for setup.", exc)
+                logger.warning("⚠️  Firebase not initialized for dev mode: %s.", exc)
 
 # Initialize database client (reusing resolution logic in models)
 from models import db, DATABASE_TYPE

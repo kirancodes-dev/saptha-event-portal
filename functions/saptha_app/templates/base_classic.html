@@ -1,0 +1,199 @@
+<!-- Base Template - Use as foundation for all pages -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a2557">
+    <!-- ═══ SEO Meta Tags ═══ -->
+    <meta name="description" content="{% block meta_description %}SapthaEvent: Official event management portal for Sapthagiri NPS University. Manage events, register participants, and track event attendance.{% endblock %}">
+    <meta name="keywords" content="events, management, SNPSU, Sapthagiri, university, portal">
+    <meta name="author" content="Sapthagiri NPS University">
+    <meta name="robots" content="noindex, follow">
+    <meta name="language" content="English">
+    <!-- CSRF token for fetch()/XHR (HTML forms use a hidden input instead) -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <!-- ═══ Canonical URL ═══ -->
+    <link rel="canonical" href="https://events.snpsu.edu.in">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    {% include 'includes/pwa_head.html' %}
+    <title>{% block title %}Page Title{% endblock %} | SapthaEvent Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to Main Content</a>
+    <!-- Sidebar Navigation -->
+    {% if not public_layout %}
+        <div class="sidebar-overlay"></div>
+        <aside class="sidebar" role="complementary" aria-label="Navigation sidebar">
+            <div class="sidebar-brand">
+                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 32px; width: auto; object-fit: contain; margin-right: 8px;">
+                <div class="brand-text" aria-label="SapthaEvent Dashboard">Saptha<span>Event</span></div>
+            </div>
+
+            <nav class="sidebar-menu" role="navigation" aria-label="Main navigation">
+                <!-- Dashboard Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title" id="dash-section">Dashboard</div>
+                    <a href="/dashboard" class="nav-link {% if current_page == 'dashboard' %}active{% endif %}" aria-current="{% if current_page == 'dashboard' %}page{% else %}false{% endif %}">
+                        <i class="fas fa-chart-line" aria-hidden="true"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/events" class="nav-link {% if current_page == 'events' %}active{% endif %}" aria-current="{% if current_page == 'events' %}page{% else %}false{% endif %}">
+                        <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                        <span>Events</span>
+                    </a>
+                </div>
+
+                <!-- Management Section (Admin Only) -->
+                {% if user_role == 'admin' %}
+                    <div class="nav-section">
+                        <div class="nav-section-title" id="mgmt-section">Management</div>
+                        <a href="/admin/events" class="nav-link">
+                            <i class="fas fa-cog" aria-hidden="true"></i>
+                            <span>Manage Events</span>
+                        </a>
+                        <a href="/admin/users" class="nav-link">
+                            <i class="fas fa-users" aria-hidden="true"></i>
+                            <span>Users</span>
+                        </a>
+                        <a href="/admin/sponsors" class="nav-link {% if current_page == 'sponsors' %}active{% endif %}">
+                            <i class="fas fa-handshake" aria-hidden="true"></i>
+                            <span>Sponsors</span>
+                        </a>
+                    </div>
+                {% endif %}
+
+                <!-- Account Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title" id="acct-section">Account</div>
+                    <a href="/profile" class="nav-link">
+                        <i class="fas fa-user-circle" aria-hidden="true"></i>
+                        <span>Profile</span>
+                    </a>
+                    <a href="/settings" class="nav-link">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Settings</span>
+                    </a>
+                    <a href="/compliance/settings" class="nav-link">
+                        <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                        <span>Privacy & DPDP</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p>© 2024 Sapthagiri | <a href="/privacy" style="color:rgba(255,255,255,0.6);text-decoration:none;">Privacy</a> | <a href="/terms" style="color:rgba(255,255,255,0.6);text-decoration:none;">Terms</a></p>
+            </div>
+        </aside>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="main-content {% if public_layout %}public-layout{% endif %}">
+        <!-- Top Header (if not public) -->
+        {% if not public_layout %}
+            <header class="top-header" role="banner">
+                <div class="header-left">
+                    <button class="menu-toggle" aria-label="Toggle Sidebar" type="button">
+                        <i class="fas fa-bars" aria-hidden="true"></i>
+                    </button>
+                    <h1 class="header-title" id="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                </div>
+                <div class="header-right">
+                    <!-- Notifications -->
+                    <a href="/notifications" class="btn-icon-link me-2" aria-label="Notifications" style="position: relative; color: var(--ink-700); font-size: 1.15rem; transition: color var(--t-fast); text-decoration: none;">
+                        <i class="fas fa-bell"></i>
+                        <span id="notif-badge" class="badge bg-danger rounded-pill" style="position: absolute; top: -5px; right: -5px; font-size: 0.65rem; padding: 0.25em 0.4em; display: none;"></span>
+                    </a>
+                    
+                    <!-- Theme Toggle -->
+                    <button class="btn-icon-link me-3" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
+                        <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
+                    </button>
+
+                    <!-- User Avatar -->
+                    <div class="user-menu" role="region" aria-label="User menu">
+                        <a href="/profile" style="text-decoration: none;" aria-label="View Profile">
+                            <div class="user-avatar" aria-label="User profile avatar with initials">{{ user_initials | default('U') }}</div>
+                        </a>
+                    </div>
+                </div>
+            </header>
+        {% endif %}
+
+        <!-- Page Content -->
+        <main class="content-wrapper" id="main-content" role="main" aria-labelledby="page-title">
+            {% block content %}
+                <div class="card">
+                    <div class="card-body">
+                        <p>Welcome to SapthaEvent Portal</p>
+                    </div>
+                </div>
+            {% endblock %}
+        </div>
+    </div>
+
+    <script>
+        // Mobile sidebar toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuToggle = document.querySelector('.menu-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    overlay.classList.toggle('active');
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                });
+            }
+
+            // Clean up mobile sidebar classes on window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 991) {
+                    if (sidebar) sidebar.classList.remove('active');
+                    if (overlay) overlay.classList.remove('active');
+                }
+            });
+        });
+    </script>
+    <script>
+        // Auto-attach CSRF token to same-origin mutating fetch() requests.
+        (function () {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            var token = meta ? meta.getAttribute('content') : '';
+            if (!token || !window.fetch) return;
+            var origFetch = window.fetch.bind(window);
+            window.fetch = function (input, init) {
+                init = init || {};
+                var method = (init.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].indexOf(method) === -1) {
+                    return origFetch(input, init);
+                }
+                var url = typeof input === 'string' ? input : (input && input.url) || '';
+                try {
+                    var u = new URL(url, window.location.origin);
+                    if (u.origin !== window.location.origin) return origFetch(input, init);
+                } catch (_) {}
+                var headers = new Headers(init.headers || {});
+                if (!headers.has('X-CSRFToken')) headers.set('X-CSRFToken', token);
+                init.headers = headers;
+                if (!init.credentials) init.credentials = 'same-origin';
+                return origFetch(input, init);
+            };
+        })();
+    </script>
+    <script src="/static/js/global.js"></script>
+    <script src="/static/js/command-palette.js" defer></script>
+    <script src="/static/js/offline-sync.js" defer></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,86 @@
+{% extends "base_classic.html" %}
+{% block title %}Privacy Policy — SapthaEvent{% endblock %}
+{% block content %}
+<div style="max-width:800px;margin:48px auto;padding:0 16px;font-family:'Inter',sans-serif;color:#374151;line-height:1.8;">
+  <h1 style="color:#1a2557;font-size:28px;font-weight:800;margin-bottom:8px;">Privacy Policy</h1>
+  <p style="color:#6b7280;font-size:13px;margin-bottom:40px;">
+    Last updated: May 2026 &middot; Sapthagiri NPS University — SapthaEvent Portal
+  </p>
+
+  <div style="background:#eff6ff;border-left:4px solid #1a2557;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:32px;">
+    <p style="margin:0;font-size:14px;color:#1e40af;">
+      This policy is issued in compliance with the <strong>Information Technology Act, 2008</strong>
+      and the <strong>Digital Personal Data Protection (DPDP) Act, 2023</strong> of India.
+    </p>
+  </div>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;">1. Information We Collect</h2>
+  <p>When you use SapthaEvent, we collect:</p>
+  <ul>
+    <li><strong>Identity data:</strong> Full name, email address, phone number, University Serial Number (USN)</li>
+    <li><strong>Event data:</strong> Event registrations, attendance records, scores, certificates</li>
+    <li><strong>Payment data:</strong> Transaction IDs (processed securely via Razorpay — we do not store card details)</li>
+    <li><strong>Usage data:</strong> Login timestamps, IP addresses (for security audit logs only)</li>
+  </ul>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">2. How We Use Your Data</h2>
+  <ul>
+    <li>Registering you for events and generating your entry ticket</li>
+    <li>Sending confirmation emails, QR tickets, and certificates</li>
+    <li>Notifying you via WhatsApp (if you provide your number)</li>
+    <li>Generating academic achievement records for the university</li>
+    <li>Fraud prevention and security monitoring</li>
+  </ul>
+  <p>We do <strong>not</strong> sell your personal data to any third party.</p>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">3. Data Sharing</h2>
+  <p>Your data may be shared with:</p>
+  <ul>
+    <li><strong>Sapthagiri NPS University</strong> — for academic records and event coordination</li>
+    <li><strong>Google Firebase/Firestore</strong> — our database provider (data stored in India)</li>
+    <li><strong>Razorpay</strong> — payment processing (PCI-DSS compliant)</li>
+    <li><strong>Brevo / Twilio</strong> — email and WhatsApp delivery services</li>
+    <li><strong>Government authorities</strong> — if required by law</li>
+  </ul>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">4. Data Retention</h2>
+  <p>
+    Registration and attendance data is retained for <strong>5 years</strong> as required for
+    academic records. You may request deletion of your personal account data by writing to us,
+    subject to legal retention requirements.
+  </p>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">5. Your Rights (DPDP Act 2023)</h2>
+  <ul>
+    <li>Right to access the personal data we hold about you</li>
+    <li>Right to correct inaccurate personal data</li>
+    <li>Right to erasure (where not required for legal/academic purposes)</li>
+    <li>Right to lodge a complaint with the Data Protection Board of India</li>
+  </ul>
+  <p>To exercise your rights, email: <a href="mailto:sapthhack@gmail.com" style="color:#1a2557;">sapthhack@gmail.com</a></p>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">6. Cookies & Sessions</h2>
+  <p>
+    We use a server-side session cookie (<code>session</code>) to keep you logged in. This cookie
+    does not track you across other websites. No advertising or third-party tracking cookies are used.
+  </p>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">7. Security</h2>
+  <p>
+    Passwords are hashed using bcrypt/scrypt. All connections are TLS-encrypted (HTTPS).
+    Session data is stored server-side in Redis. We run regular security audits.
+  </p>
+
+  <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">8. Contact</h2>
+  <p>
+    <strong>Data Controller:</strong> Sapthagiri NPS University, Bengaluru, Karnataka<br>
+    <strong>Email:</strong> <a href="mailto:sapthhack@gmail.com" style="color:#1a2557;">sapthhack@gmail.com</a><br>
+    <strong>Address:</strong> Hesarghatta Main Rd, Chikkabanavara, Bengaluru - 560090
+  </p>
+
+  <div style="margin-top:48px;padding-top:24px;border-top:1px solid #e5e7eb;text-align:center;">
+    <a href="/terms" style="color:#1a2557;font-size:13px;margin-right:24px;">Terms of Service</a>
+    <a href="/" style="color:#6b7280;font-size:13px;">Back to Home</a>
+  </div>
+</div>
+{% endblock %}

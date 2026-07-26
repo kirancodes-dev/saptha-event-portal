@@ -1,0 +1,2211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a2557">
+
+<!-- ═══ SEO Meta Tags ═══ -->
+<title>SapthaEvent | Event Management Portal - Sapthagiri NPS University</title>
+<meta name="description" content="SapthaEvent: Official event management portal for Sapthagiri NPS University. Register for technical, cultural, and sports events. Instant QR tickets, AI assistant, and email/WhatsApp alerts.">
+<meta name="keywords" content="events, registration, university, SNPSU, hackathon, cultural fest, sports meet, QR tickets, event portal">
+<meta name="author" content="Sapthagiri NPS University">
+<meta name="robots" content="index, follow">
+<meta name="language" content="English">
+
+<!-- ═══ Open Graph (Social Media) ═══ -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="SapthaEvent - Sapthagiri NPS University Event Portal">
+<meta property="og:description" content="Discover and register for campus events. Get instant QR tickets and event updates via email and WhatsApp.">
+<meta property="og:url" content="https://events.snpsu.edu.in">
+<meta property="og:image" content="/static/snpsu-logo.png">
+<meta property="og:site_name" content="SapthaEvent">
+
+<!-- ═══ Twitter Card ═══ -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SapthaEvent - SNPSU Event Portal">
+<meta name="twitter:description" content="Register for campus events, get instant QR tickets, and receive alerts.">
+<meta name="twitter:image" content="/static/snpsu-logo.png">
+
+<!-- ═══ Canonical URL ═══ -->
+<link rel="canonical" href="https://events.snpsu.edu.in">
+
+<!-- ═══ Favicons ═══ -->
+<link rel="icon" type="image/png" href="/static/app-icon.png">
+<link rel="apple-touch-icon" href="/static/app-icon.png">
+
+{% include 'includes/pwa_head.html' %}
+
+<!-- ═══ Stylesheets ═══ -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/global.css?v=1.0.2" rel="stylesheet">
+<link href="/static/css/mobile.css?v=1.0.2" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME PAGE — PREMIUM DARK AURORA VOID THEME
+   Matches the student dashboard design language
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.skip-link{position:absolute;top:-40px;left:0;background:var(--blue);color:#fff;padding:8px 16px;text-decoration:none;z-index:100;border-radius:0 0 4px 0;}
+.skip-link:focus{top:0;}
+
+/* Enhanced focus indicators */
+*:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--orange);outline-offset:2px;}
+
+/* Reduced motion for accessibility */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+}
+
+/* High contrast mode support */
+@media(prefers-contrast:more){
+  body{font-weight:600;}
+  h1,h2,h3,h4,h5,h6{font-weight:900;}
+  .btn-reg,.h-btn-primary,.modal-btn-primary{border:2px solid currentColor;}
+}
+
+/* ── DARK AURORA BODY ── */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background: #030712 !important;
+  color: #9ca3af !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── AURORA BACKGROUND ── */
+.aurora-bg-home {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-orb-home {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  animation: aurora-float-home 20s ease-in-out infinite alternate;
+}
+.aurora-orb-home:nth-child(1) { width:60vw; height:60vw; top:-20%; left:-10%; background:#8b5cf6; animation-delay:0s; }
+.aurora-orb-home:nth-child(2) { width:50vw; height:50vw; top:30%; right:-15%; background:#3b82f6; animation-delay:-5s; }
+.aurora-orb-home:nth-child(3) { width:45vw; height:45vw; bottom:-10%; left:20%; background:#10b981; animation-delay:-10s; opacity:0.08; }
+.aurora-orb-home:nth-child(4) { width:35vw; height:35vw; top:50%; left:50%; background:#f59e0b; animation-delay:-15s; opacity:0.06; }
+
+@keyframes aurora-float-home {
+  0%   { transform: translate(0,0) scale(1); }
+  33%  { transform: translate(5vw,-3vh) scale(1.1); }
+  66%  { transform: translate(-3vw,5vh) scale(0.95); }
+  100% { transform: translate(2vw,-2vh) scale(1.05); }
+}
+
+/* ── GRID OVERLAY ── */
+.grid-overlay-home {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ── DARK SECTION OVERRIDES ── */
+#events {
+  background: transparent !important;
+}
+.social-proof-section {
+  background: transparent !important;
+}
+.hiw-section {
+  background: rgba(255,255,255,0.02) !important;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.hiw-section::before {
+  background: radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%) !important;
+}
+
+/* ── DARK SECTION HEADINGS ── */
+.sec-eyebrow { color: #f59e0b !important; }
+.sec-h { color: #f9fafb !important; }
+.sec-p { color: #9ca3af !important; }
+
+/* Sleek Search Box and Filter controls — DARK */
+.search-box input {
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    color: #f9fafb !important;
+    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    font-size: 0.9rem;
+    border-radius: var(--radius-pill);
+    transition: var(--t-fast);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.search-box input::placeholder {
+    color: #6b7280 !important;
+}
+.search-box input:focus {
+    border-color: rgba(245,158,11,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.1) !important;
+    outline: none;
+    background: rgba(255,255,255,0.06) !important;
+}
+.search-box i {
+    color: #6b7280 !important;
+    z-index: 10;
+}
+
+/* Horizontal scrolling categories on mobile */
+@media (max-width: 991.98px) {
+    .ftabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Hide standard scrollbar in Firefox */
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    .ftabs::-webkit-scrollbar {
+        display: none; /* Hide scrollbar in Webkit browsers */
+    }
+    .ftab {
+        flex: 0 0 auto !important; /* Prevent tabs from shrinking */
+        white-space: nowrap;
+    }
+}
+
+/* Load More Button style — DARK */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+}
+.btn-load-more {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #f9fafb;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.75rem 2.25rem;
+    border-radius: var(--radius-pill);
+    box-shadow: none;
+    transition: var(--t-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+}
+.btn-load-more:hover {
+    background: rgba(245,158,11,0.15);
+    border-color: rgba(245,158,11,0.4);
+    color: #fbbf24;
+    transform: translateY(-2px);
+}
+.btn-load-more:active {
+    transform: translateY(0);
+}
+
+/* Sticky Controls Wrapper styling — DARK */
+.sticky-controls-wrapper {
+    position: sticky;
+    top: 58px;
+    z-index: 1010;
+    background: rgba(3,7,18,0.7) !important;
+    padding: 12px 0;
+    transition: box-shadow var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+    border-bottom: 1px solid transparent;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+.sticky-controls-wrapper.is-sticky {
+    box-shadow: 0 8px 32px -8px rgba(0,0,0,0.5) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    background: rgba(3,7,18,0.92) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+/* Clear Search Button style */
+.btn-clear-search {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--t-fast);
+}
+.btn-clear-search:hover {
+    color: var(--snpsu-blue) !important;
+    transform: scale(1.1);
+}
+
+/* Category capsule scrolling container & hints — DARK */
+.ftabs-scroll-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+.ftabs-scroll-container::before,
+.ftabs-scroll-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity var(--t-fast) ease;
+}
+.ftabs-scroll-container::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(3,7,18,0.95) 20%, transparent);
+}
+.ftabs-scroll-container::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(3,7,18,0.95) 20%, transparent);
+}
+.ftabs-scroll-container.can-scroll-left::before {
+    opacity: 1;
+}
+.ftabs-scroll-container.can-scroll-right::after {
+    opacity: 1;
+}
+
+/* Inactive vs Active tab capsules — DARK */
+.ftab {
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: #9ca3af !important;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: var(--radius-pill);
+    transition: var(--t-fast);
+    box-shadow: none;
+}
+.ftab:hover {
+    border-color: rgba(245,158,11,0.3) !important;
+    color: #f9fafb !important;
+    background: rgba(255,255,255,0.06) !important;
+}
+.ftab.active {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    border-color: #f59e0b !important;
+    color: #030712 !important;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.25);
+    font-weight: 800;
+}
+
+/* Quick Filter Pills — DARK */
+.q-filter-pill {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #9ca3af;
+    padding: 4px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all var(--t-fast) ease;
+    cursor: pointer;
+    min-height: 32px !important;
+    box-shadow: none;
+}
+.q-filter-pill:hover {
+    border-color: rgba(255,255,255,0.15);
+    color: #f9fafb;
+}
+.q-filter-pill.active {
+    background: rgba(59,130,246,0.2);
+    border-color: rgba(59,130,246,0.4);
+    color: #93c5fd !important;
+    box-shadow: 0 4px 10px rgba(59,130,246,0.15);
+}
+/* Individual Color coding for active states */
+.q-filter-pill.active#qfFree {
+    background: rgba(16,185,129,0.2) !important;
+    border-color: rgba(16,185,129,0.4) !important;
+    color: #6ee7b7 !important;
+}
+.q-filter-pill.active#qfSoon {
+    background: rgba(245,158,11,0.2) !important;
+    border-color: rgba(245,158,11,0.4) !important;
+    color: #fbbf24 !important;
+}
+
+/* Mobile responsive compact styling overrides — DARK */
+@media (max-width: 991.98px) {
+    .sticky-controls-wrapper {
+        top: 54px;
+        padding: 8px 0;
+    }
+    .ftabs-scroll-container::before {
+        background: linear-gradient(to right, rgba(3,7,18,0.95) 10%, transparent);
+    }
+    .ftabs-scroll-container::after {
+        background: linear-gradient(to left, rgba(3,7,18,0.95) 10%, transparent);
+    }
+}
+
+/* ── DARK EVENT CARDS ── */
+.ev-card {
+    background: rgba(255,255,255,0.035) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 20px !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2) !important;
+}
+.ev-card:hover {
+    background: rgba(255,255,255,0.06) !important;
+    border-color: rgba(245,158,11,0.2) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35) !important;
+}
+.ev-title {
+    color: #f9fafb !important;
+}
+.ev-desc {
+    color: #9ca3af !important;
+}
+.ev-meta span {
+    color: #6b7280 !important;
+}
+.ev-meta {
+    border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+.ev-fee-free {
+    color: #34d399 !important;
+}
+.ev-fee-paid {
+    color: #93c5fd !important;
+}
+.ev-reg-count {
+    color: #6b7280 !important;
+}
+.btn-reg {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: #030712 !important;
+    font-weight: 800 !important;
+}
+.btn-reg:hover {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+    color: #030712 !important;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.35) !important;
+}
+.no-events-box {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+}
+.no-events-box i { color: #6b7280 !important; }
+.no-events-box h5 { color: #9ca3af !important; }
+.no-events-box p { color: #6b7280 !important; }
+#noSearchResults .no-events-box {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+}
+#noSearchResults h5 { color: #9ca3af !important; }
+#noSearchResults p { color: #6b7280 !important; }
+#noSearchResults i { color: #6b7280 !important; }
+
+/* ── DARK TESTIMONIAL CARDS ── */
+.testimonial-card {
+    background: rgba(255,255,255,0.035) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2) !important;
+}
+.testimonial-card:hover {
+    background: rgba(255,255,255,0.06) !important;
+    border-color: rgba(245,158,11,0.2) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35) !important;
+}
+.testimonial-name { color: #f9fafb !important; }
+.testimonial-role { color: #6b7280 !important; }
+.testimonial-text { color: #9ca3af !important; }
+.testimonial-quote { color: rgba(245,158,11,0.08) !important; }
+.testimonial-avatar {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* ── DARK SKELETON CARDS ── */
+.skeleton-card {
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 20px !important;
+}
+.skeleton {
+    background: rgba(255,255,255,0.06) !important;
+}
+
+/* ── DARK EVENT MODAL ── */
+#eventModal .modal-content {
+    background: rgba(15,20,40,0.95) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: #9ca3af;
+}
+#eventModal .modal-header {
+    border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+#eventModal .modal-title {
+    color: #f9fafb !important;
+}
+#eventModal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+}
+#eventModal .event-modal-meta-item { color: #9ca3af; }
+#eventModal .event-modal-meta-item i { color: #f59e0b; }
+#eventModal .event-modal-section h5 { color: #f9fafb; }
+#eventModal .event-modal-section p { color: #9ca3af; }
+#eventModal .modal-btn-primary {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: #030712 !important;
+}
+#eventModal .modal-btn-secondary {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: #9ca3af !important;
+}
+/* Mobile bottom drawer modal dark */
+@media (max-width: 576px) {
+    #eventModal .modal-content {
+        border-top: 1px solid rgba(255,255,255,0.08) !important;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.5) !important;
+    }
+    #eventModal .modal-content::before {
+        background: rgba(255,255,255,0.15) !important;
+    }
+}
+
+/* ── DARK FLASH MESSAGES ── */
+.alert { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.1) !important; color: #f9fafb !important; }
+
+/* Event detail modal styled like a premium bottom drawer on mobile */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+    .modal-content {
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+        border: none;
+        border-top: 1px solid var(--ink-200);
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    /* Add a visual indicator drag bar on top of mobile modal content */
+    .modal-content::before {
+        content: '';
+        width: 40px;
+        height: 4px;
+        background: var(--ink-300);
+        border-radius: 2px;
+        margin: 10px auto 0;
+        display: block;
+    }
+    .modal-header {
+        border-bottom: none;
+        padding-top: 0.5rem;
+    }
+}
+
+/* Voice search styles */
+.btn-voice-search {
+    transition: var(--t-fast);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-voice-search:hover {
+    color: #f59e0b !important;
+    background: rgba(245, 158, 11, 0.1);
+}
+.btn-voice-search.listening {
+    color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1);
+    animation: pulse-mic 1.2s infinite ease-in-out;
+}
+@keyframes pulse-mic {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Chatbot onboarding prompt bubble */
+.chat-prompt-bubble {
+    position: absolute;
+    bottom: 80px;
+    right: 0;
+    background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-light));
+    color: white;
+    padding: 10px 16px;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px rgba(26, 37, 87, 0.25);
+    z-index: 1000;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.chat-prompt-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    padding: 0 4px;
+    cursor: pointer;
+    transition: color var(--t-fast);
+}
+
+.chat-prompt-close:hover {
+    color: white;
+}
+
+.chat-prompt-arrow {
+    position: absolute;
+    bottom: -6px;
+    right: 22px;
+    width: 12px;
+    height: 12px;
+    background: var(--snpsu-blue-light);
+    transform: rotate(45deg);
+}
+
+@keyframes bounce-in {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Premium Hero Carousel & Slider Styling */
+.hero-carousel-wrapper {
+    position: relative;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    background: rgba(26, 37, 87, 0.25);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 12px;
+    height: 100%;
+}
+.carousel-img-wrap {
+    position: relative;
+    height: 380px;
+    width: 100%;
+}
+.hero-carousel-wrapper:hover .carousel-control-prev,
+.hero-carousel-wrapper:hover .carousel-control-next {
+    opacity: 0.85 !important;
+}
+.hero-carousel-wrapper .carousel-control-prev:hover,
+.hero-carousel-wrapper .carousel-control-next:hover {
+    opacity: 1 !important;
+}
+
+/* ── PHOTO COLLAGE GALLERY — DARK ─────────────────────── */
+.photo-collage-section {
+  padding: 64px 0 32px;
+  background: linear-gradient(180deg, transparent 0%, rgba(13,17,32,0.5) 20%, rgba(13,17,32,0.5) 80%, transparent 100%) !important;
+  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Marquee container */
+.marquee-outer {
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+}
+.marquee-outer::before,
+.marquee-outer::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 120px;
+  z-index: 2;
+  pointer-events: none;
+}
+.marquee-outer::before { left: 0; background: linear-gradient(to right, #030712 0%, transparent 100%); }
+.marquee-outer::after  { right: 0; background: linear-gradient(to left, #030712 0%, transparent 100%); }
+
+.marquee-track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  will-change: transform;
+}
+
+/* Left direction scroll */
+@keyframes marquee-scroll-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+/* Right direction scroll */
+@keyframes marquee-scroll-right {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+.marquee-left {
+  animation: marquee-scroll-left 35s linear infinite;
+}
+.marquee-right {
+  animation: marquee-scroll-right 40s linear infinite;
+}
+
+/* Pause on hover */
+.marquee-outer:hover .marquee-left,
+.marquee-outer:hover .marquee-right {
+  animation-play-state: paused;
+}
+
+/* Image cards */
+.marquee-img-wrap {
+  flex-shrink: 0;
+  width: 260px;
+  height: 175px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  border: 2px solid rgba(255,255,255,0.06);
+}
+.marquee-img-wrap.tall {
+  height: 200px;
+  width: 300px;
+}
+.marquee-img-wrap:hover {
+  transform: scale(1.04) translateY(-4px);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 0 2px rgba(201,164,94,0.4);
+  z-index: 5;
+}
+.marquee-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter 0.35s ease;
+  filter: brightness(0.85) saturate(1.1);
+}
+.marquee-img-wrap:hover img {
+  filter: brightness(1) saturate(1.2);
+}
+
+/* Gallery CTA */
+.gallery-cta {
+  padding: 20px 0 8px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-left, .marquee-right {
+    animation: none;
+  }
+}
+
+/* Mobile: narrower images */
+@media (max-width: 576px) {
+  .marquee-img-wrap { width: 180px; height: 130px; }
+  .marquee-img-wrap.tall { width: 200px; height: 150px; }
+  .marquee-left { animation-duration: 22s; }
+  .marquee-right { animation-duration: 26s; }
+}
+</style>
+
+
+<!-- ═══ JSON-LD Structured Data for SEO ═══ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SapthaEvent",
+  "description": "Official event management portal and registration system for Sapthagiri NPS University",
+  "url": "https://events.snpsu.edu.in",
+  "applicationCategory": "BusinessApplication",
+  "creator": {
+    "@type": "Organization",
+    "name": "Sapthagiri NPS University",
+    "url": "https://snpsu.edu.in",
+    "logo": "/static/snpsu-logo.png"
+  },
+  "features": ["Event Registration", "QR Ticket Generation", "Email Alerts", "WhatsApp Notifications", "AI Assistant"],
+  "image": "/static/snpsu-logo.png"
+}
+</script>
+
+<!-- ═══ Organization Schema ═══ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Sapthagiri NPS University",
+  "url": "https://snpsu.edu.in",
+  "logo": "/static/snpsu-logo.png",
+  "description": "A leading educational institution in Bengaluru, India",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "#14/5, Chikkasandra",
+    "addressLocality": "Bengaluru",
+    "addressRegion": "Karnataka",
+    "postalCode": "560057",
+    "addressCountry": "IN"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "Customer Service",
+    "telephone": "+91-80-2837-2800",
+    "email": "admissions@snpsu.edu.in"
+  }
+}
+</script>
+
+</head>
+<body>
+
+<!-- ═══ AURORA BACKGROUND ═══ -->
+<div class="aurora-bg-home" aria-hidden="true">
+  <div class="aurora-orb-home"></div>
+  <div class="aurora-orb-home"></div>
+  <div class="aurora-orb-home"></div>
+  <div class="aurora-orb-home"></div>
+</div>
+<div class="grid-overlay-home" aria-hidden="true"></div>
+
+<!-- ═══ SKIP NAVIGATION LINK ═══ -->
+<a href="#main-content" class="skip-link">Skip to Main Content</a>
+
+<!-- NAVBAR -->
+<nav class="snav navbar navbar-expand-lg" role="navigation" aria-label="Main navigation">
+  <div class="container-xl px-3">
+    <a class="navbar-brand" href="/" aria-label="SapthaEvent Home">
+      <img src="/static/snpsu-logo.png"
+           alt="Sapthagiri NPS University"
+           style="height:42px;width:auto;object-fit:contain;"
+           onerror="this.style.display='none';document.getElementById('nav-logo-fallback').style.display='flex';">
+      <div id="nav-logo-fallback" style="display:none;align-items:center;gap:10px;">
+        <div class="nav-logo-sq">SE</div>
+        <div>
+          <span class="brand-n">SapthaEvent</span>
+          <span class="brand-s">Sapthagiri NPS University</span>
+        </div>
+      </div>
+    </a>
+    <!-- Mobile: compact Login button, always visible -->
+    <div class="d-flex align-items-center gap-2 d-lg-none">
+      {% if session.get('user_id') %}
+        <a class="btn-login-mini" href="/logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></a>
+      {% else %}
+        <a class="btn-login-mini" href="/login" aria-label="Login">
+          <i class="fas fa-sign-in-alt me-1"></i>Login
+        </a>
+      {% endif %}
+    </div>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 py-3 py-lg-0">
+        <li class="nav-item"><a class="nav-link" href="#events" data-i18n="nav_events">Events</a></li>
+        <li class="nav-item"><a class="nav-link" href="#how" data-i18n="how_title">How It Works</a></li>
+        {% if session.get('user_id') %}
+          {% set role = session.get('role','') %}
+          {% if role == 'Student' %}
+            <li class="nav-item"><a class="nav-link" href="/participant/dashboard"><i class="fas fa-ticket-alt me-1"></i><span data-i18n="nav_tickets">My Tickets</span></a></li>
+          {% elif role in ['ClubSPOC','Coordinator','SuperAdmin','Super Admin'] %}
+            <li class="nav-item"><a class="nav-link" href="/coordinator/dashboard"><i class="fas fa-tasks me-1"></i><span data-i18n="nav_dashboard">Dashboard</span></a></li>
+          {% elif role == 'Judge' %}
+            <li class="nav-item"><a class="nav-link" href="/judge/dashboard"><i class="fas fa-gavel me-1"></i>Judge Panel</a></li>
+          {% endif %}
+          <li class="nav-item ms-lg-2 d-none d-lg-block">
+            <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i><span data-i18n="nav_logout">Logout</span></a>
+          </li>
+        {% else %}
+          <li class="nav-item ms-lg-2 d-none d-lg-block">
+            <a class="nav-link btn-login" href="/login">
+              <i class="fas fa-sign-in-alt me-1"></i><span data-i18n="nav_login">Login</span>
+            </a>
+          </li>
+        {% endif %}
+
+        <li class="nav-item ms-lg-2">
+          {% include 'components/language_selector.html' %}
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- FLASH MESSAGES -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="container-xl px-3 pt-3">
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} d-flex align-items-start gap-2 alert-dismissible fade show mb-2" role="alert">
+      <i class="fas fa-info-circle mt-1"></i><span>{{ msg|safe }}</span>
+      <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<main id="main-content" role="main">
+
+<!-- ═══ HERO SECTION — Redesigned pure-CSS hero ═══ -->
+<section class="hero-section" id="hero" role="region" aria-label="Sapthagiri NPS University Event Portal Hero">
+  <!-- Floating Decorative Shapes -->
+  <div class="hero-shapes" aria-hidden="true">
+    <div class="hero-shape hero-shape-1"></div>
+    <div class="hero-shape hero-shape-2"></div>
+  </div>
+
+  <div class="container-xl hero-container">
+    <div class="row align-items-center g-5">
+      <!-- Left Column: Branding and Copy -->
+      <div class="col-lg-7 text-center text-lg-start scroll-animator">
+        <div class="hero-branding">
+          <i class="fas fa-university me-2" aria-hidden="true"></i> <span data-i18n="footer_about">Sapthagiri NPS University</span>
+        </div>
+        <h1 class="hero-title" data-i18n="hero_title">
+          Your Events.<br>
+          <span class="accent">Your Campus.</span><br>
+          Your Portal.
+        </h1>
+        <p class="hero-desc" data-i18n="hero_subtitle">
+          Discover and register for technical hackathons, cultural fests, and sports meets. Get instant QR tickets and alerts year-round.
+        </p>
+        <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start">
+          <a href="#events" class="btn btn-lg hero-btn-primary" aria-label="Explore upcoming events on the portal">
+            <i class="fas fa-calendar-alt me-2" aria-hidden="true"></i><span data-i18n="hero_cta_explore">Explore Events</span>
+          </a>
+          {% if not session.get('user_id') %}
+          <a href="/login" class="btn btn-lg hero-btn-outline" aria-label="Sign in to your account">
+            <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i><span data-i18n="hero_cta_login">Get Started</span>
+          </a>
+          {% else %}
+          <a href="/participant/dashboard" class="btn btn-lg hero-btn-outline" aria-label="View your registered tickets and dashboard">
+            <i class="fas fa-ticket-alt me-2" aria-hidden="true"></i><span data-i18n="nav_dashboard">My Dashboard</span>
+          </a>
+          {% endif %}
+        </div>
+
+        <!-- Trust indicators to build confidence -->
+        <div class="hero-trust-badges mt-4 d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start" style="font-size: 12px; font-weight: 600;">
+          <span class="d-inline-flex align-items-center gap-2" style="background: rgba(201, 164, 94, 0.08); border: 1px solid rgba(201, 164, 94, 0.2); border-radius: 8px; padding: 6px 12px; color: var(--snpsu-gold);">
+            <i class="fas fa-shield-alt"></i> Official & Secure
+          </span>
+          <span class="d-inline-flex align-items-center gap-2" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 6px 12px; color: var(--success);">
+            <i class="fas fa-qrcode"></i> Instant QR Entry
+          </span>
+          <span class="d-inline-flex align-items-center gap-2" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; padding: 6px 12px; color: var(--info);">
+            <i class="fab fa-whatsapp"></i> Live Alerts
+          </span>
+        </div>
+      </div>
+
+      <!-- Right Column: Live Event Stats Card -->
+      <div class="col-lg-5 scroll-animator stagger-1 d-flex align-items-center justify-content-center">
+        <div class="hero-stats-card">
+          <!-- Header -->
+          <div class="hsc-header">
+            <span class="hsc-badge">
+              <span class="hsc-live-dot"></span> LIVE PORTAL
+            </span>
+            <h3 class="hsc-title">Saptha 2026</h3>
+            <p class="hsc-subtitle">The Grand College Fest</p>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="hsc-stats">
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(99,102,241,.15);color:#818cf8;">
+                <i class="fas fa-calendar-alt"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value" id="heroStatEvents">{{ events|length if events else 0 }}</div>
+                <div class="hsc-stat-label">Total Events</div>
+              </div>
+            </div>
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(16,185,129,.15);color:#34d399;">
+                <i class="fas fa-users"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value" id="heroStatRegs">
+                  {% set reg_total = namespace(n=0) %}
+                  {% if events %}{% for e in events %}{% set reg_total.n = reg_total.n + (e.get('reg_count', 0) if e is mapping else 0) %}{% endfor %}{% endif %}
+                  {{ reg_total.n }}
+                </div>
+                <div class="hsc-stat-label">Registrations</div>
+              </div>
+            </div>
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(245,158,11,.15);color:#fbbf24;">
+                <i class="fas fa-bolt"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value" id="heroStatToday">
+                  {% set today_count = namespace(n=0) %}
+                  {% if events %}{% for e in events %}{% if e.date == today_date %}{% set today_count.n = today_count.n + 1 %}{% endif %}{% endfor %}{% endif %}
+                  {{ today_count.n }}
+                </div>
+                <div class="hsc-stat-label">Events Today</div>
+              </div>
+            </div>
+            <div class="hsc-stat">
+              <div class="hsc-stat-icon" style="background:rgba(236,72,153,.15);color:#f472b6;">
+                <i class="fas fa-trophy"></i>
+              </div>
+              <div>
+                <div class="hsc-stat-value">₹0</div>
+                <div class="hsc-stat-label">Entry Fee</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Pills -->
+          <div class="hsc-cats">
+            <span class="hsc-cat" style="background:rgba(99,102,241,.18);color:#a5b4fc;" onclick="filterByCategory('Technical')"><i class="fas fa-code"></i> Technical</span>
+            <span class="hsc-cat" style="background:rgba(201,164,94,.18);color:#fde68a;" onclick="filterByCategory('Cultural')"><i class="fas fa-music"></i> Cultural</span>
+            <span class="hsc-cat" style="background:rgba(16,185,129,.18);color:#6ee7b7;" onclick="filterByCategory('Sports')"><i class="fas fa-running"></i> Sports</span>
+            <span class="hsc-cat" style="background:rgba(8,145,178,.18);color:#67e8f9;" onclick="filterByCategory('Management')"><i class="fas fa-chart-bar"></i> Mgmt</span>
+          </div>
+
+          <!-- CTA -->
+          <a href="#events" class="hsc-cta">
+            <i class="fas fa-arrow-down me-2"></i>Browse All Events
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══ EVENTS ═══ -->
+<section id="events" class="py-5" role="region" aria-label="Upcoming events for registration">
+  <div class="container-xl px-3">
+
+    <!-- Heading Row -->
+    <div class="row mb-3">
+      <div class="col-12 text-center text-md-start">
+        <div class="sec-eyebrow">Open for Registration</div>
+        <h2 class="sec-h mb-1">Upcoming Events</h2>
+        <p class="sec-p mb-0">Register in seconds and receive your QR ticket instantly.</p>
+      </div>
+    </div>
+
+    <!-- Controls Row (Search + Filter Tabs) -->
+    <div class="sticky-controls-wrapper">
+      <div class="container-xl px-0 px-md-3">
+        <div class="row align-items-center g-2 g-md-3 px-3 px-md-0">
+          <!-- Search input (Left/Top) -->
+          <div class="col-12 col-md-4">
+            <div class="search-box position-relative d-flex align-items-center">
+              <input type="text" id="evSearch" class="form-control w-100" placeholder="Search events..." oninput="filterEvs()" style="min-height:44px; padding-right:4.5rem;">
+              <i class="fas fa-search position-absolute top-50 translate-middle-y text-muted" style="left: 0.95rem;"></i>
+              
+              <div class="position-absolute top-50 end-0 translate-middle-y d-flex align-items-center" style="z-index: 11; margin-right: 6px;">
+                <button id="evVoiceSearch" class="btn btn-voice-search border-0 bg-transparent text-muted p-2" onclick="startVoiceSearch()" type="button" aria-label="Search by voice" style="display: none;">
+                  <i class="fas fa-microphone"></i>
+                </button>
+                <button id="evSearchClear" class="btn btn-clear-search d-none border-0 bg-transparent text-muted p-2" onclick="clearSearch()" type="button" aria-label="Clear search">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Category filters (Right/Bottom) -->
+          <div class="col-12 col-md-8 d-flex flex-column align-items-stretch align-items-md-end gap-2">
+            <div class="ftabs-scroll-container position-relative w-100">
+              <div class="ftabs" role="group" aria-label="Event category filters">
+                <button class="ftab active" onclick="setCategoryFilter('all',this)" aria-pressed="true">All Events</button>
+                <button class="ftab" onclick="setCategoryFilter('Technical',this)" aria-pressed="false"><i class="fas fa-code me-1" aria-hidden="true"></i>Technical</button>
+                <button class="ftab" onclick="setCategoryFilter('Cultural',this)" aria-pressed="false"><i class="fas fa-music me-1" aria-hidden="true"></i>Cultural</button>
+                <button class="ftab" onclick="setCategoryFilter('Sports',this)" aria-pressed="false"><i class="fas fa-running me-1" aria-hidden="true"></i>Sports</button>
+                <button class="ftab" onclick="setCategoryFilter('Management',this)" aria-pressed="false"><i class="fas fa-briefcase me-1" aria-hidden="true"></i>Management</button>
+              </div>
+            </div>
+            <!-- Quick Filters (Pills) -->
+            <div class="quick-filters-row d-flex flex-wrap gap-2 justify-content-start justify-content-md-end w-100 mt-1">
+              <button class="q-filter-pill" id="qfFree" onclick="toggleQuickFilter('free')" aria-pressed="false" type="button">
+                <i class="fas fa-gift me-1"></i>Free Entry
+              </button>
+              <button class="q-filter-pill" id="qfTeam" onclick="toggleQuickFilter('team')" aria-pressed="false" type="button">
+                <i class="fas fa-users me-1"></i>Team
+              </button>
+              <button class="q-filter-pill" id="qfIndividual" onclick="toggleQuickFilter('individual')" aria-pressed="false" type="button">
+                <i class="fas fa-user me-1"></i>Individual
+              </button>
+              <button class="q-filter-pill" id="qfSoon" onclick="toggleQuickFilter('soon')" aria-pressed="false" type="button">
+                <i class="fas fa-bolt me-1"></i>Happening Soon
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    {% if events|length == 0 and no_firebase %}
+    <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:13px;border-radius:10px;">
+      <i class="fas fa-plug me-2"></i>
+      <strong>Dev mode — Firebase not connected.</strong>
+      Add <code>serviceAccountKey.json</code> or set <code>FIREBASE_CREDENTIALS</code> to load real events.
+    </div>
+    {% endif %}
+    <!-- Skeleton Loading State (shown initially) -->
+    <div class="row g-4" id="evGridSkeleton" role="status" aria-live="polite" aria-label="Loading events">
+      {% for i in range(6) %}
+      <div class="col-12 col-sm-6 col-lg-4">
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-image"></div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text" style="width:70%;"></div>
+          <div class="skeleton skeleton-btn"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="row g-4" id="evGrid" role="region" aria-label="Upcoming events" style="display:none;">
+      {% for event in events %}
+      <div class="col-12 col-sm-6 col-lg-4 ev-col scroll-animator" 
+           data-cat="{{ event.get('category','General')|lower }}" 
+           data-id="{{ event.id }}"
+           data-free="{{ 'true' if (not event.get('entry_fee') or event.entry_fee|int == 0) else 'false' }}"
+           data-team="{{ 'true' if event.get('is_team_event') else 'false' }}"
+           data-date="{{ event.get('date', '') }}"
+           data-registered="{% if registered_event_ids and event.id in registered_event_ids %}true{% else %}false{% endif %}"
+           data-reg-closed="{% if event.is_closed %}true{% else %}false{% endif %}"
+           data-reg-id="{{ registered_events_map.get(event.id, '') }}"
+           data-search="{{ event.title.lower() }} {{ event.get('description','').lower() }} {{ event.get('venue','').lower() }} {{ event.get('category','').lower() }}">
+        <div class="ev-card border-0 bg-transparent w-100 p-0 text-start d-flex flex-column h-100 ev-card-clickable" 
+             style="cursor: pointer;"
+             data-ev-id="{{ event.id }}"
+             role="button"
+             tabindex="0"
+             aria-label="Event: {{ event.title }}, {% if event.get('date') %}{{ event.date }}{% endif %}, Category: {{ event.get('category','General') }}">
+          <div class="ev-banner" aria-hidden="true">
+            {% if event.get('banner_url') %}
+              <img src="{{ event.banner_url }}" alt="" loading="lazy"
+                   onerror="this.style.display='none'">
+              <div class="ev-overlay"></div>
+            {% endif %}
+            {% if registered_event_ids and event.id in registered_event_ids %}
+            <span class="ev-reg-badge" style="position: absolute; top: 12px; right: 12px; background: #10b981; color: white; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 12px; border-radius: var(--radius-sm); z-index: 3; box-shadow: var(--shadow-xs); display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fas fa-check-circle"></i> Registered
+            </span>
+            {% endif %}
+            {% set cat = event.get('category','General') %}
+            {% if   cat == 'Technical'  %}<div class="ev-banner-icon">💻</div>
+            {% elif cat == 'Cultural'   %}<div class="ev-banner-icon">🎭</div>
+            {% elif cat == 'Sports'     %}<div class="ev-banner-icon">⚽</div>
+            {% elif cat == 'Management' %}<div class="ev-banner-icon">📊</div>
+            {% else                     %}<div class="ev-banner-icon">🌟</div>{% endif %}
+            <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
+            {% if event.is_closed %}
+            <span class="ev-deadline" style="background:#ef4444; color:#fff;"><i class="fas fa-lock"></i> Registration Closed</span>
+            {% elif event.get('date','') < current_date %}
+            <span class="ev-deadline" style="background:rgba(108,117,125,.85);"><i class="fas fa-history"></i>Recently Past</span>
+            {% elif event.get('deadline') %}
+            <span class="ev-deadline"><i class="fas fa-clock"></i>Deadline: {{ event.deadline }}</span>
+            {% endif %}
+          </div>
+          <div class="ev-body">
+            <h5 class="ev-title">{{ event.title }}</h5>
+            <p class="ev-desc">{{ event.get('description', 'An exciting event hosted by Sapthagiri NPS University. Click to register.') }}</p>
+            <div class="ev-meta">
+              {% if event.get('date') %}
+              <span data-info="date"><i class="fas fa-calendar-alt" aria-hidden="true"></i>{{ event.date }}</span>
+              {% endif %}
+              {% if event.get('venue') %}
+              <span data-info="venue"><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
+              {% endif %}
+              <span><i class="fas fa-users"></i>{{ 'Team' if event.get('is_team_event') else 'Individual' }}</span>
+            </div>
+            <div class="ev-footer">
+              <div>
+                {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
+                  <div class="ev-fee-paid" data-info="fee">₹{{ event.entry_fee }}</div>
+                {% else %}
+                  <div class="ev-fee-free" data-info="fee">Free Entry</div>
+                {% endif %}
+                <div class="ev-reg-count">{{ event.get('registration_count', 0) }} registered</div>
+              </div>
+              {% if registered_event_ids and event.id in registered_event_ids %}
+              <a href="/ticket/{{ registered_events_map.get(event.id, '') }}" class="btn-reg text-decoration-none" onclick="event.stopPropagation();">
+                <i class="fas fa-ticket-alt" aria-hidden="true"></i>Ticket
+              </a>
+              {% elif event.is_closed %}
+              <a href="javascript:void(0);" class="btn-reg text-decoration-none btn-reg-closed" onclick="event.stopPropagation(); alert('Registration is closed for this event.');" style="background: #ef4444 !important; color: white !important;">
+                <i class="fas fa-lock" aria-hidden="true"></i>Closed
+              </a>
+              {% else %}
+              <a href="/forms/register/{{ event.id }}" class="btn-reg text-decoration-none" onclick="event.stopPropagation();">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i>Register
+              </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-12">
+        <div class="no-events-box">
+          <i class="far fa-calendar-times"></i>
+          <h5 class="fw-bold text-secondary mb-2">No Events Currently Listed</h5>
+          <p class="text-muted mb-0" style="font-size:14px;">
+            New events are published throughout the semester. Check back soon or contact your Club SPOC.
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+      
+      <!-- No search results fallback -->
+      <div class="col-12 text-center py-5 d-none" id="noSearchResults">
+        <div class="no-events-box mx-auto" style="max-width: 400px; background:var(--bg-card); border: 1px dashed var(--ink-300); border-radius: var(--radius-lg);">
+          <i class="fas fa-search-minus fa-3x text-muted mb-3" style="font-size:3rem;"></i>
+          <h5 class="fw-bold text-secondary mb-2">No Matching Events</h5>
+          <p class="text-muted mb-0" style="font-size:14px; line-height: 1.6;">
+            We couldn't find any events matching your search criteria. Try selecting another category or typing another keyword.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load More Button -->
+    <div class="load-more-container d-none" id="loadMoreContainer">
+      <button class="btn btn-load-more" id="loadMoreBtn" onclick="loadMoreEvents()">
+        <span>Load More Events</span>
+        <i class="fas fa-chevron-down"></i>
+      </button>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ PHOTO COLLAGE GALLERY ═══ -->
+<section class="photo-collage-section" id="campus-gallery" aria-label="Campus photo gallery" role="region">
+  <div class="container-xl px-3 mb-4">
+    <div class="text-center">
+      <div class="sec-eyebrow justify-content-center" style="color: rgba(201,164,94,0.85);">Campus Life</div>
+      <h2 class="sec-h" style="color: #ffffff; text-shadow: 0 2px 16px rgba(0,0,0,0.4);">Life at Sapthagiri NPS University</h2>
+      <p class="sec-p mx-auto" style="max-width:520px; color: rgba(255,255,255,0.65);">Vibrant events, passionate students, and unforgettable moments — captured live at our campus.</p>
+    </div>
+  </div>
+
+  <!-- Row 1: scrolls left -->
+  <div class="marquee-outer" aria-hidden="true">
+    <div class="marquee-track marquee-left">
+      <!-- Photos set 1 (duplicated for seamless loop) -->
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103649422_2026-04-17_02-25-58.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103508763_2026-04-17_02-35-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1624637338_2026-04-15_10-38-55.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/departments/banner/507099540_2026-04-14_05-45-28.webp" alt="Campus banner" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <!-- Duplicate for seamless loop -->
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103649422_2026-04-17_02-25-58.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1103508763_2026-04-17_02-35-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1624637338_2026-04-15_10-38-55.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap"><img src="https://snpsu.edu.in/uploads/departments/banner/507099540_2026-04-14_05-45-28.webp" alt="Campus banner" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+    </div>
+  </div>
+
+  <!-- Row 2: scrolls right -->
+  <div class="marquee-outer" aria-hidden="true">
+    <div class="marquee-track marquee-right">
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/598302472_2026-04-15_09-12-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1466339825_2026-04-15_05-47-24.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1323184756_2026-04-15_05-29-48.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/671174912_2026-04-15_05-03-39.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <!-- Duplicate -->
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/598302472_2026-04-15_09-12-35.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1466339825_2026-04-15_05-47-24.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1323184756_2026-04-15_05-29-48.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/671174912_2026-04-15_05-03-39.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/845797912_2026-04-15_09-36-01.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1526889240_2026-04-17_12-43-09.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/2048928306_2026-04-29_11-07-47.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+      <div class="marquee-img-wrap tall"><img src="https://snpsu.edu.in/uploads/photogallery/thumb/1926836658_2026-04-14_03-25-07.webp" alt="Campus event" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+    </div>
+  </div>
+
+  <div class="gallery-cta text-center mt-4">
+    <a href="#events" class="btn btn-sm" style="border-radius: var(--radius-pill); padding: 8px 24px; font-size:13px; font-weight:600; border: 1px solid rgba(255,255,255,0.12); color: #9ca3af; background: rgba(255,255,255,0.04);">
+      <i class="fas fa-arrow-down me-2"></i>Explore Events
+    </a>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="hiw-section py-5" id="how" role="region" aria-label="How to register for events">
+  <div class="container-xl px-3">
+    <div class="text-center mb-5">
+      <div class="sec-eyebrow justify-content-center">Simple Process</div>
+      <h2 class="sec-h">Register in Under 60 Seconds</h2>
+      <p class="sec-p mx-auto" style="max-width:480px;">
+        No queues, no paperwork. Select your event, complete the form, and walk in with your QR ticket.
+      </p>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 1: Browse Events">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-search"></i></div>
+          <div class="step-title">Browse Events</div>
+          <p class="step-desc">Explore all upcoming technical, cultural, and sports events on the portal.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 2: Complete the Form">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-pen-to-square"></i></div>
+          <div class="step-title">Complete the Form</div>
+          <p class="step-desc">Each event has a custom registration form — designed by the organiser and takes under a minute.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 3: Receive QR Ticket">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-qrcode"></i></div>
+          <div class="step-title">Receive QR Ticket</div>
+          <p class="step-desc">Your digital ticket with QR code is delivered instantly via email and WhatsApp.</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="step-card" role="article" aria-label="Step 4: Walk In">
+          <div class="step-ico" aria-hidden="true"><i class="fas fa-door-open"></i></div>
+          <div class="step-title">Walk In</div>
+          <p class="step-desc">Show your QR at the venue — the coordinator scans it and your attendance is recorded instantly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SOCIAL PROOF / TESTIMONIALS ═══ -->
+<section class="social-proof-section py-5" id="testimonials" role="region" aria-label="Student testimonials">
+  <div class="container-xl px-3">
+    <div class="text-center mb-5">
+      <div class="sec-eyebrow justify-content-center">Student Testimonials</div>
+      <h2 class="sec-h">What Students Say About SapthaEvent</h2>
+      <p class="sec-p mx-auto" style="max-width:520px;">
+        Join thousands of students who've discovered an amazing way to explore campus events and build connections.
+      </p>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Anirudh J., CSE Year 2, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">AJ</div>
+            <div>
+              <div class="testimonial-name">Anirudh J.</div>
+              <div class="testimonial-role">CSE - Year 2</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">SapthaEvent made discovering events so easy! The QR ticket system is seamless, and I've attended 8 events this semester alone.</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator stagger-1">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Priya K., Mechanical Year 3, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">PK</div>
+            <div>
+              <div class="testimonial-name">Priya K.</div>
+              <div class="testimonial-role">Mechanical - Year 3</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">The AI assistant Sparky helped me find events matching my interests. Registrations used to take forever, now it's instant!</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4 scroll-animator stagger-2">
+        <div class="testimonial-card" role="article" aria-label="Student testimonial: Rohan V., ECE Year 1, 5 stars">
+          <div class="testimonial-quote" aria-hidden="true">"</div>
+          <div class="testimonial-header">
+            <div class="testimonial-avatar" aria-hidden="true">RV</div>
+            <div>
+              <div class="testimonial-name">Rohan V.</div>
+              <div class="testimonial-role">ECE - Year 1</div>
+            </div>
+          </div>
+          <div class="testimonial-rating" aria-label="5 stars out of 5"><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i></div>
+          <p class="testimonial-text">Love how the platform works! Never missed an event after getting WhatsApp notifications. Highly recommend to everyone!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credibility Stats -->
+    <div class="row g-4 mt-3 justify-content-center">
+      <div class="col-6 col-md-3 text-center scroll-animator">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="2 thousand 400 plus students registered">
+          <span class="stat-counter" data-count="2400">2400</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Students</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-1">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="150 plus events scheduled for 2026">
+          <span class="stat-counter" data-count="150">150</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Events 2026</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-2">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="98 percent user satisfaction rate">
+          <span class="stat-counter" data-count="98">98</span><span style="font-size:20px;">%</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Satisfaction</div>
+      </div>
+      <div class="col-6 col-md-3 text-center scroll-animator stagger-3">
+        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="8 thousand 500 plus successful event registrations">
+          <span class="stat-counter" data-count="8500">8500</span><span style="font-size:20px;">+</span>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Registrations</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</main>
+<footer class="site-ft pt-5 pb-0" role="contentinfo">
+  <div class="container-xl px-3">
+    <div class="row g-4 pb-5">
+
+      <div class="col-12 col-md-5 col-lg-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
+          <span class="ft-brand">SapthaEvent</span>
+        </div>
+        <p style="font-size:13px;line-height:1.72;margin-bottom:16px;">
+          The official event management portal of Sapthagiri NPS University, Bengaluru.
+          Powering hackathons, cultural fests, sports meets, and more.
+        </p>
+        <div class="d-flex gap-2 align-items-center">
+          <a href="https://snpsu.edu.in" target="_blank" class="soc-btn" aria-label="Sapthagiri NPS University official website"><i class="fas fa-globe" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Follow SapthaEvent on Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Connect on LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+          <a href="#" class="soc-btn" aria-label="Subscribe on YouTube"><i class="fab fa-youtube" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3 col-lg-2">
+        <div class="ft-heading">Quick Links</div>
+        <a href="#events" class="ft-lnk">Browse Events</a>
+        <a href="#how"    class="ft-lnk">How it Works</a>
+        <a href="/login"  class="ft-lnk">Login</a>
+        {% if session.get('user_id') %}
+        <a href="/participant/dashboard" class="ft-lnk">My Dashboard</a>
+        <a href="/logout"                class="ft-lnk">Logout</a>
+        {% endif %}
+      </div>
+
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="ft-heading">University</div>
+        <a href="https://snpsu.edu.in/about-us/"   target="_blank" class="ft-lnk">About SNPSU</a>
+        <a href="https://snpsu.edu.in/departments/" target="_blank" class="ft-lnk">Departments</a>
+        <a href="https://snpsu.edu.in/news-events/" target="_blank" class="ft-lnk">News &amp; Events</a>
+        <a href="https://snpsu.edu.in/human-resource-development-hrd/" target="_blank" class="ft-lnk">Placements</a>
+        <a href="https://admission.snpsu.edu.in/"   target="_blank" class="ft-lnk">Admissions</a>
+      </div>
+
+      <div class="col-12 col-lg-3">
+        <div class="ft-heading">Contact</div>
+        <div class="ft-contact-row"><i class="fas fa-map-marker-alt"></i><span>#14/5, Chikkasandra, Hesarghatta Main Road, Bengaluru – 560057</span></div>
+        <div class="ft-contact-row"><i class="fas fa-phone"></i><span>080-28 372800 &nbsp;/&nbsp; 9035922191</span></div>
+        <div class="ft-contact-row"><i class="fas fa-envelope"></i><span>admissions@snpsu.edu.in</span></div>
+      </div>
+
+    </div>
+    <hr class="ft-divider">
+    <div class="ft-bottom d-flex flex-wrap justify-content-between align-items-center py-3 gap-2">
+      <span>© 2026 Sapthagiri NPS University. All rights reserved.</span>
+      <span>
+        <a href="/privacy">Privacy Policy</a>
+        &nbsp;·&nbsp;
+        <a href="/terms">Terms of Service</a>
+        &nbsp;·&nbsp;
+        <a href="/compliance/settings">DPDP Rights</a>
+        &nbsp;·&nbsp; Built for SNPSU
+      </span>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ AI CHATBOT ═══ -->
+<div class="chat-fab">
+  <div class="chat-win" id="chatWin">
+    <div class="chat-head">
+      <div class="chat-av">🤖</div>
+      <div>
+        <p class="chat-head-name">Sparky — AI Assistant</p>
+        <p class="chat-head-sub">Ask about any SNPSU event</p>
+      </div>
+      <button onclick="toggleChat()" class="ms-auto btn-close btn-close-white" style="opacity:.55;" aria-label="Close chat"></button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="bw">
+        <div class="bb bot">Hello! 👋 I'm Sparky, the SapthaEvent AI assistant. Ask me about upcoming events, registration deadlines, entry fees, or venue details.</div>
+      </div>
+    </div>
+    <div class="chat-row">
+      <label for="chatInp" class="visually-hidden">Ask Sparky about events</label>
+      <input type="text" class="chat-inp" id="chatInp"
+             placeholder="Ask about events…"
+             aria-label="Ask Sparky AI about events"
+             aria-describedby="chatHint"
+             onkeydown="if(event.key==='Enter')sendChat()">
+      <span id="chatHint" class="visually-hidden">Press Enter to send your message to the AI assistant.</span>
+      <button class="chat-send" onclick="sendChat()" aria-label="Send message"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
+    </div>
+  </div>
+  <div class="chat-prompt-bubble" id="chatPromptBubble" style="display: none;">
+    <span class="chat-prompt-text">Need help? Ask Sparky! 🤖</span>
+    <button class="chat-prompt-close" onclick="dismissChatPrompt(event)" aria-label="Dismiss help prompt">
+      <i class="fas fa-times"></i>
+    </button>
+    <div class="chat-prompt-arrow"></div>
+  </div>
+  <button class="chat-btn" onclick="toggleChat()" aria-label="Open AI Assistant, Sparky">
+    <i class="fas fa-robot" id="chatIcon" aria-hidden="true"></i>
+    <span class="chat-ai-dot">AI</span>
+  </button>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── SKELETON LOADER & INITIALIZATION ────
+document.addEventListener('DOMContentLoaded',function(){
+  const skeleton=document.getElementById('evGridSkeleton');
+  const grid=document.getElementById('evGrid');
+  if(grid){
+    grid.style.display='';
+    if(skeleton)skeleton.remove();
+  }
+  initVoiceSearch();
+  initChatPrompt();
+});
+
+// ── INTERSECTION OBSERVER FOR SCROLL ANIMATIONS ────
+function initScrollAnimations(){
+  const options = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+  const observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('animate');
+        if(entry.target.classList.contains('stat-counter') && !entry.target.dataset.counted){
+          animateCounter(entry.target);
+        }
+      }
+    });
+  }, options);
+  document.querySelectorAll('.scroll-animator, .stat-counter').forEach(function(el){
+    observer.observe(el);
+  });
+}
+
+// ── COUNTER ANIMATION ──────────────────────────
+function animateCounter(el){
+  el.dataset.counted = 'true';
+  const target = parseInt(el.dataset.count) || 0;
+  const duration = 2000;
+  const start = Date.now();
+  
+  function update(){
+    const elapsed = Date.now() - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = Math.floor(target * progress);
+    el.textContent = current.toLocaleString();
+    
+    if(progress < 1) requestAnimationFrame(update);
+    else el.textContent = target.toLocaleString();
+  }
+  update();
+}
+
+// ── SMOOTH SCROLL (fixes anchor buttons) ──────
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click', function(e){
+    var id = this.getAttribute('href').slice(1);
+    if(!id) return;
+    var el = document.getElementById(id);
+    if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth',block:'start'}); }
+  });
+});
+
+// ── DEBUG TOAST (shows errors visibly on screen) ───────────────────────────
+function _dbgToast(msg, isErr){
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;max-width:90vw;word-break:break-all;box-shadow:0 4px 20px rgba(0,0,0,.4);';
+  t.style.background = isErr ? '#ef4444' : '#10b981';
+  t.style.color = '#fff';
+  t.textContent = (isErr ? '❌ ERROR: ' : '✅ ') + msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 8000);
+  console.log(isErr ? 'ERROR:' : 'DEBUG:', msg);
+}
+window.onerror = function(msg, src, line, col, err){
+  _dbgToast(msg + ' (line ' + line + ')', true);
+};
+
+// ── EVENT CARD CLICK (event delegation) ────────────────────────────────────
+document.addEventListener('click', function(e){
+  // Don't trigger if clicking the Register/View Ticket button
+  if(e.target.closest('.btn-reg')) return;
+  
+  var card = e.target.closest('.ev-card-clickable');
+  if(!card) return;
+  
+  // Walk up to the .ev-col to read all data attributes
+  var col = card.closest('.ev-col');
+  if(!col){ _dbgToast('Could not find .ev-col parent', true); return; }
+  
+  if(col.dataset.regClosed === 'true'){
+    alert('Registration is closed for this event.');
+    return;
+  }
+  
+  _dbgToast('Clicked event: ' + (col.dataset.id || 'NO-ID'));
+  
+  try {
+    showEventModalFromCol(col);
+  } catch(err) {
+    _dbgToast(err.message + ' at ' + (err.stack ? err.stack.split('\n')[1] : '?'), true);
+  }
+});
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  if(e.target.closest('.btn-reg')) return;
+  var card = e.target.closest('.ev-card-clickable');
+  if(!card) return;
+  var col = card.closest('.ev-col');
+  if(col){
+    if(col.dataset.regClosed === 'true'){
+      e.preventDefault();
+      alert('Registration is closed for this event.');
+      return;
+    }
+    e.preventDefault();
+    showEventModalFromCol(col);
+  }
+});
+
+// ── EVENT MODAL ────────────────────────────────────────────────────────────
+function showEventModalFromCol(col){
+  var modalEl = document.getElementById('eventModal');
+  var body    = document.getElementById('eventModalBody');
+  
+  // STEP 1: Reset spinner and show modal immediately
+  // This ensures the page is NEVER left frozen with backdrop
+  if(body) body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-3 text-muted">Loading...</p></div>';
+  
+  if(typeof bootstrap === 'undefined' || !modalEl){
+    // Bootstrap not loaded — just navigate to register page
+    var eid = col ? col.dataset.id : '';
+    if(eid) window.location.href = '/forms/register/' + eid;
+    return;
+  }
+  
+  
+  
+  // Show modal NOW (with spinner) — user sees it opening immediately
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+  
+  // STEP 2: Populate content (safely, after modal is visible)
+  try {
+    if(!col){ body.innerHTML = '<p class="text-danger">Error: event data not found.</p>'; return; }
+    
+    var evId    = col.dataset.id    || '';
+    var evCat   = col.dataset.cat   || 'General';
+    var evDate  = col.dataset.date  || '';
+    var evReg   = col.dataset.registered === 'true';
+    var evRegId = col.dataset.regId || '';
+    
+    var title       = (col.querySelector('.ev-title')?.textContent || 'Event').trim();
+    var description = (col.querySelector('.ev-desc')?.textContent  || 'No description available.').trim();
+    var dateText    = (col.querySelector('[data-info="date"]')?.textContent  || evDate || 'TBA').trim();
+    var venue       = (col.querySelector('[data-info="venue"]')?.textContent || 'TBA').trim();
+    var fee         = (col.querySelector('[data-info="fee"]')?.textContent   || 'Free').trim();
+    var regCount    = (col.querySelector('.ev-reg-count')?.textContent       || '0 registered').trim();
+    var bannerSrc   = col.querySelector('.ev-banner img')?.src || '';
+    
+    // Update modal title
+    var titleEl = document.getElementById('eventModalLabel');
+    if(titleEl) titleEl.textContent = title;
+    
+    // Banner image
+    var bannerHtml = bannerSrc
+      ? '<div style="margin:-24px -24px 20px;border-radius:12px 12px 0 0;overflow:hidden;max-height:200px;"><img src="' + bannerSrc + '" style="width:100%;height:200px;object-fit:cover;display:block;" alt=""></div>'
+      : '';
+    
+    // Category badge colour
+    var catColour = {technical:'#3b82f6',cultural:'#a855f7',sports:'#10b981',management:'#f59e0b'};
+    var badgeBg = catColour[evCat.toLowerCase()] || '#6b7280';
+    
+    // Register button
+    var regBtn = evReg && evRegId
+      ? '<button class="modal-btn" style="background:#10b981;color:#fff;border:none;" onclick="location.href=\'/ticket/' + evRegId + '\'"><i class="fas fa-ticket-alt me-1"></i>View My Ticket</button>'
+      : '<button class="modal-btn modal-btn-primary" onclick="location.href=\'/forms/register/' + evId + '\'"><i class="fas fa-arrow-right me-1"></i>Register Now</button>';
+    
+    // Calendar section (only if we have a valid date)
+    var calHtml = '';
+    if(evDate && /^\d{4}-\d{2}-\d{2}$/.test(evDate)){
+      var gUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + evDate.replace(/-/g,'') + '&location=' + encodeURIComponent(venue);
+      calHtml = '<div class="event-modal-section">'
+        + '<h5>Add to Calendar</h5>'
+        + '<div class="d-flex flex-wrap gap-2">'
+        + '<a href="' + gUrl + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fab fa-google me-1"></i>Google Calendar</a>'
+        + '</div></div>';
+    }
+    
+    body.innerHTML =
+      bannerHtml +
+      '<div class="event-modal-meta">'
+        + '<div class="event-modal-meta-item"><i class="fas fa-calendar-alt"></i><span>' + dateText + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-map-marker-alt"></i><span>' + venue + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-tag"></i><span style="text-transform:capitalize;color:' + badgeBg + ';font-weight:700;">' + evCat + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-users"></i><span>' + regCount + '</span></div>'
+      + '</div>'
+      + '<div class="event-modal-section"><h5>About This Event</h5><p>' + description + '</p></div>'
+      + '<div class="event-modal-section"><h5>Entry Fee</h5><p style="font-size:18px;font-weight:800;color:var(--orange);">' + fee + '</p></div>'
+      + calHtml
+      + '<div class="event-modal-section"><h5>Event Highlights</h5><p>\uD83C\uDFAF Competitive spirit \u2022 \uD83C\uDFC6 Amazing prizes \u2022 \uD83E\uDD1D Networking opportunities \u2022 \uD83C\uDF93 Skill development</p></div>'
+      + '<div class="modal-btn-group">' + regBtn + '<button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+      
+  } catch(err) {
+    // Safety net — show error in modal so page is NEVER frozen
+    if(body) body.innerHTML = '<div class="alert alert-danger"><strong>Could not load event details.</strong><br><small>' + err.message + '</small></div><div class="modal-btn-group"><button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+    console.error('showEventModalFromCol error:', err);
+  }
+}
+
+// Legacy alias
+function showEventModal(eventId){
+  var col = document.querySelector('.ev-col[data-id="' + CSS.escape(eventId) + '"]');
+  if(col) {
+    if(col.dataset.regClosed === 'true'){
+      alert('Registration is closed for this event.');
+      return;
+    }
+    showEventModalFromCol(col);
+  }
+  else if(eventId) window.location.href = '/forms/register/' + eventId;
+}
+
+// ── CALENDAR HELPER FUNCTIONS ──────────────────
+function getGoogleCalendarUrl(title, dateStr, description, venue) {
+  const cleanDate = dateStr.replace(/-/g, '').trim();
+  if (cleanDate.length !== 8) return '';
+  const dateObj = new Date(dateStr);
+  dateObj.setDate(dateObj.getDate() + 1);
+  const nextDayStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${cleanDate}/${nextDayStr}&details=${encodeURIComponent(description)}&location=${encodeURIComponent(venue)}`;
+}
+
+function downloadiCal(title, dateStr, description, venue) {
+  const cleanDate = dateStr.replace(/-/g, '').trim();
+  if (cleanDate.length !== 8) return;
+  const dateObj = new Date(dateStr);
+  dateObj.setDate(dateObj.getDate() + 1);
+  const nextDayStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
+  
+  const icsContent = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//SapthaEvent//Event Calendar//EN',
+    'BEGIN:VEVENT',
+    `SUMMARY:${title}`,
+    `DTSTART;VALUE=DATE:${cleanDate}`,
+    `DTEND;VALUE=DATE:${nextDayStr}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${venue}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+  
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.ics`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ── VOICE SEARCH HELPER FUNCTIONS ──────────────
+let recognition = null;
+function initVoiceSearch() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    const voiceBtn = document.getElementById('evVoiceSearch');
+    if (voiceBtn) {
+      voiceBtn.style.display = 'block';
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onstart = function() {
+        voiceBtn.classList.add('listening');
+        document.getElementById('evSearch').placeholder = "Listening...";
+      };
+      
+      recognition.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+        stopListening();
+      };
+      
+      recognition.onend = function() {
+        stopListening();
+      };
+      
+      recognition.onresult = function(event) {
+        const resultText = event.results[0][0].transcript;
+        const searchInput = document.getElementById('evSearch');
+        searchInput.value = resultText;
+        filterEvs();
+      };
+    }
+  }
+}
+
+function startVoiceSearch() {
+  if (!recognition) return;
+  const voiceBtn = document.getElementById('evVoiceSearch');
+  if (voiceBtn.classList.contains('listening')) {
+    recognition.stop();
+  } else {
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+
+function stopListening() {
+  const voiceBtn = document.getElementById('evVoiceSearch');
+  if (voiceBtn) {
+    voiceBtn.classList.remove('listening');
+  }
+  const searchInput = document.getElementById('evSearch');
+  if (searchInput) {
+    searchInput.placeholder = "Search events...";
+  }
+}
+
+// ── CHATBOT PROMPT HELPER FUNCTIONS ────────────
+function initChatPrompt() {
+  if (localStorage.getItem('sparky_prompt_dismissed') === 'true') {
+    return;
+  }
+  setTimeout(function() {
+    const bubble = document.getElementById('chatPromptBubble');
+    const chatWin = document.getElementById('chatWin');
+    if (bubble && chatWin && !chatWin.classList.contains('open')) {
+      bubble.style.display = 'flex';
+    }
+  }, 2000);
+}
+
+function dismissChatPrompt(e) {
+  if (e) e.stopPropagation();
+  const bubble = document.getElementById('chatPromptBubble');
+  if (bubble) {
+    bubble.style.opacity = '0';
+    bubble.style.transform = 'scale(0.8)';
+    bubble.style.transition = 'all 0.3s ease';
+    setTimeout(() => {
+      bubble.style.display = 'none';
+    }, 300);
+  }
+  localStorage.setItem('sparky_prompt_dismissed', 'true');
+}
+
+// ── UNIFIED FILTERING, SEARCH, AND PAGINATION ──
+let activeCategory = 'all';
+let searchKeyword = '';
+let visibleCount = 9; // Show 9 initially
+
+// Quick filter states
+let filterFree = false;
+let filterTeam = false;
+let filterIndividual = false;
+let filterSoon = false;
+
+function setCategoryFilter(cat, btn) {
+  document.querySelectorAll('.ftab').forEach(function(b){ 
+    b.classList.remove('active'); 
+    b.setAttribute('aria-pressed', 'false'); 
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
+  activeCategory = cat;
+  visibleCount = 9; // Reset pagination
+  applyFiltersAndPagination();
+}
+
+function filterEvs() {
+  const searchInput = document.getElementById('evSearch');
+  const clearBtn = document.getElementById('evSearchClear');
+  searchKeyword = searchInput.value.trim().toLowerCase();
+  
+  if (searchKeyword) {
+    clearBtn.classList.remove('d-none');
+  } else {
+    clearBtn.classList.add('d-none');
+  }
+  
+  visibleCount = 9; // Reset pagination
+  applyFiltersAndPagination();
+}
+
+function clearSearch() {
+  const searchInput = document.getElementById('evSearch');
+  searchInput.value = '';
+  document.getElementById('evSearchClear').classList.add('d-none');
+  searchKeyword = '';
+  visibleCount = 9;
+  applyFiltersAndPagination();
+  searchInput.focus();
+}
+
+function toggleQuickFilter(type) {
+  const pill = document.getElementById('qf' + type.charAt(0).toUpperCase() + type.slice(1));
+  if (!pill) return;
+  
+  if (type === 'free') {
+    filterFree = !filterFree;
+    pill.classList.toggle('active', filterFree);
+    pill.setAttribute('aria-pressed', filterFree ? 'true' : 'false');
+  } else if (type === 'team') {
+    filterTeam = !filterTeam;
+    pill.classList.toggle('active', filterTeam);
+    pill.setAttribute('aria-pressed', filterTeam ? 'true' : 'false');
+    // Mutually exclusive with individual
+    if (filterTeam && filterIndividual) {
+      filterIndividual = false;
+      const indPill = document.getElementById('qfIndividual');
+      if (indPill) {
+        indPill.classList.remove('active');
+        indPill.setAttribute('aria-pressed', 'false');
+      }
+    }
+  } else if (type === 'individual') {
+    filterIndividual = !filterIndividual;
+    pill.classList.toggle('active', filterIndividual);
+    pill.setAttribute('aria-pressed', filterIndividual ? 'true' : 'false');
+    // Mutually exclusive with team
+    if (filterIndividual && filterTeam) {
+      filterTeam = false;
+      const teamPill = document.getElementById('qfTeam');
+      if (teamPill) {
+        teamPill.classList.remove('active');
+        teamPill.setAttribute('aria-pressed', 'false');
+      }
+    }
+  } else if (type === 'soon') {
+    filterSoon = !filterSoon;
+    pill.classList.toggle('active', filterSoon);
+    pill.setAttribute('aria-pressed', filterSoon ? 'true' : 'false');
+  }
+  
+  visibleCount = 9; // Reset pagination
+  applyFiltersAndPagination();
+}
+
+function loadMoreEvents() {
+  visibleCount += 9;
+  applyFiltersAndPagination();
+}
+
+function applyFiltersAndPagination() {
+  const cards = document.querySelectorAll('.ev-col');
+  let matchCount = 0;
+  
+  cards.forEach(function(card) {
+    const cardCat = card.dataset.cat || '';
+    const cardSearch = card.dataset.search || '';
+    const cardFree = card.dataset.free === 'true';
+    const cardTeam = card.dataset.team === 'true';
+    const cardDateStr = card.dataset.date || '';
+    
+    const catMatch = (activeCategory === 'all' || cardCat === activeCategory.toLowerCase());
+    const searchMatch = (!searchKeyword || cardSearch.includes(searchKeyword));
+    const freeMatch = (!filterFree || cardFree);
+    const teamMatch = (!filterTeam || cardTeam);
+    const individualMatch = (!filterIndividual || !cardTeam);
+    
+    // Check if event is happening in the next 7 days, excluding past events
+    let soonMatch = true;
+    if (filterSoon) {
+      if (!cardDateStr) soonMatch = false;
+      else {
+        const eventDate = new Date(cardDateStr);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        eventDate.setHours(0,0,0,0);
+        const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        soonMatch = diffDays >= 0 && diffDays <= 7;
+      }
+    }
+    
+    const isMatch = catMatch && searchMatch && freeMatch && teamMatch && individualMatch && soonMatch;
+    
+    if (isMatch) {
+      matchCount++;
+      if (matchCount <= visibleCount) {
+        card.style.setProperty('display', '', 'important');
+        if (!card.classList.contains('animate')) {
+          card.classList.add('animate');
+        }
+      } else {
+        card.style.setProperty('display', 'none', 'important');
+      }
+    } else {
+      card.style.setProperty('display', 'none', 'important');
+    }
+  });
+  
+  // Toggle No Results State
+  const noResults = document.getElementById('noSearchResults');
+  if (noResults) {
+    if (matchCount === 0) {
+      noResults.classList.remove('d-none');
+    } else {
+      noResults.classList.add('d-none');
+    }
+  }
+  
+  // Toggle Load More Button
+  const loadMoreContainer = document.getElementById('loadMoreContainer');
+  if (loadMoreContainer) {
+    if (matchCount > visibleCount) {
+      loadMoreContainer.classList.remove('d-none');
+    } else {
+      loadMoreContainer.classList.add('d-none');
+    }
+  }
+}
+
+// ── STICKY CONTROL SCROLL HANDLER ─────────────
+function initStickyControls() {
+  const wrapper = document.querySelector('.sticky-controls-wrapper');
+  if (!wrapper) return;
+  
+  // Toggle is-sticky styling based on scroll position
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 300) {
+      wrapper.classList.add('is-sticky');
+    } else {
+      wrapper.classList.remove('is-sticky');
+    }
+  });
+}
+
+// ── CATEGORY TAB SCROLL AFFORDANCE ────────────
+function initCategoryScrollAffordance() {
+  const ftabs = document.querySelector('.ftabs');
+  const container = document.querySelector('.ftabs-scroll-container');
+  if (!ftabs || !container) return;
+  
+  function updateScrollHints() {
+    const scrollLeft = ftabs.scrollLeft;
+    const maxScrollLeft = ftabs.scrollWidth - ftabs.clientWidth;
+    
+    container.classList.toggle('can-scroll-left', scrollLeft > 2);
+    container.classList.toggle('can-scroll-right', scrollLeft < maxScrollLeft - 2);
+  }
+  
+  ftabs.addEventListener('scroll', updateScrollHints);
+  window.addEventListener('resize', updateScrollHints);
+  
+  // Initial run after render completes
+  setTimeout(updateScrollHints, 500);
+}
+
+// ── CHATBOT ────────────────────────────────────
+var chatOpen = false;
+function toggleChat(){
+  chatOpen = !chatOpen;
+  document.getElementById('chatWin').classList.toggle('open', chatOpen);
+  document.getElementById('chatIcon').className = chatOpen ? 'fas fa-times' : 'fas fa-robot';
+  if(chatOpen) {
+    document.getElementById('chatInp').focus();
+    dismissChatPrompt();
+  }
+}
+async function sendChat(){
+  var inp = document.getElementById('chatInp');
+  var msg = inp.value.trim();
+  if(!msg) return;
+  inp.value = '';
+  addBubble(msg, 'user');
+  var t = addTyping();
+  try{
+    var r = await fetch('/chatbot/ask', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg})
+    });
+    var d = await r.json();
+    t.remove();
+    addBubble(d.reply || 'Sorry, I could not get a response. Please try again.', 'bot');
+  } catch(err){
+    t.remove();
+    addBubble('Something went wrong. Please try again in a moment.', 'bot');
+  }
+}
+function addBubble(text, role){
+  var msgs = document.getElementById('chatMsgs');
+  var wrap = document.createElement('div');
+  wrap.className = 'bw ' + role;
+  wrap.innerHTML = '<div class="bb ' + role + '">' + text + '</div>';
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+function addTyping(){
+  var msgs = document.getElementById('chatMsgs');
+  var wrap = document.createElement('div');
+  wrap.className = 'bw';
+  wrap.innerHTML = '<div class="bb bot"><div class="tdots"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+
+// ── FORM VALIDATION ENHANCEMENT ────────────────
+function setupFormValidation(){
+  var inputs = document.querySelectorAll('input[type="email"], input[type="text"], textarea');
+  inputs.forEach(function(input){
+    input.addEventListener('blur', function(){
+      validateInput(this);
+    });
+    input.addEventListener('input', function(){
+      if(this.classList.contains('is-invalid')){
+        validateInput(this);
+      }
+    });
+  });
+}
+
+function validateInput(input){
+  var value = input.value.trim();
+  var container = input.closest('.input-group') || input.parentElement;
+  var feedback = container.querySelector('.input-feedback');
+  var icon = container.querySelector('.input-icon');
+  
+  if(!value) {
+    input.classList.remove('is-valid');
+    input.classList.add('is-invalid');
+    if(feedback) feedback.textContent = 'This field is required';
+    if(feedback) feedback.classList.remove('success');
+    if(feedback) feedback.classList.add('error');
+    if(icon) { icon.classList.remove('success'); icon.classList.add('error'); icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>'; }
+    return false;
+  }
+  
+  input.classList.remove('is-invalid');
+  input.classList.add('is-valid');
+  if(feedback) feedback.textContent = '✓ Looks good!';
+  if(feedback) feedback.classList.remove('error');
+  if(feedback) feedback.classList.add('success');
+  if(icon) { icon.classList.remove('error'); icon.classList.add('success'); icon.innerHTML = '<i class="fas fa-check-circle"></i>'; }
+  return true;
+}
+
+// ── INITIALIZE ON PAGE LOAD ────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  initScrollAnimations();
+  setupFormValidation();
+  initStickyControls();
+  initCategoryScrollAffordance();
+  
+  // Initialize unified filtering & pagination once skeletal loader starts disappearing
+  setTimeout(applyFiltersAndPagination, 350);
+});
+</script>
+<script>
+(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
+if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
+var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
+if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
+var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
+var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
+if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
+</script>
+
+<!-- ═══ EVENT DETAIL MODAL ═══ -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="eventModalLabel" aria-describedby="eventModalBody">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalLabel">Event Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
+      </div>
+      <div class="modal-body" id="eventModalBody">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading event details...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile bottom navigation -->
+{% include 'components/mobile_nav.html' %}
+
+<!-- PWA and Internationalization Scripts -->
+<script src="/static/js/pwa.js"></script>
+<script src="/static/js/i18n.js"></script>
+</body>
+</html>

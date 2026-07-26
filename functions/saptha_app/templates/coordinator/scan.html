@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner | {{ event_title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        body { background-color: #1a2557; color: white; font-family: sans-serif; }
+        #reader { width: 100%; min-height: 320px; border-radius: 15px; overflow: hidden; border: 4px solid #c9a45e; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+        #reader video { width: 100% !important; height: auto !important; display: block; }
+        #cam-placeholder { color: #c9a45e; text-align: center; padding: 30px 16px; }
+        #cam-error { display:none; background:#7f1d1d; color:#fee2e2; padding:12px 16px; border-radius:10px; margin-top:14px; font-size:14px; text-align:center; }
+        .btn-cam-start { background:#c9a45e; color:#1a2557; border:none; border-radius:10px; padding:12px 28px; font-weight:700; font-size:15px; cursor:pointer; }
+        .btn-cam-start:hover { background:#e1b970; }
+        .member-row { background: white; color: #1e293b; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #10b981;}
+        .form-check-input { width: 25px; height: 25px; cursor: pointer; accent-color: #10b981; border: 2px solid #cbd5e1; }
+    </style>
+</head>
+<body class="d-flex flex-column align-items-center justify-content-center min-vh-100 p-3">
+
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-warning"><i class="fas fa-qrcode me-2"></i>Entry Scanner</h2>
+        <p class="fs-5">{{ event_title }}</p>
+    </div>
+
+    {% if not scanning_open %}
+    <div class="text-center px-3 py-5" style="max-width:480px;margin:auto;">
+      <div style="font-size:56px;">🔒</div>
+      <h4 class="fw-bold text-warning mt-3">Scanner Locked</h4>
+      <p class="text-white-50">
+        Scanning opens on <strong class="text-white">{{ event_date }}</strong>.
+        {% if today < event_date %}
+          Come back on the event day.
+        {% else %}
+          This event has already passed.
+        {% endif %}
+      </p>
+      <a href="/coordinator/scanner" class="btn btn-outline-light mt-3"><i class="fas fa-arrow-left me-2"></i>Back</a>
+    </div>
+    {% else %}
+    <div id="scanner-view" class="w-100" style="max-width: 500px;">
+        <div id="reader" class="shadow-lg">
+            <div id="cam-placeholder">
+                <i class="fas fa-camera fa-2x mb-3"></i>
+                <p class="mb-3 fw-bold">Tap below to start the camera</p>
+                <button class="btn-cam-start" onclick="startCamera()">
+                    <i class="fas fa-video me-2"></i>Start Camera
+                </button>
+            </div>
+        </div>
+        <div id="cam-error"></div>
+        <div class="mt-4 text-center">
+            <p>Or manually enter Ticket ID:</p>
+            <div class="input-group">
+                <input type="text" id="manual_id" class="form-control form-control-lg" placeholder="REG-123456789">
+                <button class="btn btn-warning fw-bold px-4" onclick="fetchTicket(document.getElementById('manual_id').value)">Fetch</button>
+            </div>
+            <a href="/coordinator/scanner" class="btn btn-outline-light mt-4"><i class="fas fa-arrow-left me-2"></i>Back to Scanner Menu</a>
+        </div>
+    </div>
+    <div id="attendance-view" class="w-100 d-none" style="max-width: 600px;">
+        <div class="bg-white text-dark p-4 rounded-4 shadow-lg">
+            <h4 class="fw-bold mb-1 text-primary" id="t_team">Team Name</h4>
+            <p class="text-muted border-bottom pb-3 mb-3">Ticket ID: <span id="t_id" class="fw-bold"></span></p>
+
+            <!-- Room assignment banner -->
+            <div id="room-banner" style="display:none;background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#15803d;margin-bottom:4px;"><i class="fas fa-door-open me-1"></i>Assigned Room</div>
+              <div id="room-name" style="font-family:monospace;font-size:28px;font-weight:800;color:#14532d;"></div>
+            </div>
+
+            <div class="alert alert-warning border-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i> Only leave checkboxes checked for students physically present. <strong>Absent students will not receive certificates.</strong>
+            </div>
+            
+            <form id="attendanceForm">
+                <input type="hidden" id="submit_reg_id">
+                <div id="members-list"></div>
+                
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-danger px-4 fw-bold" onclick="resetScanner()">Cancel</button>
+                    <button type="button" class="btn btn-success px-5 fw-bold fs-5 shadow" onclick="submitGranularAttendance()">Confirm Entry <i class="fas fa-check-circle ms-2"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}{# end scanning_open #}
+
+    <script>
+        let html5Qr = null;
+        let camRunning = false;
+        let audioCtx = null;
+
+        function playScanSound(type) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                const now = audioCtx.currentTime;
+                
+                if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, now); // D5
+                    osc.frequency.setValueAtTime(880, now + 0.1); // A5
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate([80, 50, 80]);
+                    }
+                } else if (type === 'warning' || type === 'already_in') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now); // A4
+                    osc.frequency.setValueAtTime(349.23, now + 0.15); // F4
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+                } else {
+                    // Low buzzer error
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate([300, 100, 300]);
+                    }
+                }
+            } catch (e) {
+                console.warn("Web Audio API blocked or not supported: ", e);
+            }
+        }
+
+        function showCamError(msg) {
+            const box = document.getElementById('cam-error');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+        function hideCamError() {
+            document.getElementById('cam-error').style.display = 'none';
+        }
+
+        async function startCamera() {
+            hideCamError();
+            if (typeof Html5Qrcode === 'undefined') {
+                showCamError("Scanner library failed to load. Check your internet connection and refresh the page, or use manual Ticket ID entry below.");
+                return;
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showCamError("Camera not supported on this browser. Use the manual Ticket ID entry below.");
+                return;
+            }
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                showCamError("Camera requires HTTPS. Access this page over a secure connection, or use manual entry.");
+                return;
+            }
+
+            const placeholder = document.getElementById('cam-placeholder');
+            if (placeholder) placeholder.style.display = 'none';
+
+            try {
+                html5Qr = new Html5Qrcode("reader");
+                await html5Qr.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    onScanSuccess,
+                    () => { /* ignore per-frame decode errors */ }
+                );
+                camRunning = true;
+            } catch (err) {
+                if (placeholder) placeholder.style.display = '';
+                const msg = (err && err.message) || String(err);
+                if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('denied')) {
+                    showCamError("Camera permission was denied. Enable it in browser settings and tap Start Camera again.");
+                } else if (msg.toLowerCase().includes('notfound') || msg.toLowerCase().includes('no camera')) {
+                    showCamError("No camera found on this device.");
+                } else {
+                    showCamError("Could not start camera: " + msg);
+                }
+            }
+        }
+
+        async function pauseCamera() {
+            if (html5Qr && camRunning) {
+                try { await html5Qr.pause(true); } catch(_) {}
+            }
+        }
+        async function resumeCamera() {
+            if (html5Qr && camRunning) {
+                try { await html5Qr.resume(); } catch(_) {}
+            }
+        }
+
+        function onScanSuccess(decodedText) {
+            pauseCamera();
+            fetchTicket(decodedText);
+        }
+
+        // Auto-prompt camera start on page load (user may need to tap due to mobile autoplay rules)
+        document.addEventListener('DOMContentLoaded', function(){
+            // Attempt auto-start; browsers will prompt for permission on user gesture
+            startCamera();
+        });
+
+        async function fetchTicket(rawInput) {
+            if(!rawInput) return;
+            // Extract reg_id from a full verify URL (e.g. http://host/ticket/verify/REG-xxx)
+            const match = rawInput.match(/\/ticket\/verify\/([^/?#\s]+)/);
+            const regId = match ? match[1] : rawInput.trim();
+            const response = await fetch(`/coordinator/get_ticket/${regId}`);
+            const data = await response.json();
+            
+            if(data.status === 'success') {
+                playScanSound('success');
+                const reg = data.data;
+                document.getElementById('scanner-view').classList.add('d-none');
+                document.getElementById('attendance-view').classList.remove('d-none');
+                
+                document.getElementById('t_team').innerText = (reg.team_name && reg.team_name !== 'Individual') ? reg.team_name : reg.lead_name;
+                document.getElementById('t_id').innerText = reg.reg_id;
+                document.getElementById('submit_reg_id').value = reg.reg_id;
+
+                // Show assigned room if available
+                const room = reg.assigned_room || reg.allocated_room || '';
+                const roomBanner = document.getElementById('room-banner');
+                if (room) {
+                    document.getElementById('room-name').innerText = room;
+                    roomBanner.style.display = '';
+                } else {
+                    roomBanner.style.display = 'none';
+                }
+                
+                let html = '';
+                // Leader
+                html += `<label class="member-row shadow-sm">
+                            <div><strong class="d-block">${reg.lead_name} (Team Lead)</strong><small class="text-muted">${reg.lead_usn}</small></div>
+                            <input type="checkbox" class="form-check-input" name="present_usn" value="${reg.lead_usn}" checked>
+                         </label>`;
+                // Members
+                if(reg.members) {
+                    reg.members.forEach(m => {
+                        if(m.usn && m.usn !== reg.lead_usn) {
+                            html += `<label class="member-row shadow-sm">
+                                        <div><strong class="d-block">${m.name}</strong><small class="text-muted">${m.usn}</small></div>
+                                        <input type="checkbox" class="form-check-input" name="present_usn" value="${m.usn}" checked>
+                                     </label>`;
+                        }
+                    });
+                }
+                document.getElementById('members-list').innerHTML = html;
+            } else {
+                playScanSound('error');
+                alert("❌ " + data.message);
+                resumeCamera();
+            }
+        }
+
+        async function submitGranularAttendance() {
+            const checkboxes = document.querySelectorAll('input[name="present_usn"]:checked');
+            const present_usns = Array.from(checkboxes).map(cb => cb.value);
+            const reg_id = document.getElementById('submit_reg_id').value;
+
+            const response = await fetch('/coordinator/mark_attendance_granular', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ reg_id: reg_id, present_usns: present_usns })
+            });
+            const data = await response.json();
+            
+            if(data.status === 'success') {
+                playScanSound('success');
+            } else {
+                playScanSound('error');
+            }
+            alert(data.message);
+            resetScanner();
+        }
+
+        function resetScanner() {
+            document.getElementById('attendance-view').classList.add('d-none');
+            document.getElementById('scanner-view').classList.remove('d-none');
+            document.getElementById('manual_id').value = '';
+            resumeCamera();
+        }
+    </script>
+<script>
+(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
+if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
+var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
+if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
+var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
+var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
+if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
+</script>
+</body>
+</html>

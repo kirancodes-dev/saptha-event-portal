@@ -1,0 +1,110 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Submit Project — {{ event.title }} | SapthaEvent{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <span class="badge bg-warning text-dark me-2">Hackathon Portal</span>
+                    <h2 class="text-white font-weight-bold display-6 mb-1">{{ event.title }}</h2>
+                    <p class="text-secondary">Project Submission for Team <strong>{{ team_name }}</strong></p>
+                </div>
+                <a href="{{ url_for('hackathon.kanban_pipeline', event_id=event.id) }}" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-columns me-1"></i> View Kanban Pipeline
+                </a>
+            </div>
+
+            <div class="card bg-dark text-light border-secondary shadow-lg">
+                <div class="card-header bg-secondary bg-opacity-10 border-secondary py-3">
+                    <h5 class="mb-0 text-white font-weight-bold">
+                        <i class="fas fa-rocket text-warning me-2"></i>Project Submission Details
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{{ url_for('hackathon.submit_project', event_id=event.id) }}" method="POST">
+
+                        <!-- PROJECT TITLE & TAGLINE -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-7">
+                                <label class="form-label text-light font-weight-bold">Project Name *</label>
+                                <input type="text" name="project_title" class="form-control bg-dark text-light border-secondary" 
+                                       placeholder="e.g. EcoPulse — AI Carbon Footprint Tracker" 
+                                       value="{{ submission.project_title or '' }}" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label text-light font-weight-bold">Catchy Tagline</label>
+                                <input type="text" name="tagline" class="form-control bg-dark text-light border-secondary" 
+                                       placeholder="e.g. Empowering green choices with real-time AI" 
+                                       value="{{ submission.tagline or '' }}">
+                            </div>
+                        </div>
+
+                        <!-- PROBLEM STATEMENT -->
+                        <div class="mb-4">
+                            <label class="form-label text-light font-weight-bold">Problem Statement</label>
+                            <textarea name="problem_statement" class="form-control bg-dark text-light border-secondary" rows="3" 
+                                      placeholder="What specific issue does your project solve?">{{ submission.problem_statement or '' }}</textarea>
+                        </div>
+
+                        <!-- SOLUTION OVERVIEW -->
+                        <div class="mb-4">
+                            <label class="form-label text-light font-weight-bold">Solution Overview *</label>
+                            <textarea name="solution_overview" class="form-control bg-dark text-light border-secondary" rows="4" 
+                                      placeholder="Describe your technical architecture, workflow, and core innovations..." required>{{ submission.solution_overview or '' }}</textarea>
+                        </div>
+
+                        <!-- TECH STACK -->
+                        <div class="mb-4">
+                            <label class="form-label text-light font-weight-bold">Tech Stack Used</label>
+                            <input type="text" name="tech_stack" class="form-control bg-dark text-light border-secondary" 
+                                   placeholder="e.g. Python, Flask, React, Supabase, Google Cloud Platform" 
+                                   value="{{ submission.tech_stack or '' }}">
+                        </div>
+
+                        <!-- LINKS GRID -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-light font-weight-bold"><i class="fab fa-github me-1 text-light"></i> GitHub Repository Link</label>
+                                <input type="url" name="github_url" class="form-control bg-dark text-light border-secondary" 
+                                       placeholder="https://github.com/username/project-repo" 
+                                       value="{{ submission.github_url or '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-light font-weight-bold"><i class="fas fa-external-link-alt me-1 text-info"></i> Live Demo Link</label>
+                                <input type="url" name="demo_url" class="form-control bg-dark text-light border-secondary" 
+                                       placeholder="https://myproject.vercel.app" 
+                                       value="{{ submission.demo_url or '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-light font-weight-bold"><i class="fab fa-youtube me-1 text-danger"></i> Video Pitch / Demo Link</label>
+                                <input type="url" name="video_url" class="form-control bg-dark text-light border-secondary" 
+                                       placeholder="https://youtube.com/watch?v=..." 
+                                       value="{{ submission.video_url or '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-light font-weight-bold"><i class="fas fa-file-pdf me-1 text-warning"></i> Presentation Slide Deck Link</label>
+                                <input type="url" name="slide_deck_url" class="form-control bg-dark text-light border-secondary" 
+                                       placeholder="https://drive.google.com/file/d/..." 
+                                       value="{{ submission.slide_deck_url or '' }}">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary">
+                            <span class="text-secondary small"><i class="fas fa-shield-alt text-success me-1"></i> You can update your submission anytime before the deadline.</span>
+                            <button type="submit" class="btn btn-warning text-dark font-weight-bold px-5 py-2">
+                                <i class="fas fa-paper-plane me-2"></i> {{ 'Update Project' if submission else 'Submit Project' }}
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

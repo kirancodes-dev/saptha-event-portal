@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordinator HQ | SapthaEvent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        :root{--blue:#1a2557;--orange:#c9a45e;}
+        body{background:#f1f5f9;font-family:'Inter',sans-serif;color:#1e293b;}
+
+        /* Topnav */
+        .topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+        .brand{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-left:10px;}
+        .nav-links{display:flex;align-items:center;gap:6px;}
+        .nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+        .nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
+
+        /* Hero band */
+        .hero-band{background:linear-gradient(135deg,var(--blue) 0%,#0f3460 100%);padding:28px 24px;color:#fff;}
+        .hero-name{font-family:'Poppins',sans-serif;font-size:20px;font-weight:800;margin:0 0 4px;}
+        .hero-sub{margin:0;font-size:12.5px;opacity:.65;}
+
+        /* Stat row */
+        .stat-row{display:flex;gap:12px;padding:16px 24px;background:#fff;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;}
+        .stat-pill{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:600;color:#475569;}
+        .stat-pill i{font-size:11px;color:var(--orange);}
+        .stat-pill .num{font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);font-size:14px;}
+
+        /* Section headers */
+        .section-hdr{padding:20px 24px 10px;display:flex;align-items:center;gap:10px;}
+        .section-hdr .badge-today{background:#dc2626;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:100px;letter-spacing:.5px;animation:pulse 1.5s infinite;}
+        .section-hdr .badge-tmr{background:#d97706;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:100px;letter-spacing:.5px;}
+        .section-hdr .badge-up{background:#0891b2;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:100px;letter-spacing:.5px;}
+        .section-title{font-family:'Poppins',sans-serif;font-size:13px;font-weight:800;color:var(--blue);margin:0;}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+        /* Event cards */
+        .ev-cards{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px;}
+        .ev-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:.2s;}
+        .ev-card.today{border-left:4px solid #dc2626;border-color:#dc2626;}
+        .ev-card.tomorrow{border-left:4px solid #d97706;}
+        .ev-card-body{padding:16px 18px;}
+        .ev-cat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+        .ev-title{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--blue);margin:0 0 10px;}
+        .ev-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+        .ev-meta-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#64748b;}
+        .ev-meta-item i{color:var(--orange);font-size:10px;width:12px;}
+        .cap-bar-wrap{margin-bottom:14px;}
+        .cap-label{display:flex;justify-content:space-between;font-size:10.5px;color:#94a3b8;margin-bottom:4px;}
+        .cap-bar{height:5px;background:#e2e8f0;border-radius:100px;overflow:hidden;}
+        .cap-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--orange));border-radius:100px;transition:.5s;}
+        .ev-actions{display:flex;gap:8px;}
+        .btn-scan{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;flex:1;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;transition:.15s;}
+        .btn-scan:hover{background:#0f1a40;color:#fff;}
+        .btn-scan.today{background:#dc2626;}
+        .btn-scan.today:hover{background:#b91c1c;}
+        .btn-pos{background:#f1f5f9;color:var(--blue);border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px;transition:.15s;}
+        .btn-pos:hover{background:#e2e8f0;color:var(--blue);}
+
+        /* Helpdesk banner */
+        .helpdesk-card{background:linear-gradient(135deg,var(--orange),#e8a84a);border-radius:14px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 16px 8px;}
+        .helpdesk-card .hd-title{font-family:'Poppins',sans-serif;font-size:14px;font-weight:800;color:#fff;margin:0 0 3px;}
+        .helpdesk-card .hd-sub{font-size:12px;color:rgba(255,255,255,.8);margin:0;}
+        .btn-pos-main{background:#fff;color:var(--orange);border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:800;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+
+        /* Empty state */
+        .empty-state{text-align:center;padding:40px 24px;color:#94a3b8;}
+        .empty-state i{font-size:48px;opacity:.3;margin-bottom:16px;}
+
+        /* Cat colors */
+        .cat-Technical{background:#3b82f6;}
+        .cat-Cultural{background:#8b5cf6;}
+        .cat-Sports{background:#22c55e;}
+        .cat-Management{background:#f59e0b;}
+        .cat-Workshop{background:#06b6d4;}
+        .cat-General{background:#94a3b8;}
+    </style>
+</head>
+<body>
+
+<!-- TOPNAV -->
+<div class="topnav">
+    <div class="d-flex align-items-center gap-2">
+        <img src="/static/snpsu-logo.png" alt="SNPSU"
+             style="height:34px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;"
+             onerror="this.style.display='none'">
+        <span class="brand">Coordinator HQ</span>
+    </div>
+    <div class="nav-links">
+        <a href="/coordinator/on_spot" class="nav-link-item"><i class="fas fa-cash-register me-1"></i>POS</a>
+        <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
+    </div>
+</div>
+
+<!-- HERO -->
+<div class="hero-band">
+    <p class="hero-name">Hey, {{ user_name }} 👋</p>
+    <p class="hero-sub">Sapthagiri NPS University — Event Coordinator Portal</p>
+</div>
+
+<!-- STATS ROW -->
+<div class="stat-row">
+    <div class="stat-pill"><i class="fas fa-calendar-check"></i><span><span class="num">{{ total_assigned }}</span> Assigned</span></div>
+    <div class="stat-pill"><i class="fas fa-circle" style="color:#dc2626;font-size:8px;"></i><span><span class="num">{{ today_events | length }}</span> Today</span></div>
+    <div class="stat-pill"><i class="fas fa-arrow-right"></i><span><span class="num">{{ tomorrow_events | length }}</span> Tomorrow</span></div>
+</div>
+
+<!-- HELPDESK BANNER -->
+<div style="padding:16px 16px 0;">
+    <div class="helpdesk-card">
+        <div>
+            <p class="hd-title"><i class="fas fa-cash-register me-1"></i> Walk-in Helpdesk</p>
+            <p class="hd-sub">Register walk-ins, collect payment, print instant tickets</p>
+        </div>
+        <a href="/coordinator/on_spot" class="btn-pos-main">
+            Open POS <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+</div>
+
+<!-- TODAY'S EVENTS -->
+{% if today_events %}
+<div class="section-hdr">
+    <span class="badge-today">LIVE TODAY</span>
+    <p class="section-title">Today's Events</p>
+</div>
+<div class="ev-cards">
+    {% for ev in today_events %}
+    {% set fill = ((ev.reg_count / ev.max_cap * 100) | int) if ev.max_cap else 0 %}
+    <div class="ev-card today">
+        <div class="ev-card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="ev-cat-dot cat-{{ ev.category }}"></span>
+                <span style="font-size:10px;font-weight:700;color:#dc2626;letter-spacing:.5px;text-transform:uppercase;">TODAY</span>
+            </div>
+            <p class="ev-title">{{ ev.title }}</p>
+            <div class="ev-meta">
+                {% if ev.time %}<div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time }}</div>{% endif %}
+                <div class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>{{ ev.venue }}</div>
+                <div class="ev-meta-item"><i class="fas fa-users"></i>{{ ev.reg_count }} registered</div>
+            </div>
+            {% if ev.max_cap %}
+            <div class="cap-bar-wrap">
+                <div class="cap-label"><span>Capacity</span><span>{{ ev.reg_count }} / {{ ev.max_cap }}</span></div>
+                <div class="cap-bar"><div class="cap-fill" style="width:{{ fill }}%;"></div></div>
+            </div>
+            {% endif %}
+            <div class="ev-actions">
+                <a href="/coordinator/scan/{{ ev.id }}" class="btn-scan today">
+                    <i class="fas fa-qrcode"></i> Scan Tickets
+                </a>
+                <a href="/coordinator/on_spot" class="btn-pos">
+                    <i class="fas fa-plus"></i> Walk-in
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- TOMORROW'S EVENTS -->
+{% if tomorrow_events %}
+<div class="section-hdr">
+    <span class="badge-tmr">TOMORROW</span>
+    <p class="section-title">Tomorrow's Events</p>
+</div>
+<div class="ev-cards">
+    {% for ev in tomorrow_events %}
+    {% set fill = ((ev.reg_count / ev.max_cap * 100) | int) if ev.max_cap else 0 %}
+    <div class="ev-card tomorrow">
+        <div class="ev-card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="ev-cat-dot cat-{{ ev.category }}"></span>
+                <span style="font-size:10px;font-weight:700;color:#d97706;letter-spacing:.5px;text-transform:uppercase;">Tomorrow · {{ ev.date }}</span>
+            </div>
+            <p class="ev-title">{{ ev.title }}</p>
+            <div class="ev-meta">
+                {% if ev.time %}<div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time }}</div>{% endif %}
+                <div class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>{{ ev.venue }}</div>
+                <div class="ev-meta-item"><i class="fas fa-users"></i>{{ ev.reg_count }} registered</div>
+            </div>
+            {% if ev.max_cap %}
+            <div class="cap-bar-wrap">
+                <div class="cap-label"><span>Capacity</span><span>{{ ev.reg_count }} / {{ ev.max_cap }}</span></div>
+                <div class="cap-bar"><div class="cap-fill" style="width:{{ fill }}%;"></div></div>
+            </div>
+            {% endif %}
+            <div class="ev-actions">
+                <a href="/coordinator/scan/{{ ev.id }}" class="btn-scan">
+                    <i class="fas fa-qrcode"></i> Open Scanner
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- UPCOMING EVENTS -->
+{% if upcoming_events %}
+<div class="section-hdr">
+    <span class="badge-up">UPCOMING</span>
+    <p class="section-title">Upcoming Events</p>
+</div>
+<div class="ev-cards">
+    {% for ev in upcoming_events %}
+    {% set fill = ((ev.reg_count / ev.max_cap * 100) | int) if ev.max_cap else 0 %}
+    <div class="ev-card">
+        <div class="ev-card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="ev-cat-dot cat-{{ ev.category }}"></span>
+                <span style="font-size:10px;font-weight:600;color:#64748b;letter-spacing:.3px;">{{ ev.category }} · {{ ev.date }}</span>
+            </div>
+            <p class="ev-title">{{ ev.title }}</p>
+            <div class="ev-meta">
+                {% if ev.time %}<div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time }}</div>{% endif %}
+                <div class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>{{ ev.venue }}</div>
+                <div class="ev-meta-item"><i class="fas fa-users"></i>{{ ev.reg_count }} registered</div>
+            </div>
+            {% if ev.max_cap %}
+            <div class="cap-bar-wrap">
+                <div class="cap-label"><span>Capacity</span><span>{{ ev.reg_count }} / {{ ev.max_cap }}</span></div>
+                <div class="cap-bar"><div class="cap-fill" style="width:{{ fill }}%;"></div></div>
+            </div>
+            {% endif %}
+            <div class="ev-actions">
+                <a href="/coordinator/scan/{{ ev.id }}" class="btn-scan">
+                    <i class="fas fa-qrcode"></i> Open Scanner
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- EMPTY STATE -->
+{% if not today_events and not tomorrow_events and not upcoming_events %}
+<div class="empty-state">
+    <i class="fas fa-calendar-times d-block"></i>
+    <p class="fw-semibold mb-1" style="color:#475569;">No active events assigned</p>
+    <p style="font-size:13px;">Ask your SPOC to assign you to an event.</p>
+</div>
+{% endif %}
+
+</body>
+</html>

@@ -6,15 +6,17 @@ import sys
 import os
 from io import BytesIO
 
-# Set working directory to project root
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-os.chdir(BASE_DIR)
+# Set working directory to function package root
+FUNCTION_DIR = os.path.abspath(os.path.dirname(__file__))
+if FUNCTION_DIR not in sys.path:
+    sys.path.insert(0, FUNCTION_DIR)
+os.chdir(FUNCTION_DIR)
 
-# Set production fallback defaults if not provided in environment
+# Production defaults
 if 'FLASK_ENV' not in os.environ:
     os.environ['FLASK_ENV'] = 'production'
+if 'DATABASE_TYPE' not in os.environ:
+    os.environ['DATABASE_TYPE'] = 'postgres'
 
 from app import app
 

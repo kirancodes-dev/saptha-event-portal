@@ -2,9 +2,8 @@
   "name": "saptha-event",
   "version": "1.0.0",
   "private": true,
-  "description": "SapthaEvent Enterprise Event Portal",
+  "description": "SapthaEvent Enterprise Event Portal — Pure Python Serverless Deployment",
   "scripts": {
-    "start": "python app.py",
-    "build": "echo 'Building SapthaEvent App...'"
+    "start": "python app.py"
   }
 }

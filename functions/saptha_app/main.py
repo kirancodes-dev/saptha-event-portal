@@ -111,28 +111,21 @@ def handler(req, res=None):
                 try: res.set_header('Content-Type', 'text/html; charset=utf-8')
                 except Exception: pass
 
+            if hasattr(res, 'write'):
+                try:
+                    res.write(body_content)
+                    return
+                except Exception: pass
             if hasattr(res, 'send'):
-                res.send(body_content)
-                return
-            elif hasattr(res, 'write'):
-                res.write(body_content)
-                if hasattr(res, 'end'):
-                    res.end()
-                return
+                try:
+                    res.send(body_content)
+                    return
+                except Exception: pass
 
-        return {
-            'statusCode': response_status[0],
-            'status_code': response_status[0],
-            'headers': headers_dict,
-            'body': body_content,
-            'output': body_content
-        }
+        # Return raw HTML string directly so Catalyst serves the live website (not JSON string)
+        return body_content
     except Exception as exc:
         import traceback
         error_details = traceback.format_exc()
         sys.stderr.write(f"Catalyst Handler Error: {error_details}\n")
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'text/html; charset=utf-8'},
-            'body': f"<html><body><h2>Server Execution Error</h2><pre>{error_details}</pre></body></html>"
-        }
+        return f"<html><body><h2>Server Execution Error</h2><pre>{error_details}</pre></body></html>"

@@ -23,8 +23,14 @@ import random
 
 # ── Firebase init ──────────────────────────────────────────────────────
 def init_firebase():
-    import firebase_admin
-    from firebase_admin import credentials, firestore
+    try:
+        import firebase_admin
+    except Exception:
+        firebase_admin = None
+    try:
+        from firebase_admin import credentials, firestore
+    except Exception:
+        firebase_admin = None
     if not firebase_admin._apps:
         raw = os.environ.get('FIREBASE_CREDENTIALS')
         if raw:

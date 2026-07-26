@@ -8,7 +8,10 @@ scores, audit logs) and seeds the initial SuperAdmin account.
 import os
 import sys
 import logging
-from sqlalchemy import create_engine
+try:
+    from sqlalchemy import create_engine
+except Exception:
+    sqlalchemy = None
 from models_pg import Base, User
 from werkzeug.security import generate_password_hash
 
@@ -29,7 +32,10 @@ def create_all_tables(db_url: str = None):
     logger.info("✅ All database tables created successfully!")
 
     # Seed initial SuperAdmin user
-    from sqlalchemy.orm import sessionmaker
+    try:
+        from sqlalchemy.orm import sessionmaker
+    except Exception:
+        sqlalchemy = None
     SessionLocal = sessionmaker(bind=engine)
     with SessionLocal() as session:
         admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@snpsu.edu.in')

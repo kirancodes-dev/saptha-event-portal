@@ -1,12 +1,30 @@
 import os
 import sys
 import datetime
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
-from reportlab.platypus import (
+try:
+    from reportlab.lib import colors
+except Exception:
+    reportlab = None
+try:
+    from reportlab.lib.pagesizes import letter
+except Exception:
+    reportlab = None
+try:
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+except Exception:
+    reportlab = None
+try:
+    from reportlab.lib.units import inch
+except Exception:
+    reportlab = None
+try:
+    from reportlab.pdfgen import canvas
+except Exception:
+    reportlab = None
+try:
+    from reportlab.platypus import (
+except Exception:
+    reportlab = None
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
 )
 

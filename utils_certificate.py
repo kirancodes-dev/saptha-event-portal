@@ -735,10 +735,22 @@ def generate_from_image_template(
     name_x_pct / name_y_pct: position of the name centred at (x%, y%)
     relative to the page, measured from the top-left corner.
     """
-    from PIL import Image, ImageDraw, ImageFont
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.pdfgen import canvas as rl_canvas
-    from reportlab.lib.utils import ImageReader
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except Exception:
+        PIL = None
+    try:
+        from reportlab.lib.pagesizes import A4, landscape
+    except Exception:
+        reportlab = None
+    try:
+        from reportlab.pdfgen import canvas as rl_canvas
+    except Exception:
+        reportlab = None
+    try:
+        from reportlab.lib.utils import ImageReader
+    except Exception:
+        reportlab = None
 
     W, H = landscape(A4)
 

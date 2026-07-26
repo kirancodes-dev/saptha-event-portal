@@ -9,7 +9,10 @@ Delete this file after you've logged in successfully.
 """
 import os
 import datetime
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except Exception:
+    dotenv = None
 load_dotenv()
 
 from werkzeug.security import generate_password_hash

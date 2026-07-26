@@ -3,7 +3,10 @@ import json
 import logging
 from datetime import datetime, date, timezone
 from dateutil import parser as date_parser
-from sqlalchemy.orm import Session
+try:
+    from sqlalchemy.orm import Session
+except Exception:
+    sqlalchemy = None
 from db_pg import get_session
 from models_pg import (
     User, Event, Registration, TeamMember, Score, EventForm,

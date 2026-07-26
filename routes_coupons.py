@@ -170,7 +170,10 @@ def apply_coupon():
         .limit(1)
         .stream()
     ):
-        from google.cloud.firestore_v1 import Increment
+        try:
+            from google.cloud.firestore_v1 import Increment
+        except Exception:
+            google = None
         db.collection("coupons").document(doc.id).update({
             "current_uses": Increment(1),
         })

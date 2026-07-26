@@ -367,7 +367,10 @@ def api_register_event(event_id):
     reg_data["id"] = doc_ref[1].id
 
     # Increment registration count
-    from google.cloud.firestore_v1 import Increment
+    try:
+        from google.cloud.firestore_v1 import Increment
+    except Exception:
+        google = None
     db.collection("events").document(event_id).update({
         "registration_count": Increment(1),
     })

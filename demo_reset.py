@@ -20,7 +20,10 @@ import sys
 import datetime
 sys.path.insert(0, '.')
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except Exception:
+    dotenv = None
 load_dotenv()
 
 from models import db

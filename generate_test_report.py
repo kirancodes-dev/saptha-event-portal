@@ -7,17 +7,41 @@ Output: reports/SapthaEvent_Test_Verification_Report.pdf
 """
 import os
 import datetime
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch, mm
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
-from reportlab.platypus import (
+try:
+    from reportlab.lib import colors
+except Exception:
+    reportlab = None
+try:
+    from reportlab.lib.pagesizes import A4
+except Exception:
+    reportlab = None
+try:
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+except Exception:
+    reportlab = None
+try:
+    from reportlab.lib.units import inch, mm
+except Exception:
+    reportlab = None
+try:
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+except Exception:
+    reportlab = None
+try:
+    from reportlab.platypus import (
+except Exception:
+    reportlab = None
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     PageBreak, HRFlowable, Image
 )
-from reportlab.graphics.shapes import Drawing, Rect, String, Line
-from reportlab.graphics import renderPDF
+try:
+    from reportlab.graphics.shapes import Drawing, Rect, String, Line
+except Exception:
+    reportlab = None
+try:
+    from reportlab.graphics import renderPDF
+except Exception:
+    reportlab = None
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIG

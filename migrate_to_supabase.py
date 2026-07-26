@@ -15,7 +15,10 @@ import uuid
 import logging
 from datetime import datetime, date, timezone
 from dateutil import parser as date_parser
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except Exception:
+    dotenv = None
 
 # Load environment variables from .env
 load_dotenv()
@@ -28,7 +31,10 @@ try:
     from firebase_admin import credentials, firestore
 except ImportError:
     credentials = firestore = auth = None
-from sqlalchemy.orm import Session
+try:
+    from sqlalchemy.orm import Session
+except Exception:
+    sqlalchemy = None
 
 # Import SQLAlchemy DB helpers and Models
 from db_pg import get_engine, init_db, get_session

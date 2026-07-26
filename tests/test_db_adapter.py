@@ -6,8 +6,14 @@ import json
 import pytest
 from datetime import datetime, date, timezone
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+try:
+    from sqlalchemy import create_engine
+except Exception:
+    sqlalchemy = None
+try:
+    from sqlalchemy.orm import sessionmaker
+except Exception:
+    sqlalchemy = None
 
 from models_pg import (
     Base, User, Event, Registration, TeamMember, Score, EventForm,

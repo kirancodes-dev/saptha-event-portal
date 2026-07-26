@@ -11,7 +11,10 @@ try:
 except ImportError:
     import subprocess
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'requests', '-q'])
-    import requests
+    try:
+        import requests
+    except Exception:
+        requests = None
 
 BASE = "http://localhost:9399/v1beta/projects/aurevix/locations/us-east4/services/aurevix-service/connectors/example:executeMutation"
 TODAY = date.today()

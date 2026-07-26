@@ -29,7 +29,10 @@ try:
 except ImportError:
     credentials = firestore = auth = None
 from werkzeug.security import generate_password_hash
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except Exception:
+    dotenv = None
 
 load_dotenv()
 

@@ -3,7 +3,10 @@ supabase_client.py — Initializer helper for the Supabase API Client.
 """
 import os
 from flask import current_app
-from supabase import create_client, Client
+try:
+    from supabase import create_client, Client
+except Exception:
+    supabase = None
 
 
 def get_supabase_client() -> Client:

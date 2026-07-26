@@ -17,8 +17,14 @@ Connection method:
 """
 import os
 
-from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import sessionmaker, Session
+try:
+    from sqlalchemy import create_engine, event, text
+except Exception:
+    sqlalchemy = None
+try:
+    from sqlalchemy.orm import sessionmaker, Session
+except Exception:
+    sqlalchemy = None
 from contextlib import contextmanager
 
 from models_pg import Base

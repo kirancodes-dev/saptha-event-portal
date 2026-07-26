@@ -7,9 +7,18 @@ import secrets
 import string
 import time as _time
 from io import StringIO
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+try:
+    import openpyxl
+except Exception:
+    openpyxl = None
+try:
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+except Exception:
+    openpyxl = None
+try:
+    from openpyxl.utils import get_column_letter
+except Exception:
+    openpyxl = None
 from flask import (Blueprint, Response, flash, jsonify,
                    redirect, render_template, request, session)
 try:

@@ -238,7 +238,10 @@ def auto_promote(db, event_id: str):
         db.collection("registrations").document(reg_id).set(reg_data)
 
         # Increment count
-        from google.cloud.firestore_v1 import Increment
+        try:
+            from google.cloud.firestore_v1 import Increment
+        except Exception:
+            google = None
         db.collection("events").document(event_id).update({
             "registration_count": Increment(1),
         })

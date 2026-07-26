@@ -8,7 +8,10 @@ import logging
 import secrets
 from urllib.parse import urlencode
 
-import requests
+try:
+    import requests
+except Exception:
+    requests = None
 from flask import Blueprint, redirect, request, session, flash, current_app
 
 from utils import ROLE_REDIRECTS

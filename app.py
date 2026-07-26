@@ -41,7 +41,11 @@ except ImportError:
 try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:
-    FieldFilter = None
+    class FieldFilter:
+        def __init__(self, field=None, op=None, val=None):
+            self.field = field
+            self.op = op
+            self.val = val
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 try:
@@ -61,7 +65,7 @@ from utils import ROLE_REDIRECTS  # single source of truth
 # =========================================================
 import werkzeug.security as _wsec
 
-if not hasattr(_wsec, '_is_patched'):
+if not getattr(_wsec, '_is_patched', False):
     _original_generate_password_hash = _wsec.generate_password_hash
     _original_check_password_hash = _wsec.check_password_hash
 
@@ -80,7 +84,7 @@ if not hasattr(_wsec, '_is_patched'):
 
     _wsec.generate_password_hash = _safe_generate_password_hash
     _wsec.check_password_hash = _safe_check_password_hash
-    _wsec._is_patched = True
+    setattr(_wsec, '_is_patched', True)
 
 
 # =========================================================
@@ -233,7 +237,7 @@ if firebase_admin and not getattr(firebase_admin, '_apps', None):
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
     firebase_initialized = False
     
-    if firebase_creds_json and is_valid_firebase_creds(firebase_creds_json):
+    if firebase_creds_json and is_valid_firebase_creds(firebase_creds_json) and credentials:
         try:
             cred_dict = json.loads(firebase_creds_json)
             if isinstance(cred_dict, str):

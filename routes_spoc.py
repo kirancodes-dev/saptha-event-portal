@@ -604,7 +604,10 @@ def announcements_feed():
 @spoc_bp.route('/announcements/public/<event_id>')
 def public_announcements(event_id):
     """Public JSON feed of announcements for a given event (no auth needed)."""
-    from google.cloud.firestore_v1.base_query import FieldFilter
+    try:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+    except Exception:
+        google = None
     items = []
     for doc in (db.collection('announcements')
                   .where(filter=FieldFilter('event_id', '==', event_id))

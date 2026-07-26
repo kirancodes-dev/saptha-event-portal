@@ -10,8 +10,14 @@ import logging
 import secrets
 from functools import wraps
 
-import pyotp
-import qrcode
+try:
+    import pyotp
+except Exception:
+    pyotp = None
+try:
+    import qrcode
+except Exception:
+    qrcode = None
 from flask import Blueprint, request, session, redirect, flash, render_template_string, jsonify
 
 from utils import login_required, role_required

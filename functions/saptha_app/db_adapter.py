@@ -11,7 +11,10 @@ import logging
 from datetime import datetime, date, timezone
 from dateutil import parser as date_parser
 
-from sqlalchemy import text
+try:
+    from sqlalchemy import text
+except Exception:
+    sqlalchemy = None
 from db_pg import get_engine, get_session
 from models_pg import (
     Base, User, Event, Registration, TeamMember, Score, EventForm,

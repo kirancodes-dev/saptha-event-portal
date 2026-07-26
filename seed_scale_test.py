@@ -7,7 +7,10 @@ import uuid
 import random
 import logging
 from datetime import datetime, date, timezone
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except Exception:
+    dotenv = None
 
 # Load environment variables
 load_dotenv()
@@ -17,7 +20,10 @@ if not os.environ.get("DATABASE_URL"):
     print("ERROR: DATABASE_URL not set in environment.")
     sys.exit(1)
 
-from sqlalchemy.orm import Session
+try:
+    from sqlalchemy.orm import Session
+except Exception:
+    sqlalchemy = None
 from db_pg import get_engine, get_session, init_db
 from models_pg import (
     Base, User, Event, Registration, TeamMember, UserRole,

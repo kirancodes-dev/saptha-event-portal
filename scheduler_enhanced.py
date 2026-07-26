@@ -20,9 +20,18 @@ import time
 from functools import wraps
 from typing import Callable
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+except Exception:
+    apscheduler = None
+try:
+    from apscheduler.triggers.interval import IntervalTrigger
+except Exception:
+    apscheduler = None
+try:
+    from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
+except Exception:
+    apscheduler = None
 
 logger = logging.getLogger(__name__)
 

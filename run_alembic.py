@@ -1,7 +1,16 @@
 import os
-from dotenv import load_dotenv
-from alembic.config import Config
-from alembic import command
+try:
+    from dotenv import load_dotenv
+except Exception:
+    dotenv = None
+try:
+    from alembic.config import Config
+except Exception:
+    alembic = None
+try:
+    from alembic import command
+except Exception:
+    alembic = None
 
 def run():
     # Load environment variables from .env

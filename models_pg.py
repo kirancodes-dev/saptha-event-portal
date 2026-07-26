@@ -9,12 +9,21 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import (
+try:
+    from sqlalchemy import (
+except Exception:
+    sqlalchemy = None
     Boolean, Column, DateTime, Enum, Float, ForeignKey,
     Integer, String, Text, Date, Index
 )
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase, relationship
+try:
+    from sqlalchemy.dialects.postgresql import UUID
+except Exception:
+    sqlalchemy = None
+try:
+    from sqlalchemy.orm import DeclarativeBase, relationship
+except Exception:
+    sqlalchemy = None
 
 
 class Base(DeclarativeBase):

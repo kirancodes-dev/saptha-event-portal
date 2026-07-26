@@ -1,7 +1,13 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
-from alembic import context
+try:
+    from sqlalchemy import engine_from_config, pool
+except Exception:
+    sqlalchemy = None
+try:
+    from alembic import context
+except Exception:
+    alembic = None
 
 # Import the app's database config and models
 from db_pg import get_engine

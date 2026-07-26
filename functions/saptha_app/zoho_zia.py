@@ -10,7 +10,10 @@ Integrates SapthaEvent Portal directly with your dedicated Zoho QuickML LLM Serv
 import os
 import json
 import logging
-import requests
+try:
+    import requests
+except Exception:
+    requests = None
 from typing import Dict, List, Any, Optional
 
 logger = logging.getLogger(__name__)

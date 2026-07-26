@@ -126,7 +126,10 @@ def checkout(event_id):
     # Duplicate guard — catch it before showing payment UI
     email = reg_data.get('lead_email', '')
     if email:
-        from google.cloud.firestore_v1.base_query import FieldFilter
+        try:
+            from google.cloud.firestore_v1.base_query import FieldFilter
+        except Exception:
+            google = None
         existing = list(
             _db().collection('registrations')
               .where(filter=FieldFilter('event_id', '==', event_id))

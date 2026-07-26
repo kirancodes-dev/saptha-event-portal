@@ -445,6 +445,12 @@ def service_worker():
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return resp
 
+@app.route('/server/saptha_app/static/<path:filename>')
+@app.route('/static/<path:filename>')
+def serve_custom_static(filename):
+    from flask import send_from_directory
+    return send_from_directory(os.path.join(app.root_path, 'static'), filename)
+
 @app.route('/manifest.webmanifest')
 def pwa_manifest():
     from flask import send_from_directory
@@ -542,55 +548,53 @@ def home():
     registered_event_ids = []
     registered_events_map = {}
     try:
-        if db is None:
-            raise RuntimeError("Firebase not configured")
-        
-        # Fetch registered events for logged-in Student
-        if session.get('user_id') and session.get('role') == 'Student':
+        if db is not None:
+            # Fetch registered events for logged-in Student
+            if session.get('user_id') and session.get('role') == 'Student':
+                try:
+                    regs = db.collection('registrations')\
+                        .where(filter=FieldFilter('lead_email', '==', session['user_id']))\
+                        .stream()
+                    for r in regs:
+                        rd = r.to_dict()
+                        if rd.get('status') != 'Cancelled' and rd.get('event_id'):
+                            eid = rd['event_id']
+                            registered_event_ids.append(eid)
+                            registered_events_map[eid] = r.id
+                except Exception as e:
+                    app.logger.error("Error fetching student registrations: %s", e)
+
+            color_map = {
+                'Technical':  '#f37021',
+                'Cultural':   '#7c3aed',
+                'Sports':     '#10b981',
+                'Management': '#0891b2',
+            }
+            all_active = []
             try:
-                regs = db.collection('registrations')\
-                    .where(filter=FieldFilter('lead_email', '==', session['user_id']))\
-                    .stream()
-                for r in regs:
-                    rd = r.to_dict()
-                    if rd.get('status') != 'Cancelled' and rd.get('event_id'):
-                        eid = rd['event_id']
-                        registered_event_ids.append(eid)
-                        registered_events_map[eid] = r.id
-            except Exception as e:
-                app.logger.error("Error fetching student registrations: %s", e)
+                event_list = db.collection('events').stream()
+                for e in event_list:
+                    d = e.to_dict() if hasattr(e, 'to_dict') else e
+                    if not isinstance(d, dict): continue
+                    d['id'] = getattr(e, 'id', None) or d.get('id') or 'event-demo'
+                    d.setdefault('description',        'An exciting event at Sapthagiri NPS University.')
+                    d.setdefault('registration_count', 0)
+                    d.setdefault('entry_fee',          0)
+                    d.setdefault('category',           'General')
+                    
+                    event_date = d.get('date', '9999-99-99')
+                    if event_date < current_date:
+                        continue
+                        
+                    deadline = d.get('deadline') or d.get('reg_deadline', '')
+                    d['is_closed'] = bool(deadline and current_date > deadline)
+                    all_active.append(d)
+            except Exception as exc:
+                app.logger.error("Error streaming active events: %s", exc)
 
-        color_map = {
-            'Technical':  '#f37021',
-            'Cultural':   '#7c3aed',
-            'Sports':     '#10b981',
-            'Management': '#0891b2',
-        }
-        all_active = []
-        for e in (db.collection('events')
-                    .where(filter=FieldFilter('status', '==', 'active'))
-                    .stream()):
-            d       = e.to_dict()
-            d['id'] = e.id
-            d.setdefault('description',        'An exciting event at Sapthagiri NPS University.')
-            d.setdefault('registration_count', 0)
-            d.setdefault('entry_fee',          0)
-            d.setdefault('category',           'General')
-            
-            # Delete/hide completed events
-            event_date = d.get('date', '9999-99-99')
-            if event_date < current_date:
-                continue
-                
-            # Registration closed check
-            deadline = d.get('deadline') or d.get('reg_deadline', '')
-            d['is_closed'] = bool(deadline and current_date > deadline)
-            
-            all_active.append(d)
-
-        # Sort the upcoming events by date
-        all_active.sort(key=lambda x: x.get('date', '9999-99-99'))
-        events = all_active
+            if all_active:
+                all_active.sort(key=lambda x: x.get('date', '9999-99-99'))
+                events = all_active
 
         for d in events:
             cat = d.get('category', 'General')

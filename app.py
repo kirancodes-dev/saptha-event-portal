@@ -174,7 +174,7 @@ def _safe_csrf_token():
     except Exception:
         return "dummy-csrf-token"
 
-app.jinja_env.globals['csrf_token'] = _safe_csrf_token
+app.jinja_env.globals.update(csrf_token=_safe_csrf_token)
 
 # ── Server-side session (Redis in prod, filesystem in dev) ──
 if app.config.get('SESSION_TYPE') == 'redis':
@@ -545,6 +545,12 @@ def home():
         'General':    'fa-calendar-alt',
     }
 
+    color_map = {
+        'Technical':  '#f37021',
+        'Cultural':   '#7c3aed',
+        'Sports':     '#10b981',
+        'Management': '#0891b2',
+    }
     registered_event_ids = []
     registered_events_map = {}
     try:
@@ -564,12 +570,6 @@ def home():
                 except Exception as e:
                     app.logger.error("Error fetching student registrations: %s", e)
 
-            color_map = {
-                'Technical':  '#f37021',
-                'Cultural':   '#7c3aed',
-                'Sports':     '#10b981',
-                'Management': '#0891b2',
-            }
             all_active = []
             try:
                 event_list = db.collection('events').stream()

@@ -12,7 +12,7 @@ Fixes in this version
 """
 import datetime
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session
 try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:

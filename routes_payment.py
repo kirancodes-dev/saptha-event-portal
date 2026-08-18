@@ -1,3 +1,4 @@
+import datetime
 import hashlib
 import hmac as _hmac  # alias to avoid shadowing module with local var
 import os
@@ -30,6 +31,26 @@ payment_bp = Blueprint('payment', __name__, url_prefix='/payment')
 
 RAZORPAY_KEY_ID     = os.environ.get('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
+
+def _db():
+    try:
+        import app as app_module
+        if hasattr(app_module, 'db') and app_module.db is not None:
+            return app_module.db
+    except Exception:
+        pass
+    try:
+        from models import db
+        return db
+    except Exception:
+        return None
+
+def log_action(db_conn, action, details=""):
+    try:
+        from audit_logger import log_action as audit_log_action
+        audit_log_action(action, details)
+    except Exception:
+        pass
 
 def _rzp():
     return razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))

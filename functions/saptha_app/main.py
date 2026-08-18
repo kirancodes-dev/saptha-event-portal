@@ -5,6 +5,7 @@ functions/saptha_app/main.py — Zoho Catalyst Advanced I/O Python WSGI Handler 
 import sys
 import os
 from io import BytesIO
+from typing import Any
 
 # Set working directory to function package root
 FUNCTION_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -73,12 +74,13 @@ def handler(req, res=None):
         response_status = [200]
         response_headers = []
 
-        def start_response(status, headers, exc_info=None):
+        def start_response(status: str, headers: list, exc_info=None) -> Any:
             try:
                 response_status[0] = int(status.split()[0])
             except Exception:
                 response_status[0] = 200
             response_headers.extend(headers)
+            return lambda s: None
 
         # Execute Flask WSGI app
         wsgi_iterable = app(environ, start_response)

@@ -19,10 +19,13 @@ import csv
 import datetime
 import io
 import json
+import logging
 import re
 import secrets
 import string
 import time
+
+logger = logging.getLogger(__name__)
 
 from flask import (Blueprint, Response, current_app, flash, jsonify,
                    redirect, render_template, request, session)
@@ -400,6 +403,9 @@ def submit_form(event_id):
             'form_type':       schema.get('form_type', 'simple'),
         }
 
+        # Free vs paid fee calculation
+        fee = safe_int(event_data.get('entry_fee', 0))
+
         # Capacity check — if event is at capacity, add to waitlists instead
         max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0))
         current_count = safe_int(event_data.get('registration_count', 0))
@@ -464,7 +470,6 @@ def submit_form(event_id):
         })
 
         # Free vs paid
-        fee = safe_int(event_data.get('entry_fee', 0))
         if fee > 0:
             reg_data.update({
                 'status':         'Pending Payment',
@@ -526,7 +531,7 @@ def submit_form(event_id):
         return redirect('/registration/confirmed')
 
     except Exception as exc:
-        import traceback; traceback.print_exc()
+        logger.error("Form submission error for event %s: %s", event_id, exc, exc_info=True)
         flash(f"Submission failed: {exc}", "danger")
         return redirect(f'/forms/register/{event_id}')
 

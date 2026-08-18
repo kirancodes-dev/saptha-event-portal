@@ -14,7 +14,7 @@ import secrets
 import string
 import time
 
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
+from flask import (Blueprint, current_app, flash, jsonify, redirect, render_template,
                    request, session)
 try:
     from google.cloud import firestore

@@ -11,11 +11,11 @@ from datetime import datetime, timezone
 
 try:
     from sqlalchemy import (
+        Boolean, Column, DateTime, Enum, Float, ForeignKey,
+        Integer, String, Text, Date, Index
+    )
 except Exception:
     sqlalchemy = None
-    Boolean, Column, DateTime, Enum, Float, ForeignKey,
-    Integer, String, Text, Date, Index
-)
 try:
     from sqlalchemy.dialects.postgresql import UUID
 except Exception:

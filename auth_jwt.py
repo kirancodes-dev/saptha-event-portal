@@ -56,7 +56,7 @@ def _refresh_ttl() -> int:
 # Token creation
 # ---------------------------------------------------------------------------
 
-def create_access_token(user_email: str, role: str, org_id: str = "", extra: dict = None) -> str:
+def create_access_token(user_email: str, role: str, org_id: str = "", extra: Optional[dict] = None) -> str:
     """Create a short-lived access token."""
     now = datetime.now(timezone.utc)
     payload = {
@@ -88,7 +88,7 @@ def create_refresh_token(user_email: str, role: str, org_id: str = "") -> str:
     return pyjwt.encode(payload, _get_secret(), algorithm="HS256")
 
 
-def create_tokens(user_email: str, role: str, org_id: str = "", extra: dict = None) -> dict:
+def create_tokens(user_email: str, role: str, org_id: str = "", extra: Optional[dict] = None) -> dict:
     """Create both access and refresh tokens."""
     return {
         "access_token": create_access_token(user_email, role, org_id, extra),

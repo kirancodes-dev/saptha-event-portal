@@ -61,7 +61,9 @@ FIELD_MAP = {
     'answers': 'answers_json',
     'actorEmail': 'actor_email',
     'targetId': 'target_id',
-    'student_email': 'lead_email'
+    'student_email': 'lead_email',
+    'reg_id': 'registration_id',
+    'regId': 'registration_id',
 }
 
 
@@ -83,6 +85,8 @@ def verify_and_align_schema():
         ('assigned_room', 'VARCHAR(100)')
     ]
     
+    if not engine:
+        return
     is_sqlite = engine.url.drivername.startswith('sqlite')
     if is_sqlite:
         return
@@ -128,14 +132,14 @@ def to_uuid(doc_id):
 import decimal
 
 class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            return float(obj)
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
-        if isinstance(obj, uuid.UUID):
-            return str(obj)
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
+        if isinstance(o, uuid.UUID):
+            return str(o)
+        return super().default(o)
 
 def safe_str(val) -> str:
     if val is None:
@@ -152,7 +156,7 @@ def safe_str(val) -> str:
 
 
 # ── Native Firestore Store (Multi-Worker Durable Document Store) ────────────
-PURE_FIRESTORE_COLLECTIONS = {'push_subscriptions', 'announcements', 'deletion_requests', 'user_consent'}
+PURE_FIRESTORE_COLLECTIONS = {'push_subscriptions', 'announcements', 'deletion_requests', 'user_consent', 'waitlists'}
 
 def _ensure_native_table(session):
     """Ensure persistent native document table exists with audit timestamp."""
@@ -170,7 +174,7 @@ def _db_dialect_name():
     """Return the SQLAlchemy dialect name of the active engine ('postgresql' or 'sqlite')."""
     try:
         engine = get_engine()
-        return engine.dialect.name
+        return engine.dialect.name if engine else 'sqlite'
     except Exception:
         return 'sqlite'
 
@@ -182,7 +186,7 @@ def _get_native_doc(collection_name, doc_id):
             import redis
             r = redis.Redis.from_url(redis_url, decode_responses=True)
             raw = r.get(f"doc:{collection_name}:{doc_id}")
-            if raw:
+            if raw and isinstance(raw, (str, bytes, bytearray)):
                 return json.loads(raw)
     except Exception:
         pass
@@ -587,7 +591,7 @@ class SQLDocumentReference:
         elif self.collection_name == 'form_submissions':
             kwargs['id'] = to_uuid(self.id)
             kwargs['event_id'] = to_uuid(data.get('event_id'))
-            kwargs['registration_id'] = to_uuid(data.get('registration_id'))
+            kwargs['registration_id'] = to_uuid(data.get('registration_id') or data.get('reg_id') or data.get('regId'))
             kwargs['answers_json'] = json.dumps(data)
             kwargs['submitted_at'] = self._get_datetime(data.get('submitted_at', data.get('submittedAt')))
             return FormSubmission(**kwargs)

@@ -229,7 +229,7 @@ Instructions:
         return jsonify({'success': True, 'matches': final_matches})
 
     except Exception as gemini_err:
-        logger.warning("Gemini matchmaking failed, falling back to Jaccard similarity: %s", gemini_err)
+        logger.warning("Gemini matchmaking failed, falling back to fuzzy interest similarity engine: %s", gemini_err)
 
         final_matches = []
         user_skills_lower = [s.lower().strip() for s in user_skills_clean]
@@ -239,19 +239,35 @@ Instructions:
             peer_skills_lower = [s.lower().strip() for s in peer['skills']]
             peer_interests_lower = [i.lower().strip() for i in peer['interests']]
 
-            skill_intersection = set(user_skills_lower).intersection(set(peer_skills_lower))
-            interest_intersection = set(user_interests_lower).intersection(set(peer_interests_lower))
+            # Fuzzy / substring interest matching
+            interest_matches = 0
+            for u_int in user_interests_lower:
+                for p_int in peer_interests_lower:
+                    if u_int == p_int or u_int in p_int or p_int in u_int:
+                        interest_matches += 1
+                        break
 
-            matching_score = 0
+            matching_score = 40.0  # Base starting baseline score
             if user_interests_lower and peer_interests_lower:
-                matching_score += 60 * (len(interest_intersection) / max(len(user_interests_lower), len(peer_interests_lower)))
+                interest_ratio = interest_matches / max(len(user_interests_lower), len(peer_interests_lower))
+                matching_score += 40.0 * interest_ratio
+            elif user_interests_lower or peer_interests_lower:
+                matching_score += 20.0
 
+            # Skill complementarity (boost when skills complement each other)
+            skill_intersection = set(user_skills_lower).intersection(set(peer_skills_lower))
             all_skills = set(user_skills_lower).union(set(peer_skills_lower))
             if all_skills:
-                collaborative_score = 40 * (1 - len(skill_intersection) / len(all_skills))
-                matching_score += collaborative_score
+                complementarity_ratio = 1.0 - (len(skill_intersection) / len(all_skills))
+                matching_score += 18.0 * complementarity_ratio
 
-            matching_score = round(max(30, min(98, matching_score)))
+            final_score = round(max(55, min(98, matching_score)))
+
+            # Build tailored collaborative reasoning
+            matched_int_list = [i for i in peer['interests'] if any(u in i.lower() for u in user_interests_lower)]
+            match_reason = (
+                f"High interest alignment in {', '.join(matched_int_list or peer['interests'][:2])} with complementary {', '.join(peer['skills'][:2])} background."
+            )
 
             final_matches.append({
                 'id': peer['id'],
@@ -261,8 +277,8 @@ Instructions:
                 'interests': peer['interests'],
                 'bio': peer['bio'],
                 'avatar': peer['avatar'],
-                'match_score': matching_score,
-                'match_reason': 'Matched based on shared fests and collaborative skills.'
+                'match_score': final_score,
+                'match_reason': match_reason
             })
 
         final_matches.sort(key=lambda x: x['match_score'], reverse=True)

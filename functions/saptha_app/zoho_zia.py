@@ -29,11 +29,12 @@ DEFAULT_MODEL = os.environ.get('ZOHO_QUICKML_MODEL', 'VL-Qwen3.6-35B-A3B')
 
 
 def _get_headers() -> Dict[str, str]:
+    org_id = os.environ.get('ZOHO_CATALYST_ORG') or CATALYST_ORG_ID
     headers = {
         'Content-Type': 'application/json',
-        'CATALYST-ORG': CATALYST_ORG_ID,
+        'CATALYST-ORG': org_id,
     }
-    token = ZOHO_AUTH_TOKEN or os.environ.get('ZOHO_AUTH_TOKEN', '')
+    token = os.environ.get('ZOHO_AUTH_TOKEN') or os.environ.get('CATALYST_AUTH_TOKEN') or ZOHO_AUTH_TOKEN
     if token:
         if token.startswith('Bearer ') or token.startswith('Zoho-oauthtoken '):
             headers['Authorization'] = token

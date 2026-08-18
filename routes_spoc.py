@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, Response, jsonify
+from flask import Blueprint, render_template, request, redirect, session, flash, Response, jsonify, current_app
 from models import FirebaseWrapper
 import datetime
 import csv

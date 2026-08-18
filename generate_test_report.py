@@ -29,11 +29,11 @@ except Exception:
     reportlab = None
 try:
     from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+        PageBreak, HRFlowable, Image
+    )
 except Exception:
     reportlab = None
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, HRFlowable, Image
-)
 try:
     from reportlab.graphics.shapes import Drawing, Rect, String, Line
 except Exception:

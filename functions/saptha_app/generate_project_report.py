@@ -23,10 +23,10 @@ except Exception:
     reportlab = None
 try:
     from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
+    )
 except Exception:
     reportlab = None
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
-)
 
 PDF_PATH = 'SAPTHA_EVENT_PORTAL_PROJECT_REPORT.pdf'
 NOW = datetime.datetime.now()

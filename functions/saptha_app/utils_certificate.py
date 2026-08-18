@@ -6,9 +6,11 @@ Two modes:
   2. SPOC-uploaded image templates (PNG/JPG overlaid with participant name)
 """
 
+from datetime import datetime
 import io
 import os
 import logging
+from typing import Optional
 try:
     import qrcode
     from qrcode.image.pil import PilImage

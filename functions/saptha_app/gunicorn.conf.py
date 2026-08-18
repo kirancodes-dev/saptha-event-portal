@@ -18,12 +18,8 @@ Tuned for:
 import multiprocessing
 import os
 
-# ── Workers ───────────────────────────────────────────────
-# Rule of thumb: 2 × CPU + 1 per replica.
-# Each replica in docker-compose gets its own CPU slice.
-# Cap at 4 to avoid OOM on 512 MB instances.
-_cpu  = multiprocessing.cpu_count()
-workers = min((_cpu * 2) + 1, 4)
+# Use WEB_CONCURRENCY if set (Render/Heroku standard), otherwise default to 2 workers for 512MB safety
+workers = int(os.environ.get('WEB_CONCURRENCY', os.environ.get('WORKERS', '2')))
 
 # Threads give concurrency within each worker for I/O-bound requests.
 # Most of our I/O (email, Firestore) is now offloaded to Celery,

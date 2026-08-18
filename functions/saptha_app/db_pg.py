@@ -98,12 +98,12 @@ def _build_engine():
         except Exception as exc:
             import logging
             logging.getLogger(__name__).warning("Cloud SQL connection failed: %s. Falling back to local SQLite: sqlite:///saptha_fallback.db", exc)
-            _engine = create_engine("sqlite:///saptha_fallback.db", pool_pre_ping=True)
+            _engine = create_engine("sqlite:///saptha_fallback.db", pool_pre_ping=True, connect_args={"check_same_thread": False, "timeout": 30})
 
     else:
         import logging
         logging.getLogger(__name__).warning("No database URL set. Falling back to local SQLite: sqlite:///saptha_fallback.db")
-        _engine = create_engine("sqlite:///saptha_fallback.db", pool_pre_ping=True)
+        _engine = create_engine("sqlite:///saptha_fallback.db", pool_pre_ping=True, connect_args={"check_same_thread": False, "timeout": 30})
 
     _SessionLocal = sessionmaker(bind=_engine, autocommit=False, autoflush=False)
 
@@ -136,11 +136,16 @@ def get_engine():
 def init_db():
     """Create all tables if they don't exist. Call once at app startup."""
     engine = get_engine()
-    Base.metadata.create_all(engine)
+    if engine is not None:
+        try:
+            Base.metadata.create_all(engine)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).info("init_db note: %s", exc)
 
 
 @contextmanager
-def get_session() -> "contextmanager[Session]":
+def get_session():
     """Context manager yielding a SQLAlchemy session with auto-commit/rollback and read-replica routing."""
     if _SessionLocal is None:
         _build_engine()
@@ -155,8 +160,10 @@ def get_session() -> "contextmanager[Session]":
 
     if use_replica and _SessionLocalReplica is not None:
         session: Session = _SessionLocalReplica()
-    else:
+    elif callable(_SessionLocal):
         session: Session = _SessionLocal()
+    else:
+        raise RuntimeError("SQLAlchemy SessionLocal is uninitialized.")
 
     # Dynamic multi-tenant schema partitioning path
     try:
@@ -165,7 +172,7 @@ def get_session() -> "contextmanager[Session]":
             org_slug = g.org.get('slug')
             if org_slug:
                 schema_name = f"tenant_{org_slug.replace('-', '_')}"
-                if session.bind.dialect.name == 'postgresql':
+                if session.bind and getattr(session.bind, 'dialect', None) and session.bind.dialect.name == 'postgresql':
                     session.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name};"))
                     session.execute(text(f"SET search_path TO {schema_name}, public;"))
     except Exception:

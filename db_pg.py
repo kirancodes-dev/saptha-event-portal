@@ -138,7 +138,15 @@ def init_db():
     engine = get_engine()
     if engine is not None:
         try:
-            Base.metadata.create_all(engine)
+            from sqlalchemy import inspect
+            inspector = inspect(engine)
+            existing_tables = set(inspector.get_table_names())
+            tables_to_create = [
+                table for name, table in Base.metadata.tables.items()
+                if name not in existing_tables
+            ]
+            if tables_to_create:
+                Base.metadata.create_all(engine, tables=tables_to_create)
         except Exception as exc:
             import logging
             logging.getLogger(__name__).info("init_db note: %s", exc)

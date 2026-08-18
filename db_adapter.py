@@ -999,9 +999,12 @@ class SQLFirestoreAdapter:
         try:
             init_db()
         except Exception as exc:
-            logger.error("Failed to initialize database tables: %s", exc)
+            logger.info("Database table init note: %s", exc)
         # Auto-align live postgres schemas on start
-        verify_and_align_schema()
+        try:
+            verify_and_align_schema()
+        except Exception as exc:
+            logger.info("Schema alignment note: %s", exc)
 
     def collection(self, name) -> SQLCollectionReference:
         return SQLCollectionReference(name)

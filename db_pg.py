@@ -137,7 +137,11 @@ def init_db():
     """Create all tables if they don't exist. Call once at app startup."""
     engine = get_engine()
     if engine is not None:
-        Base.metadata.create_all(engine)
+        try:
+            Base.metadata.create_all(engine)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).info("init_db note: %s", exc)
 
 
 @contextmanager

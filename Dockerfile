@@ -6,7 +6,6 @@ FROM python:3.11-slim
 # Prevent Python from writing .pyc files and enable unbuffered logging
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8080 \
     FLASK_ENV=production
 
 WORKDIR /app

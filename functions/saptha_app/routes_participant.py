@@ -112,25 +112,26 @@ def dashboard():
     today = datetime.date.today().strftime('%Y-%m-%d')
     registered_event_ids = {r.get('event_id') for r in active_tickets + completed_events}
     upcoming_events = []
-    for e in (db.collection('events')
-                .where(filter=_ff('status', '==', 'active'))
-                .stream()):
-        if e.id not in registered_event_ids:
-            d = e.to_dict()
-            if d.get('date', '9999-99-99') < today:
-                continue
-            d['id'] = e.id
-            d['days_until'] = _days_until(d.get('date', ''))
-            upcoming_events.append(d)
-    upcoming_events.sort(key=lambda x: x.get('date', ''))
-    upcoming_events = upcoming_events[:6]
-
-    # Calendar feed
     calendar_events = []
-    for e in (db.collection('events')
-                .where(filter=_ff('status', '==', 'active'))
-                .stream()):
+
+    # Single query with date pushdown to avoid double table scan
+    active_future_events = (
+        db.collection('events')
+        .where('status', '==', 'active')
+        .where('date', '>=', today)
+        .order_by('date')
+        .limit(100)
+        .stream()
+    )
+
+    for e in active_future_events:
         d = e.to_dict()
+        d['id'] = e.id
+        if e.id not in registered_event_ids and len(upcoming_events) < 6:
+            d_copy = dict(d)
+            d_copy['days_until'] = _days_until(d.get('date', ''))
+            upcoming_events.append(d_copy)
+
         calendar_events.append({
             'title': d.get('title'),
             'start': d.get('date'),

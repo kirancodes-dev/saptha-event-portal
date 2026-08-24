@@ -52,13 +52,21 @@ def home():
 
     try:
         if db:
-            # Limit events query to prevent freezing with large datasets
-            events_ref = db.collection('events').where('status', '==', 'active').limit(500).stream()
+            today = datetime.date.today().strftime('%Y-%m-%d')
+            # Query active future events ordered by date directly from database
+            events_ref = (
+                db.collection('events')
+                .where('status', '==', 'active')
+                .where('date', '>=', today)
+                .order_by('date')
+                .limit(200)
+                .stream()
+            )
             all_events = []
             for doc in events_ref:
                 data = doc.to_dict()
                 all_events.append(FirebaseWrapper(doc.id, data))
-                # Use stored registration count instead of querying
+                # Use stored registration count
                 total_regs += data.get('registration_count', 0)
                 cat = data.get('category', '')
                 if cat:
@@ -67,9 +75,6 @@ def home():
                 if sid:
                     spoc_ids.add(sid)
 
-            today = datetime.date.today().strftime('%Y-%m-%d')
-            all_events = [e for e in all_events if getattr(e, 'date', '9999-99-99') >= today]
-            all_events.sort(key=lambda x: getattr(x, 'date', '9999-99-99'))
             total_events = len(all_events)
             featured_events = [e for e in all_events if getattr(e, 'is_featured', False)][:3]
             upcoming = all_events

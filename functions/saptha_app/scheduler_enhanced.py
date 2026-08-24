@@ -229,7 +229,7 @@ def enhanced_init_scheduler(flask_app, enable_threading: bool = True):
         max_instances=1
     )
 
-    # Example job: Cleanup old data every day at 2 AM IST
+    # Example job: Cleanup old data every day at 2 AM IST (Non-destructive: soft-archives old completed events)
     scheduler.add_job(
         func=_create_cleanup_job(flask_app),
         trigger='cron',
@@ -237,7 +237,20 @@ def enhanced_init_scheduler(flask_app, enable_threading: bool = True):
         minute=0,
         timezone='Asia/Kolkata',
         id='data_cleanup',
-        name='Cleanup old data',
+        name='Archive old data',
+        replace_existing=True,
+        max_instances=1
+    )
+
+    # Auto-transition past events daily at 00:30 IST
+    scheduler.add_job(
+        func=_create_event_status_transition_job(flask_app),
+        trigger='cron',
+        hour=0,
+        minute=30,
+        timezone='Asia/Kolkata',
+        id='event_status_transition',
+        name='Auto-transition past active events to completed',
         replace_existing=True,
         max_instances=1
     )
@@ -353,7 +366,7 @@ def _create_reminder_job(flask_app):
 
 
 def _create_cleanup_job(flask_app):
-    """Create cleanup job for old data"""
+    """Create cleanup job for old data (soft-archives old completed events to protect participant history)."""
 
     @safe_job('data_cleanup')
     @retry_with_backoff(max_retries=2, initial_delay=5)
@@ -361,31 +374,54 @@ def _create_cleanup_job(flask_app):
         with flask_app.app_context():
             from models import db
 
-            # Example: Delete events older than 6 months
+            # Soft-archive events completed older than 180 days
             cutoff_date = (datetime.datetime.now() - datetime.timedelta(days=180)).strftime("%Y-%m-%d")
 
-            logger.info(f"Cleaning up events before {cutoff_date}")
+            logger.info(f"Archiving completed events before {cutoff_date}")
 
             old_events = db.collection('events')\
                 .where('status', '==', 'completed')\
-                .order_by('date')\
+                .where('date', '<', cutoff_date)\
                 .limit(100)\
                 .stream()
 
-            deleted_count = 0
+            archived_count = 0
             for event in old_events:
-                event_data = event.to_dict()
-                event_date = event_data.get('date', '')
+                # Soft-archive instead of hard delete to preserve registration/certificate history
+                db.collection('events').document(event.id).update({'status': 'archived'})
+                archived_count += 1
 
-                if event_date < cutoff_date:
-                    # Archive or delete
-                    db.collection('events').document(event.id).delete()
-                    deleted_count += 1
-
-            logger.info(f"Deleted {deleted_count} old events")
-            return deleted_count
+            logger.info(f"Archived {archived_count} old events")
+            return archived_count
 
     return cleanup_job
+
+
+def _create_event_status_transition_job(flask_app):
+    """Transition events that have passed their date from 'active' to 'completed'."""
+
+    @safe_job('event_status_transition')
+    @retry_with_backoff(max_retries=2, initial_delay=5)
+    def status_transition_job():
+        with flask_app.app_context():
+            from models import db
+            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+            logger.info(f"Checking for active events before {today_str} to mark completed")
+
+            past_active_events = db.collection('events')\
+                .where('status', '==', 'active')\
+                .where('date', '<', today_str)\
+                .stream()
+
+            transitioned_count = 0
+            for event in past_active_events:
+                db.collection('events').document(event.id).update({'status': 'completed'})
+                transitioned_count += 1
+
+            logger.info(f"Auto-transitioned {transitioned_count} past active events to completed")
+            return transitioned_count
+
+    return status_transition_job
 
 
 def _create_backup_job(flask_app):

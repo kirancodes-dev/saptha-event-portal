@@ -23,7 +23,8 @@ except Exception:
 try:
     from sqlalchemy.orm import DeclarativeBase, relationship
 except Exception:
-    sqlalchemy = None
+    DeclarativeBase = object
+    relationship = None
 
 
 class Base(DeclarativeBase):
@@ -55,6 +56,7 @@ class EventStatus(enum.Enum):
     inactive  = "inactive"
     completed = "completed"
     cancelled = "cancelled"
+    archived  = "archived"
 
 
 class RegistrationStatus(enum.Enum):
@@ -127,6 +129,7 @@ class Event(Base):
     rules          = Column(Text)
     prizes         = Column(Text)
     coordinator_id = Column("coordinatorId", String(128))
+    registration_count = Column("registration_count", Integer, nullable=False, default=0)
     open_hall_mode = Column("open_hall_mode", Boolean, nullable=False, default=False)
     scoring_locked = Column("scoring_locked", Boolean, nullable=False, default=False)
     judging_criteria_json = Column("judging_criteria_json", Text)
@@ -150,6 +153,7 @@ class Event(Base):
             'total_rounds': self.total_rounds, 'active_round': self.active_round,
             'poster_url': self.poster_url, 'rules': self.rules, 'prizes': self.prizes,
             'coordinator_id': self.coordinator_id,
+            'registration_count': self.registration_count or 0,
         }
 
 

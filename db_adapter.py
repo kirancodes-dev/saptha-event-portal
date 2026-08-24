@@ -557,6 +557,7 @@ class SQLDocumentReference:
             kwargs['scoring_locked'] = bool(data.get('scoring_locked', False))
             kwargs['judging_criteria_json'] = json.dumps(data.get('judging_criteria', []))
             kwargs['staff_json'] = json.dumps(data.get('staff', []))
+            kwargs['registration_count'] = int(data.get('registration_count', 0) or 0)
             kwargs['created_at'] = self._get_datetime(data.get('created_at', data.get('createdAt')))
             return Event(**kwargs)
 
@@ -782,6 +783,7 @@ class SQLDocumentReference:
             "inactive": EventStatus.inactive,
             "completed": EventStatus.completed,
             "cancelled": EventStatus.cancelled,
+            "archived": EventStatus.archived,
         }
         if hasattr(val, 'value'):
             return val
@@ -828,17 +830,31 @@ class SQLDocumentReference:
 def _cast_value(col_attr, val):
     if val is None:
         return None
-    # Check if the column is of type UUID
-    is_uuid_col = False
     if hasattr(col_attr, 'type') and col_attr.type is not None:
         type_name = col_attr.type.__class__.__name__
         if 'UUID' in type_name:
-            is_uuid_col = True
-            
-    if is_uuid_col:
-        if isinstance(val, (list, tuple)):
-            return [to_uuid(v) for v in val]
-        return to_uuid(val)
+            if isinstance(val, (list, tuple)):
+                return [to_uuid(v) for v in val]
+            return to_uuid(val)
+        elif 'Enum' in type_name and hasattr(col_attr.type, 'enum_class'):
+            enum_cls = col_attr.type.enum_class
+            if isinstance(val, str):
+                for member in enum_cls:
+                    if member.name.lower() == val.strip().lower() or member.value.lower() == val.strip().lower():
+                        return member
+                return val
+        elif 'Date' in type_name and not 'DateTime' in type_name:
+            if isinstance(val, str):
+                parsed = parse_date(val)
+                if parsed:
+                    return parsed
+            elif isinstance(val, datetime):
+                return val.date()
+        elif 'DateTime' in type_name:
+            if isinstance(val, str):
+                parsed = parse_datetime(val)
+                if parsed:
+                    return parsed
     return val
 
 

@@ -652,6 +652,21 @@ def home():
 
 
 # =========================================================
+# UNIVERSAL EVENT DETAILS (BY SLUG OR ID)
+# =========================================================
+@app.route('/events/<slug>')
+def event_details_by_slug(slug):
+    try:
+        from services_event import EventService
+        ev = EventService.get_event_by_slug(db, slug)
+        if ev:
+            return event_details(ev['id'])
+    except Exception as exc:
+        logger.warning("Error looking up event by slug %s: %s", slug, exc)
+    return event_details(slug)
+
+
+# =========================================================
 # EVENT DETAILS
 # =========================================================
 @app.route('/event/<event_id>')

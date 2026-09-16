@@ -529,17 +529,17 @@ gcloud run deploy saptha-event-portal \
 
 ## 🔑 Demo Sandbox Accounts
 
-Test the system on our production sandbox.
+Test the system on our development sandbox. In adherence to Zero-Trust Security Policies, static credentials have been purged:
 
-| 🎭 Role | 📧 Email | 🔑 Password | 🔗 Dashboard |
-|:--------|:---------|:------------|:------------|
-| **Student / Participant** | `student@demo.com` | `Demo1234` | `/participant/dashboard` |
-| **Club SPOC** | `spoc@demo.com` | `Demo1234` | `/spoc/dashboard` |
-| **Judge** | `judge@demo.com` | `Demo1234` | `/judge/dashboard` |
-| **Coordinator** | `coordinator@demo.com` | `Demo1234` | `/coordinator/dashboard` |
-| **Admin** | `admin@demo.com` | `Demo1234` | `/admin/dashboard` |
+| 🎭 Role | 📧 Default Email | 🔑 Password Provisioning | 🔗 Dashboard |
+|:--------|:----------------|:-------------------------|:------------|
+| **Student / Participant** | `student@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/participant/dashboard` |
+| **Club SPOC** | `spoc@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/spoc/dashboard` |
+| **Judge** | `judge@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/judge/dashboard` |
+| **Coordinator** | `coordinator@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/coordinator/dashboard` |
+| **Admin** | `admin@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/admin/dashboard` |
 
-*Note: Destructive operations are restricted on demo accounts to preserve state integrity.*
+*Security Notice: Passwords for local development are generated and logged to stdout upon running the initialization seeder. In production environments, credentials are set via secure environment variables or SSO.*
 
 ---
 

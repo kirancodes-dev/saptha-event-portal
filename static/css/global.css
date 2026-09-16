@@ -7,30 +7,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 /* --------------------------------------------------------------------------
-   1. DESIGN TOKENS
+   1. DESIGN TOKENS (v8.0 Modernized)
    -------------------------------------------------------------------------- */
 :root {
     /* ── Brand ── */
-    --snpsu-blue: #1a2557;
-    --snpsu-blue-dark: #0f1738;
-    --snpsu-blue-light: #2a3a7a;
-    --snpsu-blue-lighter: #3d50a3;
+    --snpsu-blue: #0f1c4d;
+    --snpsu-blue-dark: #070d26;
+    --snpsu-blue-light: #203174;
+    --snpsu-blue-lighter: #344cb7;
     --snpsu-gold: #c9a45e;
     --snpsu-gold-dark: #a8843f;
     --snpsu-gold-light: #dcbb7a;
     --snpsu-gold-lighter: #e8d4a6;
+    --snpsu-amber: #f59e0b;
+    --snpsu-indigo: #6366f1;
+
     /* Legacy alias */
     --snpsu-orange: var(--snpsu-gold);
     --snpsu-orange-dark: var(--snpsu-gold-dark);
     --snpsu-orange-light: var(--snpsu-gold-light);
 
-    /* ── Surface ── */
-    --bg-app: #f4f6fb;
+    /* ── Surface & Glassmorphism ── */
+    --bg-app: #f6f8fc;
     --bg-card: #ffffff;
     --bg-soft: #f8fafc;
     --bg-muted: #eef2f7;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(226, 232, 240, 0.8);
+    --glass-glow: rgba(99, 102, 241, 0.12);
+    --glass-backdrop: blur(16px) saturate(180%);
 
-    /* ── Ink Scale ── */
+    /* ── Ink Scale (WCAG 2.1 AA Compliant) ── */
     --ink-950: #020617;
     --ink-900: #0b1530;
     --ink-800: #1e293b;
@@ -55,27 +62,27 @@
 
     /* ── Geometry ── */
     --radius-xs: 6px;
-    --radius-sm: 8px;
-    --radius: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 24px;
+    --radius-sm: 10px;
+    --radius: 14px;
+    --radius-lg: 18px;
+    --radius-xl: 26px;
     --radius-pill: 999px;
 
     /* ── Elevation ── */
-    --shadow-xs: 0 1px 2px rgba(11,21,48,.05);
+    --shadow-xs: 0 1px 2px rgba(11,21,48,.04);
     --shadow-sm: 0 2px 6px rgba(11,21,48,.06), 0 1px 2px rgba(11,21,48,.04);
-    --shadow: 0 6px 18px rgba(11,21,48,.08), 0 2px 4px rgba(11,21,48,.04);
-    --shadow-md: 0 12px 28px rgba(11,21,48,.10), 0 4px 8px rgba(11,21,48,.04);
-    --shadow-lg: 0 24px 48px rgba(11,21,48,.14), 0 8px 16px rgba(11,21,48,.06);
-    --shadow-brand: 0 10px 24px rgba(26,37,87,.22);
-    --shadow-gold: 0 10px 24px rgba(201,164,94,.30);
+    --shadow: 0 6px 20px rgba(11,21,48,.07), 0 2px 5px rgba(11,21,48,.03);
+    --shadow-md: 0 12px 30px rgba(11,21,48,.09), 0 4px 10px rgba(11,21,48,.04);
+    --shadow-lg: 0 24px 50px rgba(11,21,48,.12), 0 8px 18px rgba(11,21,48,.05);
+    --shadow-brand: 0 12px 28px rgba(15,28,77,.22);
+    --shadow-gold: 0 12px 28px rgba(201,164,94,.28);
 
     /* ── Motion ── */
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --t-fast: 160ms var(--ease);
+    --t-fast: 150ms var(--ease);
     --t: 220ms var(--ease);
-    --t-slow: 400ms var(--ease);
+    --t-slow: 380ms var(--ease);
 
     /* ── Layout ── */
     --container-max: 1240px;
@@ -88,17 +95,22 @@
     --cat-cultural: #c9a45e;
     --cat-sports: #10b981;
     --cat-management: #0891b2;
-    --cat-general: #1a2557;
+    --cat-general: #0f1c4d;
 }
 
 /* --------------------------------------------------------------------------
-   1b. DARK MODE
+   1b. DARK MODE (High-Contrast & Glass-Enabled)
    -------------------------------------------------------------------------- */
 [data-theme="dark"] {
-    --bg-app: #0c1222;
-    --bg-card: #1a2038;
-    --bg-soft: #151b2e;
-    --bg-muted: #1e2540;
+    --bg-app: #080d1a;
+    --bg-card: #11182c;
+    --bg-soft: #0e1424;
+    --bg-muted: #161f36;
+    --glass-bg: rgba(17, 24, 44, 0.78);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-glow: rgba(99, 102, 241, 0.22);
+    --glass-backdrop: blur(18px) saturate(190%);
+
     --ink-950: #f8fafc;
     --ink-900: #f1f5f9;
     --ink-800: #e2e8f0;
@@ -109,21 +121,22 @@
     --ink-300: #334155;
     --ink-200: #1e293b;
     --ink-100: #151b2e;
-    --ink-50: #0c1222;
-    --shadow-xs: 0 1px 2px rgba(0,0,0,.2);
-    --shadow-sm: 0 2px 6px rgba(0,0,0,.25);
-    --shadow: 0 6px 18px rgba(0,0,0,.3);
-    --shadow-md: 0 12px 28px rgba(0,0,0,.35);
-    --shadow-lg: 0 24px 48px rgba(0,0,0,.4);
+    --ink-50: #080d1a;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,.3);
+    --shadow-sm: 0 2px 6px rgba(0,0,0,.35);
+    --shadow: 0 6px 20px rgba(0,0,0,.45);
+    --shadow-md: 0 12px 32px rgba(0,0,0,.55);
+    --shadow-lg: 0 24px 54px rgba(0,0,0,.65);
     
-    /* Soft status colors for dark theme to prevent white-on-white text fields */
-    --success-soft: rgba(16, 185, 129, 0.18);
-    --danger-soft: rgba(239, 68, 68, 0.18);
-    --warning-soft: rgba(245, 158, 11, 0.18);
-    --info-soft: rgba(59, 130, 246, 0.18);
+    /* Soft status colors for dark theme */
+    --success-soft: rgba(16, 185, 129, 0.2);
+    --danger-soft: rgba(239, 68, 68, 0.2);
+    --warning-soft: rgba(245, 158, 11, 0.2);
+    --info-soft: rgba(59, 130, 246, 0.2);
 }
 
-/* Explicit contrast helpers for Bootstrap text utilities in dark mode */
+/* Explicit contrast helpers for dark mode */
 [data-theme="dark"] .text-muted,
 [data-theme="dark"] .text-muted-opacity,
 [data-theme="dark"] .small.text-muted,
@@ -3504,4 +3517,357 @@ body.auth .skeleton {
     mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
     -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
 }
+
+/* ==========================================================================
+   DESIGN SYSTEM v8.0 — MODERN COMPONENT SUITE
+   ========================================================================== */
+
+/* ── 1. ACCESSIBILITY FOCUS RING (Dual-Ring WCAG 2.1 AA) ── */
+:focus-visible {
+    outline: 2px solid var(--snpsu-gold);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px rgba(201, 164, 94, 0.25);
+    border-radius: var(--radius-xs);
+}
+
+.skip-link {
+    position: absolute;
+    top: -60px;
+    left: 1rem;
+    background: var(--snpsu-blue);
+    color: #ffffff;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    z-index: 100000;
+    transition: top var(--t-fast);
+    box-shadow: var(--shadow-md);
+    border: 2px solid var(--snpsu-gold);
+}
+.skip-link:focus {
+    top: 0;
+}
+
+/* ── 2. MODERN GLASSMORPHIC CARDS & PANELS ── */
+.glass-card-v8 {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: transform var(--t), box-shadow var(--t), border-color var(--t);
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-card-v8:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md), 0 0 24px var(--glass-glow);
+    border-color: rgba(201, 164, 94, 0.35);
+}
+
+.card-interactive-glow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    transition: left 0.6s ease;
+    pointer-events: none;
+}
+.card-interactive-glow:hover::before {
+    left: 100%;
+}
+
+/* ── 3. MODERN KPI METRIC WIDGETS ── */
+.kpi-card-v8 {
+    background: var(--bg-card);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform var(--t), box-shadow var(--t), border-color var(--t);
+    position: relative;
+}
+[data-theme="dark"] .kpi-card-v8 {
+    border-color: var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+}
+.kpi-card-v8:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--snpsu-gold);
+}
+
+.kpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+.kpi-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.kpi-icon-glow {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+.kpi-icon-blue { background: rgba(15, 28, 77, 0.08); color: var(--snpsu-blue-lighter); }
+.kpi-icon-gold { background: rgba(201, 164, 94, 0.15); color: var(--snpsu-gold-dark); }
+.kpi-icon-green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.kpi-icon-indigo { background: rgba(99, 102, 241, 0.15); color: var(--cat-technical); }
+
+[data-theme="dark"] .kpi-icon-blue { background: rgba(52, 76, 183, 0.25); color: #818cf8; }
+[data-theme="dark"] .kpi-icon-gold { background: rgba(201, 164, 94, 0.25); color: var(--snpsu-gold-light); }
+
+.kpi-value {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--ink-950);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+.kpi-trend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+    width: fit-content;
+}
+.kpi-trend-up { background: var(--success-soft); color: var(--success); }
+.kpi-trend-down { background: var(--danger-soft); color: var(--danger); }
+
+/* ── 4. MODERN EVENT CARD v8 ── */
+.event-card-v8 {
+    background: var(--bg-card);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--t), box-shadow var(--t), border-color var(--t);
+}
+[data-theme="dark"] .event-card-v8 {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border-color: var(--glass-border);
+}
+.event-card-v8:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(201, 164, 94, 0.4);
+}
+.event-media-wrap {
+    position: relative;
+    height: 180px;
+    overflow: hidden;
+    background: var(--snpsu-blue-dark);
+}
+.event-media-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s var(--ease);
+}
+.event-card-v8:hover .event-media-img {
+    transform: scale(1.05);
+}
+.event-category-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: var(--radius-pill);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.event-date-chip {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(15, 23, 42, 0.85);
+    color: #ffffff;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.event-body-v8 {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    justify-content: space-between;
+}
+
+/* ── 5. MODERN BUTTONS & PILL BADGES ── */
+.btn-v8-primary {
+    background: linear-gradient(135deg, var(--snpsu-blue) 0%, var(--snpsu-blue-lighter) 100%);
+    color: #ffffff !important;
+    border: none;
+    padding: 10px 20px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 14px rgba(15, 28, 77, 0.25);
+    transition: all var(--t);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+.btn-v8-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(15, 28, 77, 0.35);
+    color: #ffffff !important;
+}
+.btn-v8-gold {
+    background: linear-gradient(135deg, var(--snpsu-gold) 0%, var(--snpsu-gold-light) 100%);
+    color: #0b1530 !important;
+    border: none;
+    padding: 10px 20px;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 14px rgba(201, 164, 94, 0.3);
+    transition: all var(--t);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+.btn-v8-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(201, 164, 94, 0.45);
+    color: #0b1530 !important;
+}
+.btn-v8-glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: var(--glass-backdrop);
+    color: var(--ink-900) !important;
+    padding: 9px 18px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    transition: all var(--t);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+.btn-v8-glass:hover {
+    background: var(--bg-card);
+    border-color: var(--snpsu-gold);
+    transform: translateY(-2px);
+}
+
+.pill-badge-v8 {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+.pill-technical { background: rgba(99, 102, 241, 0.15); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.3); }
+.pill-cultural { background: rgba(201, 164, 94, 0.15); color: #c9a45e; border: 1px solid rgba(201, 164, 94, 0.3); }
+.pill-sports { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.pill-live { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); animation: pulseDot 1.5s infinite; }
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* ── 6. FLOATING FORM INPUTS & VALIDATION ── */
+.form-group-v8 {
+    position: relative;
+    margin-bottom: 1.25rem;
+}
+.form-input-v8 {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--ink-200);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--ink-900);
+    font-size: 0.95rem;
+    transition: border-color var(--t), box-shadow var(--t);
+}
+[data-theme="dark"] .form-input-v8 {
+    background: var(--bg-soft);
+    border-color: var(--glass-border);
+    color: var(--ink-900);
+}
+.form-input-v8:focus {
+    border-color: var(--snpsu-gold);
+    box-shadow: 0 0 0 3px rgba(201, 164, 94, 0.2);
+    outline: none;
+}
+.form-label-v8 {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-700);
+    margin-bottom: 6px;
+}
+.input-feedback-msg {
+    font-size: 0.8rem;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.input-feedback-msg.is-valid { color: var(--success); }
+.input-feedback-msg.is-invalid { color: var(--danger); }
+
+/* ── 7. SKELETON SHIMMER LOADERS ── */
+.skeleton-v8 {
+    background: linear-gradient(90deg, var(--ink-200) 25%, var(--ink-100) 50%, var(--ink-200) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+    border-radius: var(--radius-xs);
+}
+[data-theme="dark"] .skeleton-v8 {
+    background: linear-gradient(90deg, #161f36 25%, #24304f 50%, #161f36 75%);
+    background-size: 200% 100%;
+}
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.skeleton-avatar { width: 44px; height: 44px; border-radius: 50%; }
+.skeleton-text { height: 16px; margin-bottom: 8px; width: 80%; }
+.skeleton-title { height: 24px; margin-bottom: 12px; width: 60%; }
+
 

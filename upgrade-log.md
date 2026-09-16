@@ -19,3 +19,22 @@ This log tracks all upgrade cycles, verified diffs, test runs, and status transi
 
 ### 3. Open Items
 - **Database Consolidation**: Multi-worker persistent storage layer and error propagation verified for Phase 1 compliance collections. Phase 2 will expand to `form_submissions` and `audit_log`.
+
+---
+
+## Upgrade Cycle 5 — August 28, 2026
+
+### 1. UI / Frontend & Design System (v8.0) Modernization
+- **Design Tokens & Surface Polish**:
+  1. Updated `:root` and `[data-theme="dark"]` in `static/css/global.css` with refined HSL palette, deep sapphire blue (`#0f1c4d`), radiant gold (`#c9a45e`), amber accents, and true glassmorphic surfaces (`--glass-bg`, `--glass-border`, `--glass-backdrop`).
+  2. Integrated dual-ring `:focus-visible` outlines ensuring strict WCAG 2.1 AA keyboard accessibility.
+  3. Added modern component suite: `.glass-card-v8`, `.card-interactive-glow`, `.kpi-card-v8`, `.event-card-v8`, `.btn-v8-primary`, `.btn-v8-gold`, `.btn-v8-glass`, `.pill-badge-v8`, `.form-group-v8`, and `.skeleton-v8` shimmer loaders.
+
+### 2. Template Architecture & Accessibility
+- **Landmarks & Live Announcer**:
+  1. Updated `templates/base_classic.html` with ARIA live announcer (`#a11y-announcer`), high-contrast skip-to-main-content link, polished mobile drawer navigation attributes (`aria-expanded`, `aria-controls`), and theme toggle icon flip transitions.
+  2. Overhauled `templates/components_reference.html` into a fully interactive Design System v8.0 showcase displaying live color tokens, copy-to-clipboard swatches, accessible form controls, KPI cards, event cards, shimmer loaders, and dynamic toasts.
+
+### 3. Verification
+- **Test Suite Pass Rate**: **23/23 Passed** across compliance, db adapter, storage, and health checks in 1.81s.
+

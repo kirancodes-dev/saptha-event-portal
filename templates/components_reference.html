@@ -1,391 +1,489 @@
-<!-- Form Component Examples - Reference for all forms -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Components | Design System</title>
+    <meta name="description" content="SapthaEvent Design System v8.0 Reference and Interactive Component Showcase">
+    <title>Design System v8.0 | SapthaEvent Portal</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <!-- Global Design System -->
+    <link href="/static/css/global.css" rel="stylesheet">
+
     <style>
-        .component-section {
-            background: white;
-            border-radius: var(--border-radius-lg);
-            padding: 2rem;
+        .doc-header {
+            padding: 3rem 0 2rem;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 2.5rem;
+            position: relative;
+        }
+        .doc-nav {
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-backdrop);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: 0.75rem 1.25rem;
             margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             box-shadow: var(--shadow-sm);
         }
-
-        .component-title {
-            font-family: 'Lora', serif;
-            font-size: 1.5rem;
-            color: var(--primary-900);
+        .doc-nav-links {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .doc-nav-links a {
+            color: var(--ink-700);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 6px 12px;
+            border-radius: var(--radius-xs);
+            transition: all var(--t-fast);
+        }
+        .doc-nav-links a:hover {
+            color: var(--snpsu-gold);
+            background: rgba(201, 164, 94, 0.1);
+        }
+        .doc-section {
+            margin-bottom: 3.5rem;
+            scroll-margin-top: 5rem;
+        }
+        .doc-section-header {
             margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--ink-200);
+            padding-bottom: 0.75rem;
         }
-
-        .component-grid {
+        [data-theme="dark"] .doc-section-header {
+            border-bottom-color: var(--glass-border);
+        }
+        .doc-section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--ink-900);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .doc-section-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: var(--radius-pill);
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--cat-technical);
+        }
+        .swatch-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
         }
-
-        .code-block {
-            background: var(--gray-900);
-            color: #e8f5e9;
-            padding: 1rem;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-size: 0.85rem;
-            font-family: 'Courier New', monospace;
-            margin-top: 1rem;
+        .swatch-card {
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            background: var(--bg-card);
+            box-shadow: var(--shadow-xs);
+            cursor: pointer;
+            transition: transform var(--t-fast);
+        }
+        .swatch-card:hover {
+            transform: translateY(-2px);
+        }
+        .swatch-color {
+            height: 70px;
+            width: 100%;
+        }
+        .swatch-info {
+            padding: 10px;
+            font-size: 0.8rem;
+        }
+        .swatch-name {
+            font-weight: 700;
+            color: var(--ink-900);
+        }
+        .swatch-hex {
+            color: var(--ink-500);
+            font-family: monospace;
+        }
+        .demo-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+        .demo-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        .demo-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
         }
     </style>
-    <link href="/static/css/global.css" rel="stylesheet">
 </head>
-<body style="background: var(--light); padding: 2rem;">
-    <div style="max-width: 1200px; margin: 0 auto;">
-        <h1 style="color: var(--primary-900); margin-bottom: 3rem; font-family: 'Lora', serif;">Form & UI Components</h1>
-
-        <!-- INPUT FORMS -->
-        <div class="component-section">
-            <h2 class="component-title">Text Input Fields</h2>
-            <div class="component-grid">
-                <div>
-                    <div class="form-group">
-                        <label class="form-label">Full Name <span class="required">*</span></label>
-                        <input type="text" class="form-control" placeholder="Enter your full name">
-                        <div class="form-help">Your legal name as per ID</div>
-                    </div>
-                </div>
-                <div>
-                    <div class="form-group">
-                        <label class="form-label">Email Address <span class="required">*</span></label>
-                        <input type="email" class="form-control" placeholder="your.email@university.edu">
-                        <div class="form-help">We'll never share your email</div>
-                    </div>
-                </div>
-                <div>
-                    <div class="form-group">
-                        <label class="form-label">Phone Number</label>
-                        <input type="tel" class="form-control" placeholder="+91 98765 43210">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SELECT DROPDOWNS -->
-        <div class="component-section">
-            <h2 class="component-title">Select Dropdowns</h2>
-            <div class="component-grid">
-                <div>
-                    <div class="form-group">
-                        <label class="form-label">Event Category <span class="required">*</span></label>
-                        <select class="form-select">
-                            <option>Choose a category...</option>
-                            <option>Technical</option>
-                            <option>Cultural</option>
-                            <option>Sports</option>
-                            <option>Management</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <div class="form-group">
-                        <label class="form-label">Department <span class="required">*</span></label>
-                        <select class="form-select">
-                            <option>Select department...</option>
-                            <option>Computer Science</option>
-                            <option>Mechanical</option>
-                            <option>Electronics</option>
-                            <option>Civil</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TEXTAREA -->
-        <div class="component-section">
-            <h2 class="component-title">Text Area</h2>
-            <div class="form-group">
-                <label class="form-label">Event Description</label>
-                <textarea class="form-control" rows="5" placeholder="Describe your event in detail..."></textarea>
-                <div class="form-help">Maximum 500 characters</div>
-            </div>
-        </div>
-
-        <!-- BUTTONS -->
-        <div class="component-section">
-            <h2 class="component-title">Button Styles</h2>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-                <button class="btn btn-primary">
-                    <i class="fas fa-check"></i> Primary Action
-                </button>
-                <button class="btn btn-gold">
-                    <i class="fas fa-star"></i> Featured Action
-                </button>
-                <button class="btn btn-outline">
-                    <i class="fas fa-eye"></i> Secondary Action
-                </button>
-                <button class="btn btn-secondary">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
-            </div>
-
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <button class="btn btn-primary btn-sm">Small</button>
-                <button class="btn btn-primary">Regular</button>
-                <button class="btn btn-primary btn-lg">Large</button>
-                <button class="btn btn-primary btn-block" style="width: 100%;">Full Width</button>
-            </div>
-        </div>
-
-        <!-- ALERTS -->
-        <div class="component-section">
-            <h2 class="component-title">Alert Messages</h2>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i>
-                    <div>
-                        <strong>Success!</strong>
-                        <p style="margin: 0; font-size: 0.9rem;">Your form has been submitted successfully.</p>
-                    </div>
-                </div>
-
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <div>
-                        <strong>Error!</strong>
-                        <p style="margin: 0; font-size: 0.9rem;">Please fix the errors below before proceeding.</p>
-                    </div>
-                </div>
-
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div>
-                        <strong>Warning!</strong>
-                        <p style="margin: 0; font-size: 0.9rem;">This action cannot be undone.</p>
-                    </div>
-                </div>
-
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    <div>
-                        <strong>Information</strong>
-                        <p style="margin: 0; font-size: 0.9rem;">Important updates about the upcoming event.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- BADGES -->
-        <div class="component-section">
-            <h2 class="component-title">Status Badges</h2>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <span class="badge badge-success">Active</span>
-                <span class="badge badge-primary">Registered</span>
-                <span class="badge badge-warning">Pending</span>
-                <span class="badge badge-danger">Cancelled</span>
-                <span class="badge badge-info">Closed</span>
-            </div>
-        </div>
-
-        <!-- INFO BOXES -->
-        <div class="component-section">
-            <h2 class="component-title">Info Boxes</h2>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div class="info-box">
-                    <i class="fas fa-lightbulb"></i>
-                    <div>
-                        <strong>Tip:</strong> Don't forget to upload all required documents before the deadline.
-                    </div>
-                </div>
-
-                <div class="info-box warning">
-                    <i class="fas fa-exclamation"></i>
-                    <div>
-                        <strong>Important:</strong> Registration closes on March 31st, 2024.
-                    </div>
-                </div>
-
-                <div class="info-box success">
-                    <i class="fas fa-check"></i>
-                    <div>
-                        <strong>Great!</strong> Your payment has been verified successfully.
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- FORM ROW LAYOUT -->
-        <div class="component-section">
-            <h2 class="component-title">Multi-Column Form Layout</h2>
-            <form style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-                <div class="form-group">
-                    <label class="form-label">First Name <span class="required">*</span></label>
-                    <input type="text" class="form-control" placeholder="First name">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Last Name <span class="required">*</span></label>
-                    <input type="text" class="form-control" placeholder="Last name">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Date of Birth <span class="required">*</span></label>
-                    <input type="date" class="form-control">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Gender <span class="required">*</span></label>
-                    <select class="form-select">
-                        <option>Select...</option>
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Other</option>
-                    </select>
-                </div>
-
-                <div style="grid-column: 1 / -1; display: flex; gap: 1rem;">
-                    <button type="submit" class="btn btn-gold" style="flex: 1;">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                    <button type="reset" class="btn btn-outline" style="flex: 1;">
-                        <i class="fas fa-redo"></i> Reset Form
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- STAT WIDGETS -->
-        <div class="component-section">
-            <h2 class="component-title">Stat Widgets</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-                <div class="stat-widget">
-                    <div class="stat-icon" style="background: rgba(45, 106, 62, 0.1); color: var(--success);">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Events Registered</div>
-                        <div class="stat-value">12</div>
-                        <div class="stat-change positive">+3 this month</div>
-                    </div>
-                </div>
-
-                <div class="stat-widget">
-                    <div class="stat-icon" style="background: rgba(184, 134, 11, 0.1); color: var(--accent-600);">
-                        <i class="fas fa-award"></i>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Awards Won</div>
-                        <div class="stat-value">5</div>
-                        <div class="stat-change">2 Gold, 2 Silver, 1 Bronze</div>
-                    </div>
-                </div>
-
-                <div class="stat-widget">
-                    <div class="stat-icon" style="background: rgba(139, 62, 46, 0.1); color: var(--danger);">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Pending Events</div>
-                        <div class="stat-value">3</div>
-                        <div class="stat-change negative">Deadline approaching</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- CARDS -->
-        <div class="component-section">
-            <h2 class="component-title">Card Components</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                <div class="card hover-lift">
-                    <div class="card-header">
-                        <i class="fas fa-code"></i> Web Development
-                    </div>
-                    <div class="card-body">
-                        <p>Compete in this exciting web development competition with amazing prizes.</p>
-                    </div>
-                    <div class="card-footer">
-                        <span class="badge badge-info">Technical</span>
-                        <button class="btn btn-primary btn-sm">Learn More</button>
-                    </div>
-                </div>
-
-                <div class="card hover-lift">
-                    <div class="card-header" style="background: linear-gradient(to right, rgba(45, 106, 62, 0.1), rgba(45, 106, 62, 0.05)); border-bottom: none;">
-                        <i class="fas fa-music"></i> Cultural Event
-                    </div>
-                    <div class="card-body">
-                        <p>Showcase your talents on stage with performances from various domains.</p>
-                    </div>
-                    <div class="card-footer">
-                        <span class="badge badge-success">Cultural</span>
-                        <button class="btn btn-gold btn-sm">Join Now</button>
-                    </div>
-                </div>
-
-                <div class="card hover-lift">
-                    <div class="card-header" style="background: linear-gradient(to right, rgba(193, 126, 60, 0.1), rgba(193, 126, 60, 0.05)); border-bottom: none;">
-                        <i class="fas fa-basketball"></i> Sports Event
-                    </div>
-                    <div class="card-body">
-                        <p>Team competitions with exciting tournaments and amazing prizes.</p>
-                    </div>
-                    <div class="card-footer">
-                        <span class="badge badge-warning">Sports</span>
-                        <button class="btn btn-outline btn-sm">Register</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TABLES -->
-        <div class="component-section">
-            <h2 class="component-title">Table Component</h2>
-            <div class="table-responsive">
-                <table class="table-custom">
-                    <thead>
-                        <tr>
-                            <th>Event Name</th>
-                            <th>Category</th>
-                            <th>Participants</th>
-                            <th>Prize Pool</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Web Development Sprint</strong></td>
-                            <td><span class="badge badge-info">Technical</span></td>
-                            <td>120</td>
-                            <td>₹50,000</td>
-                            <td><span class="badge badge-success">Active</span></td>
-                            <td><button class="btn btn-primary btn-sm">Edit</button></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Battle of Bands</strong></td>
-                            <td><span class="badge badge-success">Cultural</span></td>
-                            <td>45</td>
-                            <td>₹25,000</td>
-                            <td><span class="badge badge-warning">Pending</span></td>
-                            <td><button class="btn btn-primary btn-sm">Edit</button></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Basketball Tournament</strong></td>
-                            <td><span class="badge badge-warning">Sports</span></td>
-                            <td>32</td>
-                            <td>₹15,000</td>
-                            <td><span class="badge badge-danger">Closed</span></td>
-                            <td><button class="btn btn-primary btn-sm">View</button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<body style="padding-bottom: 4rem;">
+    <!-- Aurora background elements -->
+    <div class="aurora-bg" aria-hidden="true">
+        <div class="aurora-orb"></div>
+        <div class="aurora-orb"></div>
+        <div class="aurora-orb"></div>
+        <div class="aurora-orb"></div>
     </div>
+    <div class="grid-overlay" aria-hidden="true"></div>
+
+    <a href="#main-content" class="skip-link">Skip to Main Content</a>
+    <div id="a11y-announcer" class="visually-hidden" role="status" aria-live="polite"></div>
+
+    <div class="container" style="max-width: 1200px;">
+        <!-- Header -->
+        <header class="doc-header">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 36px; width: auto;">
+                        <span class="pill-badge-v8 pill-cultural">Design System v8.0</span>
+                        <span class="pill-badge-v8 pill-technical">WCAG 2.1 AA</span>
+                    </div>
+                    <h1 style="margin: 0; font-size: 2.25rem;">SapthaEvent Component Suite</h1>
+                    <p style="margin-top: 6px; color: var(--ink-600);">Unified tokens, accessible form elements, glassmorphic cards, and interactive widgets.</p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <a href="/dashboard" class="btn-v8-glass" aria-label="Return to Dashboard">
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i> Return to App
+                    </a>
+                    <button class="btn-v8-gold" onclick="toggleTheme()" aria-label="Toggle dark or light theme">
+                        <span id="theme-toggle-icon"><i class="fas fa-sun" aria-hidden="true"></i></span>
+                        <span id="theme-toggle-text">Toggle Theme</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sticky Section Navigation -->
+        <nav class="doc-nav" aria-label="Component sections">
+            <div class="doc-nav-links">
+                <a href="#colors">Colors & Tokens</a>
+                <a href="#typography">Typography</a>
+                <a href="#buttons">Buttons & Pills</a>
+                <a href="#kpi-cards">KPI Metrics</a>
+                <a href="#event-cards">Event Cards</a>
+                <a href="#forms">Forms & Validation</a>
+                <a href="#feedback">Toasts & Shimmers</a>
+            </div>
+            <span style="font-size: 0.8rem; color: var(--ink-500); font-weight: 600;">v8.0 Live Preview</span>
+        </nav>
+
+        <main id="main-content">
+            <!-- 1. COLOR TOKENS -->
+            <section id="colors" class="doc-section">
+                <div class="doc-section-header">
+                    <h2 class="doc-section-title"><i class="fas fa-palette" style="color: var(--snpsu-gold);" aria-hidden="true"></i> Color Tokens & Contrast</h2>
+                    <span class="doc-section-badge">Brand & Surface</span>
+                </div>
+                <div class="swatch-grid">
+                    <div class="swatch-card" onclick="copyHex('#0f1c4d')">
+                        <div class="swatch-color" style="background: #0f1c4d;"></div>
+                        <div class="swatch-info">
+                            <div class="swatch-name">SNPSU Blue</div>
+                            <div class="swatch-hex">--snpsu-blue (#0f1c4d)</div>
+                        </div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#c9a45e')">
+                        <div class="swatch-color" style="background: #c9a45e;"></div>
+                        <div class="swatch-info">
+                            <div class="swatch-name">SNPSU Gold</div>
+                            <div class="swatch-hex">--snpsu-gold (#c9a45e)</div>
+                        </div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#6366f1')">
+                        <div class="swatch-color" style="background: #6366f1;"></div>
+                        <div class="swatch-info">
+                            <div class="swatch-name">Technical Indigo</div>
+                            <div class="swatch-hex">--cat-technical (#6366f1)</div>
+                        </div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#10b981')">
+                        <div class="swatch-color" style="background: #10b981;"></div>
+                        <div class="swatch-info">
+                            <div class="swatch-name">Success Green</div>
+                            <div class="swatch-hex">--success (#10b981)</div>
+                        </div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#ef4444')">
+                        <div class="swatch-color" style="background: #ef4444;"></div>
+                        <div class="swatch-info">
+                            <div class="swatch-name">Danger / Live Red</div>
+                            <div class="swatch-hex">--danger (#ef4444)</div>
+                        </div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#f59e0b')">
+                        <div class="swatch-color" style="background: #f59e0b;"></div>
+                        <div class="swatch-info">
+                            <div class="swatch-name">Amber Warning</div>
+                            <div class="swatch-hex">--warning (#f59e0b)</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. BUTTONS & BADGES -->
+            <section id="buttons" class="doc-section">
+                <div class="doc-section-header">
+                    <h2 class="doc-section-title"><i class="fas fa-square-check" style="color: var(--cat-technical);" aria-hidden="true"></i> Buttons, Badges & Pills</h2>
+                    <span class="doc-section-badge">Interactive States</span>
+                </div>
+                <div class="glass-card-v8" style="padding: 1.75rem; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Primary Action Buttons</h3>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                        <button class="btn-v8-primary" type="button"><i class="fas fa-plus" aria-hidden="true"></i> Create New Event</button>
+                        <button class="btn-v8-gold" type="button"><i class="fas fa-bolt" aria-hidden="true"></i> Quick Register</button>
+                        <button class="btn-v8-glass" type="button"><i class="fas fa-filter" aria-hidden="true"></i> Filter Results</button>
+                        <button class="btn-v8-primary" disabled style="opacity: 0.55; cursor: not-allowed;"><i class="fas fa-lock" aria-hidden="true"></i> Disabled Action</button>
+                    </div>
+                </div>
+
+                <div class="glass-card-v8" style="padding: 1.75rem;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Category Badges & Status Pills</h3>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                        <span class="pill-badge-v8 pill-technical"><i class="fas fa-code" aria-hidden="true"></i> Technical</span>
+                        <span class="pill-badge-v8 pill-cultural"><i class="fas fa-music" aria-hidden="true"></i> Cultural</span>
+                        <span class="pill-badge-v8 pill-sports"><i class="fas fa-trophy" aria-hidden="true"></i> Sports</span>
+                        <span class="pill-badge-v8 pill-live"><i class="fas fa-circle" aria-hidden="true"></i> Live Now</span>
+                        <span class="badge bg-success rounded-pill px-3 py-2">Approved</span>
+                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Pending Review</span>
+                        <span class="badge bg-danger rounded-pill px-3 py-2">Registration Closed</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. KPI METRIC WIDGETS -->
+            <section id="kpi-cards" class="doc-section">
+                <div class="doc-section-header">
+                    <h2 class="doc-section-title"><i class="fas fa-chart-line" style="color: var(--success);" aria-hidden="true"></i> KPI & Metric Widgets</h2>
+                    <span class="doc-section-badge">Tabular Figures</span>
+                </div>
+                <div class="demo-grid-4">
+                    <div class="kpi-card-v8 card-interactive-glow">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Total Registrations</span>
+                            <div class="kpi-icon-glow kpi-icon-blue"><i class="fas fa-users" aria-hidden="true"></i></div>
+                        </div>
+                        <div class="kpi-value">2,840</div>
+                        <div class="kpi-trend-pill kpi-trend-up"><i class="fas fa-arrow-up" aria-hidden="true"></i> +18.4% this week</div>
+                    </div>
+
+                    <div class="kpi-card-v8 card-interactive-glow">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Active Events</span>
+                            <div class="kpi-icon-glow kpi-icon-gold"><i class="fas fa-calendar-check" aria-hidden="true"></i></div>
+                        </div>
+                        <div class="kpi-value">42</div>
+                        <div class="kpi-trend-pill kpi-trend-up"><i class="fas fa-arrow-up" aria-hidden="true"></i> +5 new today</div>
+                    </div>
+
+                    <div class="kpi-card-v8 card-interactive-glow">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Revenue Collected</span>
+                            <div class="kpi-icon-glow kpi-icon-green"><i class="fas fa-indian-rupee-sign" aria-hidden="true"></i></div>
+                        </div>
+                        <div class="kpi-value">₹1,84,500</div>
+                        <div class="kpi-trend-pill kpi-trend-up"><i class="fas fa-arrow-up" aria-hidden="true"></i> 94% of target</div>
+                    </div>
+
+                    <div class="kpi-card-v8 card-interactive-glow">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Check-in Rate</span>
+                            <div class="kpi-icon-glow kpi-icon-indigo"><i class="fas fa-qrcode" aria-hidden="true"></i></div>
+                        </div>
+                        <div class="kpi-value">88.6%</div>
+                        <div class="kpi-trend-pill kpi-trend-down"><i class="fas fa-arrow-down" aria-hidden="true"></i> -1.2% vs last sem</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. EVENT CARDS -->
+            <section id="event-cards" class="doc-section">
+                <div class="doc-section-header">
+                    <h2 class="doc-section-title"><i class="fas fa-ticket" style="color: var(--snpsu-gold);" aria-hidden="true"></i> Modern Event Cards</h2>
+                    <span class="doc-section-badge">Glass Surfaces</span>
+                </div>
+                <div class="demo-grid-3">
+                    <div class="event-card-v8 card-interactive-glow">
+                        <div class="event-media-wrap">
+                            <img src="/static/campus.jpg" alt="SapthaTech Hackathon" class="event-media-img">
+                            <span class="event-category-badge" style="background: rgba(99, 102, 241, 0.85);">Technical</span>
+                            <span class="event-date-chip"><i class="fas fa-clock" aria-hidden="true"></i> Tomorrow, 9:00 AM</span>
+                        </div>
+                        <div class="event-body-v8">
+                            <div>
+                                <h3 style="font-size: 1.15rem; margin-bottom: 6px;">SapthaTech 36H Hackathon</h3>
+                                <p style="font-size: 0.875rem; color: var(--ink-600); margin-bottom: 1rem;">Annual flagship national AI & Web3 hackathon with ₹1,00,000 prize pool.</p>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--glass-border); padding-top: 10px;">
+                                <span style="font-weight: 700; color: var(--snpsu-gold);">Free Entry</span>
+                                <button class="btn-v8-primary" style="padding: 6px 14px; font-size: 0.85rem;" type="button">Register Now</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="event-card-v8 card-interactive-glow">
+                        <div class="event-media-wrap">
+                            <img src="/static/campus.jpg" alt="Sapthagiri Fest" class="event-media-img">
+                            <span class="event-category-badge" style="background: rgba(201, 164, 94, 0.9);">Cultural</span>
+                            <span class="event-date-chip"><i class="fas fa-calendar" aria-hidden="true"></i> Sep 15, 2026</span>
+                        </div>
+                        <div class="event-body-v8">
+                            <div>
+                                <h3 style="font-size: 1.15rem; margin-bottom: 6px;">Nritya Ranga — Dance Fest</h3>
+                                <p style="font-size: 0.875rem; color: var(--ink-600); margin-bottom: 1rem;">Inter-college solo & group classical & contemporary dance contest.</p>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--glass-border); padding-top: 10px;">
+                                <span style="font-weight: 700; color: var(--ink-900);">₹250 / Team</span>
+                                <button class="btn-v8-gold" style="padding: 6px 14px; font-size: 0.85rem;" type="button">Register Team</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="event-card-v8 card-interactive-glow">
+                        <div class="event-media-wrap">
+                            <img src="/static/campus.jpg" alt="Badminton Championship" class="event-media-img">
+                            <span class="event-category-badge" style="background: rgba(16, 185, 129, 0.9);">Sports</span>
+                            <span class="event-date-chip"><i class="fas fa-circle" style="color: #ef4444;" aria-hidden="true"></i> Live Right Now</span>
+                        </div>
+                        <div class="event-body-v8">
+                            <div>
+                                <h3 style="font-size: 1.15rem; margin-bottom: 6px;">Inter-University Badminton Cup</h3>
+                                <p style="font-size: 0.875rem; color: var(--ink-600); margin-bottom: 1rem;">Quarter finals and semi-finals underway at SNPSU Sports Complex.</p>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--glass-border); padding-top: 10px;">
+                                <span style="font-weight: 700; color: var(--success);">Live Stream</span>
+                                <button class="btn-v8-glass" style="padding: 6px 14px; font-size: 0.85rem;" type="button"><i class="fas fa-play" aria-hidden="true"></i> Watch Live</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. FORMS & VALIDATION -->
+            <section id="forms" class="doc-section">
+                <div class="doc-section-header">
+                    <h2 class="doc-section-title"><i class="fas fa-keyboard" style="color: var(--snpsu-indigo);" aria-hidden="true"></i> Accessible Form Controls & Validation</h2>
+                    <span class="doc-section-badge">ARIA Supported</span>
+                </div>
+                <div class="glass-card-v8" style="padding: 2rem;">
+                    <form onsubmit="event.preventDefault(); triggerDemoToast();">
+                        <div class="demo-grid-2">
+                            <div class="form-group-v8">
+                                <label for="demo-name" class="form-label-v8">Full Name <span style="color: var(--danger);" aria-hidden="true">*</span></label>
+                                <input id="demo-name" type="text" class="form-input-v8" placeholder="e.g. Kiran Biradar" required aria-describedby="demo-name-help">
+                                <div id="demo-name-help" class="input-feedback-msg is-valid"><i class="fas fa-circle-check" aria-hidden="true"></i> Matches university student registry</div>
+                            </div>
+
+                            <div class="form-group-v8">
+                                <label for="demo-email" class="form-label-v8">University Email <span style="color: var(--danger);" aria-hidden="true">*</span></label>
+                                <input id="demo-email" type="email" class="form-input-v8" placeholder="student@snpsu.edu.in" required aria-describedby="demo-email-help">
+                                <div id="demo-email-help" class="input-feedback-msg is-valid"><i class="fas fa-shield-halved" aria-hidden="true"></i> Verified @snpsu.edu.in domain</div>
+                            </div>
+                        </div>
+
+                        <div class="demo-grid-2" style="margin-top: 0.5rem;">
+                            <div class="form-group-v8">
+                                <label for="demo-category" class="form-label-v8">Event Category <span style="color: var(--danger);" aria-hidden="true">*</span></label>
+                                <select id="demo-category" class="form-input-v8" required>
+                                    <option value="technical">Technical & Coding</option>
+                                    <option value="cultural">Cultural & Arts</option>
+                                    <option value="sports">Sports & Athletics</option>
+                                    <option value="management">Management & Business</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group-v8">
+                                <label for="demo-phone" class="form-label-v8">WhatsApp / Mobile Number</label>
+                                <input id="demo-phone" type="tel" class="form-input-v8" placeholder="+91 98765 43210">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 1.5rem;">
+                            <button type="reset" class="btn-v8-glass">Reset</button>
+                            <button type="submit" class="btn-v8-primary"><i class="fas fa-paper-plane" aria-hidden="true"></i> Submit Demonstration</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- 6. FEEDBACK, TOASTS & SHIMMERS -->
+            <section id="feedback" class="doc-section">
+                <div class="doc-section-header">
+                    <h2 class="doc-section-title"><i class="fas fa-bell" style="color: var(--snpsu-gold);" aria-hidden="true"></i> Feedback, Toasts & Skeleton Shimmers</h2>
+                    <span class="doc-section-badge">Async Loading</span>
+                </div>
+                <div class="demo-grid-2">
+                    <!-- Shimmer Loading Demo -->
+                    <div class="glass-card-v8" style="padding: 1.75rem;">
+                        <h3 style="font-size: 1.1rem; margin-bottom: 1.25rem;">Skeleton Loading Shimmer</h3>
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                            <div class="skeleton-v8 skeleton-avatar"></div>
+                            <div style="flex-grow: 1;">
+                                <div class="skeleton-v8 skeleton-title"></div>
+                                <div class="skeleton-v8 skeleton-text"></div>
+                            </div>
+                        </div>
+                        <div class="skeleton-v8" style="height: 100px; width: 100%; border-radius: var(--radius-sm);"></div>
+                    </div>
+
+                    <!-- Toast Triggers -->
+                    <div class="glass-card-v8" style="padding: 1.75rem;">
+                        <h3 style="font-size: 1.1rem; margin-bottom: 1.25rem;">Interactive Toast Notifications</h3>
+                        <p style="font-size: 0.9rem; color: var(--ink-600); margin-bottom: 1.25rem;">Trigger glassmorphic feedback banners with dynamic screen reader support.</p>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn-v8-glass" style="justify-content: space-between;" onclick="showToast('Event successfully registered!', 'success')" type="button">
+                                <span><i class="fas fa-circle-check" style="color: var(--success); margin-right: 6px;" aria-hidden="true"></i> Trigger Success Toast</span>
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </button>
+                            <button class="btn-v8-glass" style="justify-content: space-between;" onclick="showToast('Registration deadline closing in 2 hours', 'warning')" type="button">
+                                <span><i class="fas fa-triangle-exclamation" style="color: var(--warning); margin-right: 6px;" aria-hidden="true"></i> Trigger Warning Toast</span>
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </button>
+                            <button class="btn-v8-glass" style="justify-content: space-between;" onclick="showToast('Payment gateway temporarily unreachable', 'danger')" type="button">
+                                <span><i class="fas fa-circle-xmark" style="color: var(--danger); margin-right: 6px;" aria-hidden="true"></i> Trigger Error Toast</span>
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px;"></div>
+
+    <script src="/static/js/global.js"></script>
+    <script>
+        function copyHex(hex) {
+            navigator.clipboard.writeText(hex).then(() => {
+                showToast(`Copied ${hex} to clipboard!`, 'info', 2000);
+            });
+        }
+
+        function triggerDemoToast() {
+            showToast('Form validated and submitted successfully!', 'success', 3000);
+            const announcer = document.getElementById('a11y-announcer');
+            if (announcer) announcer.textContent = 'Form submitted successfully.';
+        }
+    </script>
 </body>
 </html>

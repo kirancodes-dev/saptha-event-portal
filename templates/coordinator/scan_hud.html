@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>High-Speed Entry Scanner HUD | {{ event.title }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000000;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+        /* Top Navigation & Live Counter HUD */
+        .hud-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            padding: env(safe-area-inset-top, 16px) 16px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .hud-event-info h1 {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fff;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .hud-counter {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .counter-badge {
+            color: #10b981;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+        .status-dot.offline {
+            background: #f59e0b;
+            box-shadow: 0 0 10px #f59e0b;
+        }
+        /* Scanner Viewport */
+        .scanner-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #qr-reader {
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
+        }
+        #qr-reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+        /* Targeting Reticle Overlay */
+        .reticle-box {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .reticle-corner {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-color: #3b82f6;
+            border-style: solid;
+        }
+        .top-left { top: 0; left: 0; border-width: 4px 0 0 4px; border-top-left-radius: 12px; }
+        .top-right { top: 0; right: 0; border-width: 4px 4px 0 0; border-top-right-radius: 12px; }
+        .bottom-left { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-bottom-left-radius: 12px; }
+        .bottom-right { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-bottom-right-radius: 12px; }
+        .scan-laser {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+            box-shadow: 0 0 12px #3b82f6;
+            animation: scanLaser 2s ease-in-out infinite;
+        }
+        @keyframes scanLaser {
+            0% { top: 0%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        /* Instant Feedback HUD Banner */
+        .feedback-banner {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            padding: 20px 20px env(safe-area-inset-bottom, 24px);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+            transform: translateY(100%);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .feedback-banner.show {
+            transform: translateY(0);
+        }
+        .banner-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .banner-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .banner-success .banner-icon { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .banner-warning .banner-icon { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .banner-danger .banner-icon { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .banner-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+        }
+        .banner-subtitle {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .banner-details {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+        .hud-actions {
+            position: absolute;
+            bottom: 24px;
+            left: 0;
+            right: 0;
+            z-index: 40;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+        .btn-hud {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .btn-hud:active { transform: scale(0.96); }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hud-header">
+    <div class="hud-event-info">
+        <a href="/coordinator/scanner" style="color:#94a3b8; text-decoration:none; font-size:0.75rem;"><i class="fas fa-arrow-left"></i> Exit HUD</a>
+        <h1>{{ event.title }}</h1>
+    </div>
+    <div class="hud-counter">
+        <div class="status-dot" id="net-dot"></div>
+        <span>Checked In:</span>
+        <span class="counter-badge"><span id="count-in">{{ event.checkin_count or 0 }}</span> / <span id="count-total">{{ event.registration_count or event.capacity or 100 }}</span></span>
+    </div>
+</div>
+
+<!-- Viewfinder -->
+<div class="scanner-container">
+    <div id="qr-reader"></div>
+    <div class="reticle-box">
+        <div class="reticle-corner top-left"></div>
+        <div class="reticle-corner top-right"></div>
+        <div class="reticle-corner bottom-left"></div>
+        <div class="reticle-corner bottom-right"></div>
+        <div class="scan-laser"></div>
+    </div>
+</div>
+
+<!-- Bottom Control Floating Buttons -->
+<div class="hud-actions" id="hud-actions-bar">
+    <button class="btn-hud" onclick="promptManualEntry()"><i class="fas fa-keyboard"></i> Manual Code</button>
+    <button class="btn-hud" onclick="syncLocalQueue()"><i class="fas fa-sync"></i> Sync (<span id="sync-count">0</span>)</button>
+</div>
+
+<!-- Slide-Up Result HUD Banner -->
+<div class="feedback-banner" id="feedback-banner">
+    <div class="banner-header">
+        <div class="banner-icon" id="banner-icon"><i class="fas fa-check"></i></div>
+        <div>
+            <div class="banner-title" id="banner-title">Entry Granted</div>
+            <div class="banner-subtitle" id="banner-msg">Verification successful</div>
+        </div>
+    </div>
+    <div class="banner-details">
+        <span id="detail-name">Attendee: John Doe</span>
+        <span id="detail-tier" style="font-weight:700; color:#38bdf8;">VIP Pass</span>
+    </div>
+</div>
+
+<script>
+const EVENT_ID = "{{ event_id }}";
+let scanner = null;
+let isProcessing = false;
+let audioCtx = null;
+
+// Initialize Web Audio Synth for instant feedback tones
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playBeep(frequency, duration, type = 'sine') {
+    try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    } catch (_) {}
+}
+
+function playSuccessAudio() {
+    playBeep(880, 0.12);
+    if (navigator.vibrate) navigator.vibrate([100]);
+}
+
+function playDuplicateAudio() {
+    playBeep(440, 0.1);
+    setTimeout(() => playBeep(330, 0.15), 120);
+    if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
+}
+
+function playErrorAudio() {
+    playBeep(180, 0.3, 'sawtooth');
+    if (navigator.vibrate) navigator.vibrate([200]);
+}
+
+// Display HUD banner
+function showFeedback(type, title, msg, name = '', tier = '') {
+    const banner = document.getElementById('feedback-banner');
+    const bTitle = document.getElementById('banner-title');
+    const bMsg = document.getElementById('banner-msg');
+    const bIcon = document.getElementById('banner-icon');
+    const dName = document.getElementById('detail-name');
+    const dTier = document.getElementById('detail-tier');
+
+    banner.className = `feedback-banner show banner-${type}`;
+    bTitle.textContent = title;
+    bMsg.textContent = msg;
+    dName.textContent = name ? `Attendee: ${name}` : '';
+    dTier.textContent = tier ? `${tier} Pass` : '';
+
+    if (type === 'success') {
+        bIcon.innerHTML = '<i class="fas fa-check"></i>';
+        playSuccessAudio();
+    } else if (type === 'warning') {
+        bIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        playDuplicateAudio();
+    } else {
+        bIcon.innerHTML = '<i class="fas fa-times"></i>';
+        playErrorAudio();
+    }
+
+    setTimeout(() => {
+        banner.classList.remove('show');
+        isProcessing = false;
+    }, 2200);
+}
+
+// Process Scanned Code via API or local sync
+async function processScan(decodedText) {
+    if (isProcessing) return;
+    isProcessing = true;
+
+    try {
+        const resp = await fetch(`/ticket/api/verify/${encodeURIComponent(decodedText)}`);
+        const data = await resp.json();
+
+        if (resp.status === 200 && data.status === 'success') {
+            const countEl = document.getElementById('count-in');
+            countEl.textContent = parseInt(countEl.textContent || '0', 10) + 1;
+            showFeedback('success', 'Entry Granted', 'Attendee verified and marked present.', data.name, data.ticket_type);
+        } else if (data.status === 'already_in') {
+            showFeedback('warning', 'Already Checked In', `Scanned at ${data.checkin_time || 'earlier session'}.`, data.name);
+        } else if (resp.status === 402 || data.status === 'unpaid') {
+            showFeedback('danger', 'Payment Pending', 'Outstanding ticket fee required at registration desk.');
+        } else {
+            showFeedback('danger', 'Invalid Ticket', data.message || 'Ticket not recognized.');
+        }
+    } catch (err) {
+        // Queue check-in locally if offline
+        if (window.queueOfflineCheckin) {
+            window.queueOfflineCheckin(decodedText, EVENT_ID);
+            showFeedback('warning', 'Offline Check-In Queued', 'Saved locally. Will sync when back online.');
+        } else {
+            showFeedback('danger', 'Network Error', 'Connection failed. Please retry.');
+        }
+    }
+}
+
+// Manual ticket code prompt
+function promptManualEntry() {
+    const code = prompt("Enter Ticket Code or Registration ID (e.g. TKT-... or REG-...):");
+    if (code && code.trim()) {
+        processScan(code.trim());
+    }
+}
+
+function syncLocalQueue() {
+    if (window.syncOfflineCheckins) {
+        window.syncOfflineCheckins();
+    }
+}
+
+// Start Camera Viewfinder
+window.addEventListener('DOMContentLoaded', () => {
+    scanner = new Html5Qrcode('qr-reader');
+    scanner.start(
+        { facingMode: "environment" },
+        { fps: 20, qrbox: { width: 250, height: 250 } },
+        (decodedText) => processScan(decodedText),
+        () => {}
+    ).catch(err => {
+        console.warn("Camera start failed, fallback to file/manual:", err);
+    });
+
+    // Update connection status dot
+    function updateNetStatus() {
+        const dot = document.getElementById('net-dot');
+        if (navigator.onLine) {
+            dot.className = "status-dot";
+        } else {
+            dot.className = "status-dot offline";
+        }
+    }
+    window.addEventListener('online', updateNetStatus);
+    window.addEventListener('offline', updateNetStatus);
+    updateNetStatus();
+});
+</script>
+</body>
+</html>

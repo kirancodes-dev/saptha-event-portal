@@ -771,6 +771,28 @@ def scan_page(event_id):
                             scanning_open=scanning_open)
 
 
+@coord_bp.route('/scan-hud/<event_id>')
+@login_required
+@role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin', 'ClubSPOC'])
+def scan_hud_page(event_id):
+    """Full-screen Dedicated Coordinator Scan HUD with haptic/audio feedback and offline sync."""
+    target_db = db
+    try:
+        from app import db as app_db
+        if app_db is not None:
+            target_db = app_db
+    except Exception:
+        pass
+
+    doc = target_db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "warning")
+        return redirect('/coordinator/scanner')
+    d = doc.to_dict()
+    d['id'] = event_id
+    return render_template('coordinator/scan_hud.html', event=d, event_id=event_id)
+
+
 @coord_bp.route('/get_ticket/<reg_id>')
 @login_required
 def get_ticket(reg_id):

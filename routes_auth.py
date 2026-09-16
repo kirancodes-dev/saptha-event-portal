@@ -92,10 +92,14 @@ def login():
                 db_role = db_role.value
             db_role = str(db_role).strip()
 
-            if db_role == 'Super Admin':
+            if db_role in ('Super Admin', 'Admin'):
                 db_role = 'SuperAdmin'
             if db_role == 'Coordinator':
                 db_role = 'EventCoordinator'
+            if db_role == 'SPOC':
+                db_role = 'ClubSPOC'
+            if db_role == 'Participant':
+                db_role = 'Student'
 
             # Password verification — hashed only.
             stored_pw = user.get('password') or user.get('password_hash') or ''

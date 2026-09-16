@@ -24,9 +24,12 @@
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to Main Content</a>
+    <!-- Accessibility Live Region for Dynamic Screen Reader Announcements -->
+    <div id="a11y-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+    
     <!-- Sidebar Navigation -->
     {% if not public_layout %}
-        <div class="sidebar-overlay"></div>
+        <div class="sidebar-overlay" aria-hidden="true"></div>
         <aside class="sidebar" role="complementary" aria-label="Navigation sidebar">
             <div class="sidebar-brand">
                 <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 32px; width: auto; object-fit: contain; margin-right: 8px;">
@@ -85,7 +88,7 @@
             </nav>
 
             <div class="sidebar-footer">
-                <p>© 2024 Sapthagiri | <a href="/privacy" style="color:rgba(255,255,255,0.6);text-decoration:none;">Privacy</a> | <a href="/terms" style="color:rgba(255,255,255,0.6);text-decoration:none;">Terms</a></p>
+                <p>© 2026 Sapthagiri | <a href="/privacy" style="color:rgba(255,255,255,0.6);text-decoration:none;">Privacy</a> | <a href="/terms" style="color:rgba(255,255,255,0.6);text-decoration:none;">Terms</a></p>
             </div>
         </aside>
     {% endif %}
@@ -96,27 +99,27 @@
         {% if not public_layout %}
             <header class="top-header" role="banner">
                 <div class="header-left">
-                    <button class="menu-toggle" aria-label="Toggle Sidebar" type="button">
+                    <button class="menu-toggle" aria-label="Toggle Sidebar" aria-expanded="false" aria-controls="sidebar" type="button">
                         <i class="fas fa-bars" aria-hidden="true"></i>
                     </button>
                     <h1 class="header-title" id="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
                 </div>
                 <div class="header-right">
                     <!-- Notifications -->
-                    <a href="/notifications" class="btn-icon-link me-2" aria-label="Notifications" style="position: relative; color: var(--ink-700); font-size: 1.15rem; transition: color var(--t-fast); text-decoration: none;">
-                        <i class="fas fa-bell"></i>
+                    <a href="/notifications" class="btn-icon-link me-2" aria-label="View notifications" style="position: relative; color: var(--ink-700); font-size: 1.15rem; transition: color var(--t-fast); text-decoration: none;">
+                        <i class="fas fa-bell" aria-hidden="true"></i>
                         <span id="notif-badge" class="badge bg-danger rounded-pill" style="position: absolute; top: -5px; right: -5px; font-size: 0.65rem; padding: 0.25em 0.4em; display: none;"></span>
                     </a>
                     
                     <!-- Theme Toggle -->
                     <button class="btn-icon-link me-3" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
-                        <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
+                        <span id="theme-toggle-icon"><i class="fas fa-moon" aria-hidden="true"></i></span>
                     </button>
 
                     <!-- User Avatar -->
-                    <div class="user-menu" role="region" aria-label="User menu">
+                    <div class="user-menu" role="region" aria-label="User profile menu">
                         <a href="/profile" style="text-decoration: none;" aria-label="View Profile">
-                            <div class="user-avatar" aria-label="User profile avatar with initials">{{ user_initials | default('U') }}</div>
+                            <div class="user-avatar" aria-label="User profile avatar">{{ user_initials | default('U') }}</div>
                         </a>
                     </div>
                 </div>
@@ -194,6 +197,7 @@
     <script src="/static/js/global.js"></script>
     <script src="/static/js/command-palette.js" defer></script>
     <script src="/static/js/offline-sync.js" defer></script>
+    {% include 'components/mobile_nav.html' %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>

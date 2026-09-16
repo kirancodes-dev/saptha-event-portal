@@ -367,7 +367,7 @@ body{
   <div class="form-card">
 
     <h2 class="form-title">{{ schema.form_title or 'Registration Form' }}</h2>
-    {% if schema.get('form_desc') %}
+    {% if schema and schema.form_desc %}
     <p class="form-desc">{{ schema.form_desc }}</p>
     {% endif %}
 

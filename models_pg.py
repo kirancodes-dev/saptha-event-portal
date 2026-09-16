@@ -105,6 +105,44 @@ class User(Base):
         }
 
 
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id            = Column(String(128), primary_key=True)
+    name          = Column(String(255), nullable=False)
+    slug          = Column(String(100), nullable=False, unique=True, index=True)
+    domain        = Column(String(255), index=True)
+    plan          = Column(String(50), nullable=False, default="free")
+    logo_url      = Column("logoUrl", String(500))
+    favicon_url   = Column("faviconUrl", String(500))
+    primary_color = Column("primaryColor", String(20), default="#1a2557")
+    accent_color  = Column("accentColor", String(20), default="#f37021")
+    custom_domain = Column("customDomain", String(255), unique=True)
+    api_key       = Column("apiKey", String(128), unique=True, index=True)
+    owner_email   = Column("ownerEmail", String(255))
+    is_active     = Column("isActive", Boolean, nullable=False, default=True)
+    settings_json = Column("settingsJson", Text)
+    created_at    = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at    = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'slug': self.slug,
+            'domain': self.domain,
+            'plan': self.plan,
+            'logo_url': self.logo_url,
+            'favicon_url': self.favicon_url,
+            'primary_color': self.primary_color,
+            'accent_color': self.accent_color,
+            'custom_domain': self.custom_domain,
+            'owner_email': self.owner_email,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class Event(Base):
     __tablename__ = "events"
     __table_args__ = (
@@ -112,13 +150,23 @@ class Event(Base):
     )
 
     id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id = Column("organizationId", String(128), index=True, nullable=True)
     title          = Column(String(300), nullable=False)
+    slug           = Column(String(300), index=True, nullable=True)
     description    = Column(Text)
     category       = Column(Enum(EventCategory), nullable=False)
+    event_type     = Column("eventType", String(100), default="competition")
+    event_mode     = Column("eventMode", String(50), default="offline")
+    timezone       = Column(String(100), default="Asia/Kolkata")
     date           = Column(Date, nullable=False)
     deadline       = Column(Date)
+    start_datetime = Column("startDatetime", DateTime(timezone=True), nullable=True)
+    end_datetime   = Column("endDatetime", DateTime(timezone=True), nullable=True)
     venue          = Column(String(300), nullable=False)
     status         = Column(Enum(EventStatus), nullable=False, default=EventStatus.active)
+    capacity       = Column(Integer, default=200)
+    pricing_type   = Column("pricingType", String(50), default="free")
+    currency       = Column(String(10), default="INR")
     max_teams      = Column("maxTeams", Integer)
     min_team_size  = Column("minTeamSize", Integer, nullable=False, default=1)
     max_team_size  = Column("maxTeamSize", Integer, nullable=False, default=1)
@@ -134,6 +182,10 @@ class Event(Base):
     scoring_locked = Column("scoring_locked", Boolean, nullable=False, default=False)
     judging_criteria_json = Column("judging_criteria_json", Text)
     staff_json     = Column("staff_json", Text)
+    workflow_config_json = Column("workflowConfigJson", Text, nullable=True)
+    evaluation_config_json = Column("evaluationConfigJson", Text, nullable=True)
+    ticket_tiers_json = Column("ticketTiersJson", Text, nullable=True)
+    notification_rules_json = Column("notificationRulesJson", Text, nullable=True)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
@@ -142,12 +194,18 @@ class Event(Base):
 
     def to_dict(self):
         return {
-            'id': str(self.id), 'title': self.title, 'description': self.description,
+            'id': str(self.id), 'organization_id': self.organization_id,
+            'title': self.title, 'slug': self.slug, 'description': self.description,
             'category': self.category.value if self.category else None,
+            'event_type': self.event_type, 'event_mode': self.event_mode,
+            'timezone': self.timezone,
             'date': self.date.isoformat() if self.date else None,
             'deadline': self.deadline.isoformat() if self.deadline else None,
+            'start_datetime': self.start_datetime.isoformat() if self.start_datetime else None,
+            'end_datetime': self.end_datetime.isoformat() if self.end_datetime else None,
             'venue': self.venue,
             'status': self.status.value if self.status else None,
+            'capacity': self.capacity, 'pricing_type': self.pricing_type, 'currency': self.currency,
             'max_teams': self.max_teams, 'min_team_size': self.min_team_size,
             'max_team_size': self.max_team_size, 'fee': self.fee,
             'total_rounds': self.total_rounds, 'active_round': self.active_round,
@@ -326,5 +384,70 @@ class ProjectSubmission(Base):
     total_score       = Column("totalScore", Float, default=0.0)
     submitted_at      = Column("submittedAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at        = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class Ticket(Base):
+    __tablename__ = "tickets"
+
+    id               = Column(String(128), primary_key=True)
+    event_id         = Column("eventId", UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    registration_id  = Column("registrationId", UUID(as_uuid=True), ForeignKey("registrations.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_email       = Column("userEmail", String(255), nullable=False, index=True)
+    ticket_type      = Column("ticketType", String(100), nullable=False, default="General")
+    ticket_code      = Column("ticketCode", String(100), nullable=False, unique=True, index=True)
+    qr_token_hash    = Column("qrTokenHash", String(255), nullable=False)
+    gate_assignment  = Column("gateAssignment", String(100))
+    seat_assignment  = Column("seatAssignment", String(100))
+    status           = Column("status", String(50), nullable=False, default="active")
+    checked_in_at    = Column("checkedInAt", DateTime(timezone=True))
+    created_at       = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'event_id': str(self.event_id),
+            'registration_id': str(self.registration_id),
+            'user_email': self.user_email,
+            'ticket_type': self.ticket_type,
+            'ticket_code': self.ticket_code,
+            'qr_token_hash': self.qr_token_hash,
+            'gate_assignment': self.gate_assignment,
+            'seat_assignment': self.seat_assignment,
+            'status': self.status,
+            'checked_in_at': self.checked_in_at.isoformat() if self.checked_in_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class EventSession(Base):
+    __tablename__ = "event_sessions"
+
+    id            = Column(String(128), primary_key=True)
+    event_id      = Column("eventId", UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    track_name    = Column("trackName", String(100), default="Main Track")
+    title         = Column("title", String(300), nullable=False)
+    speaker_name  = Column("speakerName", String(200))
+    speaker_bio   = Column("speakerBio", Text)
+    room_number   = Column("roomNumber", String(100))
+    start_time    = Column("startTime", DateTime(timezone=True), nullable=False)
+    end_time      = Column("endTime", DateTime(timezone=True), nullable=False)
+    capacity      = Column("capacity", Integer, default=100)
+    created_at    = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'event_id': str(self.event_id),
+            'track_name': self.track_name,
+            'title': self.title,
+            'speaker_name': self.speaker_name,
+            'speaker_bio': self.speaker_bio,
+            'room_number': self.room_number,
+            'start_time': self.start_time.isoformat() if self.start_time else None,
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'capacity': self.capacity,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
 
 

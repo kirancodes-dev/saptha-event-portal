@@ -18,8 +18,9 @@ except Exception:
 from db_pg import get_engine, get_session
 from models_pg import (
     Base, User, Event, Registration, TeamMember, Score, EventForm,
-    FormSubmission, AuditLog, PushSubscription, Announcement, ProjectSubmission, UserRole, EventCategory,
-    EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
+    FormSubmission, AuditLog, PushSubscription, Announcement, ProjectSubmission,
+    Organization, Ticket, EventSession,
+    UserRole, EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
 )
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,10 @@ COLLECTION_MAP = {
     'audit_log': AuditLog,
     'push_subscriptions': PushSubscription,
     'announcements': Announcement,
-    'project_submissions': ProjectSubmission
+    'project_submissions': ProjectSubmission,
+    'organizations': Organization,
+    'tickets': Ticket,
+    'event_sessions': EventSession,
 }
 
 # Field name translation map: Firestore -> SQLAlchemy/Postgres
@@ -64,6 +68,31 @@ FIELD_MAP = {
     'student_email': 'lead_email',
     'reg_id': 'registration_id',
     'regId': 'registration_id',
+    'organization_id': 'organization_id',
+    'organizationId': 'organization_id',
+    'org_id': 'organization_id',
+    'event_type': 'event_type',
+    'eventType': 'event_type',
+    'event_mode': 'event_mode',
+    'eventMode': 'event_mode',
+    'start_datetime': 'start_datetime',
+    'startDatetime': 'start_datetime',
+    'end_datetime': 'end_datetime',
+    'endDatetime': 'end_datetime',
+    'pricing_type': 'pricing_type',
+    'pricingType': 'pricing_type',
+    'workflow_config': 'workflow_config_json',
+    'workflow_config_json': 'workflow_config_json',
+    'workflowConfigJson': 'workflow_config_json',
+    'evaluation_config': 'evaluation_config_json',
+    'evaluation_config_json': 'evaluation_config_json',
+    'evaluationConfigJson': 'evaluation_config_json',
+    'ticket_tiers': 'ticket_tiers_json',
+    'ticket_tiers_json': 'ticket_tiers_json',
+    'ticketTiersJson': 'ticket_tiers_json',
+    'notification_rules': 'notification_rules_json',
+    'notification_rules_json': 'notification_rules_json',
+    'notificationRulesJson': 'notification_rules_json',
 }
 
 
@@ -76,7 +105,21 @@ def verify_and_align_schema():
         ('open_hall_mode', 'BOOLEAN DEFAULT FALSE'),
         ('scoring_locked', 'BOOLEAN DEFAULT FALSE'),
         ('judging_criteria_json', 'TEXT'),
-        ('staff_json', 'TEXT')
+        ('staff_json', 'TEXT'),
+        ('organizationId', 'VARCHAR(128)'),
+        ('slug', 'VARCHAR(300)'),
+        ('eventType', "VARCHAR(100) DEFAULT 'competition'"),
+        ('eventMode', "VARCHAR(50) DEFAULT 'offline'"),
+        ('timezone', "VARCHAR(100) DEFAULT 'Asia/Kolkata'"),
+        ('startDatetime', 'TIMESTAMP WITH TIME ZONE'),
+        ('endDatetime', 'TIMESTAMP WITH TIME ZONE'),
+        ('capacity', 'INTEGER DEFAULT 200'),
+        ('pricingType', "VARCHAR(50) DEFAULT 'free'"),
+        ('currency', "VARCHAR(10) DEFAULT 'INR'"),
+        ('workflowConfigJson', 'TEXT'),
+        ('evaluationConfigJson', 'TEXT'),
+        ('ticketTiersJson', 'TEXT'),
+        ('notificationRulesJson', 'TEXT'),
     ]
     cols_registrations = [
         ('assigned_judge_email', 'VARCHAR(255)'),
@@ -352,12 +395,15 @@ class SQLDocumentReference:
             return SQLDocumentSnapshot(self.id, doc_data, exists=True)
 
         if not self.model_class:
-            return SQLDocumentSnapshot(self.id, None, exists=False)
+            doc_data = _get_native_doc(self.collection_name, self.id)
+            if doc_data is None:
+                return SQLDocumentSnapshot(self.id, None, exists=False)
+            return SQLDocumentSnapshot(self.id, doc_data, exists=True)
 
         with get_session() as session:
             # Map search primary key
-            if self.collection_name == 'users':
-                record = session.query(self.model_class).filter_by(id=self.id).first()
+            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
+                record = session.query(self.model_class).filter_by(id=str(self.id)).first()
             elif self.collection_name == 'event_forms':
                 record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
             else:
@@ -375,11 +421,12 @@ class SQLDocumentReference:
             return
 
         if not self.model_class:
+            _set_native_doc(self.collection_name, self.id, data, merge=merge)
             return
 
         with get_session() as session:
-            if self.collection_name == 'users':
-                record = session.query(self.model_class).filter_by(id=self.id).first()
+            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
+                record = session.query(self.model_class).filter_by(id=str(self.id)).first()
             elif self.collection_name == 'event_forms':
                 record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
             else:
@@ -406,11 +453,12 @@ class SQLDocumentReference:
             return
 
         if not self.model_class:
+            _delete_native_doc(self.collection_name, self.id)
             return
 
         with get_session() as session:
-            if self.collection_name == 'users':
-                session.query(self.model_class).filter_by(id=self.id).delete()
+            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
+                session.query(self.model_class).filter_by(id=str(self.id)).delete()
             elif self.collection_name == 'event_forms':
                 session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).delete()
             else:
@@ -461,6 +509,25 @@ class SQLDocumentReference:
             d['staff'] = json.loads(record.staff_json) if record.staff_json else []
             # Overview/description fallback
             d['overview'] = record.description
+            d['slug'] = getattr(record, 'slug', None)
+            d['organization_id'] = getattr(record, 'organization_id', None)
+            d['event_type'] = getattr(record, 'event_type', 'competition')
+            d['event_mode'] = getattr(record, 'event_mode', 'offline')
+            d['timezone'] = getattr(record, 'timezone', 'Asia/Kolkata')
+            d['capacity'] = getattr(record, 'capacity', 200)
+            d['pricing_type'] = getattr(record, 'pricing_type', 'free')
+            d['currency'] = getattr(record, 'currency', 'INR')
+            d['workflow_config'] = json.loads(record.workflow_config_json) if getattr(record, 'workflow_config_json', None) else {}
+            d['evaluation_config'] = json.loads(record.evaluation_config_json) if getattr(record, 'evaluation_config_json', None) else {}
+            d['ticket_tiers'] = json.loads(record.ticket_tiers_json) if getattr(record, 'ticket_tiers_json', None) else []
+            d['notification_rules'] = json.loads(record.notification_rules_json) if getattr(record, 'notification_rules_json', None) else []
+
+        elif self.collection_name == 'organizations':
+            d['settings'] = json.loads(record.settings_json) if getattr(record, 'settings_json', None) else {}
+            d['theme'] = {
+                'primary_color': getattr(record, 'primary_color', '#1a2557'),
+                'accent_color': getattr(record, 'accent_color', '#f37021'),
+            }
 
         elif self.collection_name == 'registrations':
             d['student_email'] = record.lead_email
@@ -492,9 +559,17 @@ class SQLDocumentReference:
         elif self.collection_name == 'event_forms':
             if record.fields_json:
                 try:
-                    d = json.loads(record.fields_json)
+                    loaded = json.loads(record.fields_json)
+                    if isinstance(loaded, list):
+                        d = {'fields': loaded, 'form_title': 'Registration Form', 'form_desc': ''}
+                    elif isinstance(loaded, dict):
+                        d = loaded
+                        if 'fields' not in d:
+                            d['fields'] = []
                 except Exception:
-                    pass
+                    d = {'fields': [], 'form_title': 'Registration Form', 'form_desc': ''}
+            else:
+                d = {'fields': [], 'form_title': 'Registration Form', 'form_desc': ''}
 
         elif self.collection_name == 'form_submissions':
             if record.answers_json:
@@ -632,6 +707,55 @@ class SQLDocumentReference:
             kwargs['timestamp'] = safe_str(data.get('timestamp', ''))
             return Announcement(**kwargs)
 
+        elif self.collection_name == 'organizations':
+            kwargs['id'] = str(self.id)
+            kwargs['name'] = safe_str(data.get('name', 'Unnamed Organization'))
+            kwargs['slug'] = safe_str(data.get('slug', str(self.id)).lower().strip())
+            kwargs['domain'] = safe_str(data.get('domain', ''))
+            kwargs['plan'] = safe_str(data.get('plan', 'free'))
+            kwargs['logo_url'] = safe_str(data.get('logo_url', ''))
+            kwargs['favicon_url'] = safe_str(data.get('favicon_url', ''))
+            theme = data.get('theme', {})
+            kwargs['primary_color'] = safe_str(theme.get('primary_color', data.get('primary_color', '#1a2557')))
+            kwargs['accent_color'] = safe_str(theme.get('accent_color', data.get('accent_color', '#f37021')))
+            kwargs['custom_domain'] = data.get('custom_domain')
+            kwargs['api_key'] = safe_str(data.get('api_key', ''))
+            kwargs['owner_email'] = safe_str(data.get('owner_email', ''))
+            kwargs['is_active'] = bool(data.get('is_active', True))
+            kwargs['settings_json'] = json.dumps(data.get('settings', {})) if isinstance(data.get('settings'), dict) else safe_str(data.get('settings_json', ''))
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            kwargs['updated_at'] = self._get_datetime(data.get('updated_at'))
+            return Organization(**kwargs)
+
+        elif self.collection_name == 'tickets':
+            kwargs['id'] = str(self.id)
+            kwargs['event_id'] = to_uuid(data.get('event_id'))
+            kwargs['registration_id'] = to_uuid(data.get('registration_id'))
+            kwargs['user_email'] = safe_str(data.get('user_email', ''))
+            kwargs['ticket_type'] = safe_str(data.get('ticket_type', 'General'))
+            kwargs['ticket_code'] = safe_str(data.get('ticket_code', f"TKT-{uuid.uuid4().hex[:8].upper()}"))
+            kwargs['qr_token_hash'] = safe_str(data.get('qr_token_hash', ''))
+            kwargs['gate_assignment'] = safe_str(data.get('gate_assignment', ''))
+            kwargs['seat_assignment'] = safe_str(data.get('seat_assignment', ''))
+            kwargs['status'] = safe_str(data.get('status', 'active'))
+            kwargs['checked_in_at'] = self._get_datetime(data.get('checked_in_at'))
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            return Ticket(**kwargs)
+
+        elif self.collection_name == 'event_sessions':
+            kwargs['id'] = str(self.id)
+            kwargs['event_id'] = to_uuid(data.get('event_id'))
+            kwargs['track_name'] = safe_str(data.get('track_name', 'Main Track'))
+            kwargs['title'] = safe_str(data.get('title', 'Untitled Session'))
+            kwargs['speaker_name'] = safe_str(data.get('speaker_name', ''))
+            kwargs['speaker_bio'] = safe_str(data.get('speaker_bio', ''))
+            kwargs['room_number'] = safe_str(data.get('room_number', ''))
+            kwargs['start_time'] = self._get_datetime(data.get('start_time'))
+            kwargs['end_time'] = self._get_datetime(data.get('end_time'))
+            kwargs['capacity'] = int(data.get('capacity', 100) or 100)
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            return EventSession(**kwargs)
+
         return None
 
     def _update_record_fields(self, record, data, session):
@@ -681,11 +805,26 @@ class SQLDocumentReference:
                 elif key == 'scoring_locked':
                     record.scoring_locked = bool(val)
                 elif key == 'judging_criteria':
-                    record.judging_criteria_json = json.dumps(val)
+                    record.judging_criteria_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
                 elif key == 'staff':
-                    record.staff_json = json.dumps(val)
+                    record.staff_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
                 elif key == 'overview':
                     record.description = safe_str(val)
+                elif key in ('workflow_config', 'workflow_config_json'):
+                    record.workflow_config_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
+                elif key in ('evaluation_config', 'evaluation_config_json'):
+                    record.evaluation_config_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
+                elif key in ('ticket_tiers', 'ticket_tiers_json'):
+                    record.ticket_tiers_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
+                elif key in ('notification_rules', 'notification_rules_json'):
+                    record.notification_rules_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
+
+            elif self.collection_name == 'organizations':
+                if key == 'settings':
+                    record.settings_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
+                elif key == 'theme' and isinstance(val, dict):
+                    if 'primary_color' in val: record.primary_color = val['primary_color']
+                    if 'accent_color' in val: record.accent_color = val['accent_color']
 
         # Handle nested relations for registrations
         if self.collection_name == 'registrations':
@@ -890,7 +1029,7 @@ class SQLQuery:
             return _query_native_docs(self.collection.id, filters=self.filters, limit=self._limit)
 
         if not self.collection.model:
-            return iter([])
+            return _query_native_docs(self.collection.id, filters=self.filters, limit=self._limit)
 
         with get_session() as session:
             query = session.query(self.collection.model)

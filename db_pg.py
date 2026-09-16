@@ -134,11 +134,11 @@ def get_engine():
 
 
 def init_db():
-    """Create all tables if they don't exist. Call once at app startup."""
+    """Create all tables and missing columns if they don't exist. Call once at app startup."""
     engine = get_engine()
     if engine is not None:
         try:
-            from sqlalchemy import inspect
+            from sqlalchemy import inspect, text
             inspector = inspect(engine)
             existing_tables = set(inspector.get_table_names())
             tables_to_create = [
@@ -147,6 +147,18 @@ def init_db():
             ]
             if tables_to_create:
                 Base.metadata.create_all(engine, tables=tables_to_create)
+
+            # For existing tables in SQLite, reconcile any missing columns
+            if engine.dialect.name == 'sqlite':
+                with engine.connect() as conn:
+                    for table_name, table in Base.metadata.tables.items():
+                        if table_name in existing_tables:
+                            existing_cols = {col['name'] for col in inspector.get_columns(table_name)}
+                            for col in table.columns:
+                                if col.name not in existing_cols:
+                                    col_type = col.type.compile(engine.dialect)
+                                    conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}'))
+                                    conn.commit()
         except Exception as exc:
             import logging
             logging.getLogger(__name__).info("init_db note: %s", exc)

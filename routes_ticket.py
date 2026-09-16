@@ -278,7 +278,42 @@ def verify_ticket(reg_id_or_token):
 # =========================================================
 @ticket_bp.route('/api/verify/<reg_id_or_token>')
 def api_verify(reg_id_or_token):
-    # 1. Try to decode as token
+    # 0. Try Universal Ticket checkin if it is a signed token or starts with TKT- / tkt_
+    try:
+        from services_ticket import TicketService
+        if ("." in reg_id_or_token and len(reg_id_or_token) > 20) or reg_id_or_token.startswith(("TKT-", "tkt_")):
+            tkt_res = TicketService.checkin_ticket(_db(), reg_id_or_token)
+            if tkt_res["status"] == "success":
+                tkt = tkt_res["ticket"] or {}
+                return jsonify({
+                    'status': 'success',
+                    'message': tkt_res.get('message', 'Entry granted'),
+                    'name': tkt.get('lead_name'),
+                    'team': tkt.get('seat_assignment', 'General'),
+                    'members': 1,
+                    'checkin_time': tkt.get('checked_in_at', _now()),
+                    'ticket_type': tkt.get('ticket_type', 'General'),
+                }), 200
+            elif tkt_res["status"] == "already_used":
+                tkt = tkt_res["ticket"] or {}
+                return jsonify({
+                    'status': 'already_in',
+                    'message': tkt_res.get('message', 'Already checked in'),
+                    'name': tkt.get('lead_name'),
+                    'team': tkt.get('seat_assignment', 'General'),
+                    'checkin_time': tkt.get('checked_in_at', _now()),
+                }), 200
+            elif tkt_res["status"] == "unpaid":
+                return jsonify({
+                    'status': 'unpaid',
+                    'message': tkt_res.get('message', 'Payment pending — entry not allowed'),
+                }), 402
+            elif tkt_res["status"] == "invalid" and not reg_id_or_token.startswith("REG-"):
+                return jsonify({'status': 'invalid', 'message': tkt_res.get('message', 'Invalid ticket')}), 404
+    except Exception:
+        pass
+
+    # 1. Try to decode as legacy token
     token_data = verify_ticket_token(reg_id_or_token)
     
     reg_id = reg_id_or_token
@@ -329,7 +364,7 @@ def api_verify(reg_id_or_token):
             try:
                 from routes_gamification import award_xp
                 award_xp(reg.get('lead_email'), 150)
-            except Exception as e:
+            except Exception:
                 pass
         except Exception:
             pass
@@ -360,3 +395,38 @@ def api_verify(reg_id_or_token):
             }), 200
 
         return jsonify({'status': 'invalid', 'message': 'Ticket not found'}), 404
+
+
+# =========================================================
+# 5. DIGITAL TICKET WALLET VIEW & JSON API
+# =========================================================
+@ticket_bp.route('/wallet/<ticket_code_or_id>')
+def ticket_wallet(ticket_code_or_id):
+    """Mobile-first responsive Digital Ticket Wallet view."""
+    from services_ticket import TicketService
+    wallet_data = TicketService.get_wallet_pass(_db(), ticket_code_or_id)
+    if not wallet_data:
+        abort(404)
+
+    if request.headers.get("Accept") == "application/json" or request.args.get("format") == "json":
+        return jsonify({"status": "success", "data": wallet_data})
+
+    return render_template(
+        'tickets/digital_wallet.html',
+        ticket=wallet_data["ticket"],
+        event=wallet_data["event"],
+        qr_b64=wallet_data["qr_image_base64"],
+        theme=wallet_data["theme"],
+        is_valid=wallet_data["is_valid"],
+    )
+
+
+@ticket_bp.route('/api/wallet/<ticket_code_or_id>')
+def api_ticket_wallet(ticket_code_or_id):
+    """JSON API for digital ticket wallet details."""
+    from services_ticket import TicketService
+    wallet_data = TicketService.get_wallet_pass(_db(), ticket_code_or_id)
+    if not wallet_data:
+        return jsonify({"status": "error", "message": "Ticket not found"}), 404
+    return jsonify({"status": "success", "data": wallet_data})
+

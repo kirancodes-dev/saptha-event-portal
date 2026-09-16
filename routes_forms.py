@@ -64,7 +64,16 @@ BUILDER_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
 
 def _get_form(event_id: str) -> Optional[dict]:
     doc = db.collection('event_forms').document(event_id).get()
-    return doc.to_dict() if doc.exists else None
+    if not doc.exists:
+        return None
+    data = doc.to_dict()
+    if isinstance(data, list):
+        return {'fields': data, 'form_title': 'Registration Form', 'form_desc': ''}
+    if isinstance(data, dict):
+        if 'fields' not in data:
+            data['fields'] = []
+        return data
+    return None
 
 
 def _validate_submission(schema: dict, form_data: dict) -> list:
@@ -78,6 +87,22 @@ def _validate_submission(schema: dict, form_data: dict) -> list:
         if ftype in ('heading', 'paragraph', 'divider'):
             continue
 
+        # Conditional dependency evaluation
+        depends_on = field.get('depends_on')
+        if depends_on and isinstance(depends_on, dict):
+            dep_field = depends_on.get('field')
+            expected_val = depends_on.get('value')
+            expected_in = depends_on.get('in')
+            actual_val = form_data.get(dep_field)
+
+            if expected_val is not None:
+                if str(actual_val or '').strip().lower() != str(expected_val).strip().lower():
+                    continue
+            elif expected_in is not None and isinstance(expected_in, (list, tuple)):
+                clean_in = [str(x).strip().lower() for x in expected_in]
+                if str(actual_val or '').strip().lower() not in clean_in:
+                    continue
+
         raw = form_data.get(fid)
         if isinstance(raw, list):
             value = raw
@@ -88,6 +113,16 @@ def _validate_submission(schema: dict, form_data: dict) -> list:
             if not value or value == []:
                 errors.append(f"'{label}' is required.")
                 continue
+
+        # Custom Regex validation
+        pattern = field.get('pattern') or field.get('regex')
+        if pattern and value:
+            try:
+                if not re.search(pattern, str(value)):
+                    err_msg = field.get('pattern_error') or f"'{label}' is not in the required format."
+                    errors.append(err_msg)
+            except re.error:
+                pass
 
         if ftype == 'email' and value:
             if not re.match(r'^[^@]+@[^@]+\.[^@]+$', str(value)):
@@ -485,6 +520,22 @@ def submit_form(event_id):
             'amount_paid':    0
         })
         db.collection('registrations').document(reg_id).set(reg_data)
+
+        # Issue digital ticket with signed HMAC-SHA256 QR token
+        try:
+            from services_ticket import TicketService
+            tier = answers.get('ticket_tier') or answers.get('ticket_type') or 'General'
+            TicketService.issue_ticket(
+                db,
+                event_id=event_id,
+                registration_id=reg_id,
+                user_email=email,
+                lead_name=full_name,
+                ticket_type=tier,
+            )
+        except Exception as e:
+            logger.warning("Could not auto-issue ticket on registration: %s", e)
+
         # Atomic increment — safe under concurrent registrations
         db.collection('events').document(event_id).update({
             'registration_count': firestore.Increment(1)

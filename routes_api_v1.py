@@ -1434,6 +1434,77 @@ def api_root():
                 "GET /api/v1/orgs": "List organizations (SuperAdmin)",
                 "POST /api/v1/orgs": "Create organization (SuperAdmin)",
             },
+            "ai_copilot": {
+                "POST /api/v1/ai/copilot/propose": "Generate structured event proposal from prompt",
+                "GET /api/v1/ai/copilot/proposals/<id>": "Get proposal for review",
+                "POST /api/v1/ai/copilot/proposals/<id>/approve": "Approve and create production event",
+            },
         },
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AI EVENT COPILOT (PROPOSAL & HUMAN-IN-THE-LOOP APPROVAL)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@api_v1_bp.route("/ai/copilot/propose", methods=["POST"])
+@jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "Organizer"])
+def api_ai_copilot_propose():
+    """Generate structured event proposal from natural language prompt."""
+    from services_copilot import AICopilotService
+    data = request.get_json(silent=True) or {}
+    prompt = data.get("prompt", "").strip()
+    if not prompt:
+        return api_error("bad_request", "Field 'prompt' is required", status=400)
+
+    db = _db()
+    try:
+        user_id = g.jwt_user.get("user_id") if hasattr(g, "jwt_user") else "system"
+        proposal = AICopilotService.generate_event_proposal(
+            prompt,
+            organization_id=data.get("organization_id"),
+            requested_by=user_id
+        )
+        if db is not None:
+            AICopilotService.save_proposal(db, proposal, user_id)
+        return api_success(proposal)
+    except Exception as exc:
+        logger.error("Error generating AI event proposal: %s", exc)
+        return api_error("internal_error", str(exc), status=500)
+
+
+@api_v1_bp.route("/ai/copilot/proposals/<proposal_id>", methods=["GET"])
+@jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "Organizer"])
+def api_ai_copilot_get_proposal(proposal_id):
+    """Fetch stored AI proposal by ID for review."""
+    from services_copilot import AICopilotService
+    db = _db()
+    if db is None:
+        return api_error("service_unavailable", "Database not available", status=503)
+
+    proposal = AICopilotService.get_proposal(db, proposal_id)
+    if not proposal:
+        return api_error("not_found", f"Proposal {proposal_id} not found", status=404)
+    return api_success(proposal)
+
+
+@api_v1_bp.route("/ai/copilot/proposals/<proposal_id>/approve", methods=["POST"])
+@jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "Organizer"])
+def api_ai_copilot_approve(proposal_id):
+    """Approve and apply an AI-generated event proposal into a production event."""
+    from services_copilot import AICopilotService
+    db = _db()
+    if db is None:
+        return api_error("service_unavailable", "Database not available", status=503)
+
+    reviewer_id = g.jwt_user.get("user_id") if hasattr(g, "jwt_user") else "admin"
+    try:
+        result = AICopilotService.approve_and_apply_proposal(db, proposal_id, reviewer_id)
+        return api_success(result)
+    except ValueError as exc:
+        return api_error("not_found", str(exc), status=404)
+    except Exception as exc:
+        logger.error("Error approving AI proposal: %s", exc)
+        return api_error("internal_error", str(exc), status=500)
+
 

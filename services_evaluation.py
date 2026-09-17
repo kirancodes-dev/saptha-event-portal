@@ -15,8 +15,10 @@ Features:
 - Multi-round advancement and final ranking calculation
 """
 
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
 
 
 def _utcnow_iso() -> str:
@@ -261,3 +263,78 @@ class EvaluationEngine:
             item["rank"] = idx
 
         return candidates
+
+    @classmethod
+    def record_rubric_evaluation(
+        cls,
+        db,
+        *,
+        event_id: str,
+        registration_id: str,
+        judge_id: str,
+        scores: Dict[str, float],
+        comments: str = "",
+        judge_name: str = "Judge"
+    ) -> Dict[str, Any]:
+        """Convenience method to record multi-criteria rubric evaluation."""
+        total = float(sum(scores.values()))
+        now_str = _utcnow_iso()
+        entry = {
+            "judge_id": judge_id,
+            "judge_name": judge_name,
+            "scores": scores,
+            "total_score": total,
+            "final_score": total,
+            "comments": comments,
+            "scored_at": now_str
+        }
+        if db is not None:
+            reg_ref = db.collection("registrations").document(registration_id)
+            reg_doc = reg_ref.get()
+            existing_scores = {}
+            if reg_doc.exists:
+                existing_scores = reg_doc.to_dict().get("scores", {})
+            existing_scores[judge_id] = entry
+            reg_ref.set({
+                "event_id": event_id,
+                "scores": existing_scores,
+                "score_average": total,
+                "last_scored_at": now_str
+            }, merge=True)
+
+
+        return {"success": True, "total_score": total, "evaluation": entry}
+
+    @classmethod
+    def publish_results(
+        cls,
+        db,
+        *,
+        event_id: str,
+        rankings: List[Dict[str, Any]],
+        published_by: str = "admin"
+    ) -> Dict[str, Any]:
+        """Publish official event rankings and results with audit trail."""
+        now_str = _utcnow_iso()
+        results_doc = {
+            "event_id": event_id,
+            "rankings": rankings,
+            "published_by": published_by,
+            "published_at": now_str,
+            "status": "published"
+        }
+        if db is not None:
+            db.collection("event_results").document(event_id).set(results_doc)
+            # Record audit log
+            db.collection("audit_log").document(f"audit-res-{uuid.uuid4().hex[:8]}").set({
+                "action": "results_published",
+                "event_id": event_id,
+                "published_by": published_by,
+                "timestamp": now_str
+            })
+        return {"success": True, "results": results_doc}
+
+
+# Service Alias
+EvaluationService = EvaluationEngine
+

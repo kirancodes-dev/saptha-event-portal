@@ -756,7 +756,26 @@ class SQLDocumentReference:
             kwargs['created_at'] = self._get_datetime(data.get('created_at'))
             return EventSession(**kwargs)
 
+        elif self.collection_name == 'project_submissions':
+            kwargs['id'] = to_uuid(self.id)
+            kwargs['event_id'] = to_uuid(data.get('event_id'))
+            kwargs['registration_id'] = to_uuid(data.get('registration_id'))
+            kwargs['team_name'] = safe_str(data.get('team_name', 'Team'))
+            kwargs['project_title'] = safe_str(data.get('project_title') or data.get('project_name', 'Project'))
+            kwargs['tagline'] = safe_str(data.get('tagline', ''))
+            kwargs['problem_statement'] = safe_str(data.get('problem_statement', ''))
+            kwargs['solution_overview'] = safe_str(data.get('solution_overview', ''))
+            kwargs['tech_stack'] = safe_str(data.get('tech_stack', ''))
+            kwargs['github_url'] = safe_str(data.get('github_url', ''))
+            kwargs['demo_url'] = safe_str(data.get('demo_url', ''))
+            kwargs['video_url'] = safe_str(data.get('video_url', ''))
+            kwargs['slide_deck_url'] = safe_str(data.get('slide_deck_url', ''))
+            kwargs['milestone_stage'] = safe_str(data.get('milestone_stage', 'Ideation'))
+            kwargs['submitted_at'] = self._get_datetime(data.get('submitted_at'))
+            return ProjectSubmission(**kwargs)
+
         return None
+
 
     def _update_record_fields(self, record, data, session):
         """Update fields on an existing record based on Firestore inputs."""
@@ -781,10 +800,11 @@ class SQLDocumentReference:
                         val = self._get_enum_attendance(val)
                     
                     # DateTime conversions
-                    if mapped_key in ('created_at', 'updated_at', 'submitted_at'):
+                    if mapped_key in ('created_at', 'updated_at', 'submitted_at', 'checked_in_at', 'start_time', 'end_time') or 'DateTime' in col.type.__class__.__name__:
                         val = self._get_datetime(val)
                     elif mapped_key in ('date', 'deadline'):
                         val = self._get_date(val)
+
                     # UUID conversions
                     elif col.type.__class__.__name__ in ('UUID', 'PgUUID'):
                         if val:

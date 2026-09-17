@@ -101,6 +101,7 @@ class EventService:
         capacity: int = 200,
         pricing_type: str = "free",
         fee: float = 0.0,
+        entry_fee: Optional[float] = None,
         currency: str = "INR",
         timezone_str: str = "Asia/Kolkata",
         created_by: str = "",
@@ -108,8 +109,11 @@ class EventService:
         evaluation_config: Optional[Dict[str, Any]] = None,
         ticket_tiers: Optional[List[Dict[str, Any]]] = None,
         custom_fields: Optional[List[Dict[str, Any]]] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         """Create a new universal event with configuration-driven pipeline."""
+        if entry_fee is not None and fee == 0.0:
+            fee = float(entry_fee)
         event_id = str(uuid.uuid4())
         
         # Determine slug
@@ -197,26 +201,34 @@ class EventService:
     @staticmethod
     def get_event_by_slug(db, slug: str) -> Optional[Dict[str, Any]]:
         """Fetch event by its unique URL slug."""
+        if not slug or not db:
+            return None
         cleaned_slug = slug.strip().lower()
-        if FieldFilter:
-            docs = (
-                db.collection("events")
-                .where(filter=FieldFilter("slug", "==", cleaned_slug))
-                .limit(1)
-                .stream()
-            )
-        else:
-            docs = (
-                db.collection("events")
-                .where("slug", "==", cleaned_slug)
-                .limit(1)
-                .stream()
-            )
-        for doc in docs:
-            data = doc.to_dict()
-            data["id"] = doc.id
-            if data.get("slug", "").strip().lower() == cleaned_slug:
-                return data
+        try:
+            if FieldFilter:
+                query = db.collection("events").where(filter=FieldFilter("slug", "==", cleaned_slug))
+            else:
+                query = db.collection("events").where("slug", "==", cleaned_slug)
+            for doc in query.stream():
+                data = doc.to_dict() if hasattr(doc, "to_dict") else doc
+                if isinstance(data, dict):
+                    data["id"] = getattr(doc, "id", None) or data.get("id")
+                    if data.get("slug", "").strip().lower() == cleaned_slug:
+                        return data
+        except Exception:
+            pass
+
+        # Fallback direct scan
+        try:
+            for doc in db.collection("events").stream():
+                data = doc.to_dict() if hasattr(doc, "to_dict") else doc
+                if isinstance(data, dict):
+                    data["id"] = getattr(doc, "id", None) or data.get("id")
+                    if data.get("slug", "").strip().lower() == cleaned_slug:
+                        return data
+        except Exception:
+            pass
+
         return None
 
     @staticmethod

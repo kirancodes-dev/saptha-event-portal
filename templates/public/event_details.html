@@ -645,6 +645,20 @@
             {% endif %}
         </div>
 
+        <!-- Add to Calendar -->
+        <div class="card">
+            <p class="card-title"><i class="fas fa-calendar-plus me-2" style="color:var(--orange);"></i>Add to Calendar</p>
+            <div class="d-flex flex-column gap-2" style="gap:8px;">
+                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ (event.title or event.name)|urlencode }}&dates={{ (event.date|replace('-', '')) if event.date else '20260901' }}T090000Z/{{ (event.date|replace('-', '')) if event.date else '20260901' }}T180000Z&details={{ (event.description or '')|urlencode }}&location={{ (event.venue or '')|urlencode }}" 
+                   target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary w-100 text-center" style="border-radius:6px; font-weight:600; padding:8px;">
+                    <i class="fab fa-google me-1"></i> Google Calendar
+                </a>
+                <a href="/events/{{ event.slug or event.id }}/calendar.ics" class="btn btn-sm btn-outline-secondary w-100 text-center" style="border-radius:6px; font-weight:600; padding:8px;">
+                    <i class="fas fa-download me-1"></i> Download .ICS File
+                </a>
+            </div>
+        </div>
+
         <!-- Organizer -->
         {% if event.organizer %}
         <div class="card">

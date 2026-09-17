@@ -55,10 +55,12 @@ class CertificateService:
         db,
         *,
         event_id: str,
-        event_title: str,
+        event_title: Optional[str] = None,
         recipient_name: str,
         recipient_email: str,
         category: str = "participant",
+        certificate_type: Optional[str] = None,
+        title: Optional[str] = None,
         rank: Optional[int] = None,
         signatories: Optional[List[Dict[str, str]]] = None,
         template_id: str = "tech_modern_gold",
@@ -67,6 +69,16 @@ class CertificateService:
         """
         Issue an individual certificate with anti-counterfeit cryptographic verification.
         """
+        category = certificate_type or category or "participant"
+        if not event_title and db is not None:
+            try:
+                edoc = db.collection("events").document(event_id).get()
+                if edoc.exists:
+                    event_title = edoc.to_dict().get("title") or edoc.to_dict().get("name")
+            except Exception:
+                pass
+        event_title = event_title or "Event"
+
         cert_id = f"cert_{uuid.uuid4().hex[:12]}"
         clean_email = recipient_email.strip().lower()
         v_hash = cls.generate_verification_hash(cert_id, event_id, clean_email)
@@ -76,13 +88,15 @@ class CertificateService:
         if category_clean not in CATEGORY_TITLES:
             category_clean = "participant"
 
-        title_text = CATEGORY_TITLES[category_clean]
+        title_text = title or CATEGORY_TITLES[category_clean]
         if rank and rank > 1 and category_clean == "runner_up":
             title_text = f"Certificate of Merit — {rank}nd Place" if rank == 2 else f"Certificate of Merit — {rank}rd Place"
+
 
         cert_data = {
             "id": cert_id,
             "cert_id": cert_id,
+            "certificate_id": cert_id,
             "event_id": event_id,
             "event_title": event_title,
             "recipient_name": recipient_name,
@@ -92,6 +106,7 @@ class CertificateService:
             "rank": rank,
             "verification_hash": v_hash,
             "verification_url": f"/verify/{cert_id}",
+            "verify_url": f"/verify/{cert_id}",
             "template_id": template_id,
             "signatories": signatories or [],
             "metadata": metadata or {},

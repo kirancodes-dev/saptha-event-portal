@@ -652,6 +652,120 @@ def home():
 
 
 # =========================================================
+# UNIVERSAL EVENT DISCOVERY & CATALOG
+# =========================================================
+@app.route('/events')
+def events_catalog():
+    """Universal Event Discovery Catalog with multi-facet filtering."""
+    query_search = request.args.get('q', '').strip()
+    selected_category = request.args.get('category', '').strip()
+    selected_type = request.args.get('type', '').strip()
+    selected_mode = request.args.get('mode', '').strip()
+    
+    events = []
+    categories = set(['Technical', 'Cultural', 'Sports', 'Workshop', 'Conference', 'Hackathon'])
+    
+    try:
+        if db is not None:
+            stream = db.collection('events').stream()
+            for doc in stream:
+                ev = doc.to_dict()
+                ev['id'] = doc.id
+                cat = ev.get('category')
+                if cat:
+                    categories.add(cat)
+                
+                # Apply filters
+                if query_search:
+                    match_text = f"{ev.get('title', '')} {ev.get('name', '')} {ev.get('description', '')} {ev.get('venue', '')}".lower()
+                    if query_search.lower() not in match_text:
+                        continue
+                if selected_category and ev.get('category', '').lower() != selected_category.lower():
+                    continue
+                if selected_type and ev.get('event_type', '').lower() != selected_type.lower():
+                    continue
+                if selected_mode and ev.get('event_mode', ev.get('mode', 'offline')).lower() != selected_mode.lower():
+                    continue
+                    
+                events.append(ev)
+    except Exception as exc:
+        logger.error("Error loading events catalog: %s", exc)
+
+    if request.headers.get('Accept') == 'application/json' or request.args.get('format') == 'json':
+        return jsonify({'events': events, 'count': len(events)})
+
+    return render_template(
+        'events/catalog.html',
+        events=events,
+        categories=sorted(list(categories)),
+        query_search=query_search,
+        selected_category=selected_category,
+        selected_type=selected_type,
+        selected_mode=selected_mode,
+        current_page='events'
+    )
+
+
+# =========================================================
+# EVENT ICALENDAR (.ICS) EXPORT
+# =========================================================
+@app.route('/events/<slug>/calendar.ics')
+def event_ics_download(slug):
+    """Download RFC 5545 standard iCalendar file for the event."""
+    from flask import Response
+    from services_event import EventService
+    ev = None
+    try:
+        ev = EventService.get_event_by_slug(db, slug)
+    except Exception:
+        pass
+    if not ev and db is not None:
+        try:
+            doc = db.collection('events').document(slug).get()
+            if doc.exists:
+                ev = doc.to_dict()
+                ev['id'] = doc.id
+        except Exception:
+            pass
+            
+    if not ev:
+        return Response("Event not found", status=404)
+        
+    title = ev.get('name') or ev.get('title') or 'Event'
+    desc = (ev.get('description') or ev.get('short_description') or '').replace('\n', ' ')
+    venue = ev.get('venue') or 'Main Venue'
+    date_str = ev.get('start_datetime') or ev.get('date') or ''
+    dt_clean = date_str.replace('-', '').replace(':', '')[:8] or '20260901'
+    dt_start = f"{dt_clean}T090000Z"
+    dt_end = f"{dt_clean}T180000Z"
+    uid = f"event-{ev.get('id', slug)}@events.snpsu.edu.in"
+    
+    ics_content = (
+        "BEGIN:VCALENDAR\r\n"
+        "VERSION:2.0\r\n"
+        "PRODID:-//SapthaEvent//Universal Event OS//EN\r\n"
+        "CALSCALE:GREGORIAN\r\n"
+        "METHOD:PUBLISH\r\n"
+        "BEGIN:VEVENT\r\n"
+        f"UID:{uid}\r\n"
+        f"DTSTAMP:20260917T000000Z\r\n"
+        f"DTSTART:{dt_start}\r\n"
+        f"DTEND:{dt_end}\r\n"
+        f"SUMMARY:{title}\r\n"
+        f"DESCRIPTION:{desc}\r\n"
+        f"LOCATION:{venue}\r\n"
+        "STATUS:CONFIRMED\r\n"
+        "END:VEVENT\r\n"
+        "END:VCALENDAR\r\n"
+    )
+    return Response(
+        ics_content,
+        mimetype="text/calendar",
+        headers={"Content-Disposition": f"attachment; filename={slug}.ics"}
+    )
+
+
+# =========================================================
 # UNIVERSAL EVENT DETAILS (BY SLUG OR ID)
 # =========================================================
 @app.route('/events/<slug>')

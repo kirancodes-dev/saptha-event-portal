@@ -146,6 +146,45 @@ class WorkflowEngine:
 
         return event_data
 
+    @classmethod
+    def transition_event_step(
+        cls,
+        db,
+        event_id: str,
+        target_step_id: str,
+        actor_id: str = "system"
+    ) -> Dict[str, Any]:
+        """Advance a custom workflow step within an event's workflow configuration."""
+        doc_ref = db.collection("events").document(event_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            return {"success": False, "error": f"Event {event_id} not found"}
+
+        ev_data = doc.to_dict()
+        workflow = ev_data.get("workflow_configuration") or ev_data.get("workflow") or []
+        updated = False
+        for step in workflow:
+            if step.get("id") == target_step_id:
+                step["status"] = "active"
+                updated = True
+            elif step.get("status") == "active":
+                step["status"] = "completed"
+
+        if updated:
+            doc_ref.set({"workflow_configuration": workflow, "updated_at": _utcnow_iso()}, merge=True)
+            cls._record_audit_entry(
+                db,
+                entity_type="event_step",
+                entity_id=event_id,
+                from_state="previous",
+                to_state=target_step_id,
+                actor_id=actor_id,
+                reason=f"Advanced workflow to step '{target_step_id}'",
+                metadata={"step_id": target_step_id}
+            )
+        return {"success": True, "step_id": target_step_id, "workflow": workflow}
+
+
     # ------------------------------------------------------------------
     # Participant / Registration Lifecycle Methods
     # ------------------------------------------------------------------
@@ -315,3 +354,8 @@ class WorkflowEngine:
         # Sort chronologically
         entries.sort(key=lambda x: x.get("timestamp", ""))
         return entries
+
+
+# Service Alias
+WorkflowService = WorkflowEngine
+

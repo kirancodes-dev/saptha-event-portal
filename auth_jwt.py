@@ -157,14 +157,23 @@ def _extract_token() -> Optional[str]:
 
 
 def jwt_required(f):
-    """Decorator: require a valid JWT access token.
+    """Decorator: require a valid JWT access token (or active session).
 
-    Sets ``g.jwt_user`` with the decoded payload.
+    Sets ``g.jwt_user`` with the decoded payload or session user.
     """
     @wraps(f)
     def decorated(*args, **kwargs):
         token = _extract_token()
         if not token:
+            from flask import session
+            if session.get("user_id"):
+                g.jwt_user = {
+                    "sub": session.get("user_id"),
+                    "user_id": session.get("user_id"),
+                    "role": session.get("role", "Student"),
+                    "org_id": session.get("org_id", ""),
+                }
+                return f(*args, **kwargs)
             return jsonify({"error": "missing_token", "message": "Authorization header required"}), 401
         payload = decode_token(token)
         if not payload:
@@ -177,7 +186,7 @@ def jwt_required(f):
 
 
 def jwt_roles_required(roles):
-    """Decorator: require a valid JWT AND one of the specified roles.
+    """Decorator: require a valid JWT (or session) AND one of the specified roles.
 
     Usage::
 
@@ -193,6 +202,16 @@ def jwt_roles_required(roles):
         def decorated(*args, **kwargs):
             token = _extract_token()
             if not token:
+                from flask import session
+                s_role = session.get("role")
+                if session.get("user_id") and s_role and (s_role in roles or "SuperAdmin" in roles and s_role == "SuperAdmin"):
+                    g.jwt_user = {
+                        "sub": session.get("user_id"),
+                        "user_id": session.get("user_id"),
+                        "role": s_role,
+                        "org_id": session.get("org_id", ""),
+                    }
+                    return f(*args, **kwargs)
                 return jsonify({"error": "missing_token", "message": "Authorization header required"}), 401
             payload = decode_token(token)
             if not payload:

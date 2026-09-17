@@ -694,6 +694,9 @@ class TemplateService:
             return None
         return copy.deepcopy(template)
 
+    get_template_by_id = get_template
+
+
     @staticmethod
     def instantiate_event(
         db,

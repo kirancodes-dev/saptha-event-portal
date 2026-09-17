@@ -121,6 +121,16 @@ class TicketService:
 
         return True, "Token valid", payload
 
+    @classmethod
+    def verify_qr_token(cls, token: str, event_id: Optional[str] = None) -> Tuple[bool, str]:
+        """Convenience wrapper to verify ticket token and validate matching event."""
+        valid, msg, payload = cls.verify_signed_qr_token(token)
+        if not valid:
+            return False, msg
+        if event_id and payload and payload.get("eid") != event_id:
+            return False, "Wrong event ticket"
+        return True, payload.get("rid", "")
+
     # ------------------------------------------------------------------
     # Ticket Issuance
     # ------------------------------------------------------------------
@@ -131,16 +141,26 @@ class TicketService:
         db,
         *,
         event_id: str,
-        registration_id: str,
-        user_email: str,
-        lead_name: str,
+        registration_id: Optional[str] = None,
+        user_email: Optional[str] = None,
+        user_id: Optional[str] = None,
+        lead_name: Optional[str] = None,
         ticket_type: str = "General",
+        price: float = 0.0,
         gate_assignment: str = "Gate 1",
         seat_assignment: Optional[str] = None,
+        seat_info: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Generate and persist a multi-tier ticket with signed QR code.
         """
+        user_email = user_email or user_id or "attendee@event.org"
+        registration_id = registration_id or f"reg-{uuid.uuid4().hex[:8]}"
+        lead_name = lead_name or user_email.split("@")[0].capitalize()
+
+        if seat_info and not seat_assignment:
+            seat_assignment = f"{seat_info.get('hall', '')} {seat_info.get('row', '')}-{seat_info.get('seat', '')}".strip()
+
         ticket_id = f"tkt_{uuid.uuid4().hex[:12]}"
         clean_eid = event_id[:8].upper()
         rand_code = uuid.uuid4().hex[:6].upper()
@@ -168,14 +188,17 @@ class TicketService:
             "ticket_type": ticket_type,
             "ticket_code": ticket_code,
             "signed_token": signed_token,
+            "qr_token": signed_token,
             "qr_token_hash": qr_token_hash,
             "gate_assignment": gate_assignment,
             "seat_assignment": seat_assignment or "General Open",
+            "price": price,
             "status": "active",
             "checked_in": False,
             "checked_in_at": None,
             "created_at": now_str,
         }
+
 
         # Persist to database
         db.collection("tickets").document(ticket_id).set(ticket_data)
@@ -331,6 +354,56 @@ class TicketService:
             "status": "success",
             "message": "Entry granted! Check-in verified.",
             "ticket": ticket_data,
+        }
+
+    @classmethod
+    def record_checkin(
+        cls,
+        db,
+        *,
+        event_id: Optional[str] = None,
+        ticket_id: str,
+        scanned_by: str = "scanner_guard",
+    ) -> Dict[str, Any]:
+        """Check in ticket by ticket_id or token with success flag."""
+        res = cls.checkin_ticket(db, ticket_id, actor_id=scanned_by)
+        is_ok = res.get("status") in ("success", "checked_in")
+        res["success"] = is_ok
+        res["status"] = "checked_in" if is_ok else res.get("status")
+        return res
+
+    @classmethod
+    def sync_offline_checkins(
+        cls,
+        db,
+        event_id: str,
+        scans: list,
+        actor_id: str = "offline_scanner"
+    ) -> Dict[str, Any]:
+        """Process batch of offline scans with earliest timestamp wins conflict resolution."""
+        synced = []
+        duplicates = []
+        errors = []
+        sorted_scans = sorted(scans, key=lambda x: x.get("timestamp") or x.get("scanned_at") or "")
+        for item in sorted_scans:
+            token_or_id = item.get("ticket_id") or item.get("token_or_id") or item.get("ticket_code") or ""
+            if not token_or_id:
+                continue
+            res = cls.checkin_ticket(db, token_or_id, actor_id=item.get("device_id") or actor_id)
+            if res.get("status") in ("success", "checked_in"):
+                synced.append(token_or_id)
+            elif res.get("status") == "already_used":
+                duplicates.append(token_or_id)
+            else:
+                errors.append(token_or_id)
+
+        return {
+            "success": True,
+            "synced_count": len(synced),
+            "duplicates_count": len(duplicates),
+            "errors_count": len(errors),
+            "synced": synced,
+            "duplicates": duplicates
         }
 
     # ------------------------------------------------------------------

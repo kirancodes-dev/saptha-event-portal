@@ -444,6 +444,9 @@
       <button class="btn btn-sm ms-1 fw-bold text-white" style="background:var(--snpsu-gold);" data-bs-toggle="modal" data-bs-target="#createEventModal">
         <i class="fas fa-plus me-1"></i> New Event
       </button>
+      <button class="btn btn-sm ms-1 fw-bold text-white" style="background:linear-gradient(135deg, #7c3aed, #4f46e5); border:none; box-shadow:0 0 12px rgba(124,58,237,0.35);" data-bs-toggle="modal" data-bs-target="#aiCopilotModal">
+        <i class="fas fa-wand-magic-sparkles me-1"></i> AI Copilot
+      </button>
     </div>
   </header>
 
@@ -710,7 +713,224 @@
       </form>
     </div>
   </div>
+<!-- AI Event Copilot Modal -->
+<div class="modal fade" id="aiCopilotModal" tabindex="-1" aria-labelledby="aiCopilotModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content" style="border: 1px solid rgba(124, 58, 237, 0.3); box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+      <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e1b4b, #31104b); border-bottom: 1px solid rgba(124,58,237,0.2);">
+        <div class="d-flex align-items-center gap-2">
+          <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #8b5cf6, #ec4899); display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-wand-magic-sparkles text-white"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold m-0" id="aiCopilotModalLabel">AI Event Architect <span class="badge ms-2" style="background: rgba(139, 92, 246, 0.25); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); font-size: 11px;">Gemini 2.5 Flash</span></h5>
+            <small class="text-white-50">Generate, review, and deploy production event configurations from natural language</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Input Section -->
+        <div class="mb-4">
+          <label class="form-label fw-bold text-dark d-flex justify-content-between">
+            <span>Natural Language Prompt</span>
+            <span class="text-muted small">Type event specifics, capacity, rules, and rubric needs</span>
+          </label>
+          <textarea id="aiCopilotPrompt" class="form-control" rows="3" placeholder="e.g. Create a 3-day National IoT & Robotics Hackathon for 250 students with ₹350 registration fee, autonomous maze navigation tracks, hardware demo rubrics, and 4 milestone stages."></textarea>
+          
+          <!-- Preset Prompts -->
+          <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
+            <span class="text-muted small fw-bold"><i class="fas fa-bolt text-warning me-1"></i>Presets:</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('2-day AI & GenAI Hackathon for 300 students with GitHub repo submissions and multi-judge rubrics.')">AI Hackathon</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('IEEE International Conference on Quantum Cryptography for 200 delegates with VIP & Student tickets.')">Quantum Conference</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('Hands-on Cloud Kubernetes & Docker Workshop for 60 participants with practical lab quiz.')">DevOps Workshop</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('Inter-University Badminton Championship with 64 knockout teams, referee scorecards, and podium awards.')">Sports Tournament</button>
+          </div>
+        </div>
+
+        <div class="text-end mb-4">
+          <button id="btnGenerateAiProposal" class="btn fw-bold text-white px-4" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);" onclick="generateAiProposal()">
+            <span id="aiGenSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+            <i class="fas fa-wand-magic-sparkles me-1"></i> Synthesize Proposal
+          </button>
+        </div>
+
+        <!-- Proposal Preview Section (hidden initially) -->
+        <div id="aiProposalContainer" class="d-none border rounded-3 p-4 bg-light">
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+            <div>
+              <span id="aiPropStatusBadge" class="badge bg-warning text-dark mb-1">PENDING_REVIEW</span>
+              <h4 id="aiPropTitle" class="fw-bold text-dark mb-0">Event Title</h4>
+              <p id="aiPropShortDesc" class="text-muted small mb-0">Short description</p>
+            </div>
+            <div class="text-end">
+              <span id="aiPropCategory" class="badge bg-primary me-1">Category</span>
+              <span id="aiPropMode" class="badge bg-info text-dark me-1">Mode</span>
+              <span id="aiPropCapacity" class="badge bg-secondary">Capacity: 200</span>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <div class="card p-3 h-100 border-0 shadow-sm">
+                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-route text-primary me-2"></i>Workflow Stages (DAG)</h6>
+                <ul id="aiPropWorkflowList" class="list-group list-group-flush small"></ul>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3 h-100 border-0 shadow-sm">
+                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-balance-scale text-warning me-2"></i>Judging Rubric</h6>
+                <div id="aiPropRubricContainer" class="small"></div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3 h-100 border-0 shadow-sm">
+                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-ticket-alt text-success me-2"></i>Admission Tiers & Form</h6>
+                <div id="aiPropTicketTiers" class="small mb-2"></div>
+                <hr class="my-2">
+                <h6 class="fw-bold text-dark mb-1 small"><i class="fas fa-wpforms me-1 text-info"></i>Dynamic Fields</h6>
+                <div id="aiPropFormFields" class="small text-muted"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-info py-2 small d-flex align-items-center gap-2 mb-3">
+            <i class="fas fa-shield-halved fa-lg text-primary"></i>
+            <div><strong>Human-in-the-Loop Safeguard:</strong> This proposal is in draft status. Approving it will instantiate the live production event, workflow stages, rubric, and ticket tiers.</div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="generateAiProposal()"><i class="fas fa-redo me-1"></i> Regenerate</button>
+            <button id="btnApproveAiProposal" class="btn btn-success fw-bold px-4" onclick="approveAiProposal()">
+              <span id="aiApproveSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+              <i class="fas fa-check-circle me-1"></i> Approve & Deploy Event
+            </button>
+          </div>
+        </div>
+
+        <div id="aiErrorAlert" class="alert alert-danger d-none mt-3" role="alert"></div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+let currentAiProposalId = null;
+
+function setCopilotPrompt(text) {
+  document.getElementById('aiCopilotPrompt').value = text;
+}
+
+async function generateAiProposal() {
+  const promptText = document.getElementById('aiCopilotPrompt').value.trim();
+  if (!promptText) {
+    alert("Please enter an event description prompt first.");
+    return;
+  }
+
+  const spinner = document.getElementById('aiGenSpinner');
+  const btn = document.getElementById('btnGenerateAiProposal');
+  const errorAlert = document.getElementById('aiErrorAlert');
+  const container = document.getElementById('aiProposalContainer');
+
+  spinner.classList.remove('d-none');
+  btn.disabled = true;
+  errorAlert.classList.add('d-none');
+
+  try {
+    const res = await fetch('/api/v1/ai/copilot/propose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText })
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || (result.error && result.error.message) || "Failed to generate proposal");
+    }
+
+    const proposal = result.data;
+    currentAiProposalId = proposal.proposal_id;
+
+    // Render Preview
+    document.getElementById('aiPropTitle').textContent = proposal.title || "New Event";
+    document.getElementById('aiPropShortDesc').textContent = proposal.short_description || proposal.description || "";
+    document.getElementById('aiPropCategory').textContent = proposal.category || "General";
+    document.getElementById('aiPropMode').textContent = (proposal.event_mode || "offline").toUpperCase();
+    document.getElementById('aiPropCapacity').textContent = "Capacity: " + (proposal.capacity || 200);
+
+    // Workflow
+    const wfList = document.getElementById('aiPropWorkflowList');
+    wfList.innerHTML = '';
+    (proposal.workflow_steps || []).forEach(step => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center py-1 px-0 bg-transparent';
+      li.innerHTML = `<span><strong>${step.order}.</strong> ${step.label || step.id}</span> <span class="badge bg-light text-dark border">${step.status || 'pending'}</span>`;
+      wfList.appendChild(li);
+    });
+
+    // Rubric
+    const rubricCont = document.getElementById('aiPropRubricContainer');
+    rubricCont.innerHTML = '';
+    (proposal.rubric || []).forEach(r => {
+      rubricCont.innerHTML += `<div class="d-flex justify-content-between mb-1"><span>${r.name}</span> <span class="badge bg-secondary">${r.weight}%</span></div>`;
+    });
+
+    // Tiers
+    const tiersCont = document.getElementById('aiPropTicketTiers');
+    tiersCont.innerHTML = '';
+    (proposal.ticket_tiers || []).forEach(t => {
+      tiersCont.innerHTML += `<div class="d-flex justify-content-between mb-1"><span>${t.name}</span> <span class="fw-bold">₹${t.price}</span></div>`;
+    });
+
+    // Forms
+    const formCont = document.getElementById('aiPropFormFields');
+    formCont.innerHTML = (proposal.form_fields || []).map(f => `<span class="badge bg-white text-dark border me-1 mb-1">${f.label || f.id}</span>`).join('') || '<span class="text-muted">Standard Registration</span>';
+
+    container.classList.remove('d-none');
+  } catch (err) {
+    errorAlert.textContent = "Error: " + err.message;
+    errorAlert.classList.remove('d-none');
+  } finally {
+    spinner.classList.add('d-none');
+    btn.disabled = false;
+  }
+}
+
+async function approveAiProposal() {
+  if (!currentAiProposalId) return;
+  const btn = document.getElementById('btnApproveAiProposal');
+  const spinner = document.getElementById('aiApproveSpinner');
+  const errorAlert = document.getElementById('aiErrorAlert');
+
+  spinner.classList.remove('d-none');
+  btn.disabled = true;
+  errorAlert.classList.add('d-none');
+
+  try {
+    const res = await fetch(`/api/v1/ai/copilot/proposals/${currentAiProposalId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || (result.error && result.error.message) || "Failed to approve proposal");
+    }
+
+    const eventId = result.data.event_id;
+    btn.className = "btn btn-success fw-bold px-4";
+    btn.innerHTML = '<i class="fas fa-check-double me-1"></i> Deployed Successfully!';
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
+  } catch (err) {
+    errorAlert.textContent = "Approval failed: " + err.message;
+    errorAlert.classList.remove('d-none');
+    spinner.classList.add('d-none');
+    btn.disabled = false;
+  }
+}
+</script>
 
 <!-- Per-event modals -->
 {% for event in events %}

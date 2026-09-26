@@ -9,7 +9,6 @@ except ImportError:
     firebase_admin = None
     credentials = None
     firestore = None
-from typing import Any, cast
 from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
 try:
     from flask_mail import Mail
@@ -239,7 +238,7 @@ def is_valid_firebase_creds(cred_str):
 if firebase_admin and not getattr(firebase_admin, '_apps', None):
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
     firebase_initialized = False
-    
+
     if firebase_creds_json and is_valid_firebase_creds(firebase_creds_json) and credentials:
         try:
             cred_dict = json.loads(firebase_creds_json)
@@ -251,7 +250,7 @@ if firebase_admin and not getattr(firebase_admin, '_apps', None):
             firebase_initialized = True
         except Exception as exc:
             logger.error("FIREBASE_CREDENTIALS parse error: %s", exc)
-    
+
     if not firebase_initialized and credentials:
         key_path = 'serviceAccountKey.json'
         if os.path.exists(key_path):
@@ -262,7 +261,7 @@ if firebase_admin and not getattr(firebase_admin, '_apps', None):
                 firebase_initialized = True
             except Exception as exc:
                 logger.error("Firebase: Failed to initialize with %s: %s", key_path, exc)
-    
+
     if not firebase_initialized and firebase_admin:
         try:
             firebase_admin.initialize_app()
@@ -581,11 +580,11 @@ def home():
                     d.setdefault('registration_count', 0)
                     d.setdefault('entry_fee',          0)
                     d.setdefault('category',           'General')
-                    
+
                     event_date = d.get('date', '9999-99-99')
                     if event_date < current_date:
                         continue
-                        
+
                     deadline = d.get('deadline') or d.get('reg_deadline', '')
                     d['is_closed'] = bool(deadline and current_date > deadline)
                     all_active.append(d)

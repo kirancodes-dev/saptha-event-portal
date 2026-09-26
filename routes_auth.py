@@ -1,12 +1,9 @@
 import datetime
+import hmac
 import logging
 from flask import Blueprint, render_template, request, redirect, session, flash, current_app
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
-try:
-    from firebase_admin import auth
-except ImportError:
-    auth = None
 from models import db
 
 from utils import log_action, ROLE_REDIRECTS, validate_password_strength
@@ -52,7 +49,7 @@ def login():
 
         # Master key check for SuperAdmin
         MASTER_KEY = current_app.config.get('MASTER_SECRET_KEY', '')
-        if role == 'SuperAdmin' and MASTER_KEY and secret_key != MASTER_KEY:
+        if role == 'SuperAdmin' and MASTER_KEY and not hmac.compare_digest(secret_key, MASTER_KEY):
             flash('🔒 Invalid Master Security Key. Access denied.', 'danger')
             log_action("LOGIN_FAILED", f"Bad master key attempt for {email}")
             return redirect('/login')
@@ -71,7 +68,9 @@ def login():
                 # Auto-create SuperAdmin on very first boot
                 SUPER_EMAIL = current_app.config.get('SUPER_ADMIN_EMAIL', '')
                 SUPER_PASS  = current_app.config.get('SUPER_ADMIN_DEFAULT_PASS', '')
-                if role == 'SuperAdmin' and email == SUPER_EMAIL and password == SUPER_PASS:
+                if (role == 'SuperAdmin' and SUPER_EMAIL and SUPER_PASS
+                        and email == SUPER_EMAIL
+                        and hmac.compare_digest(password, SUPER_PASS)):
                     db.collection('users').document(email).set({
                         'name': 'System Super Admin',
                         'role': 'SuperAdmin',
@@ -392,6 +391,9 @@ def logout():
 def diag_email():
     import os as _os
 
+    if session.get('role') not in ('SuperAdmin', 'Super Admin'):
+        return {"error": "forbidden"}, 403
+
     to = (request.args.get('to') or session.get('user_id') or '').strip()
     if not to:
         return {"error": "pass ?to=email@address"}, 400
@@ -441,165 +443,15 @@ def _set_session(email: str, name: str, role: str, category: str,
     """
     Stores user identity into the Flask session.
 
-    remember_me=True  → 30-day permanent session (PWA / app-like behaviour)
-    remember_me=False → 2-hour session (browser-only, no persistent cookie)
+    remember_me=True  → persistent cookie (PERMANENT_SESSION_LIFETIME, 30 days)
+    remember_me=False → browser-session cookie, cleared when the browser closes
+
+    The lifetime is app-wide config, so it must not be changed per login.
     """
-    from datetime import timedelta
-    session.permanent = True
-    if remember_me:
-        # 30 days — user stays logged in like a native app
-        current_app.permanent_session_lifetime = timedelta(days=30)
-    else:
-        # 2 hours — short session for shared/public device logins
-        current_app.permanent_session_lifetime = timedelta(hours=2)
+    session.permanent = bool(remember_me)
 
     session['user_id']      = email
     session['name']         = name
     session['role']         = role
     session['category']     = category
     session['remember_me']  = remember_me
-
-
-# =========================================================
-# 8. MOBILE APP API ENDPOINTS (JSON)
-# =========================================================
-@auth_bp.route('/api/auth/login', methods=['POST'])
-def api_login():
-    try:
-        data = request.get_json() or {}
-        email = data.get('email', '').lower().strip()
-        password = data.get('password', '')
-        role = data.get('role', '').strip()
-
-        if not email or not password or not role:
-            return {"success": False, "message": "Email, password, and role are required."}, 400
-
-        # Normalise role
-        if role == 'Super Admin':
-            role = 'SuperAdmin'
-        if role == 'Coordinator':
-            role = 'EventCoordinator'
-
-        # Fetch user
-        user_doc = db.collection('users').document(email).get()
-        if not user_doc.exists:
-            return {"success": False, "message": "Account not found."}, 404
-        user = user_doc.to_dict()
-
-        db_role = user.get('role', 'Participant')
-        if hasattr(db_role, 'value'):
-            db_role = db_role.value
-        db_role = str(db_role).strip()
-        if db_role == 'Super Admin':
-            db_role = 'SuperAdmin'
-        if db_role == 'Coordinator':
-            db_role = 'EventCoordinator'
-
-        if db_role != role:
-            return {"success": False, "message": "Incorrect role selected."}, 401
-
-        # Check password hash
-        stored_pw = user.get('password') or user.get('password_hash') or ''
-        if isinstance(stored_pw, (int, float)):
-            stored_pw = str(int(stored_pw))
-
-        if stored_pw.startswith(('scrypt:', 'pbkdf2:', 'argon2:')):
-            valid = check_password_hash(stored_pw, password)
-        else:
-            valid = False
-
-        if not valid:
-            return {"success": False, "message": "Incorrect password."}, 401
-
-        # Generate Custom Token
-        try:
-            custom_token = auth.create_custom_token(email)
-            if isinstance(custom_token, bytes):
-                custom_token = custom_token.decode('utf-8')
-        except Exception as exc:
-            logger.error("API Custom Token generation failed: %s", exc)
-            return {"success": False, "message": f"Token generation failed: {exc}"}, 500
-
-        log_action("API_LOGIN_SUCCESS", f"{email} logged in as {role} via Mobile API")
-
-        user_category = user.get('category', 'General')
-        if hasattr(user_category, 'value'):
-            user_category = user_category.value
-        user_category = str(user_category)
-
-        return {
-            "success": True,
-            "customToken": custom_token,
-            "user": {
-                "email": email,
-                "name": user.get('name', ''),
-                "role": db_role,
-                "category": user_category,
-                "usn": user.get('usn') or '',
-                "phone": user.get('phone') or ''
-            }
-        }
-    except Exception as exc:
-        logger.error("API login exception: %s", exc)
-        return {"success": False, "message": str(exc)}, 500
-
-
-@auth_bp.route('/api/auth/register', methods=['POST'])
-def api_register():
-    try:
-        data = request.get_json() or {}
-        name = data.get('name', '').strip()
-        usn = data.get('usn', '').strip().upper()
-        email = data.get('email', '').lower().strip()
-        phone = data.get('phone', '').strip()
-        password = data.get('password', '')
-
-        if not name or not email or not password:
-            return {"success": False, "message": "Name, email, and password are required."}, 400
-
-        ok, pw_err = validate_password_strength(password)
-        if not ok:
-            return {"success": False, "message": pw_err}, 400
-
-        existing_doc = db.collection('users').document(email).get()
-        if existing_doc.exists:
-            return {"success": False, "message": "An account with this email already exists."}, 400
-
-        # Save to active database
-        db.collection('users').document(email).set({
-            'name':                name,
-            'usn':                 usn,
-            'phone':               phone,
-            'role':                'Student',
-            'category':            'General',
-            'password':            generate_password_hash(password),
-            'created_at':          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'needs_password_reset': False
-        })
-
-        # Generate Custom Token
-        try:
-            custom_token = auth.create_custom_token(email)
-            if isinstance(custom_token, bytes):
-                custom_token = custom_token.decode('utf-8')
-        except Exception as exc:
-            logger.error("API Custom Token generation failed for register: %s", exc)
-            return {"success": False, "message": f"Token generation failed: {exc}"}, 500
-
-        log_action("API_USER_REGISTERED", f"New student registered via Mobile API: {email}")
-
-        return {
-            "success": True,
-            "customToken": custom_token,
-            "user": {
-                "email": email,
-                "name": name,
-                "role": "Student",
-                "category": "General",
-                "usn": usn,
-                "phone": phone
-            }
-        }
-    except Exception as exc:
-        logger.error("API registration exception: %s", exc)
-        return {"success": False, "message": str(exc)}, 500

@@ -7,7 +7,6 @@ Verifies:
 3. Querying seeded events returns diverse event types (hackathon, conference, sports, etc.).
 """
 
-import pytest
 from seed_events_universal import seed_universal_portal
 
 

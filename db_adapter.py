@@ -17,7 +17,7 @@ except Exception:
     sqlalchemy = None
 from db_pg import get_engine, get_session
 from models_pg import (
-    Base, User, Event, Registration, TeamMember, Score, EventForm,
+    User, Event, Registration, TeamMember, Score, EventForm,
     FormSubmission, AuditLog, PushSubscription, Announcement, ProjectSubmission,
     Organization, Ticket, EventSession,
     UserRole, EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
@@ -96,11 +96,71 @@ FIELD_MAP = {
 }
 
 
+# Document value aliases -> SQL enum members (lower-cased keys)
+ROLE_ALIASES = {
+    "superadmin": UserRole.SuperAdmin,
+    "admin": UserRole.SuperAdmin,
+    "coordinator": UserRole.Coordinator,
+    "eventcoordinator": UserRole.Coordinator,
+    "clubspoc": UserRole.SPOC,
+    "spoc": UserRole.SPOC,
+    "judge": UserRole.Judge,
+    "student": UserRole.Participant,
+    "participant": UserRole.Participant,
+}
+
+CATEGORY_ALIASES = {
+    "technical": EventCategory.Technical,
+    "tech": EventCategory.Technical,
+    "cultural": EventCategory.Cultural,
+    "sports": EventCategory.Sports,
+    "management": EventCategory.Management,
+}
+
+EVENT_STATUS_ALIASES = {
+    "active": EventStatus.active,
+    "inactive": EventStatus.inactive,
+    "completed": EventStatus.completed,
+    "cancelled": EventStatus.cancelled,
+    "archived": EventStatus.archived,
+}
+
+REG_STATUS_ALIASES = {
+    "confirmed": RegistrationStatus.confirmed,
+    "approved": RegistrationStatus.confirmed,
+    "pending": RegistrationStatus.pending,
+    "cancelled": RegistrationStatus.cancelled,
+    "waitlisted": RegistrationStatus.waitlisted,
+}
+
+PAYMENT_STATUS_ALIASES = {
+    "paid": PaymentStatus.paid,
+    "unpaid": PaymentStatus.unpaid,
+    "waived": PaymentStatus.waived,
+    "refunded": PaymentStatus.refunded,
+}
+
+ATTENDANCE_ALIASES = {
+    "present": AttendanceStatus.Present,
+    "absent": AttendanceStatus.Absent,
+    "pending": AttendanceStatus.Pending,
+}
+
+ENUM_ALIASES = {
+    UserRole: ROLE_ALIASES,
+    EventCategory: CATEGORY_ALIASES,
+    EventStatus: EVENT_STATUS_ALIASES,
+    RegistrationStatus: REG_STATUS_ALIASES,
+    PaymentStatus: PAYMENT_STATUS_ALIASES,
+    AttendanceStatus: ATTENDANCE_ALIASES,
+}
+
+
 # ── Alignment Helper ────────────────────────────────────────────────────────
 def verify_and_align_schema():
     """Verify and add missing columns to live Supabase Postgres tables if not present."""
     engine = get_engine()
-    
+
     cols_events = [
         ('open_hall_mode', 'BOOLEAN DEFAULT FALSE'),
         ('scoring_locked', 'BOOLEAN DEFAULT FALSE'),
@@ -127,34 +187,35 @@ def verify_and_align_schema():
         ('payment_mode', 'VARCHAR(100)'),
         ('assigned_room', 'VARCHAR(100)')
     ]
-    
+
     if not engine:
         return
     is_sqlite = engine.url.drivername.startswith('sqlite')
     if is_sqlite:
         return
-        
+
     try:
         with engine.connect() as conn:
             # Events alignment
             for col, col_type in cols_events:
-                res = conn.execute(text(f"""
-                    SELECT 1 FROM information_schema.columns 
-                    WHERE table_name='events' AND column_name='{col}'
-                """)).fetchone()
+                res = conn.execute(text(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name = :table AND column_name = :col"
+                ), {"table": "events", "col": col}).fetchone()
                 if not res:
                     logger.info("Aligning Schema: Adding column '%s' to 'events'...", col)
-                    conn.execute(text(f"ALTER TABLE events ADD COLUMN {col} {col_type}"))
-            
+                    # Quoted: camelCase column names must keep their case in Postgres
+                    conn.execute(text(f'ALTER TABLE events ADD COLUMN "{col}" {col_type}'))
+
             # Registrations alignment
             for col, col_type in cols_registrations:
-                res = conn.execute(text(f"""
-                    SELECT 1 FROM information_schema.columns 
-                    WHERE table_name='registrations' AND column_name='{col}'
-                """)).fetchone()
+                res = conn.execute(text(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name = :table AND column_name = :col"
+                ), {"table": "registrations", "col": col}).fetchone()
                 if not res:
                     logger.info("Aligning Schema: Adding column '%s' to 'registrations'...", col)
-                    conn.execute(text(f"ALTER TABLE registrations ADD COLUMN {col} {col_type}"))
+                    conn.execute(text(f'ALTER TABLE registrations ADD COLUMN "{col}" {col_type}'))
             conn.commit()
     except Exception as e:
         logger.error("Failed to run schema alignment checks: %s", e)
@@ -182,7 +243,149 @@ class CustomJSONEncoder(json.JSONEncoder):
             return o.isoformat()
         if isinstance(o, uuid.UUID):
             return str(o)
-        return super().default(o)
+        if hasattr(o, 'value') and o.__class__.__module__ != 'builtins':
+            return o.value  # enums
+        if isinstance(o, (set, tuple)):
+            return list(o)
+        return str(o)
+
+
+# ── Firestore write transforms (Increment, ArrayUnion, DELETE_FIELD, ...) ───
+_DELETE = object()
+
+
+def _transform_kind(val):
+    """Identify a Firestore write sentinel/transform without importing the SDK."""
+    name = type(val).__name__
+    if name in ('Increment', 'ArrayUnion', 'ArrayRemove', 'Maximum', 'Minimum'):
+        return name
+    if name == 'Sentinel':
+        desc = str(getattr(val, 'description', '')).lower()
+        if 'delete' in desc:
+            return 'DELETE_FIELD'
+        if 'timestamp' in desc:
+            return 'SERVER_TIMESTAMP'
+    return None
+
+
+def _has_transforms(data):
+    return any(_transform_kind(v) for v in data.values())
+
+
+def _resolve_transforms(data, current):
+    """Apply write transforms against the current document state.
+
+    Deleted fields are returned with the `_DELETE` marker.
+    """
+    resolved = {}
+    for key, val in data.items():
+        kind = _transform_kind(val)
+        cur = current.get(key)
+        if kind is None:
+            resolved[key] = val
+        elif kind in ('Increment', 'Maximum', 'Minimum'):
+            base = cur if isinstance(cur, (int, float)) and not isinstance(cur, bool) else 0
+            if kind == 'Increment':
+                resolved[key] = base + val.value
+            elif kind == 'Maximum':
+                resolved[key] = max(base, val.value)
+            else:
+                resolved[key] = min(base, val.value)
+        elif kind == 'ArrayUnion':
+            items = list(cur) if isinstance(cur, list) else []
+            for item in val.values:
+                if item not in items:
+                    items.append(item)
+            resolved[key] = items
+        elif kind == 'ArrayRemove':
+            items = list(cur) if isinstance(cur, list) else []
+            resolved[key] = [i for i in items if i not in val.values]
+        elif kind == 'SERVER_TIMESTAMP':
+            resolved[key] = datetime.now(timezone.utc)
+        elif kind == 'DELETE_FIELD':
+            resolved[key] = _DELETE
+    return resolved
+
+
+def _with_column_aliases(collection_name, data):
+    """Copy nested/alternate Firestore fields onto the keys the SQL columns use."""
+    d = dict(data)
+    if collection_name == 'events':
+        if d.get('spoc_id') and not d.get('coordinator_id'):
+            d['coordinator_id'] = d['spoc_id']
+        if d.get('reg_deadline') and not d.get('deadline'):
+            d['deadline'] = d['reg_deadline']
+        fees = d.get('fees')
+        if isinstance(fees, dict) and 'fee' not in d and 'entry_fee' not in d:
+            try:
+                d['fee'] = float(fees.get('regular') or 0)
+            except (TypeError, ValueError):
+                pass
+        limits = d.get('limits')
+        if isinstance(limits, dict):
+            for key in ('max_participants', 'team_min', 'team_max'):
+                if limits.get(key) is not None and key not in d:
+                    d[key] = limits[key]
+    return d
+
+
+def _normalize_out(val):
+    """Normalise a column value to the plain form documents expose."""
+    if hasattr(val, 'value') and val.__class__.__module__ != 'builtins':
+        val = val.value
+    if isinstance(val, uuid.UUID):
+        return str(val)
+    if isinstance(val, decimal.Decimal):
+        return float(val)
+    if isinstance(val, datetime):
+        if val.tzinfo is not None:
+            val = val.astimezone(timezone.utc).replace(tzinfo=None)
+        return val.isoformat()
+    if isinstance(val, date):
+        return val.isoformat()
+    return val
+
+
+def _py_match(doc_val, op, val):
+    """Evaluate one Firestore filter against a plain document value."""
+    try:
+        if op == '==':
+            return doc_val == val
+        if op == '!=':
+            return doc_val is not None and doc_val != val
+        if op in ('<', '<=', '>', '>='):
+            if doc_val is None or val is None:
+                return False
+            if op == '<':
+                return doc_val < val
+            if op == '<=':
+                return doc_val <= val
+            if op == '>':
+                return doc_val > val
+            return doc_val >= val
+        if op == 'in':
+            return doc_val in (val or [])
+        if op in ('not-in', 'not_in'):
+            return doc_val is not None and doc_val not in (val or [])
+        if op in ('array_contains', 'array-contains'):
+            return isinstance(doc_val, list) and val in doc_val
+        if op in ('array_contains_any', 'array-contains-any'):
+            return isinstance(doc_val, list) and any(v in doc_val for v in (val or []))
+    except TypeError:
+        return False
+    logger.warning("Unsupported query operator %r — no documents matched", op)
+    return False
+
+
+def _sort_key(val):
+    # None sorts first, then numbers, then strings; anything else by its str()
+    if val is None:
+        return (0, 0, 0)
+    if isinstance(val, (int, float)) and not isinstance(val, bool):
+        return (1, 0, val)
+    if isinstance(val, str):
+        return (1, 1, val)
+    return (1, 2, str(val))
 
 def safe_str(val) -> str:
     if val is None:
@@ -314,7 +517,7 @@ def _delete_native_doc(collection_name, doc_id):
         logger.error("Database delete failed for native doc %s/%s: %s", collection_name, doc_id, exc)
         raise RuntimeError(f"Database delete failed for {collection_name}/{doc_id}: {exc}") from exc
 
-def _query_native_docs(collection_name, filters=None, limit=None):
+def _query_native_docs(collection_name, filters=None, limit=None, orders=None):
     """Query documents from shared persistent storage."""
     docs = []
     try:
@@ -332,40 +535,73 @@ def _query_native_docs(collection_name, filters=None, limit=None):
 
     results = []
     for doc_id, data in docs:
-        match = True
-        if filters:
-            for field, op, val in filters:
-                doc_val = data.get(field)
-                if op == '==' and doc_val != val:
-                    match = False; break
-                elif op == '!=' and doc_val == val:
-                    match = False; break
-                elif op == '>' and (doc_val is None or doc_val <= val):
-                    match = False; break
-                elif op == '<' and (doc_val is None or doc_val >= val):
-                    match = False; break
-                elif op == '>=' and (doc_val is None or doc_val < val):
-                    match = False; break
-                elif op == '<=' and (doc_val is None or doc_val > val):
-                    match = False; break
-                elif op == 'in' and (doc_val not in val if val else True):
-                    match = False; break
-        if match:
-            results.append(SQLDocumentSnapshot(doc_id, data.copy(), exists=True))
+        if all(_py_match(data.get(field), op, val) for field, op, val in (filters or [])):
+            results.append(SQLDocumentSnapshot(doc_id, data.copy(), exists=True,
+                                               collection_name=collection_name))
 
+    results = _sort_snapshots(results, orders or [])
     if limit is not None:
         results = results[:limit]
     return iter(results)
+
+
+def _load_shadow(record):
+    raw = getattr(record, 'extra_json', None)
+    if not raw:
+        return {}
+    try:
+        loaded = json.loads(raw)
+        return loaded if isinstance(loaded, dict) else {}
+    except (TypeError, ValueError):
+        return {}
+
+
+def _derive_legacy_event_fields(d):
+    """Fill the nested fields templates expect for events stored before the
+    document shadow existed (only when they are missing)."""
+    if not d.get('spoc_id') and d.get('coordinator_id'):
+        d['spoc_id'] = d['coordinator_id']
+    if 'reg_deadline' not in d and d.get('deadline'):
+        d['reg_deadline'] = d['deadline']
+    if not isinstance(d.get('fees'), dict):
+        d['fees'] = {'regular': d.get('entry_fee') or 0}
+    if not isinstance(d.get('limits'), dict):
+        d['limits'] = {
+            'max_participants': d.get('max_participants') or 0,
+            'team_min': d.get('team_min') or 1,
+            'team_max': d.get('team_max') or 1,
+        }
+    if 'is_team_event' not in d:
+        d['is_team_event'] = (d.get('team_max') or 1) > 1
+    prizes = d.get('prizes')
+    if isinstance(prizes, str) and prizes.startswith('{'):
+        try:
+            d['prizes'] = json.loads(prizes)
+        except ValueError:
+            pass
+
+
+def _sort_snapshots(snapshots, orders):
+    # Apply the last order_by first so earlier ones take precedence (stable sort)
+    for field, direction in reversed(orders):
+        desc = direction == 'DESCENDING' or str(direction).lower() == 'desc'
+        snapshots = sorted(snapshots, key=lambda s: _sort_key(s._data.get(field)), reverse=desc)
+    return snapshots
 
 
 # ── Mock Classes Mimicking Firestore ─────────────────────────────────────────
 
 class SQLDocumentSnapshot:
     """Mock DocumentSnapshot mimicking Firestore."""
-    def __init__(self, doc_id, data, exists=True):
+    def __init__(self, doc_id, data, exists=True, collection_name=None):
         self.id = doc_id
         self.exists = exists
         self._data = data or {}
+        self._collection_name = collection_name
+
+    @property
+    def reference(self):
+        return SQLDocumentReference(self._collection_name, self.id)
 
     def to_dict(self):
         return self._data.copy()
@@ -387,60 +623,83 @@ class SQLDocumentReference:
         self.id = doc_id
         self.model_class = COLLECTION_MAP.get(collection_name)
 
-    def get(self):
-        if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
-            doc_data = _get_native_doc(self.collection_name, self.id)
-            if doc_data is None:
-                return SQLDocumentSnapshot(self.id, None, exists=False)
-            return SQLDocumentSnapshot(self.id, doc_data, exists=True)
+    def _is_native(self):
+        return self.collection_name in PURE_FIRESTORE_COLLECTIONS or not self.model_class
 
-        if not self.model_class:
+    def _find_record(self, session):
+        if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
+            return session.query(self.model_class).filter_by(id=str(self.id)).first()
+        if self.collection_name == 'event_forms':
+            return session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
+        return session.query(self.model_class).filter_by(id=to_uuid(self.id)).first()
+
+    def get(self):
+        if self._is_native():
             doc_data = _get_native_doc(self.collection_name, self.id)
             if doc_data is None:
-                return SQLDocumentSnapshot(self.id, None, exists=False)
-            return SQLDocumentSnapshot(self.id, doc_data, exists=True)
+                return SQLDocumentSnapshot(self.id, None, exists=False, collection_name=self.collection_name)
+            return SQLDocumentSnapshot(self.id, doc_data, exists=True, collection_name=self.collection_name)
 
         with get_session() as session:
-            # Map search primary key
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
-                record = session.query(self.model_class).filter_by(id=str(self.id)).first()
-            elif self.collection_name == 'event_forms':
-                record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
-            else:
-                record = session.query(self.model_class).filter_by(id=to_uuid(self.id)).first()
-
+            record = self._find_record(session)
             if not record:
-                return SQLDocumentSnapshot(self.id, None, exists=False)
-
+                return SQLDocumentSnapshot(self.id, None, exists=False, collection_name=self.collection_name)
             data = self._record_to_dict(record, session)
-            return SQLDocumentSnapshot(self.id, data, exists=True)
+            return SQLDocumentSnapshot(self.id, data, exists=True, collection_name=self.collection_name)
 
     def set(self, data, merge=True):
-        if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
-            _set_native_doc(self.collection_name, self.id, data, merge=merge)
-            return
+        data = dict(data or {})
 
-        if not self.model_class:
-            _set_native_doc(self.collection_name, self.id, data, merge=merge)
+        if self._is_native():
+            current = _get_native_doc(self.collection_name, self.id) or {}
+            resolved = _resolve_transforms(data, current)
+            final = dict(current) if merge else {}
+            for key, val in resolved.items():
+                if val is _DELETE:
+                    final.pop(key, None)
+                else:
+                    final[key] = val
+            _set_native_doc(self.collection_name, self.id, final, merge=False)
             return
 
         with get_session() as session:
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
-                record = session.query(self.model_class).filter_by(id=str(self.id)).first()
-            elif self.collection_name == 'event_forms':
-                record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
-            else:
-                record = session.query(self.model_class).filter_by(id=to_uuid(self.id)).first()
+            record = self._find_record(session)
+            existed = record is not None
+            current = self._record_to_dict(record, session) if existed and _has_transforms(data) else {}
+            resolved = _resolve_transforms(data, current)
 
-            if not record:
-                # Insert path
-                record = self._dict_to_new_record(data)
+            # Increments on numeric columns become atomic `col = col + n` updates
+            atomic = {}
+            if existed:
+                for key, val in data.items():
+                    if _transform_kind(val) != 'Increment':
+                        continue
+                    attr = FIELD_MAP.get(key, key)
+                    col = record.__mapper__.columns.get(attr)
+                    if col is not None and col.type.__class__.__name__ in ('Integer', 'Float', 'Numeric', 'BigInteger'):
+                        atomic[key] = (attr, val.value)
+                        resolved.pop(key, None)
+
+            deleted = [k for k, v in resolved.items() if v is _DELETE]
+            for key in deleted:
+                resolved.pop(key)
+
+            col_data = _with_column_aliases(self.collection_name, resolved)
+            if not existed:
+                record = self._dict_to_new_record(col_data)
                 session.add(record)
-                # Call update_record_fields to handle nested relations/members/scores for new records too
-                self._update_record_fields(record, data, session)
-            else:
-                # Update/Merge path
-                self._update_record_fields(record, data, session)
+            self._update_record_fields(record, col_data, session)
+            for key in deleted:
+                self._clear_field(record, key, session)
+            for attr, amount in atomic.values():
+                setattr(record, attr, getattr(type(record), attr) + amount)
+
+            if hasattr(record, 'extra_json'):
+                shadow = _load_shadow(record) if (existed and merge) else {}
+                shadow.update(resolved)
+                for key in list(deleted) + list(atomic):
+                    shadow.pop(key, None)
+                record.extra_json = json.dumps(shadow, cls=CustomJSONEncoder)
 
             session.commit()
 
@@ -448,11 +707,7 @@ class SQLDocumentReference:
         self.set(data, merge=True)
 
     def delete(self):
-        if self.collection_name in PURE_FIRESTORE_COLLECTIONS:
-            _delete_native_doc(self.collection_name, self.id)
-            return
-
-        if not self.model_class:
+        if self._is_native():
             _delete_native_doc(self.collection_name, self.id)
             return
 
@@ -465,6 +720,16 @@ class SQLDocumentReference:
                 session.query(self.model_class).filter_by(id=to_uuid(self.id)).delete()
             session.commit()
 
+    def _clear_field(self, record, key, session):
+        """Handle DELETE_FIELD for a column-backed or relational field."""
+        if self.collection_name == 'registrations' and key == 'scores':
+            session.query(Score).filter_by(registration_id=to_uuid(self.id)).delete()
+            return
+        attr = FIELD_MAP.get(key, key)
+        col = record.__mapper__.columns.get(attr)
+        if col is not None and col.nullable:
+            setattr(record, attr, None)
+
     def collection(self, name):
         # Fallback nested collection reference stub
         return SQLCollectionReference(f"{self.collection_name}/{self.id}/{name}")
@@ -473,6 +738,8 @@ class SQLDocumentReference:
         """Convert a SQLAlchemy model record to a Firestore-styled dictionary."""
         d = {}
         for prop in record.__mapper__.column_attrs:
+            if prop.key == 'extra_json':
+                continue
             val = getattr(record, prop.key)
             # handle enums
             if hasattr(val, 'value'):
@@ -486,7 +753,7 @@ class SQLDocumentReference:
             # handle datetime/date objects to string/isoformat
             if isinstance(val, (datetime, date)):
                 val = val.isoformat()
-            
+
             # Map flat Python attribute key back to firestore format
             firestore_field = prop.key
             for f_key, pg_val in FIELD_MAP.items():
@@ -591,7 +858,33 @@ class SQLDocumentReference:
             }
             d['updated_at'] = record.created_at.isoformat() if record.created_at else None
 
+        if hasattr(record, 'extra_json'):
+            self._merge_shadow(record, d)
+        if self.collection_name == 'events':
+            _derive_legacy_event_fields(d)
         return d
+
+    def _merge_shadow(self, record, d):
+        """Overlay the stored document onto the column values.
+
+        The stored value wins when it is a richer form of the same data (e.g.
+        role 'ClubSPOC' for enum SPOC, a prizes dict for its JSON string); if
+        the column was changed some other way, the column value wins.
+        """
+        columns = record.__mapper__.columns
+        for key, val in _load_shadow(record).items():
+            attr = FIELD_MAP.get(key, key)
+            col = columns.get(attr)
+            if col is None:
+                if key not in d:
+                    d[key] = val
+                continue
+            current = getattr(record, attr)
+            try:
+                same = _normalize_out(self._convert_for_column(attr, col, val)) == _normalize_out(current)
+            except Exception:
+                same = False
+            d[key] = val if same else _normalize_out(current)
 
     def _dict_to_new_record(self, data):
         """Build a new SQLAlchemy model record from a Firestore-styled dictionary."""
@@ -777,42 +1070,43 @@ class SQLDocumentReference:
         return None
 
 
+    def _convert_for_column(self, mapped_key, col, val):
+        """Convert a document value to the Python type stored in column `mapped_key`."""
+        if mapped_key == 'role':
+            return self._get_enum_role(val)
+        if mapped_key == 'category':
+            return self._get_enum_category(val)
+        if mapped_key == 'status' and self.collection_name == 'events':
+            return self._get_enum_status(val)
+        if mapped_key == 'status' and self.collection_name == 'registrations':
+            return self._get_enum_reg_status(val)
+        if mapped_key == 'payment_status':
+            return self._get_enum_payment_status(val)
+        if mapped_key == 'attendance':
+            return self._get_enum_attendance(val)
+
+        type_name = col.type.__class__.__name__
+        if mapped_key in ('created_at', 'updated_at', 'submitted_at', 'checked_in_at', 'start_time', 'end_time') or 'DateTime' in type_name:
+            return self._get_datetime(val)
+        if mapped_key in ('date', 'deadline'):
+            return self._get_date(val)
+        if type_name in ('UUID', 'PgUUID'):
+            return to_uuid(val) if val else val
+        if isinstance(val, (dict, list)):
+            return safe_str(val)
+        return val
+
     def _update_record_fields(self, record, data, session):
         """Update fields on an existing record based on Firestore inputs."""
         for key, val in data.items():
             # Translate keys
             mapped_key = FIELD_MAP.get(key, key)
+            if mapped_key == 'id':
+                continue  # never rewrite the primary key from document data
             if hasattr(record, mapped_key):
                 col = record.__mapper__.columns.get(mapped_key)
                 if col is not None:
-                    # Enums mappings
-                    if mapped_key == 'role':
-                        val = self._get_enum_role(val)
-                    elif mapped_key == 'category':
-                        val = self._get_enum_category(val)
-                    elif mapped_key == 'status' and self.collection_name == 'events':
-                        val = self._get_enum_status(val)
-                    elif mapped_key == 'status' and self.collection_name == 'registrations':
-                        val = self._get_enum_reg_status(val)
-                    elif mapped_key == 'payment_status':
-                        val = self._get_enum_payment_status(val)
-                    elif mapped_key == 'attendance':
-                        val = self._get_enum_attendance(val)
-                    
-                    # DateTime conversions
-                    if mapped_key in ('created_at', 'updated_at', 'submitted_at', 'checked_in_at', 'start_time', 'end_time') or 'DateTime' in col.type.__class__.__name__:
-                        val = self._get_datetime(val)
-                    elif mapped_key in ('date', 'deadline'):
-                        val = self._get_date(val)
-
-                    # UUID conversions
-                    elif col.type.__class__.__name__ in ('UUID', 'PgUUID'):
-                        if val:
-                            val = to_uuid(val)
-                    # Handle dict/list values for String/Text columns
-                    elif isinstance(val, (dict, list)):
-                        val = safe_str(val)
-                    
+                    val = self._convert_for_column(mapped_key, col, val)
                     setattr(record, mapped_key, val)
 
             # Specific column assignments
@@ -873,7 +1167,7 @@ class SQLDocumentReference:
                         existing_score = session.query(Score).filter_by(registration_id=reg_id, judge_id=judge_id).first()
                         criteria_data = s_data.get('criteria') or s_data.get('details') or {}
                         total_val = float(s_data.get('total', 0.0))
-                        
+
                         if not existing_score:
                             score = Score(
                                 registration_id=reg_id,
@@ -906,84 +1200,69 @@ class SQLDocumentReference:
     def _get_date(self, val):
         return parse_date(val)
 
-    def _get_enum_role(self, val) -> UserRole:
-        role_map = {
-            "superadmin": UserRole.SuperAdmin,
-            "admin": UserRole.SuperAdmin,
-            "coordinator": UserRole.Coordinator,
-            "eventcoordinator": UserRole.Coordinator,
-            "clubspoc": UserRole.SPOC,
-            "spoc": UserRole.SPOC,
-            "judge": UserRole.Judge,
-            "student": UserRole.Participant,
-            "participant": UserRole.Participant,
-        }
+    def _get_enum_role(self, val):
         if hasattr(val, 'value'):
             return val
-        cleaned = str(val).strip().lower()
-        return role_map.get(cleaned, UserRole.Participant)
+        return ROLE_ALIASES.get(str(val).strip().lower(), UserRole.Participant)
 
-    def _get_enum_category(self, val) -> EventCategory:
-        cat_map = {
-            "technical": EventCategory.Technical,
-            "tech": EventCategory.Technical,
-            "cultural": EventCategory.Cultural,
-            "sports": EventCategory.Sports,
-            "management": EventCategory.Management,
-        }
+    def _get_enum_category(self, val):
         if hasattr(val, 'value'):
             return val
-        cleaned = str(val).strip().lower()
-        return cat_map.get(cleaned, EventCategory.Technical)
+        return CATEGORY_ALIASES.get(str(val).strip().lower(), EventCategory.Technical)
 
-    def _get_enum_status(self, val) -> EventStatus:
-        status_map = {
-            "active": EventStatus.active,
-            "inactive": EventStatus.inactive,
-            "completed": EventStatus.completed,
-            "cancelled": EventStatus.cancelled,
-            "archived": EventStatus.archived,
-        }
+    def _get_enum_status(self, val):
         if hasattr(val, 'value'):
             return val
-        cleaned = str(val).strip().lower()
-        return status_map.get(cleaned, EventStatus.active)
+        return EVENT_STATUS_ALIASES.get(str(val).strip().lower(), EventStatus.active)
 
-    def _get_enum_reg_status(self, val) -> RegistrationStatus:
-        status_map = {
-            "confirmed": RegistrationStatus.confirmed,
-            "approved": RegistrationStatus.confirmed,
-            "pending": RegistrationStatus.pending,
-            "cancelled": RegistrationStatus.cancelled,
-            "waitlisted": RegistrationStatus.waitlisted,
-        }
+    def _get_enum_reg_status(self, val):
         if hasattr(val, 'value'):
             return val
-        cleaned = str(val).strip().lower()
-        return status_map.get(cleaned, RegistrationStatus.confirmed)
+        return REG_STATUS_ALIASES.get(str(val).strip().lower(), RegistrationStatus.confirmed)
 
-    def _get_enum_payment_status(self, val) -> PaymentStatus:
-        status_map = {
-            "paid": PaymentStatus.paid,
-            "unpaid": PaymentStatus.unpaid,
-            "waived": PaymentStatus.waived,
-            "refunded": PaymentStatus.refunded,
-        }
+    def _get_enum_payment_status(self, val):
         if hasattr(val, 'value'):
             return val
-        cleaned = str(val).strip().lower()
-        return status_map.get(cleaned, PaymentStatus.unpaid)
+        return PAYMENT_STATUS_ALIASES.get(str(val).strip().lower(), PaymentStatus.unpaid)
 
-    def _get_enum_attendance(self, val) -> AttendanceStatus:
-        status_map = {
-            "present": AttendanceStatus.Present,
-            "absent": AttendanceStatus.Absent,
-            "pending": AttendanceStatus.Pending,
-        }
+    def _get_enum_attendance(self, val):
         if hasattr(val, 'value'):
             return val
-        cleaned = str(val).strip().lower()
-        return status_map.get(cleaned, AttendanceStatus.Pending)
+        return ATTENDANCE_ALIASES.get(str(val).strip().lower(), AttendanceStatus.Pending)
+
+
+_NO_SQL = object()
+
+
+def _cast_filter_value(col_attr, val):
+    """Cast a filter value for SQL. Returns (value, exact).
+
+    `exact` is False when the SQL comparison can only narrow the result (an
+    enum column queried with a value that has no member); the caller then
+    re-checks the stored document value. `_NO_SQL` means skip the SQL clause.
+    """
+    enum_cls = getattr(getattr(col_attr, 'type', None), 'enum_class', None)
+    if enum_cls is None:
+        return _cast_value(col_attr, val), True
+    aliases = ENUM_ALIASES.get(enum_cls, {})
+
+    def one(v):
+        if isinstance(v, enum_cls):
+            return v, True
+        key = str(v).strip().lower()
+        if key in aliases:
+            return aliases[key], True
+        for member in enum_cls:
+            if member.name.lower() == key or str(member.value).lower() == key:
+                return member, True
+        return None, False
+
+    if isinstance(val, (list, tuple, set)):
+        pairs = [one(v) for v in val]
+        members = [m for m, _ in pairs if m is not None]
+        return members, all(ok for _, ok in pairs)
+    member, ok = one(val)
+    return (member if ok else _NO_SQL), ok
 
 
 def _cast_value(col_attr, val):
@@ -1002,7 +1281,7 @@ def _cast_value(col_attr, val):
                     if member.name.lower() == val.strip().lower() or member.value.lower() == val.strip().lower():
                         return member
                 return val
-        elif 'Date' in type_name and not 'DateTime' in type_name:
+        elif 'Date' in type_name and 'DateTime' not in type_name:
             if isinstance(val, str):
                 parsed = parse_date(val)
                 if parsed:
@@ -1030,7 +1309,8 @@ class SQLQuery:
             # Handles FieldFilter objects
             f_path = getattr(filter, 'field_path', None) or getattr(filter, 'field', None)
             f_op = getattr(filter, 'op_string', None) or getattr(filter, 'op', None) or getattr(filter, 'operator', None)
-            f_val = getattr(filter, 'value', None)
+            # google FieldFilter exposes `.value`; the local fallback stub uses `.val`
+            f_val = filter.value if hasattr(filter, 'value') else getattr(filter, 'val', None)
             self.filters.append((f_path, f_op, f_val))
         else:
             self.filters.append((field, op, value))
@@ -1045,25 +1325,31 @@ class SQLQuery:
         return self
 
     def stream(self):
-        if self.collection.id in PURE_FIRESTORE_COLLECTIONS:
-            return _query_native_docs(self.collection.id, filters=self.filters, limit=self._limit)
+        model = self.collection.model
+        if self.collection.id in PURE_FIRESTORE_COLLECTIONS or not model:
+            return _query_native_docs(self.collection.id, filters=self.filters,
+                                      limit=self._limit, orders=self.orders)
 
-        if not self.collection.model:
-            return _query_native_docs(self.collection.id, filters=self.filters, limit=self._limit)
-
+        column_keys = {prop.key for prop in model.__mapper__.column_attrs} - {'extra_json'}
+        sql_ops = {'==', '!=', '>', '<', '>=', '<=', 'in'}
+        py_filters = []   # evaluated on the full document after loading
         with get_session() as session:
-            query = session.query(self.collection.model)
-            
-            # Apply where filters
+            query = session.query(model)
+
             for field, op, val in self.filters:
                 mapped_field = FIELD_MAP.get(field, field)
-                col_attr = getattr(self.collection.model, mapped_field, None)
-                if col_attr is None:
+                if mapped_field not in column_keys or op not in sql_ops:
+                    py_filters.append((field, op, val))
                     continue
+                col_attr = getattr(model, mapped_field)
+                casted_val, exact = _cast_filter_value(col_attr, val)
+                if not exact:
+                    # e.g. category 'Workshop' has no enum member: narrow in SQL
+                    # where possible, then match the stored value exactly
+                    py_filters.append((field, op, val))
+                    if casted_val is _NO_SQL:
+                        continue
 
-                casted_val = _cast_value(col_attr, val)
-
-                # Parse operators
                 if op == '==':
                     query = query.filter(col_attr == casted_val)
                 elif op == '!=':
@@ -1077,32 +1363,36 @@ class SQLQuery:
                 elif op == '<=':
                     query = query.filter(col_attr <= casted_val)
                 elif op == 'in':
-                    query = query.filter(col_attr.in_(casted_val))
+                    query = query.filter(col_attr.in_(casted_val or []))
 
-            # Apply order columns
-            for field, direction in self.orders:
-                mapped_field = FIELD_MAP.get(field, field)
-                col_attr = getattr(self.collection.model, mapped_field, None)
-                if col_attr is not None:
+            sql_sortable = all(FIELD_MAP.get(f, f) in column_keys for f, _ in self.orders)
+            if sql_sortable:
+                for field, direction in self.orders:
+                    col_attr = getattr(model, FIELD_MAP.get(field, field))
                     if direction == 'DESCENDING' or str(direction).lower() == 'desc':
                         query = query.order_by(col_attr.desc())
                     else:
                         query = query.order_by(col_attr.asc())
 
-            # Apply limits
-            if self._limit is not None:
+            if self._limit is not None and not py_filters and sql_sortable:
                 query = query.limit(self._limit)
 
-            records = query.all()
-            
-            # Convert to Firestoresnapshots
             snapshots = []
-            for record in records:
-                ref = SQLDocumentReference(self.collection.id, str(record.id) if hasattr(record, 'id') else '')
+            for record in query.all():
+                doc_id = str(record.id) if hasattr(record, 'id') else ''
+                ref = SQLDocumentReference(self.collection.id, doc_id)
                 data = ref._record_to_dict(record, session)
-                snapshots.append(SQLDocumentSnapshot(str(record.id) if hasattr(record, 'id') else '', data, exists=True))
-                
-            return iter(snapshots)
+                snapshots.append(SQLDocumentSnapshot(doc_id, data, exists=True,
+                                                     collection_name=self.collection.id))
+
+        if py_filters:
+            snapshots = [s for s in snapshots
+                         if all(_py_match(s._data.get(f), op, v) for f, op, v in py_filters)]
+        if not sql_sortable:
+            snapshots = _sort_snapshots(snapshots, self.orders)
+        if self._limit is not None:
+            snapshots = snapshots[:self._limit]
+        return iter(snapshots)
 
 
 class SQLCollectionReference:
@@ -1170,9 +1460,11 @@ class SQLFirestoreAdapter:
     """Mock Firestore client providing complete adapter interfaces to SQLAlchemy."""
     def __init__(self):
         # Create all tables if they do not exist
-        from db_pg import init_db
+        from db_pg import init_db, DatabaseConfigError
         try:
             init_db()
+        except DatabaseConfigError:
+            raise
         except Exception as exc:
             logger.info("Database table init note: %s", exc)
         # Auto-align live postgres schemas on start

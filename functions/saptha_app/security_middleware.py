@@ -5,11 +5,10 @@ Enhanced rate limiting, IP blocking, login attempt tracking,
 and suspicious activity detection.
 """
 import logging
-import datetime
 import time
 from functools import wraps
 
-from flask import request, jsonify, session, g
+from flask import request, jsonify
 
 logger = logging.getLogger(__name__)
 

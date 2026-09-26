@@ -1,7 +1,6 @@
 # i18n.py — Internationalization support for SapthaEvent
 # Python 3.9 compatible
 
-import os
 from typing import Optional, Dict, Any
 from flask import request, session, g
 

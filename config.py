@@ -4,13 +4,38 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+_PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _dev_secret_key():
+    """Stable secret key for local development, kept in the gitignored
+    instance/ folder so sessions survive restarts and are shared by workers."""
+    path = os.path.join(_PROJECT_DIR, 'instance', 'dev_secret_key')
+    try:
+        with open(path) as fh:
+            key = fh.read().strip()
+            if key:
+                return key
+    except OSError:
+        pass
+    key = secrets.token_hex(32)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as fh:
+            fh.write(key)
+    except OSError:
+        pass
+    return key
+
+
 class Config:
     # =========================================================
     # 1. SECURITY & SESSION
     # =========================================================
     _is_production = os.environ.get('FLASK_ENV') == 'production'
 
-    SECRET_KEY              = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+    # Production must set SECRET_KEY (validated by validate_production_config)
+    SECRET_KEY              = os.environ.get('SECRET_KEY') or ('' if _is_production else _dev_secret_key())
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE   = _is_production
     SESSION_COOKIE_SAMESITE = 'Strict' if _is_production else 'Lax'
@@ -88,16 +113,15 @@ class Config:
     # =========================================================
     # 5. SUPER ADMIN
     # ─────────────────────────────────────────────────────────
-    # ⚠️  PRODUCTION: These MUST be set via environment variables!
-    # Use init_superadmin.py to initialize on first deployment
+    # No defaults: create the account with `python init_superadmin.py`.
+    # If both SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASS are set, the first
+    # SuperAdmin login with exactly those credentials also creates it.
+    # MASTER_SECRET_KEY is the extra key SuperAdmin logins must supply
+    # (required in production; skipped locally when unset).
     # =========================================================
-    _super_admin_email = os.environ.get('SUPER_ADMIN_EMAIL')
-    _super_admin_pass = os.environ.get('SUPER_ADMIN_PASS')
-    _master_key       = os.environ.get('MASTER_SECRET_KEY')
-
-    SUPER_ADMIN_EMAIL        = _super_admin_email or 'admin@snpsu.edu.in'
-    SUPER_ADMIN_DEFAULT_PASS = _super_admin_pass or 'Saptha@Admin2026'
-    MASTER_SECRET_KEY        = _master_key or 'SAPTHA@2026'
+    SUPER_ADMIN_EMAIL        = os.environ.get('SUPER_ADMIN_EMAIL', '').strip().lower()
+    SUPER_ADMIN_DEFAULT_PASS = os.environ.get('SUPER_ADMIN_PASS', '')
+    MASTER_SECRET_KEY        = os.environ.get('MASTER_SECRET_KEY', '')
 
     # =========================================================
     # 6. GEMINI AI
@@ -196,3 +220,25 @@ class Config:
     SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
 
 
+
+
+# Values that must never be used in production (old published defaults)
+_KNOWN_WEAK_SECRETS = {'SAPTHA@2026', 'Saptha@Admin2026', 'Admin@12345',
+                       'your_random_secret_key_here_64_chars_minimum'}
+
+
+def validate_production_config(config):
+    """Refuse to start in production with missing or placeholder secrets."""
+    if config.get('FLASK_ENV') != 'production':
+        return
+    problems = []
+    secret = config.get('SECRET_KEY') or ''
+    if len(secret) < 32 or secret in _KNOWN_WEAK_SECRETS:
+        problems.append('SECRET_KEY must be set to a random value of at least 32 characters')
+    master = config.get('MASTER_SECRET_KEY') or ''
+    if len(master) < 12 or master in _KNOWN_WEAK_SECRETS:
+        problems.append('MASTER_SECRET_KEY must be set (12+ characters, not a published default)')
+    if config.get('SUPER_ADMIN_DEFAULT_PASS') in _KNOWN_WEAK_SECRETS:
+        problems.append('SUPER_ADMIN_PASS is a published default password')
+    if problems:
+        raise RuntimeError('Refusing to start in production: ' + '; '.join(problems))

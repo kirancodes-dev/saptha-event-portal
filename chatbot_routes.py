@@ -65,17 +65,17 @@ def ask():
             if event_date < current_date:
                 continue
             has_events = True
-            
+
             # Format judges/staff
             staff_list = evt.get('staff', [])
             judges     = [s.get('name') for s in staff_list if s.get('role') == 'Judge']
             judges_str = ", ".join(judges) if judges else "None assigned yet"
-            
+
             # Format rooms
             rooms_list = evt.get('rooms', [])
             rooms      = [f"{r.get('name')} (capacity {r.get('capacity')})" for r in rooms_list]
             rooms_str  = ", ".join(rooms) if rooms else "None configured yet"
-            
+
             # Format agenda
             agenda_list = evt.get('agenda', [])
             agenda_str  = ""

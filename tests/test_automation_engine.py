@@ -13,7 +13,7 @@ Verifies:
 import pytest
 import uuid
 from auth_jwt import create_tokens
-from services_automation import NotificationAutomationEngine, SYSTEM_DEFAULT_RULES
+from services_automation import NotificationAutomationEngine
 
 
 @pytest.fixture

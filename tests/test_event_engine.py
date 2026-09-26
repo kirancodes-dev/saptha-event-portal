@@ -8,7 +8,6 @@ Covers:
 - Dual-engine persistence for Organization and Ticket entities
 - Public /events/<slug> routing
 """
-import pytest
 from services_event import EventService, generate_event_slug
 
 
@@ -130,7 +129,7 @@ class TestDBAdapterParity:
     def test_sql_adapter_organization_crud(self):
         from db_adapter import SQLFirestoreAdapter
         adapter = SQLFirestoreAdapter()
-        
+
         org_id = "test-org-123"
         org_data = {
             "name": "MIT Institute",
@@ -142,10 +141,10 @@ class TestDBAdapterParity:
             "is_active": True,
             "settings": {"max_events": 50},
         }
-        
+
         # Write organization
         adapter.collection("organizations").document(org_id).set(org_data)
-        
+
         # Read back
         doc = adapter.collection("organizations").document(org_id).get()
         assert doc.exists is True
@@ -157,15 +156,15 @@ class TestDBAdapterParity:
     def test_sql_adapter_unmapped_collection_fallback(self):
         from db_adapter import SQLFirestoreAdapter
         adapter = SQLFirestoreAdapter()
-        
+
         # Custom collection not in predefined models
         coll_name = "test_custom_metadata"
         doc_id = "meta-abc"
         data = {"key": "api_quota", "value": 10000}
-        
+
         # Write to fallback
         adapter.collection(coll_name).document(doc_id).set(data)
-        
+
         # Read back
         doc = adapter.collection(coll_name).document(doc_id).get()
         assert doc.exists is True

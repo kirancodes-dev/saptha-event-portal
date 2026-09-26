@@ -20,26 +20,26 @@ try:
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.units import inch, mm
+    pass
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 except Exception:
     reportlab = None
 try:
     from reportlab.platypus import (
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        PageBreak, HRFlowable, Image
+        PageBreak, HRFlowable
     )
 except Exception:
     reportlab = None
 try:
-    from reportlab.graphics.shapes import Drawing, Rect, String, Line
+    from reportlab.graphics.shapes import Drawing, Rect
 except Exception:
     reportlab = None
 try:
-    from reportlab.graphics import renderPDF
+    pass
 except Exception:
     reportlab = None
 
@@ -293,9 +293,9 @@ def header_footer(canvas, doc):
 
 def make_status_badge(status):
     if status == "PASSED":
-        return Paragraph(f'<font color="#10b981"><b>✓ PASSED</b></font>', styles["TableCellCenter"])
+        return Paragraph('<font color="#10b981"><b>✓ PASSED</b></font>', styles["TableCellCenter"])
     else:
-        return Paragraph(f'<font color="#ef4444"><b>✗ FAILED</b></font>', styles["TableCellCenter"])
+        return Paragraph('<font color="#ef4444"><b>✗ FAILED</b></font>', styles["TableCellCenter"])
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -561,7 +561,7 @@ def build_report():
         rows.append([
             "", "",
             Paragraph(f'<b>{passed}/{len(mod["tests"])}</b>', styles["TableCellCenter"]),
-            Paragraph(f'<b><font color="#10b981">ALL PASSED</font></b>', styles["TableCell"]),
+            Paragraph('<b><font color="#10b981">ALL PASSED</font></b>', styles["TableCell"]),
         ])
 
         t = Table(rows, colWidths=[25, 135, 60, 210])

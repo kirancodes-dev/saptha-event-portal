@@ -4,7 +4,6 @@ test_waitlist.py — Tests for the Waitlist System
 Covers: join/leave waitlist, position tracking, auto-promotion,
 and integration with notifications.
 """
-import pytest
 
 
 class TestWaitlistJoin:

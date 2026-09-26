@@ -29,7 +29,7 @@ def signup():
             return redirect('/onboarding/signup')
 
         org_slug = org_name.lower().replace(' ', '-').replace('_', '-')
-        
+
         try:
             # Check existing org
             org_doc = _db().collection('organizations').document(org_slug).get()
@@ -72,7 +72,7 @@ def signup():
 
             log_action(_db(), "TENANT_CREATED", f"Registered new tenant organization '{org_name}' by {email}")
             flash(f"🎉 University tenant '{org_name}' registered successfully!", "success")
-            
+
             return redirect('/onboarding/wizard')
 
         except Exception as e:
@@ -98,7 +98,7 @@ def wizard():
         primary_color = data.get('primary_color', '#1a2557')
         logo_url = data.get('logo_url', '')
         departments = data.get('departments', [])
-        
+
         try:
             # Update organization config settings
             _db().collection('organizations').document(org_id).update({
@@ -108,7 +108,7 @@ def wizard():
                     'departments': departments
                 }
             })
-            
+
             log_action(_db(), "TENANT_CONFIGURED", f"Completed onboarding wizard setup configurations for {org_id}")
             return jsonify({'status': 'success', 'redirect': '/coordinator/dashboard'})
         except Exception as e:

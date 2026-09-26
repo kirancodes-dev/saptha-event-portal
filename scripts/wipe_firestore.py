@@ -114,7 +114,7 @@ for col in WIPE_COLLECTIONS:
     print(f"  DONE: {count} documents deleted from '{col}'")
     grand_total += count
 
-print(f"\nDeleting non-admin users from: users")
+print("\nDeleting non-admin users from: users")
 count = wipe_users_except_admins()
 print(f"  DONE: {count} user documents deleted")
 grand_total += count

@@ -108,7 +108,7 @@ class AuditLogger:
             # Actor context (automatic)
             "actor_email": session.get("user_id", "system"),
             "actor_role": session.get("role", "system"),
-            "actor_ip": request.remote_addr if request else "0.0.0.0",
+            "actor_ip": request.remote_addr if request else "0.0.0.0",  # nosec B104 — placeholder IP, not a bind address
             "actor_user_agent": (request.headers.get("User-Agent", "")[:200]
                                  if request else ""),
             # Organization context
@@ -159,7 +159,7 @@ class AuditLogger:
                 "severity": entry_data.get("severity", SEVERITY_INFO),
                 "actor_email": session.get("user_id", "system"),
                 "actor_role": session.get("role", "system"),
-                "actor_ip": request.remote_addr if request else "0.0.0.0",
+                "actor_ip": request.remote_addr if request else "0.0.0.0",  # nosec B104 — placeholder IP, not a bind address
                 "org_id": "",
                 "metadata": entry_data.get("metadata", {}),
                 "timestamp": now,

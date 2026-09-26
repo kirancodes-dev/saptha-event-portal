@@ -20,10 +20,10 @@ jobs:
           cache: pip
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.16.9
 
-      - name: Lint
-        run: ruff check . --select E,W,F --ignore E501,E401,E402,E701,E702,E722,E731,E741,F841
+      - name: Lint (rules in ruff.toml)
+        run: ruff check .
 
   # ── Tests ─────────────────────────────────────────────────
   test:
@@ -50,11 +50,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       RATELIMIT_STORAGE_URL: memory://
       NO_SCHEDULER: "true"
-      # Stub Firebase — tests mock the db client
-      FIREBASE_CREDENTIALS: ""
-      SUPER_ADMIN_EMAIL: admin@test.local
-      SUPER_ADMIN_PASS: test-pass
-      MASTER_SECRET_KEY: test-master-key
+      # tests/conftest.py points DATABASE_URL at a temporary SQLite file
 
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +63,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Run tests
         run: pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
@@ -111,7 +107,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install bandit
-        run: pip install bandit
+        run: pip install bandit==1.9.4
 
       - name: Run bandit
         run: bandit -r . -x tests/,__pycache__/ -ll -q

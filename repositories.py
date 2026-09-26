@@ -7,11 +7,9 @@ try:
     from sqlalchemy.orm import Session
 except Exception:
     sqlalchemy = None
-from db_pg import get_session
 from models_pg import (
-    User, Event, Registration, TeamMember, Score, EventForm,
-    FormSubmission, AuditLog, PushSubscription, UserRole, EventCategory,
-    EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
+    User, Event, AuditLog, UserRole, EventCategory,
+    EventStatus
 )
 
 logger = logging.getLogger(__name__)

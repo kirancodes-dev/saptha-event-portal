@@ -26,7 +26,7 @@ def send_demo():
         score = 98.5
         reg_id = "2026H2S05BWAIBLR-P00273"
         event_date = "Jun 4, 2026"
-        
+
         print("Generating certificate PDF...")
         try:
             pdf_bytes = generate_certificate_pdf(
@@ -50,7 +50,7 @@ def send_demo():
             # We override BASE_URL to the production domain for the email links
             os.environ['BASE_URL'] = "https://saptha-event-portal-762269836348.us-east4.run.app"
             os.environ['COLLEGE_LOGO_URL'] = "https://saptha-event-portal-762269836348.us-east4.run.app/static/snpsu-logo.png"
-            
+
             success = _send_cert_email(
                 to_email=to_email,
                 student_name=student_name,

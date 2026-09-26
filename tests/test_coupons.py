@@ -4,8 +4,6 @@ test_coupons.py — Tests for the Coupon Code System
 Covers: coupon creation, validation, application, deactivation,
 and edge cases like expired and overused coupons.
 """
-import pytest
-import datetime
 
 
 class TestCouponCRUD:

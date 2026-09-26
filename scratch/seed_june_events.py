@@ -143,7 +143,7 @@ def seed_june_data():
                 'category':           sector,
                 'description':        desc,
                 'rules':              rules,
-                'banner_url':         f"https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=900&h=400&fit=crop", # standard fallback
+                'banner_url':         "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=900&h=400&fit=crop", # standard fallback
                 'visibility':         'Public',
                 'date':               date_str,
                 'time':               time_str,

@@ -29,7 +29,6 @@ from services_workflow import WorkflowService
 from services_ticket import TicketService
 from services_evaluation import EvaluationService
 from services_certificate import CertificateService
-from services_copilot import AICopilotService
 from auth_jwt import create_access_token
 
 
@@ -58,7 +57,7 @@ class TestHackathonUniversalFlow:
         # A. Instantiate from template
         template = TemplateService.get_template_by_id("hackathon")
         assert template is not None
-        
+
         event = EventService.create_event(
             db,
             title="SapthaHack 2026 — AI World Cup",
@@ -378,7 +377,7 @@ class TestPublicDiscoveryAndCalendarExport:
         slug = ev["slug"]
 
         # Test catalog search query
-        res = client.get(f"/events?q=Quantum", base_url="https://localhost")
+        res = client.get("/events?q=Quantum", base_url="https://localhost")
         assert res.status_code == 200
         assert b"Quantum Computing Symposium" in res.data
 

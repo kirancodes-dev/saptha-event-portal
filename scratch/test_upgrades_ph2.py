@@ -36,12 +36,12 @@ class TestUpgradesPhase2(unittest.TestCase):
         # We temporarily unset GEMINI_API_KEY to force the Jaccard fallback path
         old_key = self.app.config.get('GEMINI_API_KEY')
         self.app.config['GEMINI_API_KEY'] = ''
-        
+
         # We need a logged in session. Let's force a user_id in the session
         with self.client.session_transaction() as sess:
             sess['user_id'] = 'test_student@sapthagiri.edu'
             sess['role'] = 'Student'
-            
+
         response = self.client.post('/participant/matchmaker/api/match', json={
             'skills': ['Python', 'Figma'],
             'interests': ['AI Hackathon']
@@ -55,7 +55,7 @@ class TestUpgradesPhase2(unittest.TestCase):
         self.assertIn('match_reason', first_match)
         self.assertIn('match_score', first_match)
         print(f"Fallback first match: {first_match['name']} - Score: {first_match['match_score']}% - Reason: {first_match['match_reason']}")
-        
+
         # Restore key
         if old_key:
             self.app.config['GEMINI_API_KEY'] = old_key

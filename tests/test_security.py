@@ -4,7 +4,6 @@ test_security.py — Tests for Security Middleware & Hardening
 Covers: IP blocking, login attempt tracking, account lockout,
 security headers, input sanitization, and audit logging.
 """
-import pytest
 import time
 
 

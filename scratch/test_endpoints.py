@@ -15,12 +15,12 @@ from models import db
 def test_endpoints():
     print("Initializing Flask test client...")
     client = app.test_client()
-    
+
     with app.app_context():
         # Setup a dummy registration in Firestore to test webhook
         dummy_email = "test-webhook@demo.com"
         dummy_reg_id = "REG-TEST-WEBHOOK-9999"
-        
+
         print(f"Creating dummy registration {dummy_reg_id} for {dummy_email}...")
         db.collection('registrations').document(dummy_reg_id).set({
             'reg_id': dummy_reg_id,
@@ -30,7 +30,7 @@ def test_endpoints():
             'status': 'Confirmed',
             'delivery_status': 'Sent'
         })
-        
+
         # Test 1: Brevo Webhook Delivered Event
         print("\n--- Test 1: Testing Brevo Webhook ---")
         brevo_payload = {
@@ -41,7 +41,7 @@ def test_endpoints():
             "ts": 1773229600,
             "message-id": "<test-brevo-id@brevo.com>"
         }
-        
+
         response = client.post(
             '/api/v1/webhooks/email',
             data=json.dumps(brevo_payload),
@@ -49,12 +49,12 @@ def test_endpoints():
         )
         print("Status Code:", response.status_code)
         print("Response Body:", response.get_data(as_text=True))
-        
+
         # Verify status in DB
         updated_reg = db.collection('registrations').document(dummy_reg_id).get().to_dict()
         print("Updated delivery_status in DB:", updated_reg.get('delivery_status'))
         assert updated_reg.get('delivery_status') == 'Delivered', "Status was not updated to Delivered"
-        
+
         # Test 2: Resend Webhook Opened Event
         print("\n--- Test 2: Testing Resend Webhook ---")
         resend_payload = {
@@ -66,7 +66,7 @@ def test_endpoints():
                 "subject": "Test subject"
             }
         }
-        
+
         response = client.post(
             '/api/v1/webhooks/email',
             data=json.dumps(resend_payload),
@@ -74,12 +74,12 @@ def test_endpoints():
         )
         print("Status Code:", response.status_code)
         print("Response Body:", response.get_data(as_text=True))
-        
+
         # Verify status in DB
         updated_reg = db.collection('registrations').document(dummy_reg_id).get().to_dict()
         print("Updated delivery_status in DB:", updated_reg.get('delivery_status'))
         assert updated_reg.get('delivery_status') == 'Opened', "Status was not updated to Opened"
-        
+
         # Test 3: SPOC Blast Preview Route
         print("\n--- Test 3: Testing SPOC Blast Preview Route ---")
         # We find a valid event in DB to preview
@@ -87,18 +87,18 @@ def test_endpoints():
         if events:
             event_id = events[0].id
             print(f"Testing preview on event: {events[0].to_dict().get('title')} ({event_id})...")
-            
+
             # Since SPOC preview requires login, let's bypass by setting session
             with client.session_transaction() as sess:
                 sess['user_id'] = events[0].to_dict().get('spoc_id', 'spoc@demo.com')
                 sess['role'] = 'ClubSPOC'
                 sess['name'] = 'Test SPOC'
-            
+
             preview_payload = {
                 "subject": "Important Event Update!",
                 "body": "Hi team, please note that the venue has changed to Hall B. See you there!"
             }
-            
+
             response = client.post(
                 f'/spoc/blast_preview/{event_id}',
                 data=json.dumps(preview_payload),
@@ -111,7 +111,7 @@ def test_endpoints():
                 print("HTML snippet (truncated):", res_data['html'][:250].replace('\n', ' '))
         else:
             print("No events found in DB to test preview.")
-            
+
         # Clean up dummy registration
         print(f"\nCleaning up dummy registration {dummy_reg_id}...")
         db.collection('registrations').document(dummy_reg_id).delete()

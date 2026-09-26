@@ -167,12 +167,12 @@ def qr_image(reg_id):
 def verify_ticket(reg_id_or_token):
     # 1. Try to decode as token
     token_data = verify_ticket_token(reg_id_or_token)
-    
+
     reg_id = reg_id_or_token
     event_id = None
     lead_name = None
     offline_verified = False
-    
+
     if token_data and isinstance(token_data, list) and len(token_data) >= 3:
         reg_id = token_data[0]
         event_id = token_data[1]
@@ -280,12 +280,12 @@ def verify_ticket(reg_id_or_token):
 def api_verify(reg_id_or_token):
     # 1. Try to decode as token
     token_data = verify_ticket_token(reg_id_or_token)
-    
+
     reg_id = reg_id_or_token
     event_id = None
     lead_name = None
     offline_verified = False
-    
+
     if token_data and isinstance(token_data, list) and len(token_data) >= 3:
         reg_id = token_data[0]
         event_id = token_data[1]

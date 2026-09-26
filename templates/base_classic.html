@@ -51,16 +51,16 @@
                 </div>
 
                 <!-- Management Section (Admin Only) -->
-                {% if user_role == 'admin' %}
+                {% if session.get('role') in ('SuperAdmin', 'Super Admin', 'Admin') %}
                     <div class="nav-section">
                         <div class="nav-section-title" id="mgmt-section">Management</div>
-                        <a href="/admin/events" class="nav-link">
+                        <a href="/admin/dashboard" class="nav-link">
                             <i class="fas fa-cog" aria-hidden="true"></i>
-                            <span>Manage Events</span>
+                            <span>Admin Dashboard</span>
                         </a>
-                        <a href="/admin/users" class="nav-link">
-                            <i class="fas fa-users" aria-hidden="true"></i>
-                            <span>Users</span>
+                        <a href="/admin/audit_log" class="nav-link">
+                            <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+                            <span>Audit Log</span>
                         </a>
                         <a href="/admin/sponsors" class="nav-link {% if current_page == 'sponsors' %}active{% endif %}">
                             <i class="fas fa-handshake" aria-hidden="true"></i>
@@ -72,13 +72,9 @@
                 <!-- Account Section -->
                 <div class="nav-section">
                     <div class="nav-section-title" id="acct-section">Account</div>
-                    <a href="/profile" class="nav-link">
+                    <a href="/profile/" class="nav-link">
                         <i class="fas fa-user-circle" aria-hidden="true"></i>
                         <span>Profile</span>
-                    </a>
-                    <a href="/settings" class="nav-link">
-                        <i class="fas fa-sliders-h"></i>
-                        <span>Settings</span>
                     </a>
                     <a href="/compliance/settings" class="nav-link">
                         <i class="fas fa-shield-alt" aria-hidden="true"></i>
@@ -106,7 +102,7 @@
                 </div>
                 <div class="header-right">
                     <!-- Notifications -->
-                    <a href="/notifications" class="btn-icon-link me-2" aria-label="View notifications" style="position: relative; color: var(--ink-700); font-size: 1.15rem; transition: color var(--t-fast); text-decoration: none;">
+                    <a href="/dashboard" class="btn-icon-link me-2" aria-label="View notifications" style="position: relative; color: var(--ink-700); font-size: 1.15rem; transition: color var(--t-fast); text-decoration: none;">
                         <i class="fas fa-bell" aria-hidden="true"></i>
                         <span id="notif-badge" class="badge bg-danger rounded-pill" style="position: absolute; top: -5px; right: -5px; font-size: 0.65rem; padding: 0.25em 0.4em; display: none;"></span>
                     </a>
@@ -118,7 +114,7 @@
 
                     <!-- User Avatar -->
                     <div class="user-menu" role="region" aria-label="User profile menu">
-                        <a href="/profile" style="text-decoration: none;" aria-label="View Profile">
+                        <a href="/profile/" style="text-decoration: none;" aria-label="View Profile">
                             <div class="user-avatar" aria-label="User profile avatar">{{ user_initials | default('U') }}</div>
                         </a>
                     </div>

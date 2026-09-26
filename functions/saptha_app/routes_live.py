@@ -102,7 +102,7 @@ def announcements_stream():
         # Keep track of the last checked timestamp (in ISO format string)
         # Using UTC timezone aware datetime to align with post timestamp
         last_check_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        
+
         # Keep connection open for max 5 minutes (similar to leaderboard)
         max_ticks = 150 # 150 * 2s = 5 minutes
         for _ in range(max_ticks):
@@ -112,16 +112,16 @@ def announcements_stream():
                     # Query for announcements newer than the last check time
                     query = db.collection('announcements').where('timestamp', '>', last_check_time)
                     announcements_ref = query.stream()
-                    
+
                     new_announcements = []
                     highest_ts = last_check_time
-                    
+
                     for doc in announcements_ref:
                         ad = doc.to_dict()
                         ts = ad.get('timestamp', '')
                         if ts > highest_ts:
                             highest_ts = ts
-                        
+
                         # Filter by client's events (if specified)
                         e_id = ad.get('event_id', '')
                         if not event_ids or e_id in event_ids:
@@ -133,7 +133,7 @@ def announcements_stream():
                                 'event_title': ad.get('event_title', 'General'),
                                 'timestamp': ts
                             })
-                    
+
                     if new_announcements:
                         last_check_time = highest_ts
                         # Stream each new announcement to the client
@@ -141,9 +141,9 @@ def announcements_stream():
                             yield f"data: {json.dumps(ann)}\n\n"
             except Exception as e:
                 yield f"data: {{\"error\":\"{str(e)[:60]}\"}}\n\n"
-            
+
             time.sleep(2)
-            
+
         yield "event: reconnect\ndata: {}\n\n"
 
     return Response(

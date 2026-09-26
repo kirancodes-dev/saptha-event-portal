@@ -12,7 +12,7 @@ Resolution order:
   5. Default    — falls back to the configured default org
 """
 import logging
-from flask import g, request, session, abort
+from flask import g, request, session
 from models_tenant import get_org_by_slug, get_org_by_domain, get_org_by_id
 
 logger = logging.getLogger(__name__)

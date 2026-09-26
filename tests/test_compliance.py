@@ -4,7 +4,6 @@ test_compliance.py — Tests for GDPR/DPDP Compliance Module
 Covers: data export, deletion requests, consent management,
 privacy controls, Terms of Service, and Privacy Policy endpoints.
 """
-import pytest
 import datetime
 
 

@@ -1,151 +1,66 @@
 """
-init_superadmin.py — Initialize SuperAdmin on First Deployment
-===============================================================
+init_superadmin.py — Create (or reset) the SuperAdmin account.
 
-Run this once when deploying to production:
-  python init_superadmin.py
+Usage:
+    SUPER_ADMIN_EMAIL=you@college.edu SUPER_ADMIN_PASS='a strong password' \
+        python init_superadmin.py            # create if missing
+    python init_superadmin.py --reset        # also overwrite the password
 
-It will:
-  1. Check if SuperAdmin already exists
-  2. If not, create one with default credentials from config
-  3. Validate Firebase connection
-  4. Print confirmation with login details
-
-Environment Variables (or uses config defaults):
-  SUPER_ADMIN_EMAIL = admin@snpsu.edu.in
-  SUPER_ADMIN_PASS = Saptha@Admin2026
+The values can also come from .env. Uses the same database as the app
+(DATABASE_URL, or the local SQLite file in development).
 """
-
+import datetime
 import os
 import sys
-import json
-import datetime
-try:
-    import firebase_admin
-except ImportError:
-    firebase_admin = None
-try:
-    from firebase_admin import credentials, firestore
-except ImportError:
-    credentials = firestore = auth = None
-from werkzeug.security import generate_password_hash
+
 try:
     from dotenv import load_dotenv
-except Exception:
-    dotenv = None
+    load_dotenv()
+except ImportError:
+    pass
 
-load_dotenv()
+from werkzeug.security import generate_password_hash
 
-# =========================================================
-# FIREBASE INITIALIZATION
-# =========================================================
-def init_firebase():
-    """Initialize Firebase connection"""
-    if firebase_admin._apps:
-        return firestore.client()
-
-    firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
-    if firebase_creds_json:
-        try:
-            cred_dict = json.loads(firebase_creds_json)
-            if isinstance(cred_dict, str):
-                cred_dict = json.loads(cred_dict)
-            cred = credentials.Certificate(cred_dict)
-        except Exception as exc:
-            print(f"❌ FIREBASE_CREDENTIALS parse error: {exc}")
-            sys.exit(1)
-    else:
-        key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-        if not os.path.exists(key_path):
-            print(f"❌ Neither FIREBASE_CREDENTIALS env var nor {key_path} found!")
-            sys.exit(1)
-        cred = credentials.Certificate(key_path)
-
-    firebase_admin.initialize_app(cred)
-    return firestore.client()
+from utils import validate_password_strength
 
 
-# =========================================================
-# SUPERADMIN INITIALIZATION
-# =========================================================
-def init_superadmin():
-    """Create SuperAdmin account if it doesn't exist"""
+def main(argv):
+    email = os.environ.get('SUPER_ADMIN_EMAIL', '').strip().lower()
+    password = os.environ.get('SUPER_ADMIN_PASS', '')
+    reset = '--reset' in argv
 
-    # Get credentials from environment or config defaults
-    from config import Config
+    if not email or not password:
+        print("SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASS must be set (environment or .env).")
+        return 1
+    ok, message = validate_password_strength(password)
+    if not ok:
+        print(f"SUPER_ADMIN_PASS is too weak: {message}")
+        return 1
 
-    admin_email = os.environ.get('SUPER_ADMIN_EMAIL', Config.SUPER_ADMIN_EMAIL)
-    admin_pass = os.environ.get('SUPER_ADMIN_PASS', Config.SUPER_ADMIN_DEFAULT_PASS)
+    from models import db
+    if db is None:
+        print("Database is not available — check DATABASE_URL.")
+        return 1
 
-    if not admin_email or not admin_pass:
-        print("❌ ERROR: SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASS must be set!")
-        sys.exit(1)
+    ref = db.collection('users').document(email)
+    if ref.get().exists and not reset:
+        print(f"SuperAdmin {email} already exists. Use --reset to overwrite the password.")
+        return 0
 
-    # Initialize Firebase
-    print("\n📡 Connecting to Firebase...")
-    try:
-        db = init_firebase()
-        print("✅ Firebase connected successfully")
-    except Exception as e:
-        print(f"❌ Firebase connection failed: {e}")
-        sys.exit(1)
-
-    # Check if SuperAdmin exists
-    print(f"\n🔍 Checking if SuperAdmin exists: {admin_email}")
-    try:
-        admin_doc = db.collection('users').document(admin_email).get()
-        if admin_doc.exists:
-            admin_data = admin_doc.to_dict()
-            print("✅ SuperAdmin already exists:")
-            print(f"   Name: {admin_data.get('name', 'N/A')}")
-            print(f"   Role: {admin_data.get('role', 'N/A')}")
-            print(f"   Created: {admin_data.get('created_at', 'N/A')}")
-            return
-    except Exception as e:
-        print(f"❌ Error checking for SuperAdmin: {e}")
-        sys.exit(1)
-
-    # Create SuperAdmin account
-    print("\n🚀 Creating SuperAdmin account...")
-    try:
-        hashed_pass = generate_password_hash(admin_pass, method='pbkdf2:sha256')
-        admin_data = {
-            'email': admin_email,
-            'name': 'System Administrator',
-            'role': 'SuperAdmin',
-            'category': 'General',
-            'phone': 'ADMIN',
-            'password': hashed_pass,
-            'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'needs_password_reset': False,
-            'is_active': True,
-            'permissions': ['manage_users', 'manage_events', 'view_analytics']
-        }
-        db.collection('users').document(admin_email).set(admin_data)
-        print("✅ SuperAdmin created successfully!")
-        print(f"\n{'='*60}")
-        print("  SUPERADMIN LOGIN CREDENTIALS")
-        print(f"{'='*60}")
-        print(f"Email:    {admin_email}")
-        print(f"Password: {admin_pass}")
-        print(f"{'='*60}")
-        print("\n⚠️  IMPORTANT:")
-        print("  - Save these credentials securely")
-        print("  - Change password after first login")
-        print("  - Store in secure password manager")
-        print("  - Never commit to version control")
-        print("\n✅ Initialization complete! System is ready for production.\n")
-
-    except Exception as e:
-        print(f"❌ Error creating SuperAdmin: {e}")
-        sys.exit(1)
+    ref.set({
+        'email': email,
+        'name': 'System Administrator',
+        'role': 'SuperAdmin',
+        'category': 'All',
+        'password': generate_password_hash(password, method='pbkdf2:sha256'),
+        'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'needs_password_reset': False,
+        'is_active': True,
+    }, merge=True)
+    print(f"SuperAdmin {'reset' if reset else 'created'}: {email}")
+    print("Log in with role 'Super Admin' (plus MASTER_SECRET_KEY if it is set).")
+    return 0
 
 
-# =========================================================
-# ENTRY POINT
-# =========================================================
 if __name__ == '__main__':
-    print("\n" + "="*60)
-    print("  SapthaEvent - SuperAdmin Initialization")
-    print("="*60)
-    init_superadmin()
+    sys.exit(main(sys.argv[1:]))

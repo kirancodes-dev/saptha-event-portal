@@ -492,7 +492,7 @@ def wipe():
 def seed_registrations(db, event_id, ev):
     import random
     import time
-    
+
     is_team = ev.get('is_team_event', False)
     limits = ev.get('limits', {})
     team_min = limits.get('team_min', 1)
@@ -500,18 +500,18 @@ def seed_registrations(db, event_id, ev):
     fee = ev.get('fees', {}).get('regular', 0)
     event_title = ev['title']
     event_date_str = ev['date']
-    
+
     # Select a random subset of our 20 students to participate (at least team_min, up to team_max * 2)
     min_reg_size = team_min if is_team else 1
     max_reg_size = max(min_reg_size, min(team_max * 3, 20))
     num_students_to_register = random.randint(min_reg_size, max_reg_size)
-    
+
     shuffled_students = list(STUDENTS)
     random.shuffle(shuffled_students)
     event_students = shuffled_students[:num_students_to_register]
-    
+
     registrations = []
-    
+
     if not is_team:
         # Solo event
         for student in event_students:
@@ -543,15 +543,15 @@ def seed_registrations(db, event_id, ev):
                         })
                     registrations[-1]['member_count'] = len(registrations[-1]['members'])
                 break
-            
+
             team_size = random.randint(team_min, min(team_max, remaining))
             # If the left-over students cannot form another team, consume them all in this team
             if 0 < remaining - team_size < team_min:
                 team_size = remaining
-                
+
             team_members = event_students[idx : idx + team_size]
             idx += team_size
-            
+
             lead = team_members[0]
             extra_members = []
             for m in team_members[1:]:
@@ -562,7 +562,7 @@ def seed_registrations(db, event_id, ev):
                     'phone': m['phone'],
                     'usn': m['usn']
                 })
-            
+
             registrations.append({
                 'lead_name': lead['name'],
                 'lead_email': lead['email'],
@@ -579,28 +579,28 @@ def seed_registrations(db, event_id, ev):
                 'member_count': len(team_members)
             })
             team_idx += 1
-            
+
     count = 0
     now = datetime.datetime.now()
-    
+
     # Determine if event is in the past / currently happening
     event_date = datetime.datetime.strptime(event_date_str, '%Y-%m-%d').date()
     is_past_or_current = event_date <= TODAY + datetime.timedelta(days=3)
-    
+
     reg_docs = []
-    
+
     for r in registrations:
         reg_id = f"REG-{event_id[:5].upper()}-{random.randint(1000, 9999)}-{int(time.time()*1000)%1000}"
         time.sleep(0.001)
-        
+
         payment_status = 'Paid' if fee > 0 else 'Free'
         amount_paid = fee if fee > 0 else 0
-        
+
         if is_past_or_current:
             attendance = 'Present' if random.random() < 0.85 else 'Absent'
         else:
             attendance = 'Pending'
-            
+
         reg_doc = {
             'reg_id':          reg_id,
             'event_id':        event_id,
@@ -624,13 +624,13 @@ def seed_registrations(db, event_id, ev):
             'final_score':     None,
             'final_rank':      None
         }
-        
+
         # Add mock scores for present teams in completed/current events
         if attendance == 'Present' and is_past_or_current:
             num_judges = random.randint(2, 3)
             selected_judges = random.sample(JUDGES, num_judges)
             criteria = ['Innovation', 'Technical Complexity', 'Impact', 'Presentation']
-            
+
             scores_map = {}
             for j in selected_judges:
                 score_details = {}
@@ -648,18 +648,18 @@ def seed_registrations(db, event_id, ev):
                     'submitted_at': now.strftime("%Y-%m-%d %H:%M:%S")
                 }
             reg_doc['scores'] = scores_map
-            
+
             if scores_map:
                 reg_doc['final_score'] = round(sum(s['total'] for s in scores_map.values()) / len(scores_map), 1)
-        
+
         db.collection('registrations').document(reg_id).set(reg_doc)
         reg_docs.append(reg_doc)
         count += 1
-        
+
     db.collection('events').document(event_id).update({
         'registration_count': count
     })
-    
+
     # Rank and publish results for key past events
     if is_past_or_current and len(reg_docs) > 1 and event_title in ('Solo Singing Championship', 'Code Sprint — 2 Hour Challenge'):
         present_regs = [r for r in reg_docs if r['attendance'] == 'Present' and r.get('final_score') is not None]
@@ -765,12 +765,12 @@ if __name__ == '__main__':
 
     print('SapthaEvent — Demo Reset')
     print('This will WIPE all data (except SuperAdmin) and re-seed.')
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == '--yes':
         confirm = 'YES'
     else:
         confirm = input('Type YES to continue: ').strip()
-        
+
     if confirm != 'YES':
         print('Aborted.')
         sys.exit(0)

@@ -1,6 +1,6 @@
 # routes_referrals.py — Student Affiliate & Referrals Blueprint
 import logging
-from flask import Blueprint, jsonify, request, session, current_app
+from flask import Blueprint, jsonify, request, session
 from utils import login_required
 
 referrals_bp = Blueprint('referrals', __name__, url_prefix='/participant/referrals')
@@ -23,7 +23,7 @@ def _db():
 @login_required
 def get_referral_stats():
     user_id = session.get('user_id', '')
-    
+
     # We can check a 'referrals' collection in firestore, or fall back to mock numbers
     db_conn = _db()
 
@@ -42,7 +42,7 @@ def get_referral_stats():
             logger.error("Error reading referrals from firestore: %s", exc)
 
     ref_code = user_id.split('@')[0].upper() if user_id else "STUDENT123"
-    
+
     return jsonify({
         'success': True,
         'referral_code': ref_code,

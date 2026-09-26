@@ -1,140 +1,66 @@
-# Core Flask + Server
-Flask
-Werkzeug
-Jinja2
-MarkupSafe
-itsdangerous
-click>=8.0.0
-blinker
-gunicorn
+# Runtime dependencies (pinned — tested together on Python 3.11).
+# Dev/test tools live in requirements-dev.txt.
 
-# Security (production-critical)
-Flask-WTF
-Flask-Talisman
-Flask-Limiter
-Flask-Session
-limits
-PyJWT
-cryptography
+# Web
+Flask==3.1.3
+Werkzeug==3.1.8
+Jinja2==3.1.6
+itsdangerous==2.2.0
+gunicorn==26.2.0
+python-dotenv==1.2.3
 
-# Email / Notifications
-Flask-Mail
-resend
-twilio
-pywebpush
+# Security
+Flask-WTF==1.3.0
+flask-talisman==1.1.0
+Flask-Limiter==4.1.1
+Flask-Session==0.8.0
+PyJWT==2.15.0
+cryptography==50.0.1
+PyOTP==2.10.0
 
-# Async task queue
-celery
-redis
+# Database — PostgreSQL via SQLAlchemy (SQLite for local development)
+SQLAlchemy==2.1.1
+psycopg2-binary==2.9.13
+alembic==1.20.0
+python-dateutil==2.9.0.post0
+# Firestore write-transform types (Increment, ArrayUnion, ...) used by routes;
+# the app itself stores data in SQL.
+firebase_admin==7.7.0
+google-cloud-firestore==2.32.0
 
-# Firebase / Google
-firebase_admin
-google-ai-generativelanguage
-google-api-core
-google-api-python-client
-google-auth
-google-auth-httplib2
-google-cloud-core
-google-cloud-firestore
-google-cloud-storage
-google-crc32c
-google-genai
-google-resumable-media
-googleapis-common-protos
-grpcio
-grpcio-status
-proto-plus
-protobuf
+# Background jobs
+celery==5.6.3
+redis==8.1.0
+flower==2.2.0
+APScheduler==3.11.3
+tzdata==2026.4
 
-# Scheduling
-APScheduler
-pytz
-tzdata
+# Email / notifications
+Flask-Mail==0.10.0
+resend==2.48.0
+twilio==9.11.1
+pywebpush==2.5.0
+
+# AI
+google-genai==2.25.0
 
 # Payments
-razorpay
-stripe
+razorpay==2.0.1
+stripe==15.6.1
 
-# Data / PDF / QR / Certificates
-numpy
-pandas
-openpyxl
-reportlab
-pillow
-qrcode
+# Files, exports, certificates
+google-cloud-storage==3.15.0
+boto3==1.43.103
+pandas==3.0.6
+openpyxl==3.1.5
+reportlab==5.0.1
+pillow==12.3.0
+qrcode==8.2
+requests==2.34.2
 
 # Observability
-sentry-sdk
-python-json-logger
+sentry-sdk==2.70.0
+python-json-logger==4.2.0
 
-# HTTP / Networking
-requests
-urllib3
-httpx
-httpcore
-h11
-h2
-hpack
-hyperframe
-httplib2
-certifi
-charset-normalizer
-idna
-sniffio
-anyio
-uritemplate
-websockets
-CacheControl
-
-# Utilities
-python-dotenv
-python-dateutil
-six
-packaging
-pyparsing
-tenacity
-tqdm
-msgpack
-colorama
-distro
-et_xmlfile
-
-# Pydantic / Typing
-pydantic
-pydantic_core
-annotated-types
-typing_extensions
-typing-inspection
-
-# Crypto primitives (transitive)
-cffi
-pycparser
-pyasn1
-pyasn1_modules
-rsa
-
-# Industrial Upgrade — Phase 1
-alembic
-psycopg2-binary
-
-# Industrial Upgrade — Phase 4 (2FA)
-pyotp
-
-# Testing
-pytest
-pytest-cov
-pytest-flask
-
-# Celery monitoring
-flower
-
-# Linting / security scanning (CI only)
-ruff
-bandit
-
-# Supabase Backend Integration
-supabase
-
-# AWS S3 Storage
-boto3
-
+# Optional: Google Cloud SQL connector (only when using CLOUD_SQL_INSTANCE)
+# cloud-sql-python-connector[pg8000]

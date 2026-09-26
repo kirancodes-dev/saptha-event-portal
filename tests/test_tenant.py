@@ -4,7 +4,6 @@ test_tenant.py — Tests for Multi-Tenant Organization Model
 Covers: organization CRUD, slug/domain lookups, membership management,
 and tenant isolation.
 """
-import pytest
 
 
 class TestOrganizationCRUD:
@@ -80,7 +79,7 @@ class TestOrganizationMembers:
     """Test organization membership management."""
 
     def test_add_member(self, mock_db):
-        from models_tenant import create_organization, add_member, get_org_members
+        from models_tenant import create_organization, add_member
         org = create_organization(mock_db, name="Test", slug="test")
         member = add_member(mock_db, org_id=org["id"], email="prof@test.edu", role="admin")
         assert member["email"] == "prof@test.edu"

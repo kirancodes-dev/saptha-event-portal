@@ -9,7 +9,6 @@ Verifies:
 5. Digital Ticket Wallet pass generation and HTTP endpoints.
 """
 
-import pytest
 import uuid
 import time
 import base64

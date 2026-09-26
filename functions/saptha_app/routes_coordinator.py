@@ -5,7 +5,6 @@ import os
 import random
 import secrets
 import string
-import time as _time
 from io import StringIO
 try:
     import openpyxl
@@ -81,7 +80,7 @@ def dashboard():
                 in_coords = user_email in d.get('coordinators', [])
                 if not in_staff and not in_coords:
                     continue
-                
+
                 # Hide completed events
                 current_date = datetime.date.today().strftime("%Y-%m-%d")
                 event_date = d.get('date', '9999-99-99')

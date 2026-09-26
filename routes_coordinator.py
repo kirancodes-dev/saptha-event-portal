@@ -1,11 +1,9 @@
 import csv
 import datetime
 import io
-import os
 import random
 import secrets
 import string
-import time as _time
 from io import StringIO
 try:
     import openpyxl
@@ -81,7 +79,7 @@ def dashboard():
                 in_coords = user_email in d.get('coordinators', [])
                 if not in_staff and not in_coords:
                     continue
-                
+
                 # Hide completed events
                 current_date = datetime.date.today().strftime("%Y-%m-%d")
                 event_date = d.get('date', '9999-99-99')
@@ -643,7 +641,8 @@ def process_walkin():
         if not event_id or not email or not name:
             flash("Event, name and email are required.", "warning")
             return redirect('/coordinator/on_spot')
-        WALKIN_PASSWORD = os.environ.get('WALKIN_DEFAULT_PASSWORD', 'Welcome@Saptha1')
+        # One-time password per new account (emailed; reset is forced on first login)
+        WALKIN_PASSWORD = secrets.token_urlsafe(9) + 'aA1!'
         user_ref  = db.collection('users').document(email)
         is_new    = not user_ref.get().exists
         if is_new:

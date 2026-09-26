@@ -423,12 +423,12 @@ def _send(to_email, subject: str, html: str,
         ok = _send_via_resend(to_email, subject, html, attachments)
     else:
         ok = _send_via_gmail(to_email, subject, html, attachments)
-        
+
     if ok:
         to_list = [to_email] if isinstance(to_email, str) else to_email
         for email in to_list:
             _update_delivery_status(email, 'Sent', reg_id)
-            
+
     return ok
 
 
@@ -772,19 +772,19 @@ def _send_cert_email(to_email: str, student_name: str,
     <p style="margin-bottom: 20px;">
       Thank you for participating in <strong>{event_title}</strong>. Your creativity, speed, and technical skills made the event truly unforgettable.
     </p>
-    
+
     <p style="font-size:18px; color:#1d4ed8; font-weight:700; margin: 24px 0;">
       Congratulations, {student_name}!
     </p>
-    
+
     <p>
       We're excited to officially award you a certificate for your participation in <strong>{event_title}</strong>. Your contribution and enthusiasm helped make this event an incredible experience.
     </p>
-    
+
     {verified_block}
     {button_block}
     {secure_note}
-    
+
     <p style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 20px; color:#64748b;">
       &mdash; <strong>Team SapthaEvent</strong><br>
       <span style="font-size: 12px;">Sapthagiri NPS University</span>

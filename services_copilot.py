@@ -47,7 +47,7 @@ class AICopilotService:
             raise ValueError("Prompt cannot be empty")
 
         p_lower = clean_prompt.lower()
-        
+
         # Determine event type & template baseline
         event_type = "general"
         if any(w in p_lower for w in ["hackathon", "coding", "hack", "buildathon"]):

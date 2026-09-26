@@ -189,14 +189,14 @@ print(res.json())</code></pre>
             <div class="col-lg-6">
               <div class="mb-3">
                 <span class="method-badge get">GET</span>
-                <span class="endpoint-url">/api/v1/auth/me</span>
+                <span class="endpoint-url">/api/v1/users/me</span>
               </div>
               <h4 class="text-white fw-bold">Get Profile Details</h4>
               <p class="text-white-50 small">Returns payload validation parameters of the currently authenticated user.</p>
               
               <div class="try-panel">
                 <h5 class="text-white small fw-bold mb-3">Try It Out</h5>
-                <form class="try-api-form" data-endpoint-id="me" data-method="GET" data-path="/api/v1/auth/me">
+                <form class="try-api-form" data-endpoint-id="me" data-method="GET" data-path="/api/v1/users/me">
                   <p class="text-white-50 small">Secure route. Insert Bearer Token inside the header box above before sending.</p>
                   <button type="submit" class="btn-execute">Send Request</button>
                 </form>
@@ -215,17 +215,17 @@ print(res.json())</code></pre>
                   <button class="copy-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
                 </div>
                 
-                <pre class="code-snippet code-pre" data-lang="curl"><code>curl http://127.0.0.1:5001/api/v1/auth/me \
+                <pre class="code-snippet code-pre" data-lang="curl"><code>curl http://127.0.0.1:5001/api/v1/users/me \
   -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
                 
-                <pre class="code-snippet code-pre d-none" data-lang="js"><code>fetch('http://127.0.0.1:5001/api/v1/auth/me', {
+                <pre class="code-snippet code-pre d-none" data-lang="js"><code>fetch('http://127.0.0.1:5001/api/v1/users/me', {
   headers: { 'Authorization': 'Bearer <TOKEN>' }
 }).then(r => r.json()).then(console.log);</code></pre>
                 
                 <pre class="code-snippet code-pre d-none" data-lang="py"><code>import requests
 
 res = requests.get(
-    "http://127.0.0.1:5001/api/v1/auth/me",
+    "http://127.0.0.1:5001/api/v1/users/me",
     headers={"Authorization": "Bearer <TOKEN>"}
 )
 print(res.json())</code></pre>

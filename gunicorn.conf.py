@@ -15,7 +15,6 @@ Tuned for:
   - Redis-backed sessions (no shared filesystem needed)
 """
 
-import multiprocessing
 import os
 
 # Use WEB_CONCURRENCY if set (Render/Heroku standard), otherwise default to 2 workers for 512MB safety

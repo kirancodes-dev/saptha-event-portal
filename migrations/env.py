@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 try:
-    from sqlalchemy import engine_from_config, pool
+    pass
 except Exception:
     sqlalchemy = None
 try:

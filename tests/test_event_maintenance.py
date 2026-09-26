@@ -1,6 +1,5 @@
 import datetime
 import pytest
-from datetime import timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from flask import Flask
@@ -16,14 +15,14 @@ def setup_test_db(monkeypatch):
     """Set up an in-memory SQLite database patched into db_pg for each test."""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    
+
     SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-    
+
     monkeypatch.setattr(db_pg, "_engine", engine)
     monkeypatch.setattr(db_pg, "_SessionLocal", SessionLocal)
-    
+
     yield engine
-    
+
     Base.metadata.drop_all(engine)
 
 

@@ -22,7 +22,6 @@ Each template configures:
 
 import copy
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timezone
 from services_event import EventService
 
 

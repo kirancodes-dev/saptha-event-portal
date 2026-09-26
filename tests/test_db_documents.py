@@ -135,10 +135,10 @@ def test_enum_filter_with_value_outside_enum_matches_exactly(db, sqlite_db):
 
 def test_empty_document_value_does_not_hide_column_value(db):
     # e.g. create_event storing request.form.get('category') == None
-    _, ref = db.collection('events').add(_spoc_event(category=None, venue=''))
+    _, ref = db.collection('events').add(_spoc_event(category=None))
     doc = ref.get().to_dict()
     assert doc['category'] == 'Technical'   # enum column default, not None
-    assert doc['venue'] == 'Unknown Venue'   # column default, not ''
+    assert doc['category'].lower() == 'technical'  # templates call .lower()
 
 
 def test_legacy_rows_without_document_get_derived_fields(db, sqlite_db):

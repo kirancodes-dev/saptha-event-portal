@@ -880,6 +880,11 @@ class SQLDocumentReference:
                     d[key] = val
                 continue
             current = getattr(record, attr)
+            if val in (None, '') and current not in (None, ''):
+                # An empty document value never hides a real column value
+                # (e.g. category None -> enum default Technical)
+                d[key] = _normalize_out(current)
+                continue
             try:
                 same = _normalize_out(self._convert_for_column(attr, col, val)) == _normalize_out(current)
             except Exception:

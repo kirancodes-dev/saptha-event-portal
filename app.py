@@ -201,9 +201,12 @@ _csp = {
     'font-src':    ["'self'", 'https://cdnjs.cloudflare.com',
                     'https://fonts.gstatic.com', 'data:'],
     'script-src':  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
-                    'https://cdn.jsdelivr.net', 'https://www.gstatic.com'],
-    'connect-src': ["'self'", 'https://firestore.googleapis.com',
-                    'https://identitytoolkit.googleapis.com'],
+                    'https://cdn.jsdelivr.net', 'https://www.gstatic.com',
+                    'https://checkout.razorpay.com'],
+    'connect-src': ["'self'", 'https://api.razorpay.com',
+                    'https://lumberjack.razorpay.com'],
+    # Razorpay checkout renders its payment form in an iframe
+    'frame-src':   ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
     'frame-ancestors': ["'self'"],
 }
 Talisman(

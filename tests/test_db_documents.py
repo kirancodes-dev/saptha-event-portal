@@ -133,6 +133,14 @@ def test_enum_filter_with_value_outside_enum_matches_exactly(db, sqlite_db):
         assert {e.category for e in s.query(Event).all()} == {EventCategory.Technical}
 
 
+def test_empty_document_value_does_not_hide_column_value(db):
+    # e.g. create_event storing request.form.get('category') == None
+    _, ref = db.collection('events').add(_spoc_event(category=None, venue=''))
+    doc = ref.get().to_dict()
+    assert doc['category'] == 'Technical'   # enum column default, not None
+    assert doc['venue'] == 'Unknown Venue'   # column default, not ''
+
+
 def test_legacy_rows_without_document_get_derived_fields(db, sqlite_db):
     event_id = str(uuid.uuid4())
     with sessionmaker(bind=sqlite_db)() as s:

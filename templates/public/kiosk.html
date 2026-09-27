@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SapthaEvent Gate Kiosk</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- Outfit Font -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
@@ -488,7 +489,19 @@
     <!-- Console Container -->
     <main class="console-container glass-panel">
         <h2 class="text-center fw-bold text-white mb-3">Self-Serve Lookup & Check-In</h2>
-        <p class="text-center text-muted small mb-4">Type your Registration ID, Email, Lead Name, or Team Name to fetch your ticket</p>
+        <p class="text-center text-muted small mb-3">Select your event and enter your Registration ID or Name</p>
+
+        <div class="mb-3 text-center" style="max-width: 450px; margin: 0 auto 1.5rem auto;">
+            <select id="kiosk-event-id" class="form-select bg-dark text-white border-secondary shadow-sm" onchange="hideResults()">
+                {% if not events %}
+                <option value="">No managed events available</option>
+                {% else %}
+                    {% for ev in events %}
+                    <option value="{{ ev.id }}" {% if ev.id == selected_event_id %}selected{% endif %}>{{ ev.get('title', ev.id) }}</option>
+                    {% endfor %}
+                {% endif %}
+            </select>
+        </div>
 
         <!-- Search Input -->
         <div class="search-input-wrapper">
@@ -656,23 +669,36 @@
             var val = searchInput.value.trim();
             if (!val) return;
 
+            var eventSelector = document.getElementById('kiosk-event-id');
+            var eventId = eventSelector ? eventSelector.value : (new URLSearchParams(window.location.search).get('event_id') || '');
+
             var resultsPanel = document.getElementById('kiosk-results');
+            if (!eventId) {
+                resultsPanel.innerHTML = '<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>Please select an event above first.</div>';
+                resultsPanel.style.display = 'block';
+                return;
+            }
+
             resultsPanel.innerHTML = '<div class="text-center p-4 text-muted"><i class="fas fa-spinner fa-spin fs-4 mb-2"></i> Querying Access Records...</div>';
             resultsPanel.style.display = 'block';
+
+            var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
 
             fetch('/checkin/kiosk/search', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({ query: val })
+                body: JSON.stringify({ query: val, event_id: eventId })
             })
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.results.length > 0) {
                     renderSearchResults(data.results);
                 } else {
-                    resultsPanel.innerHTML = '<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>No active registrations found. Please verify details.</div>';
+                    var msg = data.error || 'No active registrations found. Please verify details.';
+                    resultsPanel.innerHTML = `<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>${msg}</div>`;
                 }
             })
             .catch(err => {
@@ -741,10 +767,13 @@
             badge.classList.remove('print-active');
             statusText.innerHTML = '<i class="fas fa-spinner fa-spin me-2 text-primary"></i>Accessing server database...';
 
+            var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+
             fetch(`/checkin/kiosk/confirm/${regId}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 }
             })
             .then(res => res.json())

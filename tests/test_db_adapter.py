@@ -339,3 +339,112 @@ def test_pure_firestore_native_collections():
     sub_doc = push_ref.document(sub_id).get()
     assert sub_doc.exists
     assert sub_doc.get("endpoint") == "https://fcm.googleapis.com/fcm/send/test_endpoint"
+
+
+def test_universal_fields_persistence():
+    """Verify that universal fields (workflow_config, capacity, event_type, ticket_tiers, feedback) persist without silent drops."""
+    adapter = SQLFirestoreAdapter()
+    event_id = str(uuid.uuid4())
+
+    wf_config = {
+        "stages": ["draft", "published", "registration_open", "registration_closed", "in_progress", "completed", "certified"],
+        "initial_stage": "draft",
+        "rules": {"require_feedback_for_certificate": True}
+    }
+    eval_config = {
+        "type": "attendance_based",
+        "criteria": [{"key": "attendance", "max_score": 100}]
+    }
+    ticket_tiers = [
+        {"tier_id": "gen", "name": "General Admission", "price": 0.0, "capacity": 150}
+    ]
+
+    event_data = {
+        "title": "Quantum Computing Seminar",
+        "description": "Exploration of quantum systems.",
+        "category": "Technical",
+        "event_type": "seminar",
+        "capacity": 150,
+        "pricing_type": "free",
+        "status": "draft",
+        "date": "2026-11-20",
+        "venue": "Auditorium 1",
+        "workflow_config": wf_config,
+        "evaluation_config": eval_config,
+        "ticket_tiers": ticket_tiers,
+    }
+
+    # 1. Test persistence via set()
+    adapter.collection("events").document(event_id).set(event_data)
+
+    doc = adapter.collection("events").document(event_id).get()
+    assert doc.exists
+    data = doc.to_dict()
+    assert data["event_type"] == "seminar"
+    assert data["capacity"] == 150
+    assert data["pricing_type"] == "free"
+    assert data["status"] == "draft"
+    assert data["workflow_config"]["stages"] == wf_config["stages"]
+    assert data["workflow_config"]["rules"]["require_feedback_for_certificate"] is True
+    assert data["evaluation_config"]["type"] == "attendance_based"
+    assert len(data["ticket_tiers"]) == 1
+    assert data["ticket_tiers"][0]["name"] == "General Admission"
+
+    # 2. Test update() persists modified fields without silent drop
+    adapter.collection("events").document(event_id).update({
+        "status": "published",
+        "capacity": 180,
+        "event_type": "workshop"
+    })
+    doc_up = adapter.collection("events").document(event_id).get()
+    data_up = doc_up.to_dict()
+    assert data_up["status"] == "published"
+    assert data_up["capacity"] == 180
+    assert data_up["event_type"] == "workshop"
+    # Ensure nested config wasn't cleared
+    assert data_up["workflow_config"]["stages"] == wf_config["stages"]
+
+    # 3. Test Registration new fields persistence (checkin_time, ticket_id, feedback)
+    reg_id = str(uuid.uuid4())
+    reg_data = {
+        "event_id": event_id,
+        "lead_name": "Alice Attendee",
+        "lead_email": "alice@test.org",
+        "lead_phone": "9876543210",
+        "status": "confirmed",
+        "attendance": "Pending",
+        "ticket_id": "tkt_12345",
+        "checkin_time": "10:30:00",
+        "feedback": {"rating": 5, "comments": "Inspiring talk!"}
+    }
+    adapter.collection("registrations").document(reg_id).set(reg_data)
+
+    rdoc = adapter.collection("registrations").document(reg_id).get()
+    assert rdoc.exists
+    rdata = rdoc.to_dict()
+    assert rdata["ticket_id"] == "tkt_12345"
+    assert rdata["checkin_time"] == "10:30:00"
+    assert rdata["feedback"]["rating"] == 5
+    assert rdata["feedback"]["comments"] == "Inspiring talk!"
+
+    # 4. Test ticket model persistence
+    ticket_data = {
+        "id": "tkt_12345",
+        "event_id": event_id,
+        "registration_id": reg_id,
+        "user_email": "alice@test.org",
+        "ticket_type": "General",
+        "ticket_code": "TKT-SEMINAR-ABC12",
+        "qr_token_hash": "hash123",
+        "gate_assignment": "Gate 1",
+        "seat_assignment": "Row A",
+        "status": "active"
+    }
+    adapter.collection("tickets").document("tkt_12345").set(ticket_data)
+    tdoc = adapter.collection("tickets").document("tkt_12345").get()
+    assert tdoc.exists
+    tdata = tdoc.to_dict()
+    assert tdata["ticket_code"] == "TKT-SEMINAR-ABC12"
+    assert tdata["registration_id"] == reg_id
+    assert tdata["status"] == "active"
+

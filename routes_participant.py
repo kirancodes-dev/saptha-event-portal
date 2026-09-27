@@ -26,7 +26,21 @@ except ImportError:
     FieldFilter = None
 from werkzeug.security import generate_password_hash
 
-from models import db
+class DynamicDBProxy:
+    def __getattr__(self, name):
+        try:
+            import app as app_module
+            if hasattr(app_module, 'db') and app_module.db is not None:
+                return getattr(app_module.db, name)
+        except Exception:
+            pass
+        try:
+            from models import db as models_db
+            return getattr(models_db, name)
+        except Exception:
+            raise AttributeError(f"No DB available for attribute '{name}'")
+
+db = DynamicDBProxy()
 from utils import login_required, role_required, log_action, safe_int
 from utils_email import send_ticket_email
 
@@ -91,16 +105,16 @@ def dashboard():
         r['final_score']  = r.get('final_score')
         r['ai_summary']   = r.get('ai_summary')   # Gemini performance summary
 
-        # Certificate eligible: attended + event completed
+        # Certificate eligible: attended + event completed or certified
         r['cert_eligible'] = (
             r.get('attendance') == 'Present' and
-            evt.get('status') == 'completed'
+            evt.get('status') in ('completed', 'certified')
         )
 
         # Feedback already submitted?
         r['feedback_done'] = bool(r.get('feedback'))
 
-        if evt.get('status') == 'active':
+        if evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
             active_tickets.append(r)
         else:
             completed_events.append(r)
@@ -191,15 +205,30 @@ def view_certificate(reg_id):
         flash("Registration not found.", "danger")
         return redirect('/participant/dashboard')
 
-    reg_data = reg_doc.to_dict()
-    if reg_data.get('lead_email') != session.get('user_id'):
+    reg_data = reg_doc.to_dict() or {}
+    user_email = session.get('user_id')
+    is_owner = (reg_data.get('lead_email') == user_email) or any(
+        (m.get('email') or '').lower() == (user_email or '').lower()
+        for m in reg_data.get('members', [])
+    )
+    if not is_owner:
         flash("Unauthorised access.", "danger")
         return redirect('/participant/dashboard')
     if reg_data.get('attendance') != 'Present':
         flash("Certificates are only issued to students who attended.", "warning")
         return redirect('/participant/dashboard')
 
-    event_data = db.collection('events').document(reg_data['event_id']).get().to_dict()
+    event_data = db.collection('events').document(reg_data['event_id']).get().to_dict() or {}
+    event_status = (event_data.get('status') or '').lower()
+    if event_status not in ('completed', 'certified'):
+        flash("Certificates are only available once the event is completed.", "warning")
+        return redirect('/participant/dashboard')
+
+    rules = (event_data.get('workflow_config') or {}).get('rules', {})
+    if rules.get('require_feedback_for_certificate') and not reg_data.get('feedback'):
+        flash("Please provide your feedback to receive your certificate.", "info")
+        return redirect(f'/participant/feedback/{reg_id}')
+
     return render_template('participant/certificate.html',
                             student_name=reg_data.get('lead_name'),
                             event=event_data)
@@ -529,7 +558,10 @@ def cancel_registration(reg_id):
     # Trigger waitlist promotion
     try:
         from tasks.waitlist_tasks import promote_from_waitlist
-        promote_from_waitlist.delay(event_id)
+        try:
+            promote_from_waitlist.delay(event_id)
+        except Exception:
+            promote_from_waitlist.apply(args=[event_id])
     except Exception:
         pass
 
@@ -581,10 +613,187 @@ def badge_card(reg_id):
         flash("Registration not found.", "danger")
         return redirect('/participant/dashboard')
 
-    reg = reg_doc.to_dict()
-    if reg.get('lead_email') != session.get('user_id'):
+    reg = reg_doc.to_dict() or {}
+    user_email = session.get('user_id')
+    is_owner = (reg.get('lead_email') == user_email) or any(
+        (m.get('email') or '').lower() == (user_email or '').lower()
+        for m in reg.get('members', [])
+    )
+    if not is_owner:
         flash("Unauthorised.", "danger")
         return redirect('/participant/dashboard')
 
     event = db.collection('events').document(reg['event_id']).get().to_dict() or {}
     return render_template('participant/badge.html', reg=reg, event=event, reg_id=reg_id)
+
+
+# =========================================================
+# 9. MY EVENTS (Upcoming, Registered, Waitlisted, Attended, Certificates, Cancelled)
+# =========================================================
+@participant_bp.route('/my_events')
+@login_required
+def my_events():
+    user_email = (session.get('user_id') or '').strip().lower()
+    today_str = datetime.date.today().strftime('%Y-%m-%d')
+
+    upcoming = []
+    registered = []
+    waitlisted = []
+    attended = []
+    certificates = []
+    cancelled = []
+
+    try:
+        # Find registrations for user
+        regs = list(db.collection('registrations').where('lead_email', '==', user_email).stream())
+        if not regs:
+            regs = list(db.collection('registrations').where('student_email', '==', user_email).stream())
+
+        for reg in regs:
+            r = reg.to_dict()
+            r['id'] = reg.id
+            r['registration_id'] = reg.id
+
+            # Fetch event
+            ev_id = str(r.get('event_id', ''))
+            event_doc = db.collection('events').document(ev_id).get() if ev_id else None
+            evt = (event_doc.to_dict() if event_doc and event_doc.exists else {})
+            evt['id'] = ev_id
+
+            # Enrich registration object
+            r['event_title'] = evt.get('title') or r.get('event_title', 'Campus Event')
+            r['event_venue'] = evt.get('room_name') or evt.get('venue') or 'SNPSU Campus'
+            r['event_date'] = evt.get('date') or ''
+            r['event_start'] = evt.get('start_datetime') or evt.get('date') or ''
+            r['event_category'] = evt.get('category') or 'General'
+            r['event_status'] = evt.get('status') or 'active'
+            r['banner_url'] = evt.get('banner_url') or evt.get('poster_url') or ''
+            r['slug'] = evt.get('slug') or ev_id
+
+            # Fetch ticket if any
+            ticket = None
+            ticket_id = r.get('ticket_id')
+            if ticket_id:
+                tdoc = db.collection('tickets').document(ticket_id).get()
+                if tdoc.exists:
+                    ticket = tdoc.to_dict()
+            if not ticket and ev_id:
+                try:
+                    t_stream = list(db.collection('tickets').where('registration_id', '==', reg.id).stream())
+                    if t_stream:
+                        ticket = t_stream[0].to_dict()
+                except Exception:
+                    pass
+            r['ticket'] = ticket
+            r['ticket_code'] = ticket.get('ticket_code') if ticket else r.get('ticket_code')
+
+            # Check check-in status
+            is_checked_in = (
+                r.get('attendance') == 'Present' or
+                r.get('status') == 'checked_in' or
+                bool(r.get('checked_in')) or
+                bool(r.get('checkin_time')) or
+                bool(ticket and ticket.get('checked_in_at'))
+            )
+            if not is_checked_in:
+                try:
+                    chk_stream = list(db.collection('checkins').where('registration_id', '==', reg.id).stream())
+                    if not chk_stream and user_email and ev_id:
+                        chk_stream = list(db.collection('checkins').where('attendee_email', '==', user_email).where('event_id', '==', ev_id).stream())
+                    if chk_stream:
+                        is_checked_in = True
+                except Exception:
+                    pass
+            r['is_checked_in'] = is_checked_in
+
+            # Check certificate status
+            has_certificate = (
+                r.get('certificate_issued') is True or
+                bool(r.get('certificate_url')) or
+                (is_checked_in and evt.get('status') in ('completed', 'certified'))
+            )
+            r['has_certificate'] = has_certificate
+
+            # Google calendar URL & .ics
+            from services_venue import get_google_calendar_url
+            r['google_calendar_url'] = get_google_calendar_url(evt)
+            r['ics_url'] = f"/events/{r['slug']}/calendar.ics"
+
+            # Categorize into tabs
+            reg_status = (r.get('status') or 'confirmed').strip().lower()
+            ev_status = (evt.get('status') or 'active').strip().lower()
+
+            # 1. Cancelled
+            if reg_status == 'cancelled' or ev_status == 'cancelled':
+                cancelled.append(r)
+                continue
+
+            # 2. Waitlisted
+            if reg_status in ('waitlist', 'waitlisted'):
+                waitlisted.append(r)
+                continue
+
+            # 3. Attended
+            if is_checked_in:
+                attended.append(r)
+
+            # 4. Certificates
+            if has_certificate:
+                certificates.append(r)
+
+            # 5. Registered (all active registrations)
+            registered.append(r)
+
+            # 6. Upcoming (event date is in future / today or later, event is active/published)
+            ev_date = r['event_date']
+            if ev_date >= today_str or not ev_date:
+                upcoming.append(r)
+
+        # Also retrieve standalone certificates from certificates collection
+        try:
+            certs_stream = db.collection('certificates').where('recipient_email', '==', user_email).stream()
+            existing_cert_ids = {c.get('id') for c in certificates if c.get('id')}
+            for cdoc in certs_stream:
+                cd = cdoc.to_dict()
+                cd['id'] = cdoc.id
+                if cd['id'] not in existing_cert_ids:
+                    certificates.append(cd)
+                    existing_cert_ids.add(cd['id'])
+        except Exception:
+            pass
+
+    except Exception as exc:
+        current_app.logger.error("Error loading my_events: %s", exc)
+
+    is_json = (
+        request.path.endswith('/api/my_events') or
+        request.args.get('format') == 'json' or
+        request.headers.get('Accept') == 'application/json'
+    )
+    if is_json:
+        return jsonify({
+            'upcoming': upcoming,
+            'registered': registered,
+            'waitlisted': waitlisted,
+            'attended': attended,
+            'certificates': certificates,
+            'cancelled': cancelled,
+        })
+
+    return render_template(
+        'participant/my_events.html',
+        upcoming=upcoming,
+        registered=registered,
+        waitlisted=waitlisted,
+        attended=attended,
+        certificates=certificates,
+        cancelled=cancelled,
+        active_tab=request.args.get('tab', 'upcoming'),
+    )
+
+
+@participant_bp.route('/api/my_events')
+@login_required
+def api_my_events():
+    return my_events()
+

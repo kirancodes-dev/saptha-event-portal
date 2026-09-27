@@ -230,7 +230,15 @@ def leave_team(team_id):
     team  = doc.to_dict() or {}
     email = session.get('user_id') or ''
 
-    if team.get('lead_email', '').lower() == email.lower():
+    # IDOR protection: Verify caller is actually in the team
+    is_leader = team.get('lead_email', '').lower() == email.lower()
+    is_member = any((m.get('email') or '').lower() == email.lower() for m in team.get('members', []))
+
+    if not (is_leader or is_member):
+        flash("You are not a member of this team.", "danger")
+        return redirect('/participant/dashboard')
+
+    if is_leader:
         # Leader leaving = disband team
         ref.delete()
         log_action(email, 'team_disband', team_id)

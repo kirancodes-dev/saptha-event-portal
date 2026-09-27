@@ -29,8 +29,22 @@ try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:
     FieldFilter = None
+class DynamicDBProxy:
+    def __getattr__(self, name):
+        try:
+            import app as app_module
+            if hasattr(app_module, 'db') and app_module.db is not None:
+                return getattr(app_module.db, name)
+        except Exception:
+            pass
+        try:
+            from models import db as models_db
+            return getattr(models_db, name)
+        except Exception:
+            raise AttributeError(f"No DB available for attribute '{name}'")
+
+db = DynamicDBProxy()
 from werkzeug.security import generate_password_hash
-from models import db
 from utils import login_required, role_required, log_action, safe_int
 from utils_email import (send_appointment_email, send_broadcast_email,
                          send_credentials_email, send_ticket_email, send_result_email)
@@ -43,7 +57,7 @@ except ImportError:
     _WA = False
 
 coord_bp    = Blueprint('coordinator', __name__, url_prefix='/coordinator')
-COORD_ROLES = ['ClubSPOC', 'EventCoordinator', 'Coordinator', 'SuperAdmin', 'Super Admin']
+COORD_ROLES = ['ClubSPOC', 'UnitAdmin', 'EventOrganizer', 'EventCoordinator', 'Coordinator', 'SuperAdmin', 'Super Admin', 'UniversityAdmin']
 
 def _wa(fn, *a, **kw):
     if _WA:
@@ -73,15 +87,13 @@ def dashboard():
                             .order_by('created_at', direction=firestore.Query.DESCENDING)
                             .stream())
         events = []; total_regs = 0; total_staff = 0
+        from services_permission import can
         for e in all_events_ref:
             d = e.to_dict(); d['id'] = e.id
-            # Non-superadmin coordinators only see events they are assigned to and not completed
+            # Scoped check: only events the user is authorized to manage or view
+            if not can(session, 'manage_registrations', d, db=db) and not can(session, 'view_analytics', d, db=db):
+                continue
             if not is_super:
-                in_staff = any(s.get('email') == user_email for s in d.get('staff', []))
-                in_coords = user_email in d.get('coordinators', [])
-                if not in_staff and not in_coords:
-                    continue
-                
                 # Hide completed events
                 current_date = datetime.date.today().strftime("%Y-%m-%d")
                 event_date = d.get('date', '9999-99-99')
@@ -109,12 +121,16 @@ def dashboard():
 @login_required
 @role_required(COORD_ROLES)
 def view_registrations(event_id):
+    from flask import abort
+    from services_permission import can
     try:
         event_doc = db.collection('events').document(event_id).get()
         if not event_doc.exists:
             flash("Event not found.", "danger")
             return redirect('/coordinator/dashboard')
         event = event_doc.to_dict(); event['id'] = event_id
+        if not can(session, 'manage_registrations', event, db=db):
+            abort(403)
         regs_raw = (db.collection('registrations')
                       .where(filter=_ff('event_id', '==', event_id)).stream())
         registrations = sorted(
@@ -123,6 +139,8 @@ def view_registrations(event_id):
         return render_template('coordinator/registrations.html',
             event=event, registrations=registrations, total=len(registrations))
     except Exception as exc:
+        if getattr(exc, 'code', None) == 403:
+            abort(403)
         flash(f"Error loading registrations: {exc}", "danger")
         return redirect('/coordinator/dashboard')
 
@@ -176,7 +194,16 @@ def create_event():
 @login_required
 @role_required(COORD_ROLES)
 def edit_event(event_id):
+    from flask import abort
+    from services_permission import can
     try:
+        event_doc = db.collection('events').document(event_id).get()
+        if not event_doc.exists:
+            abort(404)
+        event_data = event_doc.to_dict() or {}
+        event_data['id'] = event_id
+        if not can(session, 'edit_event', event_data, db=db):
+            abort(403)
         overview = request.form.get('overview', '').strip()
         criteria_list = [c.strip() for c in
             request.form.get('criteria', 'Overall Score').split(',') if c.strip()] or ['Overall Score']
@@ -481,9 +508,16 @@ def publish_results(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def export_registrations(event_id):
+    from flask import abort
+    from services_permission import can
     try:
         event_doc  = db.collection('events').document(event_id).get()
-        event_data = event_doc.to_dict() if event_doc.exists else {}
+        if not event_doc.exists:
+            abort(404)
+        event_data = event_doc.to_dict() or {}
+        event_data['id'] = event_id
+        if not can(session, 'export_data', event_data, db=db):
+            abort(403)
         is_team    = event_data.get('is_team_event', False)
         regs       = list(db.collection('registrations')
                           .where(filter=_ff('event_id', '==', event_id)).stream())
@@ -518,6 +552,8 @@ def export_registrations(event_id):
         return Response(output.getvalue(), mimetype='text/csv',
             headers={"Content-Disposition": f"attachment; filename={title}_Registrations.csv"})
     except Exception as exc:
+        if getattr(exc, 'code', None) == 403:
+            abort(403)
         flash(f"CSV export error: {exc}", "danger")
         return redirect('/coordinator/dashboard')
 
@@ -527,9 +563,16 @@ def export_registrations(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def export_excel(event_id):
+    from flask import abort
+    from services_permission import can
     try:
         event_doc  = db.collection('events').document(event_id).get()
-        event_data = event_doc.to_dict() if event_doc.exists else {}
+        if not event_doc.exists:
+            abort(404)
+        event_data = event_doc.to_dict() or {}
+        event_data['id'] = event_id
+        if not can(session, 'export_data', event_data, db=db):
+            abort(403)
         is_team    = event_data.get('is_team_event', False)
         regs       = list(db.collection('registrations')
                           .where(filter=_ff('event_id', '==', event_id)).stream())

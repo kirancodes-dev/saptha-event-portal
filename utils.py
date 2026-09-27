@@ -21,14 +21,27 @@ def login_required(f):
     return decorated
 
 
+ROLE_ALIASES = {
+    'SuperAdmin': ['SuperAdmin', 'Super Admin', 'UniversityAdmin', 'Admin'],
+    'Super Admin': ['SuperAdmin', 'Super Admin', 'UniversityAdmin', 'Admin'],
+    'UniversityAdmin': ['SuperAdmin', 'Super Admin', 'UniversityAdmin', 'Admin'],
+    'Admin': ['SuperAdmin', 'Super Admin', 'UniversityAdmin', 'Admin'],
+    'ClubSPOC': ['ClubSPOC', 'UnitAdmin', 'EventOrganizer', 'SPOC'],
+    'UnitAdmin': ['ClubSPOC', 'UnitAdmin', 'EventOrganizer', 'SPOC'],
+    'EventOrganizer': ['ClubSPOC', 'UnitAdmin', 'EventOrganizer'],
+    'Coordinator': ['Coordinator', 'EventCoordinator'],
+    'EventCoordinator': ['Coordinator', 'EventCoordinator'],
+    'Student': ['Student', 'Participant'],
+    'Participant': ['Student', 'Participant'],
+}
+
+
 def role_required(roles):
     """
     Restrict a route to one or more roles.
+    Works as a compatibility shim bridging legacy roles and new scoped roles.
 
     Pass a single role string or a list of role strings.
-    Common mistake guard: if someone writes @role_required without ()
-    Flask passes the view function as `roles` — we catch that and
-    raise a clear error instead of a cryptic AttributeError.
     """
     if callable(roles):
         raise SyntaxError(
@@ -41,23 +54,27 @@ def role_required(roles):
         @wraps(f)
         def decorated(*args, **kwargs):
             user_role = session.get('role', '')
-            # Normalise "Super Admin" (old DB entries) -> "SuperAdmin"
+            # Normalise "Super Admin" -> "SuperAdmin"
             if user_role == 'Super Admin':
                 user_role = 'SuperAdmin'
 
-            valid_roles = [roles] if isinstance(roles, str) else list(roles)
-            # Also accept the legacy spaced variant
-            legacy = [r.replace('SuperAdmin', 'Super Admin') for r in valid_roles]
-            valid_roles = valid_roles + legacy
-
-            # SuperAdmin is a wildcard: always permitted on any @role_required route.
-            if user_role == 'SuperAdmin':
+            # UniversityAdmin and SuperAdmin are wildcards: always permitted on any @role_required route.
+            if user_role in ('SuperAdmin', 'UniversityAdmin'):
                 return f(*args, **kwargs)
 
-            if user_role not in valid_roles:
+            raw_roles = [roles] if isinstance(roles, str) else list(roles)
+            valid_roles = set()
+            for r in raw_roles:
+                valid_roles.add(r)
+                for alias in ROLE_ALIASES.get(r, []):
+                    valid_roles.add(alias)
+
+            # Check if user's role or any of its aliases match
+            user_roles_to_test = {user_role} | set(ROLE_ALIASES.get(user_role, []))
+            if not user_roles_to_test.intersection(valid_roles):
                 flash(
                     f"🛑 Access denied. You are logged in as '{session.get('role')}', "
-                    f"but this page requires {list(set(valid_roles))}.",
+                    f"but this page requires {list(valid_roles)}.",
                     "danger"
                 )
                 return redirect('/login')
@@ -162,13 +179,18 @@ def paginate_list(items: list, page: int, per_page: int = 20) -> dict:
 # =========================================================
 ROLE_REDIRECTS = {
     'Student':          '/participant/dashboard',
+    'Participant':      '/participant/dashboard',
     'SuperAdmin':       '/admin/dashboard',
     'Super Admin':      '/admin/dashboard',
     'Admin':            '/admin/dashboard',
+    'UniversityAdmin':  '/admin/dashboard',
     'Coordinator':      '/coordinator/dashboard',
-    'ClubSPOC':         '/spoc/dashboard',
     'EventCoordinator': '/coordinator/scanner',
+    'ClubSPOC':         '/spoc/dashboard',
+    'UnitAdmin':        '/spoc/dashboard',
+    'EventOrganizer':   '/spoc/dashboard',
     'Judge':            '/judge/dashboard',
+    'Volunteer':        '/coordinator/scanner',
 }
 
 

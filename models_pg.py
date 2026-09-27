@@ -6,6 +6,7 @@ SQL Connect GraphQL field names use camelCase — the mapping is handled
 by SQL Connect automatically when it generates the DDL.
 """
 import enum
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -37,11 +38,16 @@ def _utcnow():
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 class UserRole(enum.Enum):
-    SuperAdmin  = "SuperAdmin"
-    Coordinator = "Coordinator"
-    SPOC        = "SPOC"
-    Judge       = "Judge"
-    Participant = "Participant"
+    SuperAdmin       = "SuperAdmin"
+    Coordinator      = "Coordinator"
+    SPOC             = "SPOC"
+    Judge            = "Judge"
+    Participant      = "Participant"
+    UniversityAdmin  = "UniversityAdmin"
+    UnitAdmin        = "UnitAdmin"
+    EventOrganizer   = "EventOrganizer"
+    EventCoordinator = "EventCoordinator"
+    Volunteer        = "Volunteer"
 
 
 class EventCategory(enum.Enum):
@@ -52,11 +58,18 @@ class EventCategory(enum.Enum):
 
 
 class EventStatus(enum.Enum):
-    active    = "active"
-    inactive  = "inactive"
-    completed = "completed"
-    cancelled = "cancelled"
-    archived  = "archived"
+    draft               = "draft"
+    pending_approval    = "pending_approval"
+    published           = "published"
+    registration_open   = "registration_open"
+    registration_closed = "registration_closed"
+    in_progress         = "in_progress"
+    active              = "active"
+    inactive            = "inactive"
+    completed           = "completed"
+    certified           = "certified"
+    cancelled           = "cancelled"
+    archived            = "archived"
 
 
 class RegistrationStatus(enum.Enum):
@@ -64,6 +77,7 @@ class RegistrationStatus(enum.Enum):
     confirmed  = "confirmed"
     cancelled  = "cancelled"
     waitlisted = "waitlisted"
+    checked_in = "checked_in"
 
 
 class PaymentStatus(enum.Enum):
@@ -77,6 +91,7 @@ class AttendanceStatus(enum.Enum):
     Present = "Present"
     Absent  = "Absent"
     Pending = "Pending"
+
 
 
 # ── Models ───────────────────────────────────────────────────────────────────
@@ -143,6 +158,145 @@ class Organization(Base):
         }
 
 
+class OrgUnit(Base):
+    __tablename__ = "org_units"
+
+    id              = Column(String(128), primary_key=True)
+    organization_id = Column("organizationId", String(128), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    parent_id       = Column("parentId", String(128), ForeignKey("org_units.id", ondelete="SET NULL"), nullable=True, index=True)
+    type            = Column(String(50), nullable=False)  # 'central' | 'department' | 'club'
+    name            = Column(String(255), nullable=False)
+    slug            = Column(String(100), nullable=False, index=True)
+    created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'organization_id': self.organization_id,
+            'parent_id': self.parent_id,
+            'type': self.type,
+            'name': self.name,
+            'slug': self.slug,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class RoleAssignment(Base):
+    __tablename__ = "role_assignments"
+    __table_args__ = (
+        Index("idx_role_user_scope", "userId", "scopeType", "scopeId"),
+    )
+
+    id         = Column(String(128), primary_key=True)
+    user_id    = Column("userId", String(255), nullable=False, index=True)
+    role       = Column(String(50), nullable=False)
+    scope_type = Column("scopeType", String(50), nullable=False)  # 'university' | 'unit' | 'event'
+    scope_id   = Column("scopeId", String(128), nullable=True, index=True)
+    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'role': self.role,
+            'scope_type': self.scope_type,
+            'scope_id': self.scope_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Campus(Base):
+    __tablename__ = "campuses"
+
+    id              = Column(String(128), primary_key=True)
+    organization_id = Column("organizationId", String(128), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True)
+    name            = Column(String(255), nullable=False)
+    slug            = Column(String(100), nullable=False, unique=True, index=True)
+    address         = Column(Text)
+    created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    buildings = relationship("Building", back_populates="campus", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'organization_id': self.organization_id,
+            'organizationId': self.organization_id,
+            'name': self.name,
+            'slug': self.slug,
+            'address': self.address,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Building(Base):
+    __tablename__ = "buildings"
+
+    id         = Column(String(128), primary_key=True)
+    campus_id  = Column("campusId", String(128), ForeignKey("campuses.id", ondelete="CASCADE"), nullable=False, index=True)
+    name       = Column(String(255), nullable=False)
+    code       = Column(String(50))
+    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    campus = relationship("Campus", back_populates="buildings")
+    rooms  = relationship("Room", back_populates="building", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'campus_id': self.campus_id,
+            'campusId': self.campus_id,
+            'name': self.name,
+            'code': self.code,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Room(Base):
+    __tablename__ = "rooms"
+
+    id              = Column(String(128), primary_key=True)
+    building_id     = Column("buildingId", String(128), ForeignKey("buildings.id", ondelete="CASCADE"), nullable=False, index=True)
+    name            = Column(String(255), nullable=False)
+    room_number     = Column("roomNumber", String(100))
+    capacity        = Column(Integer, nullable=False, default=50)
+    type            = Column(String(50), nullable=False, default="classroom")  # auditorium | lab | classroom | seminar_hall | outdoor
+    facilities_json = Column("facilitiesJson", Text)
+    created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    building = relationship("Building", back_populates="rooms")
+    bookings = relationship("VenueBooking", back_populates="room", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        facilities = []
+        if self.facilities_json:
+            try:
+                facilities = json.loads(self.facilities_json) if isinstance(self.facilities_json, str) else self.facilities_json
+            except Exception:
+                facilities = [f.strip() for f in str(self.facilities_json).split(',') if f.strip()]
+        return {
+            'id': self.id,
+            'building_id': self.building_id,
+            'buildingId': self.building_id,
+            'name': self.name,
+            'room_number': self.room_number,
+            'roomNumber': self.room_number,
+            'capacity': self.capacity,
+            'type': self.type,
+            'facilities': facilities,
+            'facilities_json': self.facilities_json,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class Event(Base):
     __tablename__ = "events"
     __table_args__ = (
@@ -151,6 +305,8 @@ class Event(Base):
 
     id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     organization_id = Column("organizationId", String(128), index=True, nullable=True)
+    org_unit_id    = Column("orgUnitId", String(128), ForeignKey("org_units.id", ondelete="SET NULL"), nullable=True, index=True)
+    room_id        = Column("roomId", String(128), ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True, index=True)
     title          = Column(String(300), nullable=False)
     slug           = Column(String(300), index=True, nullable=True)
     description    = Column(Text)
@@ -186,15 +342,24 @@ class Event(Base):
     evaluation_config_json = Column("evaluationConfigJson", Text, nullable=True)
     ticket_tiers_json = Column("ticketTiersJson", Text, nullable=True)
     notification_rules_json = Column("notificationRulesJson", Text, nullable=True)
+    certificate_config_json = Column("certificateConfigJson", Text, nullable=True)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
     registrations = relationship("Registration", back_populates="event", cascade="all, delete-orphan")
     event_form    = relationship("EventForm", back_populates="event", uselist=False, cascade="all, delete-orphan")
+    room          = relationship("Room", foreign_keys=[room_id])
 
     def to_dict(self):
         return {
-            'id': str(self.id), 'organization_id': self.organization_id,
+            'id': str(self.id),
+            'organization_id': self.organization_id,
+            'organizationId': self.organization_id,
+            'org_unit_id': self.org_unit_id,
+            'orgUnitId': self.org_unit_id,
+            'room_id': self.room_id,
+            'roomId': self.room_id,
+            'room_name': self.room.name if self.room else None,
             'title': self.title, 'slug': self.slug, 'description': self.description,
             'category': self.category.value if self.category else None,
             'event_type': self.event_type, 'event_mode': self.event_mode,
@@ -212,6 +377,11 @@ class Event(Base):
             'poster_url': self.poster_url, 'rules': self.rules, 'prizes': self.prizes,
             'coordinator_id': self.coordinator_id,
             'registration_count': self.registration_count or 0,
+            'workflow_config': json.loads(self.workflow_config_json) if self.workflow_config_json else {},
+            'evaluation_config': json.loads(self.evaluation_config_json) if self.evaluation_config_json else {},
+            'ticket_tiers': json.loads(self.ticket_tiers_json) if self.ticket_tiers_json else [],
+            'notification_rules': json.loads(self.notification_rules_json) if self.notification_rules_json else [],
+            'certificate_config': json.loads(self.certificate_config_json) if self.certificate_config_json else {},
         }
 
 
@@ -239,6 +409,9 @@ class Registration(Base):
     amount_paid    = Column("amount_paid", Float)
     payment_mode   = Column("payment_mode", String(100))
     assigned_room  = Column("assigned_room", String(100))
+    checkin_time   = Column("checkin_time", String(100), nullable=True)
+    ticket_id      = Column("ticket_id", String(128), nullable=True)
+    feedback_json  = Column("feedback_json", Text, nullable=True)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
@@ -247,6 +420,12 @@ class Registration(Base):
     scores  = relationship("Score", back_populates="registration", cascade="all, delete-orphan")
 
     def to_dict(self):
+        fb = None
+        if self.feedback_json:
+            try:
+                fb = json.loads(self.feedback_json)
+            except Exception:
+                fb = None
         return {
             'id': str(self.id), 'event_id': str(self.event_id),
             'lead_name': self.lead_name, 'lead_email': self.lead_email,
@@ -257,6 +436,9 @@ class Registration(Base):
             'attendance': self.attendance.value if self.attendance else None,
             'current_round': self.current_round, 'is_eliminated': self.is_eliminated,
             'qr_code_url': self.qr_code_url,
+            'checkin_time': self.checkin_time,
+            'ticket_id': self.ticket_id,
+            'feedback': fb,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -450,4 +632,41 @@ class EventSession(Base):
         }
 
 
+class VenueBooking(Base):
+    __tablename__ = "venue_bookings"
+    __table_args__ = (
+        Index("idx_venue_bookings_room_time", "roomId", "startTime", "endTime", "status"),
+    )
 
+    id         = Column(String(128), primary_key=True)
+    room_id    = Column("roomId", String(128), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_id   = Column("eventId", UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=True, index=True)
+    session_id = Column("sessionId", String(128), ForeignKey("event_sessions.id", ondelete="CASCADE"), nullable=True, index=True)
+    start_time = Column("startTime", DateTime(timezone=True), nullable=False)
+    end_time   = Column("endTime", DateTime(timezone=True), nullable=False)
+    status     = Column(String(50), nullable=False, default="confirmed")  # hold | confirmed | cancelled
+    notes      = Column(Text)
+    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    room  = relationship("Room", back_populates="bookings")
+    event = relationship("Event")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'room_id': self.room_id,
+            'roomId': self.room_id,
+            'event_id': str(self.event_id) if self.event_id else None,
+            'eventId': str(self.event_id) if self.event_id else None,
+            'session_id': self.session_id,
+            'sessionId': self.session_id,
+            'start_time': self.start_time.isoformat() if self.start_time else None,
+            'startTime': self.start_time.isoformat() if self.start_time else None,
+            'end_time': self.end_time.isoformat() if self.end_time else None,
+            'endTime': self.end_time.isoformat() if self.end_time else None,
+            'status': self.status,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }

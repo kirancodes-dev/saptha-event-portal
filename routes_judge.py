@@ -18,7 +18,21 @@ try:
 except ImportError:
     FieldFilter = None
 
-from models import db
+class DynamicDBProxy:
+    def __getattr__(self, name):
+        try:
+            import app as app_module
+            if hasattr(app_module, 'db') and app_module.db is not None:
+                return getattr(app_module.db, name)
+        except Exception:
+            pass
+        try:
+            from models import db as models_db
+            return getattr(models_db, name)
+        except Exception:
+            raise AttributeError(f"No DB available for attribute '{name}'")
+
+db = DynamicDBProxy()
 from utils import login_required, role_required, log_action, safe_int
 
 judge_bp    = Blueprint('judge', __name__, url_prefix='/judge')
@@ -36,6 +50,7 @@ def _ff(f, op, v):
 @login_required
 @role_required(JUDGE_ROLES)
 def dashboard():
+    from services_permission import can
     email     = session.get('user_id')
     user_role = session.get('role')
     my_events = []
@@ -44,14 +59,8 @@ def dashboard():
                 .where(filter=_ff('status', '==', 'active'))
                 .stream()):
         data  = e.to_dict()
-        staff = data.get('staff', [])
-        assigned = any(
-            s.get('email') == email and s.get('role') == 'Judge'
-            for s in staff
-        )
-        if assigned or user_role in ('SuperAdmin', 'Super Admin'):
-            data['id'] = e.id
-
+        data['id'] = e.id
+        if can(session, 'score', data, db=db):
             # Count scored / total teams for progress bar
             regs       = list(db.collection('registrations')
                                .where(filter=_ff('event_id', '==', e.id))
@@ -76,12 +85,16 @@ def dashboard():
 @login_required
 @role_required(JUDGE_ROLES)
 def event_teams(event_id):
+    from flask import abort
+    from services_permission import can
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
         return redirect('/judge/dashboard')
 
     event       = event_doc.to_dict()
     event['id'] = event_id
+    if not can(session, 'score', event, db=db):
+        abort(403)
     judge_email = session.get('user_id')
     open_hall   = event.get('open_hall_mode', False)
     cur_round   = event.get('active_round', 1)
@@ -129,7 +142,11 @@ def submit_score(reg_id):
             return redirect('/judge/dashboard')
 
         event_id  = reg_data.get('event_id')
-        event_doc = db.collection('events').document(event_id).get().to_dict()
+        event_doc = db.collection('events').document(event_id).get().to_dict() or {}
+        event_doc['id'] = event_id
+        from services_permission import can
+        if not can(session, 'score', event_doc, db=db):
+            abort(403)
         if event_doc.get('scoring_locked'):
             flash("Scoring is locked by the SPOC for this round.", "danger")
             return redirect(f'/judge/event/{event_id}')
@@ -166,6 +183,8 @@ def submit_score(reg_id):
         return redirect(f'/judge/event/{event_id}')
 
     except Exception as exc:
+        if getattr(exc, 'code', None) == 403:
+            abort(403)
         flash(f"Error submitting score: {exc}", "danger")
         return redirect('/judge/dashboard')
 
@@ -188,7 +207,11 @@ def score_inline(reg_id):
         if not reg_data:
             return jsonify({'status': 'error', 'message': 'Registration not found'}), 404
 
-        event_doc = db.collection('events').document(reg_data['event_id']).get().to_dict()
+        event_doc = db.collection('events').document(reg_data['event_id']).get().to_dict() or {}
+        event_doc['id'] = reg_data['event_id']
+        from services_permission import can
+        if not can(session, 'score', event_doc, db=db):
+            return jsonify({'status': 'error', 'message': 'Forbidden'}), 403
         if event_doc.get('scoring_locked'):
             return jsonify({'status': 'locked',
                             'message': 'Scoring is locked by the SPOC for this round.'}), 403

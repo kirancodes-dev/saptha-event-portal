@@ -45,6 +45,7 @@ body{background:linear-gradient(135deg,var(--blue),#1a4fa0);min-height:100vh;dis
 
     <form method="POST" action="/checkin/{{ event.id }}/submit">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="code" value="{{ code }}">
       <div class="mb-3">
         <label class="form-label">Your Registered Email</label>
         <input type="email" name="email" value="{{ pre_email }}" class="form-control"

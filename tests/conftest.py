@@ -12,6 +12,10 @@ from collections import defaultdict
 # Ensure project root is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Ensure tests run with non-production development settings and no HTTPS redirects
+os.environ.setdefault("FLASK_ENV", "development")
+os.environ["FORCE_HTTPS"] = "false"
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # MOCK FIRESTORE
@@ -53,7 +57,17 @@ class MockDocumentReference:
 
     def update(self, data):
         if self._collection in self._store and self.id in self._store[self._collection]:
-            self._store[self._collection][self.id].update(data)
+            target = self._store[self._collection][self.id]
+            for k, v in data.items():
+                if hasattr(v, "value") and "Increment" in type(v).__name__:
+                    base = target.get(k, 0)
+                    try:
+                        base = int(base)
+                    except (ValueError, TypeError):
+                        base = 0
+                    target[k] = base + v.value
+                else:
+                    target[k] = v
 
     def delete(self):
         if self._collection in self._store:
@@ -62,6 +76,41 @@ class MockDocumentReference:
     def collection(self, name):
         sub_key = f"{self._collection}/{self.id}/{name}"
         return MockCollectionReference(sub_key, self._store)
+
+
+def _matches_filter(doc_data, *args, **kwargs):
+    field, op, val = None, None, None
+    if args and len(args) >= 3:
+        field, op, val = args[0], args[1], args[2]
+    elif "filter" in kwargs and kwargs["filter"] is not None:
+        filt = kwargs["filter"]
+        field = getattr(filt, "field_path", None) or getattr(filt, "field", None)
+        op = getattr(filt, "op_string", None) or getattr(filt, "operator", None) or "=="
+        val = getattr(filt, "value", None)
+    elif "field" in kwargs:
+        field = kwargs.get("field")
+        op = kwargs.get("op", "==")
+        val = kwargs.get("value")
+
+    if not field:
+        return True
+
+    doc_val = doc_data.get(field)
+    if op in ("==", "="):
+        return doc_val == val
+    elif op == "!=":
+        return doc_val != val
+    elif op == "in":
+        return doc_val in val if isinstance(val, (list, tuple, set)) else False
+    elif op == ">":
+        return doc_val is not None and val is not None and doc_val > val
+    elif op == ">=":
+        return doc_val is not None and val is not None and doc_val >= val
+    elif op == "<":
+        return doc_val is not None and val is not None and doc_val < val
+    elif op == "<=":
+        return doc_val is not None and val is not None and doc_val <= val
+    return True
 
 
 class MockQuery:
@@ -79,7 +128,8 @@ class MockQuery:
         return self
 
     def where(self, *args, **kwargs):
-        return self
+        filtered = [d for d in self._docs if _matches_filter(d.to_dict(), *args, **kwargs)]
+        return MockQuery(filtered)
 
 
 class MockCollectionReference:
@@ -101,10 +151,10 @@ class MockCollectionReference:
         return (None, ref)
 
     def where(self, *args, **kwargs):
-        field = kwargs.get("field")
         docs = []
         for doc_id, data in self._store.get(self._name, {}).items():
-            docs.append(MockDocumentSnapshot(doc_id, data))
+            if _matches_filter(data, *args, **kwargs):
+                docs.append(MockDocumentSnapshot(doc_id, data))
         return MockQuery(docs)
 
     def order_by(self, field, direction=None):
@@ -174,6 +224,7 @@ def app(mock_db):
     # Patch firebase before importing app
     with patch.dict(os.environ, {
         "FLASK_ENV": "development",
+        "FORCE_HTTPS": "false",
         "SECRET_KEY": "test-secret-key-for-pytest-12345",
         "JWT_SECRET_KEY": "test-jwt-secret-12345",
         "SUPER_ADMIN_EMAIL": "admin@test.edu",

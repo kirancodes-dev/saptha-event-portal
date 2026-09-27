@@ -385,22 +385,20 @@ init_tenant_middleware(app, db)
 from security_middleware import init_security_middleware  # noqa: E402
 init_security_middleware(app)
 
-# CSRF exemption for JSON-API blueprints hit via fetch()/XHR.
-# HTML form-serving blueprints (auth, admin, coordinator, judge, payment,
-# participant, profile, feedback) remain CSRF-protected.
-for _json_bp in (api_bp, ai_bp, chatbot_bp, forms_bp, api_v1_bp,
-                 notif_v2_bp, waitlist_bp, coupons_bp, compliance_bp, checkin_bp):
+# CSRF exemption for stateless REST API endpoints authenticating via JWT Bearer tokens
+# (RFC 6750) and public token exchange endpoints.
+# Session cookie-authenticated blueprints (ai_bp, chatbot_bp, forms_bp, notif_v2_bp,
+# waitlist_bp, coupons_bp, compliance_bp, checkin_bp, blast_preview) are strictly CSRF-protected.
+for _bearer_bp in (api_v1_bp,):
     try:
-        csrf.exempt(_json_bp)
+        csrf.exempt(_bearer_bp)
     except Exception as exc:
-        logger.warning("CSRF exempt failed for %s: %s", _json_bp.name, exc)
+        logger.warning("CSRF exempt failed for %s: %s", _bearer_bp.name, exc)
 
 try:
     from routes_auth import api_login, api_register
-    from routes_spoc import blast_preview
     csrf.exempt(api_login)
     csrf.exempt(api_register)
-    csrf.exempt(blast_preview)
 except Exception as exc:
     logger.warning("CSRF exempt failed for API endpoints: %s", exc)
 
@@ -531,10 +529,32 @@ def home():
         if dest != '/':
             return redirect(dest)
 
-    current_date    = datetime.datetime.now().strftime("%Y-%m-%d")
-    events          = []
+    # Query & filter parameters
+    q = (request.args.get('q') or request.args.get('search') or '').strip().lower()
+    filter_dept = (request.args.get('dept') or request.args.get('department') or '').strip().lower()
+    filter_type = (request.args.get('type') or request.args.get('event_type') or request.args.get('category') or '').strip().lower()
+    filter_mode = (request.args.get('mode') or request.args.get('event_mode') or '').strip().lower()
+    filter_fee = (request.args.get('fee') or request.args.get('pricing') or request.args.get('pricing_type') or '').strip().lower()
+
+    # Visibility scoping
+    viewer_email = (session.get('user_id') or '').strip().lower()
+    viewer_role = session.get('role') or ''
+    is_admin = viewer_role in ('SuperAdmin', 'Super Admin', 'UniversityAdmin')
+    viewer_dept = session.get('user', {}).get('department')
+    if not viewer_dept and viewer_email and db:
+        try:
+            udoc = db.collection('users').document(viewer_email).get()
+            if udoc.exists:
+                viewer_dept = udoc.to_dict().get('department')
+        except Exception:
+            pass
+
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    events = []
     calendar_events = []
-    ticker_events   = []
+    ticker_events = []
+    registered_event_ids = []
+    registered_events_map = {}
 
     cat_icon_map = {
         'Technical':  'fa-laptop-code',
@@ -551,81 +571,116 @@ def home():
         'Sports':     '#10b981',
         'Management': '#0891b2',
     }
-    registered_event_ids = []
-    registered_events_map = {}
+
     try:
         if db is not None:
-            # Fetch registered events for logged-in Student
             if session.get('user_id') and session.get('role') == 'Student':
                 try:
-                    regs = db.collection('registrations')\
-                        .where(filter=FieldFilter('lead_email', '==', session['user_id']))\
-                        .stream()
+                    regs = db.collection('registrations').where('lead_email', '==', session['user_id']).stream()
                     for r in regs:
                         rd = r.to_dict()
-                        if rd.get('status') != 'Cancelled' and rd.get('event_id'):
-                            eid = rd['event_id']
+                        if (rd.get('status') or '').strip().lower() != 'cancelled' and rd.get('event_id'):
+                            eid = str(rd['event_id'])
                             registered_event_ids.append(eid)
                             registered_events_map[eid] = r.id
                 except Exception as e:
                     app.logger.error("Error fetching student registrations: %s", e)
 
-            all_active = []
-            try:
-                event_list = db.collection('events').stream()
-                for e in event_list:
-                    d = e.to_dict() if hasattr(e, 'to_dict') else e
-                    if not isinstance(d, dict): continue
-                    d['id'] = getattr(e, 'id', None) or d.get('id') or 'event-demo'
-                    d.setdefault('description',        'An exciting event at Sapthagiri NPS University.')
-                    d.setdefault('registration_count', 0)
-                    d.setdefault('entry_fee',          0)
-                    d.setdefault('category',           'General')
-                    
-                    event_date = d.get('date', '9999-99-99')
-                    if event_date < current_date:
+            event_list = db.collection('events').stream()
+            for e in event_list:
+                d = e.to_dict() if hasattr(e, 'to_dict') else e
+                if not isinstance(d, dict): continue
+                d['id'] = getattr(e, 'id', None) or d.get('id') or 'event-demo'
+                status = (d.get('status') or 'active').strip().lower()
+                if status not in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+                    continue
+
+                # Visibility guard
+                ev_visibility = (d.get('visibility') or 'Public').strip().lower()
+                ev_dept = str(d.get('org_unit_id') or d.get('department') or '').strip().lower()
+                if ev_visibility in ('department', 'department_only') or d.get('department_only') is True:
+                    if not is_admin:
+                        if not viewer_email or not viewer_dept or viewer_dept.lower() != ev_dept:
+                            continue
+
+                # Search query
+                if q:
+                    searchable = f"{d.get('title','')} {d.get('description','')} {d.get('venue','')} {d.get('category','')} {d.get('rules','')}".lower()
+                    if q not in searchable:
                         continue
-                        
-                    deadline = d.get('deadline') or d.get('reg_deadline', '')
-                    d['is_closed'] = bool(deadline and current_date > deadline)
-                    all_active.append(d)
-            except Exception as exc:
-                app.logger.error("Error streaming active events: %s", exc)
 
-            if all_active:
-                all_active.sort(key=lambda x: x.get('date', '9999-99-99'))
-                events = all_active
+                # Department filter
+                if filter_dept and filter_dept != 'all':
+                    if filter_dept not in (ev_dept, str(d.get('org_unit_id') or '').lower(), str(d.get('department') or '').lower()):
+                        continue
 
-        for d in events:
-            cat = d.get('category', 'General')
-            calendar_events.append({
-                'title': d.get('title', 'Event'),
-                'start': d.get('date', ''),
-                'url':   f"/forms/register/{d['id']}",
-                'color': color_map.get(cat, '#0d2d62'),
-            })
+                # Event type filter
+                if filter_type and filter_type != 'all':
+                    ev_type_val = str(d.get('event_type') or d.get('category') or '').lower()
+                    if filter_type not in ev_type_val:
+                        continue
 
-        for d in events[:10]:
-            raw_date = d.get('date', '')
-            try:
-                fmt_date = datetime.datetime.strptime(raw_date, '%Y-%m-%d').strftime('%b %d')
-            except Exception:
-                fmt_date = raw_date
-            reg_count = d.get('registration_count', 0)
-            cat = d.get('category', 'General')
-            ticker_events.append({
-                'title':    d.get('title', 'Event'),
-                'date':     fmt_date,
-                'icon':     cat_icon_map.get(cat, 'fa-calendar-alt'),
-                'category': cat,
-                'reg_count': reg_count,
-                'event_id': d.get('id', ''),
-            })
+                # Mode filter
+                if filter_mode and filter_mode != 'all':
+                    ev_mode_val = str(d.get('mode') or d.get('event_mode') or ('online' if 'online' in str(d.get('venue') or '').lower() else 'offline')).lower()
+                    if filter_mode != ev_mode_val:
+                        continue
 
+                # Fee filter
+                if filter_fee and filter_fee != 'all':
+                    fee_val = float(d.get('fee') or (d.get('fees') or {}).get('regular', 0) or 0)
+                    is_free = (fee_val == 0.0) or (d.get('pricing_type') == 'free')
+                    if filter_fee == 'free' and not is_free:
+                        continue
+                    if filter_fee == 'paid' and is_free:
+                        continue
+
+                d.setdefault('description', 'An exciting event at Sapthagiri NPS University.')
+                d.setdefault('registration_count', 0)
+                d.setdefault('entry_fee', 0)
+                d.setdefault('category', 'General')
+                deadline = d.get('deadline') or d.get('reg_deadline', '')
+                d['is_closed'] = bool(deadline and current_date > deadline)
+                events.append(d)
+
+            events.sort(key=lambda x: str(x.get('date', '9999-99-99')))
     except Exception as exc:
-        app.logger.error("Home page Firebase error: %s", exc)
+        app.logger.error("Home page event loading error: %s", exc)
 
-    if not events:
+    if request.args.get('format') == 'json' or request.headers.get('Accept') == 'application/json':
+        return jsonify({
+            'total_events': len(events),
+            'events': events,
+            'count': len(events),
+        })
+
+    for d in events:
+        cat = d.get('category', 'General')
+        calendar_events.append({
+            'title': d.get('title', 'Event'),
+            'start': d.get('date', ''),
+            'url': f"/forms/register/{d['id']}",
+            'color': color_map.get(cat, '#0d2d62'),
+        })
+
+    for d in events[:10]:
+        raw_date = d.get('date', '')
+        try:
+            fmt_date = datetime.datetime.strptime(raw_date, '%Y-%m-%d').strftime('%b %d')
+        except Exception:
+            fmt_date = raw_date
+        reg_count = d.get('registration_count', 0)
+        cat = d.get('category', 'General')
+        ticker_events.append({
+            'title': d.get('title', 'Event'),
+            'date': fmt_date,
+            'icon': cat_icon_map.get(cat, 'fa-calendar-alt'),
+            'category': cat,
+            'reg_count': reg_count,
+            'event_id': d.get('id', ''),
+        })
+
+    if not events and not (q or filter_dept or filter_type or filter_mode or filter_fee):
         events = [{
             'id': 'demo-hackathon-2026',
             'title': 'SapthaHack 2026 — National AI Hackathon',
@@ -639,14 +694,15 @@ def home():
         }]
 
     _ctx = {
-        'events':               events,
-        'current_date':         current_date,
-        'today_date':           current_date,
-        'calendar_events':      json.dumps(calendar_events),
-        'ticker_events':        ticker_events,
-        'no_firebase':          db is None,
+        'events': events,
+        'current_date': current_date,
+        'today_date': current_date,
+        'calendar_events': json.dumps(calendar_events),
+        'ticker_events': ticker_events,
+        'no_firebase': db is None,
         'registered_event_ids': registered_event_ids,
         'registered_events_map': registered_events_map,
+        'search_query': q,
     }
     return render_template('index.html', **_ctx)
 
@@ -713,6 +769,7 @@ def events_catalog():
 def event_ics_download(slug):
     """Download RFC 5545 standard iCalendar file for the event."""
     from flask import Response
+    from services_venue import generate_event_ics
     from services_event import EventService
     ev = None
     try:
@@ -727,37 +784,11 @@ def event_ics_download(slug):
                 ev['id'] = doc.id
         except Exception:
             pass
-            
+
     if not ev:
         return Response("Event not found", status=404)
-        
-    title = ev.get('name') or ev.get('title') or 'Event'
-    desc = (ev.get('description') or ev.get('short_description') or '').replace('\n', ' ')
-    venue = ev.get('venue') or 'Main Venue'
-    date_str = ev.get('start_datetime') or ev.get('date') or ''
-    dt_clean = date_str.replace('-', '').replace(':', '')[:8] or '20260901'
-    dt_start = f"{dt_clean}T090000Z"
-    dt_end = f"{dt_clean}T180000Z"
-    uid = f"event-{ev.get('id', slug)}@events.snpsu.edu.in"
-    
-    ics_content = (
-        "BEGIN:VCALENDAR\r\n"
-        "VERSION:2.0\r\n"
-        "PRODID:-//SapthaEvent//Universal Event OS//EN\r\n"
-        "CALSCALE:GREGORIAN\r\n"
-        "METHOD:PUBLISH\r\n"
-        "BEGIN:VEVENT\r\n"
-        f"UID:{uid}\r\n"
-        f"DTSTAMP:20260917T000000Z\r\n"
-        f"DTSTART:{dt_start}\r\n"
-        f"DTEND:{dt_end}\r\n"
-        f"SUMMARY:{title}\r\n"
-        f"DESCRIPTION:{desc}\r\n"
-        f"LOCATION:{venue}\r\n"
-        "STATUS:CONFIRMED\r\n"
-        "END:VEVENT\r\n"
-        "END:VCALENDAR\r\n"
-    )
+
+    ics_content = generate_event_ics(ev)
     return Response(
         ics_content,
         mimetype="text/calendar",
@@ -790,8 +821,13 @@ def event_details(event_id):
         if not doc.exists:
             return render_template('404.html'), 404
 
-        event       = doc.to_dict()
+        event       = doc.to_dict() or {}
         event['id'] = event_id
+        status = (event.get('status') or '').lower()
+        if status in ('draft', 'pending_approval'):
+            from services_permission import can
+            if not can(session, 'edit_event', event, db=db):
+                return render_template('404.html'), 404
         event.setdefault('title',              'Event')
         event.setdefault('description',        '')
         event.setdefault('overview',           '')
@@ -896,6 +932,98 @@ def registration_confirmed():
     return render_template('participant/registration_confirmed.html', **data)
 
 
+def _filter_calendar_events(events_stream, args, session_dict, db_client):
+    """
+    Applies filters and visibility rules to events for the university calendar and public discovery.
+    Respects visibility: department-only events are hidden from other departments.
+    """
+    from services_venue import get_google_calendar_url
+
+    viewer_email = (session_dict.get('user_id') or '').strip().lower()
+    viewer_role = session_dict.get('role') or ''
+    is_admin = viewer_role in ('SuperAdmin', 'Super Admin', 'UniversityAdmin')
+
+    viewer_dept = session_dict.get('user', {}).get('department')
+    if not viewer_dept and viewer_email and db_client:
+        try:
+            udoc = db_client.collection('users').document(viewer_email).get()
+            if udoc.exists:
+                viewer_dept = udoc.to_dict().get('department')
+        except Exception:
+            pass
+
+    filter_dept = (args.get('dept') or args.get('department') or '').strip().lower()
+    filter_type = (args.get('event_type') or args.get('type') or args.get('category') or '').strip().lower()
+    filter_mode = (args.get('mode') or args.get('event_mode') or '').strip().lower()
+    filter_fee = (args.get('fee') or args.get('pricing') or args.get('pricing_type') or '').strip().lower()
+    my_events_only = str(args.get('my_events', '')).lower() in ('1', 'true', 'yes')
+
+    user_registered_event_ids = set()
+    if my_events_only and viewer_email and db_client:
+        regs = db_client.collection('registrations').where('lead_email', '==', viewer_email).stream()
+        for r in regs:
+            rd = r.to_dict()
+            if (rd.get('status') or '').strip().lower() != 'cancelled':
+                user_registered_event_ids.add(str(rd.get('event_id')))
+
+    filtered_events = []
+    for doc in events_stream:
+        ev = doc.to_dict() if hasattr(doc, 'to_dict') else doc
+        ev_id = doc.id if hasattr(doc, 'id') else ev.get('id')
+        ev['id'] = ev_id
+
+        # Must be active or published
+        ev_status = (ev.get('status') or 'active').strip().lower()
+        if ev_status not in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+            continue
+
+        # Visibility guard: department-only events
+        ev_visibility = (ev.get('visibility') or 'Public').strip().lower()
+        ev_dept = str(ev.get('org_unit_id') or ev.get('department') or '').strip().lower()
+
+        if ev_visibility in ('department', 'department_only') or ev.get('department_only') is True:
+            if not is_admin:
+                if not viewer_email or not viewer_dept or viewer_dept.lower() != ev_dept:
+                    continue  # Hidden from other departments and unauthenticated users
+
+        # "My events" filter
+        if my_events_only and str(ev_id) not in user_registered_event_ids:
+            continue
+
+        # Department / Club filter
+        if filter_dept and filter_dept != 'all':
+            unit_ids = {ev_dept, str(ev.get('org_unit_id') or '').lower(), str(ev.get('department') or '').lower()}
+            if filter_dept not in unit_ids:
+                continue
+
+        # Event type filter
+        if filter_type and filter_type != 'all':
+            ev_type_val = str(ev.get('event_type') or ev.get('category') or '').lower()
+            if filter_type not in ev_type_val:
+                continue
+
+        # Online / Offline mode filter
+        if filter_mode and filter_mode != 'all':
+            ev_mode_val = str(ev.get('mode') or ev.get('event_mode') or ('online' if 'online' in str(ev.get('venue') or '').lower() else 'offline')).lower()
+            if filter_mode != ev_mode_val:
+                continue
+
+        # Free / Paid filter
+        if filter_fee and filter_fee != 'all':
+            fee_val = float(ev.get('fee') or (ev.get('fees') or {}).get('regular', 0) or 0)
+            is_free = (fee_val == 0.0) or (ev.get('pricing_type') == 'free')
+            if filter_fee == 'free' and not is_free:
+                continue
+            if filter_fee == 'paid' and is_free:
+                continue
+
+        ev['google_calendar_url'] = get_google_calendar_url(ev)
+        ev['ics_url'] = f"/events/{ev.get('slug') or ev_id}/calendar.ics"
+        filtered_events.append(ev)
+
+    return filtered_events
+
+
 # =========================================================
 # CALENDAR JSON FEED
 # =========================================================
@@ -904,48 +1032,117 @@ def get_calendar_json():
     try:
         color_map = {'Technical':'#f37021','Cultural':'#7c3aed',
                      'Sports':'#10b981','Management':'#0891b2'}
+        all_docs = list(db.collection('events').stream())
+        filtered_events = _filter_calendar_events(all_docs, request.args, session, db)
+
         out = []
-        for d in (db.collection('events')
-                    .where(filter=FieldFilter('status', '==', 'active'))
-                    .stream()):
-            ev  = d.to_dict()
+        for ev in filtered_events:
             cat = ev.get('category', 'General')
-            out.append({'title': ev.get('title',''), 'start': ev.get('date',''),
-                        'url':   f"/forms/register/{d.id}",
-                        'color': color_map.get(cat, '#0d2d62')})
+            start_val = ev.get('start_datetime') or ev.get('date', '')
+            end_val = ev.get('end_datetime')
+            out.append({
+                'id': ev.get('id'),
+                'title': ev.get('title', 'Event'),
+                'start': start_val,
+                'end': end_val,
+                'url': f"/forms/register/{ev.get('id')}",
+                'color': color_map.get(cat, '#1a2557'),
+                'category': cat,
+                'venue': ev.get('room_name') or ev.get('venue', 'SNPSU'),
+                'google_calendar_url': ev.get('google_calendar_url'),
+                'ics_url': ev.get('ics_url'),
+                'event_mode': ev.get('event_mode', 'offline'),
+                'pricing_type': ev.get('pricing_type', 'free'),
+            })
         return jsonify(out)
-    except Exception:
+    except Exception as exc:
+        app.logger.error("API Calendar error: %s", exc)
         return jsonify([])
 
 
 # =========================================================
-# PUBLIC EVENTS CALENDAR
+# PUBLIC & UNIVERSITY EVENTS CALENDAR
 # =========================================================
 @app.route('/calendar')
 def events_calendar():
     color_map = {'Technical':'#f37021','Cultural':'#7c3aed',
                  'Sports':'#10b981','Management':'#0891b2'}
-    events, cal_events = [], []
     try:
-        for doc in (db.collection('events')
-                      .where(filter=FieldFilter('status', '==', 'active'))
-                      .stream()):
-            d = doc.to_dict()
-            d['id'] = doc.id
+        all_docs = list(db.collection('events').stream())
+        filtered_events = _filter_calendar_events(all_docs, request.args, session, db)
+        org_units = [u.to_dict() for u in db.collection('org_units').stream()] if db else []
+
+        cal_events = []
+        for d in filtered_events:
             cat = d.get('category', 'General')
-            events.append(d)
+            start_val = d.get('start_datetime') or d.get('date', '')
             cal_events.append({
+                'id':       d.get('id'),
                 'title':    d.get('title', 'Event'),
-                'start':    d.get('date', ''),
-                'url':      f"/forms/register/{doc.id}",
+                'start':    start_val,
+                'end':      d.get('end_datetime'),
+                'url':      f"/forms/register/{d.get('id')}",
                 'color':    color_map.get(cat, '#1a2557'),
                 'category': cat,
-                'venue':    d.get('venue', 'SNPSU'),
+                'venue':    d.get('room_name') or d.get('venue', 'SNPSU'),
+                'google_calendar_url': d.get('google_calendar_url'),
+                'ics_url': d.get('ics_url'),
             })
+
+        return render_template(
+            'public/calendar.html',
+            events=filtered_events,
+            calendar_events=cal_events,
+            org_units=org_units,
+            filters=request.args,
+        )
     except Exception as exc:
         app.logger.error("Calendar page error: %s", exc)
-    return render_template('public/calendar.html',
-                           events=events, calendar_events=cal_events)
+        return render_template('public/calendar.html', events=[], calendar_events=[], org_units=[], filters={})
+
+
+# =========================================================
+# PERSONAL CALENDAR FEED (.ICS)
+# =========================================================
+@app.route('/calendar/feed.ics')
+def personal_calendar_feed():
+    """Download RFC 5545 standard personal iCalendar feed for user's registered events."""
+    from flask import Response
+    from services_venue import generate_calendar_feed_ics
+
+    user_email = session.get('user_id') or request.args.get('user')
+    if not user_email:
+        empty_ics = (
+            "BEGIN:VCALENDAR\r\n"
+            "VERSION:2.0\r\n"
+            "PRODID:-//SapthaEvent//Personal Feed//EN\r\n"
+            "X-WR-CALNAME:SapthaEvent Personal Feed\r\n"
+            "END:VCALENDAR\r\n"
+        )
+        return Response(empty_ics, mimetype="text/calendar", headers={"Content-Disposition": "inline; filename=events_feed.ics"})
+
+    clean_email = user_email.strip().lower()
+    regs = list(db.collection('registrations').where('lead_email', '==', clean_email).stream())
+
+    events_list = []
+    for r in regs:
+        rd = r.to_dict()
+        if (rd.get('status') or '').strip().lower() == 'cancelled':
+            continue
+        ev_id = rd.get('event_id')
+        if ev_id:
+            ev_doc = db.collection('events').document(str(ev_id)).get()
+            if ev_doc.exists:
+                ev_data = ev_doc.to_dict()
+                ev_data['id'] = ev_doc.id
+                events_list.append(ev_data)
+
+    feed_ics = generate_calendar_feed_ics(events_list, calendar_name=f"{clean_email} Events")
+    return Response(
+        feed_ics,
+        mimetype="text/calendar",
+        headers={"Content-Disposition": f"inline; filename=personal_feed_{clean_email.split('@')[0]}.ics"}
+    )
 
 
 # =========================================================

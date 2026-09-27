@@ -39,7 +39,21 @@ except ImportError:
     FieldFilter = None
 from werkzeug.security import generate_password_hash
 
-from models import db
+class DynamicDBProxy:
+    def __getattr__(self, name):
+        try:
+            import app as app_module
+            if hasattr(app_module, 'db') and app_module.db is not None:
+                return getattr(app_module.db, name)
+        except Exception:
+            pass
+        try:
+            from models import db as models_db
+            return getattr(models_db, name)
+        except Exception:
+            raise AttributeError(f"No DB available for attribute '{name}'")
+
+db = DynamicDBProxy()
 from utils import login_required, role_required, log_action, safe_int
 from utils_email import send_registration_confirmed_email
 
@@ -291,10 +305,14 @@ def registration_page(event_id):
     if deadline and today > deadline:
         return render_template('public/registration_closed.html', event=event)
 
+    status = (event.get('status') or '').lower()
+    if status in ('draft', 'pending_approval', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
+        return render_template('public/registration_closed.html', event=event)
+
     # Capacity check
-    max_cap = safe_int((event.get('limits') or {}).get('max_participants', 0))
+    max_cap = safe_int((event.get('limits') or {}).get('max_participants', 0)) or safe_int(event.get('capacity', 0))
     is_waitlist = False
-    if max_cap and event.get('registration_count', 0) >= max_cap:
+    if max_cap and safe_int(event.get('registration_count', 0)) >= max_cap:
         is_waitlist = True
 
     # Already registered?
@@ -341,13 +359,18 @@ def submit_form(event_id):
         # Collect all answers — values are str for most fields, list[str] for checkbox_group
         answers: dict = {}
         for field in schema.get('fields', []):
-            fid = field.get('id', '')
+            fid = field.get('id') or field.get('field_name', '')
             if not fid or field.get('type') in ('heading', 'paragraph', 'divider'):
                 continue
-            if field['type'] == 'checkbox_group':
+            if field.get('type') == 'checkbox_group':
                 answers[fid] = request.form.getlist(fid)
             else:
                 answers[fid] = request.form.get(fid, '').strip()
+
+        # Always capture core identity fields if present in request.form
+        for core_key in ('full_name', 'name', 'email', 'phone', 'usn', 'team_name', 'ticket_tier', 'ticket_type'):
+            if core_key in request.form and core_key not in answers:
+                answers[core_key] = request.form.get(core_key, '').strip()
 
         # Validate
         errors = _validate_submission(schema, answers)
@@ -441,8 +464,13 @@ def submit_form(event_id):
         # Free vs paid fee calculation
         fee = safe_int(event_data.get('entry_fee', 0))
 
+        status = (event_data.get('status') or '').lower()
+        if status in ('draft', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
+            flash("Registration is closed for this event.", "warning")
+            return redirect(f'/forms/register/{event_id}')
+
         # Capacity check — if event is at capacity, add to waitlists instead
-        max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0))
+        max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0)) or safe_int(event_data.get('capacity', 0))
         current_count = safe_int(event_data.get('registration_count', 0))
         if max_cap and current_count >= max_cap:
             # Check if already on waitlists

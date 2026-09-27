@@ -154,16 +154,20 @@
         }
     </style>
 </head>
-<body class="{{ 'success' if status == 'success' else 'already' if status == 'already_in' else 'unpaid' if status == 'unpaid' else 'invalid' }}">
+<body class="{{ 'success' if status in ('success', 'valid', 'valid_offline') else 'already' if status == 'already_in' else 'unpaid' if status == 'unpaid' else 'invalid' }}">
 
     <div class="result-card">
 
         <!-- Status strip -->
-        <div class="status-strip {{ 'success' if status == 'success' else 'already' if status == 'already_in' else 'unpaid' if status == 'unpaid' else 'invalid' }}">
+        <div class="status-strip {{ 'success' if status in ('success', 'valid', 'valid_offline') else 'already' if status == 'already_in' else 'unpaid' if status == 'unpaid' else 'invalid' }}">
             {% if status == 'success' %}
                 <i class="fas fa-check-circle status-icon"></i>
                 <div class="status-heading">Entry Granted ✓</div>
-                <div class="status-sub">Attendance marked automatically</div>
+                <div class="status-sub">Attendance marked successfully</div>
+            {% elif status in ('valid', 'valid_offline') %}
+                <i class="fas fa-ticket-alt status-icon"></i>
+                <div class="status-heading">Ticket Valid ✓</div>
+                <div class="status-sub">Verified & ready for check-in</div>
             {% elif status == 'already_in' %}
                 <i class="fas fa-user-check status-icon"></i>
                 <div class="status-heading">Already Checked In</div>
@@ -221,6 +225,21 @@
         {% else %}
         <div class="detail-body" style="text-align:center;padding:24px;color:#64748b;">
             No registration data found for this QR code.
+        </div>
+        {% endif %}
+
+        {% if status in ('valid', 'valid_offline') and can_checkin %}
+        <div class="px-4 pb-3">
+            <form method="POST" action="/ticket/verify/{{ token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-success w-100 py-3 rounded-pill fw-bold shadow-sm">
+                    <i class="fas fa-check-circle me-1"></i> Mark Attendance
+                </button>
+            </form>
+        </div>
+        {% elif status in ('valid', 'valid_offline') and not can_checkin %}
+        <div class="px-4 pb-3 text-center text-muted small">
+            <i class="fas fa-info-circle me-1"></i> Staff login required to mark attendance
         </div>
         {% endif %}
 

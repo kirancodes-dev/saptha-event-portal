@@ -1,20 +1,36 @@
 import collections
 import datetime
 import json
+import re
+import uuid
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, session
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, jsonify
 try:
     from google.cloud import firestore
 except ImportError:
     firestore = None
 from werkzeug.security import generate_password_hash
 
-from models import db
+class DynamicDBProxy:
+    def __getattr__(self, name):
+        try:
+            import app as app_module
+            if hasattr(app_module, 'db') and app_module.db is not None:
+                return getattr(app_module.db, name)
+        except Exception:
+            pass
+        try:
+            from models import db as models_db
+            return getattr(models_db, name)
+        except Exception:
+            raise AttributeError(f"No DB available for attribute '{name}'")
+
+db = DynamicDBProxy()
 from utils import login_required, role_required, log_action
 from utils_email import send_credentials_email
 
 admin_bp    = Blueprint('admin', __name__, url_prefix='/admin')
-SUPER_ROLES = ['SuperAdmin', 'Super Admin']
+SUPER_ROLES = ['SuperAdmin', 'Super Admin', 'UniversityAdmin']
 
 
 # =========================================================
@@ -605,3 +621,412 @@ def report():
         generated_at=datetime.datetime.now().strftime('%d %B %Y, %I:%M %p'),
         today=datetime.date.today().strftime('%d %B %Y'),
     )
+
+
+# =========================================================
+# 5. ORG UNITS & ROLE ASSIGNMENTS MANAGEMENT
+# =========================================================
+@admin_bp.route('/org_units')
+@login_required
+@role_required(SUPER_ROLES)
+def manage_org_units():
+    try:
+        units_stream = list(db.collection('org_units').stream())
+        units = []
+        for u in units_stream:
+            d = u.to_dict() or {}
+            d['id'] = u.id
+            units.append(d)
+
+        # If no units yet, auto-seed default units
+        if not units:
+            from services_permission import migrate_roles_and_units
+            migrate_roles_and_units(db)
+            units = [dict(u.to_dict() or {}, id=u.id) for u in db.collection('org_units').stream()]
+
+        roles_stream = list(db.collection('role_assignments').stream())
+        role_assignments = []
+        for r in roles_stream:
+            d = r.to_dict() or {}
+            d['id'] = r.id
+            role_assignments.append(d)
+
+        # Pending approval events
+        pending_events = []
+        for e in db.collection('events').stream():
+            d = e.to_dict() or {}
+            d['id'] = e.id
+            if (d.get('status') or '').lower() == 'pending_approval':
+                pending_events.append(d)
+
+        users = []
+        for u in db.collection('users').stream():
+            d = u.to_dict() or {}
+            d['id'] = u.id
+            users.append(d)
+
+        all_events = []
+        for e in db.collection('events').stream():
+            d = e.to_dict() or {}
+            d['id'] = e.id
+            all_events.append(d)
+
+        return render_template(
+            'admin/org_units.html',
+            units=units,
+            role_assignments=role_assignments,
+            pending_events=pending_events,
+            users=users,
+            events=all_events,
+            user_name=session.get('name'),
+        )
+    except Exception as exc:
+        flash(f"Error loading org units: {exc}", "danger")
+        return redirect('/admin/dashboard')
+
+
+@admin_bp.route('/org_units/create', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def create_org_unit():
+    import re
+    import uuid
+    try:
+        name = request.form.get('name', '').strip()
+        unit_type = request.form.get('type', 'department').strip().lower()
+        slug = request.form.get('slug', '').strip().lower()
+        parent_id = request.form.get('parent_id', 'central').strip() or 'central'
+
+        if not name:
+            flash("Unit name is required.", "warning")
+            return redirect('/admin/org_units')
+
+        if not slug:
+            slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+
+        unit_id = slug or str(uuid.uuid4())[:8]
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        db.collection('org_units').document(unit_id).set({
+            'id': unit_id,
+            'organization_id': 'default',
+            'parent_id': parent_id if parent_id != 'none' else None,
+            'type': unit_type,
+            'name': name,
+            'slug': slug,
+            'created_at': now_iso,
+            'updated_at': now_iso,
+        })
+        log_action(db, "ORG_UNIT_CREATED", f"Unit {name} ({unit_type}) created by {session.get('user_id')}")
+        flash(f"✅ Unit '{name}' created successfully.", "success")
+    except Exception as exc:
+        flash(f"Error creating unit: {exc}", "danger")
+    return redirect('/admin/org_units')
+
+
+@admin_bp.route('/roles/assign', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def assign_role():
+    try:
+        user_id = request.form.get('user_id', '').lower().strip()
+        role = request.form.get('role', '').strip()
+        scope_type = request.form.get('scope_type', 'university').strip().lower()
+        scope_id = request.form.get('scope_id', '').strip()
+
+        if not user_id or not role:
+            flash("User email and role are required.", "warning")
+            return redirect('/admin/org_units')
+
+        if scope_type == 'university' and not scope_id:
+            scope_id = 'default'
+
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        clean_user = user_id.replace('@', '_').replace('.', '_')
+        clean_scope = scope_id.replace('@', '_').replace('.', '_')
+        ra_id = f"ra_{clean_user}_{scope_type}_{clean_scope}"
+
+        db.collection('role_assignments').document(ra_id).set({
+            'id': ra_id,
+            'user_id': user_id,
+            'role': role,
+            'scope_type': scope_type,
+            'scope_id': scope_id,
+            'created_at': now_iso,
+        })
+
+        # Update user record role if exists
+        try:
+            udoc = db.collection('users').document(user_id)
+            if udoc.get().exists:
+                udoc.update({'role': role})
+        except Exception:
+            pass
+
+        log_action(db, "ROLE_ASSIGNED", f"Role {role} ({scope_type}:{scope_id}) assigned to {user_id} by {session.get('user_id')}")
+        flash(f"✅ Assigned {role} to {user_id} ({scope_type}: {scope_id}).", "success")
+    except Exception as exc:
+        flash(f"Error assigning role: {exc}", "danger")
+    return redirect('/admin/org_units')
+
+
+@admin_bp.route('/roles/revoke/<assignment_id>', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def revoke_role(assignment_id):
+    try:
+        db.collection('role_assignments').document(assignment_id).delete()
+        log_action(db, "ROLE_REVOKED", f"Role assignment {assignment_id} revoked by {session.get('user_id')}")
+        flash("✅ Role assignment revoked.", "success")
+    except Exception as exc:
+        flash(f"Error revoking role: {exc}", "danger")
+    return redirect('/admin/org_units')
+
+
+@admin_bp.route('/events/approve/<event_id>', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def approve_event(event_id):
+    try:
+        from services_workflow import WorkflowEngine
+        WorkflowEngine.transition_event(
+            db,
+            event_id=event_id,
+            target_state='published',
+            actor_id=session.get('user_id'),
+            actor=session,
+            metadata={'source': 'admin_approval'}
+        )
+        flash("✅ Event approved and published!", "success")
+    except Exception as exc:
+        flash(f"Approval error: {exc}", "danger")
+    return redirect('/admin/org_units')
+
+
+@admin_bp.route('/migrate_roles', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def trigger_role_migration():
+    try:
+        from services_permission import migrate_roles_and_units
+        result = migrate_roles_and_units(db)
+        flash(f"✅ Migration complete: {len(result.get('migrated_admins', []))} Admins, {len(result.get('migrated_spocs', []))} UnitAdmins, {len(result.get('backfilled_events', []))} Events backfilled.", "success")
+        if result.get('unmapped_users'):
+            flash(f"⚠️ Unmapped users: {[u['email'] for u in result['unmapped_users']]}", "warning")
+    except Exception as exc:
+        flash(f"Migration error: {exc}", "danger")
+    return redirect('/admin/org_units')
+
+
+# =========================================================
+# 19. VENUES & ROOM MANAGEMENT (Campus -> Building -> Room)
+# =========================================================
+
+@admin_bp.route('/venues', methods=['GET'])
+@login_required
+@role_required(SUPER_ROLES)
+def list_venues():
+    try:
+        from services_venue import format_kolkata
+        campuses = [c.to_dict() for c in db.collection('campuses').stream()]
+        buildings = [b.to_dict() for b in db.collection('buildings').stream()]
+        rooms = [r.to_dict() for r in db.collection('rooms').stream()]
+        bookings = [b.to_dict() for b in db.collection('venue_bookings').stream()]
+
+        # Enrich bookings with room name and human time
+        room_map = {r.get('id'): r.get('name') for r in rooms}
+        for b in bookings:
+            b['room_name'] = room_map.get(b.get('room_id') or b.get('roomId'), b.get('room_id') or b.get('roomId'))
+            b['start_ist'] = format_kolkata(b.get('start_time') or b.get('startTime'))
+            b['end_ist'] = format_kolkata(b.get('end_time') or b.get('endTime'))
+
+        # Return JSON if requested
+        if request.args.get('format') == 'json' or request.headers.get('Accept') == 'application/json':
+            return jsonify({
+                'campuses': campuses,
+                'buildings': buildings,
+                'rooms': rooms,
+                'bookings': bookings,
+            })
+
+        return render_template(
+            'admin/venues.html',
+            campuses=campuses,
+            buildings=buildings,
+            rooms=rooms,
+            bookings=bookings,
+        )
+    except Exception as exc:
+        current_app.logger.error("Error loading venues: %s", exc)
+        flash(f"Error loading venues: {exc}", "danger")
+        return redirect('/admin/dashboard')
+
+
+@admin_bp.route('/venues/seed', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def seed_venues_route():
+    try:
+        from services_venue import seed_default_venues
+        counts = seed_default_venues(db)
+        flash(f"✅ Venues seeded: {counts.get('campuses', 0)} campuses, {counts.get('buildings', 0)} buildings, {counts.get('rooms', 0)} rooms.", "success")
+    except Exception as exc:
+        flash(f"Error seeding venues: {exc}", "danger")
+    return redirect('/admin/venues')
+
+
+@admin_bp.route('/venues/campus/create', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def create_campus():
+    try:
+        name = request.form.get('name', '').strip()
+        slug = request.form.get('slug', '').strip()
+        address = request.form.get('address', '').strip()
+
+        if not name:
+            flash("Campus name is required.", "warning")
+            return redirect('/admin/venues')
+
+        if not slug:
+            slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+
+        campus_id = slug or f"campus_{uuid.uuid4().hex[:8]}"
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        db.collection('campuses').document(campus_id).set({
+            'id': campus_id,
+            'organization_id': 'default',
+            'name': name,
+            'slug': slug,
+            'address': address,
+            'created_at': now_iso,
+            'updated_at': now_iso,
+        })
+        log_action(db, "CAMPUS_CREATED", f"Campus {name} created by {session.get('user_id')}")
+        flash(f"✅ Campus '{name}' created successfully.", "success")
+    except Exception as exc:
+        flash(f"Error creating campus: {exc}", "danger")
+    return redirect('/admin/venues')
+
+
+@admin_bp.route('/venues/building/create', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def create_building():
+    try:
+        campus_id = request.form.get('campus_id', '').strip()
+        name = request.form.get('name', '').strip()
+        code = request.form.get('code', '').strip()
+
+        if not campus_id or not name:
+            flash("Campus and building name are required.", "warning")
+            return redirect('/admin/venues')
+
+        bldg_slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+        bldg_id = f"bldg_{bldg_slug}" if bldg_slug else f"bldg_{uuid.uuid4().hex[:8]}"
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        db.collection('buildings').document(bldg_id).set({
+            'id': bldg_id,
+            'campus_id': campus_id,
+            'name': name,
+            'code': code,
+            'created_at': now_iso,
+            'updated_at': now_iso,
+        })
+        log_action(db, "BUILDING_CREATED", f"Building {name} created by {session.get('user_id')}")
+        flash(f"✅ Building '{name}' created successfully.", "success")
+    except Exception as exc:
+        flash(f"Error creating building: {exc}", "danger")
+    return redirect('/admin/venues')
+
+
+@admin_bp.route('/venues/room/create', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def create_room():
+    try:
+        building_id = request.form.get('building_id', '').strip()
+        name = request.form.get('name', '').strip()
+        room_number = request.form.get('room_number', '').strip()
+        capacity = int(request.form.get('capacity', 50) or 50)
+        room_type = request.form.get('type', 'classroom').strip().lower()
+        facilities_raw = request.form.get('facilities', '').strip()
+
+        if not building_id or not name:
+            flash("Building and room name are required.", "warning")
+            return redirect('/admin/venues')
+
+        facilities = [f.strip() for f in facilities_raw.split(',') if f.strip()]
+        room_slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+        room_id = f"room_{room_slug}" if room_slug else f"room_{uuid.uuid4().hex[:8]}"
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        db.collection('rooms').document(room_id).set({
+            'id': room_id,
+            'building_id': building_id,
+            'name': name,
+            'room_number': room_number,
+            'capacity': capacity,
+            'type': room_type,
+            'facilities': facilities,
+            'facilities_json': json.dumps(facilities),
+            'created_at': now_iso,
+            'updated_at': now_iso,
+        })
+        log_action(db, "ROOM_CREATED", f"Room {name} ({room_type}, cap={capacity}) created by {session.get('user_id')}")
+        flash(f"✅ Room '{name}' created successfully.", "success")
+    except Exception as exc:
+        flash(f"Error creating room: {exc}", "danger")
+    return redirect('/admin/venues')
+
+
+@admin_bp.route('/venues/room/<room_id>/edit', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def edit_room(room_id):
+    try:
+        doc = db.collection('rooms').document(room_id).get()
+        if not doc.exists:
+            flash("Room not found.", "danger")
+            return redirect('/admin/venues')
+
+        updates = {}
+        for f in ['name', 'room_number', 'type']:
+            val = request.form.get(f, '').strip()
+            if val:
+                updates[f] = val
+
+        if request.form.get('capacity'):
+            try:
+                updates['capacity'] = int(request.form.get('capacity'))
+            except (ValueError, TypeError):
+                pass
+
+        if 'facilities' in request.form:
+            facilities = [f.strip() for f in request.form.get('facilities', '').split(',') if f.strip()]
+            updates['facilities'] = facilities
+            updates['facilities_json'] = json.dumps(facilities)
+
+        updates['updated_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        db.collection('rooms').document(room_id).update(updates)
+        log_action(db, "ROOM_UPDATED", f"Room {room_id} updated by {session.get('user_id')}")
+        flash(f"✅ Room '{room_id}' updated successfully.", "success")
+    except Exception as exc:
+        flash(f"Error updating room: {exc}", "danger")
+    return redirect('/admin/venues')
+
+
+@admin_bp.route('/venues/room/<room_id>/delete', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def delete_room(room_id):
+    try:
+        db.collection('rooms').document(room_id).delete()
+        log_action(db, "ROOM_DELETED", f"Room {room_id} deleted by {session.get('user_id')}")
+        flash(f"✅ Room '{room_id}' deleted successfully.", "success")
+    except Exception as exc:
+        flash(f"Error deleting room: {exc}", "danger")
+    return redirect('/admin/venues')
+

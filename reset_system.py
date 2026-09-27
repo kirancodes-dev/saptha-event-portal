@@ -1,5 +1,8 @@
+import os
 from app import app, db
 from models import Participant
+
+test_password = os.environ.get('TEST_STUDENT_PASSWORD', 'test_password_placeholder')
 
 with app.app_context():
     # 1. Create a Test Student
@@ -10,15 +13,13 @@ with app.app_context():
         student = Participant(
             name="Test Student",
             email="student@test.com",
-            password="password123"  # <--- THIS IS YOUR PASSWORD
+            password=test_password
         )
         db.session.add(student)
         db.session.commit()
         print("✅ Student Created!")
         print("   Email: student@test.com")
-        print("   Pass:  password123")
     else:
         print("⚠️ Student 'student@test.com' already exists.")
 
     print("\nSystem ready for login testing.")
-

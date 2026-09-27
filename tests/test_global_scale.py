@@ -224,13 +224,21 @@ def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event):
     user = mock_db.collection('users').document('stud_xp@test.edu').get().to_dict()
     assert user.get('xp') == 50
     
-    # 2. Trigger check-in via verify endpoint
+    # 2. Trigger check-in via secure verify endpoint (signed token + staff POST)
     # Pre-authorize payment status
     mock_db.collection('registrations').document('REG-XP-111').update({'payment_status': 'Paid'})
-    
-    # Scan/Verify ticket (which marks Present)
-    client.get('/ticket/verify/REG-XP-111')
-    
+
+    from routes_ticket import generate_ticket_token
+    token = generate_ticket_token('REG-XP-111', sample_event, 'XP Student')
+
+    with client.session_transaction() as sess:
+        sess['user_id'] = 'coord_xp@test.edu'
+        sess['role'] = 'Coordinator'
+        sess['category'] = 'All'
+
+    resp = client.post(f'/ticket/verify/{token}')
+    assert resp.status_code == 200
+
     # Check XP is 50 + 150 = 200
     user_after = mock_db.collection('users').document('stud_xp@test.edu').get().to_dict()
     assert user_after.get('xp') == 200

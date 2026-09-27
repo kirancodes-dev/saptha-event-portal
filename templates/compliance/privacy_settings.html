@@ -138,9 +138,14 @@ function saveConsent() {
         third_party_sharing: document.getElementById('third_party_sharing').checked
     };
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
     fetch('/compliance/consent', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
         body: JSON.stringify(payload)
     })
     .then(r => r.json())
@@ -150,7 +155,11 @@ function saveConsent() {
 }
 
 function exportData() {
-    fetch('/compliance/export-data', { method: 'POST' })
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+    fetch('/compliance/export-data', { 
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    })
         .then(r => r.json())
         .then(d => {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(d, null, 2));
@@ -167,9 +176,13 @@ function requestDeletion() {
     const reason = prompt("Optional: Please provide a reason for account deletion:");
     if (reason === null) return;
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
     fetch('/compliance/delete-request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
         body: JSON.stringify({ reason: reason })
     })
     .then(r => r.json())
@@ -184,7 +197,11 @@ function requestDeletion() {
 }
 
 function cancelDeletion() {
-    fetch('/compliance/cancel-deletion', { method: 'POST' })
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+    fetch('/compliance/cancel-deletion', { 
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    })
         .then(r => r.json())
         .then(d => {
             alert('✅ ' + (d.message || 'Deletion cancelled'));

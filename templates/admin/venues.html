@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venues & Room Bookings | Admin HQ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --blue: #1a2557; --orange: #c9a45e; }
+        body { background-color: #f8f9fa; color: #1e293b; font-family: 'Inter', sans-serif; }
+        .navbar { background: var(--blue); border-bottom: 1px solid #e2e8f0; }
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .form-control, .form-select { background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
+        .table-dark th { background-color: var(--blue); border-bottom: 2px solid var(--orange); color: #ffffff; }
+        .table td { border-color: #e2e8f0; vertical-align: middle; }
+        .badge-auditorium { background-color: #7c3aed; color: #fff; }
+        .badge-seminar { background-color: #0284c7; color: #fff; }
+        .badge-lab { background-color: #10b981; color: #fff; }
+        .badge-classroom { background-color: #f59e0b; color: #fff; }
+        .badge-outdoor { background-color: #ec4899; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark px-4 py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="/admin/dashboard">
+                <i class="fas fa-arrow-left me-2"></i> Back to Admin Dashboard
+            </a>
+            <span class="text-light opacity-75 small">Sapthagiri NPS University — Campus Venue Operations</span>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="fas fa-building text-primary me-2"></i> Campus Venues &amp; Room Bookings</h2>
+                <p class="text-muted mb-0">Manage university campus hierarchy (Campus &rarr; Building &rarr; Room) and conflict-free booking records.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <form action="/admin/venues/seed" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-seedling me-1"></i> Seed Standard Venues
+                    </button>
+                </form>
+                <a href="/calendar" class="btn btn-outline-secondary" target="_blank">
+                    <i class="fas fa-calendar-alt me-1"></i> View Public Calendar
+                </a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Quick Summary Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <div class="text-muted small fw-bold text-uppercase">Campuses</div>
+                    <div class="fs-3 fw-bold text-primary">{{ campuses|length }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <div class="text-muted small fw-bold text-uppercase">Buildings</div>
+                    <div class="fs-3 fw-bold text-info">{{ buildings|length }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <div class="text-muted small fw-bold text-uppercase">Total Rooms</div>
+                    <div class="fs-3 fw-bold text-success">{{ rooms|length }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <div class="text-muted small fw-bold text-uppercase">Venue Bookings</div>
+                    <div class="fs-3 fw-bold text-warning">{{ bookings|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Management Forms Row -->
+        <div class="row g-4 mb-5">
+            <!-- Add Campus -->
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white fw-bold py-3 border-bottom">
+                        <i class="fas fa-landmark text-primary me-2"></i> Add Campus
+                    </div>
+                    <div class="card-body">
+                        <form action="/admin/venues/campus/create" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Campus Name *</label>
+                                <input type="text" name="name" class="form-control" placeholder="e.g. Main Campus" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Slug (Optional)</label>
+                                <input type="text" name="slug" class="form-control" placeholder="e.g. main-campus">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Address</label>
+                                <textarea name="address" class="form-control" rows="2" placeholder="Full postal address"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Create Campus</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Building -->
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white fw-bold py-3 border-bottom">
+                        <i class="fas fa-building text-info me-2"></i> Add Building
+                    </div>
+                    <div class="card-body">
+                        <form action="/admin/venues/building/create" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Campus *</label>
+                                <select name="campus_id" class="form-select" required>
+                                    <option value="" disabled selected>-- Select Campus --</option>
+                                    {% for c in campuses %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Building Name *</label>
+                                <input type="text" name="name" class="form-control" placeholder="e.g. Academic Block A" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Building Code</label>
+                                <input type="text" name="code" class="form-control" placeholder="e.g. BLOCK-A">
+                            </div>
+                            <button type="submit" class="btn btn-info text-white w-100">Create Building</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Room -->
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white fw-bold py-3 border-bottom">
+                        <i class="fas fa-door-open text-success me-2"></i> Add Room / Venue
+                    </div>
+                    <div class="card-body">
+                        <form action="/admin/venues/room/create" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Building *</label>
+                                <select name="building_id" class="form-select" required>
+                                    <option value="" disabled selected>-- Select Building --</option>
+                                    {% for b in buildings %}
+                                    <option value="{{ b.id }}">{{ b.name }} ({{ b.code or b.id }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Room Name *</label>
+                                <input type="text" name="name" class="form-control" placeholder="e.g. Seminar Hall 1" required>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Room Number</label>
+                                    <input type="text" name="room_number" class="form-control" placeholder="e.g. SH-101">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Capacity *</label>
+                                    <input type="number" name="capacity" class="form-control" value="100" min="1" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Type *</label>
+                                <select name="type" class="form-select" required>
+                                    <option value="classroom">Classroom</option>
+                                    <option value="seminar_hall">Seminar Hall</option>
+                                    <option value="auditorium">Auditorium</option>
+                                    <option value="lab">Laboratory</option>
+                                    <option value="outdoor">Outdoor / Amphitheatre</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Facilities (comma-separated)</label>
+                                <input type="text" name="facilities" class="form-control" placeholder="Projector, AC, WiFi, Sound System">
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Create Room</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rooms Directory Table -->
+        <div class="card shadow-sm mb-5">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="fas fa-list text-primary me-2"></i> Campus Rooms &amp; Facilities</h5>
+                <span class="badge bg-secondary">{{ rooms|length }} Registered</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Room Name</th>
+                            <th>Number</th>
+                            <th>Building</th>
+                            <th>Capacity</th>
+                            <th>Type</th>
+                            <th>Facilities</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if rooms %}
+                            {% for r in rooms %}
+                            <tr>
+                                <td class="fw-bold text-primary">{{ r.name }}</td>
+                                <td><code>{{ r.room_number or '—' }}</code></td>
+                                <td>
+                                    {% for b in buildings if b.id == r.building_id %}
+                                        {{ b.name }}
+                                    {% else %}
+                                        {{ r.building_id }}
+                                    {% endfor %}
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ r.capacity }} seats</span></td>
+                                <td>
+                                    <span class="badge badge-{{ r.type or 'classroom' }} text-capitalize">
+                                        {{ (r.type or 'classroom').replace('_', ' ') }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set facs = r.facilities if r.facilities is sequence and r.facilities is not string else [] %}
+                                    {% for f in facs %}
+                                        <span class="badge bg-light text-secondary border me-1">{{ f }}</span>
+                                    {% else %}
+                                        <span class="text-muted small">—</span>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-end">
+                                    <form action="/admin/venues/room/{{ r.id }}/delete" method="POST" class="d-inline" onsubmit="return confirm('Delete room {{ r.name }}?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Room">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    No rooms configured yet. Click <strong>Seed Standard Venues</strong> above to get started.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Active Room Bookings Table -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="fas fa-calendar-check text-warning me-2"></i> Active Venue Bookings</h5>
+                <span class="badge bg-warning text-dark">{{ bookings|length }} Bookings</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Room / Venue</th>
+                            <th>Event / Session</th>
+                            <th>Start Time (IST)</th>
+                            <th>End Time (IST)</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if bookings %}
+                            {% for b in bookings %}
+                            <tr>
+                                <td class="fw-bold">{{ b.room_name or b.room_id }}</td>
+                                <td>
+                                    {% if b.event_id %}
+                                        <a href="/events/{{ b.event_id }}" target="_blank" class="text-decoration-none">
+                                            <code>{{ b.event_id[:8] }}...</code>
+                                        </a>
+                                    {% elif b.session_id %}
+                                        <code>Session: {{ b.session_id }}</code>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ b.start_ist or b.start_time }}</td>
+                                <td>{{ b.end_ist or b.end_time }}</td>
+                                <td>
+                                    {% if b.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                    {% elif b.status == 'hold' %}
+                                        <span class="badge bg-warning text-dark">Hold</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted small">{{ b.notes or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No venue bookings on record yet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -23,7 +23,13 @@ def promote_from_waitlist(self, event_id: str):
     Called after a cancellation frees a seat.
     """
     try:
-        from models import db
+        try:
+            import app as app_module
+            db = getattr(app_module, 'db', None)
+            if db is None:
+                from models import db
+        except Exception:
+            from models import db
         from google.cloud.firestore_v1.base_query import FieldFilter
         from tasks.email_tasks import send_generic_email_task
 
@@ -102,23 +108,40 @@ def promote_from_waitlist(self, event_id: str):
             'reg_id': reg_id,
         })
 
+        # Issue digital ticket
+        try:
+            from services_ticket import TicketService
+            TicketService.issue_ticket(
+                db,
+                event_id=event_id,
+                registration_id=reg_id,
+                user_email=email,
+                lead_name=name,
+                ticket_type='General',
+            )
+        except Exception as e:
+            logger.warning("Could not issue ticket on waitlist promotion: %s", e)
+
         # Send email notification
-        event_date = event_doc.get('date', '')
-        venue      = event_doc.get('venue', 'SNPSU Campus')
-        send_generic_email_task.delay(
-            to_email=email,
-            subject=f"Great news! Your waitlist spot for {event_title} is confirmed",
-            body=(
-                f"Hi {name},\n\n"
-                f"A seat has opened up and you've been promoted from the waitlist for "
-                f"{event_title}!\n\n"
-                f"Your registration is now confirmed.\n"
-                f"Registration ID: {reg_id}\n"
-                f"Event Date: {event_date}\n"
-                f"Venue: {venue}\n\n"
-                f"See you there!\n— SapthaEvent Team"
-            ),
-        )
+        try:
+            event_date = event_doc.get('date', '')
+            venue      = event_doc.get('venue', 'SNPSU Campus')
+            send_generic_email_task.delay(
+                to_email=email,
+                subject=f"Great news! Your waitlist spot for {event_title} is confirmed",
+                body=(
+                    f"Hi {name},\n\n"
+                    f"A seat has opened up and you've been promoted from the waitlist for "
+                    f"{event_title}!\n\n"
+                    f"Your registration is now confirmed.\n"
+                    f"Registration ID: {reg_id}\n"
+                    f"Event Date: {event_date}\n"
+                    f"Venue: {venue}\n\n"
+                    f"See you there!\n— SapthaEvent Team"
+                ),
+            )
+        except Exception:
+            pass
 
         logger.info("promote_from_waitlist: promoted %s to %s for event %s", email, reg_id, event_id)
         return {'promoted': True, 'reg_id': reg_id, 'email': email}

@@ -44,6 +44,7 @@ def send_all_demos():
 
         # 1. Registration Confirmed Email
         print("\n1. Sending Registration Confirmed Email...")
+        demo_raw_password = os.environ.get("DEMO_RAW_PASSWORD", "TemporaryDemoPass123!")
         ok = send_registration_confirmed_email(
             to_email=target_email,
             name=name,
@@ -51,7 +52,7 @@ def send_all_demos():
             event_date=event_date,
             venue=venue,
             is_new_user=True,
-            raw_password="TempPassword123!"
+            raw_password=demo_raw_password
         )
         print(f"Status: {'SUCCESS' if ok else 'FAILED (' + LAST_EMAIL_ERROR + ')'}")
 
@@ -78,11 +79,12 @@ def send_all_demos():
 
         # 3. Credentials Email
         print("\n3. Sending Credentials Email...")
+        demo_judge_password = os.environ.get("DEMO_JUDGE_PASSWORD", "TemporaryJudgePass99!")
         ok = send_credentials_email(
             to_email=target_email,
             name=name,
             role="Judge",
-            password="SecureJudgePass99!",
+            password=demo_judge_password,
             category="Technical"
         )
         print(f"Status: {'SUCCESS' if ok else 'FAILED (' + LAST_EMAIL_ERROR + ')'}")

@@ -19,7 +19,8 @@ from db_pg import get_engine, get_session
 from models_pg import (
     Base, User, Event, Registration, TeamMember, Score, EventForm,
     FormSubmission, AuditLog, PushSubscription, Announcement, ProjectSubmission,
-    Organization, Ticket, EventSession,
+    Organization, Ticket, EventSession, OrgUnit, RoleAssignment,
+    Campus, Building, Room, VenueBooking,
     UserRole, EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
 )
 
@@ -39,6 +40,12 @@ COLLECTION_MAP = {
     'organizations': Organization,
     'tickets': Ticket,
     'event_sessions': EventSession,
+    'org_units': OrgUnit,
+    'role_assignments': RoleAssignment,
+    'campuses': Campus,
+    'buildings': Building,
+    'rooms': Room,
+    'venue_bookings': VenueBooking,
 }
 
 # Field name translation map: Firestore -> SQLAlchemy/Postgres
@@ -71,6 +78,14 @@ FIELD_MAP = {
     'organization_id': 'organization_id',
     'organizationId': 'organization_id',
     'org_id': 'organization_id',
+    'org_unit_id': 'org_unit_id',
+    'orgUnitId': 'org_unit_id',
+    'user_id': 'user_id',
+    'userId': 'user_id',
+    'scope_type': 'scope_type',
+    'scopeType': 'scope_type',
+    'scope_id': 'scope_id',
+    'scopeId': 'scope_id',
     'event_type': 'event_type',
     'eventType': 'event_type',
     'event_mode': 'event_mode',
@@ -93,6 +108,31 @@ FIELD_MAP = {
     'notification_rules': 'notification_rules_json',
     'notification_rules_json': 'notification_rules_json',
     'notificationRulesJson': 'notification_rules_json',
+    'certificate_config': 'certificate_config_json',
+    'certificate_config_json': 'certificate_config_json',
+    'certificateConfigJson': 'certificate_config_json',
+    'feedback': 'feedback_json',
+    'feedback_json': 'feedback_json',
+    'checkin_time': 'checkin_time',
+    'ticket_id': 'ticket_id',
+    'capacity': 'capacity',
+    'room_id': 'room_id',
+    'roomId': 'room_id',
+    'campus_id': 'campus_id',
+    'campusId': 'campus_id',
+    'building_id': 'building_id',
+    'buildingId': 'building_id',
+    'room_number': 'room_number',
+    'roomNumber': 'room_number',
+    'facilities_json': 'facilities_json',
+    'facilitiesJson': 'facilities_json',
+    'facilities': 'facilities_json',
+    'session_id': 'session_id',
+    'sessionId': 'session_id',
+    'start_time': 'start_time',
+    'startTime': 'start_time',
+    'end_time': 'end_time',
+    'endTime': 'end_time',
 }
 
 
@@ -107,6 +147,8 @@ def verify_and_align_schema():
         ('judging_criteria_json', 'TEXT'),
         ('staff_json', 'TEXT'),
         ('organizationId', 'VARCHAR(128)'),
+        ('orgUnitId', 'VARCHAR(128)'),
+        ('roomId', 'VARCHAR(128)'),
         ('slug', 'VARCHAR(300)'),
         ('eventType', "VARCHAR(100) DEFAULT 'competition'"),
         ('eventMode', "VARCHAR(50) DEFAULT 'offline'"),
@@ -120,22 +162,59 @@ def verify_and_align_schema():
         ('evaluationConfigJson', 'TEXT'),
         ('ticketTiersJson', 'TEXT'),
         ('notificationRulesJson', 'TEXT'),
+        ('certificateConfigJson', 'TEXT'),
     ]
     cols_registrations = [
         ('assigned_judge_email', 'VARCHAR(255)'),
         ('amount_paid', 'DOUBLE PRECISION'),
         ('payment_mode', 'VARCHAR(100)'),
-        ('assigned_room', 'VARCHAR(100)')
+        ('assigned_room', 'VARCHAR(100)'),
+        ('checkin_time', 'VARCHAR(100)'),
+        ('ticket_id', 'VARCHAR(128)'),
+        ('feedback_json', 'TEXT'),
     ]
     
     if not engine:
         return
+
+    # Ensure any newly introduced tables (org_units, role_assignments) exist
+    try:
+        Base.metadata.create_all(engine, tables=[OrgUnit.__table__, RoleAssignment.__table__], checkfirst=True)
+    except Exception as e:
+        logger.debug("Table creation check note: %s", e)
+
     is_sqlite = engine.url.drivername.startswith('sqlite')
     if is_sqlite:
+        try:
+            with engine.connect() as conn:
+                for col, col_type in cols_events:
+                    try:
+                        conn.execute(text(f"ALTER TABLE events ADD COLUMN {col} {col_type}"))
+                    except Exception:
+                        pass
+                for col, col_type in cols_registrations:
+                    try:
+                        conn.execute(text(f"ALTER TABLE registrations ADD COLUMN {col} {col_type}"))
+                    except Exception:
+                        pass
+                conn.commit()
+        except Exception as e:
+            logger.debug("SQLite schema alignment note: %s", e)
         return
         
     try:
         with engine.connect() as conn:
+            # Postgres Enum alignment
+            for st in ['draft', 'pending_approval', 'published', 'registration_open', 'registration_closed', 'in_progress', 'certified']:
+                try:
+                    conn.execute(text(f"ALTER TYPE eventstatus ADD VALUE IF NOT EXISTS '{st}'"))
+                except Exception:
+                    pass
+            try:
+                conn.execute(text("ALTER TYPE registrationstatus ADD VALUE IF NOT EXISTS 'checked_in'"))
+            except Exception:
+                pass
+
             # Events alignment
             for col, col_type in cols_events:
                 res = conn.execute(text(f"""
@@ -402,7 +481,7 @@ class SQLDocumentReference:
 
         with get_session() as session:
             # Map search primary key
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
+            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions', 'org_units', 'role_assignments'):
                 record = session.query(self.model_class).filter_by(id=str(self.id)).first()
             elif self.collection_name == 'event_forms':
                 record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
@@ -425,7 +504,7 @@ class SQLDocumentReference:
             return
 
         with get_session() as session:
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
+            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions', 'org_units', 'role_assignments'):
                 record = session.query(self.model_class).filter_by(id=str(self.id)).first()
             elif self.collection_name == 'event_forms':
                 record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
@@ -457,7 +536,7 @@ class SQLDocumentReference:
             return
 
         with get_session() as session:
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions'):
+            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions', 'org_units', 'role_assignments'):
                 session.query(self.model_class).filter_by(id=str(self.id)).delete()
             elif self.collection_name == 'event_forms':
                 session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).delete()
@@ -518,9 +597,46 @@ class SQLDocumentReference:
             d['pricing_type'] = getattr(record, 'pricing_type', 'free')
             d['currency'] = getattr(record, 'currency', 'INR')
             d['workflow_config'] = json.loads(record.workflow_config_json) if getattr(record, 'workflow_config_json', None) else {}
+            d['workflow_config_json'] = getattr(record, 'workflow_config_json', None)
             d['evaluation_config'] = json.loads(record.evaluation_config_json) if getattr(record, 'evaluation_config_json', None) else {}
             d['ticket_tiers'] = json.loads(record.ticket_tiers_json) if getattr(record, 'ticket_tiers_json', None) else []
             d['notification_rules'] = json.loads(record.notification_rules_json) if getattr(record, 'notification_rules_json', None) else []
+            d['room_id'] = getattr(record, 'room_id', None)
+            d['roomId'] = getattr(record, 'room_id', None)
+            d['org_unit_id'] = getattr(record, 'org_unit_id', None)
+            d['orgUnitId'] = getattr(record, 'org_unit_id', None)
+            d['organization_id'] = getattr(record, 'organization_id', None)
+            d['organizationId'] = getattr(record, 'organization_id', None)
+            if hasattr(record, 'room') and record.room:
+                d['room_name'] = record.room.name
+
+        elif self.collection_name == 'rooms':
+            d['room_id'] = record.id
+            d['roomId'] = record.id
+            d['building_id'] = record.building_id
+            d['buildingId'] = record.building_id
+            d['room_number'] = record.room_number
+            d['roomNumber'] = record.room_number
+            if getattr(record, 'facilities_json', None):
+                try:
+                    d['facilities'] = json.loads(record.facilities_json) if isinstance(record.facilities_json, str) else record.facilities_json
+                except Exception:
+                    d['facilities'] = [f.strip() for f in str(record.facilities_json).split(',') if f.strip()]
+            else:
+                d['facilities'] = []
+
+        elif self.collection_name == 'venue_bookings':
+            d['booking_id'] = record.id
+            d['room_id'] = record.room_id
+            d['roomId'] = record.room_id
+            d['event_id'] = str(record.event_id) if record.event_id else None
+            d['eventId'] = str(record.event_id) if record.event_id else None
+            d['session_id'] = record.session_id
+            d['sessionId'] = record.session_id
+            d['start_time'] = record.start_time.isoformat() if record.start_time else None
+            d['startTime'] = record.start_time.isoformat() if record.start_time else None
+            d['end_time'] = record.end_time.isoformat() if record.end_time else None
+            d['endTime'] = record.end_time.isoformat() if record.end_time else None
 
         elif self.collection_name == 'organizations':
             d['settings'] = json.loads(record.settings_json) if getattr(record, 'settings_json', None) else {}
@@ -531,6 +647,15 @@ class SQLDocumentReference:
 
         elif self.collection_name == 'registrations':
             d['student_email'] = record.lead_email
+            d['checkin_time'] = getattr(record, 'checkin_time', None)
+            d['ticket_id'] = getattr(record, 'ticket_id', None)
+            if getattr(record, 'feedback_json', None):
+                try:
+                    d['feedback'] = json.loads(record.feedback_json)
+                except Exception:
+                    d['feedback'] = None
+            else:
+                d['feedback'] = None
             # Retrieve nested team members
             m_list = []
             for m in record.members:
@@ -555,6 +680,22 @@ class SQLDocumentReference:
                     'timestamp': s.scored_at.isoformat() if s.scored_at else None,
                 }
             d['scores'] = s_dict
+
+        elif self.collection_name == 'tickets':
+            d['id'] = record.id
+            d['ticket_id'] = record.id
+            d['event_id'] = str(record.event_id)
+            d['registration_id'] = str(record.registration_id)
+            d['user_email'] = record.user_email
+            d['ticket_type'] = record.ticket_type
+            d['ticket_code'] = record.ticket_code
+            d['qr_token_hash'] = record.qr_token_hash
+            d['gate_assignment'] = record.gate_assignment
+            d['seat_assignment'] = record.seat_assignment
+            d['status'] = record.status
+            d['checked_in'] = bool(record.checked_in_at or record.status == 'checked_in')
+            d['checked_in_at'] = record.checked_in_at.isoformat() if record.checked_in_at else None
+            d['created_at'] = record.created_at.isoformat() if record.created_at else None
 
         elif self.collection_name == 'event_forms':
             if record.fields_json:
@@ -611,13 +752,23 @@ class SQLDocumentReference:
 
         elif self.collection_name == 'events':
             kwargs['id'] = to_uuid(self.id)
+            kwargs['organization_id'] = safe_str(data.get('organization_id') or data.get('organizationId') or data.get('org_id') or '') or None
+            kwargs['slug'] = safe_str(data.get('slug', '')) or None
             kwargs['title'] = safe_str(data.get('title', 'Untitled Event'))
             kwargs['description'] = safe_str(data.get('description') or data.get('overview') or '')
             kwargs['category'] = self._get_enum_category(data.get('category', 'Technical'))
+            kwargs['event_type'] = safe_str(data.get('event_type') or data.get('eventType') or 'competition')
+            kwargs['event_mode'] = safe_str(data.get('event_mode') or data.get('eventMode') or 'offline')
+            kwargs['timezone'] = safe_str(data.get('timezone') or 'Asia/Kolkata')
             kwargs['date'] = self._get_date(data.get('date'))
             kwargs['deadline'] = self._get_date(data.get('deadline')) if data.get('deadline') else None
+            kwargs['start_datetime'] = self._get_datetime(data.get('start_datetime') or data.get('startDatetime'))
+            kwargs['end_datetime'] = self._get_datetime(data.get('end_datetime') or data.get('endDatetime'))
             kwargs['venue'] = safe_str(data.get('venue', 'Unknown Venue'))
             kwargs['status'] = self._get_enum_status(data.get('status', 'active'))
+            kwargs['capacity'] = int(data.get('capacity') or data.get('max_participants') or 200)
+            kwargs['pricing_type'] = safe_str(data.get('pricing_type') or data.get('pricingType') or 'free')
+            kwargs['currency'] = safe_str(data.get('currency') or 'INR')
             kwargs['max_teams'] = data.get('max_teams', data.get('max_participants', 100))
             kwargs['min_team_size'] = data.get('min_team_size', data.get('team_min', 1))
             kwargs['max_team_size'] = data.get('max_team_size', data.get('team_max', 1))
@@ -632,6 +783,12 @@ class SQLDocumentReference:
             kwargs['scoring_locked'] = bool(data.get('scoring_locked', False))
             kwargs['judging_criteria_json'] = json.dumps(data.get('judging_criteria', []))
             kwargs['staff_json'] = json.dumps(data.get('staff', []))
+            kwargs['workflow_config_json'] = json.dumps(data.get('workflow_config')) if isinstance(data.get('workflow_config'), (dict, list)) else (safe_str(data.get('workflow_config_json') or data.get('workflowConfigJson') or '') or None)
+            kwargs['evaluation_config_json'] = json.dumps(data.get('evaluation_config')) if isinstance(data.get('evaluation_config'), (dict, list)) else (safe_str(data.get('evaluation_config_json') or data.get('evaluationConfigJson') or '') or None)
+            kwargs['ticket_tiers_json'] = json.dumps(data.get('ticket_tiers')) if isinstance(data.get('ticket_tiers'), (dict, list)) else (safe_str(data.get('ticket_tiers_json') or data.get('ticketTiersJson') or '') or None)
+            kwargs['notification_rules_json'] = json.dumps(data.get('notification_rules')) if isinstance(data.get('notification_rules'), (dict, list)) else (safe_str(data.get('notification_rules_json') or data.get('notificationRulesJson') or '') or None)
+            kwargs['org_unit_id'] = safe_str(data.get('org_unit_id') or data.get('orgUnitId') or '') or None
+            kwargs['certificate_config_json'] = json.dumps(data.get('certificate_config')) if isinstance(data.get('certificate_config'), (dict, list)) else (safe_str(data.get('certificate_config_json') or data.get('certificateConfigJson') or '') or None)
             kwargs['registration_count'] = int(data.get('registration_count', 0) or 0)
             kwargs['created_at'] = self._get_datetime(data.get('created_at', data.get('createdAt')))
             return Event(**kwargs)
@@ -655,6 +812,9 @@ class SQLDocumentReference:
             kwargs['amount_paid'] = float(data.get('amount_paid', data.get('fee', 0.0)))
             kwargs['payment_mode'] = safe_str(data.get('payment_mode', ''))
             kwargs['assigned_room'] = safe_str(data.get('assigned_room', ''))
+            kwargs['checkin_time'] = safe_str(data.get('checkin_time') or '') or None
+            kwargs['ticket_id'] = safe_str(data.get('ticket_id') or '') or None
+            kwargs['feedback_json'] = json.dumps(data.get('feedback')) if isinstance(data.get('feedback'), (dict, list)) else (safe_str(data.get('feedback_json') or '') or None)
             kwargs['created_at'] = self._get_datetime(data.get('registered_at') or data.get('createdAt'))
             return Registration(**kwargs)
 
@@ -774,6 +934,26 @@ class SQLDocumentReference:
             kwargs['submitted_at'] = self._get_datetime(data.get('submitted_at'))
             return ProjectSubmission(**kwargs)
 
+        elif self.collection_name == 'org_units':
+            kwargs['id'] = str(self.id)
+            kwargs['organization_id'] = safe_str(data.get('organization_id') or data.get('organizationId') or 'default')
+            kwargs['parent_id'] = safe_str(data.get('parent_id') or data.get('parentId')) or None
+            kwargs['type'] = safe_str(data.get('type', 'department'))
+            kwargs['name'] = safe_str(data.get('name', 'Unnamed Unit'))
+            kwargs['slug'] = safe_str(data.get('slug', str(self.id)).lower().strip())
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            kwargs['updated_at'] = self._get_datetime(data.get('updated_at'))
+            return OrgUnit(**kwargs)
+
+        elif self.collection_name == 'role_assignments':
+            kwargs['id'] = str(self.id)
+            kwargs['user_id'] = safe_str(data.get('user_id') or data.get('userId', '')).lower().strip()
+            kwargs['role'] = safe_str(data.get('role', 'Participant'))
+            kwargs['scope_type'] = safe_str(data.get('scope_type') or data.get('scopeType', 'university'))
+            kwargs['scope_id'] = safe_str(data.get('scope_id') or data.get('scopeId')) or None
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            return RoleAssignment(**kwargs)
+
         return None
 
 
@@ -783,10 +963,11 @@ class SQLDocumentReference:
             # Translate keys
             mapped_key = FIELD_MAP.get(key, key)
             if hasattr(record, mapped_key):
-                col = record.__mapper__.columns.get(mapped_key)
+                col_prop = record.__mapper__.column_attrs.get(mapped_key)
+                col = col_prop.columns[0] if col_prop is not None else record.__mapper__.columns.get(mapped_key)
                 if col is not None:
                     # Enums mappings
-                    if mapped_key == 'role':
+                    if mapped_key == 'role' and self.collection_name == 'users':
                         val = self._get_enum_role(val)
                     elif mapped_key == 'category':
                         val = self._get_enum_category(val)
@@ -800,7 +981,7 @@ class SQLDocumentReference:
                         val = self._get_enum_attendance(val)
                     
                     # DateTime conversions
-                    if mapped_key in ('created_at', 'updated_at', 'submitted_at', 'checked_in_at', 'start_time', 'end_time') or 'DateTime' in col.type.__class__.__name__:
+                    elif mapped_key in ('created_at', 'updated_at', 'submitted_at', 'checked_in_at', 'start_time', 'end_time') or 'DateTime' in col.type.__class__.__name__:
                         val = self._get_datetime(val)
                     elif mapped_key in ('date', 'deadline'):
                         val = self._get_date(val)
@@ -830,21 +1011,35 @@ class SQLDocumentReference:
                     record.staff_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
                 elif key == 'overview':
                     record.description = safe_str(val)
-                elif key in ('workflow_config', 'workflow_config_json'):
+                elif key in ('workflow_config', 'workflow_config_json', 'workflowConfigJson'):
                     record.workflow_config_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
-                elif key in ('evaluation_config', 'evaluation_config_json'):
+                elif key in ('evaluation_config', 'evaluation_config_json', 'evaluationConfigJson'):
                     record.evaluation_config_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
-                elif key in ('ticket_tiers', 'ticket_tiers_json'):
+                elif key in ('ticket_tiers', 'ticket_tiers_json', 'ticketTiersJson'):
                     record.ticket_tiers_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
-                elif key in ('notification_rules', 'notification_rules_json'):
+                elif key in ('notification_rules', 'notification_rules_json', 'notificationRulesJson'):
                     record.notification_rules_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
+                elif key in ('event_type', 'eventType'):
+                    record.event_type = safe_str(val)
+                elif key in ('pricing_type', 'pricingType'):
+                    record.pricing_type = safe_str(val)
+                elif key == 'capacity':
+                    try:
+                        record.capacity = int(val)
+                    except (ValueError, TypeError):
+                        pass
+                elif key in ('org_unit_id', 'orgUnitId'):
+                    record.org_unit_id = safe_str(val) or None
+                elif key in ('certificate_config', 'certificate_config_json', 'certificateConfigJson'):
+                    record.certificate_config_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
 
-            elif self.collection_name == 'organizations':
-                if key == 'settings':
-                    record.settings_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
-                elif key == 'theme' and isinstance(val, dict):
-                    if 'primary_color' in val: record.primary_color = val['primary_color']
-                    if 'accent_color' in val: record.accent_color = val['accent_color']
+            elif self.collection_name == 'registrations':
+                if key in ('feedback', 'feedback_json'):
+                    record.feedback_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
+                elif key == 'checkin_time':
+                    record.checkin_time = safe_str(val)
+                elif key == 'ticket_id':
+                    record.ticket_id = safe_str(val)
 
         # Handle nested relations for registrations
         if self.collection_name == 'registrations':
@@ -937,30 +1132,26 @@ class SQLDocumentReference:
         return cat_map.get(cleaned, EventCategory.Technical)
 
     def _get_enum_status(self, val) -> EventStatus:
-        status_map = {
-            "active": EventStatus.active,
-            "inactive": EventStatus.inactive,
-            "completed": EventStatus.completed,
-            "cancelled": EventStatus.cancelled,
-            "archived": EventStatus.archived,
-        }
         if hasattr(val, 'value'):
             return val
         cleaned = str(val).strip().lower()
-        return status_map.get(cleaned, EventStatus.active)
+        try:
+            return EventStatus(cleaned)
+        except ValueError:
+            return EventStatus.active
 
     def _get_enum_reg_status(self, val) -> RegistrationStatus:
-        status_map = {
-            "confirmed": RegistrationStatus.confirmed,
-            "approved": RegistrationStatus.confirmed,
-            "pending": RegistrationStatus.pending,
-            "cancelled": RegistrationStatus.cancelled,
-            "waitlisted": RegistrationStatus.waitlisted,
-        }
         if hasattr(val, 'value'):
             return val
         cleaned = str(val).strip().lower()
-        return status_map.get(cleaned, RegistrationStatus.confirmed)
+        try:
+            return RegistrationStatus(cleaned)
+        except ValueError:
+            if cleaned == "approved":
+                return RegistrationStatus.confirmed
+            elif cleaned == "applied":
+                return RegistrationStatus.pending
+            return RegistrationStatus.confirmed
 
     def _get_enum_payment_status(self, val) -> PaymentStatus:
         status_map = {

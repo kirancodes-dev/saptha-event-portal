@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrgUnits & Scoped Roles | Admin HQ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/global.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --blue: #1a2557; --orange: #c9a45e; }
+        body { background-color: #f8f9fa; color: #1e293b; font-family: 'Inter', sans-serif; }
+        .navbar { background: var(--blue); border-bottom: 1px solid #e2e8f0; }
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .form-control, .form-select { background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
+        .table-dark th { background-color: var(--blue); border-bottom: 2px solid var(--orange); color: #ffffff; }
+        .table td { border-color: #e2e8f0; vertical-align: middle; }
+        .badge-dept { background-color: #0284c7; color: #fff; }
+        .badge-club { background-color: #7c3aed; color: #fff; }
+        .badge-central { background-color: #1a2557; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark px-4 py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="/admin/dashboard">
+                <i class="fas fa-arrow-left me-2"></i> Back to Admin Dashboard
+            </a>
+            <span class="text-light opacity-75 small">Sapthagiri NPS University — Scoped Governance</span>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="fas fa-sitemap text-primary me-2"></i> OrgUnits & Scoped Roles</h2>
+                <p class="text-muted mb-0">Manage university departments, clubs, scoped permissions, and approval workflows.</p>
+            </div>
+            <div>
+                <form action="/admin/migrate_roles" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-primary" onclick="return confirm('Run universal role and unit migration? Existing events will be backfilled to Central.');">
+                        <i class="fas fa-sync-alt me-1"></i> Sync & Migrate Roles
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- PENDING APPROVAL EVENTS (IF ANY) -->
+        {% if pending_events %}
+        <div class="card p-4 mb-5 border-warning shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-warning mb-0">
+                    <i class="fas fa-clipboard-check me-2"></i> Events Awaiting Publication Approval ({{ pending_events|length }})
+                </h5>
+                <span class="badge bg-warning text-dark">Institutional Gatekeeper</span>
+            </div>
+            <p class="text-muted small">Unit-created events must be verified by a University Administrator before becoming publicly visible.</p>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Event Title</th>
+                            <th>Org Unit</th>
+                            <th>Created By</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pe in pending_events %}
+                        <tr>
+                            <td class="fw-bold">{{ pe.title }}</td>
+                            <td><span class="badge bg-secondary">{{ pe.org_unit_id or pe.orgUnitId or 'Unassigned' }}</span></td>
+                            <td class="small">{{ pe.created_by_email or pe.created_by or pe.spoc_id }}</td>
+                            <td>{{ pe.date or 'TBD' }}</td>
+                            <td><span class="badge bg-warning text-dark">pending_approval</span></td>
+                            <td>
+                                <form action="/admin/events/approve/{{ pe.id }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i> Approve & Publish
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ORG UNITS SECTION -->
+        <div class="row g-4 mb-5">
+            <div class="col-lg-7">
+                <div class="card p-4 shadow-sm h-100">
+                    <h5 class="fw-bold text-dark mb-3"><i class="fas fa-building me-2"></i> Configured OrgUnits</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Unit Name</th>
+                                    <th>Type</th>
+                                    <th>Slug / ID</th>
+                                    <th>Parent Unit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for u in units %}
+                                <tr>
+                                    <td class="fw-bold">{{ u.name }}</td>
+                                    <td>
+                                        {% if u.type == 'department' %}
+                                            <span class="badge badge-dept">Department</span>
+                                        {% elif u.type == 'club' %}
+                                            <span class="badge badge-club">Club</span>
+                                        {% else %}
+                                            <span class="badge badge-central">Central</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><code>{{ u.id }}</code></td>
+                                    <td class="text-muted small">{{ u.parent_id or '—' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No OrgUnits registered yet. Run migration above to seed defaults.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card p-4 shadow-sm h-100">
+                    <h5 class="fw-bold text-primary mb-3"><i class="fas fa-plus-circle me-2"></i> Add New Department or Club</h5>
+                    <form action="/admin/org_units/create" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Unit Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Mechanical Engineering or Coding Club" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Unit Type</label>
+                            <select name="type" class="form-select" required>
+                                <option value="department">Department</option>
+                                <option value="club">Club / Society</option>
+                                <option value="central">Central Office</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Slug (Identifier)</label>
+                            <input type="text" name="slug" class="form-control" placeholder="e.g. mech-dept or coding-club (optional)">
+                            <div class="form-text">Leave blank to auto-generate from name.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Parent Unit</label>
+                            <select name="parent_id" class="form-select">
+                                <option value="central">central (Central Administration)</option>
+                                {% for u in units %}
+                                    {% if u.id != 'central' %}
+                                    <option value="{{ u.id }}">{{ u.name }} ({{ u.id }})</option>
+                                    {% endif %}
+                                {% endfor %}
+                                <option value="none">None (Root Unit)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                            <i class="fas fa-save me-1"></i> Register OrgUnit
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCOPED ROLES & ASSIGNMENTS SECTION -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="card p-4 shadow-sm h-100">
+                    <h5 class="fw-bold text-dark mb-3"><i class="fas fa-user-shield me-2"></i> Active Role Assignments</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Scope</th>
+                                    <th>Target Scope ID</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ra in role_assignments %}
+                                <tr>
+                                    <td class="fw-bold">{{ ra.user_id }}</td>
+                                    <td><span class="badge bg-dark">{{ ra.role }}</span></td>
+                                    <td>
+                                        {% if ra.scope_type == 'university' %}
+                                            <span class="badge bg-success">University</span>
+                                        {% elif ra.scope_type == 'unit' %}
+                                            <span class="badge bg-info text-dark">Unit</span>
+                                        {% elif ra.scope_type == 'event' %}
+                                            <span class="badge bg-secondary">Event</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">{{ ra.scope_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><code>{{ ra.scope_id }}</code></td>
+                                    <td>
+                                        <form action="/admin/roles/revoke/{{ ra.id }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Revoke this role assignment?');">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">No explicit scoped role assignments recorded. Run migration to auto-map existing users.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card p-4 shadow-sm h-100">
+                    <h5 class="fw-bold text-primary mb-3"><i class="fas fa-user-tag me-2"></i> Assign Scoped Role</h5>
+                    <form action="/admin/roles/assign" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">User Email</label>
+                            <input type="email" name="user_id" class="form-control" placeholder="staff@college.edu" required list="user_list">
+                            <datalist id="user_list">
+                                {% for u in users %}
+                                <option value="{{ u.email or u.id }}">{{ u.name }} ({{ u.role }})</option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Role</label>
+                            <select name="role" class="form-select fw-bold" required>
+                                <option value="UniversityAdmin">🏛️ UniversityAdmin</option>
+                                <option value="UnitAdmin">🏢 UnitAdmin (Dept/Club Head)</option>
+                                <option value="EventOrganizer">📋 EventOrganizer</option>
+                                <option value="EventCoordinator">🎯 EventCoordinator</option>
+                                <option value="Judge">⚖️ Judge</option>
+                                <option value="Volunteer">🤝 Volunteer</option>
+                                <option value="Participant">🎓 Participant</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Scope Type</label>
+                            <select name="scope_type" id="scope_type_select" class="form-select" required onchange="handleScopeChange()">
+                                <option value="university">University-Wide</option>
+                                <option value="unit">Specific OrgUnit (Department/Club)</option>
+                                <option value="event">Specific Event</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Scope Identifier</label>
+                            <input type="text" name="scope_id" id="scope_id_input" class="form-control" placeholder="default / unit id / event id" value="default" required list="scope_list">
+                            <datalist id="scope_list">
+                                <option value="default">Default University</option>
+                                {% for u in units %}
+                                <option value="{{ u.id }}">{{ u.name }} (Unit)</option>
+                                {% endfor %}
+                                {% for e in events %}
+                                <option value="{{ e.id }}">{{ e.title }} (Event)</option>
+                                {% endfor %}
+                            </datalist>
+                            <div class="form-text small" id="scope_help_text">Use 'default' for university scope, unit slug for unit scope, or event ID for event scope.</div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 fw-bold">
+                            <i class="fas fa-check-circle me-1"></i> Save Role Assignment
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function handleScopeChange() {
+            const st = document.getElementById('scope_type_select').value;
+            const si = document.getElementById('scope_id_input');
+            const sh = document.getElementById('scope_help_text');
+            if (st === 'university') {
+                si.value = 'default';
+                sh.innerText = "Scope applies campus-wide across all units and events.";
+            } else if (st === 'unit') {
+                si.value = '';
+                si.placeholder = "e.g. cse, ece, cultural-club";
+                sh.innerText = "Select or type the target OrgUnit slug.";
+            } else if (st === 'event') {
+                si.value = '';
+                si.placeholder = "e.g. evt_test_001";
+                sh.innerText = "Select or type the target Event ID.";
+            }
+        }
+    </script>
+</body>
+</html>

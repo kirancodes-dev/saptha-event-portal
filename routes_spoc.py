@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, Response, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, session, flash, Response, jsonify, current_app, abort
 from models import FirebaseWrapper
 import datetime
 import csv
@@ -29,12 +29,16 @@ spoc_bp = Blueprint('spoc', __name__, url_prefix='/spoc')
 @login_required
 @role_required('ClubSPOC')
 def dashboard():
+    from services_permission import can
     spoc_id = session.get('user_id')
-    # SuperAdmin sees all events; SPOC sees only their own
-    if session.get('role') in ('SuperAdmin', 'Super Admin'):
-        query = db.collection('events').stream()
-    else:
-        query = db.collection('events').where('spoc_id', '==', spoc_id).stream()
+    # Filter events strictly to what the user may see
+    all_events = list(db.collection('events').stream())
+    query = []
+    for doc in all_events:
+        data = doc.to_dict() or {}
+        data['id'] = doc.id
+        if can(session, 'view_analytics', data, db=db):
+            query.append(doc)
 
     events = []
     total_regs = 0
@@ -64,6 +68,11 @@ def dashboard():
             if s.get('email'):
                 unique_staff.add(s['email'])
         data['registration_count'] = reg_count
+        try:
+            from services_workflow import WorkflowEngine
+            data['allowed_transitions'] = WorkflowEngine.get_allowed_transitions(data, data.get('status', 'active'))
+        except Exception:
+            data['allowed_transitions'] = []
         events.append(FirebaseWrapper(doc.id, data))
         chart_labels.append(data.get('title', doc.id)[:20])
         chart_regs.append(reg_count)
@@ -117,31 +126,69 @@ def create_event():
         if get_bool('year_3'): allowed_years.append(3)
         if get_bool('year_4'): allowed_years.append(4)
 
+        template_id = (request.form.get('template_id') or request.form.get('event_type') or 'hackathon').strip().lower()
+        preset = None
+        if template_id in ('seminar', 'workshop'):
+            from services_templates import TemplateService
+            preset = TemplateService.get_template(template_id)
+
+        is_non_comp = preset is not None
+        initial_status = 'draft' if is_non_comp else 'active'
+        part_type = 'Individual' if is_non_comp else (request.form.get('participation_type') or 'Individual')
+        is_team = False if is_non_comp else (part_type in ['Team', 'Both'])
+        cap_val = get_int('max_participants', 0)
+        if not cap_val and preset:
+            cap_val = preset.get('capacity', 200)
+
+        # Determine owner unit
+        user_unit = session.get('org_unit_id')
+        if not user_unit:
+            try:
+                ras = list(db.collection('role_assignments').where('user_id', '==', session.get('user_id', '').lower().strip()).stream())
+                for ra in ras:
+                    rad = ra.to_dict() or {}
+                    if rad.get('scope_type') == 'unit' and rad.get('scope_id'):
+                        user_unit = rad.get('scope_id')
+                        break
+            except Exception:
+                pass
+        if not user_unit:
+            u_doc = db.collection('users').document(session.get('user_id', '')).get()
+            if u_doc.exists:
+                user_unit = u_doc.to_dict().get('department')
+
+        if user_unit and str(user_unit).lower() not in ('central', 'none', ''):
+            initial_status = 'draft'
+
         event_data = {
+            'organization_id': 'default',
+            'org_unit_id': user_unit or 'central',
             'title': request.form.get('title'),
-            'category': request.form.get('category'),
+            'category': request.form.get('category') or (preset.get('category', 'Technical') if preset else 'Technical'),
             'description': request.form.get('description'),
             'rules': request.form.get('rules'),
             'banner_url': request.form.get('banner_url') or 'https://placehold.co/800x400?text=Event',
-            'visibility': request.form.get('visibility'),
+            'visibility': request.form.get('visibility') or 'Public',
             'date': request.form.get('date'),
             'time': request.form.get('time'),
             'reg_deadline': request.form.get('reg_deadline'),
             'venue': request.form.get('venue'),
-            'participation_type': request.form.get('participation_type'),
-            'is_team_event': request.form.get('participation_type') in ['Team', 'Both'],
+            'participation_type': part_type,
+            'is_team_event': is_team,
+            'event_type': template_id,
+            'capacity': cap_val,
 
             # KEY NEW FIELDS
             'coordinators': coordinators_list,  # Array of emails
             'form_schema':  form_schema,         # The exact form requirements
 
             # Judging criteria for judge scoring
-            'judging_criteria': json.loads(request.form.get('judging_criteria_json') or '[]'),
+            'judging_criteria': [] if is_non_comp else json.loads(request.form.get('judging_criteria_json') or '[]'),
 
             'limits': {
-                'team_min': get_int('team_min', 1),
-                'team_max': get_int('team_max', 1),
-                'max_participants': get_int('max_participants', 0),
+                'team_min': 1 if is_non_comp else get_int('team_min', 1),
+                'team_max': 1 if is_non_comp else get_int('team_max', 1),
+                'max_participants': cap_val,
                 'allowed_years': allowed_years
             },
             'fees': {'regular': get_int('reg_fee', 0)},
@@ -158,10 +205,17 @@ def create_event():
                 'phone': '9999999999', # Placeholder, ideally fetch from profile
                 'group_link': '#'
             },
-            'status': 'active',
+            'status': initial_status,
             'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'results_published': False
         }
+
+        if preset:
+            event_data['workflow_config'] = preset.get('workflow_config', {})
+            event_data['evaluation_config'] = preset.get('evaluation_config', {})
+            event_data['ticket_tiers'] = preset.get('ticket_tiers', [])
+            event_data['notification_rules'] = preset.get('notification_rules', [])
+            event_data['certificate_config'] = preset.get('certificate_config', {})
 
         # Firestore .add() returns (timestamp, doc_ref). Capture the id so
         # we can attach an auto-generated form schema if one was provided.
@@ -185,10 +239,33 @@ def create_event():
                     'source':     'ai_generated'
                 })
                 db.collection('events').document(new_event_id).update({'has_custom_form': True})
-                flash(f"Event '{event_data['title']}' published! Review and tweak the AI-generated form below.", "success")
+                flash(f"Event '{event_data['title']}' created! Review and tweak the AI-generated form below.", "success")
                 return redirect(f'/forms/builder/{new_event_id}')
+        elif preset and preset.get('form_config'):
+            base_fields = [
+                {'id': 'full_name', 'type': 'text', 'label': 'Full Name', 'placeholder': 'Enter your full name', 'required': True, 'options': [], 'help_text': ''},
+                {'id': 'email', 'type': 'email', 'label': 'Email Address', 'placeholder': 'you@example.com', 'required': True, 'options': [], 'help_text': ''},
+                {'id': 'phone', 'type': 'tel', 'label': 'Phone Number', 'placeholder': '10-digit mobile', 'required': True, 'options': [], 'help_text': ''},
+                {'id': 'usn', 'type': 'text', 'label': 'USN / Roll Number', 'placeholder': 'e.g. 1SN21CS001', 'required': False, 'options': [], 'help_text': ''},
+            ]
+            template_fields = []
+            for f in preset['form_config']:
+                f_item = dict(f)
+                if 'id' not in f_item and 'field_name' in f_item:
+                    f_item['id'] = f_item['field_name']
+                template_fields.append(f_item)
+            db.collection('event_forms').document(new_event_id).set({
+                'event_id':   new_event_id,
+                'form_type':  'custom',
+                'fields':     base_fields + template_fields,
+                'created_by': session.get('user_id'),
+                'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'source':     'template'
+            })
+            db.collection('events').document(new_event_id).update({'has_custom_form': True})
 
-        flash(f"Event '{event_data['title']}' published! Build or customise the registration form below.", "success")
+        msg_action = "created in Draft mode" if is_non_comp else "published"
+        flash(f"Event '{event_data['title']}' {msg_action}!", "success")
         return redirect(f'/spoc/dashboard#event-{new_event_id}')
 
     except Exception as e:
@@ -196,14 +273,58 @@ def create_event():
         flash(f"Error creating event: {str(e)}", "danger")
         return redirect('/spoc/create_event')
 
+
+# --- 2B. TRANSITION EVENT STATE (UNIVERSAL WORKFLOW) ---
+@spoc_bp.route('/event/<event_id>/transition', methods=['POST'])
+@spoc_bp.route('/transition_event/<event_id>', methods=['POST'], endpoint='transition_event_legacy')
+@login_required
+@role_required('ClubSPOC')
+def transition_event(event_id):
+    target_state = request.form.get('target_state')
+    actor_id = session.get('user_id')
+
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    ev_data = doc.to_dict() or {}
+    ev_data['id'] = event_id
+
+    from services_permission import can
+    if not can(session, 'edit_event', ev_data, db=db):
+        flash("Not authorised to modify this event.", "danger")
+        return redirect('/spoc/dashboard')
+
+    try:
+        from services_workflow import WorkflowEngine, WorkflowError
+        WorkflowEngine.transition_event(
+            db,
+            event_id=event_id,
+            target_state=target_state,
+            actor_id=actor_id,
+            metadata={'source': 'spoc_ui'}
+        )
+        flash(f"Event advanced to '{target_state.replace('_', ' ').title()}'.", "success")
+    except Exception as e:
+        flash(str(e), "warning")
+
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
 # --- 3. EXPORT CSV ---
 @spoc_bp.route('/export_csv/<event_id>')
 @login_required
 @role_required('ClubSPOC')
 def export_csv(event_id):
+    from services_permission import can
     try:
         event_doc = db.collection('events').document(event_id).get()
-        title = event_doc.to_dict().get('title', 'Event')
+        if not event_doc.exists:
+            return redirect('/spoc/dashboard')
+        ev_data = event_doc.to_dict() or {}
+        ev_data['id'] = event_id
+        if not can(session, 'export_data', ev_data, db=db):
+            abort(403)
+        title = ev_data.get('title', 'Event')
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(['Team/Name', 'Lead Email', 'Members', 'Status', 'Attendance', 'Score', 'Date'])
@@ -215,7 +336,9 @@ def export_csv(event_id):
             final_score = max([v['total'] for v in scores.values()]) if scores else 0
             writer.writerow([r.get('team_name', 'Individual'), r.get('lead_email'), f"{member_count} Members", r.get('status'), r.get('attendance'), final_score, r.get('registered_at')])
         return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": f"attachment; filename={title}_report.csv"})
-    except:
+    except Exception as e:
+        if getattr(e, 'code', None) == 403:
+            abort(403)
         return redirect('/spoc/dashboard')
 
 # --- 4. RESULTS DASHBOARD ---
@@ -223,10 +346,16 @@ def export_csv(event_id):
 @login_required
 @role_required('ClubSPOC')
 def event_results(event_id):
+    from services_permission import can
     # 1. Fetch Event
     event_doc = db.collection('events').document(event_id).get()
-    event = event_doc.to_dict()
+    if not event_doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/spoc/dashboard')
+    event = event_doc.to_dict() or {}
     event['id'] = event_id
+    if not can(session, 'publish_results', event, db=db) and not can(session, 'view_analytics', event, db=db):
+        abort(403)
 
     # 2. Fetch Registrations
     regs_ref = db.collection('registrations').where('event_id', '==', event_id).stream()
@@ -277,14 +406,15 @@ def event_results(event_id):
 @login_required
 @role_required('ClubSPOC')
 def scan_page(event_id):
+    from services_permission import can
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
         flash("Event not found.", "danger")
         return redirect('/spoc/dashboard')
-    event = event_doc.to_dict()
-    if event.get('spoc_id') != session.get('user_id'):
-        flash("You are not authorised to scan for this event.", "danger")
-        return redirect('/spoc/dashboard')
+    event = event_doc.to_dict() or {}
+    event['id'] = event_id
+    if not can(session, 'check_in', event, db=db):
+        abort(403)
 
     regs_query = db.collection('registrations').where('event_id', '==', event_id).stream()
     registrations = []
@@ -322,11 +452,13 @@ def scan_page(event_id):
 @login_required
 @role_required('ClubSPOC')
 def api_checkin(event_id, reg_id):
+    from services_permission import can
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
         return jsonify({'status': 'invalid', 'message': 'Event not found'}), 404
-    event = event_doc.to_dict()
-    if event.get('spoc_id') != session.get('user_id'):
+    event = event_doc.to_dict() or {}
+    event['id'] = event_id
+    if not can(session, 'check_in', event, db=db):
         return jsonify({'status': 'unauthorized', 'message': 'Not your event'}), 403
 
     today_str      = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -965,23 +1097,44 @@ def toggle_openhall(event_id):
 @login_required
 @role_required('ClubSPOC')
 def edit_event(event_id):
+    from services_permission import can
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         flash("Event not found.", "danger")
         return redirect('/spoc/dashboard')
-    event = doc.to_dict()
+    event = doc.to_dict() or {}
     event['id'] = event_id
+
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
 
     if request.method == 'GET':
         return render_template('spoc/edit_event.html', event=event)
 
     updates = {}
-    for field in ['title', 'description', 'rules', 'venue', 'date', 'time', 'reg_deadline', 'banner_url']:
+    for field in ['title', 'description', 'rules', 'venue', 'room_id', 'date', 'time', 'start_datetime', 'end_datetime', 'reg_deadline', 'banner_url']:
         val = request.form.get(field, '').strip()
         if val:
             updates[field] = val
+
     if updates:
+        # If room or time is changing, check for conflicts on confirmed bookings
+        target_room = updates.get('room_id') or event.get('room_id') or event.get('roomId')
+        target_start = updates.get('start_datetime') or updates.get('date') or event.get('start_datetime') or event.get('date')
+        target_end = updates.get('end_datetime') or updates.get('date') or event.get('end_datetime') or target_start
+        if target_room and target_start and target_end:
+            from services_venue import check_room_conflict
+            has_clash, clash_info = check_room_conflict(
+                db, room_id=target_room, start_time=target_start, end_time=target_end, exclude_event_id=event_id
+            )
+            if has_clash and clash_info:
+                flash(clash_info.get('message', 'Cannot update: room booking conflict detected.'), 'danger')
+                return redirect(f'/spoc/dashboard#event-{event_id}')
+
         db.collection('events').document(event_id).update(updates)
+        # Automatically trigger change notifications for registered participants
+        from services_venue import notify_event_details_changed
+        notify_event_details_changed(db, event_id=event_id, previous_data=event, new_data={**event, **updates})
         flash("Event details updated.", "success")
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
@@ -993,10 +1146,16 @@ def edit_event(event_id):
 @login_required
 @role_required('ClubSPOC')
 def delete_event(event_id):
+    from services_permission import can
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         flash("Event not found.", "danger")
         return redirect('/spoc/dashboard')
+    event = doc.to_dict() or {}
+    event['id'] = event_id
+    if not can(session, 'edit_event', event, db=db):
+        abort(403)
+
     # Delete registrations, then event document
     regs = db.collection('registrations').where('event_id', '==', event_id).stream()
     for r in regs:

@@ -9,8 +9,12 @@ class Config:
     # 1. SECURITY & SESSION
     # =========================================================
     _is_production = os.environ.get('FLASK_ENV') == 'production'
+    _env_secret = os.environ.get('SECRET_KEY', '').strip()
+    if _is_production:
+        if not _env_secret or len(_env_secret) < 32 or _env_secret in ('default_secret_key', 'dev', 'secret', 'changeme', 'your_random_secret_key_here_64_chars_minimum'):
+            raise RuntimeError("CRITICAL: In production, SECRET_KEY must be set in the environment and be at least 32 characters long.")
 
-    SECRET_KEY              = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+    SECRET_KEY              = _env_secret or secrets.token_hex(32)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE   = _is_production
     SESSION_COOKIE_SAMESITE = 'Strict' if _is_production else 'Lax'

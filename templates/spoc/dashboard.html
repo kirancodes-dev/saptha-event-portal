@@ -1645,11 +1645,24 @@ h1, h2, h3, h4, h5, h6 {
               </div>
             </div>
             
-            <div class="d-flex flex-column align-items-end">
-              <span class="badge {{ 'bg-success' if event.status == 'active' else 'bg-secondary' }} px-3 py-2 fs-7" style="border-radius:100px;">
-                <i class="fas fa-{{ 'circle fa-xs' if event.status == 'active' else 'check-circle' }} me-1"></i>
-                {{ event.status | capitalize }}
+            <div class="d-flex flex-column align-items-end gap-2">
+              <span class="badge {{ 'bg-success' if event.status in ('active', 'published', 'registration_open', 'in_progress') else 'bg-secondary' }} px-3 py-2 fs-7" style="border-radius:100px;">
+                <i class="fas fa-{{ 'circle fa-xs' if event.status in ('active', 'published', 'registration_open') else 'check-circle' }} me-1"></i>
+                {{ event.status | replace('_', ' ') | title }}
               </span>
+              {% if event.allowed_transitions %}
+              <div class="d-flex gap-2 flex-wrap justify-content-end">
+                {% for next_state in event.allowed_transitions %}
+                <form action="/spoc/event/{{ event.id }}/transition" method="POST" style="margin:0;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="target_state" value="{{ next_state }}">
+                  <button type="submit" class="btn btn-sm" style="background:var(--snpsu-blue);color:#fff;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:6px;border:none;">
+                    <i class="fas fa-arrow-right me-1"></i>Advance to {{ next_state | replace('_', ' ') | title }}
+                  </button>
+                </form>
+                {% endfor %}
+              </div>
+              {% endif %}
             </div>
           </div>
           

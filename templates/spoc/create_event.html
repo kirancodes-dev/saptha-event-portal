@@ -419,24 +419,146 @@
             .btn-nav { padding: 8px 12px; font-size: 12px; }
             .action-footer { padding: 8px 10px; }
         }
+
+        /* ── TEMPLATE SELECTOR CARDS ─────────────────────── */
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .template-card {
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.22s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            position: relative;
+        }
+        .template-card:hover {
+            border-color: #c9a45e;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+        .template-card.selected {
+            border-color: #c9a45e;
+            background: #fffdfa;
+            box-shadow: 0 0 0 2px rgba(201, 164, 94, 0.4);
+        }
+        .template-card.selected::after {
+            content: "✓";
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            width: 22px;
+            height: 22px;
+            background: #c9a45e;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .template-icon {
+            font-size: 26px;
+            margin-bottom: 12px;
+            color: #1a2557;
+        }
+        .template-title {
+            font-weight: 700;
+            font-size: 16px;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+        .template-desc {
+            font-size: 12.5px;
+            color: #64748b;
+            line-height: 1.45;
+            margin-bottom: 12px;
+            flex: 1;
+        }
+        .template-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475569;
+        }
     </style>
 </head>
 <body>
 
     <div class="wizard-progress">
         <div class="step-indicators">
-            <div class="step active" id="ind-1" onclick="goToStep(1)" title="Go to Basics"><div class="step-num" id="snum-1">1</div><span class="step-label">Basics</span></div>
-            <div class="step" id="ind-2" onclick="goToStep(2)" title="Go to Logistics"><div class="step-num" id="snum-2">2</div><span class="step-label">Logistics</span></div>
-            <div class="step" id="ind-3" onclick="goToStep(3)" title="Go to Rules &amp; Prizes"><div class="step-num" id="snum-3">3</div><span class="step-label">Rules</span></div>
-            <div class="step" id="ind-4" onclick="goToStep(4)" title="Go to Registration Form"><div class="step-num" id="snum-4">4</div><span class="step-label">Form</span></div>
-            <div class="step" id="ind-5" onclick="goToStep(5)" title="Review &amp; Publish"><div class="step-num" id="snum-5">5</div><span class="step-label">Review</span></div>
+            <div class="step active" id="ind-1" onclick="goToStep(1)" title="Choose Template"><div class="step-num" id="snum-1">1</div><span class="step-label">Template</span></div>
+            <div class="step" id="ind-2" onclick="goToStep(2)" title="Go to Basics"><div class="step-num" id="snum-2">2</div><span class="step-label">Basics</span></div>
+            <div class="step" id="ind-3" onclick="goToStep(3)" title="Go to Logistics"><div class="step-num" id="snum-3">3</div><span class="step-label">Logistics</span></div>
+            <div class="step" id="ind-4" onclick="goToStep(4)" title="Go to Rules &amp; Prizes"><div class="step-num" id="snum-4">4</div><span class="step-label">Rules</span></div>
+            <div class="step" id="ind-5" onclick="goToStep(5)" title="Go to Registration Form"><div class="step-num" id="snum-5">5</div><span class="step-label">Form</span></div>
+            <div class="step" id="ind-6" onclick="goToStep(6)" title="Review &amp; Publish"><div class="step-num" id="snum-6">6</div><span class="step-label">Review</span></div>
         </div>
     </div>
 
     <form action="/spoc/create_event" method="POST" id="mainForm" class="wizard-container" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+        <!-- STEP 1: CHOOSE TEMPLATE -->
         <div class="wizard-step-content light-step active" id="step-1">
+            <div class="section-card">
+                <h3 class="section-title"><i class="fas fa-layer-group"></i> Choose Event Template</h3>
+                <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+                    Select a turnkey template. Seminar &amp; Workshop templates automatically simplify rounds, teams, and judging rubrics for non-competition delivery.
+                </p>
+
+                <input type="hidden" name="template_id" id="selectedTemplateId" value="hackathon">
+                <input type="hidden" name="event_type" id="selectedEventType" value="hackathon">
+
+                <div class="template-grid">
+                    <div class="template-card selected" id="tpl-card-hackathon" onclick="selectTemplate('hackathon')">
+                        <div class="template-icon"><i class="fas fa-code"></i></div>
+                        <div class="template-title">Hackathon</div>
+                        <div class="template-desc">Multi-round code sprint with team formation, GitHub submissions, and judging rubrics.</div>
+                        <span class="template-badge">Competition · Teams · Judged</span>
+                    </div>
+
+                    <div class="template-card" id="tpl-card-seminar" onclick="selectTemplate('seminar')">
+                        <div class="template-icon"><i class="fas fa-graduation-cap"></i></div>
+                        <div class="template-title">Seminar</div>
+                        <div class="template-desc">Academic or executive symposium with keynote speaker Q&amp;A and attendance-verified certificates.</div>
+                        <span class="template-badge">Individual · Non-Competitive</span>
+                    </div>
+
+                    <div class="template-card" id="tpl-card-workshop" onclick="selectTemplate('workshop')">
+                        <div class="template-icon"><i class="fas fa-laptop-code"></i></div>
+                        <div class="template-title">Workshop</div>
+                        <div class="template-desc">Hands-on technical training, skill development labs, capacity controls, and completion certificates.</div>
+                        <span class="template-badge">Individual · Hands-on</span>
+                    </div>
+
+                    <div class="template-card" id="tpl-card-custom" onclick="selectTemplate('custom')">
+                        <div class="template-icon"><i class="fas fa-sliders-h"></i></div>
+                        <div class="template-title">Custom</div>
+                        <div class="template-desc">Fully customizable event with your own parameters, rounds, limits, and rules.</div>
+                        <span class="template-badge">Flexible · Custom Config</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex justify-content-end">
+                    <button type="button" class="btn btn-primary px-4 py-2" onclick="changeStep(1)" style="font-weight:600;border-radius:8px;">
+                        Continue with <span id="selectedTemplateLabel">Hackathon</span> <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-step-content light-step" id="step-2">
             <div class="section-card">
                 <h3 class="section-title"><i class="fas fa-fingerprint"></i> Core Identity</h3>
                 <div class="row g-3">
@@ -489,7 +611,7 @@
             </div>
         </div>
 
-        <div class="wizard-step-content light-step" id="step-2">
+        <div class="wizard-step-content light-step" id="step-3">
 
             <!-- Date & Venue -->
             <div class="section-card">
@@ -519,7 +641,7 @@
             </div>
 
             <!-- Judging Criteria -->
-            <div class="section-card">
+            <div class="section-card" id="judgingCriteriaCard">
                 <h3 class="section-title"><i class="fas fa-gavel"></i> Judging Criteria
                     <span style="font-size:.75rem;font-weight:400;color:#94a3b8;margin-left:8px;">Judges score each submission on these</span>
                 </h3>
@@ -546,7 +668,7 @@
 
         </div>
 
-        <div class="wizard-step-content light-step" id="step-3">
+        <div class="wizard-step-content light-step" id="step-4">
             <div class="section-card">
                 <h3 class="section-title"><i class="fas fa-scroll"></i> Rules &amp; Guidelines</h3>
                 <div class="row g-3">
@@ -558,7 +680,7 @@
                 </div>
             </div>
 
-            <div class="section-card">
+            <div class="section-card" id="partStyleContainer">
                 <h3 class="section-title"><i class="fas fa-users-cog"></i> Participation Logic</h3>
                 <div class="row g-4">
                     <div class="col-md-4">
@@ -633,7 +755,7 @@
             </div>
         </div>
 
-        <div class="wizard-step-content light-step" id="step-4">
+        <div class="wizard-step-content light-step" id="step-5">
 
             <input type="hidden" name="auto_form_json" id="autoFormJson">
 
@@ -749,7 +871,7 @@
             </div>
         </div>
 
-        <div class="wizard-step-content light-step" id="step-5">
+        <div class="wizard-step-content light-step" id="step-6">
             <div class="section-card text-center py-5">
                 <div style="width:80px;height:80px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
                     <i class="fas fa-rocket" style="font-size:2rem;color:#16a34a;"></i>
@@ -784,9 +906,67 @@
 
     <script>
         let currentStep = 1;
-        const totalSteps = 5;
+        const totalSteps = 6;
         const visitedSteps = new Set([1]);
+        let cr_step2_init = false;
         let fb_step4_init = false;
+
+        // ── Template selection logic ──────────────────────────
+        function selectTemplate(templateId) {
+            document.querySelectorAll('.template-card').forEach(el => el.classList.remove('selected'));
+            const card = document.getElementById('tpl-card-' + templateId);
+            if (card) card.classList.add('selected');
+
+            const hiddenInput = document.getElementById('selectedTemplateId');
+            if (hiddenInput) hiddenInput.value = templateId;
+            const eventTypeInput = document.getElementById('selectedEventType');
+            if (eventTypeInput) eventTypeInput.value = templateId;
+
+            const labelEl = document.getElementById('selectedTemplateLabel');
+            if (labelEl) {
+                const names = {
+                    'hackathon': 'Hackathon',
+                    'seminar': 'Seminar',
+                    'workshop': 'Workshop',
+                    'custom': 'Custom'
+                };
+                labelEl.textContent = names[templateId] || 'Hackathon';
+            }
+
+            const isNonCompetition = (templateId === 'seminar' || templateId === 'workshop');
+
+            // Hide or show judging criteria
+            const criteriaCard = document.getElementById('judgingCriteriaCard');
+            if (criteriaCard) {
+                criteriaCard.style.display = isNonCompetition ? 'none' : 'block';
+            }
+
+            // Hide or show participation logic & team fields
+            const partContainer = document.getElementById('partStyleContainer');
+            const teamFields = document.querySelectorAll('.team-field');
+            if (partContainer) {
+                partContainer.style.display = isNonCompetition ? 'none' : 'block';
+            }
+            teamFields.forEach(el => {
+                el.style.display = isNonCompetition ? 'none' : (document.getElementById('partType')?.value !== 'Individual' ? 'block' : 'none');
+            });
+
+            // Set Individual defaults for non-competition
+            if (isNonCompetition) {
+                const partSelect = document.getElementById('partType');
+                if (partSelect) partSelect.value = 'Individual';
+                const teamMin = document.querySelector('input[name="team_min"]');
+                const teamMax = document.querySelector('input[name="team_max"]');
+                if (teamMin) teamMin.value = 1;
+                if (teamMax) teamMax.value = 1;
+
+                // Clear criteria for non-competitions
+                const critRows = document.getElementById('criteriaRows');
+                if (critRows) critRows.innerHTML = '';
+                const critJson = document.getElementById('judgingCriteriaJson');
+                if (critJson) critJson.value = '[]';
+            }
+        }
 
         // ── Toast ─────────────────────────────────────────────
         function showToast(msg, type) {
@@ -848,15 +1028,18 @@
                 btnPublish.style.display = 'none';
             }
 
-            // Auto-init judging criteria on first visit to step 2
-            if (currentStep === 2 && !cr_step2_init) {
+            // Auto-init judging criteria on first visit to step 3 (Logistics)
+            if (currentStep === 3 && !cr_step2_init) {
                 cr_step2_init = true;
-                if (document.querySelectorAll('#criteriaRows .criteria-row').length === 0) {
-                    loadDefaultCriteria();
+                const tpl = document.getElementById('selectedTemplateId')?.value;
+                if (tpl !== 'seminar' && tpl !== 'workshop') {
+                    if (document.querySelectorAll('#criteriaRows .criteria-row').length === 0) {
+                        loadDefaultCriteria();
+                    }
                 }
             }
-            // Auto-init form builder with default template on first visit to step 4
-            if (currentStep === 4 && !fb_step4_init) {
+            // Auto-init form builder with default template on first visit to step 5 (Form)
+            if (currentStep === 5 && !fb_step4_init) {
                 fb_step4_init = true;
                 if (fb_fields.length === 0) fb_loadTemplate();
             }

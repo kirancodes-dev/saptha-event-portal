@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Campus Events | SapthaEvent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/global.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{--blue:#1a2557;--orange:#c9a45e;--navy:#0f172a;}
+body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1e293b;}
+.topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
+.brand{font-weight:700;font-size:15px;color:#fff;}
+.nav-link-item{color:rgba(255,255,255,.75);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
+.nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
+.nav-pills .nav-link{border-radius:10px;font-weight:600;font-size:13.5px;color:#64748b;padding:8px 18px;transition:.15s;border:1px solid transparent;}
+.nav-pills .nav-link.active{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:0 4px 12px rgba(26,37,87,.15);}
+.ev-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.03);}
+.ev-card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.06);transform:translateY(-2px);}
+.badge-tech{background:#f37021;color:#fff;}
+.badge-cult{background:#7c3aed;color:#fff;}
+.badge-sport{background:#10b981;color:#fff;}
+.badge-mgmt{background:#0891b2;color:#fff;}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:38px;width:auto;object-fit:contain;">
+  <span class="brand">SapthaEvent</span>
+  <div class="ms-auto d-flex gap-1 align-items-center">
+    <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Home</a>
+    <a href="/calendar" class="nav-link-item"><i class="fas fa-calendar-alt me-1"></i>Calendar</a>
+    <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+    <a href="/calendar/feed.ics" class="btn btn-sm btn-outline-light ms-2" title="Subscribe to calendar feed">
+      <i class="fas fa-rss me-1"></i> Sync .ics Feed
+    </a>
+  </div>
+</nav>
+
+<div class="container py-4" style="max-width:1180px;">
+  <!-- Header Banner -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h3 style="font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);margin:0;">
+        <i class="fas fa-calendar-check text-primary me-2"></i>My Campus Events
+      </h3>
+      <p style="font-size:13px;color:#64748b;margin:3px 0 0;">
+        Track your registrations, live gate passes, verified attendance, and issued certificates.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/calendar" class="btn btn-sm btn-primary">
+        <i class="fas fa-search me-1"></i> Discover Events
+      </a>
+      <a href="/calendar/feed.ics" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-download me-1"></i> Export .ics
+      </a>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <ul class="nav nav-pills mb-4 gap-2 flex-wrap" id="eventsTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'upcoming' %}active{% endif %}" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming" type="button" role="tab">
+        <i class="fas fa-clock me-1"></i> Upcoming <span class="badge bg-light text-dark ms-1">{{ upcoming|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'registered' %}active{% endif %}" id="registered-tab" data-bs-toggle="pill" data-bs-target="#registered" type="button" role="tab">
+        <i class="fas fa-ticket-alt me-1"></i> Registered <span class="badge bg-light text-dark ms-1">{{ registered|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'waitlisted' %}active{% endif %}" id="waitlisted-tab" data-bs-toggle="pill" data-bs-target="#waitlisted" type="button" role="tab">
+        <i class="fas fa-hourglass-half me-1"></i> Waitlisted <span class="badge bg-light text-dark ms-1">{{ waitlisted|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'attended' %}active{% endif %}" id="attended-tab" data-bs-toggle="pill" data-bs-target="#attended" type="button" role="tab">
+        <i class="fas fa-check-circle me-1"></i> Attended <span class="badge bg-light text-dark ms-1">{{ attended|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'certificates' %}active{% endif %}" id="certificates-tab" data-bs-toggle="pill" data-bs-target="#certificates" type="button" role="tab">
+        <i class="fas fa-certificate me-1"></i> Certificates <span class="badge bg-light text-dark ms-1">{{ certificates|length }}</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if active_tab == 'cancelled' %}active{% endif %}" id="cancelled-tab" data-bs-toggle="pill" data-bs-target="#cancelled" type="button" role="tab">
+        <i class="fas fa-ban me-1"></i> Cancelled <span class="badge bg-light text-dark ms-1">{{ cancelled|length }}</span>
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab Contents -->
+  <div class="tab-content" id="eventsTabContent">
+
+    <!-- Macro for rendering cards -->
+    {% macro render_event_cards(items, empty_msg, show_cert=False) %}
+      {% if items %}
+        <div class="row g-3">
+          {% for r in items %}
+          <div class="col-md-6 col-lg-4">
+            <div class="ev-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="badge bg-light text-secondary border">{{ r.event_category }}</span>
+                  {% if r.is_checked_in %}
+                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Attended</span>
+                  {% elif r.status == 'waitlisted' %}
+                    <span class="badge bg-warning text-dark"><i class="fas fa-hourglass-half me-1"></i>Waitlisted</span>
+                  {% elif r.status == 'cancelled' %}
+                    <span class="badge bg-danger">Cancelled</span>
+                  {% else %}
+                    <span class="badge bg-primary">Confirmed</span>
+                  {% endif %}
+                </div>
+
+                <h5 class="fw-bold text-dark mb-1" style="font-size:16px;">{{ r.event_title }}</h5>
+                <div class="text-muted small mb-2">
+                  <i class="fas fa-calendar-alt text-primary me-1"></i> {{ r.event_date or 'TBA' }}
+                  &nbsp;·&nbsp;
+                  <i class="fas fa-map-marker-alt text-danger me-1"></i> {{ r.event_venue }}
+                </div>
+
+                {% if r.ticket_code %}
+                <div class="p-2 mb-3 bg-light rounded text-center small border">
+                  <span class="text-muted">Ticket Pass:</span>
+                  <strong class="text-primary font-monospace ms-1">{{ r.ticket_code }}</strong>
+                </div>
+                {% endif %}
+              </div>
+
+              <div class="pt-3 border-top d-flex gap-2 flex-wrap">
+                {% if r.ticket_code %}
+                <a href="/participant/ticket/{{ r.ticket_code }}" class="btn btn-sm btn-outline-primary flex-fill">
+                  <i class="fas fa-qrcode me-1"></i> View Ticket
+                </a>
+                {% elif r.id %}
+                <a href="/participant/badge/{{ r.id }}" class="btn btn-sm btn-outline-primary flex-fill">
+                  <i class="fas fa-id-badge me-1"></i> Digital Badge
+                </a>
+                {% endif %}
+
+                {% if show_cert or r.has_certificate %}
+                <a href="/participant/certificate/{{ r.id }}" class="btn btn-sm btn-warning text-dark flex-fill">
+                  <i class="fas fa-award me-1"></i> Certificate
+                </a>
+                {% endif %}
+
+                {% if r.google_calendar_url %}
+                <a href="{{ r.google_calendar_url }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Add to Google Calendar">
+                  <i class="fab fa-google"></i>
+                </a>
+                {% endif %}
+
+                <a href="{{ r.ics_url }}" class="btn btn-sm btn-outline-secondary" title="Download .ics">
+                  <i class="fas fa-calendar-plus"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-5 bg-white rounded-3 border">
+          <i class="fas fa-calendar-minus fa-3x text-muted mb-3 opacity-50"></i>
+          <h5 class="fw-bold text-muted">{{ empty_msg }}</h5>
+          <a href="/calendar" class="btn btn-sm btn-primary mt-2">Explore Campus Calendar</a>
+        </div>
+      {% endif %}
+    {% endmacro %}
+
+    <!-- 1. Upcoming -->
+    <div class="tab-pane fade {% if active_tab == 'upcoming' %}show active{% endif %}" id="upcoming" role="tabpanel">
+      {{ render_event_cards(upcoming, "No upcoming confirmed events scheduled.") }}
+    </div>
+
+    <!-- 2. Registered -->
+    <div class="tab-pane fade {% if active_tab == 'registered' %}show active{% endif %}" id="registered" role="tabpanel">
+      {{ render_event_cards(registered, "You have not registered for any events yet.") }}
+    </div>
+
+    <!-- 3. Waitlisted -->
+    <div class="tab-pane fade {% if active_tab == 'waitlisted' %}show active{% endif %}" id="waitlisted" role="tabpanel">
+      {{ render_event_cards(waitlisted, "No waitlisted registrations.") }}
+    </div>
+
+    <!-- 4. Attended -->
+    <div class="tab-pane fade {% if active_tab == 'attended' %}show active{% endif %}" id="attended" role="tabpanel">
+      {{ render_event_cards(attended, "No event attendance records yet.") }}
+    </div>
+
+    <!-- 5. Certificates -->
+    <div class="tab-pane fade {% if active_tab == 'certificates' %}show active{% endif %}" id="certificates" role="tabpanel">
+      {{ render_event_cards(certificates, "No certificates issued yet.", show_cert=True) }}
+    </div>
+
+    <!-- 6. Cancelled -->
+    <div class="tab-pane fade {% if active_tab == 'cancelled' %}show active{% endif %}" id="cancelled" role="tabpanel">
+      {{ render_event_cards(cancelled, "No cancelled events or registrations.") }}
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

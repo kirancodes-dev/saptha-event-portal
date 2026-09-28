@@ -48,6 +48,11 @@ COLLECTION_MAP = {
     'venue_bookings': VenueBooking,
 }
 
+STRING_PK_COLLECTIONS = (
+    'users', 'organizations', 'tickets', 'event_sessions', 'org_units',
+    'role_assignments', 'campuses', 'buildings', 'rooms', 'venue_bookings'
+)
+
 # Field name translation map: Firestore -> SQLAlchemy/Postgres
 FIELD_MAP = {
     'max_participants': 'max_teams',
@@ -90,6 +95,8 @@ FIELD_MAP = {
     'eventType': 'event_type',
     'event_mode': 'event_mode',
     'eventMode': 'event_mode',
+    'mode': 'event_mode',
+    'visibility': 'visibility',
     'start_datetime': 'start_datetime',
     'startDatetime': 'start_datetime',
     'end_datetime': 'end_datetime',
@@ -163,6 +170,7 @@ def verify_and_align_schema():
         ('ticketTiersJson', 'TEXT'),
         ('notificationRulesJson', 'TEXT'),
         ('certificateConfigJson', 'TEXT'),
+        ('visibility', "VARCHAR(50) DEFAULT 'Public'"),
     ]
     cols_registrations = [
         ('assigned_judge_email', 'VARCHAR(255)'),
@@ -177,9 +185,16 @@ def verify_and_align_schema():
     if not engine:
         return
 
-    # Ensure any newly introduced tables (org_units, role_assignments) exist
+    # Ensure any newly introduced tables (org_units, role_assignments, campuses, buildings, rooms, venue_bookings) exist
     try:
-        Base.metadata.create_all(engine, tables=[OrgUnit.__table__, RoleAssignment.__table__], checkfirst=True)
+        Base.metadata.create_all(
+            engine,
+            tables=[
+                OrgUnit.__table__, RoleAssignment.__table__,
+                Campus.__table__, Building.__table__, Room.__table__, VenueBooking.__table__
+            ],
+            checkfirst=True
+        )
     except Exception as e:
         logger.debug("Table creation check note: %s", e)
 
@@ -261,6 +276,8 @@ class CustomJSONEncoder(json.JSONEncoder):
             return o.isoformat()
         if isinstance(o, uuid.UUID):
             return str(o)
+        if hasattr(o, 'value') and ('Increment' in type(o).__name__ or 'Increment' in getattr(getattr(o, '__class__', None), '__name__', '')):
+            return o.value
         return super().default(o)
 
 def safe_str(val) -> str:
@@ -335,8 +352,25 @@ def _set_native_doc(collection_name, doc_id, data, merge=True):
     final_data = (data or {}).copy()
     if merge:
         existing = _get_native_doc(collection_name, doc_id) or {}
+        for k, v in list(final_data.items()):
+            if hasattr(v, 'value') and ('Increment' in type(v).__name__ or 'Increment' in getattr(getattr(v, '__class__', None), '__name__', '')):
+                base = existing.get(k, 0) or 0
+                final_data[k] = base + v.value
+            elif 'Sentinel' in type(v).__name__ or type(v).__name__ == '_ServerTimestamp':
+                final_data[k] = datetime.now(timezone.utc).isoformat()
+            elif 'DELETE_FIELD' in str(type(v)):
+                final_data.pop(k, None)
+                existing.pop(k, None)
         existing.update(final_data)
         final_data = existing
+    else:
+        for k, v in list(final_data.items()):
+            if hasattr(v, 'value') and ('Increment' in type(v).__name__ or 'Increment' in getattr(getattr(v, '__class__', None), '__name__', '')):
+                final_data[k] = v.value
+            elif 'Sentinel' in type(v).__name__ or type(v).__name__ == '_ServerTimestamp':
+                final_data[k] = datetime.now(timezone.utc).isoformat()
+            elif 'DELETE_FIELD' in str(type(v)):
+                final_data.pop(k, None)
 
     data_json = json.dumps(final_data, cls=CustomJSONEncoder)
 
@@ -481,7 +515,7 @@ class SQLDocumentReference:
 
         with get_session() as session:
             # Map search primary key
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions', 'org_units', 'role_assignments'):
+            if self.collection_name in STRING_PK_COLLECTIONS:
                 record = session.query(self.model_class).filter_by(id=str(self.id)).first()
             elif self.collection_name == 'event_forms':
                 record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
@@ -504,7 +538,7 @@ class SQLDocumentReference:
             return
 
         with get_session() as session:
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions', 'org_units', 'role_assignments'):
+            if self.collection_name in STRING_PK_COLLECTIONS:
                 record = session.query(self.model_class).filter_by(id=str(self.id)).first()
             elif self.collection_name == 'event_forms':
                 record = session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).first()
@@ -536,7 +570,7 @@ class SQLDocumentReference:
             return
 
         with get_session() as session:
-            if self.collection_name in ('users', 'organizations', 'tickets', 'event_sessions', 'org_units', 'role_assignments'):
+            if self.collection_name in STRING_PK_COLLECTIONS:
                 session.query(self.model_class).filter_by(id=str(self.id)).delete()
             elif self.collection_name == 'event_forms':
                 session.query(self.model_class).filter_by(event_id=to_uuid(self.id)).delete()
@@ -603,6 +637,7 @@ class SQLDocumentReference:
             d['notification_rules'] = json.loads(record.notification_rules_json) if getattr(record, 'notification_rules_json', None) else []
             d['room_id'] = getattr(record, 'room_id', None)
             d['roomId'] = getattr(record, 'room_id', None)
+            d['visibility'] = getattr(record, 'visibility', 'Public') or 'Public'
             d['org_unit_id'] = getattr(record, 'org_unit_id', None)
             d['orgUnitId'] = getattr(record, 'org_unit_id', None)
             d['organization_id'] = getattr(record, 'organization_id', None)
@@ -954,6 +989,51 @@ class SQLDocumentReference:
             kwargs['created_at'] = self._get_datetime(data.get('created_at'))
             return RoleAssignment(**kwargs)
 
+        elif self.collection_name == 'campuses':
+            kwargs['id'] = str(self.id)
+            kwargs['organization_id'] = safe_str(data.get('organization_id') or data.get('organizationId', 'default'))
+            kwargs['name'] = safe_str(data.get('name', 'Main Campus'))
+            kwargs['slug'] = safe_str(data.get('slug', str(self.id)).lower().strip())
+            kwargs['address'] = safe_str(data.get('address', ''))
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            kwargs['updated_at'] = self._get_datetime(data.get('updated_at'))
+            return Campus(**kwargs)
+
+        elif self.collection_name == 'buildings':
+            kwargs['id'] = str(self.id)
+            kwargs['campus_id'] = safe_str(data.get('campus_id') or data.get('campusId', ''))
+            kwargs['name'] = safe_str(data.get('name', 'Building'))
+            kwargs['code'] = safe_str(data.get('code', ''))
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            kwargs['updated_at'] = self._get_datetime(data.get('updated_at'))
+            return Building(**kwargs)
+
+        elif self.collection_name == 'rooms':
+            kwargs['id'] = str(self.id)
+            kwargs['building_id'] = safe_str(data.get('building_id') or data.get('buildingId', ''))
+            kwargs['name'] = safe_str(data.get('name', 'Room'))
+            kwargs['room_number'] = safe_str(data.get('room_number') or data.get('roomNumber', ''))
+            kwargs['capacity'] = int(data.get('capacity', 50) or 50)
+            kwargs['type'] = safe_str(data.get('type', 'classroom'))
+            fac = data.get('facilities', data.get('facilities_json', []))
+            kwargs['facilities_json'] = json.dumps(fac) if isinstance(fac, (dict, list)) else safe_str(fac)
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            kwargs['updated_at'] = self._get_datetime(data.get('updated_at'))
+            return Room(**kwargs)
+
+        elif self.collection_name == 'venue_bookings':
+            kwargs['id'] = str(self.id)
+            kwargs['room_id'] = safe_str(data.get('room_id') or data.get('roomId', ''))
+            kwargs['event_id'] = to_uuid(data.get('event_id') or data.get('eventId'))
+            kwargs['session_id'] = safe_str(data.get('session_id') or data.get('sessionId')) or None
+            kwargs['start_time'] = self._get_datetime(data.get('start_time') or data.get('startTime'))
+            kwargs['end_time'] = self._get_datetime(data.get('end_time') or data.get('endTime'))
+            kwargs['status'] = safe_str(data.get('status', 'confirmed'))
+            kwargs['notes'] = safe_str(data.get('notes', ''))
+            kwargs['created_at'] = self._get_datetime(data.get('created_at'))
+            kwargs['updated_at'] = self._get_datetime(data.get('updated_at'))
+            return VenueBooking(**kwargs)
+
         return None
 
 
@@ -962,6 +1042,19 @@ class SQLDocumentReference:
         for key, val in data.items():
             # Translate keys
             mapped_key = FIELD_MAP.get(key, key)
+
+            # Handle Firestore transforms (e.g. firestore.Increment, firestore.SERVER_TIMESTAMP, firestore.DELETE_FIELD)
+            if hasattr(val, 'value') and ('Increment' in type(val).__name__ or 'Increment' in getattr(getattr(val, '__class__', None), '__name__', '')):
+                current_val = getattr(record, mapped_key, 0) or 0
+                try:
+                    val = current_val + val.value
+                except Exception:
+                    val = val.value
+            elif 'Sentinel' in type(val).__name__ or type(val).__name__ == '_ServerTimestamp':
+                val = datetime.now(timezone.utc)
+            elif 'DELETE_FIELD' in str(type(val)):
+                val = None
+
             if hasattr(record, mapped_key):
                 col_prop = record.__mapper__.column_attrs.get(mapped_key)
                 col = col_prop.columns[0] if col_prop is not None else record.__mapper__.columns.get(mapped_key)
@@ -990,6 +1083,12 @@ class SQLDocumentReference:
                     elif col.type.__class__.__name__ in ('UUID', 'PgUUID'):
                         if val:
                             val = to_uuid(val)
+                    # Integer conversions
+                    elif 'Integer' in col.type.__class__.__name__:
+                        try:
+                            val = int(val)
+                        except (ValueError, TypeError):
+                            pass
                     # Handle dict/list values for String/Text columns
                     elif isinstance(val, (dict, list)):
                         val = safe_str(val)
@@ -1030,6 +1129,8 @@ class SQLDocumentReference:
                         pass
                 elif key in ('org_unit_id', 'orgUnitId'):
                     record.org_unit_id = safe_str(val) or None
+                elif key == 'visibility':
+                    record.visibility = safe_str(val) or 'Public'
                 elif key in ('certificate_config', 'certificate_config_json', 'certificateConfigJson'):
                     record.certificate_config_json = json.dumps(val) if isinstance(val, (dict, list)) else safe_str(val)
 

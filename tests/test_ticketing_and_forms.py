@@ -431,3 +431,52 @@ class TestDigitalTicketWalletRoutes:
         assert data["status"] == "success"
         assert data["name"] == "Scanner Test User"
         assert data["ticket_type"] == "Judge"
+
+    def test_event_registration_form_submission_success(self, client, mock_db):
+        """Registering for an event via /forms/register/<event_id> succeeds and updates registration_count."""
+        event_id = "test-form-reg-ev"
+        mock_db.collection("events").document(event_id).set({
+            "id": event_id,
+            "title": "Code Sprint Challenge",
+            "date": "2026-11-15",
+            "venue": "CS Lab 202",
+            "capacity": 100,
+            "status": "active",
+            "fee": 0,
+            "registration_count": 0,
+        })
+        mock_db.collection("event_forms").document(event_id).set({
+            "event_id": event_id,
+            "form_title": "Code Sprint Registration",
+            "fields": [
+                {"id": "full_name", "label": "Full Name", "type": "text", "required": True},
+                {"id": "email", "label": "Email Address", "type": "email", "required": True},
+                {"id": "phone", "label": "Phone Number", "type": "tel", "required": True},
+                {"id": "usn", "label": "USN", "type": "text", "required": False},
+            ]
+        })
+
+        resp = client.post(
+            f"/forms/submit/{event_id}",
+            data={
+                "full_name": "Jane Developer",
+                "email": "jane.dev@student.edu",
+                "phone": "9876543210",
+                "usn": "1SN21CS001",
+            },
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        # Check confirmation page reached (no 'Submission failed' error)
+        assert b"Submission failed" not in resp.data
+
+        # Verify registration created
+        regs = list(mock_db.collection("registrations").where("event_id", "==", event_id).stream())
+        assert len(regs) >= 1
+        reg_emails = [r.to_dict().get("lead_email") for r in regs]
+        assert "jane.dev@student.edu" in reg_emails
+
+        # Verify registration_count on event was incremented
+        ev_doc = mock_db.collection("events").document(event_id).get()
+        assert ev_doc.exists
+        assert ev_doc.to_dict().get("registration_count") == 1

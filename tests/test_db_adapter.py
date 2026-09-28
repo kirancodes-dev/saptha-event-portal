@@ -448,3 +448,57 @@ def test_universal_fields_persistence():
     assert tdata["registration_id"] == reg_id
     assert tdata["status"] == "active"
 
+    # 5. Test firestore.Increment on SQLAlchemy model without sqlite3.InterfaceError
+    from google.cloud import firestore
+    adapter.collection("events").document(event_id).update({
+        "registration_count": firestore.Increment(1)
+    })
+    doc_inc1 = adapter.collection("events").document(event_id).get()
+    assert doc_inc1.to_dict()["registration_count"] == 1
+
+    adapter.collection("events").document(event_id).update({
+        "registration_count": firestore.Increment(5)
+    })
+    doc_inc2 = adapter.collection("events").document(event_id).get()
+    assert doc_inc2.to_dict()["registration_count"] == 6
+
+    # 6. Test venue models persistence (Campus, Building, Room, VenueBooking) with string IDs
+    campus_data = {
+        "id": "campus-test",
+        "name": "Test Campus",
+        "slug": "test-campus",
+        "address": "Bangalore"
+    }
+    adapter.collection("campuses").document("campus-test").set(campus_data)
+    cdoc = adapter.collection("campuses").document("campus-test").get()
+    assert cdoc.exists
+    assert cdoc.to_dict()["name"] == "Test Campus"
+
+    room_data = {
+        "id": "room-lab-101",
+        "building_id": "bldg-1",
+        "name": "AI Lab 101",
+        "room_number": "101",
+        "capacity": 45,
+        "type": "lab",
+        "facilities": ["wifi", "projector", "gpu"]
+    }
+    adapter.collection("rooms").document("room-lab-101").set(room_data)
+    rdoc = adapter.collection("rooms").document("room-lab-101").get()
+    assert rdoc.exists
+    assert rdoc.to_dict()["capacity"] == 45
+    assert "gpu" in rdoc.to_dict()["facilities"]
+
+    booking_data = {
+        "id": "vb_test_101",
+        "room_id": "room-lab-101",
+        "event_id": event_id,
+        "start_time": "2026-11-20T10:00:00+00:00",
+        "end_time": "2026-11-20T12:00:00+00:00",
+        "status": "confirmed"
+    }
+    adapter.collection("venue_bookings").document("vb_test_101").set(booking_data)
+    bdoc = adapter.collection("venue_bookings").document("vb_test_101").get()
+    assert bdoc.exists
+    assert bdoc.to_dict()["status"] == "confirmed"
+

@@ -311,6 +311,7 @@ class Event(Base):
     slug           = Column(String(300), index=True, nullable=True)
     description    = Column(Text)
     category       = Column(Enum(EventCategory), nullable=False)
+    visibility     = Column(String(50), nullable=False, default="Public")
     event_type     = Column("eventType", String(100), default="competition")
     event_mode     = Column("eventMode", String(50), default="offline")
     timezone       = Column(String(100), default="Asia/Kolkata")
@@ -362,6 +363,7 @@ class Event(Base):
             'room_name': self.room.name if self.room else None,
             'title': self.title, 'slug': self.slug, 'description': self.description,
             'category': self.category.value if self.category else None,
+            'visibility': self.visibility or 'Public',
             'event_type': self.event_type, 'event_mode': self.event_mode,
             'timezone': self.timezone,
             'date': self.date.isoformat() if self.date else None,

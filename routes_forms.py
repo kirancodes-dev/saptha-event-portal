@@ -415,7 +415,7 @@ def submit_form(event_id):
                 'role':                'Student',
                 'category':            'General',
                 'phone':               phone,
-                'password':            generate_password_hash(raw_password),
+                'password':            generate_password_hash(raw_password, method='pbkdf2:sha256'),
                 'created_at':          datetime.datetime.now().strftime('%Y-%m-%d'),
                 'needs_password_reset': True
             })
@@ -565,9 +565,19 @@ def submit_form(event_id):
             logger.warning("Could not auto-issue ticket on registration: %s", e)
 
         # Atomic increment — safe under concurrent registrations
-        db.collection('events').document(event_id).update({
-            'registration_count': firestore.Increment(1)
-        })
+        try:
+            db.collection('events').document(event_id).update({
+                'registration_count': firestore.Increment(1)
+            })
+        except Exception:
+            try:
+                ev_cur = db.collection('events').document(event_id).get()
+                cur_cnt = int(ev_cur.to_dict().get('registration_count', 0) or 0) if (ev_cur and ev_cur.exists) else 0
+                db.collection('events').document(event_id).update({
+                    'registration_count': cur_cnt + 1
+                })
+            except Exception as e:
+                logger.warning("Could not increment registration_count: %s", e)
 
         # Notifications — confirmation only; QR ticket sent 1 day before event
         send_registration_confirmed_email(

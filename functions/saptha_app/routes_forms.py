@@ -357,7 +357,7 @@ def submit_form(event_id):
                 'role':                'Student',
                 'category':            'General',
                 'phone':               phone,
-                'password':            generate_password_hash(raw_password),
+                'password':            generate_password_hash(raw_password, method='pbkdf2:sha256'),
                 'created_at':          datetime.datetime.now().strftime('%Y-%m-%d'),
                 'needs_password_reset': True
             })

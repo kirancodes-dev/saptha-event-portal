@@ -99,7 +99,7 @@ def _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url):
     <p style="margin-bottom: 20px;">
       Hello <strong>{name}</strong>, get ready! <strong>{event_title}</strong> is happening tomorrow.
     </p>
-    
+
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0; font-size: 14px;">
       <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
         <tr>
@@ -120,13 +120,13 @@ def _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url):
         </tr>
       </table>
     </div>
-    
+
     <div style="text-align: center; margin: 30px 0;">
       <a href="{ticket_url}" style="background-color: #c9a45e; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(201, 164, 94, 0.25);">
         🎫 View My QR Ticket
       </a>
     </div>
-    
+
     <p>Please report to the venue on time with your ticket ID or QR code ready for scanning.</p>
     """
     return _html_wrapper(content, f"Event Reminder — {event_title}")

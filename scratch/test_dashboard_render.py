@@ -1,4 +1,3 @@
-import os
 import sys
 sys.path.insert(0, '/Users/kiranbiradar/Desktop/saptha-event-portal')
 
@@ -28,16 +27,16 @@ def test_render(mock_db):
         'fees': {'regular': 100},
         'staff': []
     }
-    
+
     mock_query = MagicMock()
     mock_query.stream.return_value = [mock_event]
-    
+
     # Setup chain of mocks
     mock_col = MagicMock()
     mock_col.where.return_value.stream = mock_query.stream
     mock_col.stream = mock_query.stream
     mock_db.collection.return_value = mock_col
-    
+
     # Mock registration stream for default fallback
     mock_db.collection.return_value.where.return_value.stream.return_value = []
 

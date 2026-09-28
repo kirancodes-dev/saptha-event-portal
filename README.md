@@ -16,7 +16,7 @@
 [![Live Portal](https://img.shields.io/badge/🌐_Live_Portal-ONLINE-22c55e?style=for-the-badge&logo=google-cloud&logoColor=white)](https://saptha-event-portal-762269836348.us-east4.run.app/)
 [![Python](https://img.shields.io/badge/Python-3.12-c9a45e?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
-[![Firebase](https://img.shields.io/badge/Firestore-NoSQL-FF6F00?style=for-the-badge&logo=firebase&logoColor=white)](https://firebase.google.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-SQLAlchemy-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Gemini AI](https://img.shields.io/badge/Gemini_2.5_Flash-AI_Engine-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
 [![Tests](https://img.shields.io/badge/Tests-145_Passing-1a2557?style=for-the-badge&logo=pytest&logoColor=white)](#)
 
@@ -67,7 +67,6 @@
 - [🔧 Full Technology Stack](#-full-technology-stack)
 - [📁 Repository Structure](#-repository-structure)
 - [🚀 Local Setup Guide](#-local-setup-guide)
-- [🔑 Demo Sandbox Accounts](#-demo-sandbox-accounts)
 - [📡 API Reference](#-api-reference)
 - [⚙️ CI/CD & Security](#️-cicd--security)
 - [🤝 Contributing](#-contributing)
@@ -167,7 +166,7 @@ Super Admin
 - SPOCs press one button — Gemini analyzes: attendance rates, score distributions, top performers, round-by-round data, club vs college breakdown
 - Produces a **structured executive report**: highlights, participation stats, operational recommendations, gender/category breakdowns
 - **Print-to-PDF**: Optimized `@media print` layout generates a clean A4 PDF straight from the browser — no third-party tools
-- AI report stored in Firestore; re-accessible anytime from the SPOC dashboard
+- AI report stored in the database; re-accessible anytime from the SPOC dashboard
 
 ---
 
@@ -175,7 +174,7 @@ Super Admin
 > *Route: `/verify/<cert_hash>` — Every certificate is a blockchain-grade artifact*
 
 - **ReportLab PDF generation** with university branding, event metadata, rank, score, and date
-- Each certificate carries a **unique cryptographic hash** (`itsdangerous` + `SHA-256`) stored in Firestore
+- Each certificate carries a **unique cryptographic hash** (`itsdangerous` + `SHA-256`) stored in the database
 - Public verification URL shareable on LinkedIn, WhatsApp, or resume
 - Verification page features:
   - 🎉 **Canvas confetti** celebration animation on successful verify
@@ -232,7 +231,7 @@ Emails rendered as **HTML table-based templates** (email-client safe) with:
 - Dynamic pricing rules: early-bird discounts, coupon codes, referral rewards
 - Payment webhook verification with signature validation
 - Failed payment recovery with retry mechanisms
-- All transactions logged in Firestore with audit trails
+- All transactions logged in the database with audit trails
 
 ---
 
@@ -291,7 +290,7 @@ Emails rendered as **HTML table-based templates** (email-client safe) with:
                     └──┬──────────────┬──────────────┬────────────┘
                        │              │              │
            ┌───────────▼──┐   ┌───────▼──────┐  ┌──▼────────────┐
-           │   Firestore   │   │  Celery 5.x  │  │  Google       │
+           │  PostgreSQL   │   │  Celery 5.x  │  │  Google       │
            │   (NoSQL DB)  │   │  Task Queue  │  │  Cloud        │
            │   Real-time   │   │  (Redis      │  │  Storage      │
            │   Listeners   │   │   Broker)    │  │  (Assets)     │
@@ -308,14 +307,14 @@ Emails rendered as **HTML table-based templates** (email-client safe) with:
 
 **Data Flow:**
 ```
-Student Registers → Firestore Write → Celery Email Task → Brevo API → Inbox
-Judge Scores       → Firestore Write → SSE Push         → Leaderboard updates in 3s
-Result Published   → Firestore Write → Celery Cert Task → PDF gen → Email with attachment
+Student Registers → Database Write → Celery Email Task → Brevo API → Inbox
+Judge Scores       → Database Write → SSE Push         → Leaderboard updates in 3s
+Result Published   → Database Write → Celery Cert Task → PDF gen → Email with attachment
 SPOC Requests AI   → Gemini API      → Report stored    → Print-to-PDF available
 ```
 
 ### 🔄 11. Database Independence & SQLFirestoreAdapter
-The application implements an intermediate database abstraction layer: the `SQLFirestoreAdapter` (`db_adapter.py`). This adapter translates standard NoSQL queries (e.g. `db.collection('users').document(email).get()`) into equivalent relational SQL transactions at runtime. This allows developers to use a unified interface, rendering the application entirely portable between Google Cloud Firestore and standard PostgreSQL.
+The application implements an intermediate database abstraction layer: the `SQLFirestoreAdapter` (`db_adapter.py`). This adapter translates standard NoSQL queries (e.g. `db.collection('users').document(email).get()`) into equivalent relational SQL transactions at runtime. This allows developers to use a unified interface, PostgreSQL is the supported database (SQLite for local development); every document field is preserved via the row's `extra_json` column.
 
 ### 📱 12. Zero-Scroll Mobile Login Page
 The mobile login page features dynamic viewport locking (`100dvh` container height) with hidden scrollbars to prevent scrolling. When a user selects the `Super Admin` role, which requires an additional `Master Secret Key` field, the viewport styles automatically respond via CSS transitions to resize paddings and branding margins, preventing overflow even on small screens.
@@ -347,7 +346,7 @@ To comply with WCAG text-readability rules:
 ### Database & Storage
 | Component | Technology | Purpose |
 |:----------|:-----------|:--------|
-| Primary DB | **Google Cloud Firestore** | NoSQL real-time document database |
+| Primary DB | **PostgreSQL** (SQLAlchemy) | Relational database; SQLite for local development |
 | Relational (Alt) | **PostgreSQL** via Supabase/AWS RDS | Industrial SQL upgrade path |
 | File Storage | **AWS S3** / **Google Cloud Storage** | Certificate PDFs, event assets |
 | ORM/Migration | **SQLAlchemy + Alembic** | Schema migration for PostgreSQL path |
@@ -406,7 +405,7 @@ saptha-event-portal/
 ├── 🐍 Core Application
 │   ├── app.py                    # Flask application factory & route registration
 │   ├── config.py                 # Environment-aware configuration classes
-│   ├── models.py                 # Firestore model helpers
+│   ├── models.py                 # Database client (`db`) resolution
 │   ├── extensions.py             # Flask extension instances
 │   └── celery_app.py             # Celery application + broker config
 │
@@ -448,9 +447,8 @@ saptha-event-portal/
 │   └── auth_oauth.py             # Google OAuth2 SSO integration
 │
 ├── 🗄️ Database
-│   ├── db_adapter.py             # Firestore ↔ PostgreSQL adapter
+│   ├── db_adapter.py             # Firestore-style API → SQL adapter
 │   ├── models_pg.py              # SQLAlchemy ORM models for PostgreSQL
-│   └── firestore.rules           # Firestore security rules
 │
 ├── 🎨 Frontend
 │   ├── static/css/global.css     # 2600+ line unified design system
@@ -467,12 +465,11 @@ saptha-event-portal/
 ## 🚀 Local Setup Guide
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.11
 - Git
-- A Firebase project with Firestore enabled
-- (Optional) Redis for Celery task queue
+- (Optional) Docker, to run with PostgreSQL + Redis
 
-### Step 1 — Clone & Create Virtual Environment
+### Option A — Plain Python (SQLite, zero configuration)
 
 ```bash
 git clone https://github.com/kirancodes-dev/saptha-event-portal.git
@@ -482,64 +479,43 @@ python3 -m venv .venv
 source .venv/bin/activate      # macOS/Linux
 # .venv\Scripts\activate       # Windows
 
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+# Create your Super Admin (choose your own email/password)
+SUPER_ADMIN_EMAIL=you@college.edu SUPER_ADMIN_PASS='choose-a-Strong-pass1' python init_superadmin.py
+
+python app.py                  # http://127.0.0.1:5001
 ```
 
-### Step 2 — Configure Environment
+With no `DATABASE_URL`, data lives in `saptha_fallback.db` (SQLite, gitignored)
+and a development secret key is generated in `instance/`. Optional: load demo
+accounts and events with `python seed_all_roles_demo.py`.
+
+### Option B — Docker Compose (PostgreSQL + Redis + Celery)
 
 ```bash
-cp .env.example .env
+cp .env.example .env           # set SECRET_KEY and MASTER_SECRET_KEY
+docker compose up --build      # http://localhost:8080
+docker compose exec web env SUPER_ADMIN_EMAIL=you@college.edu \
+    SUPER_ADMIN_PASS='choose-a-Strong-pass1' python init_superadmin.py
 ```
 
-Edit `.env` with your values (ensure no API keys are exposed publicly).
-
-### Step 3 — Firebase Credentials
-
-Download your Firebase service account JSON from the Firebase console, rename it to `serviceAccountKey.json`, and place it in the project root.
-
-### Step 4 — Initialize Super Admin
+### Tests & checks
 
 ```bash
-python fix_superadmin.py
+pytest              # uses a temporary SQLite database, never your local data
+ruff check .
 ```
 
-### Step 5 — Start Development Server
+### Database
 
-```bash
-python app.py
-```
-
----
-
-## ☁️ Production Cloud Run Deployment
-
-Deployment configurations and scripts are designed to build and scale containers efficiently using Google Cloud Build.
-
-### Deploy Command
-
-To build and deploy the container image directly to Google Cloud Run:
-```bash
-gcloud run deploy saptha-event-portal \
-    --source . \
-    --region us-east4 \
-    --allow-unauthenticated
-```
-
----
-
-## 🔑 Demo Sandbox Accounts
-
-Test the system on our development sandbox. In adherence to Zero-Trust Security Policies, static credentials have been purged:
-
-| 🎭 Role | 📧 Default Email | 🔑 Password Provisioning | 🔗 Dashboard |
-|:--------|:----------------|:-------------------------|:------------|
-| **Student / Participant** | `student@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/participant/dashboard` |
-| **Club SPOC** | `spoc@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/spoc/dashboard` |
-| **Judge** | `judge@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/judge/dashboard` |
-| **Coordinator** | `coordinator@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/coordinator/dashboard` |
-| **Admin** | `admin@demo.com` | Generated dynamically upon `saptha_full_seed.py` | `/admin/dashboard` |
-
-*Security Notice: Passwords for local development are generated and logged to stdout upon running the initialization seeder. In production environments, credentials are set via secure environment variables or SSO.*
+The app stores everything in **PostgreSQL** through SQLAlchemy (`models_pg.py`).
+Route code uses a Firestore-style API (`db.collection(...).document(...)`) that
+`db_adapter.py` translates to SQL; every document field is kept (fields without
+their own column are stored in the row's `extra_json`), and tables/columns are
+created automatically on startup. In production (`FLASK_ENV=production`) the app
+refuses to start without `DATABASE_URL` (or `CLOUD_SQL_INSTANCE`), `SECRET_KEY`
+and `MASTER_SECRET_KEY` — see `.env.example`.
 
 ---
 
@@ -599,7 +575,7 @@ copies or substantial portions of the Software.
 
 **Built with ❤️ at Sapthagiri NPS University, Bengaluru**
 
-*Python · Flask · Firestore · Gemini AI · Celery · Brevo · ReportLab · Cloud Run*
+*Python · Flask · PostgreSQL · Gemini AI · Celery · Brevo · ReportLab · Cloud Run*
 
 <br/>
 

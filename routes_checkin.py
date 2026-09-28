@@ -19,7 +19,7 @@ except ImportError:
     FieldFilter = None
 
 from models import db
-from utils import login_required, role_required, log_action
+from utils import login_required, role_required
 
 logger = logging.getLogger(__name__)
 

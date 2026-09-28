@@ -9,7 +9,7 @@ try:
     users_count = len(list(db.collection('users').stream()))
     events_count = len(list(db.collection('events').stream()))
     regs_count = len(list(db.collection('registrations').stream()))
-    print(f"Connection Successful!")
+    print("Connection Successful!")
     print(f"Users: {users_count}")
     print(f"Events: {events_count}")
     print(f"Registrations: {regs_count}")

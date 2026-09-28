@@ -1,0 +1,56 @@
+# Full local stack: web + PostgreSQL + Redis + Celery worker/beat.
+#   cp .env.example .env   # then fill in SECRET_KEY, MASTER_SECRET_KEY, ...
+#   docker compose up --build
+# App: http://localhost:8080
+x-app: &app
+  build: .
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://saptha:saptha@db:5432/saptha
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/1
+    CELERY_RESULT_BACKEND: redis://redis:6379/1
+    # Plain HTTP on localhost; set FORCE_HTTPS=true behind a TLS proxy
+    FORCE_HTTPS: "false"
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+  web:
+    <<: *app
+    ports:
+      - "8080:8080"
+
+  worker:
+    <<: *app
+    command: celery -A celery_app.celery worker --loglevel=info -Q default,email,certs,exports,webhooks
+    healthcheck:
+      disable: true
+
+  beat:
+    <<: *app
+    command: celery -A celery_app.celery beat --loglevel=info --schedule /tmp/celerybeat-schedule
+    healthcheck:
+      disable: true
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: saptha
+      POSTGRES_PASSWORD: saptha
+      POSTGRES_DB: saptha
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saptha -d saptha"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  pgdata:

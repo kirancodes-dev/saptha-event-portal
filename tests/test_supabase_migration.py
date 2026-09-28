@@ -4,8 +4,7 @@ tests/test_supabase_migration.py — Tests for migrate_to_supabase.py
 import uuid
 import json
 import unittest
-from datetime import datetime, date, timezone
-from unittest.mock import MagicMock
+from datetime import date
 
 try:
     from sqlalchemy import create_engine
@@ -18,19 +17,14 @@ except Exception:
 
 # Import Models and Base
 from models_pg import (
-    Base, User, Event, Registration, TeamMember, Score, EventForm,
-    FormSubmission, AuditLog, PushSubscription, UserRole, EventCategory,
-    EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
+    Base, User, Event, Registration, TeamMember, Score, UserRole, EventCategory,
+    RegistrationStatus, PaymentStatus
 )
 
 # Import functions under test
 from migrate_to_supabase import (
     to_uuid, parse_date, parse_datetime,
-    map_user_role, map_event_category, map_event_status,
-    map_registration_status, map_payment_status, map_attendance_status,
-    migrate_users, migrate_events, migrate_registrations_and_relations,
-    migrate_event_forms, migrate_form_submissions, migrate_audit_log,
-    migrate_push_subscriptions
+    map_user_role, map_event_category, migrate_users, migrate_events, migrate_registrations_and_relations
 )
 
 

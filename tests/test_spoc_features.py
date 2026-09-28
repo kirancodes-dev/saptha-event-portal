@@ -15,7 +15,7 @@ def test_spoc_scan_page_loads(client, mock_db):
         'spoc_id': 'spoc@test.com',
         'date': datetime.date.today().isoformat()
     }
-    
+
     mock_reg1 = MagicMock()
     mock_reg1.id = 'reg-1'
     mock_reg1.to_dict.return_value = {
@@ -25,28 +25,28 @@ def test_spoc_scan_page_loads(client, mock_db):
         'attendance': 'Absent',
         'checkin_time': ''
     }
-    
+
     with patch.object(mock_db, 'collection') as mock_collection:
         mock_events = MagicMock()
         mock_events.document.return_value.get.return_value = mock_event
-        
+
         mock_regs = MagicMock()
         mock_regs.where.return_value.stream.return_value = [mock_reg1]
-        
+
         def mock_collection_side_effect(name):
             if name == 'events':
                 return mock_events
             elif name == 'registrations':
                 return mock_regs
             return MagicMock()
-            
+
         mock_collection.side_effect = mock_collection_side_effect
-        
+
         with client.session_transaction() as sess:
             sess['user_id'] = 'spoc@test.com'
             sess['role'] = 'ClubSPOC'
             sess['name'] = 'Test SPOC'
-            
+
         resp = client.get('/spoc/scan/evt-1')
         assert resp.status_code == 200
         assert b'QR Scanner & Check-in' in resp.data
@@ -61,7 +61,7 @@ def test_spoc_checkin_api_succeeds(client, mock_db):
         'spoc_id': 'spoc@test.com',
         'date': datetime.date.today().isoformat()
     }
-    
+
     mock_reg = MagicMock()
     mock_reg.exists = True
     mock_reg.to_dict.return_value = {
@@ -70,28 +70,28 @@ def test_spoc_checkin_api_succeeds(client, mock_db):
         'lead_email': 'alice@test.com',
         'attendance': 'Absent'
     }
-    
+
     with patch.object(mock_db, 'collection') as mock_collection:
         mock_events = MagicMock()
         mock_events.document.return_value.get.return_value = mock_event
-        
+
         mock_regs = MagicMock()
         mock_regs.document.return_value.get.return_value = mock_reg
         mock_regs.document.return_value.update = MagicMock()
-        
+
         def mock_collection_side_effect(name):
             if name == 'events':
                 return mock_events
             elif name == 'registrations':
                 return mock_regs
             return MagicMock()
-            
+
         mock_collection.side_effect = mock_collection_side_effect
-        
+
         with client.session_transaction() as sess:
             sess['user_id'] = 'spoc@test.com'
             sess['role'] = 'ClubSPOC'
-            
+
         resp = client.post('/spoc/api/checkin/evt-1/reg-1')
         assert resp.status_code == 200
         data = json.loads(resp.data)
@@ -106,35 +106,35 @@ def test_spoc_end_event_saves_cert_config(client, mock_db):
         'title': 'Test Hackathon',
         'spoc_id': 'spoc@test.com'
     }
-    
+
     with patch.object(mock_db, 'collection') as mock_collection:
         mock_events = MagicMock()
         mock_events.document.return_value.get.return_value = mock_event
         mock_events.document.return_value.update = MagicMock()
-        
+
         mock_regs = MagicMock()
         mock_regs.where.return_value.stream.return_value = []
-        
+
         def mock_collection_side_effect(name):
             if name == 'events':
                 return mock_events
             elif name == 'registrations':
                 return mock_regs
             return MagicMock()
-            
+
         mock_collection.side_effect = mock_collection_side_effect
-        
+
         with client.session_transaction() as sess:
             sess['user_id'] = 'spoc@test.com'
             sess['role'] = 'ClubSPOC'
             sess['email'] = 'spoc@test.com'
-            
+
         resp = client.post('/spoc/end_event/evt-1', data={
             'template_id': '3',
             'issued_by': 'President John'
         })
         assert resp.status_code == 302
-        
+
         # Extract the mock call to document.update
         update_calls = mock_events.document.return_value.update.call_args_list
         assert len(update_calls) > 0
@@ -148,8 +148,8 @@ def test_spoc_marketing_event_writer_fallback(client):
     with client.session_transaction() as sess:
         sess['user_id'] = 'spoc@test.com'
         sess['role'] = 'ClubSPOC'
-        
-    resp = client.post('/spoc/marketing/event_writer', 
+
+    resp = client.post('/spoc/marketing/event_writer',
                        data=json.dumps({'title': 'New coding event'}),
                        content_type='application/json')
     assert resp.status_code == 200

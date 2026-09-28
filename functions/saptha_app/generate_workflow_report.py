@@ -20,22 +20,22 @@ try:
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.units import inch, mm
+    pass
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 except Exception:
     reportlab = None
 try:
     from reportlab.platypus import (
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        PageBreak, HRFlowable, KeepTogether
+        PageBreak, HRFlowable
     )
 except Exception:
     reportlab = None
 try:
-    from reportlab.graphics.shapes import Drawing, Rect, String
+    from reportlab.graphics.shapes import Drawing, Rect
 except Exception:
     reportlab = None
 

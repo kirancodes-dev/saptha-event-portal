@@ -65,6 +65,7 @@ celery.conf.update(
     result_expires           = 3600,          # results kept 1 h
 
     # ── Routing — explicit queues per workload ─────────────
+    task_default_queue = 'default',       # unrouted tasks (e.g. waitlist)
     task_routes = {
         'tasks.email_tasks.*':        {'queue': 'email'},
         'tasks.notification_tasks.*': {'queue': 'email'},

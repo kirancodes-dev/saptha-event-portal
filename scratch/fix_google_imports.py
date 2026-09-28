@@ -1,4 +1,3 @@
-import os
 import glob
 
 py_files = [f for f in glob.glob('**/*.py', recursive=True) if '.venv' not in f and 'scratch' not in f]
@@ -6,7 +5,7 @@ py_files = [f for f in glob.glob('**/*.py', recursive=True) if '.venv' not in f 
 for path in py_files:
     with open(path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-    
+
     new_lines = []
     modified = False
     for line in lines:
@@ -27,7 +26,7 @@ for path in py_files:
             modified = True
         else:
             new_lines.append(line)
-            
+
     if modified:
         with open(path, 'w', encoding='utf-8') as f:
             f.writelines(new_lines)

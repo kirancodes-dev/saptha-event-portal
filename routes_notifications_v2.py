@@ -10,7 +10,7 @@ import logging
 import datetime
 import uuid
 
-from flask import Blueprint, request, session, redirect, flash, render_template, jsonify, g
+from flask import Blueprint, request, session, jsonify
 try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:

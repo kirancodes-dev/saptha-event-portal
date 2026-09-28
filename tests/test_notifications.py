@@ -4,7 +4,6 @@ test_notifications.py — Tests for Enhanced Notification Center
 Covers: notification creation, bulk operations, read/unread management,
 preferences, and type validation.
 """
-import pytest
 
 
 class TestNotificationCreation:

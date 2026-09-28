@@ -109,6 +109,9 @@ class User(Base):
     is_active     = Column("isActive", Boolean, nullable=False, default=True)
     created_at    = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at    = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {
@@ -139,6 +142,9 @@ class Organization(Base):
     settings_json = Column("settingsJson", Text)
     created_at    = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at    = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {
@@ -346,6 +352,9 @@ class Event(Base):
     certificate_config_json = Column("certificateConfigJson", Text, nullable=True)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
     registrations = relationship("Registration", back_populates="event", cascade="all, delete-orphan")
     event_form    = relationship("EventForm", back_populates="event", uselist=False, cascade="all, delete-orphan")
@@ -416,6 +425,9 @@ class Registration(Base):
     feedback_json  = Column("feedback_json", Text, nullable=True)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
     event   = relationship("Event", back_populates="registrations")
     members = relationship("TeamMember", back_populates="registration", cascade="all, delete-orphan")
@@ -519,6 +531,9 @@ class AuditLog(Base):
     target_id   = Column("targetId", String(200))
     detail      = Column(Text)
     created_at  = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
 
 class PushSubscription(Base):
@@ -568,6 +583,9 @@ class ProjectSubmission(Base):
     total_score       = Column("totalScore", Float, default=0.0)
     submitted_at      = Column("submittedAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at        = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
 
 class Ticket(Base):
@@ -585,6 +603,9 @@ class Ticket(Base):
     status           = Column("status", String(50), nullable=False, default="active")
     checked_in_at    = Column("checkedInAt", DateTime(timezone=True))
     created_at       = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {
@@ -617,6 +638,9 @@ class EventSession(Base):
     end_time      = Column("endTime", DateTime(timezone=True), nullable=False)
     capacity      = Column("capacity", Integer, default=100)
     created_at    = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Schemaless overflow: the full Firestore-style document, so fields without
+    # a dedicated column survive a write/read round-trip (see db_adapter).
+    extra_json    = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {

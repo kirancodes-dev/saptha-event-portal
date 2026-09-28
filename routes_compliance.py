@@ -7,7 +7,6 @@ per Indian DPDP Act 2023 and GDPR requirements.
 Blueprint prefix: /compliance
 """
 import logging
-import json
 import datetime
 import uuid
 

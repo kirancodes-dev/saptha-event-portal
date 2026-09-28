@@ -17,7 +17,7 @@ except Exception:
     sqlalchemy = None
 from db_pg import get_engine, get_session
 from models_pg import (
-    Base, User, Event, Registration, TeamMember, Score, EventForm,
+    User, Event, Registration, TeamMember, Score, EventForm,
     FormSubmission, AuditLog, PushSubscription, Announcement, ProjectSubmission, UserRole, EventCategory,
     EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
 )
@@ -71,7 +71,7 @@ FIELD_MAP = {
 def verify_and_align_schema():
     """Verify and add missing columns to live Supabase Postgres tables if not present."""
     engine = get_engine()
-    
+
     cols_events = [
         ('open_hall_mode', 'BOOLEAN DEFAULT FALSE'),
         ('scoring_locked', 'BOOLEAN DEFAULT FALSE'),
@@ -84,29 +84,29 @@ def verify_and_align_schema():
         ('payment_mode', 'VARCHAR(100)'),
         ('assigned_room', 'VARCHAR(100)')
     ]
-    
+
     if not engine:
         return
     is_sqlite = engine.url.drivername.startswith('sqlite')
     if is_sqlite:
         return
-        
+
     try:
         with engine.connect() as conn:
             # Events alignment
             for col, col_type in cols_events:
                 res = conn.execute(text(f"""
-                    SELECT 1 FROM information_schema.columns 
+                    SELECT 1 FROM information_schema.columns
                     WHERE table_name='events' AND column_name='{col}'
                 """)).fetchone()
                 if not res:
                     logger.info("Aligning Schema: Adding column '%s' to 'events'...", col)
                     conn.execute(text(f"ALTER TABLE events ADD COLUMN {col} {col_type}"))
-            
+
             # Registrations alignment
             for col, col_type in cols_registrations:
                 res = conn.execute(text(f"""
-                    SELECT 1 FROM information_schema.columns 
+                    SELECT 1 FROM information_schema.columns
                     WHERE table_name='registrations' AND column_name='{col}'
                 """)).fetchone()
                 if not res:
@@ -438,7 +438,7 @@ class SQLDocumentReference:
             # handle datetime/date objects to string/isoformat
             if isinstance(val, (datetime, date)):
                 val = val.isoformat()
-            
+
             # Map flat Python attribute key back to firestore format
             firestore_field = prop.key
             for f_key, pg_val in FIELD_MAP.items():
@@ -655,7 +655,7 @@ class SQLDocumentReference:
                         val = self._get_enum_payment_status(val)
                     elif mapped_key == 'attendance':
                         val = self._get_enum_attendance(val)
-                    
+
                     # DateTime conversions
                     if mapped_key in ('created_at', 'updated_at', 'submitted_at'):
                         val = self._get_datetime(val)
@@ -668,7 +668,7 @@ class SQLDocumentReference:
                     # Handle dict/list values for String/Text columns
                     elif isinstance(val, (dict, list)):
                         val = safe_str(val)
-                    
+
                     setattr(record, mapped_key, val)
 
             # Specific column assignments
@@ -714,7 +714,7 @@ class SQLDocumentReference:
                         existing_score = session.query(Score).filter_by(registration_id=reg_id, judge_id=judge_id).first()
                         criteria_data = s_data.get('criteria') or s_data.get('details') or {}
                         total_val = float(s_data.get('total', 0.0))
-                        
+
                         if not existing_score:
                             score = Score(
                                 registration_id=reg_id,
@@ -843,7 +843,7 @@ def _cast_value(col_attr, val):
                     if member.name.lower() == val.strip().lower() or member.value.lower() == val.strip().lower():
                         return member
                 return val
-        elif 'Date' in type_name and not 'DateTime' in type_name:
+        elif 'Date' in type_name and 'DateTime' not in type_name:
             if isinstance(val, str):
                 parsed = parse_date(val)
                 if parsed:
@@ -894,7 +894,7 @@ class SQLQuery:
 
         with get_session() as session:
             query = session.query(self.collection.model)
-            
+
             # Apply where filters
             for field, op, val in self.filters:
                 mapped_field = FIELD_MAP.get(field, field)
@@ -935,14 +935,14 @@ class SQLQuery:
                 query = query.limit(self._limit)
 
             records = query.all()
-            
+
             # Convert to Firestoresnapshots
             snapshots = []
             for record in records:
                 ref = SQLDocumentReference(self.collection.id, str(record.id) if hasattr(record, 'id') else '')
                 data = ref._record_to_dict(record, session)
                 snapshots.append(SQLDocumentSnapshot(str(record.id) if hasattr(record, 'id') else '', data, exists=True))
-                
+
             return iter(snapshots)
 
 

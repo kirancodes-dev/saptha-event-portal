@@ -12,14 +12,11 @@ Verifies Phase 3 requirements:
 
 import pytest
 import uuid
-from datetime import datetime, timezone
 
 from services_templates import TemplateService, TEMPLATES_CATALOG
 from services_workflow import (
     WorkflowEngine,
     WorkflowError,
-    EVENT_STATE_TRANSITIONS,
-    PARTICIPANT_STATE_TRANSITIONS,
 )
 from auth_jwt import create_tokens
 

@@ -95,8 +95,8 @@ def log_action(*args, **kwargs):
       log_action(db, action, details)
     """
     from models import db as default_db
-    from flask import request, has_request_context
-    
+    from flask import has_request_context
+
     if len(args) == 3:
         db_client, action, details = args
     elif len(args) == 2:
@@ -125,7 +125,7 @@ def log_action(*args, **kwargs):
                     ip_addr = request.remote_addr
                 except Exception:
                     pass
-            
+
             db_client.collection('audit_log').add({
                 'action':    action,
                 'details':   details,
@@ -208,3 +208,23 @@ def validate_password_strength(password: str) -> tuple:
     if not any(c.isdigit() for c in password):
         return False, 'Password must contain at least one number.'
     return True, ''
+
+
+# =========================================================
+# FORM SUBMISSION RECORD  (for /forms/responses analytics)
+# =========================================================
+def record_form_submission(db, event_id, reg_id, email, name, answers):
+    """Store the raw form answers for a registration.
+
+    Must run after the registration is saved: form_submissions references
+    registrations with a foreign key.
+    """
+    import datetime as _dt
+    db.collection('form_submissions').add({
+        'event_id':     event_id,
+        'reg_id':       reg_id,
+        'email':        email,
+        'name':         name,
+        'answers':      answers,
+        'submitted_at': _dt.datetime.now(_dt.timezone.utc).isoformat(),
+    })

@@ -39,7 +39,7 @@ def calculate_surge_price(event_id: str, base_price: float) -> tuple:
         event = event_doc.to_dict()
         limits = event.get('limits', {})
         max_p = float(limits.get('max_participants', 0) or 0)
-        
+
         # Get registration count
         reg_count = float(event.get('registration_count', 0) or 0)
         if reg_count == 0 and max_p > 0:
@@ -83,7 +83,7 @@ def get_dynamic_price(event_id):
 
         event = doc.to_dict()
         base_price = float(event.get('entry_fee', 0) or 0)
-        
+
         surge_price, mult, reason = calculate_surge_price(event_id, base_price)
         return jsonify({
             'success': True,

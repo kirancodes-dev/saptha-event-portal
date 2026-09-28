@@ -5,7 +5,7 @@ import os
 import time
 import datetime
 import logging
-from flask import Blueprint, request, jsonify, session, redirect, url_for
+from flask import Blueprint, request, jsonify, session, redirect
 from utils import log_action
 from routes_payment import _complete_registration
 
@@ -91,7 +91,7 @@ def success():
     """Redirect target after successful card checkout."""
     session_id = request.args.get('session_id', '')
     reg_data = session.get('pending_reg_data')
-    
+
     if not reg_data:
         # Check if already processed by webhook
         return redirect('/participant/dashboard')
@@ -107,10 +107,10 @@ def success():
         amount_paid=int(amount),
         razorpay_payment_id=session_id
     )
-    
+
     if 'error' in result and result['error'] != 'already_registered':
         return redirect('/payment/failed')
-        
+
     reg_id = result.get('reg_id') or reg_data.get('reg_id')
     return redirect(f"/ticket/{reg_id}")
 
@@ -143,7 +143,7 @@ def webhook():
         metadata = session_obj.get('metadata', {})
         event_id = metadata.get('event_id')
         email = metadata.get('email')
-        
+
         # Look up pending registration or structure it
         reg_data = {
             'event_id': event_id,
@@ -152,7 +152,7 @@ def webhook():
             'reg_id': metadata.get('reg_id') or f"REG-{int(time.time() * 1000)}",
             'registered_at': datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
-        
+
         amount_paid = float(session_obj.get('amount_total', 0)) / 100.0
 
         _complete_registration(
@@ -162,7 +162,7 @@ def webhook():
             amount_paid=int(amount_paid),
             razorpay_payment_id=session_obj.id
         )
-        
+
         log_action(_db(), "STRIPE_WEBHOOK_PROCESSED", f"Stripe payment success for {email}")
 
     return jsonify({'status': 'success'})

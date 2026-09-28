@@ -20,17 +20,17 @@ try:
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.units import inch
+    pass
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 except Exception:
     reportlab = None
 try:
     from reportlab.platypus import (
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        PageBreak, HRFlowable, KeepTogether
+        PageBreak, HRFlowable
     )
 except Exception:
     reportlab = None
@@ -313,7 +313,7 @@ def build_report():
     ))
 
     pitch_style = ParagraphStyle("PitchBox", parent=styles["BodyItalic"], textColor=colors.HexColor("#1e293b"))
-    
+
     pitch_text = (
         "<b>\"Good morning team,</b><br/><br/>"
         "When we built this portal, we prioritized two core pillars: <b>absolute data isolation</b> and "

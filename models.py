@@ -33,9 +33,12 @@ DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'postgres').lower()
 db: Any = None
 
 if DATABASE_TYPE in ('postgres', 'postgresql', 'supabase'):
+    from db_pg import DatabaseConfigError
     try:
         from db_adapter import SQLFirestoreAdapter
         db = SQLFirestoreAdapter()
+    except DatabaseConfigError:
+        raise  # misconfigured production database must stop startup
     except Exception as exc:
         # Fallback to printing error
         import logging

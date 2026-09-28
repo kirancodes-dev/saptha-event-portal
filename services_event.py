@@ -28,7 +28,7 @@ def generate_event_slug(title: str, existing_check_fn=None) -> str:
         base = re.sub(r'[^a-z0-9]+', '-', clean.lower()).strip('-')
         if not base:
             base = f"event-{uuid.uuid4().hex[:6]}"
-    
+
     slug = base
     if existing_check_fn:
         counter = 1
@@ -115,16 +115,16 @@ class EventService:
         if entry_fee is not None and fee == 0.0:
             fee = float(entry_fee)
         event_id = str(uuid.uuid4())
-        
+
         # Determine slug
         def _slug_exists(test_slug: str) -> bool:
             return EventService.get_event_by_slug(db, test_slug) is not None
 
         final_slug = slug or generate_event_slug(title, _slug_exists)
-        
+
         # Resolve workflow
         wf = workflow_config or DEFAULT_WORKFLOWS.get(event_type.lower(), DEFAULT_WORKFLOWS["general"])
-        
+
         # Default ticket tiers if none provided
         tiers = ticket_tiers or [
             {

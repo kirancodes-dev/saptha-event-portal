@@ -25,6 +25,9 @@ from app import app
 import models
 
 def seed():
+    if app.config.get('FLASK_ENV') == 'production':
+        print("Refusing to seed demo accounts with known passwords in production.")
+        sys.exit(1)
     print("=" * 65)
     print("  Seeding Demo Accounts & Full Lifecycle Event Details")
     print("=" * 65)

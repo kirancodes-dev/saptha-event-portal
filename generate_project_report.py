@@ -1,5 +1,4 @@
 import os
-import sys
 import datetime
 try:
     from reportlab.lib import colors
@@ -14,16 +13,16 @@ try:
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.units import inch
+    pass
 except Exception:
     reportlab = None
 try:
-    from reportlab.pdfgen import canvas
+    pass
 except Exception:
     reportlab = None
 try:
     from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
     )
 except Exception:
     reportlab = None
@@ -34,22 +33,22 @@ DATE_STR = NOW.strftime("%d %B %Y")
 
 def draw_cover(canvas_obj, doc):
     canvas_obj.saveState()
-    
+
     # ── PREMIUM TWO-TONE DESIGN FOR COVER PAGE ──
     # Top Half Deep Navy Block (y=380 to 792)
     canvas_obj.setFillColor(colors.HexColor('#0f172a')) # Modern Deep Navy
     canvas_obj.rect(0, 380, doc.pagesize[0], doc.pagesize[1] - 380, fill=True, stroke=False)
-    
+
     # Secondary Gold Accent Band (y=368 to 380, height 12)
     canvas_obj.setFillColor(colors.HexColor('#c9a45e')) # Warm Gold
     canvas_obj.rect(0, 368, doc.pagesize[0], 12, fill=True, stroke=False)
-    
+
     # Decorative vertical lines on bottom half (slate-100 tint)
     canvas_obj.setStrokeColor(colors.HexColor('#f1f5f9'))
     canvas_obj.setLineWidth(1)
     for i in range(1, 6):
         canvas_obj.line(54 + (i * 80), 0, 54 + (i * 80), 368)
-        
+
     # University logo inside the navy banner on the top left
     logo_path = 'static/snpsu-logo.png'
     if os.path.exists(logo_path):
@@ -58,51 +57,51 @@ def draw_cover(canvas_obj, doc):
         canvas_obj.setLineWidth(1.5)
         canvas_obj.roundRect(50, doc.pagesize[1] - 95, 200, 60, 8, fill=False, stroke=True)
         canvas_obj.drawImage(logo_path, 55, doc.pagesize[1] - 90, width=190, height=50, mask='auto')
-        
+
     canvas_obj.restoreState()
 
 def draw_page_number(canvas_obj, doc):
     canvas_obj.saveState()
-    
+
     # Don't draw headers/footers on page 1 (cover)
     if doc.page == 1:
         canvas_obj.restoreState()
         return
-        
+
     # Running header with logo on top right
     logo_path = 'static/snpsu-logo.png'
     if os.path.exists(logo_path):
         canvas_obj.setFillColor(colors.HexColor('#0f172a'))
         canvas_obj.roundRect(doc.pagesize[0] - 155, doc.pagesize[1] - 48, 120, 36, 6, fill=True, stroke=False)
         canvas_obj.drawImage(logo_path, doc.pagesize[0] - 150, doc.pagesize[1] - 45, width=110, height=30, mask='auto')
-    
+
     # Header Gold Line
     canvas_obj.setStrokeColor(colors.HexColor('#c9a45e'))
     canvas_obj.setLineWidth(1.2)
     canvas_obj.line(54, doc.pagesize[1] - 52, doc.pagesize[0] - 54, doc.pagesize[1] - 52)
-    
+
     # Header Left Text
     canvas_obj.setFont('Helvetica-Bold', 8)
     canvas_obj.setFillColor(colors.HexColor('#0f172a'))
     canvas_obj.drawString(54, doc.pagesize[1] - 42, "SAPTHAEVENT PORTAL - PROJECT REPORT")
-    
+
     # Footer line
     canvas_obj.setStrokeColor(colors.HexColor('#e2e8f0'))
     canvas_obj.setLineWidth(0.8)
     canvas_obj.line(54, 55, doc.pagesize[0] - 54, 55)
-    
+
     # Footer text
     canvas_obj.setFont('Helvetica', 8)
     canvas_obj.setFillColor(colors.HexColor('#64748b'))
     canvas_obj.drawString(54, 42, "Sapthagiri NPS University © 2026")
     canvas_obj.drawRightString(doc.pagesize[0] - 54, 42, f"Page {doc.page}")
-    
+
     canvas_obj.restoreState()
 
 def create_wrapped_table(data, col_widths, header_bg='#0f172a'):
     """Helper to generate tables where text is auto-wrapped using Paragraph flowables in Helvetica."""
     formatted_data = []
-    
+
     # Table header style (Helvetica-Bold)
     th_style = ParagraphStyle(
         'TH_Style',
@@ -112,7 +111,7 @@ def create_wrapped_table(data, col_widths, header_bg='#0f172a'):
         textColor=colors.white,
         alignment=1 # Centered headers
     )
-    
+
     # Table body cell style (Helvetica)
     td_style = ParagraphStyle(
         'TD_Style',
@@ -121,7 +120,7 @@ def create_wrapped_table(data, col_widths, header_bg='#0f172a'):
         leading=12.5,
         textColor=colors.HexColor('#1e293b')
     )
-    
+
     for row_idx, row in enumerate(data):
         formatted_row = []
         for col_idx, cell in enumerate(row):
@@ -133,7 +132,7 @@ def create_wrapped_table(data, col_widths, header_bg='#0f172a'):
                 style = th_style if row_idx == 0 else td_style
                 formatted_row.append(Paragraph(text, style))
         formatted_data.append(formatted_row)
-        
+
     t = Table(formatted_data, colWidths=col_widths)
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(header_bg)),
@@ -158,7 +157,7 @@ def create_callout(text, border_color='#c9a45e', bg_color='#fffbeb'):
         leading=14.5,
         textColor=colors.HexColor("#1e293b")
     )
-    
+
     p = Paragraph(text, callout_style)
     # We use a 1x1 table to represent the callout box with a thick left border
     t = Table([[p]], colWidths=[504])
@@ -182,9 +181,9 @@ def create_report():
         topMargin=72,
         bottomMargin=72
     )
-    
+
     styles = getSampleStyleSheet()
-    
+
     # Custom styles - Modern Helvetica with optimal spacing
     title_style = ParagraphStyle(
         'CoverTitle',
@@ -196,7 +195,7 @@ def create_report():
         spaceAfter=15,
         spaceBefore=0
     )
-    
+
     subtitle_style = ParagraphStyle(
         'CoverSubtitle',
         parent=styles['Normal'],
@@ -206,7 +205,7 @@ def create_report():
         textColor=colors.HexColor('#cbd5e1'), # Soft light gray text
         spaceAfter=0
     )
-    
+
     meta_style = ParagraphStyle(
         'CoverMeta',
         parent=styles['Normal'],
@@ -215,7 +214,7 @@ def create_report():
         leading=16,
         textColor=colors.HexColor('#475569') # Dark slate text on white background
     )
-    
+
     h1_style = ParagraphStyle(
         'Header1',
         parent=styles['Heading1'],
@@ -227,7 +226,7 @@ def create_report():
         spaceAfter=8,
         keepWithNext=True
     )
-    
+
     h2_style = ParagraphStyle(
         'Header2',
         parent=styles['Heading2'],
@@ -239,7 +238,7 @@ def create_report():
         spaceAfter=6,
         keepWithNext=True
     )
-    
+
     body_style = ParagraphStyle(
         'Body',
         parent=styles['Normal'],
@@ -249,7 +248,7 @@ def create_report():
         textColor=colors.HexColor('#334155'),
         spaceAfter=10
     )
-    
+
     bullet_style = ParagraphStyle(
         'BulletText',
         parent=styles['Normal'],
@@ -261,7 +260,7 @@ def create_report():
         firstLineIndent=-10,
         spaceAfter=6
     )
-    
+
     letter_body = ParagraphStyle(
         'LetterBody',
         parent=styles['Normal'],
@@ -273,19 +272,19 @@ def create_report():
     )
 
     elements = []
-    
+
     # ─────────────────────────────────────────────────────────────
     # COVER PAGE
     # ─────────────────────────────────────────────────────────────
     elements.append(Spacer(1, 60))
     elements.append(Paragraph("SAPTHAEVENT PORTAL", title_style))
     elements.append(Paragraph("Enterprise Event Management, Multi-Tenant Operations & Automated Credential Verification Platform", subtitle_style))
-    
+
     # Spacer to cross past the navy top half (height 380 to 792)
-    # The navy block ends at y=368/380. Flowables started at y=720. 
+    # The navy block ends at y=368/380. Flowables started at y=720.
     # Spacers and text elements consume ~170 points. We add a 190 pt spacer to cleanly clear the banner.
     elements.append(Spacer(1, 190))
-    
+
     meta_text = f"""
     <font size="12" color="#0f172a"><b>INSTITUTIONAL PROJECT DOSSIER</b></font><br/><br/>
     <b>Institution:</b> Sapthagiri NPS University (SNPSU)<br/>
@@ -296,13 +295,13 @@ def create_report():
     """
     elements.append(Paragraph(meta_text, meta_style))
     elements.append(PageBreak())
-    
+
     # ─────────────────────────────────────────────────────────────
     # TABLE OF CONTENTS
     # ─────────────────────────────────────────────────────────────
     elements.append(Paragraph("Table of Contents", h1_style))
     elements.append(Spacer(1, 10))
-    
+
     toc_data = [
         ["Section", "Description", "Page Indicator"],
         ["1. Executive Summary", "Project scope, vision, and core outcomes.", "Page 3"],
@@ -321,7 +320,7 @@ def create_report():
     ]
     elements.append(create_wrapped_table(toc_data, [150, 254, 100]))
     elements.append(PageBreak())
-    
+
     # ─────────────────────────────────────────────────────────────
     # SECTION 1: EXECUTIVE SUMMARY
     # ─────────────────────────────────────────────────────────────
@@ -343,7 +342,7 @@ def create_report():
         "technical review of the system architecture, core database adapters, interface redesigns, and production release ready state.",
         body_style
     ))
-    
+
     summary_highlight = (
         "<b>Key Performance Metric:</b> Live rankings boards update within <b>3 seconds</b> across all venue projectors "
         "simultaneously via Server-Sent Events (SSE) stream channels, eliminating legacy query delays."
@@ -361,7 +360,7 @@ def create_report():
         "dampens participant enthusiasm. The primary challenges addressed during the building of the SapthaEvent Portal include:",
         body_style
     ))
-    
+
     challenges = [
         "<b>Fragmented Student Onboarding:</b> Lack of a centralized portal meant students had to navigate different Google Forms, bank transfer links, or registration desks for each individual club activity, resulting in high signup abandonment.",
         "<b>Verification & Entry Bottlenecks:</b> On event day, checking in hundreds of registrants manually using printed student lists created massive entry delays and security concerns at campus auditoriums.",
@@ -371,7 +370,7 @@ def create_report():
     ]
     for c in challenges:
         elements.append(Paragraph(f"<font color=\"#c9a45e\">■</font> {c}", bullet_style))
-        
+
     elements.append(Spacer(1, 5))
     elements.append(Paragraph(
         "By identifying these core challenges, the engineering team scoped out a digital solution locked in compliance, "
@@ -390,7 +389,7 @@ def create_report():
         "robust data persistence, and offline-first mobile operations. The core components of the architecture include:",
         body_style
     ))
-    
+
     stack_data = [
         ["Layer", "Technology", "Role in System"],
         ["Backend Core", "Python / Flask 3.0", "Handles request routing, session security, template rendering, and APIs."],
@@ -423,7 +422,7 @@ def create_report():
         "adapter, removing direct SQL connections and connection pooling errors.",
         body_style
     ))
-    
+
     db_note = (
         "<b>Architecture Insight:</b> Relational tables include dynamic JSON serialization guards "
         "which auto-encode dictionary metadata (such as custom form schematics or prizes list objects) "
@@ -452,7 +451,7 @@ def create_report():
     ]
     for r in roles_list:
         elements.append(Paragraph(f"<font color=\"#0f172a\">■</font> {r}", bullet_style))
-        
+
     elements.append(Spacer(1, 5))
     elements.append(Paragraph(
         "Security is maintained at each tier using custom route decorators (such as <code>@role_required</code>). "
@@ -556,7 +555,7 @@ def create_report():
         "violates student data compliance requirements), each college gets its own cloud container and database instance.",
         body_style
     ))
-    
+
     # Financial indicators table
     info_data = [
         ["Product Type", "White-Labeled Multi-Instance SaaS (Relational Database)"],
@@ -574,7 +573,7 @@ def create_report():
         [180, 324]
     ))
     elements.append(Spacer(1, 12))
-    
+
     # Infra Cost Matrix
     infra_data = [
         ["Tier", "Configuration", "Cost / Month", "Capacity Limit", "Recommended For"],
@@ -588,7 +587,7 @@ def create_report():
         [80, 120, 80, 100, 124]
     ))
     elements.append(Spacer(1, 12))
-    
+
     # Pricing models
     pricing_data = [
         ["Model", "Upfront Cost", "Recurring Fee", "Our Internal Cost", "Net Profit Margin", "Commercial Advantage"],
@@ -601,7 +600,7 @@ def create_report():
         [90, 70, 70, 70, 70, 134]
     ))
     elements.append(Spacer(1, 12))
-    
+
     # Upsell packages
     pkg_data = [
         ["Package", "Key Features Included", "One-Time Cost", "Monthly Maintenance Overhead"],
@@ -625,7 +624,7 @@ def create_report():
         "and hackathon panels, the following standardized script and technical defense sheets are provided.",
         body_style
     ))
-    
+
     pitch_text = (
         "<b>Institutional Pitch Explainer Framework:</b><br/>"
         "\"Good morning trustees and principal, when we built SapthaEvent, we prioritized two core pillars: absolute data isolation "
@@ -638,7 +637,7 @@ def create_report():
     )
     elements.append(create_callout(pitch_text, border_color='#c9a45e', bg_color='#fffbeb'))
     elements.append(Spacer(1, 15))
-    
+
     elements.append(Paragraph("<b>Crucial Hackathon Defense Q&A:</b>", h2_style))
     qa_list = [
         ("Why choose separate deployments instead of a shared database? Isn't multi-tenancy cheaper?",
@@ -652,7 +651,7 @@ def create_report():
         elements.append(Paragraph(f"<b>Q: {q}</b>", body_style))
         elements.append(Paragraph(f"<b>A:</b> {a}", body_style))
         elements.append(Spacer(1, 6))
-        
+
     elements.append(Spacer(1, 15))
 
     # ─────────────────────────────────────────────────────────────
@@ -665,7 +664,7 @@ def create_report():
         "caches, and payment gateway signatures.",
         body_style
     ))
-    
+
     test_metrics = [
         ["Test Component", "Test Count", "Target Coverage", "Result Status"],
         ["Authentication & Roles", "38 tests", "100% of routes and role decorators", "PASSED"],
@@ -678,7 +677,7 @@ def create_report():
     elements.append(Paragraph("<b>Table 5: Quality Assurance Test Registry & Results</b>", h2_style))
     elements.append(create_wrapped_table(test_metrics, [150, 100, 154, 100]))
     elements.append(Spacer(1, 10))
-    
+
     elements.append(Paragraph(
         "During mock registration runs, the platform maintained sub-second server response times under a simulated load of "
         "1,000 requests per minute. Background task dispatches via Celery successfully processed email ticket generations "
@@ -697,7 +696,7 @@ def create_report():
         "Key milestones completed during this development cycle include:",
         body_style
     ))
-    
+
     milestones = [
         "<b>Database Independence:</b> The SQLFirestoreAdapter was validated against active collections, ensuring support for Firestore or PostgreSQL deployments.",
         "<b>Contrast & WCAG Auditing:</b> Validation backgrounds, input border visibilities, and placeholder contrast ratios were corrected across light and dark modes.",
@@ -707,7 +706,7 @@ def create_report():
     ]
     for m in milestones:
         elements.append(Paragraph(f"<font color=\"#22c55e\">✓</font> {m}", bullet_style))
-        
+
     elements.append(Spacer(1, 5))
     elements.append(Paragraph(
         "With these enhancements, SapthaEvent stands as a robust, enterprise-grade, accessible college fest portal. "
@@ -715,7 +714,7 @@ def create_report():
         "immediate migration and production deployment.",
         body_style
     ))
-    
+
     # We place a PageBreak only before the formal Approval Letter / Letter of Intent to keep it as a neat separate physical document.
     elements.append(PageBreak())
 
@@ -724,7 +723,7 @@ def create_report():
     # ─────────────────────────────────────────────────────────────
     elements.append(Paragraph("14. Request for Approval & Deployment Authorization", h1_style))
     elements.append(Spacer(1, 10))
-    
+
     letter_text = """
     <b>To:</b><br/>
     The Director,<br/>
@@ -751,7 +750,7 @@ def create_report():
     """
     elements.append(Paragraph(letter_text, letter_body))
     elements.append(Spacer(1, 20))
-    
+
     # Signature block
     sig_data = [
         [Paragraph("<b>Submitted By:</b>", body_style), Paragraph("<b>Approved By:</b>", body_style)],

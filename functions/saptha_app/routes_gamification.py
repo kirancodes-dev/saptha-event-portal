@@ -47,7 +47,7 @@ def leaderboard():
             if ud.get('role') == 'Student':
                 xp = int(ud.get('xp', 0) or 0)
                 dept = ud.get('department', '').strip() or 'General'
-                
+
                 students.append({
                     'name': ud.get('name', 'Anonymous Student'),
                     'email': doc.id,
@@ -77,7 +77,7 @@ def leaderboard():
                 'student_count': count,
                 'avg_xp': round(xp / count, 1) if count else 0
             })
-        
+
         # Sort departments by total XP descending
         departments.sort(key=lambda x: x['total_xp'], reverse=True)
         for i, d in enumerate(departments):
@@ -111,7 +111,7 @@ def api_leaderboard():
             if ud.get('role') == 'Student':
                 xp = int(ud.get('xp', 0) or 0)
                 dept = ud.get('department', '').strip() or 'General'
-                
+
                 students.append({
                     'name': ud.get('name', 'Anonymous Student'),
                     'email': doc.id,

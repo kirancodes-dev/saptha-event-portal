@@ -15,8 +15,6 @@ Verifies all 6 pillars of the campus event tracking system:
 All tests go through the Flask test client.
 """
 
-import json
-import uuid
 from datetime import datetime, timezone, timedelta
 import pytest
 
@@ -25,10 +23,9 @@ from services_venue import (
     format_kolkata,
     slots_overlap,
     check_room_conflict,
-    create_or_update_venue_booking,
     seed_default_venues,
 )
-from services_workflow import WorkflowEngine, WorkflowError
+from services_workflow import WorkflowEngine
 
 
 # ═══════════════════════════════════════════════════════════════════════════

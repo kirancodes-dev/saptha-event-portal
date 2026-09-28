@@ -9,7 +9,6 @@ except ImportError:
     firebase_admin = None
     credentials = None
     firestore = None
-from typing import Any, cast
 from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
 try:
     from flask_mail import Mail
@@ -54,7 +53,7 @@ try:
 except ImportError:
     def load_dotenv(*args, **kwargs): pass
 
-from config import Config
+from config import Config, validate_production_config
 from utils import ROLE_REDIRECTS  # single source of truth
 
 # =========================================================
@@ -143,6 +142,7 @@ if _SENTRY_DSN:
 # =========================================================
 app = Flask(__name__)
 app.config.from_object(Config)
+validate_production_config(app.config)
 
 # Trust Railway/Heroku/Nginx proxy headers (X-Forwarded-Proto etc.)
 # Required so Talisman's force_https doesn't loop-redirect behind TLS-terminating proxies.
@@ -201,9 +201,12 @@ _csp = {
     'font-src':    ["'self'", 'https://cdnjs.cloudflare.com',
                     'https://fonts.gstatic.com', 'data:'],
     'script-src':  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
-                    'https://cdn.jsdelivr.net', 'https://www.gstatic.com'],
-    'connect-src': ["'self'", 'https://firestore.googleapis.com',
-                    'https://identitytoolkit.googleapis.com'],
+                    'https://cdn.jsdelivr.net', 'https://www.gstatic.com',
+                    'https://checkout.razorpay.com'],
+    'connect-src': ["'self'", 'https://api.razorpay.com',
+                    'https://lumberjack.razorpay.com'],
+    # Razorpay checkout renders its payment form in an iframe
+    'frame-src':   ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
     'frame-ancestors': ["'self'"],
 }
 Talisman(
@@ -224,8 +227,8 @@ from extensions import limiter  # noqa: E402 — after app creation
 limiter.init_app(app)           # reads RATELIMIT_STORAGE_URL from app.config
 
 # =========================================================
-# FIREBASE  —  reads FIREBASE_CREDENTIALS env var on Railway
-#              falls back to local serviceAccountKey.json for dev
+# FIREBASE — only in the legacy DATABASE_TYPE=firestore mode.
+# The default database is PostgreSQL/SQLite via db_adapter.
 # =========================================================
 def is_valid_firebase_creds(cred_str):
     """Check if Firebase creds string has required fields (not placeholder)"""
@@ -236,10 +239,12 @@ def is_valid_firebase_creds(cred_str):
     except:
         return False
 
-if firebase_admin and not getattr(firebase_admin, '_apps', None):
+_USE_FIRESTORE = os.environ.get('DATABASE_TYPE', 'postgres').lower() not in ('postgres', 'postgresql', 'supabase')
+
+if _USE_FIRESTORE and firebase_admin and not getattr(firebase_admin, '_apps', None):
     firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS')
     firebase_initialized = False
-    
+
     if firebase_creds_json and is_valid_firebase_creds(firebase_creds_json) and credentials:
         try:
             cred_dict = json.loads(firebase_creds_json)
@@ -251,7 +256,7 @@ if firebase_admin and not getattr(firebase_admin, '_apps', None):
             firebase_initialized = True
         except Exception as exc:
             logger.error("FIREBASE_CREDENTIALS parse error: %s", exc)
-    
+
     if not firebase_initialized and credentials:
         key_path = 'serviceAccountKey.json'
         if os.path.exists(key_path):
@@ -262,7 +267,7 @@ if firebase_admin and not getattr(firebase_admin, '_apps', None):
                 firebase_initialized = True
             except Exception as exc:
                 logger.error("Firebase: Failed to initialize with %s: %s", key_path, exc)
-    
+
     if not firebase_initialized and firebase_admin:
         try:
             firebase_admin.initialize_app()
@@ -395,12 +400,6 @@ for _bearer_bp in (api_v1_bp,):
     except Exception as exc:
         logger.warning("CSRF exempt failed for %s: %s", _bearer_bp.name, exc)
 
-try:
-    from routes_auth import api_login, api_register
-    csrf.exempt(api_login)
-    csrf.exempt(api_register)
-except Exception as exc:
-    logger.warning("CSRF exempt failed for API endpoints: %s", exc)
 
 
 # =========================================================
@@ -408,12 +407,6 @@ except Exception as exc:
 # =========================================================
 
 # =========================================================
-# TEMPORARY DEBUG ROUTE - remove after fixing
-@app.route('/debug-modal')
-def debug_modal():
-    from flask import render_template
-    return render_template('debug_modal.html')
-
 # NOISE SUPPRESSORS
 # =========================================================
 @app.route('/favicon.ico')
@@ -707,6 +700,14 @@ def home():
     return render_template('index.html', **_ctx)
 
 
+@app.route('/dashboard')
+def dashboard_redirect():
+    """Send the user to the dashboard for their role (used by shared layouts)."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return redirect(ROLE_REDIRECTS.get(session.get('role', ''), '/'))
+
+
 # =========================================================
 # UNIVERSAL EVENT DISCOVERY & CATALOG
 # =========================================================
@@ -717,10 +718,10 @@ def events_catalog():
     selected_category = request.args.get('category', '').strip()
     selected_type = request.args.get('type', '').strip()
     selected_mode = request.args.get('mode', '').strip()
-    
+
     events = []
     categories = set(['Technical', 'Cultural', 'Sports', 'Workshop', 'Conference', 'Hackathon'])
-    
+
     try:
         if db is not None:
             stream = db.collection('events').stream()
@@ -730,7 +731,7 @@ def events_catalog():
                 cat = ev.get('category')
                 if cat:
                     categories.add(cat)
-                
+
                 # Apply filters
                 if query_search:
                     match_text = f"{ev.get('title', '')} {ev.get('name', '')} {ev.get('description', '')} {ev.get('venue', '')}".lower()
@@ -742,7 +743,7 @@ def events_catalog():
                     continue
                 if selected_mode and ev.get('event_mode', ev.get('mode', 'offline')).lower() != selected_mode.lower():
                     continue
-                    
+
                 events.append(ev)
     except Exception as exc:
         logger.error("Error loading events catalog: %s", exc)

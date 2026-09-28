@@ -296,7 +296,7 @@ def transition_event(event_id):
         return redirect('/spoc/dashboard')
 
     try:
-        from services_workflow import WorkflowEngine, WorkflowError
+        from services_workflow import WorkflowEngine
         WorkflowEngine.transition_event(
             db,
             event_id=event_id,
@@ -1834,7 +1834,7 @@ def api_stats():
             all_regs.append((event_title, r.to_dict()))
 
     recent_activity = []
-    
+
     # Checked-in items
     checkins = [r for r in all_regs if r[1].get('attendance') == 'Present']
     checkins.sort(key=lambda x: x[1].get('checkin_time', ''), reverse=True)
@@ -1846,7 +1846,7 @@ def api_stats():
             'time': r_data.get('checkin_time', 'TBA'),
             'details': f"Checked in for Round {r_data.get('current_round', 1)}"
         })
-        
+
     # Registered items
     regs_sorted = sorted(all_regs, key=lambda x: x[1].get('registered_at', ''), reverse=True)
     for event_title, r_data in regs_sorted[:5]:
@@ -1944,7 +1944,7 @@ def judging_audit(event_id):
 
     event = doc.to_dict() or {}
     regs = list(db.collection('registrations').where('event_id', '==', event_id).stream())
-    
+
     # Process judge scores
     judge_data = {}
     for r in regs:
@@ -1962,7 +1962,7 @@ def judging_audit(event_id):
         variance = sum((x - avg) ** 2 for x in scores) / len(scores) if scores else 0
         std_dev = math.sqrt(variance)
         global_scores.extend(scores)
-        
+
         # Strictness categorization
         if avg < 6.5:
             tier = "Strict"
@@ -1984,12 +1984,12 @@ def judging_audit(event_id):
         })
 
     global_avg = sum(global_scores) / len(global_scores) if global_scores else 7.5
-    
+
     # Extract feedback from registrations (since feedback is stored nested under registrations)
     sentiment_summary = {
         'positive': 0, 'neutral': 0, 'negative': 0, 'score': 0.0, 'total': 0
     }
-    
+
     feedback_reviews = []
     for r in regs:
         rd = r.to_dict()
@@ -2054,7 +2054,7 @@ def schedule_optimize(event_id):
         return redirect('/spoc/dashboard')
 
     event = doc.to_dict() or {}
-    
+
     # Simulating clash detection algorithm based on overlapping participants
     # Fetch other active events for parallel clash mapping
     all_events = list(db.collection('events').where('status', '==', 'active').stream())
@@ -2081,7 +2081,7 @@ def schedule_optimize(event_id):
             prompt = (
                 f"You are a timetable coordinator for collegiate fests. We have a target event '{event.get('title')}' on date {event.get('date')} with the following tentative agenda:\n"
                 + "\n".join([f"- {item.get('time')}: {item.get('title')} ({item.get('desc')})" for item in agenda])
-                + f"\n\nWe have other parallel events:\n"
+                + "\n\nWe have other parallel events:\n"
                 + "\n".join([f"- {other.get('title')} on {other.get('date')}" for other in other_events])
                 + "\n\nDetect conflicts (overlapping participants, double-booked rooms, etc.). Suggest shifts to resolve conflicts and output a refined agenda.\n"
                 + "Return ONLY a JSON object with this exact structure (no markdown fences, no prose):\n"
@@ -2152,7 +2152,7 @@ def nfc_verify(event_id):
         return redirect('/spoc/dashboard')
 
     event = doc.to_dict() or {}
-    
+
     # Fetch registrations for scanner dropdown selection
     regs = list(db.collection('registrations').where('event_id', '==', event_id).stream())
     regs_list = []
@@ -2192,14 +2192,14 @@ def spoc_marketing_copywriter():
     data = request.get_json(silent=True) or {}
     prompt_desc = data.get('prompt', '').strip()
     event_id = data.get('event_id', '').strip()
-    
+
     if not prompt_desc or not event_id:
         return jsonify({'error': 'Prompt and event_id are required'}), 400
 
     event_doc = db.collection('events').document(event_id).get()
     event = event_doc.to_dict() if event_doc.exists else {}
     event_title = event.get('title', 'Event')
-    
+
     api_key = current_app.config.get('GEMINI_API_KEY', '')
     subject = f"Exciting Update: {event_title}"
     body = (
@@ -2250,12 +2250,12 @@ def spoc_marketing_event_writer():
     data = request.get_json(silent=True) or {}
     event_title = data.get('title', '').strip()
     prompt_desc = data.get('prompt', '').strip()
-    
+
     if not event_title:
         return jsonify({'error': 'Event title is required'}), 400
 
     api_key = current_app.config.get('GEMINI_API_KEY', '')
-    
+
     description = (
         f"Join us for our upcoming event, {event_title}! "
         f"This event is designed to bring students together to showcase their skills, "

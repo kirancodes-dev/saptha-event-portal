@@ -88,10 +88,10 @@ BANNERS = {
 }
 
 VENUES = [
-    "Main Auditorium", "CS Lab 101, Block B", "CS Lab 201, Block B", 
-    "Mechanical Lab Arena, Block C", "Electronics Lab, Block D", 
-    "Seminar Hall 1, Block A", "Seminar Hall 2, Block A", "Seminar Hall 3, Block D", 
-    "Innovation Hub, Block A", "Indoor Sports Hall", "College Grounds", 
+    "Main Auditorium", "CS Lab 101, Block B", "CS Lab 201, Block B",
+    "Mechanical Lab Arena, Block C", "Electronics Lab, Block D",
+    "Seminar Hall 1, Block A", "Seminar Hall 2, Block A", "Seminar Hall 3, Block D",
+    "Innovation Hub, Block A", "Indoor Sports Hall", "College Grounds",
     "Open Air Theatre", "Sports Complex Court 1", "Sports Complex Court 2"
 ]
 
@@ -133,37 +133,37 @@ def main():
     create_spocs_local()
 
     print("\n2. Generating 100 events distributed over next 30 days...")
-    
+
     categories = list(TEMPLATES.keys())
     today = date.today()
-    
+
     # Track statistics
     counts = {'Technical': 0, 'Cultural': 0, 'Sports': 0, 'Management': 0}
-    
+
     events_to_create = []
-    
+
     for i in range(1, 101):
         # Evenly spread over 30 days: day offset goes from 1 to 30
         day_offset = ((i - 1) % 30) + 1
         event_date = today + timedelta(days=day_offset)
         date_str = event_date.strftime('%Y-%m-%d')
-        
+
         # Deadlines are set 3 days before the event
         deadline_date = event_date - timedelta(days=3)
         deadline_str = deadline_date.strftime('%Y-%m-%d')
-        
+
         # Cycle through categories
         category = categories[(i - 1) % len(categories)]
         counts[category] += 1
-        
+
         # Pick template
         templates = TEMPLATES[category]
         tpl = templates[(counts[category] - 1) % len(templates)]
         base_title, banner_key, part_type, team_min, team_max, desc, rules = tpl
-        
+
         # Make the title unique
         title = f"{base_title} - Division {counts[category]}"
-        
+
         # SPOC assignments
         if category == 'Technical':
             spoc_key = 'itc'
@@ -173,31 +173,31 @@ def main():
             spoc_key = 'sac'
         else:
             spoc_key = 'acs' if i % 2 == 0 else 'sac'
-            
+
         spoc = SPOCS[spoc_key]
-        
+
         # Determine registration fee (80% free, 20% paid)
         fee = 0
         if i % 5 == 0:
             fee = random.choice([50, 100, 150, 200])
-            
+
         # Determine prizes
         prizes = {
             '1st': f'₹{random.choice([5, 8, 10, 15])},000',
             '2nd': f'₹{random.choice([3, 4, 5])},000',
             '3rd': f'₹{random.choice([1, 2])},000'
         }
-        
+
         # Venue
         venue = VENUES[(i - 1) % len(VENUES)]
-        
+
         # Hour/Time selection
         hour = random.choice([9, 10, 11, 14, 15, 16])
         time_str = f"{hour:02d}:00 AM" if hour < 12 else f"{hour-12:02d}:00 PM"
-        
+
         # Coordinators (randomly assign 1-2 student coordinators)
         coors = random.sample(COORDINATORS_POOL, k=random.choice([1, 2]))
-        
+
         event_dict = {
             'title':              title,
             'category':           category,
@@ -256,14 +256,14 @@ def main():
         team_min = ev.pop('_team_min')
         team_max = ev.pop('_team_max')
         spoc_email = ev.pop('_spoc_email')
-        
+
         _, ref = db.collection('events').add(ev)
         event_id = ref.id
-        
+
         # Build custom schema and save
         schema = build_form_schema(event_id, ev['title'], spoc_email, part_type, team_min, team_max)
         db.collection('event_forms').document(event_id).set(schema)
-        
+
         if idx % 10 == 0:
             print(f"  Inserted {idx}/100 events...")
 

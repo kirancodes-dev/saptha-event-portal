@@ -2,7 +2,6 @@ import os
 import sys
 import io
 import qrcode
-import base64
 
 # Ensure project root is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -35,7 +34,7 @@ def send_all_demos():
     event_title = "Global AI Hackathon 2026"
     event_date = "June 15, 2026"
     venue = "Main Auditorium, SNPSU Campus"
-    
+
     print("Initializing Flask context...")
     with app.app_context():
         # Set base URLs

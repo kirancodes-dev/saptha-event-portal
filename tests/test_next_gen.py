@@ -3,7 +3,6 @@ tests/test_next_gen.py — Integration and functional tests for the next-gen upg
 """
 
 import json
-from unittest.mock import patch
 
 
 # Helper to setup a logged-in SPOC session
@@ -159,7 +158,7 @@ def test_judging_audit_page_resolves_and_renders_bias(client, mock_db):
             "judge_lenient@test.edu": {"total": 9.0}
         }
     })
-    
+
     resp = spoc_c.get('/spoc/judging/audit/evt_test_001')
     assert resp.status_code == 200
     assert b"Strictness Status" in resp.data
@@ -178,7 +177,7 @@ def test_schedule_optimizer_detects_clashes(client, mock_db):
         "spoc_id": "spoc@test.edu",
         "date": "2026-06-15"
     })
-    
+
     resp = spoc_c.get('/spoc/schedule/optimize/evt_test_001')
     assert resp.status_code == 200
     assert b"Schedule &amp; Timetable Optimizer" in resp.data or b"Schedule & Timetable Optimizer" in resp.data
@@ -201,7 +200,7 @@ def test_nfc_verify_view_renders_dropdown_list(client, mock_db):
         "lead_email": "aarav@test.edu",
         "attendance": "Pending"
     })
-    
+
     resp = spoc_c.get('/spoc/ticket/nfc-verify/evt_test_001')
     assert resp.status_code == 200
     assert b"RFID Scan Terminal" in resp.data
@@ -219,7 +218,7 @@ def test_dynamic_pricing_endpoint_applies_surge(client, mock_db):
         "registration_count": 80,
         "limits": {"max_participants": 100} # 80% filled -> 1.5x surge price
     })
-    
+
     resp = client.get('/api/pricing/evt_test_001')
     assert resp.status_code == 200
     data = json.loads(resp.data)
@@ -239,7 +238,7 @@ def test_checkout_applies_surge_pricing_to_order_amount(client, mock_db):
     })
     with client.session_transaction() as sess:
         sess['pending_reg_data'] = {'lead_email': 'test@student.edu', 'lead_name': 'Test Student'}
-        
+
     resp = client.post(
         '/payment/create_order',
         data=json.dumps({"event_id": "evt_test_001"}),

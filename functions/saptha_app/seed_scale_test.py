@@ -6,7 +6,7 @@ import sys
 import uuid
 import random
 import logging
-from datetime import datetime, date, timezone
+from datetime import date
 try:
     from dotenv import load_dotenv
 except Exception:
@@ -21,12 +21,12 @@ if not os.environ.get("DATABASE_URL"):
     sys.exit(1)
 
 try:
-    from sqlalchemy.orm import Session
+    pass
 except Exception:
     sqlalchemy = None
-from db_pg import get_engine, get_session, init_db
+from db_pg import get_session, init_db
 from models_pg import (
-    Base, User, Event, Registration, TeamMember, UserRole,
+    User, Event, Registration, TeamMember, UserRole,
     EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
 )
 

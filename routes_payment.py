@@ -4,6 +4,7 @@ import hmac as _hmac  # alias to avoid shadowing module with local var
 import os
 import time
 from flask import (Blueprint, flash, jsonify, redirect, render_template, request, session)
+from utils import record_form_submission
 
 try:
     import razorpay
@@ -212,6 +213,9 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             'current_round':        1,
         })
         _db().collection('registrations').document(reg_id).set(reg_data)
+        if reg_data.get('form_answers'):
+            record_form_submission(_db(), event_id, reg_id, email, name,
+                                   reg_data['form_answers'])
 
         # Award +50 XP for registration
         try:

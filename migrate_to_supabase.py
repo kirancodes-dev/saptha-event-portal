@@ -37,9 +37,9 @@ except Exception:
     sqlalchemy = None
 
 # Import SQLAlchemy DB helpers and Models
-from db_pg import get_engine, init_db, get_session
+from db_pg import init_db, get_session
 from models_pg import (
-    Base, User, Event, Registration, TeamMember, Score, EventForm,
+    User, Event, Registration, TeamMember, Score, EventForm,
     FormSubmission, AuditLog, PushSubscription, UserRole, EventCategory,
     EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
 )

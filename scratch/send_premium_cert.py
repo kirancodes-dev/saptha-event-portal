@@ -19,7 +19,7 @@ def send_test():
     target_email = "biradark56@gmail.com"
     name = "Kiran Biradar"
     event_title = "Global AI Hackathon 2026"
-    
+
     print("Initializing Flask context...")
     with app.app_context():
         # Set base URLs
@@ -39,13 +39,13 @@ def send_test():
                 base_url="https://saptha-event-portal-762269836348.us-east4.run.app",
                 college_name="Sapthagiri NPS University"
             )
-            
+
             # Save a local copy for manual review/reference
             local_pdf_path = os.path.join(os.path.dirname(__file__), "mind_blowing_certificate.pdf")
             with open(local_pdf_path, "wb") as f:
                 f.write(winner_pdf)
             print(f"Saved local certificate preview to: {local_pdf_path}")
-            
+
             print(f"\nSending Winner Certificate to {target_email}...")
             ok = _send_cert_email(
                 to_email=target_email,

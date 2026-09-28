@@ -20,7 +20,7 @@ except Exception:
     qrcode = None
 from flask import Blueprint, request, session, redirect, flash, render_template_string, jsonify
 
-from utils import login_required, role_required
+from utils import login_required
 
 logger = logging.getLogger(__name__)
 twofa_bp = Blueprint("twofa", __name__, url_prefix="/auth/2fa")
@@ -183,7 +183,6 @@ def disable_2fa():
 
 def _complete_2fa_login(user: dict, email: str):
     """Finalize login after successful 2FA verification."""
-    from utils import ROLE_REDIRECTS
     session.pop("pending_2fa_email", None)
     session.pop("pending_2fa_role", None)
     session["user_id"] = email

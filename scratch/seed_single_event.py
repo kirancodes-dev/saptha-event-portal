@@ -128,7 +128,7 @@ def main():
 
     # Create Event
     event_id = "EVT-TEST-SINGLE"
-    
+
     # Event dates
     today = datetime.date.today()
     evt_date = (today + datetime.timedelta(days=5)).strftime('%Y-%m-%d')

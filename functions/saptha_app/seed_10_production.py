@@ -22,9 +22,9 @@ for index, event in enumerate(events):
     # 1. Write the current event to a temporary JSON file
     with open('event_vars_temp.json', 'w') as f:
         json.dump(event, f)
-    
+
     print(f"Injecting [{index + 1}/10]: {event['title']}...")
-    
+
     # 2. Fire the Firebase CLI command securely to the cloud
     subprocess.run([
         "npx", "-y", "firebase-tools@latest", "dataconnect:execute",

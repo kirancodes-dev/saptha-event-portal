@@ -346,7 +346,7 @@ def generate_certificate_pdf(
     p1.close()
     c.setFillColor(NAVY)
     c.drawPath(p1, fill=1, stroke=0)
-    
+
     # Right tail (gold)
     p2 = c.beginPath()
     p2.moveTo(medal_cx + 4, medal_cy - 20)
@@ -456,7 +456,7 @@ def generate_certificate_pdf(
     name_disp = student_name[:42] + '…' if len(student_name) > 42 else student_name
     name_fs   = 30 if len(student_name) <= 24 else (24 if len(student_name) <= 34 else 18)
     NAME_Y    = BODY_Y - 38
-    
+
     c.saveState()
     # 3D shadow offset (1.5pt)
     c.setFillColor(HexColor('#e2d9c3'))
@@ -479,9 +479,9 @@ def generate_certificate_pdf(
     evt_fs     = 13 if len(event_title) <= 44 else 11
 
     if cert_type == 'winner':
-        line1 = f'in recognition of their outstanding performance in'
+        line1 = 'in recognition of their outstanding performance in'
     else:
-        line1 = f'for their active participation in'
+        line1 = 'for their active participation in'
 
     c.setFillColor(NAVY); c.setFont('Times-Roman', 11)
     c.drawCentredString(CX - 10, NAME_Y - 28, line1)
@@ -629,7 +629,7 @@ def generate_certificate_pdf(
         c.rect(qr_x - 3, qr_y - 3, qr_size + 6, qr_size + 6, fill=1, stroke=1)
         c.drawImage(qr_img, qr_x, qr_y, width=qr_size, height=qr_size)
         c.restoreState()
-        
+
         c.setFillColor(SILVER); c.setFont('Times-Roman', 6.5)
         c.drawCentredString(qr_x + qr_size/2, qr_y - 10, 'Scan to verify')
     except Exception as exc:

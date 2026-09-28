@@ -92,7 +92,7 @@ def check_room_conflict(
 ) -> Tuple[bool, Optional[Dict[str, Any]]]:
     """
     Check if an overlapping confirmed booking exists for room_id.
-    
+
     Returns:
         (True, conflict_details) if a clash exists.
         (False, None) if the slot is clear.
@@ -113,7 +113,7 @@ def check_room_conflict(
     for b in bookings_ref:
         b_data = b.to_dict()
         b_id = b.id
-        
+
         # Check exclusion
         if exclude_booking_id and str(b_id) == str(exclude_booking_id):
             continue
@@ -370,7 +370,7 @@ def get_google_calendar_url(event_data: Dict[str, Any]) -> str:
     title = event_data.get("title") or event_data.get("name") or "Campus Event"
     desc = event_data.get("description") or ""
     venue = event_data.get("room_name") or event_data.get("venue") or "Sapthagiri NPS University"
-    
+
     # Resolve timestamps
     start_raw = event_data.get("start_datetime") or event_data.get("date")
     end_raw = event_data.get("end_datetime") or start_raw
@@ -501,7 +501,7 @@ def notify_event_details_changed(
     Checks if an event's venue, room, date, or time has changed.
     If so, notifies all registered participants through services_automation / routes_notifications_v2
     exactly once per participant.
-    
+
     Returns the number of participants notified.
     """
     if not previous_data or not new_data:

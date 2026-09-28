@@ -19,7 +19,7 @@ def seed_biradar_data():
         return
 
     spoc_email = "biradark543@gmail.com"
-    
+
     # 1. Create/Update SPOC account in users collection
     spoc_data = {
         'email': spoc_email,
@@ -36,7 +36,7 @@ def seed_biradar_data():
     # 2. Add 2 mock Judges to users collection
     judge_alpha = "judge_alpha@test.edu"
     judge_beta = "judge_beta@test.edu"
-    
+
     db.collection('users').document(judge_alpha).set({
         'email': judge_alpha,
         'name': 'Dr. Alpha (Strict)',

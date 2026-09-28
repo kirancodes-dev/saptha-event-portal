@@ -1,8 +1,7 @@
 # routes_i18n.py — Language switching blueprint for SapthaEvent
 # Python 3.9 compatible
 
-from typing import Optional
-from flask import Blueprint, request, session, redirect, jsonify, make_response, url_for
+from flask import Blueprint, request, session, redirect, jsonify, make_response
 from i18n import SUPPORTED_LOCALES, DEFAULT_LOCALE, get_locale, get_translations
 
 i18n_bp = Blueprint('i18n', __name__)

@@ -13,7 +13,6 @@ Verifies:
 
 All tests go through the Flask test client.
 """
-import pytest
 from services_permission import migrate_roles_and_units, can
 
 

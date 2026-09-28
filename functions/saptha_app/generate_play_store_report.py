@@ -12,11 +12,11 @@ try:
 except Exception:
     reportlab = None
 try:
-    from reportlab.lib.units import inch
+    pass
 except Exception:
     reportlab = None
 try:
-    from reportlab.pdfgen import canvas
+    pass
 except Exception:
     reportlab = None
 try:
@@ -36,35 +36,35 @@ PDF_PATH = 'SAPTHA_EVENT_PORTAL_PLAYSTORE_REPORT.pdf'
 
 def draw_decorations(canvas_obj, doc):
     canvas_obj.saveState()
-    
+
     # Draw a top navy band (height 50)
     canvas_obj.setFillColor(colors.HexColor('#0f172a'))
     canvas_obj.rect(0, doc.pagesize[1] - 50, doc.pagesize[0], 50, fill=True, stroke=False)
-    
+
     # Draw a thin gold line directly underneath it (height 4)
     canvas_obj.setFillColor(colors.HexColor('#c9a45e'))
     canvas_obj.rect(0, doc.pagesize[1] - 54, doc.pagesize[0], 4, fill=True, stroke=False)
-    
+
     # Logo placement or text on top banner
     logo_path = 'static/snpsu-logo.png'
     if os.path.exists(logo_path):
         canvas_obj.drawImage(logo_path, 36, doc.pagesize[1] - 42, width=120, height=32, mask='auto')
-        
+
     canvas_obj.setFont('Helvetica-Bold', 8)
     canvas_obj.setFillColor(colors.white)
     canvas_obj.drawRightString(doc.pagesize[0] - 36, doc.pagesize[1] - 32, "RELEASE & SEO REPORT")
-    
+
     # Footer separator line
     canvas_obj.setStrokeColor(colors.HexColor('#e2e8f0'))
     canvas_obj.setLineWidth(0.8)
     canvas_obj.line(36, 45, doc.pagesize[0] - 36, 45)
-    
+
     # Footer metadata
     canvas_obj.setFont('Helvetica', 8)
     canvas_obj.setFillColor(colors.HexColor('#64748b'))
     canvas_obj.drawString(36, 30, "Sapthagiri NPS University © 2026")
     canvas_obj.drawRightString(doc.pagesize[0] - 36, 30, f"Page {doc.page}")
-    
+
     canvas_obj.restoreState()
 
 def build_bar_chart(data, labels, width=480, height=180):
@@ -208,9 +208,9 @@ def generate_report():
 
     elements.append(Paragraph('Deployment Summary', subtitle_style))
     summary_text = (
-        'The Android app wrapper is fully prepared for Google Play publication. ' 
-        'A signed Android App Bundle has been generated and verified, and SEO support ' 
-        'is enabled for the web backend using standard crawler endpoints. ' 
+        'The Android app wrapper is fully prepared for Google Play publication. '
+        'A signed Android App Bundle has been generated and verified, and SEO support '
+        'is enabled for the web backend using standard crawler endpoints. '
         'This report helps stakeholders understand the current release state and next steps for launch.'
     )
     elements.append(create_callout(summary_text, border_color='#0f172a', bg_color='#f8fafc', width=540))

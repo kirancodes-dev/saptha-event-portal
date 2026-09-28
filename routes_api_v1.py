@@ -604,10 +604,10 @@ def api_webhook_email():
     """
     data = request.get_json(silent=True) or {}
     logger.info("Received email webhook event: %s", data)
-    
+
     target_email = None
     status = None
-    
+
     # 1. Brevo webhook format
     if "event" in data:
         target_email = data.get("email")
@@ -621,7 +621,7 @@ def api_webhook_email():
             status = "Bounced"
         elif event == "request":
             status = "Sent"
-            
+
     # 2. Resend webhook format
     elif "type" in data:
         event_type = data.get("type", "")
@@ -641,7 +641,7 @@ def api_webhook_email():
 
     if not target_email or not status:
         return api_error("bad_request", "Invalid webhook format or empty data", status=400)
-        
+
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
@@ -655,7 +655,7 @@ def api_webhook_email():
         )
         if not regs:
             return api_success({"message": f"No registrations found for {target_email}"})
-            
+
         # Update the most recent registration
         regs.sort(key=lambda x: x.to_dict().get("registered_at", ""), reverse=True)
         regs[0].reference.update({

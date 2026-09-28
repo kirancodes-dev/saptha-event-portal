@@ -7,7 +7,6 @@ import os
 import sys
 import pytest
 from unittest.mock import MagicMock, patch
-from collections import defaultdict
 
 # Ensure project root is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,6 +14,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Ensure tests run with non-production development settings and no HTTPS redirects
 os.environ.setdefault("FLASK_ENV", "development")
 os.environ["FORCE_HTTPS"] = "false"
+
+# Point the SQL layer at a throwaway database before any app module is
+# imported, so tests never touch a developer's local data. Set
+# TEST_DATABASE_URL (e.g. an empty PostgreSQL database) to test against it.
+import tempfile  # noqa: E402
+_TEST_DB_DIR = tempfile.mkdtemp(prefix='saptha-test-')
+os.environ['DATABASE_URL'] = (os.environ.get('TEST_DATABASE_URL')
+                              or f"sqlite:///{os.path.join(_TEST_DB_DIR, 'test.db')}")
+os.environ.setdefault('DATABASE_TYPE', 'postgres')
+os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-pytest-only-0123456789')
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -259,7 +268,6 @@ def app(mock_db):
                             from routes_api_v1 import api_v1_bp
                             if "api_v1" not in [bp.name for bp in flask_app.iter_blueprints()]:
                                 flask_app.register_blueprint(api_v1_bp)
-                                from flask_wtf.csrf import CSRFProtect
                                 csrf = flask_app.extensions.get("csrf")
                                 if csrf:
                                     csrf.exempt(api_v1_bp)

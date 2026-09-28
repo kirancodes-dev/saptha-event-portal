@@ -12,14 +12,12 @@ Provides:
    - log_security_incident for tamper attempts, permission denials, and rate violations.
 """
 
-import os
-import re
 import time
 import hmac
 import hashlib
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 ALLOWED_EXTENSIONS = {
     "pdf", "png", "jpg", "jpeg", "webp", "doc", "docx", "zip", "txt", "csv"

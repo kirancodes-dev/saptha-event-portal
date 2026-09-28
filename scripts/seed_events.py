@@ -110,5 +110,5 @@ for i, ev in enumerate(events, 1):
     })
     print(f"  [{i:02d}/30] {ev['category']:<12} {ev['title']}")
 
-print(f"\n✓ 30 events created in Firestore")
+print("\n✓ 30 events created in Firestore")
 print(f"✓ SPOC login → {SPOC_EMAIL} / {SPOC_PASS}")

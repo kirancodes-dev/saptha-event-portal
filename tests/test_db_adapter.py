@@ -2,9 +2,7 @@
 tests/test_db_adapter.py — Unit tests for the SQL Firestore Compatibility Adapter
 """
 import uuid
-import json
 import pytest
-from datetime import datetime, date, timezone
 
 try:
     from sqlalchemy import create_engine
@@ -16,12 +14,10 @@ except Exception:
     sqlalchemy = None
 
 from models_pg import (
-    Base, User, Event, Registration, TeamMember, Score, EventForm,
-    FormSubmission, AuditLog, PushSubscription, UserRole, EventCategory,
-    EventStatus, RegistrationStatus, PaymentStatus, AttendanceStatus
+    Base
 )
 import db_pg
-from db_adapter import SQLFirestoreAdapter, SQLBatch
+from db_adapter import SQLFirestoreAdapter
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -29,22 +25,22 @@ def setup_test_db(monkeypatch):
     """Set up an in-memory SQLite database patched into db_pg for each test."""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    
+
     SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-    
+
     # Monkeypatch db_pg engine and session local
     monkeypatch.setattr(db_pg, "_engine", engine)
     monkeypatch.setattr(db_pg, "_SessionLocal", SessionLocal)
-    
+
     yield engine
-    
+
     Base.metadata.drop_all(engine)
 
 
 def test_user_crud():
     adapter = SQLFirestoreAdapter()
     users_ref = adapter.collection("users")
-    
+
     user_id = "test_user@snpsu.edu.in"
     user_data = {
         "name": "Kiran Tester",
@@ -56,15 +52,15 @@ def test_user_crud():
         "is_active": True,
         "created_at": "2026-05-23T12:00:00Z"
     }
-    
+
     # Test Create (set)
     users_ref.document(user_id).set(user_data)
-    
+
     # Test Read (get)
     doc = users_ref.document(user_id).get()
     assert doc.exists
     assert doc.id == user_id
-    
+
     data = doc.to_dict()
     assert data["name"] == "Kiran Tester"
     assert data["role"] == "SuperAdmin"
@@ -73,17 +69,17 @@ def test_user_crud():
     assert data["college"] == "NPSU"
     assert data["department"] == "CSE"
     assert data["is_active"] is True
-    
+
     # Test Update
     users_ref.document(user_id).update({
         "name": "Kiran Updated",
         "role": "Coordinator"
     })
-    
+
     doc = users_ref.document(user_id).get()
     assert doc.get("name") == "Kiran Updated"
     assert doc.get("role") == "Coordinator"
-    
+
     # Test Delete
     users_ref.document(user_id).delete()
     doc = users_ref.document(user_id).get()
@@ -93,7 +89,7 @@ def test_user_crud():
 def test_event_crud():
     adapter = SQLFirestoreAdapter()
     events_ref = adapter.collection("events")
-    
+
     event_id = str(uuid.uuid4())
     event_data = {
         "title": "Saptha Hack 2026",
@@ -121,18 +117,18 @@ def test_event_crud():
         ],
         "staff": ["judge_a@snpsu.edu.in", "judge_b@snpsu.edu.in"]
     }
-    
+
     # Test Create (set)
     events_ref.document(event_id).set(event_data)
-    
+
     # Test Read (get)
     doc = events_ref.document(event_id).get()
     assert doc.exists
     assert doc.id == event_id
-    
+
     data = doc.to_dict()
     assert data["title"] == "Saptha Hack 2026"
-    assert data["category"] == "Technical"  # Mapped to enum string
+    assert data["category"] == "Tech"  # document value round-trips unchanged
     assert data["max_participants"] == 120   # Mapped to max_teams
     assert data["team_min"] == 2
     assert data["team_max"] == 4
@@ -145,13 +141,13 @@ def test_event_crud():
         {"name": "Execution", "weight": 60}
     ]
     assert data["staff"] == ["judge_a@snpsu.edu.in", "judge_b@snpsu.edu.in"]
-    
+
     # Test Update
     events_ref.document(event_id).update({
         "scoring_locked": True,
         "max_participants": 150
     })
-    
+
     doc = events_ref.document(event_id).get()
     assert doc.get("scoring_locked") is True
     assert doc.get("max_participants") == 150
@@ -159,7 +155,7 @@ def test_event_crud():
 
 def test_registration_crud_and_nested_relations():
     adapter = SQLFirestoreAdapter()
-    
+
     # First create parent event
     event_id = str(uuid.uuid4())
     adapter.collection("events").document(event_id).set({
@@ -168,7 +164,7 @@ def test_registration_crud_and_nested_relations():
         "date": "2026-05-29",
         "venue": "Online"
     })
-    
+
     reg_id = str(uuid.uuid4())
     reg_data = {
         "event_id": event_id,
@@ -203,24 +199,24 @@ def test_registration_crud_and_nested_relations():
             }
         }
     }
-    
+
     # Test Create (set)
     adapter.collection("registrations").document(reg_id).set(reg_data)
-    
+
     # Let's inspect the created registration
     doc = adapter.collection("registrations").document(reg_id).get()
     assert doc.exists
     data = doc.to_dict()
     assert data["leadName"] == "John Doe"
-    assert data["status"] == "confirmed"
-    assert data["paymentStatus"] == "paid"
-    
+    assert data["status"] == "Approved"  # document value round-trips unchanged
+    assert data["paymentStatus"] == "Paid"  # document value round-trips unchanged
+
     # Check members and scores (this verifies the new insert path)
     assert len(data["members"]) == 2
     assert data["members"][0]["name"] == "Member One"
     assert data["members"][0]["dept"] == "CSE"
     assert data["members"][1]["email"] == "m2@test.com"
-    
+
     assert "judge_1" in data["scores"]
     assert data["scores"]["judge_1"]["judge_name"] == "Judge One"
     assert data["scores"]["judge_1"]["total"] == 18.0
@@ -230,43 +226,43 @@ def test_registration_crud_and_nested_relations():
 def test_query_where_filtering_sorting_and_limiting():
     adapter = SQLFirestoreAdapter()
     users_ref = adapter.collection("users")
-    
+
     # Seed users
     users_ref.document("usr_001").set({"name": "Alpha", "role": "Participant", "phone": "100", "is_active": True})
     users_ref.document("usr_002").set({"name": "Beta", "role": "Participant", "phone": "200", "is_active": True})
     users_ref.document("usr_003").set({"name": "Gamma", "role": "Coordinator", "phone": "300", "is_active": True})
     users_ref.document("usr_004").set({"name": "Delta", "role": "Participant", "phone": "400", "is_active": False})
-    
+
     # Test simple equality filter
     res = list(users_ref.where("role", "==", "Participant").stream())
     assert len(res) == 3
     names = {r.to_dict()["name"] for r in res}
     assert names == {"Alpha", "Beta", "Delta"}
-    
+
     # Test numeric-string comparison filters
     res_gt = list(users_ref.where("phone", ">", "150").stream())
     assert len(res_gt) == 3
-    
+
     # Test multiple where filters
     res_multi = list(users_ref.where("role", "==", "Participant").where("is_active", "==", True).stream())
     assert len(res_multi) == 2
     names_multi = {r.to_dict()["name"] for r in res_multi}
     assert names_multi == {"Alpha", "Beta"}
-    
+
     # Test IN operator
     res_in = list(users_ref.where("phone", "in", ["100", "300", "500"]).stream())
     assert len(res_in) == 2
     names_in = {r.to_dict()["name"] for r in res_in}
     assert names_in == {"Alpha", "Gamma"}
-    
+
     # Test Sorting (order_by) DESC
     res_desc = list(users_ref.order_by("phone", "DESCENDING").stream())
     assert [r.id for r in res_desc] == ["usr_004", "usr_003", "usr_002", "usr_001"]
-    
+
     # Test Sorting (order_by) ASC
     res_asc = list(users_ref.order_by("phone", "ASC").stream())
     assert [r.id for r in res_asc] == ["usr_001", "usr_002", "usr_003", "usr_004"]
-    
+
     # Test Limiting
     res_limit = list(users_ref.order_by("phone", "DESCENDING").limit(2).stream())
     assert len(res_limit) == 2
@@ -277,9 +273,9 @@ def test_query_where_filtering_sorting_and_limiting():
 def test_write_batch():
     adapter = SQLFirestoreAdapter()
     users_ref = adapter.collection("users")
-    
+
     users_ref.document("usr_batch_1").set({"name": "User 1", "role": "Participant"})
-    
+
     batch = adapter.batch()
     # Batch Update
     batch.update(users_ref.document("usr_batch_1"), {"name": "User 1 Updated"})
@@ -288,18 +284,18 @@ def test_write_batch():
     # Batch Delete
     users_ref.document("usr_batch_3").set({"name": "User 3", "role": "Participant"})
     batch.delete(users_ref.document("usr_batch_3"))
-    
+
     # Commit batch
     batch.commit()
-    
+
     # Verify results
     doc1 = users_ref.document("usr_batch_1").get()
     assert doc1.get("name") == "User 1 Updated"
-    
+
     doc2 = users_ref.document("usr_batch_2").get()
     assert doc2.get("name") == "User 2"
     assert doc2.get("role") == "Coordinator"
-    
+
     doc3 = users_ref.document("usr_batch_3").get()
     assert not doc3.exists
 
@@ -307,7 +303,7 @@ def test_write_batch():
 def test_pure_firestore_native_collections():
     """Test native Firestore dictionary storage for non-relational collections."""
     adapter = SQLFirestoreAdapter()
-    
+
     # 1. Test announcements native CRUD
     ann_ref = adapter.collection("announcements")
     ann_id = "ann_101"
@@ -319,12 +315,12 @@ def test_pure_firestore_native_collections():
     doc = ann_ref.document(ann_id).get()
     assert doc.exists
     assert doc.get("title") == "Welcome to Hackathon 2026"
-    
+
     # Test stream filtering
     results = list(ann_ref.where("pinned", "==", True).stream())
     assert len(results) == 1
     assert results[0].id == ann_id
-    
+
     # Test deletion
     ann_ref.document(ann_id).delete()
     assert not ann_ref.document(ann_id).get().exists

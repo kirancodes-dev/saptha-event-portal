@@ -465,7 +465,7 @@
     <div class="topnav-links">
         <a href="/" class="topnav-link"><i class="fas fa-home me-1"></i>Home</a>
         {% if session.get('role') %}
-            <a href="/{% if session.role == 'Student' %}participant{% elif session.role == 'ClubSPOC' %}spoc{% elif session.role == 'SuperAdmin' or session.role == 'Super Admin' %}admin{% elif session.role == 'EventCoordinator' or session.role == 'Coordinator' %}coordinator{% elif session.role == 'Judge' %}judge{% else %}participant{% endif %}/dashboard" class="topnav-link">
+            <a href="/dashboard" class="topnav-link">
                 <i class="fas fa-th-large me-1"></i>Dashboard
             </a>
         {% else %}

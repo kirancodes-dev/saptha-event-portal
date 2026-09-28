@@ -10,7 +10,6 @@ Verifies:
 
 import pytest
 import uuid
-import datetime
 from auth_jwt import create_tokens
 from services_ticket import TicketService
 

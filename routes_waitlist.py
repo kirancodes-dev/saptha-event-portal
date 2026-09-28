@@ -16,7 +16,7 @@ try:
 except ImportError:
     FieldFilter = None
 
-from utils import login_required, role_required, safe_int
+from utils import login_required, role_required
 
 logger = logging.getLogger(__name__)
 waitlist_bp = Blueprint("waitlist", __name__, url_prefix="/waitlist")

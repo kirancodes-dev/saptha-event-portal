@@ -16,8 +16,6 @@ Focuses on the non-competition "seminar" lifecycle and guards:
      - Attended user who provides feedback receives certificate successfully.
 """
 
-import json
-import pytest
 from routes_ticket import generate_ticket_token
 
 

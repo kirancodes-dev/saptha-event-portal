@@ -1,32 +1,33 @@
 # =========================================================
-# Saptha Event Portal - Production Dockerfile for GCP Cloud Run
+# Saptha Event Portal — production image
 # =========================================================
 FROM python:3.11-slim
 
-# Prevent Python from writing .pyc files and enable unbuffered logging
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    FLASK_ENV=production
+    FLASK_ENV=production \
+    PORT=8080
 
 WORKDIR /app
 
-# Install system runtime & build dependencies
+# libpq for psycopg2, curl for the health check
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    curl \
+        build-essential libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --retries 10 --timeout 60 -r requirements.txt
 
-# Copy application source code
 COPY . .
 
-# Expose port (Cloud Run sets PORT automatically to 8080)
+# Run as an unprivileged user
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser /app
+USER appuser
+
 EXPOSE 8080
 
-# Start Gunicorn server using production gunicorn.conf.py configuration
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS "http://localhost:${PORT}/health" || exit 1
+
 CMD ["gunicorn", "--config", "gunicorn.conf.py", "app:app"]

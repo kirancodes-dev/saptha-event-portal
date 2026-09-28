@@ -11,7 +11,7 @@ def upload_file(data: bytes, path: str, content_type: str) -> str:
     """
     Upload file data to configured cloud storage (S3 / GCS / Local fallback).
     Returns the public download URL of the uploaded file.
-    
+
     :param data: File contents in bytes.
     :param path: Destination path (e.g. 'certificates/reg_123.pdf').
     :param content_type: MIME type of the file (e.g. 'application/pdf').

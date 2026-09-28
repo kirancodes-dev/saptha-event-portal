@@ -25,12 +25,11 @@ Permissions:
   - export_data
 """
 
-import uuid
 import datetime
 import logging
 import re
 from functools import wraps
-from flask import session, request, redirect, flash, abort, jsonify, current_app
+from flask import session, request, redirect, flash, abort, jsonify
 
 logger = logging.getLogger(__name__)
 
@@ -271,13 +270,14 @@ def can(user, permission: str, target=None, db=None) -> bool:
             if ev_unit and user_unit and str(ev_unit).lower() != str(user_unit).lower():
                 return False
 
-            # Check SPOC ownership / category match
+            # Check SPOC ownership. Sharing a category (e.g. 'Technical') does not
+            # make another SPOC's event yours; unit-wide access comes from
+            # role_assignments above.
             is_owner = (
                 target_event_data.get('created_by_email') == user_id or
                 target_event_data.get('spoc_id') == user_id or
                 target_event_data.get('spoc_email') == user_id or
                 target_event_data.get('created_by') == user_id or
-                (user_cat and user_cat != 'All' and target_event_data.get('category') == user_cat) or
                 user_cat == 'All'
             )
             return is_owner

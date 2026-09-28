@@ -3,7 +3,7 @@
 
 import json
 import logging
-from flask import Blueprint, request, jsonify, current_app, session
+from flask import Blueprint, request, jsonify, current_app
 try:
     from google import genai
 except ImportError:
@@ -11,7 +11,7 @@ except ImportError:
 def _db():
     from app import db
     return db
-from utils import login_required, role_required, log_action
+from utils import login_required, role_required
 
 logger = logging.getLogger(__name__)
 ai_features_bp = Blueprint('ai_features', __name__, url_prefix='/ai')
@@ -70,7 +70,7 @@ Return ONLY the raw JSON string — no markdown tags, no backticks."""
             model='gemini-2.5-flash',
             contents=prompt
         )
-        
+
         raw_text = response.text.strip()
         if raw_text.startswith('```'):
             raw_text = raw_text.split('\n', 1)[1] if '\n' in raw_text else raw_text[3:]
@@ -88,7 +88,7 @@ def chatbot_advanced():
     """POST /ai/chatbot_advanced — Dynamic context-aware chatbot query endpoint."""
     data = request.json or {}
     message = data.get('message', '').strip()
-    
+
     if not message:
         return jsonify({'error': 'Message is required'}), 400
 
@@ -110,7 +110,7 @@ def chatbot_advanced():
 
         # Inject context into Gemini instruction
         context_str = json.dumps(events_list, indent=2)
-        
+
         prompt = f"""You are the official campus event concierge assistant at Sapthagiri NPS University.
 Below is the database of all registered events in our university portal:
 {context_str}
@@ -126,7 +126,7 @@ Student's question: {message}"""
             model='gemini-2.5-flash',
             contents=prompt
         )
-        
+
         return jsonify({
             'status': 'success',
             'reply': response.text.strip()

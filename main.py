@@ -66,7 +66,7 @@ def handler(req, res=None):
             'wsgi.run_once': False,
             'wsgi.url_scheme': 'https',
         }
-        
+
         for k, v in headers.items():
             environ[f'HTTP_{k.upper().replace("-", "_")}'] = str(v)
 
@@ -108,7 +108,7 @@ def handler(req, res=None):
                     except Exception: pass
                 if k.lower() == 'content-type':
                     ct_set = True
-            
+
             if not ct_set and hasattr(res, 'set_header'):
                 try: res.set_header('Content-Type', 'text/html; charset=utf-8')
                 except Exception: pass

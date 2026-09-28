@@ -4,7 +4,7 @@ import time as _time
 from flask import (Blueprint, Response, flash, jsonify,
                    redirect, render_template, request, session, url_for)
 from models import db
-from utils import login_required, role_required, log_action, safe_int
+from utils import login_required, role_required, log_action
 
 exams_bp = Blueprint('exams', __name__)
 
@@ -30,14 +30,14 @@ except ImportError:
 def exam_interface(event_id):
     """Renders the timed online assessment interface for a registered student."""
     user_email = session.get('user_id') or session.get('user_email')
-    
+
     # 1. Fetch Event & Registration
     event_ref = db.collection('events').document(event_id)
     event_doc = event_ref.get()
     if not event_doc.exists:
         flash("Event not found.", "danger")
         return redirect(url_for('participant.dashboard'))
-        
+
     event_data = event_doc.to_dict()
     event_data['id'] = event_doc.id
 
@@ -62,7 +62,7 @@ def exam_interface(event_id):
                     .where('event_id', '==', event_id)
                     .where('user_email', '==', user_email)
                     .stream())
-    
+
     attempt_id = None
     started_at = None
     if sub_docs:
@@ -136,7 +136,7 @@ def submit_exam(event_id):
                     .where('event_id', '==', event_id)
                     .where('user_email', '==', user_email)
                     .stream())
-    
+
     if sub_docs:
         attempt_ref = db.collection('exam_attempts').document(sub_docs[0].id)
         attempt_ref.update({
@@ -183,7 +183,7 @@ def log_proctor_violation():
         violations = current_data.get('violations', [])
         violations.append(violation_entry)
         violation_count = len(violations)
-        
+
         attempt_ref.update({'violations': violations})
 
     # Broadcast to SPOC Real-time Monitoring Room via SSE

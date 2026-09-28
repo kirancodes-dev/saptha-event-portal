@@ -20,8 +20,8 @@ def test_stripe_create_session_simulation_fallback(client, mock_db, sample_event
             'reg_id': 'REG-12345',
             'amount_paid': 100
         }
-    
-    resp = client.post('/payment/stripe/create_session', 
+
+    resp = client.post('/payment/stripe/create_session',
                        data=json.dumps({'event_id': sample_event}),
                        content_type='application/json')
     assert resp.status_code == 200
@@ -42,11 +42,11 @@ def test_stripe_success_redirection_and_registration(client, mock_db, sample_eve
             'reg_id': 'REG-98765',
             'amount_paid': 100
         }
-    
+
     resp = client.get('/payment/stripe/success?session_id=cs_test_123')
     assert resp.status_code == 302
     assert '/ticket/REG-98765' in resp.location
-    
+
     # Check registration created in mock Firestore
     reg_doc = mock_db.collection('registrations').document('REG-98765').get()
     assert reg_doc.exists
@@ -60,7 +60,7 @@ def test_ai_generate_event_details(admin_client, mock_db):
     mock_gemini.models.generate_content.return_value = MagicMock(
         text='{"description": "AI-generated description", "rules": ["Rule 1", "Rule 2"], "judging_criteria": ["Crit 1"]}'
     )
-    
+
     with patch('routes_ai_features._gemini_client', return_value=mock_gemini):
         resp = admin_client.post('/ai/generate_event_details',
                                  data=json.dumps({'title': 'RoboWars', 'category': 'Technical'}),
@@ -78,7 +78,7 @@ def test_ai_chatbot_advanced(client, mock_db):
     mock_gemini.models.generate_content.return_value = MagicMock(
         text='Here is the event details you requested.'
     )
-    
+
     with patch('routes_ai_features._gemini_client', return_value=mock_gemini):
         resp = client.post('/ai/chatbot_advanced',
                            data=json.dumps({'message': 'Tell me about Technical events'}),
@@ -100,12 +100,12 @@ def test_onboarding_self_service_signup(client, mock_db):
     })
     assert resp.status_code == 302
     assert '/onboarding/wizard' in resp.location
-    
+
     # Assert database state
     org_doc = mock_db.collection('organizations').document('sapthagiri-nps-university').get()
     assert org_doc.exists
     assert org_doc.to_dict().get('domain') == 'snpsu.edu'
-    
+
     user_doc = mock_db.collection('users').document('kiran@snpsu.edu').get()
     assert user_doc.exists
     assert user_doc.to_dict().get('role') == 'SuperAdmin'
@@ -119,12 +119,12 @@ def test_onboarding_wizard_save(client, mock_db):
         'slug': 'test-org',
         'plan': 'free'
     })
-    
+
     with client.session_transaction() as sess:
         sess['user_id'] = 'kiran@snpsu.edu'
         sess['role'] = 'SuperAdmin'
         sess['org_id'] = 'test-org'
-        
+
     resp = client.post('/onboarding/wizard',
                        data=json.dumps({
                            'primary_color': '#ff0000',
@@ -136,7 +136,7 @@ def test_onboarding_wizard_save(client, mock_db):
     data = json.loads(resp.data)
     assert data.get('status') == 'success'
     assert '/coordinator/dashboard' in data.get('redirect')
-    
+
     # Confirm configuration written to DB
     org = mock_db.collection('organizations').document('test-org').get().to_dict()
     assert org.get('logo_url') == 'https://example.com/logo.png'
@@ -168,20 +168,20 @@ def test_gamification_leaderboards(auth_client, mock_db):
         'department': 'CSE',
         'college': 'SNPSU'
     })
-    
+
     # 1. Test HTML view
     resp = auth_client.get('/gamification/leaderboard')
     assert resp.status_code == 200
     assert b'Hall of Fame' in resp.data
     assert b'Student One' in resp.data
     assert b'Student Two' in resp.data
-    
+
     # 2. Test JSON API view
     api_resp = auth_client.get('/gamification/api/leaderboard')
     assert api_resp.status_code == 200
     api_data = json.loads(api_resp.data)
     assert api_data.get('status') == 'success'
-    
+
     # Check student rankings sorted descending by XP
     students = api_data.get('students', [])
     assert len(students) >= 4
@@ -189,7 +189,7 @@ def test_gamification_leaderboards(auth_client, mock_db):
     assert students[1]['name'] == 'Student One'   # 150 XP
     assert students[2]['name'] == 'Test Student'  # 100 XP
     assert students[3]['name'] == 'Student Three' # 50 XP
-    
+
     # Check department stats (CSE total: 200 XP, ECE total: 350 XP)
     depts = api_data.get('departments', [])
     assert depts[0]['name'] == 'ECE'
@@ -207,7 +207,7 @@ def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event):
         'xp': 0,
         'department': 'CSE'
     })
-    
+
     # 1. Trigger registration (simulated payment)
     with client.session_transaction() as sess:
         sess['pending_reg_data'] = {
@@ -217,13 +217,13 @@ def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event):
             'reg_id': 'REG-XP-111',
             'amount_paid': 100
         }
-    
+
     client.post('/payment/process', data={'event_id': sample_event, 'amount': 100})
-    
+
     # Check XP is +50
     user = mock_db.collection('users').document('stud_xp@test.edu').get().to_dict()
     assert user.get('xp') == 50
-    
+
     # 2. Trigger check-in via secure verify endpoint (signed token + staff POST)
     # Pre-authorize payment status
     mock_db.collection('registrations').document('REG-XP-111').update({'payment_status': 'Paid'})

@@ -54,7 +54,7 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int
+from utils import login_required, role_required, log_action, safe_int, record_form_submission
 from utils_email import send_registration_confirmed_email
 
 from extensions import limiter
@@ -522,16 +522,6 @@ def submit_form(event_id):
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard')
 
-        # Save submission analytics separately
-        db.collection('form_submissions').add({
-            'event_id':     event_id,
-            'reg_id':       reg_id,
-            'email':        email,
-            'name':         full_name,
-            'answers':      answers,
-            'submitted_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        })
-
         # Free vs paid
         if fee > 0:
             reg_data.update({
@@ -548,6 +538,8 @@ def submit_form(event_id):
             'amount_paid':    0
         })
         db.collection('registrations').document(reg_id).set(reg_data)
+        # Paid registrations record this once payment completes (routes_payment)
+        record_form_submission(db, event_id, reg_id, email, full_name, answers)
 
         # Issue digital ticket with signed HMAC-SHA256 QR token
         try:

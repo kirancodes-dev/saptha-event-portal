@@ -26,3 +26,6 @@ test_out.log
 reports/
 graphify-out/
 scratch/
+instance/
+.env.*
+!.env.example

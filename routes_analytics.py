@@ -1,8 +1,7 @@
 # routes_analytics.py — Analytics dashboard routes
 # Python 3.9 compatible
 
-import datetime
-from flask import Blueprint, render_template, jsonify, session, redirect
+from flask import Blueprint, render_template, jsonify
 from models import db
 from utils import login_required, role_required
 

@@ -13,7 +13,6 @@ Covers:
 """
 import importlib
 import pytest
-from unittest.mock import patch
 
 from routes_ticket import generate_ticket_token
 from routes_checkin import _get_venue_serializer

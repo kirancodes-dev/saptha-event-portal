@@ -310,9 +310,9 @@ def speech_to_score():
                     f"{{\n"
                     f"  \"scores\": {{\n"
                     + ",\n".join([f"    \"{c}\": <int>" for c in criteria])
-                    + f"\n  }},\n"
-                    f"  \"remarks\": \"<string: extracted remarks/comments>\"\n"
-                    f"}}\n"
+                    + "\n  },\n"
+                    "  \"remarks\": \"<string: extracted remarks/comments>\"\n"
+                    "}\n"
                 )
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',

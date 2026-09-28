@@ -18,7 +18,7 @@ Connection method:
 import os
 
 try:
-    from sqlalchemy import create_engine, event, text
+    from sqlalchemy import create_engine, text
 except Exception:
     sqlalchemy = None
 try:

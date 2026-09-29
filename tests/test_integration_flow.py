@@ -163,6 +163,23 @@ def test_paid_event_sends_student_to_checkout(real_app):
     assert list(db.collection('registrations').where('event_id', '==', event_id).stream()) == []
 
 
+def test_unassigned_judge_gets_403_and_nothing_is_saved(real_app):
+    flask_app, db = real_app
+    spoc = f"{_unique('spoc')}@test.edu"
+    _user(db, spoc, 'ClubSPOC')
+    event_id = _create_event(_login(flask_app, spoc, 'ClubSPOC'), db, _unique('Judge Hack'), '2030-08-01')
+    reg_id = f"REG-{_unique('j')}"
+    db.collection('registrations').document(reg_id).set({
+        'event_id': event_id, 'lead_email': 'team@test.edu', 'lead_name': 'Team', 'attendance': 'Present'})
+
+    judge = f"{_unique('judge')}@test.edu"
+    _user(db, judge, 'Judge')
+    judge_client = _login(flask_app, judge, 'Judge')
+    assert judge_client.post(f'/judge/submit_score/{reg_id}', data={'score_overall_score': '9'}).status_code == 403
+    assert judge_client.post(f'/judge/score_inline/{reg_id}', json={'scores': {'Overall Score': 9}}).status_code == 403
+    assert not db.collection('registrations').document(reg_id).get().to_dict().get('scores')
+
+
 def test_coordinator_and_shared_pages_render(real_app):
     flask_app, db = real_app
     spoc = f"{_unique('spoc')}@test.edu"

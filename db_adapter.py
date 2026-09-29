@@ -1768,20 +1768,44 @@ class SQLFirestoreAdapter:
         New events default to org_unit_id='central' (routes_spoc.create_event), and
         events.orgUnitId / org_units.organizationId are foreign keys, so these rows
         must exist before the first event is created.
+
+        Safe when several server processes start at once and on every restart:
+        both rows are inserted with INSERT ... ON CONFLICT DO NOTHING in one
+        transaction, so a concurrent or repeated start-up is a no-op and existing
+        rows (e.g. an organization renamed by an admin) are never overwritten.
         """
-        now = datetime.now(timezone.utc).isoformat()
-        org_ref = self.collection('organizations').document('default')
-        if not org_ref.get().exists:
+        import secrets as _secrets
+        now = datetime.now(timezone.utc)
+        org_row = {
+            'id': 'default', 'name': 'Sapthagiri NPS University', 'slug': 'default',
+            'plan': 'free', 'is_active': True, 'created_at': now, 'updated_at': now,
             # organizations.apiKey is unique; don't take the '' slot other orgs default to
-            import secrets as _secrets
-            org_ref.set({'name': 'Sapthagiri NPS University', 'slug': 'default',
-                         'api_key': 'sk_default_' + _secrets.token_hex(16),
-                         'created_at': now, 'updated_at': now})
-        unit_ref = self.collection('org_units').document('central')
-        if not unit_ref.get().exists:
-            unit_ref.set({'id': 'central', 'organization_id': 'default', 'parent_id': None,
-                          'type': 'central', 'name': 'Central Administration',
-                          'slug': 'central', 'created_at': now, 'updated_at': now})
+            'api_key': 'sk_default_' + _secrets.token_hex(16),
+        }
+        unit_row = {
+            'id': 'central', 'organization_id': 'default', 'parent_id': None,
+            'type': 'central', 'name': 'Central Administration', 'slug': 'central',
+            'created_at': now, 'updated_at': now,
+        }
+        dialect = _db_dialect_name()
+        if dialect == 'postgresql':
+            from sqlalchemy.dialects.postgresql import insert as _insert
+        elif dialect == 'sqlite':
+            from sqlalchemy.dialects.sqlite import insert as _insert
+        else:
+            _insert = None
+
+        with get_session() as session:
+            if _insert is not None:
+                session.execute(_insert(Organization).values(**org_row).on_conflict_do_nothing())
+                session.execute(_insert(OrgUnit).values(**unit_row).on_conflict_do_nothing())
+            else:  # other databases: best effort, a concurrent duplicate raises and is logged
+                if not session.get(Organization, 'default'):
+                    session.add(Organization(**org_row))
+                    session.flush()
+                if not session.get(OrgUnit, 'central'):
+                    session.add(OrgUnit(**unit_row))
+            session.commit()
 
     def collection(self, name) -> SQLCollectionReference:
         return SQLCollectionReference(name)

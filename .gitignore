@@ -1,8 +1,8 @@
-# Secrets — NEVER commit
-.env
-.env.local
-.env.*.local
+# Secrets — NEVER commit (tests/test_repo_hygiene.py and CI enforce this)
+.env*
+!.env.example
 serviceAccountKey.json
+service-account*.json
 *.pem
 *.key
 *.keystore
@@ -10,6 +10,7 @@ google-services.json
 
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.so
@@ -32,9 +33,11 @@ flask_session/
 
 # Logs & local DBs
 *.log
-*.sqlite
-*.sqlite3
+*.sqlite*
 *.db
+
+# Firebase Data Connect emulator output (local Postgres data + generated schema)
+dataconnect/.dataconnect/
 
 # Scratch & Local Env Configurations
 scratch/env-vars.yaml

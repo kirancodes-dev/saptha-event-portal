@@ -89,8 +89,13 @@ def test_ai_chatbot_advanced(client, mock_db):
         assert 'reply' in data
 
 
-def test_onboarding_self_service_signup(client, mock_db):
-    """Test university onboarding signup creates org tenant and SuperAdmin account."""
+def test_onboarding_self_service_signup(client, mock_db, monkeypatch):
+    """Test university onboarding signup creates org tenant and its admin account.
+
+    Tenant sign-up exists only with MULTI_TENANT_ENABLED, and its admin is a
+    TenantAdmin, never the global SuperAdmin (BLK-14).
+    """
+    monkeypatch.setitem(client.application.config, 'MULTI_TENANT_ENABLED', True)
     resp = client.post('/onboarding/signup', data={
         'org_name': 'Sapthagiri NPS University',
         'org_domain': 'snpsu.edu',
@@ -108,12 +113,13 @@ def test_onboarding_self_service_signup(client, mock_db):
 
     user_doc = mock_db.collection('users').document('kiran@snpsu.edu').get()
     assert user_doc.exists
-    assert user_doc.to_dict().get('role') == 'SuperAdmin'
+    assert user_doc.to_dict().get('role') == 'TenantAdmin'
     assert user_doc.to_dict().get('org_id') == 'sapthagiri-nps-university'
 
 
-def test_onboarding_wizard_save(client, mock_db):
+def test_onboarding_wizard_save(client, mock_db, monkeypatch):
     """Test onboarding wizard configures organization settings."""
+    monkeypatch.setitem(client.application.config, 'MULTI_TENANT_ENABLED', True)  # BLK-14
     mock_db.collection('organizations').document('test-org').set({
         'name': 'Test Org',
         'slug': 'test-org',

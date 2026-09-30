@@ -3,7 +3,8 @@
 
 import datetime
 import logging
-from flask import Blueprint, request, render_template, redirect, flash, session, jsonify
+import secrets
+from flask import Blueprint, abort, current_app, request, render_template, redirect, flash, session, jsonify
 from werkzeug.security import generate_password_hash
 def _db():
     from app import db
@@ -13,10 +14,22 @@ from utils import login_required, role_required, log_action
 logger = logging.getLogger(__name__)
 onboarding_bp = Blueprint('onboarding', __name__, url_prefix='/onboarding')
 
+# A tenant's own administrator. Deliberately not SuperAdmin: that role is
+# global (a wildcard in utils.role_required), so granting it here would hand
+# the whole university's admin to anyone who fills in the form (BLK-14).
+TENANT_ADMIN_ROLE = 'TenantAdmin'
+
+
+@onboarding_bp.before_request
+def _tenant_signup_disabled():
+    """Self-service tenant sign-up exists only when multi-tenancy is switched on."""
+    if not current_app.config.get('MULTI_TENANT_ENABLED'):
+        abort(404)
+
 
 @onboarding_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """GET/POST /onboarding/signup — Registers a new university tenant and its SuperAdmin."""
+    """GET/POST /onboarding/signup — Registers a new university tenant and its TenantAdmin (only with MULTI_TENANT_ENABLED)."""
     if request.method == 'POST':
         org_name = request.form.get('org_name', '').strip()
         org_domain = request.form.get('org_domain', '').strip().lower()
@@ -49,14 +62,16 @@ def signup():
                 'slug': org_slug,
                 'domain': org_domain,
                 'plan': 'free',
+                # organizations.apiKey is unique; give each tenant its own
+                'api_key': 'sk_tenant_' + secrets.token_hex(16),
                 'created_at': datetime.datetime.now(datetime.timezone.utc).isoformat()
             })
 
-            # Create SuperAdmin
+            # Create the tenant's administrator (never a global SuperAdmin)
             _db().collection('users').document(email).set({
                 'email': email,
                 'name': admin_name,
-                'role': 'SuperAdmin',
+                'role': TENANT_ADMIN_ROLE,
                 'org_id': org_slug,
                 'password': generate_password_hash(password, method='pbkdf2:sha256'),
                 'created_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -66,9 +81,9 @@ def signup():
             # Auto-log in the user
             session['user_id'] = email
             session['name'] = admin_name
-            session['role'] = 'SuperAdmin'
+            session['role'] = TENANT_ADMIN_ROLE
             session['org_id'] = org_slug
-            session['category'] = 'All'
+            session['category'] = 'General'
 
             log_action(_db(), "TENANT_CREATED", f"Registered new tenant organization '{org_name}' by {email}")
             flash(f"🎉 University tenant '{org_name}' registered successfully!", "success")
@@ -86,7 +101,7 @@ def signup():
 
 @onboarding_bp.route('/wizard', methods=['GET', 'POST'])
 @login_required
-@role_required(['SuperAdmin', 'Super Admin'])
+@role_required([TENANT_ADMIN_ROLE, 'SuperAdmin', 'Super Admin'])
 def wizard():
     """GET/POST /onboarding/wizard — Configuration step builder for organization settings."""
     org_id = session.get('org_id', '')

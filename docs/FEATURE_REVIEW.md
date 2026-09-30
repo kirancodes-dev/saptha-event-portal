@@ -905,6 +905,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
     3. **The audit `actorEmail` column is still `system`**, because `log_action` writes `user` (`utils.py` `log_action`); SQL-level audit queries can't filter by actor [R].
     4. Rows written before `1f4cdc8` can't recover fields lost earlier (only legacy fallbacks via `_derive_legacy_event_fields`).
     5. **Hot filter fields live only in the JSON shadow** [C at `56a014d`]. `spoc_id` (referenced 23 times in `routes_spoc.py`, and by `services_permission`) has no column on `events` (`models_pg.py` has `coordinatorId` on `events` at `:342` and `spoc_email` only on announcements at `:558`), so `where('spoc_id', …)` loads every event and filters in Python (`db_adapter.py` `_py_match`). The same goes for other document-only keys routes filter on.
+    6. **An organisation written without an API key is stored with `''`** (`db_adapter.py:1212`), and `organizations.apiKey` is unique (`models_pg.py:139`), so a second such organisation fails with a unique-constraint error. Found in BLK-14 [R]; the root organisation (`db_adapter.py:1782-1783`) and tenant sign-up (`routes_onboarding.py:66`) work around it by always setting a key.
 - **Who benefits:** every user; this is the root cause of most PARTLY BUILT rows at `694c729`.
 - **What to build:** store role and category as plain strings (or complete the enums with every value the app writes) plus an Alembic migration; workflow states the enum doesn't know (e.g. `evaluation`) are stored as themselves, never as `active`; add `extra_json` to the remaining tables; write `actor_email` from `log_action`; add real indexed columns for hot filter fields (at least `events.spoc_id`), filled from the shadow for existing rows.
 - **Files touched:** `db_adapter.py`, `models_pg.py`, `migrations/`, `utils.py`, tests.
@@ -917,6 +918,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   5. ⬜ Test: the audit log `actor_email` column holds the acting user's email.
   6. ⬜ Test: `where('status','==','active')` excludes an event in `evaluation` (the strict xfail `tests/test_db_adapter_merge.py::test_active_filter_excludes_states_outside_the_enum` flips to a pass, and its `xfail` marker is removed).
   7. ⬜ Test: `events.spoc_id` is an indexed column; `where('spoc_id','==',x)` is answered by SQL (the compiled query has a `WHERE` on that column), and an event written with `spoc_id` in the document fills the column.
+  8. ⬜ Test: two organisations written without an `api_key` can both be saved (an empty key is stored as `NULL`).
 
 #### BLK-07 — Role migration locks out SuperAdmin and SPOC accounts
 - **Status:** TODO
@@ -1071,17 +1073,22 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### BLK-14 — Anyone can create a SuperAdmin account through the public tenant sign-up
-- **Status:** TODO
-- **Last verified:** 2026-09-30, commit `dc8ea5a`
-- **Problem:** Found while working on BLK-02 (2026-09-30) [R]. `POST /onboarding/signup` (`routes_onboarding.py:17-77`, registered unconditionally at `app.py:377`) takes an organisation name, an email and a password from anyone, creates an `organizations` row and a user with role `SuperAdmin`, and logs the visitor in as `SuperAdmin` (`routes_onboarding.py:55-71`), with no master key and no invitation. The new SuperAdmin isn't limited to its own organisation: in a run on the real adapter, the fresh session got 200 on `/admin/dashboard`, `/admin/org_units` and `/admin/audit_log`. `MULTI_TENANT_ENABLED` exists (`config.py:218`, default `false`) but the route doesn't check it. The `functions/saptha_app` copy has the same route (`functions/saptha_app/routes_onboarding.py:69`).
+- **Status:** DONE (criterion 3 waits on D-1)
+- **Last verified:** 2026-09-30, commit "BLK-14: …" on `production-ready` (parent `ee74fae`)
+- **Problem (as found):** Found while working on BLK-02 [R]. `POST /onboarding/signup` (`routes_onboarding.py:17-84` at `dc8ea5a`, registered unconditionally at `app.py:377`) took an organisation name, an email and a password from anyone, created an `organizations` row and a user with role `SuperAdmin`, and logged the visitor in as `SuperAdmin`, with no master key and no invitation. `SuperAdmin` is a wildcard in `utils.role_required` (`utils.py:61-63`), so the fresh session got 200 on `/admin/dashboard`, `/admin/org_units` and `/admin/audit_log`. `MULTI_TENANT_ENABLED` existed (`config.py:218`, default `false`) but the route didn't check it. The `functions/saptha_app` copy has the same route (`functions/saptha_app/routes_onboarding.py:69`).
 - **Who benefits:** the whole university (full admin takeover by anyone).
-- **What to build:** `/onboarding/signup` (GET and POST) and the onboarding wizard return 404 unless `MULTI_TENANT_ENABLED=true`. Multi-tenant scoping of a tenant's admin isn't built, so the flag stays off for this deployment; the route never grants the global `SuperAdmin` role (a tenant admin role scoped by `org_id` is future work). The first SuperAdmin is created only through the existing `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASS` first-boot path.
-- **Files touched:** `routes_onboarding.py`, tests; the `functions/` copy by D-1.
+- **What was built:**
+  - Every `/onboarding/*` route returns 404 unless `MULTI_TENANT_ENABLED` is on (`routes_onboarding.py:23-27`, a blueprint `before_request`).
+  - With the flag on, the sign-up creates a `TenantAdmin` (`routes_onboarding.py:20,74,84`), never `SuperAdmin`; the wizard accepts `TenantAdmin` (`:104`). Tenant-scoped admin powers remain future work, so the flag stays off for this deployment. The first SuperAdmin is created only through the `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASS` first-boot path.
+  - Each new tenant gets its own API key (`routes_onboarding.py:66`), because the adapter stores a missing key as `''` and `organizations.apiKey` is unique, so a second tenant couldn't be created (the adapter bug is recorded under BLK-06).
+  - `tests/test_global_scale.py`: the two onboarding tests now switch the flag on, and the sign-up test expects `TenantAdmin` instead of `SuperAdmin`, the exact behaviour this item removes (same strictness: an exact role match).
+- **Files touched:** `routes_onboarding.py`, `tests/test_tenant_signup_disabled.py` (new), `tests/test_global_scale.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** low; nothing in this deployment uses tenant sign-up.
 - **Acceptance criteria:**
-  1. Test (real DB): with `MULTI_TENANT_ENABLED` unset, `GET` and `POST /onboarding/signup` → 404, and no user or organisation is created.
-  2. Test: with the flag on, the created account's role isn't `SuperAdmin` and its session gets 403 on `/admin/dashboard`.
-  3. The `functions/saptha_app` copy is removed or fixed the same way (D-1).
+  1. ✅ Test (real DB): with `MULTI_TENANT_ENABLED` off, `GET`/`POST /onboarding/signup` and `/onboarding/wizard` → 404, and no user, organisation or session is created (`tests/test_tenant_signup_disabled.py::test_tenant_signup_is_404_unless_multi_tenancy_is_on`).
+  2. ✅ Test (real DB): with the flag on, the created account's role isn't `SuperAdmin`/`UniversityAdmin`, and its session is refused (redirect to `/login`) on `/admin/dashboard`, `/admin/org_units` and `/admin/audit_log` (`::test_tenant_signup_with_the_flag_on_never_grants_superadmin`). Both tests fail on the old code.
+  3. ⬜ The `functions/saptha_app` copy is removed or fixed the same way (D-1).
+  - Full pytest: **426 passed, 1 xfailed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-33 — Account emails: walk-in passwords by email, reusable reset links
 - **Status:** TODO
@@ -1182,3 +1189,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-09-30 | `56a014d` | Phase 0 summary | **Done:** branch created; every open item re-verified; 19 items added; statuses and dependencies fixed (UPG-06 no longer waits on UPG-05, UPG-31 not on UPG-18; UPG-01 and UPG-07 pulled into Phase 2 for dependencies). **Checks** (docs-only change): full pytest **414 passed, 1 xfailed** on SQLite and on PostgreSQL 16; `ruff check .` clean; bandit shows the 5 known BLK-11 findings; `alembic upgrade head` on an empty DB fails (UPG-16). **Skipped:** nothing. **Waiting on the owner:** D-1 (is Cloud Run the only deploy target?), D-2 (BLK-01 force-push and GitHub Support). No item marked DONE in this phase. Next: Phase 1, starting with BLK-02. |
 | 2026-09-30 | `dc8ea5a` | BLK-14 | New blocker found while starting BLK-02: the public `/onboarding/signup` creates a global `SuperAdmin` and logs the visitor in; confirmed on the real adapter (200 on `/admin/dashboard`, `/admin/org_units`, `/admin/audit_log`). Recorded, not fixed; scheduled right after BLK-02. |
 | 2026-09-30 | "BLK-02: …" (parent `07ad7b2`) | BLK-02, UPG-33, UPG-34 | **BLK-02 DONE.** Registration, waitlist and payment completion never log anyone in (both registration routes and both payment endpoints); existing accounts log in first and return to the form; new emails get an unverified account and a one-time set-password link (`services_accounts.py`, `/set_password/<token>`); no password is shown, kept in the session or emailed. 10 new tests on the real adapter (`tests/test_registration_no_auto_login.py`), 9 of which fail on the old code. `real_app` moved to `tests/conftest.py` and now stubs all outbound mail; two `test_seminar_e2e.py` tests that registered students from the SPOC's session now use each student's own session (assertions unchanged). Full pytest 424 passed, 1 xfailed on SQLite and PostgreSQL 16; ruff clean. New: UPG-33 (walk-in passwords by email, reusable reset links), UPG-34 (legacy registration route skips the closed check). |
+| 2026-09-30 | "BLK-14: …" (parent `ee74fae`) | BLK-14, BLK-06 | **BLK-14 DONE** (criterion 3 waits on D-1). `/onboarding/*` returns 404 unless `MULTI_TENANT_ENABLED`; with the flag on the sign-up creates a `TenantAdmin`, never `SuperAdmin`; each tenant gets its own API key. 2 new real-DB tests (both fail on the old code). `tests/test_global_scale.py`'s two onboarding tests now enable the flag, and the sign-up test expects `TenantAdmin` instead of `SuperAdmin`. BLK-06 gains the adapter's `''` API key (unique clash). Full pytest 426 passed, 1 xfailed on SQLite and PostgreSQL 16; ruff clean. |

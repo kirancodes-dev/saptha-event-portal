@@ -929,7 +929,8 @@ def registration_confirmed():
     data = session.pop('reg_confirmed', None)
     if not data:
         return redirect('/participant/dashboard')
-    data['user_email'] = session.get('user_id', '')
+    data.pop('raw_password', None)  # never shown (BLK-02)
+    data['user_email'] = data.get('user_email') or session.get('user_id', '')
     return render_template('participant/registration_confirmed.html', **data)
 
 

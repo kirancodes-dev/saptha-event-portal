@@ -365,3 +365,34 @@ def admin_jwt_token(app):
     with app.app_context():
         from auth_jwt import create_access_token
         return create_access_token("admin@test.edu", "SuperAdmin")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# REAL DATABASE LAYER — the SQL adapter the app uses (no mock db)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def real_app(monkeypatch):
+    import app as app_module
+    import models
+    import routes_forms
+
+    # Other tests' fixtures swap in a mock db; use the real SQL adapter here
+    monkeypatch.setattr(app_module, 'db', models.db)
+    for name in ('routes_exams', 'routes_hackathon'):
+        module = __import__(name)
+        monkeypatch.setattr(module, 'db', models.db)
+
+    # No outbound email/WhatsApp from tests (every email goes through _send)
+    import utils_email
+    monkeypatch.setattr(utils_email, '_send', lambda *a, **k: True)
+    monkeypatch.setattr(routes_forms, 'send_registration_confirmed_email', lambda *a, **k: None)
+    monkeypatch.setattr(routes_forms, 'send_ticket_whatsapp', lambda *a, **k: None, raising=False)
+
+    flask_app = app_module.app
+    flask_app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+    monkeypatch.setitem(flask_app.config, 'SERVER_NAME', None)
+    from extensions import limiter
+    monkeypatch.setattr(limiter, 'enabled', False, raising=False)
+    return flask_app, models.db
+

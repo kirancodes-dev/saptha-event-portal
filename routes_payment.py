@@ -132,7 +132,7 @@ def verify_payment():
     )
     if 'error' in result:
         return jsonify(result), 400
-    return jsonify({'redirect': f"/ticket/{result['reg_id']}"})
+    return jsonify({'redirect': _after_payment_url(result)})
 
 
 # =========================================================
@@ -247,19 +247,32 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
                 reg_id=reg_id, event_date=event_date, venue=venue,
             )
 
+        # BLK-02: completing a payment never logs anyone in
         session.pop('pending_reg_data', None)
-        session['user_id']  = email
-        session['name']     = name
-        session['role']     = 'Student'
-        session['category'] = 'General'
 
         log_action(_db(), "PAYMENT_CONFIRMED",
                    f"Registration {reg_id} confirmed for event {event_id} — ₹{amount_paid}")
-        return {'reg_id': reg_id}
+        return {'reg_id': reg_id, 'email': email, 'event_title': event_title,
+                'event_date': event_date, 'venue': venue}
 
     except Exception as exc:
         log_action(_db(), "PAYMENT_FAILED", f"Event {event_id}, email {email} — {exc}")
         return {'error': str(exc)}
+
+
+def _after_payment_url(result):
+    """The logged-in owner sees the ticket; anyone else the confirmation page."""
+    if (session.get('user_id') or '').lower() == (result.get('email') or '').lower():
+        return f"/ticket/{result['reg_id']}"
+    session['reg_confirmed'] = {
+        'reg_id':      result['reg_id'],
+        'event_title': result.get('event_title', ''),
+        'event_date':  result.get('event_date', ''),
+        'venue':       result.get('venue', ''),
+        'is_new_user': not session.get('user_id'),
+        'user_email':  result.get('email', ''),
+    }
+    return '/registration/confirmed'
 
 
 # =========================================================
@@ -287,4 +300,4 @@ def process_payment():
     if 'error' in result:
         flash(f"Payment failed: {result['error']}", "danger")
         return redirect('/')
-    return redirect(f"/ticket/{result['reg_id']}")
+    return redirect(_after_payment_url(result))

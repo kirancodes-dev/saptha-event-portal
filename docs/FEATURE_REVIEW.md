@@ -9,7 +9,7 @@ This file is the source of truth for planned work. Agents and developers work on
 
 ### How to read the evidence
 
-- `file:line` points at the code as of the item's "Last verified" commit (`56a014d` for everything re-checked in Phase 0).
+- `file:line` points at the code as of the item's "Last verified" commit (`56a014d` for everything re-checked in Phase 0). Items built on `production-ready` cite their own commit by message and parent hash (e.g. "BLK-02: …", parent `07ad7b2`), because a commit can't contain its own hash; find it with `git log --grep '^BLK-02:'`.
 - **How checks are run (from Phase 0):** Python 3.11 venv with `requirements-dev.txt`; full pytest on a temp SQLite database **and** on PostgreSQL 16 (an embedded server from the `pgserver` package, one empty database per run, passed as `TEST_DATABASE_URL`); `ruff check .`. Every key in the developer's `.env` is pre-set to a blank or dummy value first, because `app.py` calls `load_dotenv()` and python-dotenv never overrides a variable that's already set (BLK-05 removes the need for this). Baseline at `56a014d`: **414 passed, 1 xfailed** on both databases; ruff clean.
 - **Python version:** since `1f4cdc8`, requirements are pinned and tested on Python 3.11 (as in CI and the Dockerfile). The repo's local `.venv` is Python 3.9 and fails 5 tests on `hashlib.scrypt` (the branch fails the same 5 on 3.9). Recreate `.venv` with 3.11.
 - **[R]** means verified by running: a sandbox copy of the repo, no `.env`, no `serviceAccountKey.json`, `DATABASE_TYPE=postgres` code path through `db_adapter.py` on a throwaway SQLite file, seeded with `seed_all_roles_demo.py` + `seed_events_universal.py`, then driven over HTTP as each role.
@@ -27,7 +27,7 @@ This file is the source of truth for planned work. Agents and developers work on
 2. Almost everything after "register" breaks somewhere. Camera QR check-in, certificates, feedback, exports, coordinator assignment, team events and paid events all fail in postgres mode [R].
 3. Biggest gap 1 — **data loss in the DB adapter:** at `694c729`, postgres mode silently dropped non-column fields, renamed others on read and ignored unknown filters (BLK-06). **Mostly fixed by merging BLK-09 (`1f4cdc8`)** [R]: fields round-trip, filters work, SPOCs can assign coordinators. Still open: enum columns keep lossy values, so SQL filters on role/category mismatch.
 4. Biggest gap 2 — **security holes that make new features unsafe** (still open at `1f4cdc8` [R]):
-   - anyone can log in as any student through the public registration form (BLK-02);
+   - anyone could log in as any student through the public registration form (BLK-02, **fixed** on `production-ready`);
    - paid events can be confirmed for ₹0 or with a forged payment signature (BLK-03);
    - some endpoints leak registrations (BLK-04);
    - any SPOC or coordinator can delete any event through a GET link, and `/api/v1` is open to cross-site requests from a logged-in browser (BLK-04, found in Phase 0);
@@ -55,7 +55,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Approval workflow (unit → admin) | WORKING [R] | `services_workflow.py:130-217`, `routes_admin.py:786` | Admin approval sets `published`; SPOC must still move it to `registration_open` (`routes_forms.py:309` treats `published` as closed). |
 | Registration form (custom fields) | PARTLY BUILT [R] | `templates/public/registration_form.html:485`, `routes_spoc.py:252-256` | Works for SPOC-created seminar/workshop. Seeded and template-created forms store `field_name`; the template renders `name="{{ field.id }}"`, so inputs get `name=""` and there's no name/email field. |
 | Form builder | WORKING (page load [R], save [C]) | `routes_forms.py:215-285` | No per-event ownership check (BLK-04). |
-| Auto-account + auto-login on registration | **Security hole** [C at `1f4cdc8`] | `routes_forms.py:517`, `routes_forms.py:598`, `routes_payment.py:251` | Logs the visitor in as whatever email they type (BLK-02). Unchanged by BLK-09. |
+| Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:387-426`, `routes_auth.py:203` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. |
 | Waitlist | PARTLY BUILT [C] | `routes_forms.py:475-523`, `routes_waitlist.py:185-260` | Promotion confirms paid registrations as `unpaid` (`routes_waitlist.py:219`). No SPOC UI link to `/waitlist/list`. |
 | Paid registration (Razorpay) | PARTLY BUILT, **insecure** [R at `1f4cdc8`] | `routes_payment.py:62-290` | Fee now persists and the Razorpay CSP block is fixed (`app.py:205-209`). Still insecure: `/payment/process` simulation; a forged signature on an empty key confirmed a ₹500 registration for ₹1 [R] (BLK-03). |
 | Stripe payments | NOT CONNECTED [C] | `routes_payment_stripe.py` | No template or JS references `/payment/stripe`. |
@@ -787,19 +787,27 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   4. ✅ **Met locally:** both Google API keys are revoked (owner, 2026-09-30) and accepted in `.gitleaksignore`. The full-history gitleaks scan finds **no leaks in 212 commits** [R]. ⬜ **CI not yet confirmed green on GitHub**, because the commits haven't been pushed (criterion 0). Once pushed, the secret-scan step should pass; the separate bandit job will still fail until BLK-11 is fixed. The old password and master key remain as literals in history (gitleaks doesn't flag them); they're unused and must not be reused (criterion 3).
 
 #### BLK-02 — The public registration form logs the visitor in as any email they type
-- **Status:** TODO
-- **Last verified:** 2026-09-30, commit `56a014d`
-- **Problem:** Unchanged at `56a014d` [C]. `submit_form` sets `session['user_id']` to the submitted email (`routes_forms.py:598`; waitlist branch `routes_forms.py:517`), and so does payment completion (`routes_payment.py:251`). There's no password check for existing accounts. At `694c729`, an anonymous visitor submitted the hackathon form as `student@demo.com` and landed on that student's profile and dashboard [R]. The generated password is still kept in the session (`routes_forms.py:610`) and passed to the confirmation email (`routes_forms.py:580`).
+- **Status:** DONE
+- **Last verified:** 2026-09-30, commit "BLK-02: …" on `production-ready` (parent `07ad7b2`)
+- **Problem (as found):** `submit_form` set `session['user_id']` to the submitted email (`routes_forms.py:598` at `56a014d`; waitlist branch `:517`), and so did payment completion (`routes_payment.py:251`) and the legacy public registration route (`routes_participant.py:518`, found while building). There was no password check for existing accounts. At `694c729`, an anonymous visitor submitted the hackathon form as `student@demo.com` and landed on that student's profile and dashboard [R]. The generated password was kept in the session (`routes_forms.py:610`) and emailed (`routes_forms.py:580`, `routes_participant.py:517`).
 - **Who benefits:** every student account.
-- **What to build:** registration, waitlist and payment completion never log anyone in. If the visitor is logged in, the email is the session email. If an account exists for the email, require login first and return to the form. A new email gets an account (unverified, no usable password) plus a set-password / magic-link email; the account logs in only through that link. Don't store or email passwords.
-- **Files touched:** `routes_forms.py`, `routes_payment.py`, `templates/public/registration_form.html`, tests.
-- **Effort:** S · **Depends on:** none · **Risk:** a small UX change (existing students must log in first).
-- **Acceptance criteria:**
-  1. Test: an anonymous submit with an existing student's email → no `user_id` in the session and a redirect to `/login`.
-  2. Test: a logged-in student submitting a different email → the registration is saved under the session email.
-  3. Test: the waitlist branch, `/payment/process` and `/payment/verify` never set the session.
-  4. Test: `/registration/confirmed` never contains a password.
-  5. Test: an anonymous submit with a new email creates the account, doesn't log in, and sends one set-password link (captured by the mail stub); the link sets a password once and then logs in; a reused or expired link is refused.
+- **What was built:**
+  - `services_accounts.py`: `resolve_registrant` (`:37`) returns the session email for a logged-in visitor, or a login redirect back to the form when an anonymous visitor types an existing account's email; `create_unverified_account` (`:56`) makes a Student account with a random, never-shown password hash and `email_verified: False`; one-time set-password tokens (`:71-90`, 3 days, bound to the current password hash so they stop working once used); `send_set_password_link` (`:93`); `is_safe_next` (`:108`).
+  - `routes_forms.submit_form`: a logged-in visitor's email replaces the form's (`routes_forms.py:373-378`); the closed check runs first, then an existing account is sent to log in (`:387-407`); a new email gets an unverified account and a set-password email (`:421-426`); both auto-logins and the stored/emailed password are gone; the waitlist redirect no longer assumes a login (`:512`).
+  - `routes_payment`: completion never logs in (`routes_payment.py:250`); `_after_payment_url` (`:263`) sends the logged-in owner to the ticket and anyone else to the confirmation page.
+  - `routes_participant.public_register` follows the same rules (`routes_participant.py:371-386,454,457-461`).
+  - `/set_password/<token>` (`routes_auth.py:203`) sets the password once, marks the email verified and logs in; login honours a same-site `next` (`routes_auth.py:30-34,149`) so "log in first" returns to the form; `templates/login.html` carries `next`.
+  - `utils_email.send_set_password_email` (`utils_email.py:659`); the confirmation page shows where the link went and never a password (`templates/participant/registration_confirmed.html`, `app.py:932`).
+  - Tests: the `real_app` fixture moved from `tests/test_integration_flow.py` into `tests/conftest.py` unchanged, except that it now also stubs `utils_email._send` so no test sends mail. Two tests in `tests/test_seminar_e2e.py` submitted students' forms from the SPOC's logged-in session, relying on this hole; they now submit from each student's own session (`_as_student`), with every assertion unchanged.
+- **Files touched:** `services_accounts.py` (new), `routes_forms.py`, `routes_payment.py`, `routes_participant.py`, `routes_auth.py`, `utils_email.py`, `app.py`, `templates/login.html`, `templates/participant/registration_confirmed.html`, `tests/test_registration_no_auto_login.py` (new), `tests/conftest.py`, `tests/test_integration_flow.py`, `tests/test_seminar_e2e.py`.
+- **Effort:** S · **Depends on:** none · **Risk:** existing students must now log in before registering; new students must use the emailed link before they can see their dashboard or ticket.
+- **Acceptance criteria** (all in `tests/test_registration_no_auto_login.py`, on the real SQL adapter; each fails on the old code except the off-site `next` check):
+  1. ✅ An anonymous submit with an existing student's email → no `user_id` in the session, a redirect to `/login?next=/forms/register/<event>`, no registration and no email; logging in returns to the form; an off-site `next` is ignored (`test_anonymous_submit_with_existing_email_must_log_in_first`, `test_login_ignores_an_off_site_next`).
+  2. ✅ A logged-in student submitting a different email → the registration and its answers use the session email, and no account is created for the other email (`test_logged_in_student_registers_under_the_session_email`).
+  3. ✅ The waitlist branch, `/payment/process` and `/payment/verify` (Razorpay client faked, correctly signed) never set the session (`test_waitlist_branch_never_logs_in`, `test_simulated_payment_completion_never_logs_in`, `test_verified_razorpay_payment_never_logs_in`).
+  4. ✅ `/registration/confirmed`, the session and every email contain no password (`test_no_password_is_shown_stored_in_the_session_or_emailed`).
+  5. ✅ A new email gets an unverified account and exactly one set-password link; nobody can log in before it's used; the link sets the password once and logs in; a reused, expired (4 days old) or tampered link is refused (`test_new_email_gets_an_account_and_a_one_time_set_password_link`, `test_expired_or_tampered_set_password_link_is_refused`). The legacy route passes the same checks (`test_legacy_public_register_route_never_logs_in`).
+  - Full pytest: **424 passed, 1 xfailed** on SQLite and on PostgreSQL 16; `ruff check .` clean.
 
 #### BLK-03 — Paid events can be completed without paying
 - **Status:** TODO
@@ -1074,6 +1082,32 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test (real DB): with `MULTI_TENANT_ENABLED` unset, `GET` and `POST /onboarding/signup` → 404, and no user or organisation is created.
   2. Test: with the flag on, the created account's role isn't `SuperAdmin` and its session gets 403 on `/admin/dashboard`.
   3. The `functions/saptha_app` copy is removed or fixed the same way (D-1).
+
+#### UPG-33 — Account emails: walk-in passwords by email, reusable reset links
+- **Status:** TODO
+- **Last verified:** 2026-09-30, commit "BLK-02: …" (parent `07ad7b2`)
+- **Problem:** Found while building BLK-02 [C].
+  - Walk-in accounts created by a coordinator get their one-time password in the ticket email (`routes_coordinator.py:728-731`, "Ticket + login details sent"). BLK-02 removed emailed passwords from self-registration only.
+  - Password-reset links (`/reset_token/<token>`, `routes_auth.py:372`) can be used any number of times within their hour, because the token isn't bound to the current password.
+- **Who benefits:** walk-in participants and anyone who resets a password.
+- **What to build:** walk-in accounts use BLK-02's unverified account + one-time set-password link; reset tokens are bound to the current password hash like the set-password tokens (`services_accounts.py:71-90`).
+- **Files touched:** `routes_coordinator.py`, `routes_auth.py`, tests.
+- **Effort:** S · **Depends on:** BLK-02 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a walk-in for a new email sends a set-password link and no password.
+  2. Test: a reset link works once; the second use is refused.
+
+#### UPG-34 — The legacy public registration route skips the "registration closed" check
+- **Status:** TODO
+- **Last verified:** 2026-09-30, commit "BLK-02: …" (parent `07ad7b2`)
+- **Problem:** Found while building BLK-02 [C]. `POST /participant/public_register/<event_id>` (`routes_participant.py:358`), still used by the form on `templates/public/event_details.html:737`, never checks the event status or deadline, so it accepts registrations for draft, closed, completed or cancelled events. `/forms/submit` does check (`routes_forms.py:399-402`).
+- **Who benefits:** organisers (no registrations after closing).
+- **What to build:** point the event page's form at `/forms/register/<event_id>` and make the legacy route apply the same status check (or redirect to the form), keeping the URL.
+- **Files touched:** `routes_participant.py`, `templates/public/event_details.html`, tests.
+- **Effort:** S · **Depends on:** BLK-02 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the legacy route refuses a draft, closed or cancelled event and creates nothing.
+  2. Test: the event page's registration form posts to the checked route.
 ---
 
 ## 7. Production-ready plan (phases)
@@ -1084,7 +1118,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 |---|---|---|
 | 0. Sync the plan | — | Done 2026-09-30: every item re-verified; BLK-12, BLK-13, UPG-16 to UPG-32 added; sessions merged into BLK-08. |
 | 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-11 | BLK-01's remaining criteria wait on the owner (D-2) and don't block anything. |
-| 2. Event day | UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-08 teams → UPG-30 paid events → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
+| 2. Event day | UPG-33 account emails → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
 | 3. Production setup | UPG-16 migrations → UPG-17 uploads → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups → UPG-22 privacy | |
 | 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check | One commit per UPG-23 area. |
 | 5. Clean-up | UPG-14 → UPG-15 | The `functions/saptha_app` copy depends on D-1. |
@@ -1147,3 +1181,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-09-30 | `56a014d` | ALL (Phase 0) | **Full re-verification of every item not DONE** against the code at `56a014d` on the new branch `production-ready` (from `master`). All citations still hold; corrections: UPG-05's single route already exists (`routes_feedback.py:30-33`), untested; BLK-04 gains the GET `delete_event` (any SPOC/coordinator can delete any event), 8 other coordinator write routes without a per-event check, and `/api/v1` accepting the session cookie while CSRF-exempt; BLK-06 gains the missing `events.spoc_id` column. Status corrections: BLK-04, BLK-05, BLK-06 and UPG-04 → IN PROGRESS (criteria already met by BLK-09); BLK-12 starts IN PROGRESS (root code fixed, tests open). **New items:** BLK-12 kiosk/ticket holes (fixed in the root app, still open in `functions/saptha_app`), BLK-13 login rate limiting, UPG-16 Alembic baseline, UPG-17 object storage, UPG-18 inline tasks + outbox, UPG-19 pagination, UPG-20 boot checks/health/logs/Sentry/headers, UPG-21 backups, UPG-22 privacy, UPG-23 shared layout (a–h), UPG-24 Bootstrap/fonts/SRI, UPG-25 inline scripts/CSP, UPG-26 forms, UPG-27 images, UPG-28 375px check, UPG-29 assignment E2E, UPG-30 paid events E2E, UPG-31 notifications, UPG-32 release check + DEPLOY.md. **Merged:** "sessions in /tmp" into BLK-08; "Celery needs Redis" split between UPG-07 (cron) and UPG-18 (outbox). Owner-directed changes: BLK-10's override is now `--i-know-this-is-production`; BLK-03 stores orders server-side and gates simulation on `PAYMENT_SIMULATION=true`. Inventory rows added for sessions, migrations, uploads, jobs, health, Sentry, backups, pagination, layout, login throttling. Section 7 is now the phase plan, with "Decisions needed" (D-1 deploy targets, D-2 BLK-01 push). |
 | 2026-09-30 | `56a014d` | Phase 0 summary | **Done:** branch created; every open item re-verified; 19 items added; statuses and dependencies fixed (UPG-06 no longer waits on UPG-05, UPG-31 not on UPG-18; UPG-01 and UPG-07 pulled into Phase 2 for dependencies). **Checks** (docs-only change): full pytest **414 passed, 1 xfailed** on SQLite and on PostgreSQL 16; `ruff check .` clean; bandit shows the 5 known BLK-11 findings; `alembic upgrade head` on an empty DB fails (UPG-16). **Skipped:** nothing. **Waiting on the owner:** D-1 (is Cloud Run the only deploy target?), D-2 (BLK-01 force-push and GitHub Support). No item marked DONE in this phase. Next: Phase 1, starting with BLK-02. |
 | 2026-09-30 | `dc8ea5a` | BLK-14 | New blocker found while starting BLK-02: the public `/onboarding/signup` creates a global `SuperAdmin` and logs the visitor in; confirmed on the real adapter (200 on `/admin/dashboard`, `/admin/org_units`, `/admin/audit_log`). Recorded, not fixed; scheduled right after BLK-02. |
+| 2026-09-30 | "BLK-02: …" (parent `07ad7b2`) | BLK-02, UPG-33, UPG-34 | **BLK-02 DONE.** Registration, waitlist and payment completion never log anyone in (both registration routes and both payment endpoints); existing accounts log in first and return to the form; new emails get an unverified account and a one-time set-password link (`services_accounts.py`, `/set_password/<token>`); no password is shown, kept in the session or emailed. 10 new tests on the real adapter (`tests/test_registration_no_auto_login.py`), 9 of which fail on the old code. `real_app` moved to `tests/conftest.py` and now stubs all outbound mail; two `test_seminar_e2e.py` tests that registered students from the SPOC's session now use each student's own session (assertions unchanged). Full pytest 424 passed, 1 xfailed on SQLite and PostgreSQL 16; ruff clean. New: UPG-33 (walk-in passwords by email, reusable reset links), UPG-34 (legacy registration route skips the closed check). |

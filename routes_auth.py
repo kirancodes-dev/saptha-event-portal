@@ -27,14 +27,20 @@ def _redirect_by_role(role: str):
     return redirect(ROLE_REDIRECTS.get(role, '/'))
 
 
+def _safe_next():
+    from services_accounts import is_safe_next
+    target = (request.form.get('next') or request.args.get('next') or '').strip()
+    return target if is_safe_next(target) else ''
+
+
 # =========================================================
 # 1. LOGIN
 # =========================================================
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    # If already logged in, go home
+    # If already logged in, go home (or back to the page that sent them here)
     if 'user_id' in session:
-        return _redirect_by_role(session.get('role', ''))
+        return redirect(_safe_next()) if _safe_next() else _redirect_by_role(session.get('role', ''))
 
     if request.method == 'POST':
         role        = request.form.get('role', '').strip()
@@ -140,6 +146,8 @@ def login():
 
             flash(f"Welcome back, {user_name}! 👋", "success")
             log_action("LOGIN_SUCCESS", f"{email} logged in as {role}")
+            if _safe_next():
+                return redirect(_safe_next())
             return _redirect_by_role(role)
 
         except Exception as exc:
@@ -186,6 +194,53 @@ def reset_password():
             flash(f"Error updating password: {exc}", "danger")
 
     return render_template('reset_password.html')
+
+
+# =========================================================
+# 2b. SET PASSWORD — one-time link for accounts created by a registration
+# =========================================================
+@auth_bp.route('/set_password/<token>', methods=['GET', 'POST'])
+def set_password(token):
+    from services_accounts import load_set_password_token
+
+    email, user, error = load_set_password_token(token, db)
+    if error:
+        messages = {
+            'expired': "This link has expired. Use \"Forgot password\" to get a new one.",
+            'used':    "This link has already been used. Log in, or use \"Forgot password\".",
+        }
+        flash(messages.get(error, "Invalid link."), "danger")
+        return redirect('/forgot_password' if error == 'expired' else '/login')
+
+    if request.method == 'POST':
+        new_pw     = request.form.get('new_password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+        ok, pw_err = validate_password_strength(new_pw)
+        if new_pw != confirm_pw:
+            flash("Passwords do not match.", "danger")
+            return redirect(request.path)
+        if not ok:
+            flash(pw_err, "danger")
+            return redirect(request.path)
+
+        db.collection('users').document(email).update({
+            'password':             generate_password_hash(new_pw, method='pbkdf2:sha256'),
+            'needs_password_reset': False,
+            'email_verified':       True,
+        })
+        role = user.get('role', 'Student')
+        if hasattr(role, 'value'):
+            role = role.value
+        role = 'Student' if str(role) in ('Participant', '') else str(role)
+        category = user.get('category', 'General')
+        if hasattr(category, 'value'):
+            category = category.value
+        _set_session(email, user.get('name', 'User'), role, str(category), remember_me=False)
+        log_action("PASSWORD_SET_LINK", f"{email} set a password via the registration link")
+        flash("✅ Password set. Welcome to SapthaEvent!", "success")
+        return _redirect_by_role(role)
+
+    return render_template('reset_password_token.html', email=email, name=user.get('name', 'User'))
 
 
 # =========================================================

@@ -51,6 +51,15 @@ def _setup_users(mock_db):
     })
 
 
+def _as_student(client, email, name):
+    """Registration never logs anyone in (BLK-02): each student submits the
+    form from their own logged-in session, not from the SPOC's."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = email
+        sess["role"] = "Student"
+        sess["name"] = name
+
+
 def test_seminar_full_lifecycle_and_certificate_guards(client, mock_db):
     """
     Full lifecycle test:
@@ -154,6 +163,7 @@ def test_seminar_full_lifecycle_and_certificate_guards(client, mock_db):
     assert mock_db.collection("events").document(event_id).get().to_dict()["status"] == "registration_open"
 
     # 5. Alice registers (Attendee)
+    _as_student(client, "alice@saptha.edu", "Alice Cooper")
     alice_reg_resp = client.post(f"/forms/submit/{event_id}", data={
         "full_name": "Alice Cooper",
         "email": "alice@saptha.edu",
@@ -182,6 +192,7 @@ def test_seminar_full_lifecycle_and_certificate_guards(client, mock_db):
     assert ticket_data.get("checked_in") is False
 
     # 6. Charlie registers (No-show participant)
+    _as_student(client, "charlie@saptha.edu", "Charlie Chaplin")
     charlie_reg_resp = client.post(f"/forms/submit/{event_id}", data={
         "full_name": "Charlie Chaplin",
         "email": "charlie@saptha.edu",
@@ -326,6 +337,7 @@ def test_capacity_waitlist_and_promotion_guard(client, mock_db):
     client.post(f"/spoc/event/{event_id}/transition", data={"target_state": "registration_open"})
 
     # Alice registers -> Confirmed
+    _as_student(client, "alice@saptha.edu", "Alice Cooper")
     client.post(f"/forms/submit/{event_id}", data={
         "full_name": "Alice Cooper",
         "email": "alice@saptha.edu",
@@ -342,6 +354,7 @@ def test_capacity_waitlist_and_promotion_guard(client, mock_db):
     assert alice_regs[0].to_dict().get("ticket_id") is not None
 
     # Bob registers -> Capacity is 1 and registration_count is 1 -> Bob goes to waitlist
+    _as_student(client, "bob@saptha.edu", "Bob Marley")
     bob_resp = client.post(f"/forms/submit/{event_id}", data={
         "full_name": "Bob Marley",
         "email": "bob@saptha.edu",

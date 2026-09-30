@@ -10,8 +10,6 @@ Fixes & additions in this version
 """
 import datetime
 import json
-import secrets
-import string
 import time
 
 from flask import (Blueprint, current_app, flash, jsonify, redirect, render_template,
@@ -24,7 +22,6 @@ try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:
     FieldFilter = None
-from werkzeug.security import generate_password_hash
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -371,9 +368,21 @@ def public_register(event_id):
         team_name  = request.form.get('team_name', 'Individual').strip() or 'Individual'
         sub_link   = request.form.get('submission_link', '').strip()
 
+        # BLK-02: registration never logs anyone in. A logged-in visitor
+        # registers as themselves; an existing account must log in first.
+        from services_accounts import resolve_registrant
+        session_email = (session.get('user_id') or '').strip().lower()
+        email, login_redirect = resolve_registrant(db, email, event_id)
+        if not full_name and session_email:
+            full_name = session.get('name', '')
+
         if not email or not full_name:
             flash("Name and email are required.", "warning")
             return redirect(f'/forms/register/{event_id}')
+
+        if login_redirect:
+            flash("An account already exists for this email. Please log in to register.", "info")
+            return redirect(login_redirect)
 
         # Duplicate check — redirect to their ticket if already registered
         existing = list(
@@ -442,24 +451,14 @@ def public_register(event_id):
             }
             db.collection('waitlists').document(wl_id).set(wl_entry)
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
-            return redirect('/participant/dashboard')
+            return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
-        # Auto-create account
-        user_ref     = db.collection('users').document(email)
-        is_new_user  = not user_ref.get().exists
-        raw_password = ''
+        # New email: unverified account + one-time set-password link
+        is_new_user = not session_email
         if is_new_user:
-            alphabet     = string.ascii_letters + string.digits
-            raw_password = ''.join(secrets.choice(alphabet) for _ in range(10))
-            user_ref.set({
-                'email':               email,
-                'name':                full_name,
-                'role':                'Student',
-                'category':            'General',
-                'password':            generate_password_hash(raw_password),
-                'created_at':          datetime.datetime.now().strftime('%Y-%m-%d'),
-                'needs_password_reset': True,
-            })
+            from services_accounts import create_unverified_account, send_set_password_link
+            create_unverified_account(db, email, full_name, phone)
+            send_set_password_link(db, email, full_name)
 
         reg_id   = f"REG-{int(time.time() * 1000)}"
         members  = [{'role': 'Team Leader', 'name': full_name,
@@ -514,13 +513,19 @@ def public_register(event_id):
             'registration_count': firestore.Increment(1)
         })
         send_ticket_email(email, full_name, event_data.get('title', ''),
-                          reg_id, is_new_user=is_new_user, raw_password=raw_password)
-        session['user_id']  = email
-        session['name']     = full_name
-        session['role']     = 'Student'
-        session['category'] = 'General'
+                          reg_id, is_new_user=is_new_user)
         log_action(db, "REGISTRATION_CONFIRMED", f"{email} registered for {event_id}")
-        return redirect(f'/ticket/{reg_id}')
+        if session_email:
+            return redirect(f'/ticket/{reg_id}')
+        session['reg_confirmed'] = {
+            'reg_id':      reg_id,
+            'event_title': event_data.get('title', ''),
+            'event_date':  event_data.get('date', ''),
+            'venue':       event_data.get('venue', ''),
+            'is_new_user': True,
+            'user_email':  email,
+        }
+        return redirect('/registration/confirmed')
 
     except Exception as exc:
         import traceback; traceback.print_exc()

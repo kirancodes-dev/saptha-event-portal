@@ -123,6 +123,15 @@ class Config:
     RATELIMIT_STORAGE_URL     = os.environ.get('REDIS_URL', 'memory://')
     RATELIMIT_HEADERS_ENABLED = True
 
+    # Failed logins and password-reset requests (services_login_throttle,
+    # BLK-13): at most LIMIT per IP and per account in any WINDOW seconds.
+    # Counters live in Redis when REDIS_URL is set, otherwise in the database,
+    # so every instance and worker shares them.
+    LOGIN_THROTTLE_IP_LIMIT      = int(os.environ.get('LOGIN_THROTTLE_IP_LIMIT', 5))
+    LOGIN_THROTTLE_ACCOUNT_LIMIT = int(os.environ.get('LOGIN_THROTTLE_ACCOUNT_LIMIT', 5))
+    LOGIN_THROTTLE_WINDOW        = int(os.environ.get('LOGIN_THROTTLE_WINDOW', 60))
+    LOGIN_THROTTLE_STORAGE       = 'redis' if os.environ.get('REDIS_URL') else 'database'
+
     # =========================================================
     # 5. SUPER ADMIN
     # ─────────────────────────────────────────────────────────

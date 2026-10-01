@@ -585,6 +585,19 @@ class FlaskSession(Base):
     expiry = Column(DateTime(timezone=True), nullable=False, index=True)
 
 
+class LoginAttempt(Base):
+    """Recent failed logins and password-reset requests, one row each, for
+    throttling shared by every instance (services_login_throttle, BLK-13).
+    Rows older than the throttle window are deleted as new ones arrive."""
+    __tablename__ = "login_attempts"
+
+    id  = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(64), nullable=False)          # sha256 of scope:kind:value, never the raw email or IP
+    at  = Column(Float, nullable=False, index=True)   # Unix time
+
+    __table_args__ = (Index("idx_login_attempts_key_at", "key", "at"),)
+
+
 class PaymentOrder(Base):
     """A Razorpay order created by this server (BLK-03).
 

@@ -31,7 +31,7 @@ This file is the source of truth for planned work. Agents and developers work on
    - paid events can be confirmed for ₹0 or with a forged payment signature (BLK-03);
    - some endpoints leak registrations (BLK-04);
    - any SPOC or coordinator can delete any event through a GET link, and `/api/v1` is open to cross-site requests from a logged-in browser (BLK-04, found in Phase 0);
-   - login has no rate limiting (BLK-13);
+   - login had no rate limiting (BLK-13, **fixed** on `production-ready`);
    - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
 7. **Not production-ready yet (Phase 0, 2026-09-30):** sessions and uploads live on the container's disk (BLK-08, UPG-17), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 110 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan.
 5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool.
@@ -99,7 +99,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | AI copilot (admin) | not run [C] | `routes_api_v1.py:1450-1520`, `auth_jwt.py:188-215` | Session fallback exists; no Gemini key in sandbox. |
 | Android app | Webview wrapper [C] | `capacitor.config.json:5-6` | Loads `https://saptha-portal.railway.app`; no native or offline features. |
 | Payment failure page | WORKING [R at `1f4cdc8`] | `templates/payment/failed.html:1` | Now extends `base_classic.html`; 200 [R]. |
-| Login rate limiting | NOT CONNECTED [C at `56a014d`] | `security_middleware.py:49-110`, `config.py:114` | Per-IP and per-account helpers exist but nothing calls them; `/login` has no limit (BLK-13). |
+| Login rate limiting | WORKING [R at BLK-13] | `services_login_throttle.py`, `routes_auth.py:83-86,337-341`, `routes_api_v1.py:62-88` | 5 failed logins (web + API, one counter) or reset requests per IP and per account per minute, then 429 "try again in N seconds"; counters in the database (Redis if `REDIS_URL`), shared by every instance (BLK-13). The old in-memory helpers in `security_middleware.py` are unused (UPG-14). |
 | Sessions | WORKING [R at BLK-08] | `session_store.py`, `config.py:48-63` | In the database (Redis if `REDIS_URL`): survive restarts, shared by instances, none for plain anonymous page views (BLK-08). |
 | Database migrations | PARTLY BUILT [R at `56a014d`] | `migrations/versions/`, `db_adapter.py:201-310` | Two incremental migrations; `alembic upgrade head` on an empty DB fails. Schema comes from start-up `create_all` + `ALTER TABLE` (UPG-16). |
 | File uploads (certificates, exports) | PARTLY BUILT [C at `56a014d`] | `utils_storage.py:10-94` | Local disk unless `STORAGE_TYPE=s3`/`gcs`; S3 errors silently fall back to local disk (UPG-17). |
@@ -313,14 +313,14 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Last verified:** 2026-09-30, commit `56a014d`
 - **Problem:** Reminders, the day-before QR email and lifecycle transitions are Celery beat jobs (`celery_app.py:95-120`). Since BLK-09, `docker-compose.yml:27-37` runs a Celery worker and beat for self-hosting. But the Dockerfile (what a single free-tier web service runs) starts only gunicorn (`Dockerfile:33`), and without Redis Celery runs eagerly (`celery_app.py:51-58`), so beat never runs there. The APScheduler files are unused (`scheduler_enhanced.py:284` has `start()` commented out; neither file is imported by the app).
 - **Who benefits:** all registrants, and organisers who now send WhatsApp reminders by hand.
-- **What to build:** a protected `POST /internal/cron/<job>` (shared secret header, compared in constant time; 503 when the secret isn't configured) that runs the existing task functions idempotently: reminders, lifecycle transitions, clean-up of expired sessions and old outbox rows, and outbox retries (UPG-18). An external scheduler calls it: Cloud Scheduler on Cloud Run, or a GitHub Actions `schedule` workflow. Document both. Delete the unused schedulers (see UPG-14).
+- **What to build:** a protected `POST /internal/cron/<job>` (shared secret header, compared in constant time; 503 when the secret isn't configured) that runs the existing task functions idempotently: reminders, lifecycle transitions, clean-up of expired sessions, old login attempts (`services_login_throttle.purge_expired`, BLK-13) and old outbox rows, and outbox retries (UPG-18). An external scheduler calls it: Cloud Scheduler on Cloud Run, or a GitHub Actions `schedule` workflow. Document both. Delete the unused schedulers (see UPG-14).
 - **Files touched:** new `routes_cron.py`, `app.py`, `tasks/scheduled_tasks.py`, `.github/workflows/cron.yml`, `docs/DEPLOY.md`, tests.
 - **Effort:** S · **Depends on:** BLK-05 (tests), BLK-06 (`*_sent` flags persist) · **Risk:** double sends; rely on the existing `*_sent` flags.
 - **Acceptance criteria:**
   1. Test: calling without the secret, or with a wrong one → 403; with no secret configured → 503.
   2. Test: `send_24h_reminders` with the secret, for an event tomorrow, sends once; a second call sends nothing.
   3. Test: the lifecycle job moves an event past its end date to `completed`.
-  4. Test: the clean-up job deletes expired sessions (BLK-08) and nothing else.
+  4. Test: the clean-up job deletes expired sessions (BLK-08) and login attempts older than the throttle window (BLK-13), and nothing else.
   5. `.github/workflows/cron.yml` exists and targets the endpoint; `docs/DEPLOY.md` shows the Cloud Scheduler set-up.
 
 #### UPG-08 — Team registration linked to tickets and judging
@@ -420,6 +420,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - **Schedulers:** `scheduler.py` / `scheduler_enhanced.py` aren't used by the app.
   - **Matchmaker:** `routes_matchmaker.py` suggests mock people (`routes_matchmaker.py:12`). `routes_ai_matching.py` is a different feature (judge↔team) and stays.
   - **Tests:** `tests.py` fails at collection [R] and duplicates `tests/`.
+  - **Login throttling (found in BLK-13):** `security_middleware.py`'s in-memory `record_login_attempt`, `is_account_locked` and `get_remaining_lockout` were never called and are superseded by `services_login_throttle.py`. Nothing calls `block_ip` outside them, so the `is_ip_blocked` check in `init_security_middleware` never blocks anyone. Remove them, along with their unit tests in `tests/test_security.py`, which only test this dead code (keep the header and sanitiser tests).
   - **Waitlist promotion (found in BLK-03):** two implementations, `routes_waitlist.auto_promote` (ordered by `position`, no ticket) and `tasks/waitlist_tasks.promote_from_waitlist` (ordered by `joined_at`, issues a ticket, used by the cancel route). BLK-03 made both use `promotion_terms`; merge them into one.
   - **Not duplicates (checked 2026-09-30 at `56a014d`):** `models.py` (91 lines) is the `db` entry point imported by 70 modules, not a copy of `models_pg.py`; keep it. `routes_ai_matching.py` (judge↔team) is a different feature from the matchmaker; keep it.
 - **Who benefits:** developers; students get a working notification feed.
@@ -524,6 +525,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Last verified:** 2026-09-30, commit `56a014d`
 - **Problem:** [C at `56a014d`]
   - `validate_production_config` collects problems into one error (`config.py:235-249`) but checks only `SECRET_KEY`, `MASTER_SECRET_KEY` and the default admin password. `JWT_SECRET_KEY` silently falls back to `SECRET_KEY` (`config.py:198`); `RAZORPAY_*`, `BASE_URL`, the mail provider and storage settings aren't checked; `DATABASE_URL` is checked separately with its own error (`db_pg.py:104-150`).
+  - `.env.example`'s Redis section still says sessions use the filesystem without Redis; since BLK-08 they use the database (found in BLK-13).
   - `.env.example` lists 40 of the 86 environment variables the app code reads; missing ones include `SENTRY_TRACES_SAMPLE_RATE`, `SESSION_TYPE`, `RATELIMIT_STORAGE_URL`, `WTF_CSRF_SECRET_KEY`, `MAIL_*` SMTP settings and `PORT`.
   - `/health` and `/health/ready` call `.stream()` without reading it, so they may not reach the database, and they return the exception text (`app.py:476-512`).
   - Logs are plain text; Cloud Run needs one JSON object per line for severity and request grouping.
@@ -1085,7 +1087,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Problem:** The CI job "Security scan (bandit)" (`bandit -r . -x tests/,__pycache__/ -ll -q`, `.github/workflows/ci.yml`) exits 1 on 5 Medium-severity findings [R, fresh clone of `f956456`]:
   - `functions/saptha_app/audit_logger.py:111`, `:162` (B104, binding to all interfaces).
   - `functions/saptha_app/db_adapter.py:98`, `:108` (B608, SQL built from strings).
-  - `scripts/seed_emulator.py:26` (B113, `requests` call without a timeout).
+  - `scripts/seed_emulator.py:26` (B113, `requests` call without a timeout); `:33` since BLK-10a added the guard at the top (re-run 2026-10-01: the same 5 findings, nothing new).
   - These **predate this work**: the branch alone fails with the same 5, and the old `master` (`89af3d3`) had 9. The merge fixed the root copies of `audit_logger.py` and `db_adapter.py`.
   - GitHub's CI on `master` has failed on every run since at least 2026-08-25. So even after the force-push, CI stays red until this is fixed, which undermines "every acceptance criterion has a passing test" for later items.
 - **Who benefits:** everyone building later items; CI becomes a trustworthy gate.
@@ -1122,22 +1124,37 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   4. ⬜ The `functions/saptha_app` copy is no longer tracked (D-1: removed by UPG-15 in Phase 5).
 
 #### BLK-13 — Login has no rate limiting
-- **Status:** TODO
-- **Last verified:** 2026-09-30, commit `56a014d`
-- **Problem:** Added in Phase 0 [C at `56a014d`].
+- **Status:** DONE
+- **Last verified:** 2026-10-01, commit "BLK-13: …" on `production-ready` (parent `07cf145`)
+- **Problem (as found at `56a014d`):** Added in Phase 0 [C]. Re-checked against the code at `07cf145` before building: `routes_auth.py`, `routes_api_v1.py`, `models_pg.py` and `config.py` had changed (BLK-02/03/06/07/08), but only the line numbers moved (the limiter settings are now `config.py:122-124`).
   - `/login` (`routes_auth.py`) and `/api/v1/auth/login` (`routes_api_v1.py:45`) have no rate limit. The global default is 100000/day and 10000/hour (`config.py:114`); only the form and chatbot routes set their own limits (`routes_forms.py:292,345`, `chatbot_routes.py:42`).
   - `security_middleware.py:49-110` has per-IP and per-account throttling helpers (`record_login_attempt`, `is_account_locked`), but **nothing calls them**, and they keep state in process memory, so it's lost on restart and not shared across instances or gunicorn workers.
   - The limiter's storage is `memory://` unless `REDIS_URL` is set (`config.py:115`), which has the same per-process problem.
 - **Who benefits:** every account (password guessing).
 - **What to build:** about 5 failed attempts per minute per IP and per account on `/login`, `/api/v1/auth/login` and the password-reset request, with a clear "try again in N seconds" message (429 for the API). Counters are shared across instances: Redis when `REDIS_URL` is set, otherwise a small database table. A successful login resets the account counter. Don't reveal whether the account exists.
-- **Files touched:** `routes_auth.py`, `routes_api_v1.py`, `security_middleware.py` (or a new `services_login_throttle.py`), `models_pg.py`, `config.py`, tests.
-- **Effort:** S · **Depends on:** none · **Risk:** locking out a whole lab behind one NAT IP; keep the per-IP limit looser than per-account if that shows up.
-- **Acceptance criteria:**
-  1. Test: the 6th failed login within a minute from one IP → 429 (web shows the message), even across different accounts.
-  2. Test: the 6th failed attempt on one account from different IPs is refused; after the window, the correct password works.
-  3. Test: counters are shared: failures recorded through one app instance count in a second app instance on the same database.
-  4. Test: `/api/v1/auth/login` is limited the same way, and the message is identical for existing and unknown accounts.
-
+- **What was built:**
+  - `services_login_throttle.py`: a sliding window of at most `LOGIN_THROTTLE_IP_LIMIT` attempts per IP and `LOGIN_THROTTLE_ACCOUNT_LIMIT` per account in any `LOGIN_THROTTLE_WINDOW` seconds (defaults 5, 5, 60; `config.py:130-133`, documented in `.env.example`).
+    - `retry_after` (`:148`) gives the wait; `record_failure` (`:161`) and `clear_account` (`:173`) update the counters.
+    - Counters live in the new `login_attempts` table (`models_pg.LoginAttempt`, `models_pg.py:588`), or in Redis sorted sets when `REDIS_URL` is set (`LOGIN_THROTTLE_STORAGE`, `config.py:133`).
+    - A Redis error falls back to the database. If the counters can't be read at all, the attempt is allowed and the error is logged.
+    - Keys are SHA-256 hashes, so no email or IP is stored.
+    - Old rows are deleted as new ones arrive; `purge_expired` (`:188`) is ready for UPG-07's clean-up job.
+  - **Web login** (`routes_auth.py:83-86`): checked before the master key and before the account is looked up, so the answer doesn't depend on whether the account exists. A refusal returns 429 with the login page, the message "Too many attempts. Please try again in N seconds." and `Retry-After` (`_throttled`, `:54`).
+    - Every failure is recorded: bad master key, unknown account, wrong password or role (`:91,126,148`).
+    - A success clears only the account's counter (`:121,164`). The IP's counter stays, so one valid account can't buy more guesses at others.
+  - **API login** (`routes_api_v1.py:62-88`): the same check and the same counters as the web, so alternating between web and API doesn't double the rate. A refusal returns `429 too_many_attempts` with `details.retry_after` and `Retry-After`. Unknown accounts and wrong passwords both record a failure and get the same 401.
+  - **Password-reset request** (`routes_auth.py:337-341`): every request counts per IP and per requested email, known or not, under its own counter. Refused requests send no email.
+  - A refused attempt isn't recorded, so a lockout ends one window after the failures that caused it.
+  - `tests/conftest.py:248` (`_fresh_login_throttle`, autouse) clears the counters before each test, because every test client logs in from `127.0.0.1`. Without it, failed logins in one test would throttle the next one.
+  - `requirements-dev.txt`: `fakeredis==2.39.0`, so the Redis path is tested.
+- **Files touched:** `services_login_throttle.py` (new), `models_pg.py`, `config.py`, `routes_auth.py`, `routes_api_v1.py`, `.env.example`, `requirements-dev.txt`, `tests/conftest.py`, `tests/test_login_throttle.py` (new). `security_middleware.py`'s unused in-memory helpers are left for UPG-14.
+- **Effort:** S · **Depends on:** none · **Risk:** a whole lab behind one NAT IP shares the per-IP limit; only failures count, and `LOGIN_THROTTLE_IP_LIMIT` can be raised without a code change. The new `login_attempts` table is created by start-up `create_all` until UPG-16's migrations exist.
+- **Acceptance criteria** (all in `tests/test_login_throttle.py`, on the real database layer; the parametrised tests run on the database and on Redis (fakeredis); 13 of the 15 fail with the old route code, and the other 2 (API success resets the counter) fail when only that reset is removed):
+  1. ✅ The 6th failed login within a minute from one IP gets 429 with "Please try again in 60 seconds." and `Retry-After: 60`, after failures on 5 different known and unknown accounts. While blocked, even the right password from that IP is refused and logs nobody in; other IPs aren't affected (`::test_sixth_failed_login_from_one_ip_is_refused_across_accounts`). Password-reset requests are limited per IP and per account, and a refused request sends no email (`::test_password_reset_requests_are_limited_per_ip_and_per_account`).
+  2. ✅ The 6th failed attempt on one account from 6 different IPs is refused, and so is the right password. The wait counts down (15 s left after 45 s), and once the window passes the correct password works (`::test_sixth_failure_on_one_account_from_different_ips_is_refused_until_the_window_passes`). A success resets the account counter but not the IP's (`::test_success_resets_the_account_counter_but_not_the_ip_counter`).
+  3. ✅ Failures recorded by a second app instance **in a separate Python process**, sharing only the database, count here: 3 + 2 on the account, 2 + 3 from the IP (`::test_failures_recorded_by_another_process_count_here`). With Redis, separate client connections share the counters (`::test_redis_counters_are_shared_by_separate_clients`), and a Redis outage falls back to the database and still throttles (`::test_a_redis_outage_falls_back_to_the_database`).
+  4. ✅ `/api/v1/auth/login` is limited the same way: per account, per IP, and on one counter shared with the web login. The 429 body is identical for an existing and an unknown account (`{"error": "too_many_attempts", "message": "Too many attempts. Please try again in 60 seconds.", "details": {"retry_after": 60}}`), as are the 401s before it (`::test_api_login_is_limited_the_same_way_and_answers_alike_for_unknown_accounts`). An API success resets the account counter (`::test_api_success_resets_the_account_counter`).
+  - Full pytest: **673 passed** on SQLite and on PostgreSQL 16; ruff clean; bandit shows only the 5 known BLK-11 findings. With CI's environment (fresh clone, `REDIS_URL` and the Celery broker on a Redis server, CI's command): 672 passed, 1 failed, the known BLK-15 test.
 
 #### BLK-14 — Anyone can create a SuperAdmin account through the public tenant sign-up
 - **Status:** DONE (criterion 3 is met when UPG-15 removes the `functions/` copy in Phase 5; D-1)
@@ -1207,6 +1224,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: the legacy route refuses a draft, closed or cancelled event and creates nothing.
   2. Test: the event page's registration form posts to the checked route.
+
+#### UPG-35 — Login and sign-up messages reveal whether an account exists
+- **Status:** TODO
+- **Last verified:** 2026-10-01, commit "BLK-13: …" (parent `07cf145`)
+- **Problem:** Found while building BLK-13 [C]. BLK-13's throttle answers the same for known and unknown accounts, but other messages don't:
+  - The web login says "Account not found. Please register or contact admin." for an unknown email and "Incorrect password or wrong role selected." for a known one (`routes_auth.py:127-128` vs `:149`).
+  - The API login answers `403 account_locked` for an existing account that still has a legacy unhashed password (`routes_api_v1.py:83`).
+  - Sign-up says so when an email is already registered (web `routes_auth.py:295`, API `routes_api_v1.py:142`). So changing the login wording alone wouldn't stop anyone from checking whether an email has an account.
+- **Who benefits:** students and staff (less exposure of who has an account), at some cost in clarity for people who mistype their email.
+- **What to build:** owner decision first: accept this (common for university portals, and BLK-13 limits the guessing), or use one login message for every failure and make sign-up send a "you already have an account" email instead of saying so on screen.
+- **Files touched:** `routes_auth.py`, `routes_api_v1.py`, `templates/signup*`, tests (if built).
+- **Effort:** S · **Depends on:** BLK-13 · **Risk:** a confusing login message for users who mistype their email.
+- **Acceptance criteria** (if built):
+  1. Test: a web or API login with an unknown email and one with a wrong password get the same message and status.
+  2. Test: signing up with an existing email shows the same page as a new one and sends one email to the existing address.
 ---
 
 ## 7. Production-ready plan (phases)
@@ -1295,3 +1327,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-01 | "BLK-10b: …" (parent `8ecdc9e`) | BLK-10 | **BLK-10 DONE** (10a + 10b). No seed/setup script uses a string literal password; passwords come from `SEED_<ROLE>_PASSWORD` or `secrets.token_urlsafe(12)` and are printed once at exit; AST scan pins every script (`tests/test_seed_safety.py::test_no_script_uses_a_string_literal_as_a_password`). Full pytest 658 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-01: …" (parent `10207cd`) | BLK-01, D-1, D-2, BLK-11, BLK-12, BLK-14, UPG-15 | **Owner actions recorded.** D-2 done: the owner force-pushed the rewritten `master`, deleted the remote `main` and `claude/busy-davinci-6nkabi`, pushed `production-ready` and contacted GitHub Support. Verified read-only [R]: `git ls-remote` shows only `master` (`56a014d`, same as local) and `production-ready` (`10207cd`) plus the 47 unchanged PR refs; neither branch's history contains a removed path; CI run 36886209908 on `master` passed the secret scan and ruff; bandit failed on the known BLK-11 findings and pytest failed (reproduced locally, recorded as BLK-15 in the next entry). BLK-01 criterion 4 ✅; criterion 0 waits only on Support removing the PR refs, so BLK-01 stays IN PROGRESS. D-1 decided: Cloud Run is the only deploy target, so UPG-15 removes `functions/saptha_app/` and `catalyst.json` in Phase 5. That completes BLK-12 criterion 4 and BLK-14 criterion 3, and UPG-15's Catalyst build-step check is dropped as obsolete. BLK-11 still fixes the two flagged files in place until then, and now notes that CI doesn't run on `production-ready` pushes (only on pushes to `main`/`master`/`develop` and on PRs into them). Docs only. |
 | 2026-10-01 | "BLK-01: …" (parent `10207cd`) | BLK-15, BLK-10, BLK-11 | **New blocker BLK-15**, found while checking CI after the push. CI's test job was reproduced in fresh clones with its exact environment, a Redis server and its exact command [R]. `master` (`56a014d`) fails `test_seminar_e2e.py::test_capacity_waitlist_and_promotion_guard`, because the Redis broker queues the promotion; BLK-05 already fixed this on `production-ready`. `production-ready` (`10207cd`) gives 657 passed, 1 failed: BLK-10's Firestore test needs the developer's git-ignored `serviceAccountKey.json`. The same mismatch means the guard checks a different key than the scripts use and accepts any project name when it finds none. Scheduled in Phase 1 before BLK-11, whose criterion 2 (every CI job green) needs it. Recorded, not fixed. |
+| 2026-10-01 | "BLK-13: …" (parent `07cf145`) | BLK-13, UPG-07, UPG-14, UPG-20, UPG-35, BLK-11 | **BLK-13 DONE.** Failed logins (web and API share one counter) and password-reset requests are limited to 5 per IP and 5 per account per minute (settings `LOGIN_THROTTLE_*`). The next attempt gets 429 with "try again in N seconds" and `Retry-After`. The check runs before the account is looked up, so known and unknown accounts get the same answer. A success clears only the account's counter. Counters are hashed rows in the new `login_attempts` table, or Redis sorted sets when `REDIS_URL` is set (falling back to the database on Redis errors), so every instance shares them. An autouse conftest fixture resets them between tests, because all test clients share 127.0.0.1. 15 new tests on the real database, parametrised over both stores; criterion 3 uses a second process; 13 fail with the old route code, and the other 2 fail without the API's reset. Added `fakeredis==2.39.0` to dev requirements. Full pytest 673 passed on SQLite and PostgreSQL 16; ruff clean; bandit shows only the 5 BLK-11 findings; under CI's environment with Redis, 672 passed plus the known BLK-15 failure. Recorded: UPG-07 also purges old login attempts; UPG-14 gains the dead in-memory helpers in `security_middleware.py`; UPG-20 gains a stale `.env.example` comment; new UPG-35 (login/sign-up messages reveal whether an account exists; owner decision). **Rule 8:** 11 items DONE since the Phase 0 re-verification; the pass is scheduled for the end of Phase 1 (after BLK-15 and BLK-11). |

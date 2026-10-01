@@ -244,6 +244,18 @@ class MockBatch:
 # FIXTURES
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.fixture(autouse=True)
+def _fresh_login_throttle():
+    """Every test client logs in from 127.0.0.1, so one test's failed logins
+    would throttle the next test's (BLK-13). Start each test with no counters."""
+    throttle = sys.modules.get('services_login_throttle')
+    app_module = sys.modules.get('app')
+    if throttle is not None and app_module is not None:
+        with app_module.app.app_context():
+            throttle.reset_all()
+    yield
+
+
 @pytest.fixture
 def mock_db():
     """Provide a fresh in-memory Firestore mock."""

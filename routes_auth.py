@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
 
 from utils import log_action, ROLE_REDIRECTS, validate_password_strength
+import services_login_throttle as throttle
 import utils_email
 from utils_email import send_password_reset_email
 
@@ -50,6 +51,12 @@ def _safe_next():
     return target if is_safe_next(target) else ''
 
 
+def _throttled(template, wait):
+    """429 with the page and a "try again in N seconds" message (BLK-13)."""
+    flash(throttle.message(wait), 'danger')
+    return render_template(template), 429, {'Retry-After': str(wait)}
+
+
 # =========================================================
 # 1. LOGIN
 # =========================================================
@@ -70,9 +77,18 @@ def login():
         if role == 'Super Admin':
             role = 'SuperAdmin'
 
+        # Too many recent failures from this IP or on this account (BLK-13).
+        # Checked before anything about the account, so the answer doesn't
+        # reveal whether it exists.
+        wait = throttle.retry_after(throttle.LOGIN, request.remote_addr, email)
+        if wait:
+            log_action("LOGIN_THROTTLED", f"Login refused for {email} for {wait}s")
+            return _throttled('login.html', wait)
+
         # Master key check for SuperAdmin
         MASTER_KEY = current_app.config.get('MASTER_SECRET_KEY', '')
         if role == 'SuperAdmin' and MASTER_KEY and not hmac.compare_digest(secret_key, MASTER_KEY):
+            throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
             flash('🔒 Invalid Master Security Key. Access denied.', 'danger')
             log_action("LOGIN_FAILED", f"Bad master key attempt for {email}")
             return redirect('/login')
@@ -102,10 +118,12 @@ def login():
                         'needs_password_reset': False
                     })
                     _set_session(email, 'System Super Admin', 'SuperAdmin', 'All', remember_me=remember_me)
+                    throttle.clear_account(throttle.LOGIN, email)
                     flash("👑 Super Admin account initialised!", "success")
                     log_action("SUPER_ADMIN_INIT", f"First-boot SuperAdmin created: {email}")
                     return redirect('/admin/dashboard')
 
+                throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
                 flash('Account not found. Please register or contact admin.', 'warning')
                 return redirect('/login')
 
@@ -127,6 +145,7 @@ def login():
                            f"Unhashed password on account {email}")
 
             if not valid or db_role != role:
+                throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
                 flash('Incorrect password or wrong role selected.', 'danger')
                 log_action("LOGIN_FAILED", f"Bad credentials for {email} (role={role})")
                 return redirect('/login')
@@ -142,6 +161,7 @@ def login():
                          role,
                          user_category,
                          remember_me=remember_me)
+            throttle.clear_account(throttle.LOGIN, email)
 
             # Force password reset for auto-generated accounts
             if user.get('needs_password_reset', False):
@@ -312,6 +332,13 @@ def forgot_password():
         if not email:
             flash("Please enter your email address.", "warning")
             return redirect('/forgot_password')
+
+        # Every request counts, for known and unknown emails alike (BLK-13)
+        wait = throttle.retry_after(throttle.RESET, request.remote_addr, email)
+        if wait:
+            log_action("RESET_REQ_THROTTLED", f"Reset request refused for {email} for {wait}s")
+            return _throttled('forgot_password.html', wait)
+        throttle.record_failure(throttle.RESET, request.remote_addr, email)
 
         # Generic response in all cases — never reveal whether the email exists
         generic_msg = ("If an account exists for that email, a reset link "

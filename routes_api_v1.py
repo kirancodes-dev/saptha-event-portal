@@ -22,6 +22,7 @@ from auth_jwt import (
     create_tokens, refresh_access_token, blacklist_token,
     api_success, api_error, api_paginated,
 )
+import services_login_throttle as throttle
 from utils import safe_int
 
 logger = logging.getLogger(__name__)
@@ -56,12 +57,22 @@ def api_login():
     if not email or not password:
         return api_error("missing_fields", "Email and password are required")
 
+    # Shares the web login's counters; checked before the account is looked
+    # up, so the answer is the same for existing and unknown accounts (BLK-13)
+    wait = throttle.retry_after(throttle.LOGIN, request.remote_addr, email)
+    if wait:
+        body, status = api_error("too_many_attempts", throttle.message(wait),
+                                 details={"retry_after": wait}, status=429)
+        body.headers["Retry-After"] = str(wait)
+        return body, status
+
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
 
     user_doc = db.collection("users").document(email).get()
     if not user_doc.exists:
+        throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
         return api_error("invalid_credentials", "Invalid email or password", status=401)
 
     user = user_doc.to_dict()
@@ -72,7 +83,9 @@ def api_login():
         return api_error("account_locked", "Account requires password reset", status=403)
 
     if not check_password_hash(stored_hash, password):
+        throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
         return api_error("invalid_credentials", "Invalid email or password", status=401)
+    throttle.clear_account(throttle.LOGIN, email)
 
     # Verify role
     user_role = user.get("role", "Student")

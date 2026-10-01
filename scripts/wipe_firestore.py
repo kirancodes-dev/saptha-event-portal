@@ -15,7 +15,7 @@ Run from project root:  python scripts/wipe_firestore.py
 # BLK-10: refuse production-looking databases before anything connects
 import os as _os, sys as _sys  # noqa: E401,E402
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
-from seed_safety import guard  # noqa: E402
+from seed_safety import firestore_key, guard  # noqa: E402
 guard(firestore=True)
 
 import sys
@@ -33,14 +33,9 @@ except ImportError:
     credentials = firestore = auth = None
 
 # ── Init Firebase ────────────────────────────────────────────────────────────
-KEY_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'serviceAccountKey.json')
-if not os.path.exists(KEY_FILE):
-    print(f"ERROR: serviceAccountKey.json not found at {KEY_FILE}")
-    sys.exit(1)
-
 if not firebase_admin._apps:
-    cred = credentials.Certificate(KEY_FILE)
-    firebase_admin.initialize_app(cred)
+    # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+    firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
 
 db = firestore.client()
 

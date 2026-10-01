@@ -5,6 +5,7 @@ passes --i-know-this-is-production on the command line.
 """
 import ast
 import glob
+import json
 import os
 import subprocess
 import sys
@@ -104,11 +105,11 @@ def test_only_the_command_line_flag_overrides_the_guard():
     assert allowed.returncode == 99 and 'CONNECT-ATTEMPT' in allowed.stderr, allowed.stderr[-500:]
 
 
-def test_firestore_scripts_also_need_the_project_named(tmp_path):
+def test_firestore_scripts_also_need_the_project_named(fake_key):
     script = 'seed_demo.py'
-    key = tmp_path / 'fake-service-account.json'
-    key.write_text('{"project_id": "demo-project"}')
-    env = {'GOOGLE_APPLICATION_CREDENTIALS': str(key), 'FIRESTORE_EMULATOR_HOST': ''}
+    # FIREBASE_CREDENTIALS comes first, so a developer's own (git-ignored)
+    # serviceAccountKey.json can't change the outcome (BLK-15)
+    env = _firestore_env(FIREBASE_CREDENTIALS=json.dumps(fake_key('demo-project')))
     no_project = _run(script, env)
     assert no_project.returncode == 3 and 'confirm-firestore-project' in no_project.stderr
     wrong = _run(script, env, '--confirm-firestore-project=someone-elses-project')
@@ -123,6 +124,128 @@ def test_local_databases_are_allowed():
                 'postgresql://postgres:@/test?host=/tmp/pg-socket'):
         assert production_reasons({'DATABASE_URL': url}) == [], url
     assert production_reasons({}) == []
+
+
+# ── BLK-15: the guard confirms the key the script connects with ────────────
+
+FIRESTORE_SCRIPTS = [f for f in SCRIPTS if 'guard(firestore=True)' in open(os.path.join(ROOT, f)).read()]
+
+# Like RUNNER, but reports which project the script connects to Firestore with
+FIRESTORE_RUNNER = r"""
+import runpy, sys
+import firebase_admin
+def connect(cred=None, *a, **k):
+    sys.stderr.write('CONNECT-PROJECT=%s\n' % getattr(cred, 'project_id', None)); sys.exit(99)
+firebase_admin.initialize_app = connect
+import sqlalchemy, sqlalchemy.engine
+def sql(*a, **k):
+    sys.stderr.write('SQL-CONNECT-ATTEMPT\n'); sys.exit(98)
+sqlalchemy.create_engine = sqlalchemy.engine.create_engine = sql
+script = sys.argv[1]
+sys.argv = sys.argv[1:]
+runpy.run_path(script, run_name='__main__')
+"""
+
+KEY_SOURCES = ('FIREBASE_CREDENTIALS', 'FIREBASE_KEY_PATH', 'GOOGLE_APPLICATION_CREDENTIALS')
+
+
+@pytest.fixture(scope='module')
+def fake_key():
+    """A structurally valid service-account key (firebase_admin parses it)
+    for any project id; generated here, so nothing secret is in the repo."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    pem = rsa.generate_private_key(public_exponent=65537, key_size=2048).private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()).decode()
+
+    def make(project):
+        return {'type': 'service_account', 'project_id': project, 'private_key_id': 'test',
+                'private_key': pem, 'client_email': f'seed@{project}.iam.gserviceaccount.com',
+                'client_id': '1', 'token_uri': 'https://oauth2.googleapis.com/token'}
+    return make
+
+
+def _firestore_env(**sources):
+    env = dict.fromkeys(KEY_SOURCES, '')
+    env.update(FIRESTORE_EMULATOR_HOST='', **sources)
+    return env
+
+
+def _run_firestore(script, env, *args):
+    return subprocess.run([sys.executable, '-c', FIRESTORE_RUNNER, script, *args], cwd=ROOT,
+                          env=dict(os.environ, **env), stdin=subprocess.DEVNULL,
+                          capture_output=True, text=True, timeout=120)
+
+
+def test_there_are_firestore_scripts_to_check():
+    assert len(FIRESTORE_SCRIPTS) == 10, FIRESTORE_SCRIPTS
+
+
+@pytest.mark.parametrize('script', FIRESTORE_SCRIPTS)
+def test_each_firestore_script_connects_with_the_project_the_guard_confirmed(script, fake_key):
+    env = _firestore_env(FIREBASE_CREDENTIALS=json.dumps(fake_key('project-a')))
+    wrong = _run_firestore(script, env, '--confirm-firestore-project=project-b')
+    assert wrong.returncode == 3 and 'CONNECT-PROJECT' not in wrong.stderr, wrong.stderr[-500:]
+    named = _run_firestore(script, env, '--confirm-firestore-project=project-a')
+    assert named.returncode == 99, (named.returncode, named.stdout[-300:], named.stderr[-800:])
+    assert 'CONNECT-PROJECT=project-a' in named.stderr
+
+
+@pytest.mark.parametrize('source', [
+    {'FIREBASE_CREDENTIALS': 'not json'},
+    {'FIREBASE_CREDENTIALS': '{"type": "service_account"}'},           # no project id
+    {'FIREBASE_KEY_PATH': '/nonexistent/serviceAccountKey.json'},
+], ids=['unparseable', 'no-project-id', 'missing-file'])
+def test_unreadable_credentials_are_refused_whatever_project_is_named(source):
+    env = _firestore_env(**source)
+    for args in ((), ('--confirm-firestore-project=anything',), ('--confirm-firestore-project=',)):
+        result = _run_firestore('seed_demo.py', env, *args)
+        assert result.returncode == 3, (args, result.returncode, result.stderr[-500:])
+        assert 'CONNECT-PROJECT' not in result.stderr
+
+
+def test_no_key_anywhere_is_refused(tmp_path, monkeypatch):
+    import seed_safety
+    for name in KEY_SOURCES + ('FIRESTORE_EMULATOR_HOST',):
+        monkeypatch.setenv(name, '')
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(seed_safety, 'PROJECT_KEY', str(tmp_path / 'missing.json'))
+    assert seed_safety.firestore_credentials() == (None, None)
+    with pytest.raises(SystemExit) as refused:
+        seed_safety.guard(firestore=True, argv=['seed_demo.py', '--confirm-firestore-project=anything'])
+    assert refused.value.code == 3
+
+
+def test_the_guard_checks_the_key_the_script_will_use(tmp_path, fake_key, monkeypatch):
+    keys = {}
+    for project in ('project-b', 'project-c', 'project-d'):
+        keys[project] = tmp_path / f'{project}.json'
+        keys[project].write_text(json.dumps(fake_key(project)))
+
+    # FIREBASE_CREDENTIALS (A) beats FIREBASE_KEY_PATH (B)
+    env = _firestore_env(FIREBASE_CREDENTIALS=json.dumps(fake_key('project-a')),
+                         FIREBASE_KEY_PATH=str(keys['project-b']))
+    assert _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-b').returncode == 3
+    named = _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-a')
+    assert named.returncode == 99 and 'CONNECT-PROJECT=project-a' in named.stderr, named.stderr[-500:]
+
+    # FIREBASE_KEY_PATH (B) beats the project's own key file and GOOGLE_APPLICATION_CREDENTIALS (C)
+    env = _firestore_env(FIREBASE_KEY_PATH=str(keys['project-b']),
+                         GOOGLE_APPLICATION_CREDENTIALS=str(keys['project-c']))
+    assert _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-c').returncode == 3
+    named = _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-b')
+    assert named.returncode == 99 and 'CONNECT-PROJECT=project-b' in named.stderr, named.stderr[-500:]
+
+    # A key in the current directory (D) beats GOOGLE_APPLICATION_CREDENTIALS (C)
+    import seed_safety
+    for name in KEY_SOURCES:
+        monkeypatch.setenv(name, '')
+    monkeypatch.setenv('GOOGLE_APPLICATION_CREDENTIALS', str(keys['project-c']))
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'serviceAccountKey.json').write_text(json.dumps(fake_key('project-d')))
+    source, info = seed_safety.firestore_credentials()
+    assert info['project_id'] == 'project-d' and source == str(tmp_path / 'serviceAccountKey.json')
 
 
 # ── BLK-10b: no known passwords ────────────────────────────────────────────

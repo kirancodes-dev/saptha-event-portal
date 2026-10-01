@@ -7,11 +7,9 @@ then creates a clean environment under biradark543@gmail.com SPOC.
 # BLK-10: refuse production-looking databases before anything connects
 import os as _os, sys as _sys  # noqa: E401,E402
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
-from seed_safety import guard, seed_password  # noqa: E402
+from seed_safety import firestore_key, guard, seed_password  # noqa: E402
 guard(firestore=True)
 
-import os
-import sys
 import datetime
 from dotenv import load_dotenv
 
@@ -35,13 +33,8 @@ from firebase_admin import credentials, firestore
 
 def init_firebase():
     if not firebase_admin._apps:
-        key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-        if os.path.exists(key_path):
-            cred = credentials.Certificate(key_path)
-            firebase_admin.initialize_app(cred)
-        else:
-            print("ERROR: serviceAccountKey.json not found. Set FIREBASE_KEY_PATH or place it in CWD.")
-            sys.exit(1)
+        # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+        firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
     return firestore.client()
 
 def main():

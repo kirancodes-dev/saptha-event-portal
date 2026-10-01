@@ -20,13 +20,12 @@ Run:  python setup_tomorrow_demo.py
 """
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard  # noqa: E402
+from seed_safety import firestore_key, guard  # noqa: E402
 guard(firestore=True)
 
 
 import sys
 import datetime
-import os
 sys.path.insert(0, '.')
 
 try:
@@ -39,11 +38,8 @@ except ImportError:
     credentials = firestore = auth = None
 
 if not firebase_admin._apps:
-    key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-    if not os.path.exists(key_path):
-        print("ERROR: serviceAccountKey.json not found.")
-        sys.exit(1)
-    firebase_admin.initialize_app(credentials.Certificate(key_path))
+    # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+    firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
 
 db = firestore.client()
 

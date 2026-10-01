@@ -16,7 +16,9 @@ database.
 
 Scripts that use the Firestore client directly (``guard(firestore=True)``)
 must also name the project: ``--confirm-firestore-project=<project id>``,
-unless FIRESTORE_EMULATOR_HOST points at a local emulator.
+unless FIRESTORE_EMULATOR_HOST points at a local emulator. The guard checks
+the project of exactly the key the script then connects with
+(``firestore_key()``, BLK-15), and refuses when it can't read one.
 
 ``seed_password(role)`` gives one password per role per run: the value of
 ``SEED_<ROLE>_PASSWORD`` if set, otherwise a random one. Generated passwords
@@ -66,14 +68,57 @@ def production_reasons(env=None):
     return reasons
 
 
-def _firestore_project():
-    path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS') or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'serviceAccountKey.json')
+PROJECT_KEY = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'serviceAccountKey.json')
+
+
+def firestore_credentials():
+    """The service-account key a Firestore script connects with, as
+    ``(source, info)``: where it came from and the parsed key (``None`` if
+    that source can't be read). The first source that is set wins, even if it
+    is broken, so a bad setting never silently falls through to another key:
+
+      1. FIREBASE_CREDENTIALS (the JSON itself)
+      2. FIREBASE_KEY_PATH
+      3. serviceAccountKey.json in the current directory
+      4. serviceAccountKey.json in the project root
+      5. GOOGLE_APPLICATION_CREDENTIALS
+
+    ``(None, None)`` when there is no key at all.
+    """
+    raw = os.environ.get('FIREBASE_CREDENTIALS', '').strip()
+    if raw:
+        return 'FIREBASE_CREDENTIALS', _parse(raw)
+    for source in (os.environ.get('FIREBASE_KEY_PATH', '').strip(),
+                   os.path.abspath('serviceAccountKey.json') if os.path.exists('serviceAccountKey.json') else '',
+                   PROJECT_KEY if os.path.exists(PROJECT_KEY) else '',
+                   os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '').strip()):
+        if source:
+            try:
+                with open(source) as fh:
+                    return source, _parse(fh.read())
+            except OSError:
+                return source, None
+    return None, None
+
+
+def _parse(text):
     try:
-        with open(path) as fh:
-            return json.load(fh).get('project_id', '')
-    except (OSError, ValueError):
-        return ''
+        info = json.loads(text)
+    except ValueError:
+        return None
+    return info if isinstance(info, dict) else None
+
+
+def firestore_key():
+    """The key to pass to firebase_admin.credentials.Certificate: the same one
+    guard(firestore=True) confirmed. Exits 1 if there is none."""
+    source, info = firestore_credentials()
+    if info is None:
+        print(f"ERROR: can't read a Firestore service-account key from {source}." if source else
+              "ERROR: no Firestore service-account key. Set FIREBASE_CREDENTIALS (the JSON) or "
+              "FIREBASE_KEY_PATH, or place serviceAccountKey.json here or in the project root.")
+        sys.exit(1)
+    return info
 
 
 def _refuse(lines):
@@ -91,8 +136,14 @@ def guard(firestore=False, argv=None):
 
     if firestore and not os.environ.get('FIRESTORE_EMULATOR_HOST', '').startswith(('localhost', '127.0.0.1')):
         confirmed = next((a[len(FIRESTORE_FLAG):] for a in argv if a.startswith(FIRESTORE_FLAG)), '')
-        expected = _firestore_project()
-        if not confirmed or (expected and confirmed != expected):
+        source, info = firestore_credentials()
+        expected = str((info or {}).get('project_id') or '')
+        if not expected:
+            _refuse(["This script writes straight to a real Firestore project, but no project ID can be "
+                     f"read from {source or 'any service-account key'}, so it can't be confirmed.",
+                     'Set FIREBASE_CREDENTIALS or FIREBASE_KEY_PATH, or place serviceAccountKey.json '
+                     'here or in the project root (or use the local emulator).'])
+        if confirmed != expected:
             _refuse(['This script writes straight to a real Firestore project.',
                      f'Name it with {FIRESTORE_FLAG}<project id> (or use the local emulator).'])
 

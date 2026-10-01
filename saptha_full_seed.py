@@ -15,13 +15,10 @@ Requirements: firebase_admin, werkzeug  (already in requirements.txt)
 """
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard, seed_password  # noqa: E402
+from seed_safety import firestore_key, guard, seed_password  # noqa: E402
 guard(firestore=True)
 
 
-import os
-import sys
-import json
 import datetime
 import time
 import random
@@ -37,16 +34,8 @@ def init_firebase():
     except Exception:
         firebase_admin = None
     if not firebase_admin._apps:
-        raw = os.environ.get('FIREBASE_CREDENTIALS')
-        if raw:
-            cred = credentials.Certificate(json.loads(raw))
-        else:
-            key = 'serviceAccountKey.json'
-            if not os.path.exists(key):
-                print(f"ERROR: {key} not found and FIREBASE_CREDENTIALS env var not set.")
-                sys.exit(1)
-            cred = credentials.Certificate(key)
-        firebase_admin.initialize_app(cred)
+        # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+        firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
     return firestore.client()
 
 # ── Password hashing ───────────────────────────────────────────────────

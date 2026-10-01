@@ -1,6 +1,6 @@
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard, seed_password  # noqa: E402
+from seed_safety import firestore_key, guard, seed_password  # noqa: E402
 guard(firestore=True)
 
 try:
@@ -16,8 +16,8 @@ import datetime
 # 1. Initialize Firestore
 # We check if it's already initialized to avoid errors if you run this twice
 if not firebase_admin._apps:
-    cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred)
+    # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+    firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
 
 db = firestore.client()
 print("--- CONNECTED TO FIRESTORE ---")

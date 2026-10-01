@@ -32,7 +32,7 @@ This file is the source of truth for planned work. Agents and developers work on
    - some endpoints leak registrations (BLK-04);
    - any SPOC or coordinator can delete any event through a GET link, and `/api/v1` is open to cross-site requests from a logged-in browser (BLK-04, found in Phase 0);
    - login has no rate limiting (BLK-13);
-   - a user database and old credentials are in the public GitHub history (BLK-01).
+   - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
 7. **Not production-ready yet (Phase 0, 2026-09-30):** sessions and uploads live on the container's disk (BLK-08, UPG-17), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 110 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan.
 5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool.
 6. About 20 templates are never rendered, 3 blueprints are never registered, there are 2 parallel notification systems, 2 payment stacks, 13 seed scripts and a diverged copy of the whole app in `functions/saptha_app/` (UPG-14/15).
@@ -63,8 +63,8 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:115-172` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:134`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. |
 | Camera QR check-in (coordinator, SPOC, HUD) | PARTLY BUILT — **fails with real QRs** [R] | `templates/coordinator/scan.html:231-234`, `templates/spoc/scan.html:447-458`, `routes_ticket.py:270-271,479-481` | Coordinator/SPOC scanners pass the signed token as a reg ID → "INVALID TICKET" / 404 [R]. `/ticket/verify` and `/ticket/api/verify` said "Payment pending" for free tickets [R at `694c729`]. At `1f4cdc8` `payment_status` reads back as written (`Free`), so that gate likely passes; the token-as-reg-ID break is unchanged [C]. Not re-run (UPG-02). At `56a014d`: `/ticket/verify` accepts signed tokens only (`routes_ticket.py:56-84`), its GET is read-only, and only authorised staff can POST a check-in (`routes_ticket.py:318-327`) [C]; the lower-case `free` written by waitlist promotion would still read as unpaid (`routes_ticket.py:271,332,480,535`). |
 | Manual check-in (SPOC list) | WORKING on event day [R] | `routes_spoc.py:451-525` | Locked until event date (intended). Attendee name comes back blank in postgres mode. |
-| Kiosk check-in | PARTLY BUILT [C at `56a014d`] | `routes_checkin.py:236-400` | Secured in the root app: login + coordinator role + `can(…, 'check_in', event)`, searches only the chosen event, returns no email or phone (`routes_checkin.py:286-297`). Tests use the mock DB only (BLK-12). Coordinators can now be assigned (BLK-09). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12). |
-| Venue-QR self check-in | PARTLY BUILT [C at `56a014d`] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Submit not run on the real DB (BLK-12). The `functions/` copy checks in by a typed email alone. |
+| Kiosk check-in | PARTLY BUILT [C at `56a014d`] | `routes_checkin.py:236-400` | Secured in the root app: login + coordinator role + `can(…, 'check_in', event)`, searches only the chosen event, returns no email or phone (`routes_checkin.py:286-297`). Tests use the mock DB only (BLK-12). Coordinators can now be assigned (BLK-09). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); that copy is removed in Phase 5 (UPG-15, D-1). |
+| Venue-QR self check-in | PARTLY BUILT [C at `56a014d`] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Submit not run on the real DB (BLK-12). The `functions/` copy checks in by a typed email alone (removed in Phase 5, UPG-15, D-1). |
 | Offline check-in (PWA queue) | PARTLY BUILT [C] | `static/js/offline-sync.js:83` | Replays to kiosk confirm (same 403). `/api/v1/.../checkin-batch` is JWT-only with no UI. |
 | Coordinator assignment | WORKING [R at `1f4cdc8`] | `routes_spoc.py:1171-1252` | `spoc_id` now persists, so "assign coordinator" adds the coordinator to `staff` [R], and the coordinator can then open registrations (`tests/test_integration_flow.py:166-186`). |
 | Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists. |
@@ -446,14 +446,14 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - **Stale gitlink:** `saptha-event-portal` is a gitlink (mode 160000) with no `.gitmodules`, pointing at a commit of this repo's own old history that no longer exists after the BLK-01 rewrite. It's inert; delete it.
 - **Who benefits:** developers and agents (less wrong code to read); users (no 404s).
   - **The `functions/saptha_app` copy also keeps the kiosk and ticket holes the root app fixed** (BLK-12) and the bandit findings (BLK-11).
-- **What to build:** remove or merge the above; move `scratch/` tools worth keeping into `scripts/` and delete the rest; fold the seed scripts into one seed command (with BLK-10's guard). For `functions/saptha_app/`: if Cloud Run is the only deploy target, remove it; otherwise generate the Catalyst bundle at deploy time instead of tracking a copy (decision D-1).
+- **What to build:** remove or merge the above; move `scratch/` tools worth keeping into `scripts/` and delete the rest; fold the seed scripts into one seed command (with BLK-10's guard). Remove `functions/saptha_app/` and `catalyst.json`: Cloud Run is the only deploy target (D-1, owner, 2026-10-01), so no Catalyst build step replaces them.
 - **Files touched:** listed above, plus a new test.
-- **Effort:** M · **Depends on:** none · **Risk:** the Zoho Catalyst deploy uses `functions/saptha_app/`; replace it with a build step before deleting.
+- **Effort:** M · **Depends on:** none · **Risk:** low for deploys (nothing else deploys the copy, D-1).
 - **Acceptance criteria:**
   1. Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`.
   2. Test: `/debug-modal` → 404.
-  3. `git ls-files` lists no `functions/saptha_app/*.py` and no `seed_*.py` beyond the kept one.
-  4. The Catalyst deploy still works via the build step (manual check).
+  3. `git ls-files` lists nothing under `functions/saptha_app/`, no `catalyst.json`, and no `seed_*.py` beyond the kept one. This also completes BLK-12 criterion 4 and BLK-14 criterion 3.
+  4. ~~The Catalyst deploy still works via the build step (manual check).~~ Dropped: D-1 (owner, 2026-10-01) ends the Catalyst deploy, so there's no build step to check. Covered instead by criterion 3 (`catalyst.json` is gone).
   5. Walk-in accounts created on the Zoho deploy with the old default password have been forced to reset (owner check), and no tracked file sets a default walk-in password (test).
 
 ### D. Production setup (added in Phase 0, 2026-09-30)
@@ -735,11 +735,11 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### BLK-01 — Admin credentials and a user database are in the public GitHub history
-- **Status:** IN PROGRESS
-- **Last verified:** 2026-09-30, commit `56a014d`
+- **Status:** IN PROGRESS. Only GitHub Support's removal of the PR refs is left (criterion 0); nothing else waits on it.
+- **Last verified:** 2026-10-01, commit "BLK-01: …" on `production-ready` (parent `10207cd`), with read-only `git ls-remote` and the GitHub Actions API
 - **Problem:**
   - The repo is public (the GitHub API returns 200 unauthenticated; 0 forks).
-  - **Removed from all local history on 2026-09-29 (not pushed yet):**
+  - **Removed from all history on 2026-09-29, force-pushed by the owner on 2026-10-01:**
     - `saptha_fallback.db`: 42 users, 41 password hashes, phones, 70 registrations; the unpushed commits had added one more real user.
     - `.env`: added `1db93ca`, changed `bb19dae`, deleted `04df1c0`.
     - `dataconnect/.dataconnect/`: a full PGlite/PostgreSQL data folder of 1,023 files with real email addresses, plus generated schema; added `328fb0b`, changed `7f4e6c3`, and tracked at HEAD until now.
@@ -761,18 +761,19 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
     - PRs **#1–#5**: `instance/event_portal.db`, `__pycache__/*.pyc`.
     - PRs **#6–#47**: `.env`, `instance/event_portal.db`, `__pycache__/*.pyc`.
     - None contains `saptha_fallback.db` or `dataconnect/.dataconnect/`.
-    - The remote branches `master` (all five paths), `main` (`.env`, `instance/`, `.pyc`) and `claude/busy-davinci-6nkabi` (all five) contain them too; the force-push and branch deletion fix those.
+    - The remote branches `master` (all five paths), `main` (`.env`, `instance/`, `.pyc`) and `claude/busy-davinci-6nkabi` (all five) contained them too. **Fixed 2026-10-01** [R, `git ls-remote`]: GitHub's `master` is the rewritten `56a014d` (the same hash as local `master`), `production-ready` is `10207cd`, and `main` and `claude/busy-davinci-6nkabi` no longer exist. `git log origin/master origin/production-ready` finds none of the removed paths.
     - There are 0 commits reachable only from PR refs, so the PR refs add no content beyond the scanned branch history.
+    - **Still on GitHub (2026-10-01):** all 47 `refs/pull/*` refs, unchanged. The owner has contacted GitHub Support.
   - **Mitigation from BLK-09:** `config.validate_production_config` (`app.py:145`) refuses to start production with a published default. Both leaked values are on its blocklist [C]. A SuperAdmin account already created with the leaked password keeps it in the database.
 - **Who benefits:** everyone whose account or data is exposed.
 - **What to build:**
   - **Done locally:** backups; history rewrite; `.gitignore` rules; `tests/test_repo_hygiene.py`; CI job "Repo hygiene & secret scan" (the hygiene test plus a pinned gitleaks 8.30.1 full-history scan, with accepted findings in `.gitleaksignore`). **The two Google API keys are deliberately not accepted, so the secret-scan step fails until they're revoked**; their fingerprints are commented out in `.gitleaksignore`, ready to un-comment.
-  - **No deployment exists** (owner, 2026-09-30), so pushing can't trigger a production start. The first deploy must follow **"Before the next deploy"** at the top of this section.
-  - **Owner, now:** force-push and delete the remote branches (commands in the 2026-09-29 changelog entry).
-  - **Owner, now:** ask GitHub Support to remove the PR refs' copies and cached views of old commits, sending the PR numbers above and `.git/commit-map-github-to-final.txt` (original → new hashes).
+  - **No deployment exists** (owner, 2026-09-30), so pushing can't trigger a production start. Cloud Run is the only deploy target (D-1). The first deploy must follow **"Before the next deploy"** at the top of this section.
+  - **Owner, done 2026-10-01:** force-pushed the rewritten `master`, deleted the remote `main` and `claude/busy-davinci-6nkabi`, and pushed `production-ready` (verified with `git ls-remote`). The local `remote.origin.fetch` is restored and `master` tracks `origin/master`.
+  - **Owner, done 2026-10-01:** contacted GitHub Support to remove the PR refs' copies and cached views of old commits (PR numbers above; `.git/commit-map-github-to-final.txt` maps original → new hashes). **Waiting on Support.**
   - **Owner, done 2026-09-30:** changed the old mail account's password (which also revokes its app passwords, so both leaked `MAIL_PASS` values are dead) and revoked both Google API keys (the old `GEMINI_API_KEY` and the second key).
   - **Owner, replaced by the checklist:** `SUPER_ADMIN_PASS` and `MASTER_SECRET_KEY` aren't in use anywhere, since there's no production. The next deploy must use new values ("Before the next deploy").
-  - **Owner, still open:** the Supabase publishable key (only if that project is still used); collaborators re-clone after the push.
+  - **Owner, still open:** the Supabase publishable key (only if that project is still used); collaborators re-clone, because their clones still hold the old history.
 - **Files touched:** `.gitignore`, `.github/workflows/ci.yml`, `.gitleaksignore`, `tests/test_repo_hygiene.py`; history rewrite; operational steps outside the code.
 - **Effort:** S · **Depends on:** none · **Risk:** the force-push breaks existing clones; old objects stay on GitHub (PR refs, cached views) until Support removes them.
 - **Local artifacts (never push or commit):**
@@ -780,13 +781,13 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - `~/saptha-event-portal-backup-2026-09-29-before-purge2.git`: after the first rewrite.
   - `~/saptha-local-data/saptha_fallback.db` and `~/saptha-local-data/dataconnect-.dataconnect/`: local dev data, owner-only permissions.
   - `.git/commit-map-github-to-final.txt`.
-  - Delete the backups and data copies once the push is confirmed; prefer the seed scripts for local data.
+  - The push is confirmed (2026-10-01). Keep `.git/commit-map-github-to-final.txt` until GitHub Support has finished, in case they ask for it; then delete the backups and data copies (owner). Prefer the seed scripts for local data.
 - **Acceptance criteria:**
-  0. ✅ **Met locally:** no local commit contains `saptha_fallback.db` or the other removed paths. ⬜ **Not yet on GitHub:** as of 2026-09-30, `git ls-remote` still shows `master` at the old `c6080f5` and the old branches `main` and `claude/busy-davinci-6nkabi`; the last push was 2026-09-26. Completes after the force-push, branch deletion and GitHub Support's PR-ref clean-up. Re-checked in Phase 0 (2026-09-30, read-only `git ls-remote`): unchanged. **Waits on the owner; doesn't block other items.**
+  0. ✅ **Met locally and on GitHub's branches:** no local commit contains `saptha_fallback.db` or the other removed paths; on 2026-10-01 `git ls-remote` shows only `master` (`56a014d`, rewritten) and `production-ready` (`10207cd`), and neither branch's history contains a removed path [R]. ⬜ **PR refs:** all 47 still exist and still hold removed files; completes when GitHub Support removes them (owner contacted Support on 2026-10-01). **Doesn't block other items.**
   1. ✅ **Met:** `tests/test_repo_hygiene.py::test_no_forbidden_files_are_tracked` fails if any `*.db`, `*.sqlite*`, `.env*` (other than `.env.example`), service-account key, `*.pyc` / `__pycache__/`, `dataconnect/.dataconnect/` or `instance/` file is tracked. It passes at `08eabf5`.
   2. ✅ **Met:** the CI job "Repo hygiene & secret scan" runs that test and the gitleaks scan. Demonstrated on a throwaway branch in a scratch clone: a commit adding `.env`, `local.db`, a `.pyc` and a fake AWS-style key made the test fail (1 failed, naming the 3 files) and gitleaks exit 1 [R].
   3. ✅ **Met for now: there's no production deployment** (owner, 2026-09-30), so nothing accepts the old SuperAdmin password or master key. The next deploy must pass **"Before the next deploy"** (new `SECRET_KEY`, `MASTER_SECRET_KEY`, `JWT_SECRET_KEY`, `SUPER_ADMIN_PASS`, `RAZORPAY_KEY_SECRET`, and a PostgreSQL `DATABASE_URL`, all set first). The start-up refusal for published values exists (`tests/test_integration_flow.py:221`).
-  4. ✅ **Met locally:** both Google API keys are revoked (owner, 2026-09-30) and accepted in `.gitleaksignore`. The full-history gitleaks scan finds **no leaks in 212 commits** [R]. ⬜ **CI not yet confirmed green on GitHub**, because the commits haven't been pushed (criterion 0). Once pushed, the secret-scan step should pass; the separate bandit job will still fail until BLK-11 is fixed. The old password and master key remain as literals in history (gitleaks doesn't flag them); they're unused and must not be reused (criterion 3).
+  4. ✅ **Met:** both Google API keys are revoked (owner, 2026-09-30) and accepted in `.gitleaksignore`. The full-history gitleaks scan finds **no leaks in 212 commits** [R]. ✅ **On GitHub:** CI run 36886209908 on the pushed `master` (`56a014d`, 2026-10-01) passed "Repo hygiene & secret scan" and "Lint (ruff)" [R, GitHub Actions API]. The bandit job failed on the known BLK-11 findings and pytest on BLK-15's causes. The old password and master key remain as literals in history (gitleaks doesn't flag them); they're unused and must not be reused (criterion 3).
 
 #### BLK-02 — The public registration form logs the visitor in as any email they type
 - **Status:** DONE
@@ -1076,6 +1077,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. ✅ Test: with a local SQLite `DATABASE_URL`, the seed creates accounts whose passwords come from `SEED_*_PASSWORD` when set, and are random (different across two runs) when not (`tests/test_seed_safety.py::test_seed_passwords_come_from_the_environment_or_are_random`).
   4. ✅ With a production-looking target, environment variables don't override the guard and the command-line flag does; Firestore scripts additionally need the right project named (a wrong one is refused) (`::test_only_the_command_line_flag_overrides_the_guard`, `::test_firestore_scripts_also_need_the_project_named`).
   - Full pytest: **658 passed** on SQLite and PostgreSQL 16; ruff clean.
+  - **Found 2026-10-01 (BLK-15):** criterion 4's Firestore check reads a different key than the scripts use and accepts any project name when it finds none; its test passes only where the untracked `serviceAccountKey.json` exists, so it fails in CI.
 
 #### BLK-11 — CI's bandit job fails on 5 pre-existing issues, so CI can't go green
 - **Status:** TODO
@@ -1088,16 +1090,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - GitHub's CI on `master` has failed on every run since at least 2026-08-25. So even after the force-push, CI stays red until this is fixed, which undermines "every acceptance criterion has a passing test" for later items.
 - **Who benefits:** everyone building later items; CI becomes a trustworthy gate.
   - Re-run in Phase 0 at `56a014d` (same command, local): exactly the same 5 findings.
-- **What to build:** add a timeout to the `scripts/seed_emulator.py` request. For the `functions/saptha_app/` copy, either delete or regenerate it (UPG-15), or fix the two files as the root copies were fixed. Until decision D-1 is made, fix the two files in place (it's the smaller, reversible change). Don't blanket-exclude directories or add `# nosec` without a reason.
+- **What to build:** add a timeout to the `scripts/seed_emulator.py` request. The `functions/saptha_app/` copy is removed in Phase 5 (UPG-15; D-1 decided 2026-10-01), so until then fix its two files in place, as the root copies were fixed, so CI can go green now. Don't blanket-exclude directories or add `# nosec` without a reason.
 - **Files touched:** `functions/saptha_app/audit_logger.py`, `functions/saptha_app/db_adapter.py`, `scripts/seed_emulator.py` (or the UPG-15 removal).
-- **Effort:** S · **Depends on:** none · **Risk:** low; the Zoho deploy uses `functions/saptha_app/`, so test it if it's kept.
+- **Effort:** S · **Depends on:** none · **Risk:** low; nothing deploys the `functions/` copy (D-1).
+- **CI on GitHub (2026-10-01, after the owner's push):** on `master` (`56a014d`) "Security scan (bandit)" failed as expected and "Test (pytest)" failed (cause reproduced; recorded in BLK-15), while "Repo hygiene & secret scan" and "Lint (ruff)" passed. CI runs only on pushes to `main`/`master`/`develop` and on pull requests into `main`/`master` (`.github/workflows/ci.yml:3-7`), so commits pushed to `production-ready` get no CI run until a pull request into `master` is opened.
 - **Acceptance criteria:**
   1. `bandit -r . -x tests/,__pycache__/ -ll -q` exits 0 on a fresh clone.
-  2. Every job in the CI workflow is green on GitHub for the pushed commit. (Waits on the owner's push, BLK-01.)
+  2. Every job in the CI workflow is green on GitHub for the commit that fixes this (through a pull request from `production-ready` into `master`, or on `master`). Needs BLK-15 too (pytest).
   3. `ruff check .` and the full pytest still pass.
 
 #### BLK-12 — Kiosk and ticket-verify holes (and tests for them on the real database)
-- **Status:** DONE for the root app (criterion 4, the `functions/` copy, waits on D-1)
+- **Status:** DONE for the root app (criterion 4 is met when UPG-15 removes the `functions/` copy in Phase 5; D-1)
 - **Last verified:** 2026-10-01, commit "BLK-12: …" on `production-ready` (parent `f2ce15b`)
 - **Problem:** Added in Phase 0 from the production-ready plan's list: unauthenticated kiosk search and confirm, a raw registration ID accepted by ticket verify, a GET that marks attendance, and self check-in by email alone.
   - **Already fixed in the root app** (by the BLK-09 merge, branch commit `348aceb`) [C at `56a014d`]:
@@ -1107,16 +1110,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **But the tests pinning this run on the in-memory mock**, not the SQL adapter: `tests/test_checkin_security.py` (7 tests, `client`/`mock_db` fixtures).
   - **The `functions/saptha_app` copy (run by the Zoho Catalyst deploy, `catalyst.json`) still has all four holes** [C]: kiosk search/confirm have no login (`functions/saptha_app/routes_checkin.py:143-224`); self check-in takes a typed email (`:45-60`); `/ticket/verify/<reg_id_or_token>` accepts raw registration IDs and marks attendance on a GET (`functions/saptha_app/routes_ticket.py:164-231`), and so does `/ticket/api/verify` (`:279-325`).
 - **Who benefits:** every attendee (privacy) and organiser (attendance integrity).
-- **What to build:** `real_app` tests for each fixed behaviour. For the `functions/` copy: remove it if Cloud Run is the only deploy target (UPG-15), otherwise port the root fixes (decision D-1).
+- **What to build:** `real_app` tests for each fixed behaviour. For the `functions/` copy: Cloud Run is the only deploy target (D-1, 2026-10-01), so UPG-15 removes it in Phase 5; no port of the root fixes.
 - **What was built:** `tests/test_checkin_security_real_db.py`, 3 tests on the real SQL adapter. No app code changed: the root fixes predate this branch. To show the tests catch the holes, each was briefly reintroduced and the matching test failed: kiosk search without login (kiosk test fails), a venue code that doesn't expire in 10 minutes (self check-in test fails), raw registration IDs accepted by verify (ticket test fails).
-- **Files touched:** `tests/`, and `functions/saptha_app/` (by D-1).
+- **Files touched:** `tests/`, and `functions/saptha_app/` (removed by UPG-15).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
   1. ✅ Anonymous kiosk search and confirm are sent to log in and change nothing; an unassigned coordinator gets 403; an assigned one gets only that event's match (not a same-named registrant of another event), with no email or phone in the JSON, and can confirm (`tests/test_checkin_security_real_db.py::test_kiosk_needs_staff_of_the_event_and_never_leaks_contact_details`).
   2. ✅ A raw registration ID on `/ticket/verify` and `/ticket/api/verify` (GET and POST) → 400; GETs with a valid token, anonymous or staff, never change attendance; POSTs by a student or an unassigned coordinator → 403; a POST by assigned staff marks `Present` (`::test_ticket_verify_takes_signed_tokens_only_and_only_staff_mark_attendance`).
   3. ✅ Self check-in sends anonymous users to log in, does nothing for a logged-in user without a registration, and refuses the owner with a missing, malformed, 11-minute-old or other-event code; the owner with a fresh code is marked `Present` (`::test_self_checkin_needs_the_owner_and_a_fresh_code_for_this_event`).
   - Full pytest: **446 passed, 1 xfailed** on SQLite and PostgreSQL 16; ruff clean.
-  4. The `functions/saptha_app` copy is no longer tracked, or its kiosk, ticket-verify and self check-in routes pass the same tests (D-1).
+  4. ⬜ The `functions/saptha_app` copy is no longer tracked (D-1: removed by UPG-15 in Phase 5).
 
 #### BLK-13 — Login has no rate limiting
 - **Status:** TODO
@@ -1137,7 +1140,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### BLK-14 — Anyone can create a SuperAdmin account through the public tenant sign-up
-- **Status:** DONE (criterion 3 waits on D-1)
+- **Status:** DONE (criterion 3 is met when UPG-15 removes the `functions/` copy in Phase 5; D-1)
 - **Last verified:** 2026-09-30, commit "BLK-14: …" on `production-ready` (parent `ee74fae`)
 - **Problem (as found):** Found while working on BLK-02 [R]. `POST /onboarding/signup` (`routes_onboarding.py:17-84` at `dc8ea5a`, registered unconditionally at `app.py:377`) took an organisation name, an email and a password from anyone, created an `organizations` row and a user with role `SuperAdmin`, and logged the visitor in as `SuperAdmin`, with no master key and no invitation. `SuperAdmin` is a wildcard in `utils.role_required` (`utils.py:61-63`), so the fresh session got 200 on `/admin/dashboard`, `/admin/org_units` and `/admin/audit_log`. `MULTI_TENANT_ENABLED` existed (`config.py:218`, default `false`) but the route didn't check it. The `functions/saptha_app` copy has the same route (`functions/saptha_app/routes_onboarding.py:69`).
 - **Who benefits:** the whole university (full admin takeover by anyone).
@@ -1151,8 +1154,32 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ Test (real DB): with `MULTI_TENANT_ENABLED` off, `GET`/`POST /onboarding/signup` and `/onboarding/wizard` → 404, and no user, organisation or session is created (`tests/test_tenant_signup_disabled.py::test_tenant_signup_is_404_unless_multi_tenancy_is_on`).
   2. ✅ Test (real DB): with the flag on, the created account's role isn't `SuperAdmin`/`UniversityAdmin`, and its session is refused (redirect to `/login`) on `/admin/dashboard`, `/admin/org_units` and `/admin/audit_log` (`::test_tenant_signup_with_the_flag_on_never_grants_superadmin`). Both tests fail on the old code.
-  3. ⬜ The `functions/saptha_app` copy is removed or fixed the same way (D-1).
+  3. ⬜ The `functions/saptha_app` copy is removed (D-1: by UPG-15 in Phase 5).
   - Full pytest: **426 passed, 1 xfailed** on SQLite and PostgreSQL 16; ruff clean.
+
+#### BLK-15 — The Firestore seed guard checks a different key than the scripts use, and its test fails in CI
+- **Status:** TODO
+- **Last verified:** 2026-10-01, commit `10207cd`
+- **Problem:** Found on 2026-10-01 while checking CI after the owner's push. Reproduced in fresh clones with CI's test-job environment (`.github/workflows/ci.yml:77-85`, a Redis server on port 6379, CI's exact pytest command) [R].
+  - **CI's pytest fails on `production-ready`:** at `10207cd`, **657 passed, 1 failed**. The failure is `tests/test_seed_safety.py::test_firestore_scripts_also_need_the_project_named`.
+    - The test points `GOOGLE_APPLICATION_CREDENTIALS` at a fake key. `seed_demo.py` ignores that variable and loads `FIREBASE_CREDENTIALS` or `./serviceAccountKey.json` (`seed_demo.py:37-45`).
+    - `serviceAccountKey.json` is git-ignored (`.gitignore:4`), so a fresh clone doesn't have it. The script exits 1 before reaching the stubbed connection, and the test expects 99.
+    - It passes in the developer's checkout only because the real key file is there; BLK-10's "658 passed" was run there.
+  - **The same mismatch is a hole in the guard.** `seed_safety._firestore_project` (`seed_safety.py:69-76`) reads only `GOOGLE_APPLICATION_CREDENTIALS` or the repo-root `serviceAccountKey.json`. The 10 Firestore scripts load credentials from other places:
+    - `FIREBASE_CREDENTIALS` (JSON in the environment): `seed_demo.py:37`, `saptha_full_seed.py:40`, `seed_presentation.py:35`;
+    - `FIREBASE_KEY_PATH`: `seed_live_demo.py:48`, `setup_tomorrow_demo.py:42`, `scratch/seed_single_event.py:38`;
+    - a `serviceAccountKey.json` relative to the current directory: `delete_data.py:17`, `setup_db.py:19` (and the fallbacks above).
+    - So when the guard finds no key (for example, only `FIREBASE_CREDENTIALS` is set), it accepts **any** `--confirm-firestore-project` value (`seed_safety.py:94`, `expected and confirmed != expected`). When the guard's key and the script's key differ, it confirms one project and the script writes to the other.
+  - **CI's pytest also fails on `master` (`56a014d`), for a reason already fixed on `production-ready`:** with CI's `CELERY_BROKER_URL=redis://…`, the waitlist promotion is queued and never runs, so `tests/test_seminar_e2e.py::test_capacity_waitlist_and_promotion_guard` fails with `'waiting' == 'promoted'`. Without the broker variables it passes. BLK-05's conftest forces Celery inline, and at `10207cd` that test passes under CI's environment.
+- **Who benefits:** everyone building later items (CI becomes a gate that can go green); the Firebase project (no seed run against a project nobody confirmed).
+- **What to build:** one credential resolver in `seed_safety.py`, used by both the guard and every Firestore script, covering `FIREBASE_CREDENTIALS`, `FIREBASE_KEY_PATH`, `GOOGLE_APPLICATION_CREDENTIALS` and `serviceAccountKey.json` in a fixed order. The guard confirms the project of exactly the credentials the script will use, and refuses when it can't read a project ID (unless the local emulator is used). The test supplies its own fake key through that resolver and doesn't depend on files outside git.
+- **Files touched:** `seed_safety.py`, the 10 Firestore scripts, `tests/test_seed_safety.py`.
+- **Effort:** S · **Depends on:** BLK-10 (DONE) · **Risk:** low; a script that finds its key today keeps finding it.
+- **Acceptance criteria:**
+  1. Test: `tests/test_seed_safety.py` passes in a fresh clone with no `serviceAccountKey.json`, under CI's environment.
+  2. Test: with only `FIREBASE_CREDENTIALS` set (project A), each Firestore script refuses `--confirm-firestore-project=B` and reaches the stubbed connection with `=A`.
+  3. Test: with credentials whose project ID can't be read, the guard refuses whatever project is named.
+  4. Test: when two credential sources name different projects, the guard checks the one the script will actually use and refuses the other name.
 
 #### UPG-33 — Account emails: walk-in passwords by email, reusable reset links
 - **Status:** TODO
@@ -1189,21 +1216,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | Phase | Items, in order | Notes |
 |---|---|---|
 | 0. Sync the plan | — | Done 2026-09-30: every item re-verified; BLK-12, BLK-13, UPG-16 to UPG-32 added; sessions merged into BLK-08. |
-| 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-11 | BLK-01's remaining criteria wait on the owner (D-2) and don't block anything. |
+| 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11 | BLK-01's last criterion (the PR refs) waits on GitHub Support (D-2) and doesn't block anything. |
 | 2. Event day | UPG-33 account emails → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
 | 3. Production setup | UPG-16 migrations → UPG-17 uploads → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups → UPG-22 privacy | |
 | 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check | One commit per UPG-23 area. |
-| 5. Clean-up | UPG-14 → UPG-15 | The `functions/saptha_app` copy depends on D-1. |
+| 5. Clean-up | UPG-14 → UPG-15 | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
 | 6. Release check | UPG-32 | Fresh clone, production boot, restart/two instances, all scans, `docs/DEPLOY.md`, final report. |
 
 Outside these phases (after Phase 6 unless the owner says otherwise): UPG-04 judging rubrics, UPG-09 venue booking on create, UPG-10 roster import and Google sign-in, UPG-11 participation ledger, UPG-12 faculty/external participants, UPG-13 sports fixtures.
 
 ### Decisions needed
 
-| ID | Decision | Blocks | Until decided |
+| ID | Decision | Blocks | Status |
 |---|---|---|---|
-| D-1 | **Is Cloud Run the only deploy target?** If yes, `functions/saptha_app/` (the Zoho Catalyst copy) and `catalyst.json` are removed in Phase 5. That copy still has the kiosk/ticket holes (BLK-12), the public SuperAdmin sign-up (BLK-14), the bandit findings (BLK-11) and the walk-in default password (UPG-15). If Catalyst stays, it needs a build step instead of a tracked copy. | BLK-12 criterion 4; BLK-14 criterion 3; UPG-15 criteria 3–4 | BLK-11 fixes the two flagged files in place; everything else goes ahead. |
-| D-2 | **BLK-01 owner actions:** force-push the rewritten `master`, delete the remote `main` and `claude/busy-davinci-6nkabi`, and ask GitHub Support to purge the 47 PR refs (commands in the 2026-09-29 changelog). The agent never pushes. | BLK-01 criteria 0 and 4 (CI green on GitHub); BLK-11 criterion 2 | Nothing else waits on it. |
+| D-1 | **Is Cloud Run the only deploy target?** If yes, `functions/saptha_app/` (the Zoho Catalyst copy) and `catalyst.json` are removed in Phase 5. That copy still has the kiosk/ticket holes (BLK-12), the public SuperAdmin sign-up (BLK-14), the bandit findings (BLK-11) and the walk-in default password (UPG-15). If Catalyst stays, it needs a build step instead of a tracked copy. | BLK-12 criterion 4; BLK-14 criterion 3; UPG-15 criteria 3–4 | **Decided (owner, 2026-10-01): yes, Cloud Run is the only deploy target.** UPG-15 removes `functions/saptha_app/` and `catalyst.json` in Phase 5, which completes BLK-12 criterion 4 and BLK-14 criterion 3; no Catalyst build step is needed. Until then, BLK-11 fixes the two flagged files in place so CI can go green. |
+| D-2 | **BLK-01 owner actions:** force-push the rewritten `master`, delete the remote `main` and `claude/busy-davinci-6nkabi`, and ask GitHub Support to purge the 47 PR refs (commands in the 2026-09-29 changelog). The agent never pushes. | BLK-01 criteria 0 and 4 (CI green on GitHub); BLK-11 criterion 2 | **Done (owner, 2026-10-01):** `master` force-pushed, `main` and `claude/busy-davinci-6nkabi` deleted, `production-ready` pushed, GitHub Support contacted. Verified with `git ls-remote`; BLK-01 criterion 4 is met on GitHub. **Left:** Support removing the 47 PR refs (BLK-01 criterion 0). Nothing else waits on it. |
 
 ---
 
@@ -1266,3 +1293,5 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-01 | "BLK-08: …" (parent `22598e7`) | BLK-08 | **BLK-08 DONE.** Sessions live in the app database (`session_store.py`, `flask_sessions` table; Redis when `REDIS_URL` is set), survive restarts and are shared across instances; cookies are HttpOnly, Secure in production and SameSite=Lax; empty sessions are never stored, and the shared layout no longer mints a CSRF token (and session) for anonymous page views. 5 new real-DB tests (all fail on the old code). Full pytest 467 passed on SQLite, PostgreSQL 16 and with CI's `SESSION_TYPE=filesystem`; ruff clean. |
 | 2026-10-01 | "BLK-10a: …" (parent `04d2e27`) | BLK-10 | **BLK-10a done** (BLK-10 stays IN PROGRESS for 10b). New `seed_safety.guard()`, called first by all 31 seed/setup/wipe scripts: refuses production-looking targets (including `.env`'s `CLOUD_SQL_INSTANCE` and Cloud SQL sockets) with exit 3 before any connection unless `--i-know-this-is-production` is passed; Firestore scripts must also name the project. Found while testing: a local Unix-socket PostgreSQL URL has no host and must count as local. Full pytest 626 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-10b: …" (parent `8ecdc9e`) | BLK-10 | **BLK-10 DONE** (10a + 10b). No seed/setup script uses a string literal password; passwords come from `SEED_<ROLE>_PASSWORD` or `secrets.token_urlsafe(12)` and are printed once at exit; AST scan pins every script (`tests/test_seed_safety.py::test_no_script_uses_a_string_literal_as_a_password`). Full pytest 658 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-01 | "BLK-01: …" (parent `10207cd`) | BLK-01, D-1, D-2, BLK-11, BLK-12, BLK-14, UPG-15 | **Owner actions recorded.** D-2 done: the owner force-pushed the rewritten `master`, deleted the remote `main` and `claude/busy-davinci-6nkabi`, pushed `production-ready` and contacted GitHub Support. Verified read-only [R]: `git ls-remote` shows only `master` (`56a014d`, same as local) and `production-ready` (`10207cd`) plus the 47 unchanged PR refs; neither branch's history contains a removed path; CI run 36886209908 on `master` passed the secret scan and ruff; bandit failed on the known BLK-11 findings and pytest failed (reproduced locally, recorded as BLK-15 in the next entry). BLK-01 criterion 4 ✅; criterion 0 waits only on Support removing the PR refs, so BLK-01 stays IN PROGRESS. D-1 decided: Cloud Run is the only deploy target, so UPG-15 removes `functions/saptha_app/` and `catalyst.json` in Phase 5. That completes BLK-12 criterion 4 and BLK-14 criterion 3, and UPG-15's Catalyst build-step check is dropped as obsolete. BLK-11 still fixes the two flagged files in place until then, and now notes that CI doesn't run on `production-ready` pushes (only on pushes to `main`/`master`/`develop` and on PRs into them). Docs only. |
+| 2026-10-01 | "BLK-01: …" (parent `10207cd`) | BLK-15, BLK-10, BLK-11 | **New blocker BLK-15**, found while checking CI after the push. CI's test job was reproduced in fresh clones with its exact environment, a Redis server and its exact command [R]. `master` (`56a014d`) fails `test_seminar_e2e.py::test_capacity_waitlist_and_promotion_guard`, because the Redis broker queues the promotion; BLK-05 already fixed this on `production-ready`. `production-ready` (`10207cd`) gives 657 passed, 1 failed: BLK-10's Firestore test needs the developer's git-ignored `serviceAccountKey.json`. The same mismatch means the guard checks a different key than the scripts use and accepts any project name when it finds none. Scheduled in Phase 1 before BLK-11, whose criterion 2 (every CI job green) needs it. Recorded, not fixed. |

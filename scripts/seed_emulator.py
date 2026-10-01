@@ -33,7 +33,7 @@ def run(operation, variables):
     resp = requests.post(BASE, json={
         "operationName": operation,
         "variables": variables,
-    }, headers={"Content-Type": "application/json"})
+    }, headers={"Content-Type": "application/json"}, timeout=30)
     if resp.status_code != 200:
         print(f"  ERROR {resp.status_code}: {resp.text[:200]}")
         return None

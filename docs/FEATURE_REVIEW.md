@@ -887,8 +887,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - All three BLK-04b tests fail on the old code. Full pytest: **443 passed, 1 xfailed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### BLK-05 — Route tests never run against the SQL adapter the app uses
-- **Status:** IN PROGRESS (criterion 2's first half and criterion 3 met by BLK-09)
-- **Last verified:** 2026-09-30, commit `56a014d`
+- **Status:** DONE
+- **Last verified:** 2026-10-01, commit "BLK-05: …" on `production-ready` (parent `7b394c0`)
 - **Problem:**
   - **Done by BLK-09:**
     - `tests/conftest.py:18-26` points `DATABASE_URL` at a fresh temp SQLite before any import (or `TEST_DATABASE_URL` for PostgreSQL), and `db_pg.py:110-121` gives `DATABASE_URL` precedence over `CLOUD_SQL_INSTANCE`. So tests can no longer reach a developer's Cloud SQL from `.env` [C].
@@ -899,12 +899,18 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
     - `app.py` still calls `load_dotenv()` (`app.py:51-52`), so a developer's `.env` mail/WhatsApp/Gemini credentials are live during tests. Only `real_app` stubs outbound email (`tests/test_integration_flow.py:30-32`). Confirmed in Phase 0: the local `.env` sets mail, Twilio and Gemini keys, and the Phase 0 runs had to pre-set every one of its keys to keep them out.
 - **Who benefits:** everyone building later items; every acceptance criterion needs this.
 - **What to build:** run the seminar/hackathon journey (register → check-in → score → certificate → feedback) on `real_app`; a conftest guard that clears or stubs outbound credentials (`MAIL_*`, `TWILIO_*`, `GEMINI_API_KEY`, `RAZORPAY_*`, `BREVO_API_KEY`, `RESEND_API_KEY`).
+- **What was built:**
+  - `tests/conftest.py:18-38`: before any app import, every outbound credential and service setting in `OUTBOUND_CREDENTIALS` (mail, Brevo, Resend, Twilio, Gemini/Google, Razorpay, Stripe, VAPID, AWS/GCS storage, Supabase, Sentry, OAuth, Zoho, Cloud SQL, Firebase) is set to `''`, so `load_dotenv()` can't fill them from a developer's `.env`. Celery is forced inline with an in-memory broker: CI sets `CELERY_BROKER_URL=redis://…`, under which `.delay()` would queue tasks that never run in a test (and a developer's `.env` could point at a real broker).
+  - Since BLK-02, `real_app` lives in `tests/conftest.py:398` and stubs `utils_email._send`, so no test sends mail.
+  - `tests/test_event_journey_real_db.py`: one competitive event through the real routes: SPOC creates it and appoints a judge → the student registers → SPOC check-in → room/judge allocation → the judge scores (8 and 6 → 7.0) → the event completes → the certificate waits for feedback → feedback → the certificate page shows the name.
+  - `tests/test_integration_flow.py::_login` now also fails when the login itself failed (both redirect with 302); no existing test relied on that.
+- **Found while building:** submitted scores come back with renamed keys (BLK-06 criterion 9).
 - **Files touched:** `tests/conftest.py`, `tests/test_integration_flow.py`.
 - **Effort:** S (was M) · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. ⬜ A `real_app` test runs register → check-in → score → certificate → feedback against the adapter. Register and check-in ✅ covered (`tests/test_integration_flow.py:105-146`).
-  2. ✅ Tests can't touch a developer database: `DATABASE_URL` is forced to a temp DB before import (`tests/conftest.py:18-26`) and wins over `CLOUD_SQL_INSTANCE` (`db_pg.py:110-121`). ⬜ Test: outbound-credential env vars are empty inside the test session.
-  3. ✅ All earlier tests still pass: 334 passed at `1f4cdc8` on Python 3.11 [R].
+  1. ✅ A `real_app` test runs register → check-in → score → feedback → certificate against the adapter (`tests/test_event_journey_real_db.py::test_register_checkin_score_feedback_certificate`). The certificate step is the HTML certificate page; PDF generation is UPG-06.
+  2. ✅ Tests can't touch a developer database: `DATABASE_URL` is forced to a temp DB before import (`tests/conftest.py:40-47`) and wins over `CLOUD_SQL_INSTANCE` (`db_pg.py:110-121`). ✅ After the app (and `load_dotenv()`) has loaded, every outbound credential is empty and Celery is inline on a non-Redis broker (`::test_tests_never_see_real_outbound_credentials_or_a_real_broker`). With the blanking removed and a fake `MAIL_PASS` preset, this test fails.
+  3. ✅ All earlier tests still pass: **448 passed, 1 xfailed** on SQLite, on PostgreSQL 16, and with CI's `CELERY_BROKER_URL=redis://…` set; ruff clean.
 
 #### BLK-06 — The SQL adapter loses, renames and ignores fields (postgres mode)
 - **Status:** IN PROGRESS (criteria 1, 2 and 4 partly met by BLK-09)
@@ -924,6 +930,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
     4. Rows written before `1f4cdc8` can't recover fields lost earlier (only legacy fallbacks via `_derive_legacy_event_fields`).
     5. **Hot filter fields live only in the JSON shadow** [C at `56a014d`]. `spoc_id` (referenced 23 times in `routes_spoc.py`, and by `services_permission`) has no column on `events` (`models_pg.py` has `coordinatorId` on `events` at `:342` and `spoc_email` only on announcements at `:558`), so `where('spoc_id', …)` loads every event and filters in Python (`db_adapter.py` `_py_match`). The same goes for other document-only keys routes filter on.
     6. **An organisation written without an API key is stored with `''`** (`db_adapter.py:1212`), and `organizations.apiKey` is unique (`models_pg.py:139`), so a second such organisation fails with a unique-constraint error. Found in BLK-14 [R]; the root organisation (`db_adapter.py:1782-1783`) and tenant sign-up (`routes_onboarding.py:66`) work around it by always setting a key.
+    7. **Scores come back with renamed keys** [R, found in BLK-05]. `judge.submit_score` writes `scores[<judge>] = {details, total, raw_total, remarks, judge_name, submitted_at}` (`routes_judge.py:167-176`), but on the real adapter it reads back as `{criteria, total, feedback, judge_name, timestamp}`: `raw_total` is dropped and three keys are renamed (the `Score` table has no document shadow, item 2). Code reading `details` or `remarks` gets nothing.
 - **Who benefits:** every user; this is the root cause of most PARTLY BUILT rows at `694c729`.
 - **What to build:** store role and category as plain strings (or complete the enums with every value the app writes) plus an Alembic migration; workflow states the enum doesn't know (e.g. `evaluation`) are stored as themselves, never as `active`; add `extra_json` to the remaining tables; write `actor_email` from `log_action`; add real indexed columns for hot filter fields (at least `events.spoc_id`), filled from the shadow for existing rows.
 - **Files touched:** `db_adapter.py`, `models_pg.py`, `migrations/`, `utils.py`, tests.
@@ -937,6 +944,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   6. ⬜ Test: `where('status','==','active')` excludes an event in `evaluation` (the strict xfail `tests/test_db_adapter_merge.py::test_active_filter_excludes_states_outside_the_enum` flips to a pass, and its `xfail` marker is removed).
   7. ⬜ Test: `events.spoc_id` is an indexed column; `where('spoc_id','==',x)` is answered by SQL (the compiled query has a `WHERE` on that column), and an event written with `spoc_id` in the document fills the column.
   8. ⬜ Test: two organisations written without an `api_key` can both be saved (an empty key is stored as `NULL`).
+  9. ⬜ Test: a score submitted through `/judge/submit_score` reads back with exactly the keys written (`details`, `total`, `raw_total`, `remarks`, `judge_name`, `submitted_at`).
 
 #### BLK-07 — Role migration locks out SuperAdmin and SPOC accounts
 - **Status:** TODO
@@ -1215,3 +1223,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-01 | "BLK-04a: …" (parent `8ab5005`) | BLK-04, UPG-33 | **BLK-04a done** (BLK-04 stays IN PROGRESS for 04b). Every coordinator write route checks the user's permission on that event; delete and reminder routes (and `/spoc/delete_event`) are POST only; staff roles are limited to Judge/EventCoordinator/Coordinator/Volunteer (the form could hand out `SuperAdmin`, found here); the scanner lookup returns no email, phone or answers and, like attendance marking, needs `check_in` on the event; the coordinator certificate needs the registrant or certificate staff. 8 new real-DB tests (all fail on the old code); one HUD test now assigns its coordinator. UPG-33 gains staff credentials by email/WhatsApp. Full pytest 440 passed, 1 xfailed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-04b: …" (parent `35316bb`) | BLK-04 | **BLK-04 DONE** (04a + 04b). 04b: form builder/save need `edit_event`, responses `manage_registrations`, export `export_data`; the personal calendar feed ignores `?user=` and serves calendar apps through a signed per-user token with a "Reset link" that invalidates old links; session-cookie writes to `/api/v1` need the CSRF token while Bearer-token calls are unchanged (copilot modal sends the header). 3 new real-DB tests (all fail on the old code). Full pytest 443 passed, 1 xfailed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-12: …" (parent `f2ce15b`) | BLK-12, UPG-02 | **BLK-12 DONE for the root app** (the `functions/` copy waits on D-1). 3 real-DB tests pin kiosk access and privacy, signed-token-only ticket verify with staff-only check-in, and owner + fresh-code self check-in; each was shown to fail when its hole was briefly reintroduced. No app code changed. UPG-02 gains the verify POST's missing-event gap. Full pytest 446 passed, 1 xfailed on SQLite and PostgreSQL 16; ruff clean. **Five items marked DONE since the Phase 0 re-verification** (BLK-02, BLK-14, BLK-03, BLK-04, BLK-12): AGENTS.md rule 8 suggests a re-verification pass; it's scheduled for the end of Phase 1. |
+| 2026-10-01 | "BLK-05: …" (parent `7b394c0`) | BLK-05, BLK-06 | **BLK-05 DONE.** `tests/conftest.py` blanks every outbound credential before the app loads `.env`, and forces inline Celery on an in-memory broker (CI's Redis broker would have queued tasks that never run). New real-DB journey: create → appoint judge → register → check-in → allocate → score → complete → feedback → certificate. `_login` now fails on a failed login. BLK-06 gains renamed score keys (criterion 9). Full pytest 448 passed, 1 xfailed on SQLite, PostgreSQL 16 and with CI's broker variable; ruff clean. |

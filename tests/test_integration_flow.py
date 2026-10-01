@@ -27,6 +27,10 @@ def _login(flask_app, email, role):
     client = flask_app.test_client()
     resp = client.post('/login', data={'role': role, 'email': email, 'password': PASSWORD})
     assert resp.status_code == 302, resp.data[:300]
+    # A failed login also redirects (back to /login); make sure this one worked
+    assert resp.headers['Location'] != '/login', f"login failed for {email} as {role}"
+    with client.session_transaction() as sess:
+        assert sess.get('user_id') == email
     return client
 
 

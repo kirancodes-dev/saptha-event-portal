@@ -15,6 +15,29 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("FLASK_ENV", "development")
 os.environ["FORCE_HTTPS"] = "false"
 
+# Tests never use a developer's real outbound credentials or services (BLK-05).
+# app.py calls load_dotenv(), which never overrides a variable that's already
+# set, so blanking these before any app import keeps .env's values out.
+OUTBOUND_CREDENTIALS = (
+    'MAIL_USER', 'MAIL_PASS', 'MAIL_PASSWORD', 'BREVO_API_KEY', 'RESEND_API_KEY',
+    'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_FROM',
+    'GEMINI_API_KEY', 'GOOGLE_API_KEY',
+    'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'STRIPE_SECRET_KEY',
+    'VAPID_PRIVATE_KEY', 'VAPID_PUBLIC_KEY',
+    'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_STORAGE_BUCKET_NAME', 'GCS_BUCKET_NAME',
+    'STORAGE_TYPE', 'SUPABASE_URL', 'SUPABASE_KEY', 'SENTRY_DSN',
+    'OAUTH_GOOGLE_CLIENT_ID', 'OAUTH_GOOGLE_CLIENT_SECRET',
+    'OAUTH_MICROSOFT_CLIENT_ID', 'OAUTH_MICROSOFT_CLIENT_SECRET',
+    'ZOHO_AUTH_TOKEN', 'CATALYST_AUTH_TOKEN',
+    'CLOUD_SQL_INSTANCE', 'DB_PASS', 'FIREBASE_CREDENTIALS', 'GOOGLE_APPLICATION_CREDENTIALS',
+)
+for _name in OUTBOUND_CREDENTIALS:
+    os.environ[_name] = ''
+# Background tasks run inline, never on a real broker (CI and a developer's
+# .env may point CELERY_BROKER_URL at Redis, where nothing would run them).
+os.environ['CELERY_BROKER_URL'] = 'memory://'
+os.environ['CELERY_RESULT_BACKEND'] = 'cache+memory://'
+
 # Point the SQL layer at a throwaway database before any app module is
 # imported, so tests never touch a developer's local data. Set
 # TEST_DATABASE_URL (e.g. an empty PostgreSQL database) to test against it.

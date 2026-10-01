@@ -4,7 +4,9 @@ import hmac as _hmac  # alias to avoid shadowing module with local var
 import os
 import time
 from flask import (Blueprint, flash, jsonify, redirect, render_template, request, session)
-from utils import record_form_submission
+from services_payments import (PaymentError, amount_inr, attach_registration, claim_order,
+                               record_order, server_price, simulation_enabled)
+from utils import login_required, record_form_submission
 
 try:
     import razorpay
@@ -62,38 +64,52 @@ def _rzp():
 # =========================================================
 @payment_bp.route('/create_order', methods=['POST'])
 def create_order():
-    """Return a Razorpay order_id + key for the frontend to open the checkout popup."""
+    """Return a Razorpay order for the session's pending registration.
+
+    The amount is computed on the server and the order is recorded
+    (order ↔ event ↔ payer ↔ amount) so /verify can check it (BLK-03).
+    """
     reg_data = session.get('pending_reg_data')
     if not reg_data:
         return jsonify({'error': 'No pending registration'}), 400
 
-    event_id = request.json.get('event_id', '')
+    body = request.get_json(silent=True) or {}
+    event_id = str(reg_data.get('event_id') or body.get('event_id', ''))
+    if body.get('event_id') and str(body['event_id']) != event_id:
+        return jsonify({'error': 'This event does not match your registration'}), 400
     event_doc = _db().collection('events').document(event_id).get()
     if not event_doc.exists:
         return jsonify({'error': 'Event not found'}), 404
 
-    from routes_dynamic_pricing import calculate_surge_price
-    base_price = float(event_doc.to_dict().get('entry_fee', 0) or 0)
-    amount_inr, multiplier, reason = calculate_surge_price(event_id, base_price)
-    amount_paise = int(amount_inr * 100)  # Razorpay uses paise
+    try:
+        price = server_price(_db(), event_id, event_doc.to_dict() or {}, body.get('coupon', ''))
+    except PaymentError as exc:
+        return jsonify({'error': str(exc)}), exc.status
+    if price['amount_paise'] < 100:
+        return jsonify({'error': 'The amount to pay must be at least ₹1'}), 400
 
     if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
-        # Keys not configured — fall through to simulation
-        return jsonify({'simulate': True, 'amount': amount_inr, 'event_id': event_id, 'multiplier': multiplier, 'reason': reason})
+        if simulation_enabled():
+            return jsonify({'simulate': True, 'amount': price['amount_inr'], 'event_id': event_id,
+                            'multiplier': price['multiplier'], 'reason': price['reason']})
+        return jsonify({'error': 'Online payment is not configured. Please contact the organiser.'}), 503
 
+    email = (reg_data.get('lead_email') or '').lower()
     order = _rzp().order.create({  # type: ignore[union-attr]
-        'amount':   amount_paise,
+        'amount':   price['amount_paise'],
         'currency': 'INR',
         'receipt':  f"reg_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}",
-        'notes':    {'event_id': event_id, 'email': reg_data.get('lead_email', '')},
+        'notes':    {'event_id': event_id, 'email': email},
     })
+    record_order(order['id'], event_id, email, price['amount_paise'], price['coupon_code'])
+    session['pending_reg_data'] = dict(reg_data, event_id=event_id)
     return jsonify({
         'order_id': order['id'],
         'key':      RAZORPAY_KEY_ID,
-        'amount':   amount_paise,
+        'amount':   price['amount_paise'],
         'event_id': event_id,
         'name':     reg_data.get('lead_name', ''),
-        'email':    reg_data.get('lead_email', ''),
+        'email':    email,
     })
 
 
@@ -102,37 +118,70 @@ def create_order():
 # =========================================================
 @payment_bp.route('/verify', methods=['POST'])
 def verify_payment():
-    """Verify Razorpay signature and complete registration."""
-    data = request.json or {}
-    razorpay_order_id   = data.get('razorpay_order_id', '')
-    razorpay_payment_id = data.get('razorpay_payment_id', '')
-    razorpay_signature  = data.get('razorpay_signature', '')
-    event_id            = data.get('event_id', '')
+    """Verify a Razorpay payment against the order this server recorded (BLK-03).
+
+    Fails closed without keys; checks the signature AND that the order was
+    created here for the session's pending event and payer; records the
+    stored amount, never one from the request; a payment ID works once.
+    """
+    if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+        return jsonify({'error': 'Online payment is not configured.'}), 503
+
+    data = request.get_json(silent=True) or {}
+    razorpay_order_id   = str(data.get('razorpay_order_id', ''))
+    razorpay_payment_id = str(data.get('razorpay_payment_id', ''))
+    razorpay_signature  = str(data.get('razorpay_signature', ''))
+    if not (razorpay_order_id and razorpay_payment_id and razorpay_signature):
+        return jsonify({'error': 'Missing payment details'}), 400
 
     expected = _hmac.new(
         RAZORPAY_KEY_SECRET.encode(),
         f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
         hashlib.sha256,
     ).hexdigest()
-
     if not _hmac.compare_digest(expected, razorpay_signature):
         return jsonify({'error': 'Invalid signature'}), 400
 
     reg_data = session.get('pending_reg_data')
     if not reg_data:
         return jsonify({'error': 'Session expired'}), 400
+    event_id = str(reg_data.get('event_id', ''))
 
-    amount = data.get('amount_inr', 0)
+    try:
+        order = claim_order(razorpay_order_id, razorpay_payment_id, event_id,
+                            reg_data.get('lead_email', ''))
+    except PaymentError as exc:
+        log_action(_db(), "PAYMENT_REJECTED",
+                   f"Order {razorpay_order_id} / {razorpay_payment_id} for event {event_id}: {exc}")
+        return jsonify({'error': str(exc)}), exc.status
+
     result = _complete_registration(
         event_id=event_id,
         reg_data=reg_data,
         payment_status='Paid',
-        amount_paid=int(amount),
+        amount_paid=amount_inr(order['amount_paise']),
         razorpay_payment_id=razorpay_payment_id,
+        razorpay_order_id=razorpay_order_id,
     )
     if 'error' in result:
+        log_action(_db(), "PAYMENT_UNMATCHED",
+                   f"Paid order {razorpay_order_id} could not complete a registration: {result['error']}")
         return jsonify(result), 400
+    attach_registration(razorpay_order_id, result['reg_id'])
+    if order.get('coupon_code'):
+        _use_coupon(event_id, order['coupon_code'])
     return jsonify({'redirect': _after_payment_url(result)})
+
+
+def _use_coupon(event_id, code):
+    try:
+        for doc in (_db().collection('coupons')
+                    .where(filter=FieldFilter('code', '==', code))
+                    .where(filter=FieldFilter('event_id', '==', event_id))
+                    .limit(1).stream()):
+            _db().collection('coupons').document(doc.id).update({'current_uses': firestore.Increment(1)})
+    except Exception as exc:
+        log_action(_db(), "COUPON_USE_FAILED", f"{code} on {event_id}: {exc}")
 
 
 # =========================================================
@@ -148,20 +197,11 @@ def checkout(event_id):
     # Duplicate guard — catch it before showing payment UI
     email = reg_data.get('lead_email', '')
     if email:
-        try:
-            from google.cloud.firestore_v1.base_query import FieldFilter
-        except Exception:
-            google = None
-        existing = list(
-            _db().collection('registrations')
-              .where(filter=FieldFilter('event_id', '==', event_id))
-              .where(filter=FieldFilter('lead_email', '==', email))
-              .limit(1).stream()
-        )
-        if existing:
+        blocking, _ = _existing_registration(event_id, email, reg_data.get('reg_id', ''))
+        if blocking is not None:
             session.pop('pending_reg_data', None)
             flash("You are already registered for this event. Here is your ticket.", "info")
-            return redirect(f"/ticket/{existing[0].id}")
+            return redirect(f"/ticket/{blocking.id}")
 
     event_doc = _db().collection('events').document(event_id).get()
     if not event_doc.exists:
@@ -169,7 +209,10 @@ def checkout(event_id):
         return redirect('/')
 
     event  = event_doc.to_dict()
-    amount = event.get('entry_fee', 0)
+    try:
+        amount = server_price(_db(), event_id, event)['amount_inr']
+    except PaymentError:
+        amount = event.get('entry_fee', 0)
     user   = {
         'name':  reg_data.get('lead_name'),
         'email': reg_data.get('lead_email'),
@@ -185,21 +228,35 @@ def checkout(event_id):
 # =========================================================
 # SHARED HELPER — write registration to Firestore + notify
 # =========================================================
+def _existing_registration(event_id, email, reg_id=''):
+    """Return (blocking_doc, held_doc) for this payer and event.
+
+    A registration held as pending_payment under the same reg_id (e.g. a
+    waitlist promotion paid through /payment/pay) doesn't block payment.
+    """
+    for doc in (_db().collection('registrations')
+                  .where(filter=FieldFilter('event_id', '==', event_id))
+                  .where(filter=FieldFilter('lead_email', '==', email))
+                  .limit(5).stream()):
+        data = doc.to_dict() or {}
+        held = (reg_id and (data.get('reg_id') == reg_id or doc.id == reg_id)
+                and str(data.get('status', '')).lower() == 'pending_payment')
+        if held:
+            return None, doc
+        return doc, None
+    return None, None
+
+
 def _complete_registration(event_id, reg_data, payment_status='Paid',
-                            amount_paid=0, razorpay_payment_id=''):
+                            amount_paid=0, razorpay_payment_id='', razorpay_order_id=''):
     email  = reg_data.get('lead_email')
     name   = reg_data.get('lead_name')
     phone  = reg_data.get('lead_phone', '')
     reg_id = reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}"
 
     try:
-        existing = list(
-            _db().collection('registrations')
-              .where(filter=FieldFilter('event_id', '==', event_id))
-              .where(filter=FieldFilter('lead_email', '==', email))
-              .limit(1).stream()
-        )
-        if existing:
+        blocking, held = _existing_registration(event_id, email, reg_id)
+        if blocking is not None:
             session.pop('pending_reg_data', None)
             return {'error': 'already_registered'}
 
@@ -209,6 +266,7 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             'payment_status':       payment_status,
             'amount_paid':          amount_paid,
             'razorpay_payment_id':  razorpay_payment_id,
+            'razorpay_order_id':    razorpay_order_id,
             'is_eliminated':        False,
             'current_round':        1,
         })
@@ -226,8 +284,10 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
 
         event_ref  = _db().collection('events').document(event_id)
         event_data = event_ref.get().to_dict() or {}
-        # Atomic increment — safe under concurrent registrations
-        event_ref.update({'registration_count': firestore.Increment(1)})
+        # Atomic increment — safe under concurrent registrations. A held
+        # (pending_payment) seat was already counted when it was held.
+        if held is None:
+            event_ref.update({'registration_count': firestore.Increment(1)})
 
         event_title = event_data.get('title', 'Event')
         event_date  = event_data.get('date', '')
@@ -280,19 +340,28 @@ def _after_payment_url(result):
 # =========================================================
 @payment_bp.route('/process', methods=['POST'])
 def process_payment():
-    event_id = request.form.get('event_id', '').strip()
-    amount   = int(request.form.get('amount', '0') or 0)
+    """Simulated payment for development: only with PAYMENT_SIMULATION=true,
+    never in production; the amount is always computed on the server."""
+    if not simulation_enabled():
+        return "Payment simulation is disabled.", 403
 
     reg_data = session.get('pending_reg_data')
     if not reg_data:
         flash("Session expired. Please start registration again.", "danger")
         return redirect('/')
 
+    event_id = str(reg_data.get('event_id') or request.form.get('event_id', '').strip())
+    event_doc = _db().collection('events').document(event_id).get()
+    if not event_doc.exists:
+        flash("Event not found.", "danger")
+        return redirect('/')
+    price = server_price(_db(), event_id, event_doc.to_dict() or {})
+
     result = _complete_registration(
         event_id=event_id,
         reg_data=reg_data,
         payment_status='Paid (Simulation)',
-        amount_paid=amount,
+        amount_paid=amount_inr(price['amount_paise']),
     )
     if result.get('error') == 'already_registered':
         flash("You are already registered for this event.", "warning")
@@ -301,3 +370,24 @@ def process_payment():
         flash(f"Payment failed: {result['error']}", "danger")
         return redirect('/')
     return redirect(_after_payment_url(result))
+
+
+# =========================================================
+# 3. PAY FOR A HELD REGISTRATION (e.g. promoted from the waitlist)
+# =========================================================
+@payment_bp.route('/pay/<reg_id>')
+@login_required
+def pay_pending(reg_id):
+    doc = _db().collection('registrations').document(reg_id).get()
+    reg = doc.to_dict() if doc.exists else None
+    if not reg or (reg.get('lead_email') or '').lower() != (session.get('user_id') or '').lower():
+        flash("Registration not found.", "warning")
+        return redirect('/participant/dashboard')
+    if str(reg.get('status', '')).lower() != 'pending_payment':
+        flash("This registration doesn't need a payment.", "info")
+        return redirect(f"/ticket/{reg_id}")
+    import json as _json
+    pending = _json.loads(_json.dumps(reg, default=str))
+    pending['reg_id'] = reg.get('reg_id') or reg_id
+    session['pending_reg_data'] = pending
+    return redirect(f"/payment/checkout/{reg.get('event_id')}")

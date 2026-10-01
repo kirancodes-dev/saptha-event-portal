@@ -8,6 +8,7 @@ Blueprint prefix: /waitlist
 """
 import logging
 import datetime
+import os
 import uuid
 
 from flask import Blueprint, request, session, jsonify
@@ -16,7 +17,7 @@ try:
 except ImportError:
     FieldFilter = None
 
-from utils import login_required, role_required
+from utils import login_required, role_required, safe_int
 
 logger = logging.getLogger(__name__)
 waitlist_bp = Blueprint("waitlist", __name__, url_prefix="/waitlist")
@@ -182,6 +183,36 @@ def view_waitlist(event_id):
     return jsonify({"waitlist": waitlist, "total": len(waitlist)})
 
 
+def promotion_terms(ev: dict, reg_id: str) -> dict:
+    """How a waitlist promotion is recorded and announced (BLK-03).
+
+    A paid event's seat is held as pending_payment with a pay link and is
+    confirmed only after a verified payment; a free event is confirmed.
+    Used by auto_promote and tasks.waitlist_tasks.promote_from_waitlist.
+    """
+    title = ev.get("title", "Event")
+    is_paid = safe_int(ev.get("fee", 0)) > 0 or safe_int(ev.get("entry_fee", 0)) > 0
+    pay_path = f"/payment/pay/{reg_id}"
+    base_url = os.environ.get("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+    if is_paid:
+        return {
+            "is_paid": True, "status": "pending_payment", "payment_status": "Pending",
+            "notif_title": f"A spot opened: pay to confirm {title}",
+            "notif_message": "A spot opened up for you. Pay the fee to confirm your registration.",
+            "link": pay_path,
+            "subject": f"A seat opened for {title}: pay to confirm",
+            "email_line": f"Pay the fee to confirm your seat: {base_url}{pay_path}\n",
+        }
+    return {
+        "is_paid": False, "status": "Confirmed", "payment_status": "Free",
+        "notif_title": f"You're in! {title}",
+        "notif_message": "A spot opened up and you've been promoted from the waitlist!",
+        "link": f"/event/{ev.get('id', '')}" if ev.get("id") else "/participant/dashboard",
+        "subject": f"Great news! Your waitlist spot for {title} is confirmed",
+        "email_line": "Your registration is now confirmed.\n",
+    }
+
+
 def auto_promote(db, event_id: str):
     """Auto-promote the next person on the waitlist.
 
@@ -213,10 +244,13 @@ def auto_promote(db, event_id: str):
 
         reg_data = wl.get("reg_data") or {}
         reg_id = reg_data.get("reg_id") or str(uuid.uuid4())
+        terms = promotion_terms(dict(ev, id=event_id), reg_id)
+        status, payment_status = terms["status"], terms["payment_status"]
         if reg_data:
             reg_data.update({
-                "status": "Confirmed",
-                "payment_status": "unpaid" if ev.get("fee", 0) > 0 or ev.get("entry_fee", 0) > 0 else "free",
+                "reg_id": reg_id,
+                "status": status,
+                "payment_status": payment_status,
                 "attendance": "Pending",
                 "source": "waitlist_promotion",
                 "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -229,8 +263,8 @@ def auto_promote(db, event_id: str):
                 "lead_name": name,
                 "lead_email": email,
                 "lead_phone": wl.get("phone", ""),
-                "status": "Confirmed",
-                "payment_status": "unpaid" if ev.get("fee", 0) > 0 or ev.get("entry_fee", 0) > 0 else "free",
+                "status": status,
+                "payment_status": payment_status,
                 "attendance": "Pending",
                 "source": "waitlist_promotion",
                 "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -251,9 +285,8 @@ def auto_promote(db, event_id: str):
             from routes_notifications_v2 import create_notification
             create_notification(
                 db, user_email=email, notif_type="waitlist_promoted",
-                title=f"You're in! {ev.get('title', 'Event')}",
-                message="A spot opened up and you've been promoted from the waitlist!",
-                link=f"/event/{event_id}",
+                title=terms["notif_title"], message=terms["notif_message"],
+                link=terms["link"],
             )
         except Exception:
             pass
@@ -263,12 +296,12 @@ def auto_promote(db, event_id: str):
             from tasks.email_tasks import send_generic_email_task
             send_generic_email_task.delay(
                 to_email=email,
-                subject=f"Great news! Your waitlist spot for {ev.get('title', 'Event')} is confirmed",
+                subject=terms["subject"],
                 body=(
                     f"Hi {name},\n\n"
                     f"A seat has opened up and you've been promoted from the waitlist for "
                     f"{ev.get('title', 'Event')}!\n\n"
-                    f"Your registration is now confirmed.\n"
+                    f"{terms['email_line']}"
                     f"Registration ID: {reg_id}\n"
                     f"Event Date: {ev.get('date', '')}\n"
                     f"Venue: {ev.get('venue', 'SNPSU Campus')}\n\n"
@@ -279,6 +312,6 @@ def auto_promote(db, event_id: str):
             pass
 
         logger.info("Waitlist promotion: %s for event %s", email, event_id)
-        return {"user_email": email, "registration_id": reg_id}
+        return {"user_email": email, "registration_id": reg_id, "status": status}
 
     return None

@@ -204,8 +204,9 @@ def test_gamification_leaderboards(auth_client, mock_db):
     assert depts[1]['total_xp'] == 200
 
 
-def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event):
+def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event, monkeypatch):
     """Test user registration awards +50 XP and ticket scanner check-in awards +150 XP."""
+    monkeypatch.setenv('PAYMENT_SIMULATION', 'true')  # BLK-03: the simulated checkout needs the flag
     # Register a new student
     mock_db.collection('users').document('stud_xp@test.edu').set({
         'name': 'XP Student',

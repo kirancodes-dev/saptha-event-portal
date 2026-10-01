@@ -108,39 +108,13 @@ def validate_coupon():
     if not code or not event_id:
         return jsonify({"valid": False, "error": "Code and event_id required"}), 400
 
-    # Find coupon
-    coupon = None
-    for doc in (
-        db.collection("coupons")
-        .where(filter=FieldFilter("code", "==", code))
-        .where(filter=FieldFilter("event_id", "==", event_id))
-        .where(filter=FieldFilter("is_active", "==", True))
-        .limit(1)
-        .stream()
-    ):
-        coupon = doc.to_dict()
-        coupon["_doc_id"] = doc.id
-
+    # Same rules the server applies when it prices an order (BLK-03)
+    from services_payments import coupon_discount, find_valid_coupon
+    coupon, error = find_valid_coupon(db, code, event_id)
     if not coupon:
-        return jsonify({"valid": False, "error": "Invalid or expired coupon code"})
+        return jsonify({"valid": False, "error": error})
 
-    # Check usage limit
-    if coupon["current_uses"] >= coupon["max_uses"]:
-        return jsonify({"valid": False, "error": "Coupon usage limit reached"})
-
-    # Check validity period
-    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    if coupon.get("valid_until") and now > coupon["valid_until"]:
-        return jsonify({"valid": False, "error": "Coupon has expired"})
-    if coupon.get("valid_from") and now < coupon["valid_from"]:
-        return jsonify({"valid": False, "error": "Coupon is not yet active"})
-
-    # Calculate discount
-    if coupon["discount_type"] == "percentage":
-        discount = round(original_amount * coupon["discount_value"] / 100, 2)
-    else:
-        discount = min(coupon["discount_value"], original_amount)
-
+    discount = coupon_discount(coupon, original_amount)
     final_amount = max(0, original_amount - discount)
 
     return jsonify({

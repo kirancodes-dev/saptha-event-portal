@@ -547,6 +547,28 @@ class PushSubscription(Base):
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+class PaymentOrder(Base):
+    """A Razorpay order created by this server (BLK-03).
+
+    Payment verification accepts only orders recorded here, for the same
+    event, payer and amount; ``payment_id`` is unique so a payment can be
+    used once.
+    """
+    __tablename__ = "payment_orders"
+
+    id           = Column(String(128), primary_key=True)  # Razorpay order id
+    event_id     = Column("eventId", String(128), nullable=False, index=True)
+    email        = Column(String(255), nullable=False, index=True)
+    amount_paise = Column("amountPaise", Integer, nullable=False)
+    currency     = Column(String(8), nullable=False, default="INR")
+    coupon_code  = Column("couponCode", String(64), nullable=True)
+    status       = Column(String(20), nullable=False, default="created")  # created | paid
+    payment_id   = Column("paymentId", String(128), nullable=True, unique=True)
+    reg_id       = Column("regId", String(128), nullable=True)
+    created_at   = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    paid_at      = Column("paidAt", DateTime(timezone=True), nullable=True)
+
+
 class Announcement(Base):
     __tablename__ = "announcements"
 

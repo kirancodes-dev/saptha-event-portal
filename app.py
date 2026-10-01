@@ -9,7 +9,7 @@ except ImportError:
     firebase_admin = None
     credentials = None
     firestore = None
-from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
+from flask import Flask, render_template, session, redirect, request, jsonify, Response, g, flash
 try:
     from flask_mail import Mail
 except ImportError:
@@ -1106,13 +1106,50 @@ def events_calendar():
 # =========================================================
 # PERSONAL CALENDAR FEED (.ICS)
 # =========================================================
+def calendar_feed_url():
+    """Subscribe URL for the logged-in user's feed (signed token; BLK-04)."""
+    email = (session.get('user_id') or '').lower()
+    if not email:
+        return '/calendar/feed.ics'
+    from services_accounts import make_calendar_feed_token
+    try:
+        udoc = db.collection('users').document(email).get()
+        version = (udoc.to_dict() or {}).get('calendar_feed_version', 0) if udoc.exists else 0
+    except Exception:
+        version = 0
+    return f"/calendar/feed.ics?token={make_calendar_feed_token(email, version)}"
+
+
+app.jinja_env.globals.update(calendar_feed_url=calendar_feed_url)
+
+
+@app.route('/calendar/feed/rotate', methods=['POST'])
+def rotate_calendar_feed():
+    """Invalidate every earlier subscribe link for this user."""
+    email = (session.get('user_id') or '').lower()
+    if not email:
+        return redirect('/login')
+    udoc = db.collection('users').document(email).get()
+    version = int((udoc.to_dict() or {}).get('calendar_feed_version', 0) or 0) if udoc.exists else 0
+    db.collection('users').document(email).update({'calendar_feed_version': version + 1})
+    flash("Your calendar link was reset. Re-subscribe with the new link.", "info")
+    return redirect(request.referrer if request.referrer and request.referrer.startswith(request.host_url) else '/participant/my_events')
+
+
 @app.route('/calendar/feed.ics')
 def personal_calendar_feed():
-    """Download RFC 5545 standard personal iCalendar feed for user's registered events."""
+    """Download RFC 5545 standard personal iCalendar feed for user's registered events.
+
+    Only the logged-in user's own events, or the user named by a signed feed
+    token (for calendar apps). ``?user=`` is ignored (BLK-04).
+    """
     from flask import Response
     from services_venue import generate_calendar_feed_ics
 
-    user_email = session.get('user_id') or request.args.get('user')
+    user_email = session.get('user_id')
+    if not user_email and request.args.get('token'):
+        from services_accounts import load_calendar_feed_token
+        user_email = load_calendar_feed_token(request.args['token'], db)
     if not user_email:
         empty_ics = (
             "BEGIN:VCALENDAR\r\n"

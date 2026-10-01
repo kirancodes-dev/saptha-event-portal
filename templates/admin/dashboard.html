@@ -846,7 +846,7 @@ async function generateAiProposal() {
   try {
     const res = await fetch('/api/v1/ai/copilot/propose', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
       body: JSON.stringify({ prompt: promptText })
     });
     const result = await res.json();
@@ -915,7 +915,7 @@ async function approveAiProposal() {
   try {
     const res = await fetch(`/api/v1/ai/copilot/proposals/${currentAiProposalId}/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' }
     });
     const result = await res.json();
     if (!res.ok || result.status !== 'success') {

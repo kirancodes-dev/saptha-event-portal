@@ -108,3 +108,32 @@ def send_set_password_link(db, email: str, name: str) -> bool:
 def is_safe_next(target: str) -> bool:
     """Only same-site relative paths may be used as a post-login redirect."""
     return bool(target) and target.startswith('/') and not target.startswith('//') and '\\' not in target
+
+
+# ── Personal calendar feed (BLK-04) ──────────────────────────────────────────
+# Calendar apps can't send the session cookie, so the subscribe URL carries a
+# signed per-user token. Bumping the user's calendar_feed_version (rotate)
+# invalidates every older link.
+CALENDAR_FEED_SALT = 'sapthaevent-calendar-feed'
+
+
+def make_calendar_feed_token(email: str, version: int = 0) -> str:
+    from itsdangerous import URLSafeSerializer
+    return URLSafeSerializer(current_app.config['SECRET_KEY'], salt=CALENDAR_FEED_SALT).dumps(
+        {'e': email.lower(), 'v': int(version or 0)})
+
+
+def load_calendar_feed_token(token: str, db) -> Optional[str]:
+    """Return the email a feed token belongs to, or None if invalid or rotated."""
+    from itsdangerous import URLSafeSerializer
+    try:
+        data = URLSafeSerializer(current_app.config['SECRET_KEY'], salt=CALENDAR_FEED_SALT).loads(token)
+    except BadSignature:
+        return None
+    email = (data or {}).get('e', '')
+    doc = db.collection('users').document(email).get() if email else None
+    if not doc or not doc.exists:
+        return None
+    if int((doc.to_dict() or {}).get('calendar_feed_version', 0) or 0) != int(data.get('v', -1)):
+        return None
+    return email

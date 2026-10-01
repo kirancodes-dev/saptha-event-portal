@@ -25,7 +25,7 @@ import time
 
 logger = logging.getLogger(__name__)
 
-from flask import (Blueprint, Response, current_app, flash, jsonify,
+from flask import (Blueprint, Response, abort, current_app, flash, jsonify,
                    redirect, render_template, request, session)
 try:
     from google.cloud import firestore
@@ -68,6 +68,13 @@ from typing import Optional
 
 forms_bp      = Blueprint('forms', __name__, url_prefix='/forms')
 BUILDER_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
+
+
+def _allowed(event_id, event: dict, permission: str) -> bool:
+    """The session's permission on this event (BLK-04): owners edit forms,
+    assigned staff see responses, export needs export_data."""
+    from services_permission import can
+    return can(session, permission, dict(event or {}, id=event_id), db=db)
 
 
 # =========================================================
@@ -221,6 +228,8 @@ def builder(event_id):
 
     event       = event_doc.to_dict()
     event['id'] = event_id
+    if not _allowed(event_id, event, 'edit_event'):
+        abort(403)
     existing    = _get_form(event_id)
 
     return render_template(
@@ -238,6 +247,11 @@ def builder(event_id):
 @login_required
 @role_required(BUILDER_ROLES)
 def save_form(event_id):
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        return jsonify({'success': False, 'error': 'Event not found'}), 404
+    if not _allowed(event_id, event_doc.to_dict(), 'edit_event'):
+        return jsonify({'success': False, 'error': 'Not authorised for this event'}), 403
     try:
         payload    = request.get_json(force=True) or {}
         form_type  = payload.get('form_type', 'simple')
@@ -613,6 +627,8 @@ def view_responses(event_id):
 
     event       = event_doc.to_dict()
     event['id'] = event_id
+    if not _allowed(event_id, event, 'manage_registrations'):
+        abort(403)
     schema      = _get_form(event_id) or {'fields': []}
 
     submissions = []
@@ -638,7 +654,11 @@ def view_responses(event_id):
 @role_required(BUILDER_ROLES)
 def export_responses(event_id):
     event_doc = db.collection('events').document(event_id).get()
-    event     = event_doc.to_dict() if event_doc.exists else {}
+    if not event_doc.exists:
+        abort(404)
+    event     = event_doc.to_dict() or {}
+    if not _allowed(event_id, event, 'export_data'):
+        abort(403)
     schema    = _get_form(event_id) or {'fields': []}
     fields    = schema.get('fields', [])
 

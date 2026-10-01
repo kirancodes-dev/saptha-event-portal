@@ -3,6 +3,13 @@ seed_emulator.py — Seed 30 events into the SQL Connect local emulator.
 Emulator must be running: firebase emulators:start --only dataconnect
 Run: python scripts/seed_emulator.py
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+import os as _os, sys as _sys  # noqa: E401,E402
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from seed_safety import guard  # noqa: E402
+guard()
+
 import sys
 from datetime import date, timedelta
 

@@ -5,6 +5,11 @@ Automatically creates all database tables (users, events, registrations, forms,
 scores, audit logs) and seeds the initial SuperAdmin account.
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
+
 import os
 import sys
 import logging

@@ -8,6 +8,11 @@ Covers all participation types: Solo (Individual), Team (Group), Both.
 Covers both Free and Paid events with custom form schemas and HD Unsplash banners.
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
+
 import os
 import sys
 import datetime

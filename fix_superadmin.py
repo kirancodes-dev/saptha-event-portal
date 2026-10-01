@@ -7,6 +7,11 @@ Usage:
 It will print the email and new password to the terminal.
 Delete this file after you've logged in successfully.
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
 import os
 import datetime
 try:

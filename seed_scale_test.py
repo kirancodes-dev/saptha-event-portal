@@ -1,6 +1,11 @@
 """
 seed_scale_test.py — Bulk seeds 5,000 registrations to Supabase PostgreSQL for scale testing.
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
 import os
 import sys
 import uuid

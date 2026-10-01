@@ -22,6 +22,11 @@ What this script creates:
 Run:  python seed_live_demo.py
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard(firestore=True)
+
+
 import sys
 import datetime
 import os

@@ -7,6 +7,11 @@ Paid: 3 events (1 per category). Rest are free.
 No judges, coordinators, or students loaded.
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
+
 import sys
 import datetime
 sys.path.insert(0, '.')

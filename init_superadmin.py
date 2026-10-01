@@ -9,6 +9,11 @@ Usage:
 The values can also come from .env. Uses the same database as the app
 (DATABASE_URL, or the local SQLite file in development).
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
 import datetime
 import os
 import sys

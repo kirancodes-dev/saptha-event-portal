@@ -18,6 +18,11 @@ with all lifecycle details:
 - Judge scoring submission
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
+
 import sys
 import datetime
 from werkzeug.security import generate_password_hash

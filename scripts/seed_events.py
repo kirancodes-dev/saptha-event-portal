@@ -2,6 +2,13 @@
 seed_events.py — Seed 30 upcoming events + SPOC user in Firestore.
 Run from project root: python scripts/seed_events.py
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+import os as _os, sys as _sys  # noqa: E401,E402
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from seed_safety import guard  # noqa: E402
+guard(firestore=True)
+
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

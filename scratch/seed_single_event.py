@@ -3,6 +3,13 @@ seed_single_event.py — Seeds a single active event for testing.
 Wipes existing events, registrations, and mock users,
 then creates a clean environment under biradark543@gmail.com SPOC.
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+import os as _os, sys as _sys  # noqa: E401,E402
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from seed_safety import guard  # noqa: E402
+guard(firestore=True)
+
 import os
 import sys
 import datetime

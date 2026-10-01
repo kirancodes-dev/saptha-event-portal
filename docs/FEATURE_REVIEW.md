@@ -100,7 +100,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Android app | Webview wrapper [C] | `capacitor.config.json:5-6` | Loads `https://saptha-portal.railway.app`; no native or offline features. |
 | Payment failure page | WORKING [R at `1f4cdc8`] | `templates/payment/failed.html:1` | Now extends `base_classic.html`; 200 [R]. |
 | Login rate limiting | NOT CONNECTED [C at `56a014d`] | `security_middleware.py:49-110`, `config.py:114` | Per-IP and per-account helpers exist but nothing calls them; `/login` has no limit (BLK-13). |
-| Sessions | PARTLY BUILT [C at `56a014d`] | `config.py:52-61` | Files in `/tmp/flask_session`: lost on restart, not shared between instances, pruned past 500 (BLK-08). |
+| Sessions | WORKING [R at BLK-08] | `session_store.py`, `config.py:48-63` | In the database (Redis if `REDIS_URL`): survive restarts, shared by instances, none for plain anonymous page views (BLK-08). |
 | Database migrations | PARTLY BUILT [R at `56a014d`] | `migrations/versions/`, `db_adapter.py:201-310` | Two incremental migrations; `alembic upgrade head` on an empty DB fails. Schema comes from start-up `create_all` + `ALTER TABLE` (UPG-16). |
 | File uploads (certificates, exports) | PARTLY BUILT [C at `56a014d`] | `utils_storage.py:10-94` | Local disk unless `STORAGE_TYPE=s3`/`gcs`; S3 errors silently fall back to local disk (UPG-17). |
 | Background jobs | PARTLY BUILT [C at `56a014d`] | `celery_app.py:49-58` | Without a Redis broker, tasks run inline with no timeout or retry (UPG-18); scheduled jobs don't run (UPG-07). |
@@ -985,8 +985,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - All four tests fail on the old code. Full pytest: **462 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### BLK-08 — Users are logged out at random once ~500 sessions exist; sessions don't survive restarts or span instances
-- **Status:** TODO
-- **Last verified:** 2026-09-30, commit `56a014d`
+- **Status:** DONE
+- **Last verified:** 2026-10-01, commit "BLK-08: …" on `production-ready` (parent `22598e7`)
 - **Problem:** Unchanged by BLK-09 [C at `56a014d`].
   - Without `REDIS_URL`, sessions are files under `/tmp/flask_session` (`config.py:52-61`). Flask-Session's default file threshold is 500; past it, sessions are pruned.
   - Every anonymous page view creates a session (1 → 11 files after 10 views [R at `694c729`]). At 502 files, logged-in users were logged out mid-flow [R at `694c729`].
@@ -995,15 +995,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Production cookies: `SESSION_COOKIE_SECURE` and `SameSite=Strict` are set in production (`config.py:45-46`); `HttpOnly` relies on Flask's default. `Strict` drops the cookie when a user arrives from an email link or a payment redirect, so they look logged out on that first page.
 - **Who benefits:** everyone on busy days, and after every deploy.
 - **What to build:** server-side sessions through Flask-Session's SQLAlchemy backend, in the app database (Redis when `REDIS_URL` is set). This adds a `Flask-SQLAlchemy` dependency, or a small custom session interface on the existing engine; pick the smaller change. Expired rows are cleaned up (UPG-07's clean-up job). Secure, HttpOnly, SameSite=Lax cookies in production. Don't create sessions for anonymous GETs that don't need CSRF.
-- **Files touched:** `config.py`, `app.py`, `requirements.txt`, `models_pg.py` or a session table migration, templates that call `csrf_token()` unnecessarily, tests.
+- **What was built:**
+  - `session_store.py`: a Flask session interface on the app's own database (the smaller change: no Flask-SQLAlchemy dependency). The cookie holds only a random id; the data (Flask's tagged-JSON format) lives in a `flask_sessions` table (`models_pg.FlaskSession`, `models_pg.py:579`). Reads and writes use the primary engine, because sessions are saved during GETs too (`session_store.py:35`). An empty, unmodified session is never stored; logout deletes the row and the cookie; an unmodified session is re-saved only when its expiry has drifted by more than an hour (`:86-122`). `purge_expired_sessions` (`:125`) is ready for UPG-07's clean-up job.
+  - `config.py`: `SESSION_TYPE` defaults to `redis` when `REDIS_URL` is set, otherwise `sqlalchemy` (the database; `:60`); `filesystem` only if chosen explicitly, with `SESSION_FILE_THRESHOLD` 50000 (`:63`); cookies are `HttpOnly`, `Secure` in production and `SameSite=Lax` (`:48`). A Redis failure now falls back to the database, not files (`app.py:194-207`).
+  - Anonymous page views: the shared layout's `<meta name="csrf-token">` used to mint a token, and so a session, for every visitor. It now uses `csrf_meta_token()` (`app.py:177`), which mints one only for logged-in users or when the session already has one; forms still call `csrf_token()`. The 110 standalone pages still mint one in their own meta tag (each anonymous visitor there gets a 2-hour session row, purged on expiry) until they move to the shared layout (UPG-23).
+  - CI still sets `SESSION_TYPE=filesystem`; the session tests set the database store explicitly, so they test the production default either way.
+- **Files touched:** `session_store.py` (new), `config.py`, `app.py`, `models_pg.py`, `templates/base_classic.html`, `tests/test_sessions_server_side.py` (new).
 - **Effort:** M (was S) · **Depends on:** none · **Risk:** everyone is logged out once when the backend switches.
-- **Acceptance criteria:**
-  1. Test: after 600 anonymous requests, a previously logged-in test client is still logged in.
-  2. Test: with `SESSION_TYPE=filesystem` (development only), `SESSION_FILE_THRESHOLD` is at least 50000.
-  3. Test: an anonymous `GET /events` doesn't create a session (no row, no file, no cookie).
-  4. Test: a session created through one app instance is accepted by a second, separately created app instance on the same database.
-  5. Test: a session survives an app restart (a new app object on the same database keeps the user logged in).
-  6. Test: with production config, the session cookie is `Secure`, `HttpOnly` and `SameSite=Lax`.
+- **Acceptance criteria** (all in `tests/test_sessions_server_side.py`, on the real database; all fail on the old code):
+  1. ✅ After 600 different anonymous visitors (600 session rows), a logged-in user is still logged in and opens their dashboard (`::test_anonymous_traffic_creates_no_sessions_and_logs_nobody_out`).
+  2. ✅ `SESSION_FILE_THRESHOLD` is at least 50000 (`::test_file_sessions_if_chosen_keep_a_high_threshold`).
+  3. ✅ An anonymous `GET /events` sets no session cookie and stores no row (same test as 1).
+  4. ✅ A session created by the real app is accepted by a second, separately created app instance sharing only the database; logging out ends it there too (`::test_a_session_works_on_another_instance_and_after_a_restart`).
+  5. ✅ After a "restart" (a brand-new session store, same database) the user is still logged in (same test). Expired sessions are ignored and purged (`::test_expired_sessions_are_ignored_and_purged`).
+  6. ✅ Production config gives `Secure`, `HttpOnly`, `SameSite=Lax` and the database store by default, and the cookie the app sends carries those flags (`::test_production_cookies_are_secure_httponly_and_lax`).
+  - Full pytest: **467 passed** on SQLite, PostgreSQL 16, and with CI's `SESSION_TYPE=filesystem`; ruff clean.
 
 #### BLK-09 — Merge the `claude/busy-davinci-6nkabi` branch from GitHub
 - **Status:** DONE
@@ -1250,3 +1256,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-01 | "BLK-06a: …" (parent `23a3ec5`) | BLK-06 | **BLK-06a done** (BLK-06 stays IN PROGRESS for 06b). Enum-backed filters compare the stored document value with explicit synonyms only; writes map values the same way; event/registration status enums gain the workflow states; `events.spoc_id` is an indexed SQL column; the audit actor and empty organisation keys are stored correctly. Kept the enum columns (an existing test pins `users.role` as an enum) instead of converting to strings; recorded the existing-database caveat for UPG-16. The strict xfail now passes (marker removed). 6 new real-DB tests (all fail on the old adapter). Full pytest 455 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-06b: …" (parent `dda7716`) | BLK-06, UPG-06 | **BLK-06 DONE** (06a + 06b). 06b: document shadow on the eight newer tables; member and score rows return the dicts they were written from (per-member attendance and the judge route's score keys now survive, and two judges' scores coexist); found and fixed new tickets reading back as checked in (an empty nullable date became "now"). Criterion 4's bulk-certificates check moved to UPG-06. 3 new real-DB tests (all fail on the old adapter); the journey test checks per-criterion scores again. Full pytest 458 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-07: …" (parent `c05af5e`) | BLK-07 | **BLK-07 DONE.** No migration on GET; "Migrate roles" previews (dry run) and applies only with `confirm=1`; login, password reset and the API login map the migrated names (`UniversityAdmin` → SuperAdmin, `UnitAdmin` → ClubSPOC), so the SuperAdmin keeps access after a confirmed migration (tested end to end). Kept the migration's `users.role` rewrite because an existing test pins it. 4 new real-DB tests (all fail on the old code). Full pytest 462 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-01 | "BLK-08: …" (parent `22598e7`) | BLK-08 | **BLK-08 DONE.** Sessions live in the app database (`session_store.py`, `flask_sessions` table; Redis when `REDIS_URL` is set), survive restarts and are shared across instances; cookies are HttpOnly, Secure in production and SameSite=Lax; empty sessions are never stored, and the shared layout no longer mints a CSRF token (and session) for anonymous page views. 5 new real-DB tests (all fail on the old code). Full pytest 467 passed on SQLite, PostgreSQL 16 and with CI's `SESSION_TYPE=filesystem`; ruff clean. |

@@ -174,9 +174,21 @@ def _safe_csrf_token():
     except Exception:
         return "dummy-csrf-token"
 
-app.jinja_env.globals.update(csrf_token=_safe_csrf_token)
+def _csrf_meta_token():
+    """Token for a layout's <meta name="csrf-token"> (read by fetch() helpers).
 
-# ── Server-side session (Redis in prod, filesystem in dev) ──
+    Minting a token stores it in the session, so for anonymous visitors this
+    returns one only if their session already has one: a plain page view then
+    creates no server-side session (BLK-08). Forms keep using csrf_token().
+    """
+    if session.get('user_id') or 'csrf_token' in session:
+        return _safe_csrf_token()
+    return ''
+
+
+app.jinja_env.globals.update(csrf_token=_safe_csrf_token, csrf_meta_token=_csrf_meta_token)
+
+# ── Server-side sessions (BLK-08): Redis when configured, else the database ──
 if app.config.get('SESSION_TYPE') == 'redis':
     try:
         import redis as _redis
@@ -185,12 +197,16 @@ if app.config.get('SESSION_TYPE') == 'redis':
             app.config['SESSION_REDIS'] = _redis.from_url(redis_url)
             logger.info("Session: using Redis backend")
         else:
-            logger.warning("SESSION_TYPE=redis but no REDIS_URL — falling back to filesystem")
-            app.config['SESSION_TYPE'] = 'filesystem'
+            logger.warning("SESSION_TYPE=redis but no REDIS_URL — using the database")
+            app.config['SESSION_TYPE'] = 'sqlalchemy'
     except Exception as exc:
-        logger.warning("Redis session init failed (%s) — using filesystem", exc)
-        app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
+        logger.warning("Redis session init failed (%s) — using the database", exc)
+        app.config['SESSION_TYPE'] = 'sqlalchemy'
+if app.config.get('SESSION_TYPE') == 'sqlalchemy':
+    from session_store import SQLSessionInterface  # noqa: E402
+    app.session_interface = SQLSessionInterface()
+else:
+    Session(app)
 
 # ── Security headers via Talisman ────────────────────────
 _csp = {

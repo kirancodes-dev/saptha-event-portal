@@ -576,6 +576,15 @@ class PushSubscription(Base):
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+class FlaskSession(Base):
+    """Server-side web sessions (session_store.SQLSessionInterface, BLK-08)."""
+    __tablename__ = "flask_sessions"
+
+    id     = Column(String(255), primary_key=True)   # random id held in the cookie
+    data   = Column(Text, nullable=False)            # TaggedJSON-serialised session
+    expiry = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
 class PaymentOrder(Base):
     """A Razorpay order created by this server (BLK-03).
 

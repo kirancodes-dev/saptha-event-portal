@@ -956,9 +956,13 @@ class SQLDocumentReference:
             else:
                 d['feedback'] = None
             # Retrieve nested team members
+            # Each member row keeps the dict it was written from (BLK-06), so
+            # keys like role or per-member attendance survive; older rows fall
+            # back to the columns.
             m_list = []
             for m in record.members:
-                m_list.append({
+                stored = _load_shadow(m)
+                m_list.append(stored or {
                     'name': m.name,
                     'email': m.email,
                     'phone': m.phone,
@@ -971,7 +975,7 @@ class SQLDocumentReference:
             # Retrieve nested scores
             s_dict = {}
             for s in record.scores:
-                s_dict[s.judge_id] = {
+                s_dict[s.judge_id] = _load_shadow(s) or {
                     'judge_name': s.judge_name,
                     'total': s.total,
                     'criteria': json.loads(s.criteria) if s.criteria else {},
@@ -1232,7 +1236,8 @@ class SQLDocumentReference:
             kwargs['gate_assignment'] = safe_str(data.get('gate_assignment', ''))
             kwargs['seat_assignment'] = safe_str(data.get('seat_assignment', ''))
             kwargs['status'] = safe_str(data.get('status', 'active'))
-            kwargs['checked_in_at'] = self._get_datetime(data.get('checked_in_at'))
+            # A new ticket isn't checked in: no value stays NULL, not "now" (BLK-06)
+            kwargs['checked_in_at'] = self._get_datetime(data['checked_in_at']) if data.get('checked_in_at') else None
             kwargs['created_at'] = self._get_datetime(data.get('created_at'))
             return Ticket(**kwargs)
 
@@ -1359,6 +1364,8 @@ class SQLDocumentReference:
 
         type_name = col.type.__class__.__name__
         if mapped_key in ('created_at', 'updated_at', 'submitted_at', 'checked_in_at', 'start_time', 'end_time') or 'DateTime' in type_name:
+            if not val and col.nullable:
+                return None  # parse_datetime would invent "now" (BLK-06)
             return self._get_datetime(val)
         if mapped_key in ('date', 'deadline'):
             return self._get_date(val)
@@ -1450,7 +1457,8 @@ class SQLDocumentReference:
                             phone=safe_str(m.get('phone', '')),
                             usn=safe_str(m.get('usn', '')),
                             college=safe_str(m.get('college', '')),
-                            department=safe_str(m.get('dept') or m.get('department') or '')
+                            department=safe_str(m.get('dept') or m.get('department') or ''),
+                            extra_json=json.dumps(m, cls=CustomJSONEncoder),
                         )
                         session.add(member)
 
@@ -1471,7 +1479,8 @@ class SQLDocumentReference:
                                 total=total_val,
                                 criteria=json.dumps(criteria_data),
                                 feedback=safe_str(s_data.get('remarks') or s_data.get('feedback') or ''),
-                                scored_at=self._get_datetime(s_data.get('timestamp') or s_data.get('submitted_at'))
+                                scored_at=self._get_datetime(s_data.get('timestamp') or s_data.get('submitted_at')),
+                                extra_json=json.dumps(s_data, cls=CustomJSONEncoder),
                             )
                             session.add(score)
                         else:
@@ -1479,6 +1488,7 @@ class SQLDocumentReference:
                             existing_score.criteria = json.dumps(criteria_data)
                             existing_score.feedback = safe_str(s_data.get('remarks') or s_data.get('feedback') or '')
                             existing_score.scored_at = self._get_datetime(s_data.get('timestamp') or s_data.get('submitted_at'))
+                            existing_score.extra_json = json.dumps(s_data, cls=CustomJSONEncoder)
 
             elif self.collection_name == 'push_subscriptions':
                 if key == 'subscription' and isinstance(val, dict):

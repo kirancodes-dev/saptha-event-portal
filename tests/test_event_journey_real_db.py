@@ -61,8 +61,8 @@ def test_register_checkin_score_feedback_certificate(real_app):
     assert judge_client.post(f'/judge/submit_score/{reg_id}', data={
         'score_innovation': '8', 'score_execution': '6', 'remarks': 'Solid'}).status_code == 302
     score = reg()['scores'][judge]
+    assert score['details'] == {'Innovation': 8, 'Execution': 6}
     assert score['total'] == 7.0
-    # (the data layer renames the per-criterion keys on read; BLK-06 criterion 9)
 
     # The event ends; the certificate waits for feedback
     spoc_client.post(f'/spoc/event/{event_id}/transition', data={'target_state': 'completed'})

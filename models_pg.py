@@ -188,6 +188,8 @@ class OrgUnit(Base):
     slug            = Column(String(100), nullable=False, index=True)
     created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {
@@ -214,6 +216,8 @@ class RoleAssignment(Base):
     scope_type = Column("scopeType", String(50), nullable=False)  # 'university' | 'unit' | 'event'
     scope_id   = Column("scopeId", String(128), nullable=True, index=True)
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {
@@ -236,6 +240,8 @@ class Campus(Base):
     address         = Column(Text)
     created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     buildings = relationship("Building", back_populates="campus", cascade="all, delete-orphan")
 
@@ -261,6 +267,8 @@ class Building(Base):
     code       = Column(String(50))
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     campus = relationship("Campus", back_populates="buildings")
     rooms  = relationship("Room", back_populates="building", cascade="all, delete-orphan")
@@ -289,6 +297,8 @@ class Room(Base):
     facilities_json = Column("facilitiesJson", Text)
     created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     building = relationship("Building", back_populates="rooms")
     bookings = relationship("VenueBooking", back_populates="room", cascade="all, delete-orphan")
@@ -483,6 +493,8 @@ class TeamMember(Base):
     usn             = Column(String(50))
     college         = Column(String(200))
     department      = Column(String(100))
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     registration = relationship("Registration", back_populates="members")
 
@@ -505,6 +517,8 @@ class Score(Base):
     criteria        = Column(Text)
     feedback        = Column(Text)
     scored_at       = Column("scoredAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     registration = relationship("Registration", back_populates="scores")
 
@@ -711,6 +725,8 @@ class VenueBooking(Base):
     notes      = Column(Text)
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     room  = relationship("Room", back_populates="bookings")
     event = relationship("Event")

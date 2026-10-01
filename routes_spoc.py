@@ -1142,7 +1142,7 @@ def edit_event(event_id):
 # =========================================================
 # 17. DELETE EVENT
 # =========================================================
-@spoc_bp.route('/delete_event/<event_id>')
+@spoc_bp.route('/delete_event/<event_id>', methods=['POST'])
 @login_required
 @role_required('ClubSPOC')
 def delete_event(event_id):

@@ -346,11 +346,13 @@
                                         data-bs-target="#allocateModal{{ event.id }}">
                                     <i class="fas fa-network-wired"></i> Allocate
                                 </button>
-                                <a href="/coordinator/trigger_reminders/{{ event.id }}"
-                                   class="btn btn-info fw-bold text-dark w-50"
-                                   onclick="return confirm('This will email all allocated teams their room and judge details. Proceed?');">
-                                    <i class="fas fa-paper-plane"></i> Remind
-                                </a>
+                                <form method="POST" action="/coordinator/trigger_reminders/{{ event.id }}" class="w-50 m-0"
+                                      onsubmit="return confirm('This will email all allocated teams their room and judge details. Proceed?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-info fw-bold text-dark w-100">
+                                        <i class="fas fa-paper-plane"></i> Remind
+                                    </button>
+                                </form>
                             </div>
 
                             <button class="btn btn-danger fw-bold text-white mb-1"
@@ -393,11 +395,13 @@
                             <button class="btn btn-secondary fw-bold" disabled>Event Concluded</button>
                         {% endif %}
 
-                        <a href="/coordinator/delete_event/{{ event.id }}"
-                           class="text-danger text-center small fw-bold mt-2 text-decoration-none"
-                           onclick="return confirm('Delete this event and all its registrations?');">
-                            <i class="fas fa-trash me-1"></i> Delete Event
-                        </a>
+                        <form method="POST" action="/coordinator/delete_event/{{ event.id }}" class="text-center mt-2 m-0"
+                              onsubmit="return confirm('Delete this event and all its registrations?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-link text-danger small fw-bold text-decoration-none p-0">
+                                <i class="fas fa-trash me-1"></i> Delete Event
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

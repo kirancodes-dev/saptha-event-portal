@@ -610,8 +610,11 @@
                   <button class="action-btn" title="Publish Results" style="color:#dc2626;border-color:#fecaca;" data-bs-toggle="modal" data-bs-target="#publishModal{{ event.id }}"><i class="fas fa-trophy"></i></button>
                   {% endif %}
                   <a href="/coordinator/export_registrations/{{ event.id }}" class="action-btn green" title="Export Excel"><i class="fas fa-file-excel"></i></a>
-                  <a href="/coordinator/delete_event/{{ event.id }}" class="action-btn red" title="Delete"
-                     onclick="return confirm('Delete {{ event.title }}?')"><i class="fas fa-trash"></i></a>
+                  <form method="POST" action="/coordinator/delete_event/{{ event.id }}" class="d-inline m-0"
+                        onsubmit="return confirm('Delete {{ event.title }}?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="action-btn red" title="Delete"><i class="fas fa-trash"></i></button>
+                  </form>
                 </div>
               </td>
             </tr>

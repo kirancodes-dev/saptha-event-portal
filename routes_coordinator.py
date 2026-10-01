@@ -71,6 +71,28 @@ def _ff(f, op, v):
     return FieldFilter(f, op, v)
 
 
+def _event_or_abort(event_id, permission):
+    """Load an event and require `permission` on it for the session (BLK-04).
+
+    Call outside the routes' try/except blocks so 403/404 aren't swallowed.
+    """
+    from flask import abort
+    from services_permission import can
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = doc.to_dict() or {}
+    event['id'] = event_id
+    if not can(session, permission, event, db=db):
+        abort(403)
+    return event
+
+
+# Roles an organiser may give event staff. Anything else (e.g. SuperAdmin)
+# would be a privilege escalation through the staff form (BLK-04).
+STAFF_ROLES = ('Judge', 'EventCoordinator', 'Coordinator', 'Volunteer')
+
+
 # 1. DASHBOARD
 @coord_bp.route('/dashboard')
 @login_required
@@ -229,10 +251,11 @@ def edit_event(event_id):
 
 
 # 5. DELETE EVENT
-@coord_bp.route('/delete_event/<event_id>')
+@coord_bp.route('/delete_event/<event_id>', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
 def delete_event(event_id):
+    _event_or_abort(event_id, 'edit_event')
     try:
         db.collection('events').document(event_id).delete()
         for r in (db.collection('registrations')
@@ -254,6 +277,7 @@ def delete_event(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def assign_staff(event_id):
+    event = _event_or_abort(event_id, 'edit_event')
     try:
         name  = request.form.get('name', '').strip()
         email = request.form.get('email', '').lower().strip()
@@ -262,8 +286,10 @@ def assign_staff(event_id):
         if not name or not email or not role:
             flash("Name, email and role are required.", "warning")
             return redirect('/coordinator/dashboard')
-        event_doc   = db.collection('events').document(event_id).get()
-        event_title = event_doc.to_dict().get('title', 'Event') if event_doc.exists else 'Event'
+        if role not in STAFF_ROLES:
+            flash(f"Staff role must be one of: {', '.join(STAFF_ROLES)}.", "danger")
+            return redirect('/coordinator/dashboard')
+        event_title = event.get('title', 'Event')
         user_ref    = db.collection('users').document(email)
         if not user_ref.get().exists:
             alphabet = string.ascii_letters + string.digits
@@ -295,6 +321,7 @@ def assign_staff(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def allocate_rooms(event_id):
+    _event_or_abort(event_id, 'manage_registrations')
     try:
         room_names = request.form.getlist('room_name[]')
         capacities = [safe_int(c) for c in request.form.getlist('capacity[]')]
@@ -327,10 +354,11 @@ def allocate_rooms(event_id):
 
 
 # 8. TRIGGER REMINDERS
-@coord_bp.route('/trigger_reminders/<event_id>')
+@coord_bp.route('/trigger_reminders/<event_id>', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
 def trigger_reminders(event_id):
+    _event_or_abort(event_id, 'manage_registrations')
     try:
         event_data  = db.collection('events').document(event_id).get().to_dict()
         round_num   = event_data.get('active_round', 1)
@@ -362,6 +390,7 @@ def trigger_reminders(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def promote_round(event_id):
+    _event_or_abort(event_id, 'publish_results')
     try:
         cutoff    = float(request.form.get('cutoff_score', 0))
         event_ref = db.collection('events').document(event_id)
@@ -400,6 +429,7 @@ def promote_round(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def broadcast_message(event_id):
+    _event_or_abort(event_id, 'manage_registrations')
     try:
         subject   = request.form.get('subject', '').strip()
         message   = request.form.get('message', '').strip()
@@ -429,6 +459,7 @@ def broadcast_message(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def publish_results(event_id):
+    _event_or_abort(event_id, 'publish_results')
     try:
         event_ref   = db.collection('events').document(event_id)
         event_data  = event_ref.get().to_dict() or {}
@@ -684,6 +715,12 @@ def process_walkin():
         if not event_id or not email or not name:
             flash("Event, name and email are required.", "warning")
             return redirect('/coordinator/on_spot')
+        from services_permission import can
+        walkin_event = db.collection('events').document(event_id).get()
+        if not walkin_event.exists or not can(
+                session, 'manage_registrations', dict(walkin_event.to_dict() or {}, id=event_id), db=db):
+            flash("You can only register walk-ins for events you're assigned to.", "danger")
+            return redirect('/coordinator/on_spot')
         # One-time password per new account (emailed; reset is forced on first login)
         WALKIN_PASSWORD = secrets.token_urlsafe(9) + 'aA1!'
         user_ref  = db.collection('users').document(email)
@@ -832,16 +869,46 @@ def scan_hud_page(event_id):
         return redirect('/coordinator/scanner')
     d = doc.to_dict()
     d['id'] = event_id
+    from services_permission import can
+    if not can(session, 'check_in', d, db=target_db):
+        flash("You're not assigned to check in at this event.", "warning")
+        return redirect('/coordinator/scanner')
     return render_template('coordinator/scan_hud.html', event=d, event_id=event_id)
+
+
+def _registration_for_staff(reg_id, permission='check_in'):
+    """Return (reg, event) if the session may act on this registration's event."""
+    from services_permission import can
+    reg_doc = db.collection('registrations').document(reg_id).get()
+    if not reg_doc.exists:
+        return None, None
+    reg = reg_doc.to_dict() or {}
+    ev_doc = db.collection('events').document(str(reg.get('event_id', ''))).get()
+    event = dict(ev_doc.to_dict() or {}, id=reg.get('event_id')) if ev_doc.exists else None
+    if event is None or not can(session, permission, event, db=db):
+        return reg, None
+    return reg, event
 
 
 @coord_bp.route('/get_ticket/<reg_id>')
 @login_required
 def get_ticket(reg_id):
-    reg = db.collection('registrations').document(reg_id).get()
-    if not reg.exists:
+    """What the coordinator scanner shows: names, team, room, attendance.
+
+    Only staff who can check in at this event; never emails, phones or
+    form answers (BLK-04).
+    """
+    reg, event = _registration_for_staff(reg_id)
+    if reg is None:
         return jsonify({'status': 'error', 'message': 'INVALID TICKET'})
-    return jsonify({'status': 'success', 'data': reg.to_dict()})
+    if event is None:
+        return jsonify({'status': 'error', 'message': 'Not authorised for this event'}), 403
+    data = {k: reg.get(k) for k in ('reg_id', 'lead_name', 'lead_usn', 'team_name', 'assigned_room',
+                                    'allocated_room', 'attendance', 'payment_status', 'event_title')}
+    data['reg_id'] = data['reg_id'] or reg_id
+    data['members'] = [{'name': m.get('name', ''), 'usn': m.get('usn', ''), 'attendance': m.get('attendance', '')}
+                       for m in (reg.get('members') or [])]
+    return jsonify({'status': 'success', 'data': data})
 
 
 @coord_bp.route('/mark_attendance_granular', methods=['POST'])
@@ -853,10 +920,12 @@ def mark_attendance_granular():
         present_usns = data.get('present_usns', [])
         if not reg_id:
             return jsonify({'status': 'error', 'message': 'Missing reg_id'})
-        reg_ref  = db.collection('registrations').document(reg_id)
-        reg_data = reg_ref.get().to_dict()
+        reg_data, event = _registration_for_staff(reg_id)
         if not reg_data:
             return jsonify({'status': 'error', 'message': 'Registration not found'})
+        if event is None:
+            return jsonify({'status': 'error', 'message': 'Not authorised for this event'}), 403
+        reg_ref  = db.collection('registrations').document(reg_id)
         if reg_data.get('payment_status') == 'Pending':
             return jsonify({'status': 'error', 'message': 'PAYMENT PENDING!'})
         members = reg_data.get('members', [])
@@ -875,10 +944,18 @@ def mark_attendance_granular():
 
 # 16. CERTIFICATE
 @coord_bp.route('/certificate/<reg_id>/<usn>')
+@login_required
 def generate_certificate(reg_id, usn):
     reg_doc = db.collection('registrations').document(reg_id).get()
     if not reg_doc.exists: return "Registration not found.", 404
     data = reg_doc.to_dict()
+    # BLK-04: the registrant (lead or a member) or staff who issue certificates
+    viewer = (session.get('user_id') or '').lower()
+    is_registrant = viewer and (
+        (data.get('lead_email') or '').lower() == viewer or
+        any((m.get('email') or '').lower() == viewer for m in data.get('members', [])))
+    if not is_registrant and _registration_for_staff(reg_id, 'issue_certificates')[1] is None:
+        return "Not authorised.", 403
     student_name = None
     if data.get('lead_usn') == usn:
         if data.get('attendance') != 'Present':

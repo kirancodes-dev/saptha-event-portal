@@ -158,6 +158,8 @@ class TestCoordinatorScanHUD:
             "title": "Scan HUD Test Event",
             "registration_count": 50,
             "checkin_count": 12,
+            # The HUD is for coordinators assigned to the event (BLK-04)
+            "staff": [{"email": "coord@saptha.org", "role": "EventCoordinator"}],
         })
 
         with client.session_transaction() as sess:

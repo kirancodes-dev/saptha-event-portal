@@ -964,19 +964,25 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - All three BLK-06b tests fail on the pre-06b adapter. Full pytest: **458 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### BLK-07 — Role migration locks out SuperAdmin and SPOC accounts
-- **Status:** TODO
-- **Last verified:** 2026-09-30, commit `56a014d`
+- **Status:** DONE
+- **Last verified:** 2026-10-01, commit "BLK-07: …" on `production-ready` (parent `c05af5e`)
 - **Problem:** Re-run on `1f4cdc8` [R].
   - `GET /admin/org_units` no longer rewrites roles on a fresh database. That's **incidental**: the adapter now creates the root `central` org unit at start-up (`db_adapter.py` `SQLFirestoreAdapter._ensure_root_units`, added in the BLK-09 merge), so the `if not units:` auto-migration (`routes_admin.py:642-644`) doesn't fire.
   - The "Migrate roles" action (`POST /admin/migrate_roles`) still rewrites the SuperAdmin to `UniversityAdmin` (`services_permission.py:422`) and mapped SPOCs to `UnitAdmin` (`:454`). Login maps only legacy names (`routes_auth.py:94-101`), so the SuperAdmin was **locked out** after pressing it [R].
 - **Who benefits:** SuperAdmin and every SPOC.
 - **What to build:** make migration an explicit POST with a dry-run preview and a confirm step; keep `users.role` compatible with login (or map `UniversityAdmin` → SuperAdmin and `UnitAdmin` → ClubSPOC at login); delete the GET-time trigger.
+- **What was built:**
+  - `GET /admin/org_units` never migrates (`routes_admin.py:641`).
+  - `POST /admin/migrate_roles` (`routes_admin.py:806`) runs `migrate_roles_and_units(db, dry_run=True)` unless `confirm=1`: it flashes the summary ("Preview only, nothing changed") and the page then shows a **Confirm migration** button (`templates/admin/org_units.html`). `dry_run` guards every write (`services_permission.py:345`).
+  - The migration still writes the scoped names into `users.role` (an existing test, `tests/test_scoped_roles_e2e.py::test_role_migration_maps_demo_users_and_backfills`, pins that), and **login maps them back**: one `_login_role` table (`routes_auth.py:33-45`) used by login (`:112`), forgot-password and reset-token, so `UniversityAdmin` logs in as SuperAdmin and `UnitAdmin` as ClubSPOC, and a migrated admin still can't reset by email. The API login maps the same two names, leaving every other role as before for the mobile apps (`routes_api_v1.py:81`). This is also the repair for any database already migrated.
+- **Files touched:** `routes_admin.py`, `services_permission.py`, `routes_auth.py`, `routes_api_v1.py`, `templates/admin/org_units.html`, `tests/test_role_migration_keeps_access.py` (new).
 - **Files touched:** `routes_admin.py`, `services_permission.py`, `routes_auth.py`, tests.
 - **Effort:** S · **Depends on:** none · **Risk:** production may already contain migrated roles; include a repair step.
 - **Acceptance criteria:**
-  1. ✅ (incidental) `GET /admin/org_units` on a fresh DB leaves every `users.role` unchanged [R]. ⬜ Test that pins this, and the trigger removed.
-  2. ⬜ Test: a user stored as `UniversityAdmin` logs in as SuperAdmin; `UnitAdmin` logs in as ClubSPOC.
-  3. ⬜ Test: `POST /admin/migrate_roles` without `confirm=1` returns a preview and changes nothing.
+  1. ✅ `GET /admin/org_units` doesn't migrate even when it sees no org units (the old trigger's condition), and roles stay unchanged (`tests/test_role_migration_keeps_access.py::test_viewing_org_units_never_migrates`).
+  2. ✅ A user stored as `UniversityAdmin` logs in as SuperAdmin and opens `/admin/dashboard`; `UnitAdmin` logs in as ClubSPOC and opens `/spoc/dashboard`; the migrated admin gets no reset email (`::test_already_migrated_accounts_log_in_with_their_old_roles`); the API login works for a migrated admin (`::test_api_login_works_for_migrated_accounts`).
+  3. ✅ `POST /admin/migrate_roles` without `confirm=1` changes no role or grant and offers the confirm button; with it, grants are written, and **the SuperAdmin and the SPOC log straight back in and reach their dashboards** (`::test_migrate_previews_first_and_the_superadmin_keeps_access_after_confirming`).
+  - All four tests fail on the old code. Full pytest: **462 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### BLK-08 — Users are logged out at random once ~500 sessions exist; sessions don't survive restarts or span instances
 - **Status:** TODO
@@ -1243,3 +1249,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-01 | "BLK-05: …" (parent `7b394c0`) | BLK-05, BLK-06 | **BLK-05 DONE.** `tests/conftest.py` blanks every outbound credential before the app loads `.env`, and forces inline Celery on an in-memory broker (CI's Redis broker would have queued tasks that never run). New real-DB journey: create → appoint judge → register → check-in → allocate → score → complete → feedback → certificate. `_login` now fails on a failed login. BLK-06 gains renamed score keys (criterion 9). Full pytest 448 passed, 1 xfailed on SQLite, PostgreSQL 16 and with CI's broker variable; ruff clean. |
 | 2026-10-01 | "BLK-06a: …" (parent `23a3ec5`) | BLK-06 | **BLK-06a done** (BLK-06 stays IN PROGRESS for 06b). Enum-backed filters compare the stored document value with explicit synonyms only; writes map values the same way; event/registration status enums gain the workflow states; `events.spoc_id` is an indexed SQL column; the audit actor and empty organisation keys are stored correctly. Kept the enum columns (an existing test pins `users.role` as an enum) instead of converting to strings; recorded the existing-database caveat for UPG-16. The strict xfail now passes (marker removed). 6 new real-DB tests (all fail on the old adapter). Full pytest 455 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-06b: …" (parent `dda7716`) | BLK-06, UPG-06 | **BLK-06 DONE** (06a + 06b). 06b: document shadow on the eight newer tables; member and score rows return the dicts they were written from (per-member attendance and the judge route's score keys now survive, and two judges' scores coexist); found and fixed new tickets reading back as checked in (an empty nullable date became "now"). Criterion 4's bulk-certificates check moved to UPG-06. 3 new real-DB tests (all fail on the old adapter); the journey test checks per-criterion scores again. Full pytest 458 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-01 | "BLK-07: …" (parent `c05af5e`) | BLK-07 | **BLK-07 DONE.** No migration on GET; "Migrate roles" previews (dry run) and applies only with `confirm=1`; login, password reset and the API login map the migrated names (`UniversityAdmin` → SuperAdmin, `UnitAdmin` → ClubSPOC), so the SuperAdmin keeps access after a confirmed migration (tested end to end). Kept the migration's `users.role` rewrite because an existing test pins it. 4 new real-DB tests (all fail on the old code). Full pytest 462 passed on SQLite and PostgreSQL 16; ruff clean. |

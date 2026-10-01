@@ -342,7 +342,7 @@ def permission_required(permission: str, event_arg: str = 'event_id'):
 
 # ── 4. Migration Helper: migrate_roles_and_units() ───────────────────────────
 
-def migrate_roles_and_units(db=None) -> dict:
+def migrate_roles_and_units(db=None, dry_run: bool = False) -> dict:
     """
     Migrates legacy roles, backfills events to 'central', and sets up initial OrgUnits.
 
@@ -352,6 +352,10 @@ def migrate_roles_and_units(db=None) -> dict:
     - 'ClubSPOC' -> UnitAdmin of their matching department/club unit.
     - 'Coordinator' / 'EventCoordinator', 'Judge' -> event-scoped role assignments.
     - Returns summary dict with any unmapped users listed.
+
+    BLK-07: login maps the scoped names written here (UniversityAdmin,
+    UnitAdmin) back to SuperAdmin / ClubSPOC, so migrated accounts keep
+    access. ``dry_run=True`` computes the same summary and writes nothing.
     """
     db_client = _get_db(db)
     if not db_client:
@@ -371,7 +375,7 @@ def migrate_roles_and_units(db=None) -> dict:
 
     for unit in default_units:
         uref = db_client.collection('org_units').document(unit['id'])
-        if not uref.get().exists:
+        if not uref.get().exists and not dry_run:
             uref.set({
                 'id': unit['id'],
                 'organization_id': 'default',
@@ -391,10 +395,11 @@ def migrate_roles_and_units(db=None) -> dict:
         edata = edoc.to_dict() or {}
         events_map[edoc.id] = edata
         if not edata.get('org_unit_id') and not edata.get('orgUnitId'):
-            db_client.collection('events').document(edoc.id).update({
-                'organization_id': edata.get('organization_id') or 'default',
-                'org_unit_id': 'central',
-            })
+            if not dry_run:
+                db_client.collection('events').document(edoc.id).update({
+                    'organization_id': edata.get('organization_id') or 'default',
+                    'org_unit_id': 'central',
+                })
             backfilled_events.append(edoc.id)
 
     # 3. Migrate Users & Scoped Roles
@@ -419,16 +424,17 @@ def migrate_roles_and_units(db=None) -> dict:
 
         # Normalise 'Super Admin' / 'SuperAdmin' -> UniversityAdmin
         if role in ('SuperAdmin', 'Super Admin', 'Admin'):
-            db_client.collection('users').document(udoc.id).update({'role': 'UniversityAdmin'})
             ra_id = f"ra_{email}_univ"
-            db_client.collection('role_assignments').document(ra_id).set({
-                'id': ra_id,
-                'user_id': email,
-                'role': 'UniversityAdmin',
-                'scope_type': 'university',
-                'scope_id': 'default',
-                'created_at': now_iso,
-            })
+            if not dry_run:
+                db_client.collection('users').document(udoc.id).update({'role': 'UniversityAdmin'})
+                db_client.collection('role_assignments').document(ra_id).set({
+                    'id': ra_id,
+                    'user_id': email,
+                    'role': 'UniversityAdmin',
+                    'scope_type': 'university',
+                    'scope_id': 'default',
+                    'created_at': now_iso,
+                })
             migrated_admins.append(email)
 
         # Map ClubSPOC -> UnitAdmin of their unit
@@ -451,16 +457,17 @@ def migrate_roles_and_units(db=None) -> dict:
                 target_unit = 'management-club'
 
             if target_unit:
-                db_client.collection('users').document(udoc.id).update({'role': 'UnitAdmin', 'department': target_unit})
                 ra_id = f"ra_{email}_{target_unit}"
-                db_client.collection('role_assignments').document(ra_id).set({
-                    'id': ra_id,
-                    'user_id': email,
-                    'role': 'UnitAdmin',
-                    'scope_type': 'unit',
-                    'scope_id': target_unit,
-                    'created_at': now_iso,
-                })
+                if not dry_run:
+                    db_client.collection('users').document(udoc.id).update({'role': 'UnitAdmin', 'department': target_unit})
+                    db_client.collection('role_assignments').document(ra_id).set({
+                        'id': ra_id,
+                        'user_id': email,
+                        'role': 'UnitAdmin',
+                        'scope_type': 'unit',
+                        'scope_id': target_unit,
+                        'created_at': now_iso,
+                    })
                 migrated_spocs.append({'email': email, 'unit': target_unit})
             else:
                 unmapped_users.append({'email': email, 'role': role, 'data': udata})
@@ -474,6 +481,8 @@ def migrate_roles_and_units(db=None) -> dict:
                 if email in coords or any(s.get('email') == email for s in staff):
                     assigned_events.append(eid)
                     ra_id = f"ra_{email}_{eid}"
+                    if dry_run:
+                        continue
                     db_client.collection('role_assignments').document(ra_id).set({
                         'id': ra_id,
                         'user_id': email,
@@ -482,7 +491,8 @@ def migrate_roles_and_units(db=None) -> dict:
                         'scope_id': str(eid),
                         'created_at': now_iso,
                     })
-            db_client.collection('users').document(udoc.id).update({'role': 'EventCoordinator'})
+            if not dry_run:
+                db_client.collection('users').document(udoc.id).update({'role': 'EventCoordinator'})
             migrated_coords.append({'email': email, 'events': assigned_events})
 
         # Judge -> event-scoped roles
@@ -493,6 +503,8 @@ def migrate_roles_and_units(db=None) -> dict:
                 if any(s.get('email') == email and s.get('role') == 'Judge' for s in staff):
                     assigned_events.append(eid)
                     ra_id = f"ra_{email}_{eid}"
+                    if dry_run:
+                        continue
                     db_client.collection('role_assignments').document(ra_id).set({
                         'id': ra_id,
                         'user_id': email,
@@ -501,10 +513,11 @@ def migrate_roles_and_units(db=None) -> dict:
                         'scope_id': str(eid),
                         'created_at': now_iso,
                     })
-            db_client.collection('users').document(udoc.id).update({'role': 'Judge'})
+            if not dry_run:
+                db_client.collection('users').document(udoc.id).update({'role': 'Judge'})
             migrated_judges.append({'email': email, 'events': assigned_events})
 
-        elif role in ('Student', 'Participant'):
+        elif role in ('Student', 'Participant') and not dry_run:
             db_client.collection('users').document(udoc.id).update({'role': 'Participant'})
 
     return {
@@ -514,4 +527,5 @@ def migrate_roles_and_units(db=None) -> dict:
         "migrated_judges": migrated_judges,
         "backfilled_events": backfilled_events,
         "unmapped_users": unmapped_users,
+        "dry_run": dry_run,
     }

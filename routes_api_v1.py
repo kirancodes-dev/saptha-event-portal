@@ -76,6 +76,9 @@ def api_login():
 
     # Verify role
     user_role = user.get("role", "Student")
+    user_role = getattr(user_role, "value", user_role)
+    # Accounts touched by the old role migration log in with their old roles (BLK-07)
+    user_role = {"UniversityAdmin": "SuperAdmin", "UnitAdmin": "ClubSPOC"}.get(user_role, user_role)
     if role != user_role and user_role != "SuperAdmin":
         return api_error("role_mismatch", f"Account role is {user_role}, not {role}", status=403)
 

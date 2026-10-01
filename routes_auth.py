@@ -27,6 +27,23 @@ def _redirect_by_role(role: str):
     return redirect(ROLE_REDIRECTS.get(role, '/'))
 
 
+# Stored role -> the role a user logs in as. Includes the scoped names the
+# old "Migrate roles" button wrote (UniversityAdmin, UnitAdmin), so accounts
+# it touched can log in again (BLK-07).
+_LOGIN_ROLE = {
+    'Super Admin': 'SuperAdmin', 'Admin': 'SuperAdmin', 'UniversityAdmin': 'SuperAdmin',
+    'Coordinator': 'EventCoordinator',
+    'SPOC': 'ClubSPOC', 'UnitAdmin': 'ClubSPOC',
+    'Participant': 'Student',
+}
+
+
+def _login_role(stored_role) -> str:
+    role = getattr(stored_role, 'value', stored_role)
+    role = str(role or '').strip()
+    return _LOGIN_ROLE.get(role, role)
+
+
 def _safe_next():
     from services_accounts import is_safe_next
     target = (request.form.get('next') or request.args.get('next') or '').strip()
@@ -92,19 +109,7 @@ def login():
                 flash('Account not found. Please register or contact admin.', 'warning')
                 return redirect('/login')
 
-            db_role = user.get('role', 'Participant')
-            if hasattr(db_role, 'value'):
-                db_role = db_role.value
-            db_role = str(db_role).strip()
-
-            if db_role in ('Super Admin', 'Admin'):
-                db_role = 'SuperAdmin'
-            if db_role == 'Coordinator':
-                db_role = 'EventCoordinator'
-            if db_role == 'SPOC':
-                db_role = 'ClubSPOC'
-            if db_role == 'Participant':
-                db_role = 'Student'
+            db_role = _login_role(user.get('role', 'Participant'))
 
             # Password verification — hashed only.
             stored_pw = user.get('password') or user.get('password_hash') or ''
@@ -228,10 +233,7 @@ def set_password(token):
             'needs_password_reset': False,
             'email_verified':       True,
         })
-        role = user.get('role', 'Student')
-        if hasattr(role, 'value'):
-            role = role.value
-        role = 'Student' if str(role) in ('Participant', '') else str(role)
+        role = _login_role(user.get('role', 'Student')) or 'Student'
         category = user.get('category', 'General')
         if hasattr(category, 'value'):
             category = category.value
@@ -323,12 +325,7 @@ def forgot_password():
                 return redirect('/forgot_password')
 
             user = user_doc.to_dict()
-            role = user.get('role', 'Participant')
-            if hasattr(role, 'value'):
-                role = role.value
-            role = str(role).strip()
-            if role == 'Super Admin':
-                role = 'SuperAdmin'
+            role = _login_role(user.get('role', 'Participant'))
 
             # SuperAdmin cannot reset via email — use master key recovery path
             if role == 'SuperAdmin':
@@ -384,12 +381,7 @@ def reset_token(token):
             return redirect('/login')
         user = user_doc.to_dict()
 
-        role = user.get('role', 'Participant')
-        if hasattr(role, 'value'):
-            role = role.value
-        role = str(role).strip()
-        if role == 'Super Admin':
-            role = 'SuperAdmin'
+        role = _login_role(user.get('role', 'Participant'))
         if role == 'SuperAdmin':
             flash("SuperAdmin cannot be reset via email.", "danger")
             return redirect('/login')

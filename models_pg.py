@@ -64,6 +64,7 @@ class EventStatus(enum.Enum):
     registration_open   = "registration_open"
     registration_closed = "registration_closed"
     in_progress         = "in_progress"
+    evaluation          = "evaluation"
     active              = "active"
     inactive            = "inactive"
     completed           = "completed"
@@ -78,6 +79,18 @@ class RegistrationStatus(enum.Enum):
     cancelled  = "cancelled"
     waitlisted = "waitlisted"
     checked_in = "checked_in"
+    # Participant workflow states (services_workflow.PARTICIPANT_STATE_TRANSITIONS),
+    # stored as themselves rather than falling back to 'confirmed' (BLK-06)
+    applied         = "applied"
+    pending_payment = "pending_payment"
+    round_1         = "round_1"
+    shortlisted     = "shortlisted"
+    finalist        = "finalist"
+    winner          = "winner"
+    runner_up       = "runner_up"
+    eliminated      = "eliminated"
+    completed       = "completed"
+    certified       = "certified"
 
 
 class PaymentStatus(enum.Enum):
@@ -340,6 +353,8 @@ class Event(Base):
     rules          = Column(Text)
     prizes         = Column(Text)
     coordinator_id = Column("coordinatorId", String(128))
+    # The owning SPOC; routes and services_permission filter on it (BLK-06)
+    spoc_id        = Column("spoc_id", String(255), nullable=True, index=True)
     registration_count = Column("registration_count", Integer, nullable=False, default=0)
     open_hall_mode = Column("open_hall_mode", Boolean, nullable=False, default=False)
     scoring_locked = Column("scoring_locked", Boolean, nullable=False, default=False)

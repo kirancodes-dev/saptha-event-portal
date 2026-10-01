@@ -132,9 +132,8 @@ def test_every_participant_workflow_status_round_trips(db, engine, state):
         assert row.status.value == state
 
 
-@pytest.mark.xfail(strict=True, reason="BLK-06: states outside the EventStatus enum "
-                   "(e.g. 'evaluation') are stored as 'active' in the SQL column")
 def test_active_filter_excludes_states_outside_the_enum(db):
+    # Was a strict xfail until BLK-06: 'evaluation' fell back to 'active'.
     _, ref = db.collection('events').add({'title': 'Judging', 'date': '2030-01-01', 'status': 'evaluation'})
     assert ref.id not in [d.id for d in db.collection('events').where('status', '==', 'active').stream()]
 

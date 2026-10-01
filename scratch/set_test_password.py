@@ -2,7 +2,7 @@
 # BLK-10: refuse production-looking databases before anything connects
 import os as _os, sys as _sys  # noqa: E401,E402
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard()
 
 import os
@@ -20,14 +20,14 @@ if not db:
     print("Database client is None!")
     sys.exit(1)
 
-# Ensure testuser@example.com exists and has password Student@1234
+# Ensure testuser@example.com exists and has password (see the passwords printed at the end)
 db.collection('users').document('testuser@example.com').set({
     'email': 'testuser@example.com',
     'name': 'Test User',
     'role': 'Student',
     'category': 'General',
-    'password': generate_password_hash('Student@1234', method='pbkdf2:sha256'),
+    'password': generate_password_hash(seed_password('STUDENT'), method='pbkdf2:sha256'),
     'created_at': '2026-06-03'
 }, merge=True)
 
-print("Test user testuser@example.com password set to Student@1234")
+print("Test user testuser@example.com password set to (see the passwords printed at the end)")

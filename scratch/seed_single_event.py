@@ -7,7 +7,7 @@ then creates a clean environment under biradark543@gmail.com SPOC.
 # BLK-10: refuse production-looking databases before anything connects
 import os as _os, sys as _sys  # noqa: E401,E402
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard(firestore=True)
 
 import os
@@ -67,7 +67,7 @@ def main():
         db.collection('users').document(u.id).delete()
     print("  Deleted all users.")
 
-    password_hash = generate_password_hash("Password@123")
+    password_hash = generate_password_hash(seed_password('DEMO'))
 
     # Re-create accounts
     users_to_create = [
@@ -131,7 +131,7 @@ def main():
 
     for u in users_to_create:
         db.collection('users').document(u['email']).set(u)
-        print(f"  Created user: {u['email']} [{u['role']}] with Password@123")
+        print(f"  Created user: {u['email']} [{u['role']}] with (see the passwords printed at the end)")
 
     # Create Event
     event_id = "EVT-TEST-SINGLE"
@@ -308,7 +308,7 @@ def main():
 
     print("\n🎉 Seeding completed successfully! Single event system ready for testing.")
     print("   Logins: SuperAdmin (admin@snpsu.edu.in), SPOC (biradark543@gmail.com), Coordinator (coordinator@example.com), Judge (judge@example.com), Student (student@example.com)")
-    print("   Password for all: Password@123")
+    print("   Password for all: (see the passwords printed at the end)")
 
 if __name__ == '__main__':
     main()

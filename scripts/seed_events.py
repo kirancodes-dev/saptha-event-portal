@@ -6,7 +6,7 @@ Run from project root: python scripts/seed_events.py
 # BLK-10: refuse production-looking databases before anything connects
 import os as _os, sys as _sys  # noqa: E401,E402
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard(firestore=True)
 
 import sys, os
@@ -29,7 +29,7 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 SPOC_EMAIL = 'biradark543@gmail.com'
-SPOC_PASS  = 'Kiran123@'
+SPOC_PASS  = seed_password('SPOC')
 TODAY = date.today()  # 2026-05-16
 
 # ── 1. Create / update SPOC user ─────────────────────────────────────────────

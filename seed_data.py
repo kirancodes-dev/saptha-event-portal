@@ -1,6 +1,6 @@
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard()
 
 import datetime
@@ -47,11 +47,11 @@ def generate_test_data():
             'name': judge_name,
             'email': judge_email,
             'role': 'Judge',
-            'password': generate_password_hash('password123'),
+            'password': generate_password_hash(seed_password('JUDGE')),
             'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
             'needs_password_reset': False
         })
-        print(f"✅ Created Judge: {judge_email} (Password: password123)")
+        print(f"✅ Created Judge: {judge_email} (Password: (see the passwords printed at the end))")
 
     event_data['staff'] = judges
     db.collection('events').document(event_id).set(event_data)

@@ -2,7 +2,7 @@
 # BLK-10: refuse production-looking databases before anything connects
 import os as _os, sys as _sys  # noqa: E401,E402
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard()
 
 import os
@@ -26,7 +26,7 @@ SPOCS = {
         'name':          'Priya Nair',
         'phone':         '+91 98765 43210',
         'club':          'Innovation & Technology Club (ITC)',
-        'password':      'SPOC@Priya2026',
+        'password':      seed_password('CLUBSPOC'),
         'role':          'ClubSPOC',
         'category':      'Technical',
         'whatsapp_group': 'https://chat.whatsapp.com/snpsu-itc-2026',
@@ -36,7 +36,7 @@ SPOCS = {
         'name':          'Arjun Sharma',
         'phone':         '+91 91234 56789',
         'club':          'Arts & Culture Society (ACS)',
-        'password':      'SPOC@Arjun2026',
+        'password':      seed_password('CLUBSPOC'),
         'role':          'ClubSPOC',
         'category':      'Cultural',
         'whatsapp_group': 'https://chat.whatsapp.com/snpsu-acs-2026',
@@ -46,7 +46,7 @@ SPOCS = {
         'name':          'Kavya Reddy',
         'phone':         '+91 87654 32109',
         'club':          'Student Activity Council (SAC)',
-        'password':      'SPOC@Kavya2026',
+        'password':      seed_password('CLUBSPOC'),
         'role':          'ClubSPOC',
         'category':      'Sports',
         'whatsapp_group': 'https://chat.whatsapp.com/snpsu-sac-2026',
@@ -56,7 +56,7 @@ SPOCS = {
         'name':          'Rohan Mehta',
         'phone':         '+91 99999 88888',
         'club':          'Management Association (MA)',
-        'password':      'SPOC@Rohan2026',
+        'password':      seed_password('CLUBSPOC'),
         'role':          'ClubSPOC',
         'category':      'Management',
         'whatsapp_group': 'https://chat.whatsapp.com/snpsu-ma-2026',

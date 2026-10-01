@@ -15,7 +15,7 @@ Run locally (requires Firebase creds):
 """
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard(firestore=True)
 
 import os
@@ -58,13 +58,13 @@ def hashpw(raw):
 SUPER_ADMIN = {
     "email": "admin@snpsu.edu.in", "name": "System Administrator",
     "role": "SuperAdmin", "category": "All", "phone": "9876500000",
-    "password_raw": "Saptha@Admin2026",
+    "password_raw": seed_password('SUPERADMIN'),
 }
 
 SPOC = {
     "email": "spoc@snpsu.edu.in", "name": "Priya Sharma",
     "role": "ClubSPOC", "category": "Technical", "phone": "9876500001",
-    "password_raw": "Spoc@1234",
+    "password_raw": seed_password('CLUBSPOC'),
 }
 
 JUDGES = [

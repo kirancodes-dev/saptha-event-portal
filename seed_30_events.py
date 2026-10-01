@@ -8,7 +8,7 @@ No judges, coordinators, or students loaded.
 """
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard()
 
 
@@ -34,7 +34,7 @@ SPOCS = [
     {
         'email':    'cultural.spoc@snpsu.edu.in',
         'name':     'Meera Sharma',
-        'password': 'Cultural@2026',
+        'password': seed_password('CLUBSPOC'),
         'role':     'ClubSPOC',
         'category': 'Cultural',
         'club':     'Cultural Arts Club',
@@ -42,7 +42,7 @@ SPOCS = [
     {
         'email':    'sports.spoc@snpsu.edu.in',
         'name':     'Arjun Reddy',
-        'password': 'Sports@2026',
+        'password': seed_password('CLUBSPOC'),
         'role':     'ClubSPOC',
         'category': 'Sports',
         'club':     'Sports Association',
@@ -50,7 +50,7 @@ SPOCS = [
     {
         'email':    'tech.spoc@snpsu.edu.in',
         'name':     'Priya Nair',
-        'password': 'Tech@2026',
+        'password': seed_password('CLUBSPOC'),
         'role':     'ClubSPOC',
         'category': 'Tech',
         'club':     'Technical Developers Club',

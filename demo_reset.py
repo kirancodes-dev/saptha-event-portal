@@ -17,7 +17,7 @@ Run:  python demo_reset.py
 """
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard()
 
 
@@ -61,31 +61,31 @@ DL13 = T(52)       # Reg closes August 26
 # =========================================================
 SPOCS = [
     {'email': 'cultural.spoc@snpsu.edu.in', 'name': 'Meera Sharma',
-     'password': 'Cultural@2026', 'role': 'ClubSPOC',
+     'password': seed_password('CLUBSPOC'), 'role': 'ClubSPOC',
      'category': 'Cultural', 'club': 'Cultural Arts Club'},
     {'email': 'sports.spoc@snpsu.edu.in',   'name': 'Arjun Reddy',
-     'password': 'Sports@2026',   'role': 'ClubSPOC',
+     'password': seed_password('CLUBSPOC'),   'role': 'ClubSPOC',
      'category': 'Sports',   'club': 'Sports Association'},
     {'email': 'tech.spoc@snpsu.edu.in',     'name': 'Priya Nair',
-     'password': 'Tech@2026',     'role': 'ClubSPOC',
+     'password': seed_password('CLUBSPOC'),     'role': 'ClubSPOC',
      'category': 'Technical', 'club': 'Technical Developers Club'},
     {'email': 'mgmt.spoc@snpsu.edu.in',     'name': 'Rohan Shetty',
-     'password': 'Mgmt@2026',     'role': 'ClubSPOC',
+     'password': seed_password('CLUBSPOC'),     'role': 'ClubSPOC',
      'category': 'Management', 'club': 'Management & Entrepreneurship Club'},
 ]
 
 JUDGES = [
-    {'email': 'judge1@snpsu.edu.in', 'name': 'Prof. Arun Menon',   'role': 'Judge', 'category': 'Technical',  'password': 'Judge@1111'},
-    {'email': 'judge2@snpsu.edu.in', 'name': 'Dr. Kavitha Rao',    'role': 'Judge', 'category': 'Cultural',   'password': 'Judge@2222'},
-    {'email': 'judge3@snpsu.edu.in', 'name': 'Prof. Vinod Shetty', 'role': 'Judge', 'category': 'Sports',     'password': 'Judge@3333'},
-    {'email': 'judge4@snpsu.edu.in', 'name': 'Dr. Suma Bhat',      'role': 'Judge', 'category': 'Management', 'password': 'Judge@4444'},
-    {'email': 'judge5@snpsu.edu.in', 'name': 'Prof. Rajan Pillai', 'role': 'Judge', 'category': 'Technical',  'password': 'Judge@5555'},
+    {'email': 'judge1@snpsu.edu.in', 'name': 'Prof. Arun Menon',   'role': 'Judge', 'category': 'Technical',  'password': seed_password('JUDGE')},
+    {'email': 'judge2@snpsu.edu.in', 'name': 'Dr. Kavitha Rao',    'role': 'Judge', 'category': 'Cultural',   'password': seed_password('JUDGE')},
+    {'email': 'judge3@snpsu.edu.in', 'name': 'Prof. Vinod Shetty', 'role': 'Judge', 'category': 'Sports',     'password': seed_password('JUDGE')},
+    {'email': 'judge4@snpsu.edu.in', 'name': 'Dr. Suma Bhat',      'role': 'Judge', 'category': 'Management', 'password': seed_password('JUDGE')},
+    {'email': 'judge5@snpsu.edu.in', 'name': 'Prof. Rajan Pillai', 'role': 'Judge', 'category': 'Technical',  'password': seed_password('JUDGE')},
 ]
 
 COORDINATORS = [
-    {'email': 'coord1@snpsu.edu.in', 'name': 'Suresh Babu',   'role': 'EventCoordinator', 'category': 'General', 'password': 'Coord@1111'},
-    {'email': 'coord2@snpsu.edu.in', 'name': 'Meena Pillai',  'role': 'EventCoordinator', 'category': 'General', 'password': 'Coord@2222'},
-    {'email': 'coord3@snpsu.edu.in', 'name': 'Ramesh Shenoy', 'role': 'EventCoordinator', 'category': 'General', 'password': 'Coord@3333'},
+    {'email': 'coord1@snpsu.edu.in', 'name': 'Suresh Babu',   'role': 'EventCoordinator', 'category': 'General', 'password': seed_password('EVENTCOORDINATOR')},
+    {'email': 'coord2@snpsu.edu.in', 'name': 'Meena Pillai',  'role': 'EventCoordinator', 'category': 'General', 'password': seed_password('EVENTCOORDINATOR')},
+    {'email': 'coord3@snpsu.edu.in', 'name': 'Ramesh Shenoy', 'role': 'EventCoordinator', 'category': 'General', 'password': seed_password('EVENTCOORDINATOR')},
 ]
 
 STUDENT_NAMES = [
@@ -99,7 +99,7 @@ STUDENT_NAMES = [
 STUDENTS = [
     {'email': f'student{i:03d}@snpsu.edu.in', 'name': n,
      'usn': f'1SNPSU22CS{i:03d}', 'phone': f'98765{i:05d}',
-     'password': 'Student@1234', 'role': 'Student'}
+     'password': seed_password('STUDENT'), 'role': 'Student'}
     for i, n in enumerate(STUDENT_NAMES, start=1)
 ]
 
@@ -711,7 +711,7 @@ def seed():
             'is_active': True,
             'created_at': NOW_STR,
         })
-    print(f'  {"Student":<20} student001–{len(STUDENTS):03d}@snpsu.edu.in        pw: Student@1234')
+    print(f'  {"Student":<20} student001–{len(STUDENTS):03d}@snpsu.edu.in        pw: (see the passwords printed at the end)')
 
     print('\n[SEED] Creating events and registrations...')
     events = build_events()
@@ -747,7 +747,7 @@ def print_summary(events):
     for c in COORDINATORS:
         print(f'  {c["name"]:<24} {c["email"]:<38} {c["password"]}')
 
-    print('\n  STUDENTS  (all share password: Student@1234)')
+    print('\n  STUDENTS  (all share password: (see the passwords printed at the end))')
     print(line)
     print(f'  student001@snpsu.edu.in  …  student{len(STUDENTS):03d}@snpsu.edu.in')
 

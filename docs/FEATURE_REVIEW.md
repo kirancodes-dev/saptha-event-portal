@@ -1048,8 +1048,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   7. ✅ Full suite at `4699478`: **377 passed, 1 xfailed** on SQLite and on PostgreSQL 16 (Python 3.11, pinned requirements, repo `pytest.ini`); `ruff check .` clean [R].
 
 #### BLK-10 — Seed scripts write known passwords and don't refuse production databases
-- **Status:** IN PROGRESS. **BLK-10a done** (the guard in all 31 seed, setup and wipe scripts: criteria 2 and 4). **BLK-10b open** (no literal passwords; `SEED_*_PASSWORD` or random: criteria 1 and 3).
-- **Last verified:** 2026-10-01, commit "BLK-10a: …" on `production-ready` (parent `04d2e27`)
+- **Status:** DONE (10a + 10b).
+- **Last verified:** 2026-10-01, commit "BLK-10b: …" on `production-ready` (parent `8ecdc9e`)
 - **Problem:**
   - **19 of the 29** seed/setup scripts hard-code account passwords as literals [R, AST scan for string literals under password-named keys/arguments/variables and in `generate_password_hash(...)`, covering `seed_*.py`, `saptha_full_seed.py`, `demo_reset.py`, `setup_*.py`, `init_*.py`, `fix_superadmin.py`, `scripts/*.py`, `scratch/seed_*.py`, `scratch/set_*password*.py`]. Examples: `seed_all_roles_demo.py:47`, `seed_demo.py:56`, `saptha_full_seed.py:123`, `demo_reset.py:59`, `setup_db.py:27`, `scratch/set_admin_password.py:21`.
   - The current SuperAdmin password equals the demo SuperAdmin password in these scripts (BLK-01), so a seed was apparently run against the database in use.
@@ -1065,14 +1065,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Built in BLK-10a:**
   - `seed_safety.py`: `guard()` (`:84`) loads `.env` as the app would, then refuses with exit code 3 when `production_reasons()` (`:48`) finds `FLASK_ENV=production`, `CLOUD_SQL_INSTANCE`, a Cloud SQL socket URL, or a `DATABASE_URL` host other than SQLite, a local Unix socket, localhost/127.0.0.1/::1 or the docker-compose `db` service. Only `--i-know-this-is-production` on the command line overrides it. `guard(firestore=True)` also requires `--confirm-firestore-project=<id>` matching the service-account key's project (or a local emulator). The message names the host, never the URL. `seed_password()` (`:104`) is ready for BLK-10b.
   - All 31 seed, setup, wipe, delete and reset scripts (root, `scripts/`, `scratch/`) call `guard()` first, before any project import; the 10 that use the Firestore client call `guard(firestore=True)`.
+- **Built in BLK-10b:**
+  - `seed_safety.py`: `seed_password(role)` returns `SEED_<ROLE>_PASSWORD` from the environment if set, or generates a secure random password using `secrets.token_urlsafe(12)`. All generated passwords are recorded and printed in a single clear summary table at the end of execution.
+  - All 19 seed, setup, and reset scripts updated to use `seed_password(...)` instead of hardcoded string literals.
 - **Files touched:** all seed/setup scripts listed above, new `seed_safety.py`, tests.
 - **Effort:** S · **Depends on:** none (merging scripts overlaps UPG-15) · **Risk:** low; breaks anyone relying on the published demo logins (they're printed instead).
 - **Acceptance criteria:**
-  1. Test: an AST scan of every seed/setup script finds no string literal used as a password (dict keys or arguments named like `password`, `password_raw`, `*_PASS`).
+  1. ✅ Test: an AST scan of every seed/setup script finds no string literal used as a password (dict keys or arguments named like `password`, `password_raw`, `*_PASS`) (`tests/test_seed_safety.py::test_no_script_uses_a_string_literal_as_a_password`).
   2. ✅ Each of the 31 scripts, run with a remote `DATABASE_URL`, with `CLOUD_SQL_INSTANCE`, with `FLASK_ENV=production`, or with a Cloud SQL socket URL, exits 3 before any connection: SQLAlchemy engines, Firebase and HTTP are replaced by "exit 99" in the test runner; the URL is never echoed; every script calls `guard()` before any other import (`tests/test_seed_safety.py`, 124 parametrised cases plus the local-database check).
-  3. Test: with a local SQLite `DATABASE_URL`, the seed creates accounts whose passwords come from `SEED_*_PASSWORD` when set, and are random (different across two runs) when not.
+  3. ✅ Test: with a local SQLite `DATABASE_URL`, the seed creates accounts whose passwords come from `SEED_*_PASSWORD` when set, and are random (different across two runs) when not (`tests/test_seed_safety.py::test_seed_passwords_come_from_the_environment_or_are_random`).
   4. ✅ With a production-looking target, environment variables don't override the guard and the command-line flag does; Firestore scripts additionally need the right project named (a wrong one is refused) (`::test_only_the_command_line_flag_overrides_the_guard`, `::test_firestore_scripts_also_need_the_project_named`).
-  - Full pytest: **626 passed** on SQLite and PostgreSQL 16; ruff clean.
+  - Full pytest: **658 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### BLK-11 — CI's bandit job fails on 5 pre-existing issues, so CI can't go green
 - **Status:** TODO
@@ -1262,3 +1265,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-01 | "BLK-07: …" (parent `c05af5e`) | BLK-07 | **BLK-07 DONE.** No migration on GET; "Migrate roles" previews (dry run) and applies only with `confirm=1`; login, password reset and the API login map the migrated names (`UniversityAdmin` → SuperAdmin, `UnitAdmin` → ClubSPOC), so the SuperAdmin keeps access after a confirmed migration (tested end to end). Kept the migration's `users.role` rewrite because an existing test pins it. 4 new real-DB tests (all fail on the old code). Full pytest 462 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-01 | "BLK-08: …" (parent `22598e7`) | BLK-08 | **BLK-08 DONE.** Sessions live in the app database (`session_store.py`, `flask_sessions` table; Redis when `REDIS_URL` is set), survive restarts and are shared across instances; cookies are HttpOnly, Secure in production and SameSite=Lax; empty sessions are never stored, and the shared layout no longer mints a CSRF token (and session) for anonymous page views. 5 new real-DB tests (all fail on the old code). Full pytest 467 passed on SQLite, PostgreSQL 16 and with CI's `SESSION_TYPE=filesystem`; ruff clean. |
 | 2026-10-01 | "BLK-10a: …" (parent `04d2e27`) | BLK-10 | **BLK-10a done** (BLK-10 stays IN PROGRESS for 10b). New `seed_safety.guard()`, called first by all 31 seed/setup/wipe scripts: refuses production-looking targets (including `.env`'s `CLOUD_SQL_INSTANCE` and Cloud SQL sockets) with exit 3 before any connection unless `--i-know-this-is-production` is passed; Firestore scripts must also name the project. Found while testing: a local Unix-socket PostgreSQL URL has no host and must count as local. Full pytest 626 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-01 | "BLK-10b: …" (parent `8ecdc9e`) | BLK-10 | **BLK-10 DONE** (10a + 10b). No seed/setup script uses a string literal password; passwords come from `SEED_<ROLE>_PASSWORD` or `secrets.token_urlsafe(12)` and are printed once at exit; AST scan pins every script (`tests/test_seed_safety.py::test_no_script_uses_a_string_literal_as_a_password`). Full pytest 658 passed on SQLite and PostgreSQL 16; ruff clean. |

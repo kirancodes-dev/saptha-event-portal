@@ -15,7 +15,7 @@ Requirements: firebase_admin, werkzeug  (already in requirements.txt)
 """
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard(firestore=True)
 
 
@@ -125,21 +125,21 @@ SPOC = {
     "category": "Technical",
     "phone":    "9876500001",
     "usn":      "",
-    "password_raw": "Spoc@1234",
+    "password_raw": seed_password('CLUBSPOC'),
 }
 
 JUDGES = [
-    {"email":"judge1@snpsu.edu.in","name":"Prof. Arun Menon",  "role":"Judge","category":"Technical","phone":"9876500010","password_raw":"Judge@1111"},
-    {"email":"judge2@snpsu.edu.in","name":"Dr. Kavitha Rao",   "role":"Judge","category":"Technical","phone":"9876500011","password_raw":"Judge@2222"},
-    {"email":"judge3@snpsu.edu.in","name":"Prof. Vinod Shetty","role":"Judge","category":"Technical","phone":"9876500012","password_raw":"Judge@3333"},
-    {"email":"judge4@snpsu.edu.in","name":"Dr. Suma Bhat",     "role":"Judge","category":"Technical","phone":"9876500013","password_raw":"Judge@4444"},
-    {"email":"judge5@snpsu.edu.in","name":"Prof. Rajan Pillai","role":"Judge","category":"Technical","phone":"9876500014","password_raw":"Judge@5555"},
+    {"email":"judge1@snpsu.edu.in","name":"Prof. Arun Menon",  "role":"Judge","category":"Technical","phone":"9876500010","password_raw":seed_password('JUDGE')},
+    {"email":"judge2@snpsu.edu.in","name":"Dr. Kavitha Rao",   "role":"Judge","category":"Technical","phone":"9876500011","password_raw":seed_password('JUDGE')},
+    {"email":"judge3@snpsu.edu.in","name":"Prof. Vinod Shetty","role":"Judge","category":"Technical","phone":"9876500012","password_raw":seed_password('JUDGE')},
+    {"email":"judge4@snpsu.edu.in","name":"Dr. Suma Bhat",     "role":"Judge","category":"Technical","phone":"9876500013","password_raw":seed_password('JUDGE')},
+    {"email":"judge5@snpsu.edu.in","name":"Prof. Rajan Pillai","role":"Judge","category":"Technical","phone":"9876500014","password_raw":seed_password('JUDGE')},
 ]
 
 COORDINATORS = [
-    {"email":"coord1@snpsu.edu.in","name":"Suresh Babu",  "role":"EventCoordinator","category":"Technical","phone":"9876500020","password_raw":"Coord@1111"},
-    {"email":"coord2@snpsu.edu.in","name":"Meena Pillai", "role":"EventCoordinator","category":"Technical","phone":"9876500021","password_raw":"Coord@2222"},
-    {"email":"coord3@snpsu.edu.in","name":"Ramesh Shenoy","role":"EventCoordinator","category":"Technical","phone":"9876500022","password_raw":"Coord@3333"},
+    {"email":"coord1@snpsu.edu.in","name":"Suresh Babu",  "role":"EventCoordinator","category":"Technical","phone":"9876500020","password_raw":seed_password('EVENTCOORDINATOR')},
+    {"email":"coord2@snpsu.edu.in","name":"Meena Pillai", "role":"EventCoordinator","category":"Technical","phone":"9876500021","password_raw":seed_password('EVENTCOORDINATOR')},
+    {"email":"coord3@snpsu.edu.in","name":"Ramesh Shenoy","role":"EventCoordinator","category":"Technical","phone":"9876500022","password_raw":seed_password('EVENTCOORDINATOR')},
 ]
 
 # ── Event definition ───────────────────────────────────────────────────

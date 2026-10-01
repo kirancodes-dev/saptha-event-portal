@@ -9,7 +9,7 @@ Covers both Free and Paid events with custom form schemas and HD Unsplash banner
 """
 
 # BLK-10: refuse production-looking databases before anything connects
-from seed_safety import guard  # noqa: E402
+from seed_safety import guard, seed_password  # noqa: E402
 guard()
 
 
@@ -111,7 +111,7 @@ def ensure_spoc_user():
         'role':                 'ClubSPOC',
         'category':             'General',
         'club':                 SPOC_CLUB,
-        'password':             generate_password_hash('Saptha@2026', method='pbkdf2:sha256'),
+        'password':             generate_password_hash(seed_password('CLUBSPOC'), method='pbkdf2:sha256'),
         'created_at':           datetime.datetime.now().strftime('%Y-%m-%d'),
         'needs_password_reset': False,
     }

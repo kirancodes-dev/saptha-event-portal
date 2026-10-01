@@ -123,3 +123,73 @@ def test_local_databases_are_allowed():
                 'postgresql://postgres:@/test?host=/tmp/pg-socket'):
         assert production_reasons({'DATABASE_URL': url}) == [], url
     assert production_reasons({}) == []
+
+
+# ── BLK-10b: no known passwords ────────────────────────────────────────────
+
+def _password_literals(source):
+    """String literals used as passwords: password-named dict keys, keyword
+    arguments and variables, and generate_password_hash('...')."""
+    def named(n):
+        n = (n or '').lower()
+        return 'pass' in n or n.endswith('_pw') or n in ('pw', 'pwd')
+
+    def literal(v):
+        return isinstance(v, ast.Constant) and isinstance(v.value, str) and v.value
+    found = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Dict):
+            found += [node.lineno for k, v in zip(node.keys, node.values)
+                      if isinstance(k, ast.Constant) and isinstance(k.value, str) and named(k.value) and literal(v)]
+        elif isinstance(node, ast.Call):
+            found += [node.lineno for kw in node.keywords if named(kw.arg) and literal(kw.value)]
+            fn = getattr(node.func, 'id', None) or getattr(node.func, 'attr', None)
+            if fn == 'generate_password_hash' and node.args and literal(node.args[0]):
+                found.append(node.lineno)
+        elif isinstance(node, ast.Assign) and literal(node.value):
+            found += [node.lineno for t in node.targets if isinstance(t, ast.Name) and named(t.id)]
+    return found
+
+
+@pytest.mark.parametrize('script', SCRIPTS)
+def test_no_script_uses_a_string_literal_as_a_password(script):
+    assert _password_literals(open(os.path.join(ROOT, script)).read()) == [], script
+
+
+def _seed(tmp_path, name, **env):
+    db_file = tmp_path / f'{name}.db'
+    run_env = dict(os.environ, DATABASE_URL=f'sqlite:///{db_file}', CLOUD_SQL_INSTANCE='', FLASK_ENV='development',
+                   **{k: v for k, v in env.items()})
+    for role in ('SUPERADMIN', 'CLUBSPOC', 'EVENTCOORDINATOR', 'JUDGE', 'STUDENT'):
+        run_env.setdefault(f'SEED_{role}_PASSWORD', '')
+    out = subprocess.run([sys.executable, 'seed_all_roles_demo.py'], cwd=ROOT, env=run_env,
+                         capture_output=True, text=True, timeout=300)
+    assert out.returncode == 0, out.stderr[-1500:]
+    import sqlite3
+    with sqlite3.connect(db_file) as conn:
+        hashes = dict(conn.execute('SELECT id, "passwordHash" FROM users'))
+    printed = {}
+    tail = out.stdout.split('Seeded account passwords', 1)[1]
+    for line in tail.strip().splitlines()[1:]:
+        role, value = line.split(None, 1)
+        printed[role] = value.strip()
+    return hashes, printed
+
+
+def test_seed_passwords_come_from_the_environment_or_are_random(tmp_path):
+    from werkzeug.security import check_password_hash
+
+    hashes, printed = _seed(tmp_path, 'from-env', SEED_SUPERADMIN_PASSWORD='env-admin-Pass-42',
+                            SEED_STUDENT_PASSWORD='env-student-Pass-42')
+    assert check_password_hash(hashes['admin@snpsu.edu.in'], 'env-admin-Pass-42')
+    assert check_password_hash(hashes['student001@snpsu.edu.in'], 'env-student-Pass-42')
+    assert printed['SUPERADMIN'] == '(from SEED_SUPERADMIN_PASSWORD)'  # never echoed
+    assert 'env-admin-Pass-42' not in printed.values()
+
+    first_hashes, first = _seed(tmp_path, 'random-1')
+    second_hashes, second = _seed(tmp_path, 'random-2')
+    assert check_password_hash(first_hashes['admin@snpsu.edu.in'], first['SUPERADMIN'])
+    assert check_password_hash(first_hashes['spoc@snpsu.edu.in'], first['CLUBSPOC'])
+    assert first['SUPERADMIN'] != second['SUPERADMIN']
+    assert first['STUDENT'] != second['STUDENT']
+    assert len(first['SUPERADMIN']) >= 12

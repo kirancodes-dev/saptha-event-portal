@@ -1439,17 +1439,22 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. The next CI run on GitHub shows no "Jekyll site CI" check.
 
 #### UPG-39 — In development, log set-password and reset links when no mail provider is set
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `37c2a5c`
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "UPG-39: …" on `production-ready` (parent `1b04a80`)
 - **Problem:** Owner, 2026-10-02. Since BLK-02 and UPG-33 the emailed set-password link is the only way into a new account, and the reset link the only way back in. With no mail provider configured (no `BREVO_API_KEY`, `RESEND_API_KEY` or Gmail login), `utils_email._send` falls back to Gmail SMTP and fails (`utils_email.py:408-420`), so a developer can't follow these flows locally.
 - **Who benefits:** developers and testers.
 - **What to build:** when no provider is configured and `FLASK_ENV` isn't `production`, the set-password and reset emails also write their link to the log at WARNING, marked as development-only. In production the link is never logged: a missing provider is logged as an error without the link.
-- **Files touched:** `utils_email.py`, tests.
+- **What was built:**
+  - `utils_email.mail_provider()` (`utils_email.py:75`) names the provider `_send` will use, or `''`.
+  - `_log_link_without_mail` (`:96`) is called by the reset email (`:686`) and the set-password email (`:717`). With no provider outside production, it logs the link at WARNING, marked "DEVELOPMENT ONLY". In production (app config or environment, `_is_production`, `:86`) it logs an ERROR naming the recipient and the missing provider, never the link.
+  - With a provider configured, nothing is logged.
+- **Files touched:** `utils_email.py`, `tests/test_dev_mail_links.py` (new).
 - **Effort:** S · **Depends on:** UPG-33 · **Risk:** a link in a production log would be a credential; the production test guards it.
-- **Acceptance criteria:**
-  1. Test: in development with no provider, registering a new email and requesting a reset each log the full link.
-  2. Test: with production config and no provider, neither link appears in any log record (an error about the missing provider is logged instead).
-  3. Test: with a provider configured (HTTP stubbed), the links aren't logged.
+- **Acceptance criteria** (`tests/test_dev_mail_links.py`, real database layer; criteria 1–2 fail on the old code):
+  1. ✅ Test: in development with no provider, registering a new email and requesting a reset each log the full link (`::test_development_logs_both_links`).
+  2. ✅ Test: with production config and no provider, neither link appears in any log record (an error about the missing provider is logged instead) (`::test_production_never_logs_a_link`).
+  3. ✅ Test: with a provider configured (HTTP stubbed), the links aren't logged (`::test_with_a_provider_the_links_are_not_logged`).
+  - Full pytest: **725 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-40 — The Super Admin can resend a set-password link from a users page
 - **Status:** TODO
@@ -1586,3 +1591,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-02 | "UPG-35: …" (parent `032e7c3`) | UPG-35, BLK-13 | **UPG-35 DONE** (D-3). Web and API login answer "Email or password is incorrect." for an unknown email, a wrong password and an old unhashed password, and the API no longer gives the latter its own 403. Password reset always answers "If an account exists for this email, we've sent a reset link." A correct password with the wrong role still gets a role hint. Sign-up and registration unchanged and now pinned. 4 new real-database tests (criteria 1–3 fail on the old code); BLK-13's API test now expects the new 401 wording (still exact). Full pytest 716 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 5 items DONE since the 2026-10-02 re-verification (BLK-11, BLK-16, BLK-17, UPG-33, UPG-35). |
 | 2026-10-02 | "docs: …" (parent `37c2a5c`) | Process, UPG-39, UPG-40, UPG-41 | Owner: AGENTS.md (and the identical CLAUDE.md) rule 8 now runs the re-verification once at the end of each phase, or early when a change touches files many open items depend on. "Before the next deploy" gains `BREVO_API_KEY`, `MAIL_FROM` and a test-send step, since UPG-33 makes the emailed link the only way into new accounts. **New:** UPG-39 (development logs set-password and reset links when no mail provider is set; never in production), UPG-40 (SuperAdmin users page with a resend button; no users page is routed today), UPG-41 (a third Gmail app password for the old mail account in `utils_email.py`'s docstring since 2026-04-19, revoked by the 2026-09-30 password change; remove it and the hard-coded sender). Scheduled after UPG-37. Docs only. |
 | 2026-10-02 | "UPG-37: …" (parent `06f4b02`) | UPG-37, BLK-13 | **UPG-37 DONE.** Each throttle counter has its own window: logins are also capped at 20 failures per account per hour (`LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT`), on the same stored attempts, which are now kept for an hour. A success clears both account windows; IPs and reset requests have no hourly cap. 6 new cases on both counter stores (criteria 1–2 fail on the old code). One BLK-13 test's fixed list of 20 Redis connections ran out with three counters per check; it now gets a new connection per call (same assertions). Full pytest 722 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-02 | "UPG-39: …" (parent `1b04a80`) | UPG-39 | **UPG-39 DONE.** With no mail provider configured, the set-password and reset emails log their link in development (WARNING, marked development-only) so the flows can be tested locally. In production only an error naming the missing provider is logged, never the link, and with a provider nothing is logged. 3 new real-database tests (criteria 1–2 fail on the old code). Full pytest 725 passed on SQLite and PostgreSQL 16; ruff clean. |

@@ -72,6 +72,39 @@ def _from_address() -> str:
     )
 
 
+def mail_provider() -> str:
+    """The provider _send will use: 'brevo', 'resend', 'smtp', or '' for none."""
+    if os.environ.get('BREVO_API_KEY'):
+        return 'brevo'
+    if os.environ.get('RESEND_API_KEY'):
+        return 'resend'
+    if os.environ.get('MAIL_USER') and os.environ.get('MAIL_PASS'):
+        return 'smtp'
+    return ''
+
+
+def _is_production() -> bool:
+    try:
+        from flask import current_app
+        if current_app.config.get('FLASK_ENV') == 'production':
+            return True
+    except RuntimeError:  # outside an app context
+        pass
+    return os.environ.get('FLASK_ENV') == 'production'
+
+
+def _log_link_without_mail(kind: str, to_email: str, url: str) -> None:
+    """No mail provider configured: in development, write the link to the log
+    so the flow can be followed locally (UPG-39). Never in production, where
+    the link is a credential: there, report the missing provider instead."""
+    if mail_provider():
+        return
+    if _is_production():
+        logger.error("No mail provider is configured: the %s email to %s can't be sent", kind, to_email)
+        return
+    logger.warning("DEVELOPMENT ONLY, no mail provider: %s link for %s: %s", kind, to_email, url)
+
+
 def _update_delivery_status(to_email: str, status: str, reg_id: str | None = None):
     try:
         from models import db
@@ -650,6 +683,7 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
           password will remain unchanged.
         </p>
     """, "Password Reset Request")
+    _log_link_without_mail('password reset', to_email, reset_url)
     return _send(to_email, "🔐 Reset your SapthaEvent password", html)
 
 
@@ -680,6 +714,7 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
           the account without this link.
         </p>
     """, "Set Your Password")
+    _log_link_without_mail('set-password', to_email, set_password_url)
     return _send(to_email, "🔐 Set your SapthaEvent password", html)
 
 

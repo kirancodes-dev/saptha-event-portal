@@ -156,6 +156,27 @@ def _extract_token() -> Optional[str]:
     return request.args.get("token")
 
 
+def _session_csrf_failure():
+    """Session-cookie calls to the (CSRF-exempt) API must carry the CSRF token.
+
+    /api/v1 is exempt from Flask-WTF because Bearer-token clients can't be
+    forged cross-site; the session-cookie fallback can, so its writes are
+    checked here (BLK-04). Returns an error response, or None when fine.
+    """
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    if not current_app.config.get("WTF_CSRF_ENABLED", True):
+        return None
+    try:
+        from flask_wtf.csrf import validate_csrf
+        validate_csrf(request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token")
+                      or request.form.get("csrf_token"))
+    except Exception:
+        return jsonify({"error": "csrf_validation_failed",
+                        "message": "Send the CSRF token (X-CSRFToken) or use a Bearer token"}), 400
+    return None
+
+
 def jwt_required(f):
     """Decorator: require a valid JWT access token (or active session).
 
@@ -167,6 +188,9 @@ def jwt_required(f):
         if not token:
             from flask import session
             if session.get("user_id"):
+                failure = _session_csrf_failure()
+                if failure:
+                    return failure
                 g.jwt_user = {
                     "sub": session.get("user_id"),
                     "user_id": session.get("user_id"),
@@ -205,6 +229,9 @@ def jwt_roles_required(roles):
                 from flask import session
                 s_role = session.get("role")
                 if session.get("user_id") and s_role and (s_role in roles or "SuperAdmin" in roles and s_role == "SuperAdmin"):
+                    failure = _session_csrf_failure()
+                    if failure:
+                        return failure
                     g.jwt_user = {
                         "sub": session.get("user_id"),
                         "user_id": session.get("user_id"),

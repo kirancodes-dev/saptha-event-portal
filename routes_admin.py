@@ -638,11 +638,8 @@ def manage_org_units():
             d['id'] = u.id
             units.append(d)
 
-        # If no units yet, auto-seed default units
-        if not units:
-            from services_permission import migrate_roles_and_units
-            migrate_roles_and_units(db)
-            units = [dict(u.to_dict() or {}, id=u.id) for u in db.collection('org_units').stream()]
+        # Viewing this page never migrates anything (BLK-07); use the
+        # "Migrate roles" preview + confirm instead.
 
         roles_stream = list(db.collection('role_assignments').stream())
         role_assignments = []
@@ -807,15 +804,23 @@ def approve_event(event_id):
 @login_required
 @role_required(SUPER_ROLES)
 def trigger_role_migration():
+    """Preview by default; apply only with confirm=1 (BLK-07)."""
+    confirm = request.form.get('confirm') == '1'
     try:
         from services_permission import migrate_roles_and_units
-        result = migrate_roles_and_units(db)
-        flash(f"✅ Migration complete: {len(result.get('migrated_admins', []))} Admins, {len(result.get('migrated_spocs', []))} UnitAdmins, {len(result.get('backfilled_events', []))} Events backfilled.", "success")
+        result = migrate_roles_and_units(db, dry_run=not confirm)
+        summary = (f"{len(result.get('migrated_admins', []))} admins → university-wide grant, "
+                   f"{len(result.get('migrated_spocs', []))} SPOCs → unit grant, "
+                   f"{len(result.get('backfilled_events', []))} events → 'central' unit")
+        if confirm:
+            flash(f"✅ Migration complete: {summary}. Migrated accounts still log in with their usual role.", "success")
+        else:
+            flash(f"Preview only, nothing changed: {summary}. Press \"Confirm migration\" to apply.", "info")
         if result.get('unmapped_users'):
             flash(f"⚠️ Unmapped users: {[u['email'] for u in result['unmapped_users']]}", "warning")
     except Exception as exc:
         flash(f"Migration error: {exc}", "danger")
-    return redirect('/admin/org_units')
+    return redirect('/admin/org_units' if confirm else '/admin/org_units?migration_preview=1')
 
 
 # =========================================================

@@ -1,6 +1,11 @@
 """
 seed_scale_test.py — Bulk seeds 5,000 registrations to Supabase PostgreSQL for scale testing.
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard, seed_password  # noqa: E402
+guard()
+
 import os
 import sys
 import uuid
@@ -60,7 +65,7 @@ def main():
                 role=UserRole.SPOC,
                 college="Sapthagiri NPS University",
                 department="Computer Science",
-                password_hash="pbkdf2:sha256:600000$default_hashed_pass", # test hash
+                password_hash=seed_password('DEMO'), # test hash
                 is_active=True
             )
             session.add(spoc)

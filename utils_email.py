@@ -656,6 +656,34 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
     return _send(to_email, "🔐 Reset your SapthaEvent password", html)
 
 
+def send_set_password_email(to_email: str, name: str, set_password_url: str) -> bool:
+    """New account from a registration: one-time link to choose a password."""
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{name or 'User'}</strong>,</p>
+        <p style="color:#475569;">A SapthaEvent account was created for this
+           email when you registered for an event. Choose a password to open
+           your dashboard and ticket. This link works once and expires in
+           <strong>3 days</strong>.</p>
+        <p style="text-align:center;margin:24px 0;">
+          <a href="{set_password_url}"
+             style="background:#1a2557;color:#fff;padding:12px 32px;
+                    border-radius:8px;text-decoration:none;font-weight:700;
+                    display:inline-block;">
+            Set My Password →
+          </a>
+        </p>
+        <p style="color:#64748b;font-size:12px;">
+          If the button doesn't work, copy this link into your browser:<br>
+          <span style="word-break:break-all;color:#1a2557;">{set_password_url}</span>
+        </p>
+        <p style="color:#ef4444;font-size:12px;margin-top:18px;">
+          Didn't register? You can ignore this email; nobody can log in to the
+          account without this link.
+        </p>
+    """, "Set Your Password")
+    return _send(to_email, "🔐 Set your SapthaEvent password", html)
+
+
 def send_appointment_email(to_email: str, name: str, role: str,
                            event_title: str) -> bool:
     base = _base_url()

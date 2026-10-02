@@ -229,7 +229,8 @@ def test_dynamic_pricing_endpoint_applies_surge(client, mock_db):
     assert "High Demand Surge" in data['reason']
 
 
-def test_checkout_applies_surge_pricing_to_order_amount(client, mock_db):
+def test_checkout_applies_surge_pricing_to_order_amount(client, mock_db, monkeypatch):
+    monkeypatch.setenv('PAYMENT_SIMULATION', 'true')  # BLK-03: the simulated checkout needs the flag
     mock_db.collection("events").document("evt_test_001").set({
         "title": "Sports Stadium Arena",
         "entry_fee": 100,

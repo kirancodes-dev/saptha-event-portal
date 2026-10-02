@@ -9,7 +9,7 @@ except ImportError:
     firebase_admin = None
     credentials = None
     firestore = None
-from flask import Flask, render_template, session, redirect, request, jsonify, Response, g
+from flask import Flask, render_template, session, redirect, request, jsonify, Response, g, flash
 try:
     from flask_mail import Mail
 except ImportError:
@@ -174,9 +174,21 @@ def _safe_csrf_token():
     except Exception:
         return "dummy-csrf-token"
 
-app.jinja_env.globals.update(csrf_token=_safe_csrf_token)
+def _csrf_meta_token():
+    """Token for a layout's <meta name="csrf-token"> (read by fetch() helpers).
 
-# ── Server-side session (Redis in prod, filesystem in dev) ──
+    Minting a token stores it in the session, so for anonymous visitors this
+    returns one only if their session already has one: a plain page view then
+    creates no server-side session (BLK-08). Forms keep using csrf_token().
+    """
+    if session.get('user_id') or 'csrf_token' in session:
+        return _safe_csrf_token()
+    return ''
+
+
+app.jinja_env.globals.update(csrf_token=_safe_csrf_token, csrf_meta_token=_csrf_meta_token)
+
+# ── Server-side sessions (BLK-08): Redis when configured, else the database ──
 if app.config.get('SESSION_TYPE') == 'redis':
     try:
         import redis as _redis
@@ -185,12 +197,16 @@ if app.config.get('SESSION_TYPE') == 'redis':
             app.config['SESSION_REDIS'] = _redis.from_url(redis_url)
             logger.info("Session: using Redis backend")
         else:
-            logger.warning("SESSION_TYPE=redis but no REDIS_URL — falling back to filesystem")
-            app.config['SESSION_TYPE'] = 'filesystem'
+            logger.warning("SESSION_TYPE=redis but no REDIS_URL — using the database")
+            app.config['SESSION_TYPE'] = 'sqlalchemy'
     except Exception as exc:
-        logger.warning("Redis session init failed (%s) — using filesystem", exc)
-        app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
+        logger.warning("Redis session init failed (%s) — using the database", exc)
+        app.config['SESSION_TYPE'] = 'sqlalchemy'
+if app.config.get('SESSION_TYPE') == 'sqlalchemy':
+    from session_store import SQLSessionInterface  # noqa: E402
+    app.session_interface = SQLSessionInterface()
+else:
+    Session(app)
 
 # ── Security headers via Talisman ────────────────────────
 _csp = {
@@ -929,7 +945,8 @@ def registration_confirmed():
     data = session.pop('reg_confirmed', None)
     if not data:
         return redirect('/participant/dashboard')
-    data['user_email'] = session.get('user_id', '')
+    data.pop('raw_password', None)  # never shown (BLK-02)
+    data['user_email'] = data.get('user_email') or session.get('user_id', '')
     return render_template('participant/registration_confirmed.html', **data)
 
 
@@ -1105,13 +1122,50 @@ def events_calendar():
 # =========================================================
 # PERSONAL CALENDAR FEED (.ICS)
 # =========================================================
+def calendar_feed_url():
+    """Subscribe URL for the logged-in user's feed (signed token; BLK-04)."""
+    email = (session.get('user_id') or '').lower()
+    if not email:
+        return '/calendar/feed.ics'
+    from services_accounts import make_calendar_feed_token
+    try:
+        udoc = db.collection('users').document(email).get()
+        version = (udoc.to_dict() or {}).get('calendar_feed_version', 0) if udoc.exists else 0
+    except Exception:
+        version = 0
+    return f"/calendar/feed.ics?token={make_calendar_feed_token(email, version)}"
+
+
+app.jinja_env.globals.update(calendar_feed_url=calendar_feed_url)
+
+
+@app.route('/calendar/feed/rotate', methods=['POST'])
+def rotate_calendar_feed():
+    """Invalidate every earlier subscribe link for this user."""
+    email = (session.get('user_id') or '').lower()
+    if not email:
+        return redirect('/login')
+    udoc = db.collection('users').document(email).get()
+    version = int((udoc.to_dict() or {}).get('calendar_feed_version', 0) or 0) if udoc.exists else 0
+    db.collection('users').document(email).update({'calendar_feed_version': version + 1})
+    flash("Your calendar link was reset. Re-subscribe with the new link.", "info")
+    return redirect(request.referrer if request.referrer and request.referrer.startswith(request.host_url) else '/participant/my_events')
+
+
 @app.route('/calendar/feed.ics')
 def personal_calendar_feed():
-    """Download RFC 5545 standard personal iCalendar feed for user's registered events."""
+    """Download RFC 5545 standard personal iCalendar feed for user's registered events.
+
+    Only the logged-in user's own events, or the user named by a signed feed
+    token (for calendar apps). ``?user=`` is ignored (BLK-04).
+    """
     from flask import Response
     from services_venue import generate_calendar_feed_ics
 
-    user_email = session.get('user_id') or request.args.get('user')
+    user_email = session.get('user_id')
+    if not user_email and request.args.get('token'):
+        from services_accounts import load_calendar_feed_token
+        user_email = load_calendar_feed_token(request.args['token'], db)
     if not user_email:
         empty_ics = (
             "BEGIN:VCALENDAR\r\n"

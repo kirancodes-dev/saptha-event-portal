@@ -2,6 +2,13 @@
 seed_events.py — Seed 30 upcoming events + SPOC user in Firestore.
 Run from project root: python scripts/seed_events.py
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+import os as _os, sys as _sys  # noqa: E401,E402
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from seed_safety import firestore_key, guard, seed_password  # noqa: E402
+guard(firestore=True)
+
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -16,13 +23,13 @@ except ImportError:
 from werkzeug.security import generate_password_hash
 from datetime import date, timedelta
 
-KEY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'serviceAccountKey.json')
 if not firebase_admin._apps:
-    firebase_admin.initialize_app(credentials.Certificate(KEY))
+    # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+    firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
 db = firestore.client()
 
 SPOC_EMAIL = 'biradark543@gmail.com'
-SPOC_PASS  = 'Kiran123@'
+SPOC_PASS  = seed_password('SPOC')
 TODAY = date.today()  # 2026-05-16
 
 # ── 1. Create / update SPOC user ─────────────────────────────────────────────

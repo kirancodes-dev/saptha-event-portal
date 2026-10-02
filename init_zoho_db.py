@@ -5,6 +5,11 @@ Automatically creates all database tables (users, events, registrations, forms,
 scores, audit logs) and seeds the initial SuperAdmin account.
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard, seed_password  # noqa: E402
+guard()
+
+
 import os
 import sys
 import logging
@@ -89,7 +94,7 @@ def create_all_tables(db_url: str = None):
                     skills=sp["skills"],
                     interests=sp["interests"],
                     bio=sp["bio"],
-                    password=generate_password_hash("Student@2026")
+                    password=generate_password_hash(seed_password('DEMO'))
                 )
                 session.add(user)
             session.commit()

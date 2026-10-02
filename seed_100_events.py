@@ -4,6 +4,11 @@ Wipes existing events and registrations, and generates 100 realistic, unique eve
 spread across the next 30 days. Generates matching custom form schemas.
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
+
 import os
 import sys
 import datetime

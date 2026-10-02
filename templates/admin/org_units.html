@@ -40,10 +40,19 @@
             <div>
                 <form action="/admin/migrate_roles" method="POST" class="d-inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-outline-primary" onclick="return confirm('Run universal role and unit migration? Existing events will be backfilled to Central.');">
-                        <i class="fas fa-sync-alt me-1"></i> Sync & Migrate Roles
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-sync-alt me-1"></i> Preview role migration
                     </button>
                 </form>
+                {% if request.args.get('migration_preview') %}
+                <form action="/admin/migrate_roles" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="confirm" value="1">
+                    <button type="submit" class="btn btn-primary" onclick="return confirm('Apply the role and unit migration shown in the preview? Existing events will be backfilled to Central.');">
+                        <i class="fas fa-check me-1"></i> Confirm migration
+                    </button>
+                </form>
+                {% endif %}
             </div>
         </div>
 

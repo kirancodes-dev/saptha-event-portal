@@ -25,6 +25,11 @@ Form field mapping (from event_forms collection):
 Run once:  python3 seed_hackathon_regs.py
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
+
 import sys
 import random
 import time

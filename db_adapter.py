@@ -171,7 +171,7 @@ EVENT_STATUS_ALIASES = {s.value: s for s in EventStatus}
 REG_STATUS_ALIASES = {
     **{s.value: s for s in RegistrationStatus},
     "approved": RegistrationStatus.confirmed,
-    "applied": RegistrationStatus.pending,
+    "pending payment": RegistrationStatus.pending_payment,
 }
 
 PAYMENT_STATUS_ALIASES = {
@@ -956,9 +956,13 @@ class SQLDocumentReference:
             else:
                 d['feedback'] = None
             # Retrieve nested team members
+            # Each member row keeps the dict it was written from (BLK-06), so
+            # keys like role or per-member attendance survive; older rows fall
+            # back to the columns.
             m_list = []
             for m in record.members:
-                m_list.append({
+                stored = _load_shadow(m)
+                m_list.append(stored or {
                     'name': m.name,
                     'email': m.email,
                     'phone': m.phone,
@@ -971,7 +975,7 @@ class SQLDocumentReference:
             # Retrieve nested scores
             s_dict = {}
             for s in record.scores:
-                s_dict[s.judge_id] = {
+                s_dict[s.judge_id] = _load_shadow(s) or {
                     'judge_name': s.judge_name,
                     'total': s.total,
                     'criteria': json.loads(s.criteria) if s.criteria else {},
@@ -1109,6 +1113,7 @@ class SQLDocumentReference:
             kwargs['rules'] = safe_str(data.get('rules') or '')
             kwargs['prizes'] = safe_str(data.get('prizes') or '')
             kwargs['coordinator_id'] = data.get('coordinator_id') or data.get('created_by_email') or data.get('spoc_id')
+            kwargs['spoc_id'] = safe_str(data.get('spoc_id') or '') or None
             kwargs['open_hall_mode'] = bool(data.get('open_hall_mode', False))
             kwargs['scoring_locked'] = bool(data.get('scoring_locked', False))
             kwargs['judging_criteria_json'] = json.dumps(data.get('judging_criteria', []))
@@ -1164,7 +1169,9 @@ class SQLDocumentReference:
 
         elif self.collection_name == 'audit_log':
             kwargs['id'] = to_uuid(self.id)
-            kwargs['actor_email'] = safe_str(data.get('actor_email', 'system'))
+            # utils.log_action writes the actor as 'user' (BLK-06)
+            kwargs['actor_email'] = safe_str(data.get('actor_email') or data.get('actorEmail')
+                                             or data.get('user') or 'system')
             kwargs['action'] = safe_str(data.get('action', 'unknown'))
             kwargs['target_id'] = safe_str(data.get('target_id') or data.get('targetId') or '')
             kwargs['detail'] = safe_str(data.get('detail') or data.get('details') or '')
@@ -1209,7 +1216,8 @@ class SQLDocumentReference:
             kwargs['primary_color'] = safe_str(theme.get('primary_color', data.get('primary_color', '#1a2557')))
             kwargs['accent_color'] = safe_str(theme.get('accent_color', data.get('accent_color', '#f37021')))
             kwargs['custom_domain'] = data.get('custom_domain')
-            kwargs['api_key'] = safe_str(data.get('api_key', ''))
+            # Unique column: an organisation without a key stores NULL, not '' (BLK-06)
+            kwargs['api_key'] = safe_str(data.get('api_key') or '') or None
             kwargs['owner_email'] = safe_str(data.get('owner_email', ''))
             kwargs['is_active'] = bool(data.get('is_active', True))
             kwargs['settings_json'] = json.dumps(data.get('settings', {})) if isinstance(data.get('settings'), dict) else safe_str(data.get('settings_json', ''))
@@ -1228,7 +1236,8 @@ class SQLDocumentReference:
             kwargs['gate_assignment'] = safe_str(data.get('gate_assignment', ''))
             kwargs['seat_assignment'] = safe_str(data.get('seat_assignment', ''))
             kwargs['status'] = safe_str(data.get('status', 'active'))
-            kwargs['checked_in_at'] = self._get_datetime(data.get('checked_in_at'))
+            # A new ticket isn't checked in: no value stays NULL, not "now" (BLK-06)
+            kwargs['checked_in_at'] = self._get_datetime(data['checked_in_at']) if data.get('checked_in_at') else None
             kwargs['created_at'] = self._get_datetime(data.get('created_at'))
             return Ticket(**kwargs)
 
@@ -1348,8 +1357,15 @@ class SQLDocumentReference:
         if mapped_key == 'attendance':
             return self._get_enum_attendance(val)
 
+        if mapped_key == 'api_key' and self.collection_name == 'organizations':
+            return safe_str(val or '') or None
+        if mapped_key == 'spoc_id' and self.collection_name == 'events':
+            return safe_str(val or '') or None
+
         type_name = col.type.__class__.__name__
         if mapped_key in ('created_at', 'updated_at', 'submitted_at', 'checked_in_at', 'start_time', 'end_time') or 'DateTime' in type_name:
+            if not val and col.nullable:
+                return None  # parse_datetime would invent "now" (BLK-06)
             return self._get_datetime(val)
         if mapped_key in ('date', 'deadline'):
             return self._get_date(val)
@@ -1441,7 +1457,8 @@ class SQLDocumentReference:
                             phone=safe_str(m.get('phone', '')),
                             usn=safe_str(m.get('usn', '')),
                             college=safe_str(m.get('college', '')),
-                            department=safe_str(m.get('dept') or m.get('department') or '')
+                            department=safe_str(m.get('dept') or m.get('department') or ''),
+                            extra_json=json.dumps(m, cls=CustomJSONEncoder),
                         )
                         session.add(member)
 
@@ -1462,7 +1479,8 @@ class SQLDocumentReference:
                                 total=total_val,
                                 criteria=json.dumps(criteria_data),
                                 feedback=safe_str(s_data.get('remarks') or s_data.get('feedback') or ''),
-                                scored_at=self._get_datetime(s_data.get('timestamp') or s_data.get('submitted_at'))
+                                scored_at=self._get_datetime(s_data.get('timestamp') or s_data.get('submitted_at')),
+                                extra_json=json.dumps(s_data, cls=CustomJSONEncoder),
                             )
                             session.add(score)
                         else:
@@ -1470,6 +1488,7 @@ class SQLDocumentReference:
                             existing_score.criteria = json.dumps(criteria_data)
                             existing_score.feedback = safe_str(s_data.get('remarks') or s_data.get('feedback') or '')
                             existing_score.scored_at = self._get_datetime(s_data.get('timestamp') or s_data.get('submitted_at'))
+                            existing_score.extra_json = json.dumps(s_data, cls=CustomJSONEncoder)
 
             elif self.collection_name == 'push_subscriptions':
                 if key == 'subscription' and isinstance(val, dict):
@@ -1485,35 +1504,31 @@ class SQLDocumentReference:
     def _get_date(self, val):
         return parse_date(val)
 
+    # Enum columns: the same mapping queries use (_canonical_enum_value), so a
+    # value is stored under the member a filter will look for; values with no
+    # member fall back to a default and are matched on the document (BLK-06).
+    @staticmethod
+    def _to_member(enum_cls, val, default):
+        member = _canonical_enum_value(enum_cls, val)
+        return member if isinstance(member, enum_cls) else default
+
     def _get_enum_role(self, val):
-        if hasattr(val, 'value'):
-            return val
-        return ROLE_ALIASES.get(str(val).strip().lower(), UserRole.Participant)
+        return self._to_member(UserRole, val, UserRole.Participant)
 
     def _get_enum_category(self, val):
-        if hasattr(val, 'value'):
-            return val
-        return CATEGORY_ALIASES.get(str(val).strip().lower(), EventCategory.Technical)
+        return self._to_member(EventCategory, val, EventCategory.Technical)
 
     def _get_enum_status(self, val):
-        if hasattr(val, 'value'):
-            return val
-        return EVENT_STATUS_ALIASES.get(str(val).strip().lower(), EventStatus.active)
+        return self._to_member(EventStatus, val, EventStatus.active)
 
     def _get_enum_reg_status(self, val):
-        if hasattr(val, 'value'):
-            return val
-        return REG_STATUS_ALIASES.get(str(val).strip().lower(), RegistrationStatus.confirmed)
+        return self._to_member(RegistrationStatus, val, RegistrationStatus.confirmed)
 
     def _get_enum_payment_status(self, val):
-        if hasattr(val, 'value'):
-            return val
-        return PAYMENT_STATUS_ALIASES.get(str(val).strip().lower(), PaymentStatus.unpaid)
+        return self._to_member(PaymentStatus, val, PaymentStatus.unpaid)
 
     def _get_enum_attendance(self, val):
-        if hasattr(val, 'value'):
-            return val
-        return ATTENDANCE_ALIASES.get(str(val).strip().lower(), AttendanceStatus.Pending)
+        return self._to_member(AttendanceStatus, val, AttendanceStatus.Pending)
 
 
 _NO_SQL = object()
@@ -1581,6 +1596,39 @@ def _cast_value(col_attr, val):
     return val
 
 
+def _canonical_enum_value(enum_cls, val):
+    """An enum-backed document value in comparable form.
+
+    Explicit aliases (e.g. Coordinator/EventCoordinator, Student/Participant,
+    any case) map to the same member; anything else compares as lower-case
+    text, so 'UniversityAdmin' never equals the 'Participant' fallback.
+    """
+    if isinstance(val, enum_cls):
+        return val
+    key = str(val).strip().lower()
+    aliases = ENUM_ALIASES.get(enum_cls, {})
+    if key in aliases:
+        return aliases[key]
+    for member in enum_cls:
+        if member.name.lower() == key or str(member.value).lower() == key:
+            return member
+    return key
+
+
+def _enum_match(enum_cls, doc_val, op, val):
+    if doc_val is None:
+        return _py_match(doc_val, op, val)
+    doc = _canonical_enum_value(enum_cls, doc_val)
+    if op == '==':
+        return doc == _canonical_enum_value(enum_cls, val)
+    if op == '!=':
+        return doc != _canonical_enum_value(enum_cls, val)
+    if op in ('in', 'not-in', 'not_in'):
+        wanted = {_canonical_enum_value(enum_cls, v) for v in (val or [])}
+        return (doc in wanted) == (op == 'in')
+    return _py_match(doc_val, op, val)
+
+
 class SQLQuery:
     """Mock Query builder translating filters to SQLAlchemy query objects."""
     def __init__(self, collection):
@@ -1618,6 +1666,7 @@ class SQLQuery:
         column_keys = {prop.key for prop in model.__mapper__.column_attrs} - {'extra_json'}
         sql_ops = {'==', '!=', '>', '<', '>=', '<=', 'in'}
         py_filters = []   # evaluated on the full document after loading
+        enum_filters = []  # enum-backed fields: always compared on the real value
         with get_session() as session:
             query = session.query(model)
 
@@ -1627,6 +1676,18 @@ class SQLQuery:
                     py_filters.append((field, op, val))
                     continue
                 col_attr = getattr(model, mapped_field)
+                enum_cls = getattr(getattr(col_attr, 'type', None), 'enum_class', None)
+                if enum_cls is not None:
+                    # The column holds a coarse value: unknown document values
+                    # (e.g. 'evaluation', 'UniversityAdmin', 'NSS') fall back to a
+                    # default member. So SQL only narrows where that can't drop a
+                    # match, and the stored document value decides (BLK-06).
+                    enum_filters.append((field, mapped_field, enum_cls, op, val))
+                    wanted = [_canonical_enum_value(enum_cls, v)
+                              for v in (val if op == 'in' else [val])]
+                    if op in ('==', 'in') and all(isinstance(w, enum_cls) for w in wanted):
+                        query = query.filter(col_attr.in_(wanted))
+                    continue
                 casted_val, exact = _cast_filter_value(col_attr, val)
                 if not exact:
                     # e.g. category 'Workshop' has no enum member: narrow in SQL
@@ -1659,7 +1720,7 @@ class SQLQuery:
                     else:
                         query = query.order_by(col_attr.asc())
 
-            if self._limit is not None and not py_filters and sql_sortable:
+            if self._limit is not None and not py_filters and not enum_filters and sql_sortable:
                 query = query.limit(self._limit)
 
             snapshots = []
@@ -1673,6 +1734,10 @@ class SQLQuery:
         if py_filters:
             snapshots = [s for s in snapshots
                          if all(_py_match(s._data.get(f), op, v) for f, op, v in py_filters)]
+        if enum_filters:
+            snapshots = [s for s in snapshots
+                         if all(_enum_match(cls, s._data.get(f, s._data.get(mf)), op, v)
+                                for f, mf, cls, op, v in enum_filters)]
         if not sql_sortable:
             snapshots = _sort_snapshots(snapshots, self.orders)
         if self._limit is not None:

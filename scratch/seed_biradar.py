@@ -1,3 +1,10 @@
+
+# BLK-10: refuse production-looking databases before anything connects
+import os as _os, sys as _sys  # noqa: E401,E402
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+from seed_safety import guard, seed_password  # noqa: E402
+guard()
+
 import sys
 import os
 sys.path.insert(0, '/Users/kiranbiradar/Desktop/saptha-event-portal')
@@ -25,13 +32,13 @@ def seed_biradar_data():
         'email': spoc_email,
         'name': 'Kiran Biradar (Club SPOC)',
         'role': 'ClubSPOC',
-        'password': generate_password_hash('password123', method='pbkdf2:sha256'),
+        'password': generate_password_hash(seed_password('CLUBSPOC'), method='pbkdf2:sha256'),
         'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
         'needs_password_reset': False,
         'is_active': True
     }
     db.collection('users').document(spoc_email).set(spoc_data)
-    print(f"✅ SPOC Account seeded: {spoc_email} (Password: password123, Role: ClubSPOC)")
+    print(f"✅ SPOC Account seeded: {spoc_email} (Password: (see the passwords printed at the end), Role: ClubSPOC)")
 
     # 2. Add 2 mock Judges to users collection
     judge_alpha = "judge_alpha@test.edu"
@@ -41,14 +48,14 @@ def seed_biradar_data():
         'email': judge_alpha,
         'name': 'Dr. Alpha (Strict)',
         'role': 'Judge',
-        'password': generate_password_hash('password123', method='pbkdf2:sha256'),
+        'password': generate_password_hash(seed_password('JUDGE'), method='pbkdf2:sha256'),
         'is_active': True
     })
     db.collection('users').document(judge_beta).set({
         'email': judge_beta,
         'name': 'Dr. Beta (Lenient)',
         'role': 'Judge',
-        'password': generate_password_hash('password123', method='pbkdf2:sha256'),
+        'password': generate_password_hash(seed_password('JUDGE'), method='pbkdf2:sha256'),
         'is_active': True
     })
     print("✅ Seeded Mock Judges: Dr. Alpha & Dr. Beta")

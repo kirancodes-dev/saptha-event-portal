@@ -90,19 +90,15 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
       </p>
     </div>
 
-    <!-- Credentials (new users only) -->
-    {% if is_new_user and raw_password %}
+    <!-- New account: the set-password link was emailed (no password is ever shown) -->
+    {% if is_new_user %}
     <div class="creds-box">
-      <div class="creds-title"><i class="fas fa-key"></i> Your Login Credentials</div>
+      <div class="creds-title"><i class="fas fa-envelope"></i> Set your password</div>
       <div class="creds-row">
         <span class="cl">Email</span>
         <span class="cv" id="cred-email">{{ user_email }}</span>
       </div>
-      <div class="creds-row">
-        <span class="cl">Password</span>
-        <span class="cv" id="cred-pw">{{ raw_password }}</span>
-      </div>
-      <div class="warning-note">⚠️ Screenshot or note this — change after first login.</div>
+      <div class="warning-note">We've emailed you a one-time link to set your password. Use it to open your dashboard and ticket.</div>
     </div>
     {% endif %}
 

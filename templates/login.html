@@ -127,7 +127,8 @@
                     <!-- Form -->
                     <form action="/login" method="POST" id="main-content" role="main" aria-label="Login form" style="display:none;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        
+                        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+
                         <div class="form-group mb-3">
                             <label class="form-label" for="roleSelect">
                                 Select Role <span class="text-danger" aria-label="required">*</span>

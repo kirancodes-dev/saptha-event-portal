@@ -13,18 +13,22 @@ Timeline:
   14:30–15:00  Certificates auto-generated & sent
 
 What this script creates:
-  • 1 SPOC   (demo.spoc@snpsu.edu.in   / Demo@Spoc123)
-  • 2 Judges (demo.judge1/2@snpsu.edu.in / Demo@Judge1 / Demo@Judge2)
-  • 2 Coordinators (demo.coord1/2@snpsu.edu.in / Demo@Coord1 / Demo@Coord2)
+  • 1 SPOC   (demo.spoc@snpsu.edu.in   / (see the passwords printed at the end))
+  • 2 Judges (demo.judge1/2@snpsu.edu.in / (see the passwords printed at the end) / (see the passwords printed at the end))
+  • 2 Coordinators (demo.coord1/2@snpsu.edu.in / (see the passwords printed at the end) / (see the passwords printed at the end))
   • 1 Event  "Project Showcase 2026"  tomorrow 12:00 PM, venue = CS Block Lab 1
   • 0 Registrations — students register LIVE at 9–10 AM tomorrow
 
 Run:  python seed_live_demo.py
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import firestore_key, guard, seed_password  # noqa: E402
+guard(firestore=True)
+
+
 import sys
 import datetime
-import os
 sys.path.insert(0, '.')
 
 from werkzeug.security import generate_password_hash
@@ -40,11 +44,8 @@ except ImportError:
     credentials = firestore = auth = None
 
 if not firebase_admin._apps:
-    key_path = os.environ.get('FIREBASE_KEY_PATH', 'serviceAccountKey.json')
-    if not os.path.exists(key_path):
-        print("ERROR: serviceAccountKey.json not found. Set FIREBASE_KEY_PATH or place it in cwd.")
-        sys.exit(1)
-    firebase_admin.initialize_app(credentials.Certificate(key_path))
+    # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+    firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
 
 db = firestore.client()
 
@@ -57,7 +58,7 @@ NOW_STR  = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 DEMO_SPOC = {
     'email':    'demo.spoc@snpsu.edu.in',
     'name':     'Demo SPOC',
-    'password': 'Demo@Spoc123',
+    'password': seed_password('CLUBSPOC'),
     'role':     'ClubSPOC',
     'category': 'Technical',
     'club':     'Technical Developers Club',
@@ -65,16 +66,16 @@ DEMO_SPOC = {
 
 DEMO_JUDGES = [
     {'email': 'demo.judge1@snpsu.edu.in', 'name': 'Demo Judge 1',
-     'password': 'Demo@Judge1', 'role': 'Judge', 'category': 'Technical'},
+     'password': seed_password('JUDGE'), 'role': 'Judge', 'category': 'Technical'},
     {'email': 'demo.judge2@snpsu.edu.in', 'name': 'Demo Judge 2',
-     'password': 'Demo@Judge2', 'role': 'Judge', 'category': 'Technical'},
+     'password': seed_password('JUDGE'), 'role': 'Judge', 'category': 'Technical'},
 ]
 
 DEMO_COORDINATORS = [
     {'email': 'demo.coord1@snpsu.edu.in', 'name': 'Demo Coordinator 1',
-     'password': 'Demo@Coord1', 'role': 'EventCoordinator', 'category': 'General'},
+     'password': seed_password('EVENTCOORDINATOR'), 'role': 'EventCoordinator', 'category': 'General'},
     {'email': 'demo.coord2@snpsu.edu.in', 'name': 'Demo Coordinator 2',
-     'password': 'Demo@Coord2', 'role': 'EventCoordinator', 'category': 'General'},
+     'password': seed_password('EVENTCOORDINATOR'), 'role': 'EventCoordinator', 'category': 'General'},
 ]
 
 # ── Demo event ────────────────────────────────────────────────────────────────

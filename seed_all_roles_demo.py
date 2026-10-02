@@ -18,6 +18,11 @@ with all lifecycle details:
 - Judge scoring submission
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard, seed_password  # noqa: E402
+guard()
+
+
 import sys
 import datetime
 from werkzeug.security import generate_password_hash
@@ -44,7 +49,7 @@ def seed():
                 "category": "All",
                 "phone": "+91 98765 00001",
                 "department": "Executive Dean Office",
-                "password_raw": "Saptha@Admin2026",
+                "password_raw": seed_password('SUPERADMIN'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -55,7 +60,7 @@ def seed():
                 "category": "Technical",
                 "phone": "+91 98765 00002",
                 "department": "Computer Science & Engineering",
-                "password_raw": "Spoc@2026",
+                "password_raw": seed_password('CLUBSPOC'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -66,7 +71,7 @@ def seed():
                 "category": "Technical",
                 "phone": "+91 98765 00003",
                 "department": "Information Science",
-                "password_raw": "Coord@2026",
+                "password_raw": seed_password('EVENTCOORDINATOR'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -77,7 +82,7 @@ def seed():
                 "category": "Technical",
                 "phone": "+91 98765 00004",
                 "department": "Artificial Intelligence Lab",
-                "password_raw": "Judge@2026",
+                "password_raw": seed_password('JUDGE'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -90,7 +95,7 @@ def seed():
                 "usn": "1SNPSU22CS001",
                 "department": "Computer Science",
                 "semester": "6th Semester",
-                "password_raw": "Student@2026",
+                "password_raw": seed_password('STUDENT'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -101,7 +106,7 @@ def seed():
                 "role": "ClubSPOC",
                 "category": "Technical",
                 "phone": "+91 98765 00002",
-                "password_raw": "Spoc@2026",
+                "password_raw": seed_password('CLUBSPOC'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -111,7 +116,7 @@ def seed():
                 "role": "EventCoordinator",
                 "category": "Technical",
                 "phone": "+91 98765 00003",
-                "password_raw": "Coord@2026",
+                "password_raw": seed_password('EVENTCOORDINATOR'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -121,7 +126,7 @@ def seed():
                 "role": "Judge",
                 "category": "Technical",
                 "phone": "+91 98765 00004",
-                "password_raw": "Judge@2026",
+                "password_raw": seed_password('JUDGE'),
                 "needs_password_reset": False,
                 "is_active": True,
             },
@@ -132,7 +137,7 @@ def seed():
                 "category": "General",
                 "phone": "+91 98765 00005",
                 "usn": "1SNPSU22CS999",
-                "password_raw": "Student@2026",
+                "password_raw": seed_password('STUDENT'),
                 "needs_password_reset": False,
                 "is_active": True,
             }

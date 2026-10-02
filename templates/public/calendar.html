@@ -56,7 +56,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
     <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Home</a>
     <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
     <a href="/participant/my_events" class="nav-link-item"><i class="fas fa-ticket-alt me-1"></i>My Events</a>
-    <a href="/calendar/feed.ics" class="btn btn-sm btn-outline-light ms-2 d-none d-md-inline-flex" title="Subscribe to your registered events in Apple/Google/Outlook calendar">
+    <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-outline-light ms-2 d-none d-md-inline-flex" title="Subscribe to your registered events in Apple/Google/Outlook calendar">
       <i class="fas fa-rss me-1"></i> Personal .ics Feed
     </a>
   </div>
@@ -74,7 +74,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
       </p>
     </div>
     <div class="d-flex gap-2">
-      <a href="/calendar/feed.ics" class="btn btn-sm btn-primary d-md-none">
+      <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-primary d-md-none">
         <i class="fas fa-rss me-1"></i> .ics Feed
       </a>
       <a href="/calendar" class="btn btn-sm btn-outline-secondary">

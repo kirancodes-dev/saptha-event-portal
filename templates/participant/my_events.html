@@ -33,7 +33,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
     <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Home</a>
     <a href="/calendar" class="nav-link-item"><i class="fas fa-calendar-alt me-1"></i>Calendar</a>
     <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-    <a href="/calendar/feed.ics" class="btn btn-sm btn-outline-light ms-2" title="Subscribe to calendar feed">
+    <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-outline-light ms-2" title="Subscribe to calendar feed">
       <i class="fas fa-rss me-1"></i> Sync .ics Feed
     </a>
   </div>
@@ -54,9 +54,16 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
       <a href="/calendar" class="btn btn-sm btn-primary">
         <i class="fas fa-search me-1"></i> Discover Events
       </a>
-      <a href="/calendar/feed.ics" class="btn btn-sm btn-outline-secondary">
+      <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-outline-secondary">
         <i class="fas fa-download me-1"></i> Export .ics
       </a>
+      <form method="POST" action="/calendar/feed/rotate" class="m-0"
+            onsubmit="return confirm('Reset your calendar link? Calendars subscribed with the old link stop updating.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reset your private calendar link">
+          <i class="fas fa-rotate me-1"></i> Reset link
+        </button>
+      </form>
     </div>
   </div>
 

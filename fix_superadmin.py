@@ -7,6 +7,11 @@ Usage:
 It will print the email and new password to the terminal.
 Delete this file after you've logged in successfully.
 """
+
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard, seed_password  # noqa: E402
+guard()
+
 import os
 import datetime
 try:
@@ -19,7 +24,7 @@ from werkzeug.security import generate_password_hash
 from models import db  # reuses your existing Firestore connection
 
 EMAIL    = os.environ.get('SUPER_ADMIN_EMAIL', '').strip()
-NEW_PASS = 'Admin@12345'   # change this after first login
+NEW_PASS = seed_password('SUPERADMIN')   # change this after first login
 
 if not EMAIL:
     print("ERROR: SUPER_ADMIN_EMAIL not set in .env")

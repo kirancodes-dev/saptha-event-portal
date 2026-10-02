@@ -14,30 +14,7 @@ from werkzeug.security import generate_password_hash
 
 PASSWORD = 'Str0ng!Pass#1'
 
-
-@pytest.fixture
-def real_app(monkeypatch):
-    import app as app_module
-    import models
-    import routes_forms
-
-    # Other tests' fixtures swap in a mock db; use the real SQL adapter here
-    monkeypatch.setattr(app_module, 'db', models.db)
-    for name in ('routes_exams', 'routes_hackathon'):
-        module = __import__(name)
-        monkeypatch.setattr(module, 'db', models.db)
-
-    # No outbound email/WhatsApp from tests
-    monkeypatch.setattr(routes_forms, 'send_registration_confirmed_email', lambda *a, **k: None)
-    monkeypatch.setattr(routes_forms, 'send_ticket_whatsapp', lambda *a, **k: None, raising=False)
-
-    flask_app = app_module.app
-    flask_app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
-    monkeypatch.setitem(flask_app.config, 'SERVER_NAME', None)
-    from extensions import limiter
-    monkeypatch.setattr(limiter, 'enabled', False, raising=False)
-    return flask_app, models.db
-
+# real_app (the real SQL adapter, no outbound mail) lives in tests/conftest.py
 
 def _user(db, email, role, name='Test User'):
     db.collection('users').document(email).set({
@@ -50,6 +27,10 @@ def _login(flask_app, email, role):
     client = flask_app.test_client()
     resp = client.post('/login', data={'role': role, 'email': email, 'password': PASSWORD})
     assert resp.status_code == 302, resp.data[:300]
+    # A failed login also redirects (back to /login); make sure this one worked
+    assert resp.headers['Location'] != '/login', f"login failed for {email} as {role}"
+    with client.session_transaction() as sess:
+        assert sess.get('user_id') == email
     return client
 
 

@@ -43,16 +43,24 @@ class Config:
     SECRET_KEY              = _env_secret or ('' if _is_production else _dev_secret_key())
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE   = _is_production
-    SESSION_COOKIE_SAMESITE = 'Strict' if _is_production else 'Lax'
+    # Lax, not Strict: Strict drops the cookie when a user arrives from an
+    # email link or a payment redirect, so they look logged out (BLK-08)
+    SESSION_COOKIE_SAMESITE = 'Lax'
     # 30 days — PWA users stay logged in like a native app
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30
     # 2 hours — when user does NOT check "Keep me logged in"
     SHORT_SESSION_LIFETIME = 60 * 60 * 2
 
-    # Server-side session storage — auto-select Redis when REDIS_URL is set
+    # Server-side session storage (BLK-08): Redis when REDIS_URL is set,
+    # otherwise the app database ('sqlalchemy', session_store.py), so sessions
+    # survive restarts and are shared by every instance. 'filesystem' is for
+    # local experiments only (per-instance, lost on restart).
     _redis_url = os.environ.get('REDIS_URL', '')
     SESSION_TYPE           = os.environ.get('SESSION_TYPE',
-                                 'redis' if _redis_url else 'filesystem')
+                                 'redis' if _redis_url else 'sqlalchemy')
+    # Only used with SESSION_TYPE=filesystem: Flask-Session prunes files past
+    # this count (default 500), which logged users out on busy days
+    SESSION_FILE_THRESHOLD = int(os.environ.get('SESSION_FILE_THRESHOLD', 50000))
     SESSION_PERMANENT      = True
     SESSION_USE_SIGNER     = True
     SESSION_KEY_PREFIX     = 'saptha_sess:'
@@ -114,6 +122,15 @@ class Config:
     RATELIMIT_DEFAULT         = "100000 per day;10000 per hour"
     RATELIMIT_STORAGE_URL     = os.environ.get('REDIS_URL', 'memory://')
     RATELIMIT_HEADERS_ENABLED = True
+
+    # Failed logins and password-reset requests (services_login_throttle,
+    # BLK-13): at most LIMIT per IP and per account in any WINDOW seconds.
+    # Counters live in Redis when REDIS_URL is set, otherwise in the database,
+    # so every instance and worker shares them.
+    LOGIN_THROTTLE_IP_LIMIT      = int(os.environ.get('LOGIN_THROTTLE_IP_LIMIT', 5))
+    LOGIN_THROTTLE_ACCOUNT_LIMIT = int(os.environ.get('LOGIN_THROTTLE_ACCOUNT_LIMIT', 5))
+    LOGIN_THROTTLE_WINDOW        = int(os.environ.get('LOGIN_THROTTLE_WINDOW', 60))
+    LOGIN_THROTTLE_STORAGE       = 'redis' if os.environ.get('REDIS_URL') else 'database'
 
     # =========================================================
     # 5. SUPER ADMIN

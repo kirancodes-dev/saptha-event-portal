@@ -1,3 +1,8 @@
+
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import firestore_key, guard, seed_password  # noqa: E402
+guard(firestore=True)
+
 try:
     import firebase_admin
 except ImportError:
@@ -11,8 +16,8 @@ import datetime
 # 1. Initialize Firestore
 # We check if it's already initialized to avoid errors if you run this twice
 if not firebase_admin._apps:
-    cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred)
+    # The key guard() confirmed (seed_safety.firestore_credentials, BLK-15)
+    firebase_admin.initialize_app(credentials.Certificate(firestore_key()))
 
 db = firestore.client()
 print("--- CONNECTED TO FIRESTORE ---")
@@ -24,23 +29,23 @@ def create_users():
     users = [
         {
             'email': 'admin@sapthahack.com',
-            'data': {'name': 'System Admin', 'role': 'SuperAdmin', 'password': 'admin', 'created_at': datetime.datetime.now()}
+            'data': {'name': 'System Admin', 'role': 'SuperAdmin', 'password': seed_password('SUPERADMIN'), 'created_at': datetime.datetime.now()}
         },
         {
             'email': 'spoc@snpsu.edu.in',
-            'data': {'name': 'Dr. Rajesh (SPOC)', 'role': 'ClubSPOC', 'club_name': 'AI & Robotics', 'category': 'Tech', 'password': 'password123', 'created_at': datetime.datetime.now()}
+            'data': {'name': 'Dr. Rajesh (SPOC)', 'role': 'ClubSPOC', 'club_name': 'AI & Robotics', 'category': 'Tech', 'password': seed_password('CLUBSPOC'), 'created_at': datetime.datetime.now()}
         },
         {
             'email': 'student@snpsu.edu.in',
-            'data': {'name': 'Rahul Student', 'role': 'Student', 'usn': '1SN23CS001', 'password': 'password123', 'created_at': datetime.datetime.now()}
+            'data': {'name': 'Rahul Student', 'role': 'Student', 'usn': '1SN23CS001', 'password': seed_password('STUDENT'), 'created_at': datetime.datetime.now()}
         },
         {
             'email': 'judge@snpsu.edu.in',
-            'data': {'name': 'Dr. Expert (Judge)', 'role': 'Judge', 'expertise': 'AI/ML', 'password': 'password123', 'created_at': datetime.datetime.now()}
+            'data': {'name': 'Dr. Expert (Judge)', 'role': 'Judge', 'expertise': 'AI/ML', 'password': seed_password('JUDGE'), 'created_at': datetime.datetime.now()}
         },
         {
             'email': 'coord@snpsu.edu.in',
-            'data': {'name': 'Priya Coord', 'role': 'Coordinator', 'role_type': 'Student', 'password': 'password123', 'created_at': datetime.datetime.now()}
+            'data': {'name': 'Priya Coord', 'role': 'Coordinator', 'role_type': 'Student', 'password': seed_password('COORDINATOR'), 'created_at': datetime.datetime.now()}
         }
     ]
 
@@ -132,8 +137,8 @@ if __name__ == '__main__':
         create_registration(evt_id, evt_data['title'])
         print("\n🎉 DATABASE INITIALIZED SUCCESSFULLY!")
         print("You can now login with:")
-        print(" - SPOC: spoc@snpsu.edu.in / password123")
-        print(" - Judge: judge@snpsu.edu.in / password123")
-        print(" - Student: student@snpsu.edu.in / password123")
+        print(" - SPOC: spoc@snpsu.edu.in / (see the passwords printed at the end)")
+        print(" - Judge: judge@snpsu.edu.in / (see the passwords printed at the end)")
+        print(" - Student: student@snpsu.edu.in / (see the passwords printed at the end)")
     except Exception as e:
         print(f"❌ Error: {e}")

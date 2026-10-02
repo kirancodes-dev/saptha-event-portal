@@ -18,6 +18,11 @@ Demonstrates:
 - Seamless execution across dual database architecture (Firestore + PostgreSQL/SQLite).
 """
 
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
+
 import sys
 import logging
 from datetime import datetime, timezone, timedelta

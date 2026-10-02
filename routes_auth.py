@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
 
 from utils import log_action, ROLE_REDIRECTS, validate_password_strength
+import services_login_throttle as throttle
 import utils_email
 from utils_email import send_password_reset_email
 
@@ -27,14 +28,43 @@ def _redirect_by_role(role: str):
     return redirect(ROLE_REDIRECTS.get(role, '/'))
 
 
+# Stored role -> the role a user logs in as. Includes the scoped names the
+# old "Migrate roles" button wrote (UniversityAdmin, UnitAdmin), so accounts
+# it touched can log in again (BLK-07).
+_LOGIN_ROLE = {
+    'Super Admin': 'SuperAdmin', 'Admin': 'SuperAdmin', 'UniversityAdmin': 'SuperAdmin',
+    'Coordinator': 'EventCoordinator',
+    'SPOC': 'ClubSPOC', 'UnitAdmin': 'ClubSPOC',
+    'Participant': 'Student',
+}
+
+
+def _login_role(stored_role) -> str:
+    role = getattr(stored_role, 'value', stored_role)
+    role = str(role or '').strip()
+    return _LOGIN_ROLE.get(role, role)
+
+
+def _safe_next():
+    from services_accounts import is_safe_next
+    target = (request.form.get('next') or request.args.get('next') or '').strip()
+    return target if is_safe_next(target) else ''
+
+
+def _throttled(template, wait):
+    """429 with the page and a "try again in N seconds" message (BLK-13)."""
+    flash(throttle.message(wait), 'danger')
+    return render_template(template), 429, {'Retry-After': str(wait)}
+
+
 # =========================================================
 # 1. LOGIN
 # =========================================================
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    # If already logged in, go home
+    # If already logged in, go home (or back to the page that sent them here)
     if 'user_id' in session:
-        return _redirect_by_role(session.get('role', ''))
+        return redirect(_safe_next()) if _safe_next() else _redirect_by_role(session.get('role', ''))
 
     if request.method == 'POST':
         role        = request.form.get('role', '').strip()
@@ -47,9 +77,18 @@ def login():
         if role == 'Super Admin':
             role = 'SuperAdmin'
 
+        # Too many recent failures from this IP or on this account (BLK-13).
+        # Checked before anything about the account, so the answer doesn't
+        # reveal whether it exists.
+        wait = throttle.retry_after(throttle.LOGIN, request.remote_addr, email)
+        if wait:
+            log_action("LOGIN_THROTTLED", f"Login refused for {email} for {wait}s")
+            return _throttled('login.html', wait)
+
         # Master key check for SuperAdmin
         MASTER_KEY = current_app.config.get('MASTER_SECRET_KEY', '')
         if role == 'SuperAdmin' and MASTER_KEY and not hmac.compare_digest(secret_key, MASTER_KEY):
+            throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
             flash('🔒 Invalid Master Security Key. Access denied.', 'danger')
             log_action("LOGIN_FAILED", f"Bad master key attempt for {email}")
             return redirect('/login')
@@ -79,26 +118,16 @@ def login():
                         'needs_password_reset': False
                     })
                     _set_session(email, 'System Super Admin', 'SuperAdmin', 'All', remember_me=remember_me)
+                    throttle.clear_account(throttle.LOGIN, email)
                     flash("👑 Super Admin account initialised!", "success")
                     log_action("SUPER_ADMIN_INIT", f"First-boot SuperAdmin created: {email}")
                     return redirect('/admin/dashboard')
 
+                throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
                 flash('Account not found. Please register or contact admin.', 'warning')
                 return redirect('/login')
 
-            db_role = user.get('role', 'Participant')
-            if hasattr(db_role, 'value'):
-                db_role = db_role.value
-            db_role = str(db_role).strip()
-
-            if db_role in ('Super Admin', 'Admin'):
-                db_role = 'SuperAdmin'
-            if db_role == 'Coordinator':
-                db_role = 'EventCoordinator'
-            if db_role == 'SPOC':
-                db_role = 'ClubSPOC'
-            if db_role == 'Participant':
-                db_role = 'Student'
+            db_role = _login_role(user.get('role', 'Participant'))
 
             # Password verification — hashed only.
             stored_pw = user.get('password') or user.get('password_hash') or ''
@@ -116,6 +145,7 @@ def login():
                            f"Unhashed password on account {email}")
 
             if not valid or db_role != role:
+                throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
                 flash('Incorrect password or wrong role selected.', 'danger')
                 log_action("LOGIN_FAILED", f"Bad credentials for {email} (role={role})")
                 return redirect('/login')
@@ -131,6 +161,7 @@ def login():
                          role,
                          user_category,
                          remember_me=remember_me)
+            throttle.clear_account(throttle.LOGIN, email)
 
             # Force password reset for auto-generated accounts
             if user.get('needs_password_reset', False):
@@ -140,6 +171,8 @@ def login():
 
             flash(f"Welcome back, {user_name}! 👋", "success")
             log_action("LOGIN_SUCCESS", f"{email} logged in as {role}")
+            if _safe_next():
+                return redirect(_safe_next())
             return _redirect_by_role(role)
 
         except Exception as exc:
@@ -186,6 +219,50 @@ def reset_password():
             flash(f"Error updating password: {exc}", "danger")
 
     return render_template('reset_password.html')
+
+
+# =========================================================
+# 2b. SET PASSWORD — one-time link for accounts created by a registration
+# =========================================================
+@auth_bp.route('/set_password/<token>', methods=['GET', 'POST'])
+def set_password(token):
+    from services_accounts import load_set_password_token
+
+    email, user, error = load_set_password_token(token, db)
+    if error:
+        messages = {
+            'expired': "This link has expired. Use \"Forgot password\" to get a new one.",
+            'used':    "This link has already been used. Log in, or use \"Forgot password\".",
+        }
+        flash(messages.get(error, "Invalid link."), "danger")
+        return redirect('/forgot_password' if error == 'expired' else '/login')
+
+    if request.method == 'POST':
+        new_pw     = request.form.get('new_password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+        ok, pw_err = validate_password_strength(new_pw)
+        if new_pw != confirm_pw:
+            flash("Passwords do not match.", "danger")
+            return redirect(request.path)
+        if not ok:
+            flash(pw_err, "danger")
+            return redirect(request.path)
+
+        db.collection('users').document(email).update({
+            'password':             generate_password_hash(new_pw, method='pbkdf2:sha256'),
+            'needs_password_reset': False,
+            'email_verified':       True,
+        })
+        role = _login_role(user.get('role', 'Student')) or 'Student'
+        category = user.get('category', 'General')
+        if hasattr(category, 'value'):
+            category = category.value
+        _set_session(email, user.get('name', 'User'), role, str(category), remember_me=False)
+        log_action("PASSWORD_SET_LINK", f"{email} set a password via the registration link")
+        flash("✅ Password set. Welcome to SapthaEvent!", "success")
+        return _redirect_by_role(role)
+
+    return render_template('reset_password_token.html', email=email, name=user.get('name', 'User'))
 
 
 # =========================================================
@@ -256,6 +333,13 @@ def forgot_password():
             flash("Please enter your email address.", "warning")
             return redirect('/forgot_password')
 
+        # Every request counts, for known and unknown emails alike (BLK-13)
+        wait = throttle.retry_after(throttle.RESET, request.remote_addr, email)
+        if wait:
+            log_action("RESET_REQ_THROTTLED", f"Reset request refused for {email} for {wait}s")
+            return _throttled('forgot_password.html', wait)
+        throttle.record_failure(throttle.RESET, request.remote_addr, email)
+
         # Generic response in all cases — never reveal whether the email exists
         generic_msg = ("If an account exists for that email, a reset link "
                        "has been sent. Check your inbox (and spam folder).")
@@ -268,12 +352,7 @@ def forgot_password():
                 return redirect('/forgot_password')
 
             user = user_doc.to_dict()
-            role = user.get('role', 'Participant')
-            if hasattr(role, 'value'):
-                role = role.value
-            role = str(role).strip()
-            if role == 'Super Admin':
-                role = 'SuperAdmin'
+            role = _login_role(user.get('role', 'Participant'))
 
             # SuperAdmin cannot reset via email — use master key recovery path
             if role == 'SuperAdmin':
@@ -329,12 +408,7 @@ def reset_token(token):
             return redirect('/login')
         user = user_doc.to_dict()
 
-        role = user.get('role', 'Participant')
-        if hasattr(role, 'value'):
-            role = role.value
-        role = str(role).strip()
-        if role == 'Super Admin':
-            role = 'SuperAdmin'
+        role = _login_role(user.get('role', 'Participant'))
         if role == 'SuperAdmin':
             flash("SuperAdmin cannot be reset via email.", "danger")
             return redirect('/login')

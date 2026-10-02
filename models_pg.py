@@ -64,6 +64,7 @@ class EventStatus(enum.Enum):
     registration_open   = "registration_open"
     registration_closed = "registration_closed"
     in_progress         = "in_progress"
+    evaluation          = "evaluation"
     active              = "active"
     inactive            = "inactive"
     completed           = "completed"
@@ -78,6 +79,18 @@ class RegistrationStatus(enum.Enum):
     cancelled  = "cancelled"
     waitlisted = "waitlisted"
     checked_in = "checked_in"
+    # Participant workflow states (services_workflow.PARTICIPANT_STATE_TRANSITIONS),
+    # stored as themselves rather than falling back to 'confirmed' (BLK-06)
+    applied         = "applied"
+    pending_payment = "pending_payment"
+    round_1         = "round_1"
+    shortlisted     = "shortlisted"
+    finalist        = "finalist"
+    winner          = "winner"
+    runner_up       = "runner_up"
+    eliminated      = "eliminated"
+    completed       = "completed"
+    certified       = "certified"
 
 
 class PaymentStatus(enum.Enum):
@@ -175,6 +188,8 @@ class OrgUnit(Base):
     slug            = Column(String(100), nullable=False, index=True)
     created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {
@@ -201,6 +216,8 @@ class RoleAssignment(Base):
     scope_type = Column("scopeType", String(50), nullable=False)  # 'university' | 'unit' | 'event'
     scope_id   = Column("scopeId", String(128), nullable=True, index=True)
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     def to_dict(self):
         return {
@@ -223,6 +240,8 @@ class Campus(Base):
     address         = Column(Text)
     created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     buildings = relationship("Building", back_populates="campus", cascade="all, delete-orphan")
 
@@ -248,6 +267,8 @@ class Building(Base):
     code       = Column(String(50))
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     campus = relationship("Campus", back_populates="buildings")
     rooms  = relationship("Room", back_populates="building", cascade="all, delete-orphan")
@@ -276,6 +297,8 @@ class Room(Base):
     facilities_json = Column("facilitiesJson", Text)
     created_at      = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at      = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     building = relationship("Building", back_populates="rooms")
     bookings = relationship("VenueBooking", back_populates="room", cascade="all, delete-orphan")
@@ -340,6 +363,8 @@ class Event(Base):
     rules          = Column(Text)
     prizes         = Column(Text)
     coordinator_id = Column("coordinatorId", String(128))
+    # The owning SPOC; routes and services_permission filter on it (BLK-06)
+    spoc_id        = Column("spoc_id", String(255), nullable=True, index=True)
     registration_count = Column("registration_count", Integer, nullable=False, default=0)
     open_hall_mode = Column("open_hall_mode", Boolean, nullable=False, default=False)
     scoring_locked = Column("scoring_locked", Boolean, nullable=False, default=False)
@@ -468,6 +493,8 @@ class TeamMember(Base):
     usn             = Column(String(50))
     college         = Column(String(200))
     department      = Column(String(100))
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     registration = relationship("Registration", back_populates="members")
 
@@ -490,6 +517,8 @@ class Score(Base):
     criteria        = Column(Text)
     feedback        = Column(Text)
     scored_at       = Column("scoredAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     registration = relationship("Registration", back_populates="scores")
 
@@ -545,6 +574,50 @@ class PushSubscription(Base):
     p256dh     = Column(String(255), nullable=False)
     auth_key   = Column("authKey", Text, nullable=False)
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class FlaskSession(Base):
+    """Server-side web sessions (session_store.SQLSessionInterface, BLK-08)."""
+    __tablename__ = "flask_sessions"
+
+    id     = Column(String(255), primary_key=True)   # random id held in the cookie
+    data   = Column(Text, nullable=False)            # TaggedJSON-serialised session
+    expiry = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class LoginAttempt(Base):
+    """Recent failed logins and password-reset requests, one row each, for
+    throttling shared by every instance (services_login_throttle, BLK-13).
+    Rows older than the throttle window are deleted as new ones arrive."""
+    __tablename__ = "login_attempts"
+
+    id  = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(64), nullable=False)          # sha256 of scope:kind:value, never the raw email or IP
+    at  = Column(Float, nullable=False, index=True)   # Unix time
+
+    __table_args__ = (Index("idx_login_attempts_key_at", "key", "at"),)
+
+
+class PaymentOrder(Base):
+    """A Razorpay order created by this server (BLK-03).
+
+    Payment verification accepts only orders recorded here, for the same
+    event, payer and amount; ``payment_id`` is unique so a payment can be
+    used once.
+    """
+    __tablename__ = "payment_orders"
+
+    id           = Column(String(128), primary_key=True)  # Razorpay order id
+    event_id     = Column("eventId", String(128), nullable=False, index=True)
+    email        = Column(String(255), nullable=False, index=True)
+    amount_paise = Column("amountPaise", Integer, nullable=False)
+    currency     = Column(String(8), nullable=False, default="INR")
+    coupon_code  = Column("couponCode", String(64), nullable=True)
+    status       = Column(String(20), nullable=False, default="created")  # created | paid
+    payment_id   = Column("paymentId", String(128), nullable=True, unique=True)
+    reg_id       = Column("regId", String(128), nullable=True)
+    created_at   = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    paid_at      = Column("paidAt", DateTime(timezone=True), nullable=True)
 
 
 class Announcement(Base):
@@ -674,6 +747,8 @@ class VenueBooking(Base):
     notes      = Column(Text)
     created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+    # Document shadow: fields without a dedicated column survive a round-trip (BLK-06)
+    extra_json = Column("extra_json", Text, nullable=True)
 
     room  = relationship("Room", back_populates="bookings")
     event = relationship("Event")

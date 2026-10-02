@@ -89,8 +89,13 @@ def test_ai_chatbot_advanced(client, mock_db):
         assert 'reply' in data
 
 
-def test_onboarding_self_service_signup(client, mock_db):
-    """Test university onboarding signup creates org tenant and SuperAdmin account."""
+def test_onboarding_self_service_signup(client, mock_db, monkeypatch):
+    """Test university onboarding signup creates org tenant and its admin account.
+
+    Tenant sign-up exists only with MULTI_TENANT_ENABLED, and its admin is a
+    TenantAdmin, never the global SuperAdmin (BLK-14).
+    """
+    monkeypatch.setitem(client.application.config, 'MULTI_TENANT_ENABLED', True)
     resp = client.post('/onboarding/signup', data={
         'org_name': 'Sapthagiri NPS University',
         'org_domain': 'snpsu.edu',
@@ -108,12 +113,13 @@ def test_onboarding_self_service_signup(client, mock_db):
 
     user_doc = mock_db.collection('users').document('kiran@snpsu.edu').get()
     assert user_doc.exists
-    assert user_doc.to_dict().get('role') == 'SuperAdmin'
+    assert user_doc.to_dict().get('role') == 'TenantAdmin'
     assert user_doc.to_dict().get('org_id') == 'sapthagiri-nps-university'
 
 
-def test_onboarding_wizard_save(client, mock_db):
+def test_onboarding_wizard_save(client, mock_db, monkeypatch):
     """Test onboarding wizard configures organization settings."""
+    monkeypatch.setitem(client.application.config, 'MULTI_TENANT_ENABLED', True)  # BLK-14
     mock_db.collection('organizations').document('test-org').set({
         'name': 'Test Org',
         'slug': 'test-org',
@@ -198,8 +204,9 @@ def test_gamification_leaderboards(auth_client, mock_db):
     assert depts[1]['total_xp'] == 200
 
 
-def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event):
+def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event, monkeypatch):
     """Test user registration awards +50 XP and ticket scanner check-in awards +150 XP."""
+    monkeypatch.setenv('PAYMENT_SIMULATION', 'true')  # BLK-03: the simulated checkout needs the flag
     # Register a new student
     mock_db.collection('users').document('stud_xp@test.edu').set({
         'name': 'XP Student',

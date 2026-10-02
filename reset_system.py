@@ -1,3 +1,8 @@
+
+# BLK-10: refuse production-looking databases before anything connects
+from seed_safety import guard  # noqa: E402
+guard()
+
 import os
 from app import app, db
 from models import Participant

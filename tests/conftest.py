@@ -15,6 +15,29 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("FLASK_ENV", "development")
 os.environ["FORCE_HTTPS"] = "false"
 
+# Tests never use a developer's real outbound credentials or services (BLK-05).
+# app.py calls load_dotenv(), which never overrides a variable that's already
+# set, so blanking these before any app import keeps .env's values out.
+OUTBOUND_CREDENTIALS = (
+    'MAIL_USER', 'MAIL_PASS', 'MAIL_PASSWORD', 'BREVO_API_KEY', 'RESEND_API_KEY',
+    'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_FROM',
+    'GEMINI_API_KEY', 'GOOGLE_API_KEY',
+    'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'STRIPE_SECRET_KEY',
+    'VAPID_PRIVATE_KEY', 'VAPID_PUBLIC_KEY',
+    'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_STORAGE_BUCKET_NAME', 'GCS_BUCKET_NAME',
+    'STORAGE_TYPE', 'SUPABASE_URL', 'SUPABASE_KEY', 'SENTRY_DSN',
+    'OAUTH_GOOGLE_CLIENT_ID', 'OAUTH_GOOGLE_CLIENT_SECRET',
+    'OAUTH_MICROSOFT_CLIENT_ID', 'OAUTH_MICROSOFT_CLIENT_SECRET',
+    'ZOHO_AUTH_TOKEN', 'CATALYST_AUTH_TOKEN',
+    'CLOUD_SQL_INSTANCE', 'DB_PASS', 'FIREBASE_CREDENTIALS', 'GOOGLE_APPLICATION_CREDENTIALS',
+)
+for _name in OUTBOUND_CREDENTIALS:
+    os.environ[_name] = ''
+# Background tasks run inline, never on a real broker (CI and a developer's
+# .env may point CELERY_BROKER_URL at Redis, where nothing would run them).
+os.environ['CELERY_BROKER_URL'] = 'memory://'
+os.environ['CELERY_RESULT_BACKEND'] = 'cache+memory://'
+
 # Point the SQL layer at a throwaway database before any app module is
 # imported, so tests never touch a developer's local data. Set
 # TEST_DATABASE_URL (e.g. an empty PostgreSQL database) to test against it.
@@ -221,6 +244,18 @@ class MockBatch:
 # FIXTURES
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.fixture(autouse=True)
+def _fresh_login_throttle():
+    """Every test client logs in from 127.0.0.1, so one test's failed logins
+    would throttle the next test's (BLK-13). Start each test with no counters."""
+    throttle = sys.modules.get('services_login_throttle')
+    app_module = sys.modules.get('app')
+    if throttle is not None and app_module is not None:
+        with app_module.app.app_context():
+            throttle.reset_all()
+    yield
+
+
 @pytest.fixture
 def mock_db():
     """Provide a fresh in-memory Firestore mock."""
@@ -365,3 +400,34 @@ def admin_jwt_token(app):
     with app.app_context():
         from auth_jwt import create_access_token
         return create_access_token("admin@test.edu", "SuperAdmin")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# REAL DATABASE LAYER — the SQL adapter the app uses (no mock db)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def real_app(monkeypatch):
+    import app as app_module
+    import models
+    import routes_forms
+
+    # Other tests' fixtures swap in a mock db; use the real SQL adapter here
+    monkeypatch.setattr(app_module, 'db', models.db)
+    for name in ('routes_exams', 'routes_hackathon'):
+        module = __import__(name)
+        monkeypatch.setattr(module, 'db', models.db)
+
+    # No outbound email/WhatsApp from tests (every email goes through _send)
+    import utils_email
+    monkeypatch.setattr(utils_email, '_send', lambda *a, **k: True)
+    monkeypatch.setattr(routes_forms, 'send_registration_confirmed_email', lambda *a, **k: None)
+    monkeypatch.setattr(routes_forms, 'send_ticket_whatsapp', lambda *a, **k: None, raising=False)
+
+    flask_app = app_module.app
+    flask_app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+    monkeypatch.setitem(flask_app.config, 'SERVER_NAME', None)
+    from extensions import limiter
+    monkeypatch.setattr(limiter, 'enabled', False, raising=False)
+    return flask_app, models.db
+

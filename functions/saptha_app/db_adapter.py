@@ -95,20 +95,20 @@ def verify_and_align_schema():
         with engine.connect() as conn:
             # Events alignment
             for col, col_type in cols_events:
-                res = conn.execute(text(f"""
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name='events' AND column_name='{col}'
-                """)).fetchone()
+                res = conn.execute(text(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name = :table AND column_name = :col"
+                ), {"table": "events", "col": col}).fetchone()
                 if not res:
                     logger.info("Aligning Schema: Adding column '%s' to 'events'...", col)
                     conn.execute(text(f"ALTER TABLE events ADD COLUMN {col} {col_type}"))
 
             # Registrations alignment
             for col, col_type in cols_registrations:
-                res = conn.execute(text(f"""
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name='registrations' AND column_name='{col}'
-                """)).fetchone()
+                res = conn.execute(text(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name = :table AND column_name = :col"
+                ), {"table": "registrations", "col": col}).fetchone()
                 if not res:
                     logger.info("Aligning Schema: Adding column '%s' to 'registrations'...", col)
                     conn.execute(text(f"ALTER TABLE registrations ADD COLUMN {col} {col_type}"))

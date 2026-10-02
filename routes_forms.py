@@ -21,13 +21,11 @@ import io
 import json
 import logging
 import re
-import secrets
-import string
 import time
 
 logger = logging.getLogger(__name__)
 
-from flask import (Blueprint, Response, current_app, flash, jsonify,
+from flask import (Blueprint, Response, abort, current_app, flash, jsonify,
                    redirect, render_template, request, session)
 try:
     from google.cloud import firestore
@@ -37,7 +35,6 @@ try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:
     FieldFilter = None
-from werkzeug.security import generate_password_hash
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -56,6 +53,7 @@ class DynamicDBProxy:
 db = DynamicDBProxy()
 from utils import login_required, role_required, log_action, safe_int, record_form_submission
 from utils_email import send_registration_confirmed_email
+from services_accounts import create_unverified_account, resolve_registrant, send_set_password_link
 
 from extensions import limiter
 
@@ -70,6 +68,13 @@ from typing import Optional
 
 forms_bp      = Blueprint('forms', __name__, url_prefix='/forms')
 BUILDER_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
+
+
+def _allowed(event_id, event: dict, permission: str) -> bool:
+    """The session's permission on this event (BLK-04): owners edit forms,
+    assigned staff see responses, export needs export_data."""
+    from services_permission import can
+    return can(session, permission, dict(event or {}, id=event_id), db=db)
 
 
 # =========================================================
@@ -223,6 +228,8 @@ def builder(event_id):
 
     event       = event_doc.to_dict()
     event['id'] = event_id
+    if not _allowed(event_id, event, 'edit_event'):
+        abort(403)
     existing    = _get_form(event_id)
 
     return render_template(
@@ -240,6 +247,11 @@ def builder(event_id):
 @login_required
 @role_required(BUILDER_ROLES)
 def save_form(event_id):
+    event_doc = db.collection('events').document(event_id).get()
+    if not event_doc.exists:
+        return jsonify({'success': False, 'error': 'Event not found'}), 404
+    if not _allowed(event_id, event_doc.to_dict(), 'edit_event'):
+        return jsonify({'success': False, 'error': 'Not authorised for this event'}), 403
     try:
         payload    = request.get_json(force=True) or {}
         form_type  = payload.get('form_type', 'simple')
@@ -372,6 +384,13 @@ def submit_form(event_id):
             if core_key in request.form and core_key not in answers:
                 answers[core_key] = request.form.get(core_key, '').strip()
 
+        # BLK-02: a logged-in visitor always registers as their own account
+        session_email = (session.get('user_id') or '').strip().lower()
+        if session_email:
+            for email_key in ('email', 'email_address'):
+                if email_key in answers:
+                    answers[email_key] = session_email
+
         # Validate
         errors = _validate_submission(schema, answers)
         if errors:
@@ -379,10 +398,10 @@ def submit_form(event_id):
                 flash(err, 'danger')
             return redirect(f'/forms/register/{event_id}')
 
-        # Extract core fields
+        # Extract core fields. BLK-02: registration never logs anyone in.
         core = _extract_core(answers)
-        email     = core['email'].lower()
-        full_name = core['full_name']
+        email, login_redirect = resolve_registrant(db, core['email'], event_id)
+        full_name = core['full_name'] or (session.get('name', '') if session_email else '')
         phone     = core['phone']
         usn       = core['usn'].upper()
         team_name = core['team_name']
@@ -390,6 +409,16 @@ def submit_form(event_id):
         if not email or not full_name:
             flash("Name and email are required.", "warning")
             return redirect(f'/forms/register/{event_id}')
+
+        status = (event_data.get('status') or '').lower()
+        if status in ('draft', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
+            flash("Registration is closed for this event.", "warning")
+            return redirect(f'/forms/register/{event_id}')
+
+        if login_redirect:
+            flash("An account already exists for this email. Please log in to register; "
+                  "you'll come back to this form.", "info")
+            return redirect(login_redirect)
 
         # Duplicate check
         existing = list(
@@ -402,28 +431,13 @@ def submit_form(event_id):
             flash("🚫 You have already registered for this event.", "warning")
             return redirect('/')
 
-        # Auto-create account
-        user_ref     = db.collection('users').document(email)
-        is_new_user  = not user_ref.get().exists
-        raw_password = ''
+        # New email: an unverified account nobody can log in to until the
+        # emailed one-time link is used (never a password in email or session)
+        is_new_user = not session_email
         if is_new_user:
-            alphabet     = string.ascii_letters + string.digits
-            raw_password = ''.join(secrets.choice(alphabet) for _ in range(10))
-            user_ref.set({
-                'email':               email,
-                'name':                full_name,
-                'role':                'Student',
-                'category':            'General',
-                'phone':               phone,
-                'password':            generate_password_hash(raw_password, method='pbkdf2:sha256'),
-                'created_at':          datetime.datetime.now().strftime('%Y-%m-%d'),
-                'needs_password_reset': True
-            })
-            # ✅ Do NOT show raw password in flash — it is emailed securely
-            flash(
-                "🆕 Account created! Check your email for your login credentials.",
-                "info"
-            )
+            create_unverified_account(db, email, full_name, phone)
+            send_set_password_link(db, email, full_name)
+            flash("🆕 We've emailed you a link to set your password.", "info")
 
         # Build members list — lead + any member_N_* fields from team forms
         members = [{'role': 'Lead', 'name': full_name,
@@ -463,11 +477,6 @@ def submit_form(event_id):
 
         # Free vs paid fee calculation
         fee = safe_int(event_data.get('entry_fee', 0))
-
-        status = (event_data.get('status') or '').lower()
-        if status in ('draft', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
-            flash("Registration is closed for this event.", "warning")
-            return redirect(f'/forms/register/{event_id}')
 
         # Capacity check — if event is at capacity, add to waitlists instead
         max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0)) or safe_int(event_data.get('capacity', 0))
@@ -513,14 +522,8 @@ def submit_form(event_id):
             }
             db.collection('waitlists').document(wl_id).set(wl_entry)
 
-            # Auto-login the student
-            session['user_id']  = email
-            session['name']     = full_name
-            session['role']     = 'Student'
-            session['category'] = 'General'
-
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
-            return redirect('/participant/dashboard')
+            return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # Free vs paid
         if fee > 0:
@@ -577,7 +580,6 @@ def submit_form(event_id):
             event_date=event_data.get('date', ''),
             venue=event_data.get('venue', ''),
             is_new_user=is_new_user,
-            raw_password=raw_password,
         )
         if phone and WA_ENABLED:
             try:
@@ -594,12 +596,6 @@ def submit_form(event_id):
         log_action(db, "FORM_SUBMISSION",
                    f"{email} registered for event {event_id} via form")
 
-        # Auto-login before redirecting
-        session['user_id']  = email
-        session['name']     = full_name
-        session['role']     = 'Student'
-        session['category'] = 'General'
-
         # Redirect to confirmation page — not the ticket (QR gated until day before)
         session['reg_confirmed'] = {
             'reg_id':      reg_id,
@@ -607,7 +603,7 @@ def submit_form(event_id):
             'event_date':  event_data.get('date', ''),
             'venue':       event_data.get('venue', ''),
             'is_new_user': is_new_user,
-            'raw_password': raw_password if is_new_user else '',
+            'user_email':  email,
         }
         return redirect('/registration/confirmed')
 
@@ -631,6 +627,8 @@ def view_responses(event_id):
 
     event       = event_doc.to_dict()
     event['id'] = event_id
+    if not _allowed(event_id, event, 'manage_registrations'):
+        abort(403)
     schema      = _get_form(event_id) or {'fields': []}
 
     submissions = []
@@ -656,7 +654,11 @@ def view_responses(event_id):
 @role_required(BUILDER_ROLES)
 def export_responses(event_id):
     event_doc = db.collection('events').document(event_id).get()
-    event     = event_doc.to_dict() if event_doc.exists else {}
+    if not event_doc.exists:
+        abort(404)
+    event     = event_doc.to_dict() or {}
+    if not _allowed(event_id, event, 'export_data'):
+        abort(403)
     schema    = _get_form(event_id) or {'fields': []}
     fields    = schema.get('fields', [])
 

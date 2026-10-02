@@ -66,13 +66,18 @@ def promote_from_waitlist(self, event_id: str):
             promote_from_waitlist.apply_async(args=[event_id])
             return {'promoted': False, 'reason': 'already_registered'}
 
-        # Create registration
+        # Create registration. BLK-03: a paid event's seat is held as
+        # pending_payment with a pay link, never confirmed without payment.
+        from routes_waitlist import promotion_terms
         reg_id = reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}"
+        event_ref = db.collection('events').document(event_id)
+        event_doc = event_ref.get().to_dict() or {}
+        terms = promotion_terms(dict(event_doc, id=event_id), reg_id)
         if reg_data:
             reg_data.update({
                 'reg_id': reg_id,
-                'status': 'Confirmed',
-                'payment_status': entry.get('payment_status', 'Free'),
+                'status': terms['status'],
+                'payment_status': terms['payment_status'],
                 'amount_paid': entry.get('amount_paid', 0),
                 'is_eliminated': False,
                 'current_round': 1,
@@ -86,8 +91,8 @@ def promote_from_waitlist(self, event_id: str):
                 'lead_name': name,
                 'lead_email': email,
                 'lead_phone': entry.get('phone', ''),
-                'status': 'Confirmed',
-                'payment_status': entry.get('payment_status', 'Free'),
+                'status': terms['status'],
+                'payment_status': terms['payment_status'],
                 'amount_paid': entry.get('amount_paid', 0),
                 'is_eliminated': False,
                 'current_round': 1,
@@ -97,8 +102,6 @@ def promote_from_waitlist(self, event_id: str):
             }
         db.collection('registrations').document(reg_id).set(reg_data)
 
-        event_ref = db.collection('events').document(event_id)
-        event_doc = event_ref.get().to_dict() or {}
         event_ref.update({'registration_count': event_doc.get('registration_count', 0) + 1})
 
         # Mark waitlist entry as promoted
@@ -108,19 +111,20 @@ def promote_from_waitlist(self, event_id: str):
             'reg_id': reg_id,
         })
 
-        # Issue digital ticket
-        try:
-            from services_ticket import TicketService
-            TicketService.issue_ticket(
-                db,
-                event_id=event_id,
-                registration_id=reg_id,
-                user_email=email,
-                lead_name=name,
-                ticket_type='General',
-            )
-        except Exception as e:
-            logger.warning("Could not issue ticket on waitlist promotion: %s", e)
+        # Issue digital ticket (a seat held for payment gets none yet)
+        if not terms['is_paid']:
+            try:
+                from services_ticket import TicketService
+                TicketService.issue_ticket(
+                    db,
+                    event_id=event_id,
+                    registration_id=reg_id,
+                    user_email=email,
+                    lead_name=name,
+                    ticket_type='General',
+                )
+            except Exception as e:
+                logger.warning("Could not issue ticket on waitlist promotion: %s", e)
 
         # Send email notification
         try:
@@ -128,12 +132,12 @@ def promote_from_waitlist(self, event_id: str):
             venue      = event_doc.get('venue', 'SNPSU Campus')
             send_generic_email_task.delay(
                 to_email=email,
-                subject=f"Great news! Your waitlist spot for {event_title} is confirmed",
+                subject=terms['subject'],
                 body=(
                     f"Hi {name},\n\n"
                     f"A seat has opened up and you've been promoted from the waitlist for "
                     f"{event_title}!\n\n"
-                    f"Your registration is now confirmed.\n"
+                    f"{terms['email_line']}"
                     f"Registration ID: {reg_id}\n"
                     f"Event Date: {event_date}\n"
                     f"Venue: {venue}\n\n"

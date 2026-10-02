@@ -14,5 +14,7 @@ docs/FEATURE_REVIEW.md is the source of truth for planned work. Before any chang
    and event-type tables, and a changelog line.
 7. Problems found along the way go in as new items with the next free ID. Don't fix
    them in the same change.
-8. If 5 or more items have been marked DONE since the last full re-verification in the
-   changelog, say so and suggest a re-verification pass before starting.
+8. Run a full re-verification of every open item once, at the end of each phase, before
+   its phase summary. Run one early, and say so, when a change touches files that many
+   open items depend on (for example db_adapter.py, models_pg.py,
+   services_permission.py or tests/conftest.py).

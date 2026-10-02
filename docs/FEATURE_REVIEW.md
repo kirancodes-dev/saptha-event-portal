@@ -748,10 +748,13 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | `SUPER_ADMIN_PASS` (with `SUPER_ADMIN_EMAIL`) | New strong password, used to create the first SuperAdmin | Only against the list of published passwords (`validate_production_config`) |
 | `RAZORPAY_KEY_SECRET` (with `RAZORPAY_KEY_ID`) | Set before any paid event is opened | **No**, but without them online payment refuses with 503 (fails closed since BLK-03). Never set `PAYMENT_SIMULATION` in production (it's ignored there anyway). |
 | `DATABASE_URL` | PostgreSQL (`postgresql://…`) | Yes: production refuses SQLite or no database (`db_pg.py:104-150`) |
+| `BREVO_API_KEY` | A Brevo API key (Brevo → Settings → SMTP & API → API Keys). **Required in practice:** since UPG-33, new staff, SPOCs and walk-ins can get in only through the emailed set-password link. | **No** (UPG-20 adds a check) |
+| `MAIL_FROM` | The sender, e.g. `SapthaEvent <events@your-domain>`, an address verified as a sender in Brevo. Unset, it falls back to the old Gmail account's address (`utils_email.py:68-72`). | No |
 | `BASE_URL` | The site's public `https://` address, e.g. the Cloud Run URL or the university domain. Every emailed, WhatsApp, QR and referral link is built from it. | Yes: production refuses a missing, `http://` or localhost value (`config.py:267-270`, BLK-16) |
 | `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:131`, BLK-13) |
 
 - **Use a fresh database.** If an old one is reused (the earlier Cloud SQL or Supabase database), first reset every account's password (the SuperAdmin's was the published demo password) and delete the demo accounts (BLK-10) and walk-in accounts created with the default password (UPG-15).
+- **Test-send (owner, 2026-10-02).** After the first deploy, log in as the SuperAdmin and open `/diag/email?to=<your address>` (SuperAdmin-only, `routes_auth.py`). The message must arrive, not in spam, from `MAIL_FROM`. Then appoint a test judge on a test event and check that their set-password link arrives and works.
 - **Proxy hops (owner, 2026-10-02).** `ProxyFix(x_for=1, x_proto=1)` (`app.py:151`) trusts exactly one proxy, which is right for Cloud Run alone; it never trusts `X-Forwarded-Host` (BLK-16). If Cloudflare or a load balancer is ever put in front, set `x_for` to the real number of proxies. Otherwise the app sees the proxy's address for every visitor, and BLK-13's per-IP limit counts everyone as one IP. Never set it higher than the real number: clients could then forge their IP in `X-Forwarded-For` and dodge the per-IP limit.
 - **Check:** start the app once with these values and `FLASK_ENV=production`. It must start, and it must refuse to start if any start-up-checked value above is missing or weak (`tests/test_integration_flow.py::test_production_config_requires_real_secrets`).
 
@@ -1427,17 +1430,63 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`).
   2. The next CI run on GitHub shows no "Jekyll site CI" check.
+
+#### UPG-39 — In development, log set-password and reset links when no mail provider is set
+- **Status:** TODO
+- **Last verified:** 2026-10-02, commit `37c2a5c`
+- **Problem:** Owner, 2026-10-02. Since BLK-02 and UPG-33 the emailed set-password link is the only way into a new account, and the reset link the only way back in. With no mail provider configured (no `BREVO_API_KEY`, `RESEND_API_KEY` or Gmail login), `utils_email._send` falls back to Gmail SMTP and fails (`utils_email.py:408-420`), so a developer can't follow these flows locally.
+- **Who benefits:** developers and testers.
+- **What to build:** when no provider is configured and `FLASK_ENV` isn't `production`, the set-password and reset emails also write their link to the log at WARNING, marked as development-only. In production the link is never logged: a missing provider is logged as an error without the link.
+- **Files touched:** `utils_email.py`, tests.
+- **Effort:** S · **Depends on:** UPG-33 · **Risk:** a link in a production log would be a credential; the production test guards it.
+- **Acceptance criteria:**
+  1. Test: in development with no provider, registering a new email and requesting a reset each log the full link.
+  2. Test: with production config and no provider, neither link appears in any log record (an error about the missing provider is logged instead).
+  3. Test: with a provider configured (HTTP stubbed), the links aren't logged.
+
+#### UPG-40 — The Super Admin can resend a set-password link from a users page
+- **Status:** TODO
+- **Last verified:** 2026-10-02, commit `37c2a5c`
+- **Problem:** Owner, 2026-10-02. Since UPG-33, staff, SPOCs and walk-ins can get in only through the emailed set-password link, which expires after 3 days. There's no way to send a new one:
+  - no routed users page exists (`/admin/users` is a 404);
+  - `templates/admin/users.html` is never rendered (UPG-15) and links to delete with a GET;
+  - the admin report lists staff without actions (`routes_admin.py:583-598`).
+  - "Forgot password" works for the person themselves, but an organiser can't help someone whose link expired.
+- **Who benefits:** SuperAdmins and the staff and SPOCs they appoint.
+- **What to build:**
+  - A SuperAdmin-only users page at `/admin/users` (on the shared layout, linked from the admin navigation) listing each account's name, email, role and whether they've set a password.
+  - For accounts still waiting for their first password, a POST "Resend set-password link" button (CSRF) that emails a fresh link and audit-logs it.
+  - SuperAdmin accounts and accounts that already have a password are refused. Pagination is UPG-19's job.
+- **Files touched:** `routes_admin.py`, `templates/admin/users.html`, `templates/base_classic.html` (nav link), tests.
+- **Effort:** S · **Depends on:** UPG-33 · **Risk:** a long unpaginated list until UPG-19.
+- **Acceptance criteria:**
+  1. Test: a SuperAdmin opens `/admin/users` and sees an account waiting for its password with a resend button, and an account with a password without one.
+  2. Test: the resend sends exactly one set-password email whose link opens the account with its role, and the action is audit-logged.
+  3. Test: a SPOC and a student get 403 or a login redirect on the page and the action; resending for an account that has a password, or for a SuperAdmin, is refused and nothing is sent.
+
+#### UPG-41 — Remove the leftover Gmail app password from `utils_email.py`
+- **Status:** TODO
+- **Last verified:** 2026-10-02, commit `37c2a5c`
+- **Problem:** Found 2026-10-02 while recording UPG-39 [C]. The module docstring of `utils_email.py` (`:26-27`, also in `functions/saptha_app/utils_email.py`) shows a Gmail app password next to the old `MAIL_USER` account. It has been in the public repo since `45c24cc` (2026-04-19). It isn't one of BLK-01's two leaked `MAIL_PASS` values, but it belongs to the same old account. The owner changed that account's password on 2026-09-30, which revokes all its app passwords, so it should already be dead. Gitleaks doesn't flag this format. The same docstring and `_from_address` (`:68-72`) also hard-code that account as the default sender.
+- **Who benefits:** everyone (no credential-shaped text left in the code).
+- **What to build:** remove the value and the account from the docstring (document the settings by name only), and drop the hard-coded default sender (use `MAIL_FROM`, and fall back to `MAIL_USER` only when that is set). Add a hygiene test that fails on a `MAIL_PASS` assignment with a value in tracked app code. The `functions/` copy goes in Phase 5 (UPG-15).
+- **Files touched:** `utils_email.py`, `config.py` (the `MAIL_USERNAME` default), `tests/test_repo_hygiene.py`.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: no tracked file outside `functions/` and `scratch/` assigns a literal value to `MAIL_PASS` (or `MAIL_PASSWORD`) in code or docstrings.
+  2. Test: with neither `MAIL_FROM` nor `MAIL_USER` set, the sender address contains no hard-coded personal account.
+  3. Owner: confirm the old Gmail account lists no app passwords.
 ---
 
 ## 7. Production-ready plan (phases)
 
-*(Replaces "Recommended next 3 builds"; set in Phase 0, 2026-09-30.)* Work happens on the `production-ready` branch, one commit per item ("<ID>: <summary>"), in this order. Each phase ends with full checks, a phase summary in the changelog and a stop for the owner's "continue".
+*(Replaces "Recommended next 3 builds"; set in Phase 0, 2026-09-30.)* Work happens on the `production-ready` branch, one commit per item ("<ID>: <summary>"), in this order. Each phase ends with full checks, a re-verification of every open item (AGENTS.md rule 8, changed by the owner on 2026-10-02 from "after every 5 DONE items"), a phase summary in the changelog and a stop for the owner's "continue".
 
 | Phase | Items, in order | Notes |
 |---|---|---|
 | 0. Sync the plan | — | Done 2026-09-30: every item re-verified; BLK-12, BLK-13, UPG-16 to UPG-32 added; sessions merged into BLK-08. |
 | 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11, then BLK-16 (added 2026-10-02 from the PR #48 review) and BLK-17 (found starting UPG-33), both built before Phase 2 | **Done** (2026-10-01; BLK-16 and BLK-11's CI on GitHub 2026-10-02). Waiting on the owner: BLK-01's last criterion (the PR refs, GitHub Support, D-2); it doesn't block Phase 2. |
-| 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-37 hourly login cap → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-36 coupon uses → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
+| 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-37 hourly login cap → UPG-39 links in the dev console → UPG-40 resend set-password links → UPG-41 leftover mail password → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-36 coupon uses → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
 | 3. Production setup | UPG-16 migrations → UPG-17 uploads → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups → UPG-22 privacy | |
 | 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check | One commit per UPG-23 area. |
 | 5. Clean-up | UPG-14 → UPG-15 → UPG-38 Jekyll workflow | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
@@ -1528,3 +1577,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-02 | "BLK-17: …" (parent `a417e88`) | BLK-17, UPG-29 | **New blocker, found while starting UPG-33, and DONE** (built before UPG-33 under rule 2). 10 ClubSPOC write routes (end event, publish results, add judges by form or CSV, rooms, room reassignment, announcements, agenda, open hall, certificate templates) and 4 read pages acted on any event with no ownership check. One helper now requires the right permission on the event first; room reassignment also checks the registration's event. 3 new real-database tests (2 fail on the old code, where another SPOC could end the event). UPG-29 notes the judge routes are now covered. Full pytest 704 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 3 items DONE since the 2026-10-02 re-verification. |
 | 2026-10-02 | "UPG-33: …" (parent `0b9463a`) | UPG-33 | **UPG-33 DONE** (first Phase 2 item). Before building, the item was widened (rule 3) to the three more paths that emailed passwords: SPOC `assign_coordinator`, `add_judge` and `upload_judges_csv`, and admin `appoint_spoc` with its typed password. Every account someone else creates (walk-in, coordinator staff, SPOC-appointed coordinator or judge, admin-appointed SPOC) is now unverified and opened with a one-time set-password link whose email says why it exists. The staff WhatsApp notice carries no credentials, and the admin form has no password field. Reset links are bound to the current password hash, so each works once. 8 new real-database tests (all fail on the old code) record every plaintext passed to `generate_password_hash` and assert none reaches an email or WhatsApp message. Full pytest 712 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 4 items DONE since the 2026-10-02 re-verification. |
 | 2026-10-02 | "UPG-35: …" (parent `032e7c3`) | UPG-35, BLK-13 | **UPG-35 DONE** (D-3). Web and API login answer "Email or password is incorrect." for an unknown email, a wrong password and an old unhashed password, and the API no longer gives the latter its own 403. Password reset always answers "If an account exists for this email, we've sent a reset link." A correct password with the wrong role still gets a role hint. Sign-up and registration unchanged and now pinned. 4 new real-database tests (criteria 1–3 fail on the old code); BLK-13's API test now expects the new 401 wording (still exact). Full pytest 716 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 5 items DONE since the 2026-10-02 re-verification (BLK-11, BLK-16, BLK-17, UPG-33, UPG-35). |
+| 2026-10-02 | "docs: …" (parent `37c2a5c`) | Process, UPG-39, UPG-40, UPG-41 | Owner: AGENTS.md (and the identical CLAUDE.md) rule 8 now runs the re-verification once at the end of each phase, or early when a change touches files many open items depend on. "Before the next deploy" gains `BREVO_API_KEY`, `MAIL_FROM` and a test-send step, since UPG-33 makes the emailed link the only way into new accounts. **New:** UPG-39 (development logs set-password and reset links when no mail provider is set; never in production), UPG-40 (SuperAdmin users page with a resend button; no users page is routed today), UPG-41 (a third Gmail app password for the old mail account in `utils_email.py`'s docstring since 2026-04-19, revoked by the 2026-09-30 password change; remove it and the hard-coded sender). Scheduled after UPG-37. Docs only. |

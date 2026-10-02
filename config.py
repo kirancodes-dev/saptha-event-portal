@@ -131,6 +131,9 @@ class Config:
     LOGIN_THROTTLE_IP_LIMIT      = int(os.environ.get('LOGIN_THROTTLE_IP_LIMIT', 5))
     LOGIN_THROTTLE_ACCOUNT_LIMIT = int(os.environ.get('LOGIN_THROTTLE_ACCOUNT_LIMIT', 5))
     LOGIN_THROTTLE_WINDOW        = int(os.environ.get('LOGIN_THROTTLE_WINDOW', 60))
+    # Failed logins per account in any hour (UPG-37): stops a slow guesser who
+    # stays under the per-minute limit
+    LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT = int(os.environ.get('LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT', 20))
     LOGIN_THROTTLE_STORAGE       = 'redis' if os.environ.get('REDIS_URL') else 'database'
 
     # =========================================================

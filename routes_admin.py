@@ -9,7 +9,6 @@ try:
     from google.cloud import firestore
 except ImportError:
     firestore = None
-from werkzeug.security import generate_password_hash
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -27,7 +26,7 @@ class DynamicDBProxy:
 
 db = DynamicDBProxy()
 from utils import login_required, role_required, log_action
-from utils_email import send_credentials_email
+from services_accounts import create_unverified_account, send_set_password_link
 
 admin_bp    = Blueprint('admin', __name__, url_prefix='/admin')
 SUPER_ROLES = ['SuperAdmin', 'Super Admin', 'UniversityAdmin']
@@ -376,10 +375,9 @@ def appoint_spoc():
     try:
         name     = request.form.get('name',     '').strip()
         email    = request.form.get('email',    '').lower().strip()
-        password = request.form.get('password', '').strip()
         category = request.form.get('category', 'General').strip()
 
-        if not name or not email or not password:
+        if not name or not email:
             flash("All fields are required.", "warning")
             return redirect('/admin/dashboard')
 
@@ -387,20 +385,14 @@ def appoint_spoc():
             flash(f"A user with email {email} already exists.", "warning")
             return redirect('/admin/dashboard')
 
-        db.collection('users').document(email).set({
-            'email':               email,
-            'name':                name,
-            'role':                'ClubSPOC',
-            'category':            category,
-            'password':            generate_password_hash(password),
-            'created_at':          datetime.datetime.now().strftime("%Y-%m-%d"),
-            'needs_password_reset': True
-        })
-        send_credentials_email(email, name, f'Club SPOC ({category} Division)',
-                               password, category)
+        # The new SPOC chooses their own password through a one-time link;
+        # nobody types or emails one (UPG-33)
+        create_unverified_account(db, email, name, role='ClubSPOC', category=category)
+        send_set_password_link(db, email, name,
+                               reason=f"when you were appointed as Club SPOC ({category} division)")
         log_action(db, "SPOC_APPOINTED",
                    f"{email} appointed as ClubSPOC ({category}) by {session.get('user_id')}")
-        flash(f"✅ SPOC account created for {name} ({category}). Credentials emailed.", "success")
+        flash(f"✅ SPOC account created for {name} ({category}). A link to set their password was emailed.", "success")
     except Exception as exc:
         flash(f"Error appointing SPOC: {exc}", "danger")
     return redirect('/admin/dashboard')

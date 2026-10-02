@@ -1,7 +1,8 @@
 # routes_referrals.py — Student Affiliate & Referrals Blueprint
 import logging
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, session
 from utils import login_required
+from utils_email import _base_url
 
 referrals_bp = Blueprint('referrals', __name__, url_prefix='/participant/referrals')
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ def get_referral_stats():
     return jsonify({
         'success': True,
         'referral_code': ref_code,
-        'referral_link': f"{request.host_url}register?ref={ref_code}",
+        'referral_link': f"{_base_url()}/register?ref={ref_code}",  # BLK-16
         'count': referrals_count,
         'earned': amount_earned
     })

@@ -269,7 +269,7 @@ def test_api_login_is_limited_the_same_way_and_answers_alike_for_unknown_account
         for i in range(5):
             resp = _api_login(flask_app, email, 'wrong-password', f'192.0.2.{10 * n + i + 1}')
             assert resp.status_code == 401
-            assert resp.get_json()['message'] == 'Invalid email or password'
+            assert resp.get_json()['message'] == 'Email or password is incorrect.'  # UPG-35 wording
         sixth = _api_login(flask_app, email, 'wrong-password', f'192.0.2.{10 * n + 9}')
         assert sixth.status_code == 429 and sixth.headers['Retry-After'] == '60'
         refusals.append(sixth.get_json())

@@ -207,5 +207,6 @@ def test_production_config_requires_real_secrets():
         validate_production_config({'FLASK_ENV': 'production', 'SECRET_KEY': 'x' * 64,
                                     'MASTER_SECRET_KEY': 'SAPTHA@2026'})
     validate_production_config({'FLASK_ENV': 'production', 'SECRET_KEY': 'x' * 64,
-                                'MASTER_SECRET_KEY': 'a-long-master-key'})
+                                'MASTER_SECRET_KEY': 'a-long-master-key',
+                                'BASE_URL': 'https://events.example.edu'})  # required since BLK-16
     validate_production_config({'FLASK_ENV': 'development'})

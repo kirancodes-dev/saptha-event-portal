@@ -23,6 +23,7 @@ from auth_jwt import (
     api_success, api_error, api_paginated,
 )
 import services_login_throttle as throttle
+from routes_auth import LOGIN_FAILED_MESSAGE
 from utils import safe_int
 
 logger = logging.getLogger(__name__)
@@ -73,18 +74,17 @@ def api_login():
     user_doc = db.collection("users").document(email).get()
     if not user_doc.exists:
         throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
-        return api_error("invalid_credentials", "Invalid email or password", status=401)
+        return api_error("invalid_credentials", LOGIN_FAILED_MESSAGE, status=401)
 
     user = user_doc.to_dict()
 
     # Verify password
+    # An old unhashed password answers exactly like a wrong one (UPG-35)
     stored_hash = user.get("password_hash") or user.get("password", "")
-    if not stored_hash or not stored_hash.startswith(("scrypt:", "pbkdf2:")):
-        return api_error("account_locked", "Account requires password reset", status=403)
-
-    if not check_password_hash(stored_hash, password):
+    if (not stored_hash or not stored_hash.startswith(("scrypt:", "pbkdf2:"))
+            or not check_password_hash(stored_hash, password)):
         throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
-        return api_error("invalid_credentials", "Invalid email or password", status=401)
+        return api_error("invalid_credentials", LOGIN_FAILED_MESSAGE, status=401)
     throttle.clear_account(throttle.LOGIN, email)
 
     # Verify role

@@ -33,6 +33,8 @@ This file is the source of truth for planned work. Agents and developers work on
    - some endpoints leaked registrations (BLK-04, **fixed**);
    - any SPOC or coordinator could delete any event through a GET link, and `/api/v1` was open to cross-site requests from a logged-in browser (BLK-04, found in Phase 0, **fixed**);
    - login had no rate limiting (BLK-13, **fixed** on `production-ready`);
+   - a forged `Host`/`X-Forwarded-Host` made reset and set-password emails link to another site (BLK-16, found in the PR #48 review, **fixed**);
+   - any SPOC could end, publish, staff or edit another SPOC's event (BLK-17, **fixed**);
    - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
 7. **Not production-ready yet (Phase 0, 2026-09-30):** uploads live on the container's disk (UPG-17; sessions moved to the database, BLK-08), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 111 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan.
 5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool.
@@ -49,14 +51,14 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Home / event discovery / catalogue | WORKING [R] | `app.py:540`, `app.py:729`, crawl 200 | Home shows a hard-coded fake hackathon when no events exist (`app.py:699-710`). |
 | University calendar + event `.ics` | WORKING [R] | `app.py:1083`, `app.py:784` | Department-only visibility filter at `app.py:1001-1004`. |
 | Personal calendar feed | WORKING [R at BLK-04b] | `app.py:1125-1200`, `services_accounts.py:120-145` | Own events when logged in; calendar apps use a signed, resettable per-user token; `?user=` is ignored (BLK-04). |
-| Student sign-up / login | WORKING [R] | `routes_auth.py:272`, `routes_auth.py:66` | USN now persists (document shadow, `db_adapter.py` `extra_json`) [R at `1f4cdc8`]; it wasn't stored at `694c729`. |
+| Student sign-up / login | WORKING [R at UPG-35] | `routes_auth.py:272`, `routes_auth.py:66` | USN now persists (document shadow, `db_adapter.py` `extra_json`) [R at `1f4cdc8`]; it wasn't stored at `694c729`. Failed logins and reset requests answer the same for every email (UPG-35); sign-up still tells an existing email to log in. |
 | Google / Microsoft login | NOT CONNECTED [C] | `auth_oauth.py:32-135` | Login page has no link to `/auth/google` (`templates/login.html`). |
 | 2FA (TOTP) | NOT CONNECTED [C] | `auth_2fa.py:42-155` | No template links to `/auth/2fa/*`. `totp_*` keys now persist [R round-trip at `1f4cdc8`]. |
 | Event creation from template (SPOC) | WORKING [R at `1f4cdc8`] | `routes_spoc.py:96-274` | All settings now persist, e.g. a ₹500 fee and team 2–4 (`tests/test_integration_flow.py:56-83`) [R]. Presets only applied for seminar/workshop (`routes_spoc.py:131`). |
 | Approval workflow (unit → admin) | WORKING [R] | `services_workflow.py:130-217`, `routes_admin.py:786` | Admin approval sets `published`; SPOC must still move it to `registration_open` (`routes_forms.py:321` treats `published` as closed). |
 | Registration form (custom fields) | PARTLY BUILT [R] | `templates/public/registration_form.html:485`, `routes_spoc.py:252-256` | Works for SPOC-created seminar/workshop. Seeded and template-created forms store `field_name`; the template renders `name="{{ field.id }}"`, so inputs get `name=""` and there's no name/email field. |
 | Form builder | WORKING (page load and save [R at BLK-04b]) | `routes_forms.py:223-300` | Only the event's owner (or admins) can edit the form; assigned staff can see responses (BLK-04). |
-| Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:403-439`, `routes_auth.py:227` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. |
+| Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:403-439`, `routes_auth.py:227` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
 | Waitlist | PARTLY BUILT [R at BLK-03] | `routes_forms.py`, `routes_waitlist.py:186-300`, `tasks/waitlist_tasks.py` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
 | Paid registration (Razorpay) | WORKING in tests [R at BLK-03] | `routes_payment.py:66-400`, `services_payments.py` | Server-side price; orders recorded and checked on verify; payment IDs single-use; fails closed without keys; simulation only with `PAYMENT_SIMULATION=true` outside production (BLK-03). Not yet run against Razorpay test mode (UPG-30). No receipt email or refunds (UPG-30). |
 | Stripe payments | NOT CONNECTED [C] | `routes_payment_stripe.py` | No template or JS references `/payment/stripe`. |
@@ -68,7 +70,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Venue-QR self check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Pinned on the real database by BLK-12. The `functions/` copy checks in by a typed email alone (removed in Phase 5, UPG-15, D-1). |
 | Offline check-in (PWA queue) | PARTLY BUILT [C] | `static/js/offline-sync.js:83` | Replays to kiosk confirm, which answers 403 to coordinators not assigned to the event (assigned ones can confirm); not run (UPG-02). `/api/v1/.../checkin-batch` is JWT-only with no UI. |
 | Coordinator assignment | WORKING [R at `1f4cdc8`] | `routes_spoc.py:1171-1252` | `spoc_id` now persists, so "assign coordinator" adds the coordinator to `staff` [R], and the coordinator can then open registrations (`tests/test_integration_flow.py:164-185`). |
-| Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists. |
+| Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists; only on events the SPOC manages since BLK-17 (`tests/test_spoc_event_authz.py`). |
 | Judge dashboard | PARTLY BUILT [R] | `routes_judge.py:58-59` | Lists only events with status `active`; new workflow states never appear. |
 | Judge scoring | PARTLY BUILT [R] | `routes_judge.py:158`, `templates/spoc/create_event.html:1116` | Criteria from the create form are objects; scoring crashes (`'dict' object has no attribute 'replace'` / 500) [R]. Works with string criteria [R]. |
 | Rounds, lock scoring, advance round | not re-run [C at `1f4cdc8`] | `routes_spoc.py` round panel / lock / advance | The `spoc_id` gate is now satisfiable (the field persists), so these are likely unblocked; not re-run. |
@@ -81,7 +83,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Teams (create/join by code) | NOT CONNECTED [C] | `routes_teams.py:92` | Writes a separate `teams` collection; never linked to registrations, tickets or judging. |
 | Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:759` | Session-level attendance not found. |
 | Announcements | not run [C] | `routes_spoc.py:684-758` | — |
-| Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
+| Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
 | WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. |
 | In-app notifications | PARTLY BUILT [C] | `routes_notifications.py:20` vs `routes_notifications_v2.py:70` | Student dashboard feed reads `notifications`, which nothing writes; every writer uses `notifications_v2`. |
 | Scheduled reminders / lifecycle | NOT CONNECTED on free tier [C at `1f4cdc8`] | `celery_app.py:95-120`, `docker-compose.yml:27-37`, `Dockerfile:33` | `docker-compose.yml` now runs worker + beat for self-hosting; a single web service still runs only gunicorn (UPG-07). |
@@ -156,7 +158,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 |---|---|---|
 | Get assigned | OK [R at `1f4cdc8`] | `tests/test_integration_flow.py:164-185`. |
 | Scan tickets | **Broken** [R] | Coordinator scanner sends the token to `/coordinator/get_ticket/` → "INVALID TICKET". HUD scanner → "Payment pending". |
-| Walk-ins | not run [C] | `routes_coordinator.py:696-779`; needs `manage_registrations` on the chosen event (BLK-04a). |
+| Walk-ins | Works [R at UPG-33] | `routes_coordinator.py:696-779`; needs `manage_registrations` on the chosen event (BLK-04a). A new walk-in gets the ticket and a one-time set-password link, never a password (`tests/test_account_emails.py`). |
 | Attendance (granular) | **Fixed** (BLK-04a) [R] | `routes_coordinator.py:914-916` needs `check_in` on the event; students and unassigned coordinators get 403 (`tests/test_coordinator_authz.py`). |
 | Offline | Partly [C] | Queue replays to kiosk confirm, which returns 403 for unassigned coordinators. |
 
@@ -529,6 +531,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Problem:** [C at `56a014d`]
   - `validate_production_config` collects problems into one error (`config.py:252-266`) but checks only `SECRET_KEY`, `MASTER_SECRET_KEY` and the default admin password. `JWT_SECRET_KEY` silently falls back to `SECRET_KEY` (`config.py:215`); `RAZORPAY_*`, `BASE_URL`, the mail provider and storage settings aren't checked; `DATABASE_URL` is checked separately with its own error (`db_pg.py:104-150`).
   - `.env.example`'s Redis section still says sessions use the filesystem without Redis; since BLK-08 they use the database (found in BLK-13).
+  - `COLLEGE_LOGO_URL` defaults to the retired Railway domain (`config.py:182-185`), so email and certificate logos break unless it's set (found in BLK-16): default it to `BASE_URL` + `/static/snpsu-logo.png` or require it.
   - `.env.example` lists 43 of the 91 environment variables the app code reads (40 of 86 at `56a014d`; BLK-03, BLK-08 and BLK-13 added variables); missing ones include `SENTRY_TRACES_SAMPLE_RATE`, `SESSION_TYPE`, `RATELIMIT_STORAGE_URL`, `WTF_CSRF_SECRET_KEY`, `MAIL_*` SMTP settings and `PORT`.
   - `/health` and `/health/ready` call `.stream()` without reading it, so they may not reach the database, and they return the exception text (`app.py:492-528`).
   - Logs are plain text; Cloud Run needs one JSON object per line for severity and request grouping.
@@ -669,22 +672,33 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
 - **Effort:** S · **Depends on:** BLK-04 · **Risk:** low.
 - **Acceptance criteria:**
   1. Test (real DB): the SPOC assigns a coordinator and a judge on their own event; each sees it on their dashboard.
-  2. Test: another SPOC gets 403 and nothing changes.
+  2. Test: another SPOC gets 403 and nothing changes. (Since BLK-17, `add_judge` and `upload_judges_csv` are covered by `tests/test_spoc_event_authz.py`; `assign_coordinator` still needs its test.)
   3. Test: unassigning removes access to the event's registrations and scoring.
 
 #### UPG-30 — Paid events end to end: receipt email, refunds and cancellations
 - **Status:** TODO
 - **Last verified:** 2026-10-02, commit `986d108`
 - **Problem:** [C at `56a014d`] After a verified payment only a WhatsApp receipt task is queued (`routes_payment.py:301`); there's no email receipt. There's no admin action to mark a payment refunded or a paid registration cancelled; `services_finance.py:249-264` only counts `refunded` in reports. BLK-03 makes verification safe; this item makes the whole flow work.
+  - **Added 2026-10-02 from the code review of PR #48 (owner)** [C at `7aac9ca`]:
+    - (a) **Money taken, no registration.** `verify_payment` claims the order (marks it paid, `routes_payment.py:151`) before `_complete_registration` runs (`:158`). If completion fails (the payer is already registered, or any exception), the payer has paid but has no registration; the only trace is an audit line (`PAYMENT_UNMATCHED`, `:167`, or `PAYMENT_FAILED`, `:319`), and the browser gets a 400. Completion also doesn't re-check capacity (capacity is checked only at form submit, `routes_forms.py:481-482`), so a payment finished after the last seat went **overbooks** the event instead of failing.
+    - (b) **No webhook.** Nothing receives Razorpay's server-to-server events (no webhook route in `routes_payment.py`). If the browser closes after paying, before `/payment/verify` runs, the payment is never matched to the order or a registration.
 - **Who benefits:** the finance office, organisers and paying participants.
 - **What to build:** a receipt email (Brevo) after a verified payment; admin actions to mark a registration refunded or cancelled (with reason, audit-logged), which also stop its ticket from checking in; a finance export row per payment.
+  - Added 2026-10-02: a `payment.captured` webhook (`/payment/webhook/razorpay`), verified with `X-Razorpay-Signature` and a new `RAZORPAY_WEBHOOK_SECRET`, that completes the registration from the stored order (and the reg data kept with it), once, whichever of webhook and browser arrives first.
+  - Completion re-checks capacity. When completion fails after the order is paid (full, already registered, error), the order is kept as paid with no registration, and the payer is told the payment is recorded and will be completed or refunded.
+  - An admin list of paid orders with no registration, and a refund action that calls Razorpay's refund API for the order's payment and amount, records the refund on the order and audit-logs it.
+  - `RAZORPAY_WEBHOOK_SECRET` joins "Before the next deploy".
 - **Files touched:** `routes_payment.py`, `routes_admin.py`, `utils_email.py`, templates, tests.
-- **Effort:** M · **Depends on:** BLK-03, BLK-05 · **Risk:** needs Razorpay test keys for the manual check.
+- **Effort:** L (was M) · **Depends on:** BLK-03, BLK-05 · **Risk:** needs Razorpay test keys for the manual check; refunds move real money, so the action needs a confirmation step.
 - **Acceptance criteria:**
   1. Test (Razorpay client mocked): register → order → verify gives `Confirmed / Paid` with the server amount and queues exactly one receipt email.
   2. Test: an admin marks the registration refunded, then another cancelled; each is audit-logged, and the ticket is refused at check-in.
   3. Test: a non-admin gets 403 on both actions.
   4. Manual (owner, with Razorpay test keys): the full checkout in test mode.
+  5. Test: when completion fails after the order is claimed (the event filled up, the payer is already registered, or an exception), no seat is over-allocated, the order stays paid with no registration, it appears in the admin list, and the payer sees that the payment is recorded.
+  6. Test: a `payment.captured` webhook with a valid signature for a recorded order whose browser never returned completes the registration once; replaying it, or the browser's `/payment/verify` arriving afterwards, changes nothing. A bad signature → 400 and nothing changes; an unknown order → 200 and nothing is created.
+  7. Test: the admin list shows exactly the paid orders that have no registration; a non-admin gets 403.
+  8. Test (Razorpay client mocked): the refund action calls the refund API once with the order's payment ID and amount, marks the order refunded and audit-logs it; a second request does nothing; a non-admin gets 403.
 
 #### UPG-31 — Notifications: confirmation, day-before reminder, change and cancellation notices through Brevo
 - **Status:** TODO
@@ -728,16 +742,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | Setting | Requirement | Checked by the app at start-up? |
 |---|---|---|
 | `FLASK_ENV` | `production` | This is what turns the production checks on |
-| `SECRET_KEY` | New random value, 32+ characters | Yes: start-up is refused otherwise (`config.py:35-39`, `validate_production_config`) |
+| `SECRET_KEY` | New random value, 32+ characters | Yes: start-up is refused otherwise (`config.py:36-40`, `validate_production_config`) |
 | `MASTER_SECRET_KEY` | New random value, 12+ characters, not a published value | Yes (`validate_production_config`) |
-| `JWT_SECRET_KEY` | New random value, different from `SECRET_KEY` | **No**: it silently falls back to `SECRET_KEY` (`config.py:215`) |
+| `JWT_SECRET_KEY` | New random value, different from `SECRET_KEY` | **No**: it silently falls back to `SECRET_KEY` (`config.py:217`) |
 | `SUPER_ADMIN_PASS` (with `SUPER_ADMIN_EMAIL`) | New strong password, used to create the first SuperAdmin | Only against the list of published passwords (`validate_production_config`) |
 | `RAZORPAY_KEY_SECRET` (with `RAZORPAY_KEY_ID`) | Set before any paid event is opened | **No**, but without them online payment refuses with 503 (fails closed since BLK-03). Never set `PAYMENT_SIMULATION` in production (it's ignored there anyway). |
 | `DATABASE_URL` | PostgreSQL (`postgresql://…`) | Yes: production refuses SQLite or no database (`db_pg.py:104-150`) |
-| `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:130`, BLK-13) |
+| `BASE_URL` | The site's public `https://` address, e.g. the Cloud Run URL or the university domain. Every emailed, WhatsApp, QR and referral link is built from it. | Yes: production refuses a missing, `http://` or localhost value (`config.py:267-270`, BLK-16) |
+| `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:131`, BLK-13) |
 
 - **Use a fresh database.** If an old one is reused (the earlier Cloud SQL or Supabase database), first reset every account's password (the SuperAdmin's was the published demo password) and delete the demo accounts (BLK-10) and walk-in accounts created with the default password (UPG-15).
-- **Proxy hops (owner, 2026-10-02).** `ProxyFix(x_for=1)` (`app.py:149`) trusts exactly one proxy, which is right for Cloud Run alone. If Cloudflare or a load balancer is ever put in front, set `x_for` to the real number of proxies. Otherwise the app sees the proxy's address for every visitor, and BLK-13's per-IP limit counts everyone as one IP. Never set it higher than the real number: clients could then forge their IP in `X-Forwarded-For` and dodge the per-IP limit.
+- **Proxy hops (owner, 2026-10-02).** `ProxyFix(x_for=1, x_proto=1)` (`app.py:151`) trusts exactly one proxy, which is right for Cloud Run alone; it never trusts `X-Forwarded-Host` (BLK-16). If Cloudflare or a load balancer is ever put in front, set `x_for` to the real number of proxies. Otherwise the app sees the proxy's address for every visitor, and BLK-13's per-IP limit counts everyone as one IP. Never set it higher than the real number: clients could then forge their IP in `X-Forwarded-For` and dodge the per-IP limit.
 - **Check:** start the app once with these values and `FLASK_ENV=production`. It must start, and it must refuse to start if any start-up-checked value above is missing or weak (`tests/test_integration_flow.py::test_production_config_requires_real_secrets`).
 
 
@@ -1087,7 +1102,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Found 2026-10-01 (BLK-15, now DONE):** criterion 4's Firestore check read a different key than the scripts used and accepted any project name when it found none; its test passed only where the untracked `serviceAccountKey.json` existed, so it failed in CI. Fixed by BLK-15.
 
 #### BLK-11 — CI's bandit job fails on 5 pre-existing issues, so CI can't go green
-- **Status:** DONE locally (criterion 2, every job green on GitHub, waits on the owner pushing `production-ready` and opening a pull request into `master`)
+- **Status:** DONE
 - **Last verified:** 2026-10-01, commit "BLK-11: …" on `production-ready` (parent `affcab7`)
 - **Problem:** The CI job "Security scan (bandit)" (`bandit -r . -x tests/,__pycache__/ -ll -q`, `.github/workflows/ci.yml`) exits 1 on 5 Medium-severity findings [R, fresh clone of `f956456`]:
   - `functions/saptha_app/audit_logger.py:111`, `:162` (B104, binding to all interfaces).
@@ -1108,7 +1123,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **CI on GitHub (2026-10-01, after the owner's push):** on `master` (`56a014d`) "Security scan (bandit)" failed as expected and "Test (pytest)" failed (cause reproduced; recorded in BLK-15), while "Repo hygiene & secret scan" and "Lint (ruff)" passed. CI runs only on pushes to `main`/`master`/`develop` and on pull requests into `main`/`master` (`.github/workflows/ci.yml:3-7`), so commits pushed to `production-ready` get no CI run until a pull request into `master` is opened.
 - **Acceptance criteria:**
   1. ✅ `bandit -r . -x tests/,__pycache__/ -ll -q` exits 0 on a fresh clone [R]; it found the 5 issues before the fix. CI's "Security scan (bandit)" job runs this command on every push and pull request into `master`.
-  2. ⬜ Every job in the CI workflow is green on GitHub for this commit, through a pull request from `production-ready` into `master` or on `master`. **Waits on the owner** to open the pull request: `production-ready` is pushed (at `9e28bf3`, seen 2026-10-02), but no pull request into `master` exists, so CI hasn't run on it [R, GitHub API]. The agent never pushes. Every job that can run here passes in a fresh clone with CI's settings [R]: lint (ruff), hygiene (37 passed) and the full-history gitleaks scan, tests (CI's exact command with a Redis server: 689 passed), and bandit (exit 0). Not run here: "Docker build" (no Docker on this machine; it runs only on pushes to `master`).
+  2. ✅ Every job in the CI workflow is green on GitHub [R, GitHub Actions API]. On pull request #48: run 36958162992 (`9e28bf3`) and run 36958733560 (`7aac9ca`) passed hygiene and gitleaks, ruff, pytest and bandit; Docker build is skipped on pull requests. After the merge, on `master` (`86348fe`): run 36959323400 passed all five jobs, Docker build included.
   3. ✅ `ruff check .` is clean and the full pytest passes: **689 passed** on SQLite and PostgreSQL 16.
 
 #### BLK-12 — Kiosk and ticket-verify holes (and tests for them on the real database)
@@ -1220,20 +1235,116 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   4. ✅ With two sources naming different projects, the guard confirms the one the script connects with and refuses the other: `FIREBASE_CREDENTIALS` over `FIREBASE_KEY_PATH`, and `FIREBASE_KEY_PATH` over `GOOGLE_APPLICATION_CREDENTIALS`. A key in the current directory beats `GOOGLE_APPLICATION_CREDENTIALS` (`::test_the_guard_checks_the_key_the_script_will_use`).
   - With the old guard and scripts, 13 of these tests fail in the developer's checkout. The other 3 (criterion 3) pass there only because the old guard fell back to the developer's real key; in a fresh clone they fail too. Full pytest: **689 passed** on SQLite and PostgreSQL 16; ruff clean; bandit shows only the 5 BLK-11 findings.
 
+#### BLK-16 — Email, QR and referral links follow a forged Host header
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "BLK-16: …" on `production-ready` (parent `0f22a5c`)
+- **Problem (as found at `7aac9ca`):** From the code review of PR #48 (owner, 2026-10-02); confirmed in the code [C].
+  - **Links built from the request's host:**
+    - the password-reset link (`routes_auth.py:365`);
+    - the set-password link sent on registration (`services_accounts.py:100`);
+    - the venue check-in QR (`routes_checkin.py:226`);
+    - the referral link (`routes_referrals.py:49`).
+  - **Helpers that prefer the request's host:**
+    - `utils_email._base_url` returns `request.url_root` first (`utils_email.py:50-67`). Every email template's links and logo use it (`utils_email.py:107,449,511,602,689,754`), as do the certificate logo (`utils_certificate.py:81`) and the certificate verification page (`routes_verification.py:172`).
+    - `routes_ticket._base_url` uses `BASE_URL` but falls back to the request's host for the ticket QR (`routes_ticket.py:91-104`, used at `:158,216`).
+  - **ProxyFix trusts `X-Forwarded-Host`** (`app.py:149`, `x_host=1`, plus `x_prefix=1`), so any client can set the host Flask sees.
+  - **Attack:** `POST /forgot_password` with a victim's email and `X-Forwarded-Host: evil.example`. The real reset email reaches the victim with a link to `https://evil.example/reset_token/<token>`, and one click hands the attacker a valid one-hour token. Registering a new email the same way leaks a three-day set-password token.
+  - **Hard-coded fallbacks:** `utils_email._base_url` falls back to the old Cloud Run URL (`utils_email.py:51`); `utils_whatsapp.py:116,154,210` fall back to an old Railway URL.
+  - **`BASE_URL` isn't required in production:** it defaults to `http://127.0.0.1:5000` (`config.py:173`), and `validate_production_config` doesn't check it.
+- **Who benefits:** every account (no takeover through a poisoned email link).
+- **What to build:**
+  - Build every link that goes into an email, a WhatsApp message, a QR code or a referral from `BASE_URL` only, through one helper, with no request host and no hard-coded URL.
+  - `validate_production_config` requires `BASE_URL` to be an `https://` URL that isn't localhost.
+  - `ProxyFix(x_for=1, x_proto=1)` only.
+  - Add `BASE_URL` to "Before the next deploy".
+  - Not in scope: Stripe's `success_url`/`cancel_url` (`routes_payment_stripe.py:71-72`) are redirects for the caller's own checkout, never sent to anyone else, and UPG-14 removes Stripe.
+- **What was built:**
+  - `utils_email._base_url` (`utils_email.py:50`) is the one helper. It returns the app's `BASE_URL`, or the environment variable outside an app context, or `http://127.0.0.1:5000` in development. It never uses the request's host and holds no hard-coded URL.
+  - Every link that leaves the app now uses it:
+    - the reset link (`routes_auth.py:367`) and the set-password link (`services_accounts.py:100`);
+    - the ticket QR (`routes_ticket._base_url`, `routes_ticket.py:90`, used at `:144,202`) and the venue check-in QR (`routes_checkin.py:227`);
+    - the referral link (`routes_referrals.py:50`);
+    - WhatsApp messages (`utils_whatsapp._public_base_url`, `utils_whatsapp.py:36`, used at `:121,158,213`);
+    - the waitlist pay link (`routes_waitlist.py:196`), the reminder email (`tasks/email_tasks.py:60`), and the certificate verify links (`routes_spoc.py:569,1920`), which were relative when `BASE_URL` was unset.
+  - `validate_production_config` refuses a production start unless `BASE_URL` is an `https://` address that isn't localhost, in the same single error as the other problems (`config.py:267-270`).
+  - `ProxyFix(x_for=1, x_proto=1)` (`app.py:151`): `X-Forwarded-Host` and `X-Forwarded-Prefix` are no longer trusted.
+  - "Before the next deploy" gains `BASE_URL`.
+  - `tests/test_integration_flow.py::test_production_config_requires_real_secrets` gives its valid production config a `BASE_URL`, the setting this item makes required; its assertions are unchanged.
+- **Files touched:** `utils_email.py`, `routes_ticket.py`, `routes_checkin.py`, `routes_referrals.py`, `routes_auth.py`, `services_accounts.py`, `utils_whatsapp.py`, `routes_waitlist.py`, `tasks/email_tasks.py`, `routes_spoc.py`, `config.py`, `app.py`, `tests/test_public_links.py` (new), `tests/test_integration_flow.py`.
+- **Effort:** S · **Depends on:** none · **Risk:** a deploy without a proper `BASE_URL` now refuses to start (intended); in development, links point at the `BASE_URL` default (`http://127.0.0.1:5000`).
+- **Acceptance criteria** (all in `tests/test_public_links.py`, on the real database layer; each request goes to the forged host `evil.example` with `X-Forwarded-Host: attacker.example`; 11 of the 12 tests fail on the old code, and the 12th checks that a correct production config still starts):
+  1. ✅ Test: a password-reset request and a registration with a new email, each sent with a forged `Host` and `X-Forwarded-Host`, email links that start with `BASE_URL` and contain neither forged host (`::test_password_reset_email_links_to_base_url_whatever_the_host`, `::test_set_password_email_on_registration_links_to_base_url`).
+  2. ✅ Test: with the same forged headers, the ticket QR URL, the venue check-in QR, the referral link and `utils_email._base_url()` all use `BASE_URL` (`::test_qr_codes_and_referral_links_use_base_url`; the QR data is captured where the QR is drawn).
+  3. ✅ Test: production boot without `BASE_URL`, or with an `http://` or localhost one, is refused in the same single error as the other problems; with an `https://` `BASE_URL` it starts (`::test_production_refuses_a_missing_or_unsafe_base_url`, 5 cases; `::test_production_starts_with_an_https_base_url`).
+  4. ✅ Test: the app's ProxyFix trusts one hop of `X-Forwarded-For` and `X-Forwarded-Proto` only; a forged `X-Forwarded-Host` doesn't change the host the app sees, and the client IP and scheme still come through (`::test_proxy_fix_trusts_one_hop_of_for_and_proto_only`).
+  5. ✅ Test: no app module builds a link from `request.host_url` or `request.url_root`. The allow-list covers `app.py`'s same-site referrer check and Stripe's own redirect URLs (until UPG-14). `utils_email.py`, `utils_whatsapp.py` and `routes_ticket.py` hold no hard-coded deploy URL (`::test_no_app_module_builds_links_from_the_request_host`, an AST scan of every tracked app module; `::test_outbound_message_modules_hold_no_hard_coded_deploy_url`). The tenant middleware's domain lookup is also allow-listed: multi-tenancy is off, and it builds no link.
+  - Full pytest: **701 passed** on SQLite and PostgreSQL 16; ruff clean.
+
+#### BLK-17 — Any SPOC can end, publish, staff and edit other SPOCs' events
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "BLK-17: …" on `production-ready` (parent `a417e88`)
+- **Problem (as found at `a417e88`):** Found while starting UPG-33 [C at `a417e88`, AST scan of `routes_spoc.py` plus reading each route]. These ClubSPOC routes take an `event_id` but never check that the user may act on that event (no `spoc_id` comparison, no `can(...)`):
+  - **Writes:**
+    - `end_event` (`routes_spoc.py:530`): marks any event `completed` and starts certificate generation;
+    - `announce` (`:687`) and `agenda` (`:762`, GET and POST);
+    - `publish_results` (`:789`): marks it `completed` with results published;
+    - `toggle_openhall` (`:1081`) and `upload_cert_templates` (`:1256`);
+    - `upload_judges_csv` (`:1322`) and `add_judge` (`:1382`): appoint judges, who can then score that event;
+    - `setup_rooms` (`:1439`);
+    - `reassign_room` (`:1529`), which also doesn't check that the registration belongs to the event.
+  - **Reads:** `judging/audit` (`:1937`, every judge's scores), `schedule/optimize` (`:2049`), `ticket/nfc-verify` (`:2147`) and `judging/matchmaker` (`:2180`).
+  - `announcements/public` (`:737`) is public by design.
+  - BLK-04 fixed the coordinator routes, the form builder and the API; these SPOC routes weren't in its list. The SPOC isolation decision (BLK-04, owner 2026-09-29) says a SPOC manages only events they own or hold a unit grant for.
+- **Who benefits:** every organiser (nobody else can end, publish or staff their event) and every participant (scores and attendee data stay with the event's staff).
+- **What to build:** one helper that loads the event and requires a permission on it with `services_permission.can`, called before each route's `try` so the 403 isn't swallowed. The permissions are:
+  - `edit_event`: end, announce, agenda, open hall, judges, optimizer, matchmaker;
+  - `publish_results`: publish results;
+  - `issue_certificates`: certificate templates;
+  - `manage_registrations`: rooms and reassignment;
+  - `view_analytics`: the judging audit;
+  - `check_in`: NFC verify.
+  - Room reassignment refuses a registration from another event.
+- **What was built:**
+  - `_event_or_abort(event_id, permission)` (`routes_spoc.py:29`) loads the event (404 if missing) and requires `can(session, permission, event)` (403 otherwise).
+  - It's called first in each of the 14 routes (`routes_spoc.py:549,707,783,811,1104,1280,1347,1408,1466,1557,1969,2082,2181,2215`), with the permissions listed above.
+  - `reassign_room` also answers 404 unless the registration belongs to the event (`routes_spoc.py:1557-1560`).
+- **Files touched:** `routes_spoc.py`, `tests/test_spoc_event_authz.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** a page that some other role relied on now answers 403; the routes are ClubSPOC-only, so only other SPOCs lose access.
+- **Acceptance criteria** (`tests/test_spoc_event_authz.py`, real database layer; criteria 1–2 and 4 fail on the old code, where another SPOC's `end_event` ended the event):
+  1. ✅ Test (real DB): a SPOC who doesn't own the event gets 403 on each of the 10 write routes and nothing about the event, its staff, its registrations or its rooms changes, and no judge account is created (`::test_another_spoc_gets_403_on_every_route_and_nothing_changes`).
+  2. ✅ Test: the same SPOC gets 403 on the 4 read pages, and on the agenda page (same test).
+  3. ✅ Test: the owner can still add a judge, publish results, toggle open hall, open the agenda and the judging audit, and reassign their own registration's room (`::test_the_owner_still_manages_their_event`).
+  4. ✅ Test: the owner can't reassign a registration that belongs to another event: 404, and its room is unchanged (`::test_the_owner_cant_reassign_another_events_registration`).
+  - Full pytest: **704 passed** on SQLite and PostgreSQL 16; ruff clean.
+
 #### UPG-33 — Account emails: walk-in passwords by email, reusable reset links
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** Found while building BLK-02 [C].
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "UPG-33: …" on `production-ready` (parent `0b9463a`)
+- **Problem (as found):** Found while building BLK-02 [C].
   - Walk-in accounts created by a coordinator get their one-time password in the ticket email (`routes_coordinator.py:765-768`, "Ticket + login details sent"). BLK-02 removed emailed passwords from self-registration only.
   - Staff accounts created through `assign_staff` get a generated password by email and WhatsApp (`send_credentials_email`, `send_staff_credentials_whatsapp`, `routes_coordinator.py:302-303` at BLK-04a).
   - Password-reset links (`/reset_token/<token>`, `routes_auth.py:396`) can be used any number of times within their hour, because the token isn't bound to the current password.
-- **Who benefits:** walk-in participants and anyone who resets a password.
-- **What to build:** walk-in accounts use BLK-02's unverified account + one-time set-password link; reset tokens are bound to the current password hash like the set-password tokens (`services_accounts.py:71-90`).
-- **Files touched:** `routes_coordinator.py`, `routes_auth.py`, tests.
+  - **Re-checked before building (2026-10-02, `0b9463a`; rule 3):** three more paths create someone else's account and email its password, all covered by criterion 1's "new staff member":
+    - `routes_spoc.assign_coordinator` emails a generated password to a new coordinator;
+    - `add_judge` and `upload_judges_csv` do the same for new judges;
+    - `routes_admin.appoint_spoc` emails the password the admin typed into the form (`templates/admin/dashboard.html:668`).
+    - (`routes_super.py` also takes a typed password, but its blueprint isn't registered; UPG-15.)
+- **Who benefits:** walk-in participants, new staff and SPOCs, and anyone who resets a password.
+- **What to build:** every account created for someone else (walk-in, coordinator staff, SPOC-appointed coordinator or judge, admin-appointed SPOC) is a BLK-02 unverified account plus a one-time set-password link, and the email says why the account exists. No password appears in any email or WhatsApp message, and the admin form loses its password field. Reset tokens are bound to the current password hash like the set-password tokens (`services_accounts.py:71-90`).
+- **What was built:**
+  - `services_accounts.create_unverified_account` (`services_accounts.py:58`) takes a role and extra fields, so every path uses BLK-02's unverified account. `send_set_password_link` (`:115`) passes a reason, and the set-password email (`utils_email.send_set_password_email`, `utils_email.py:656`) says why the account exists ("when you were appointed as Judge for …", "when you registered at the desk for …").
+  - **Walk-in** (`routes_coordinator.py:723,758`): the ticket email no longer carries login details; a new walk-in gets the link.
+  - **Coordinator `assign_staff`** (`:294-296`): the link by email, and a WhatsApp appointment notice without credentials (`utils_whatsapp.send_staff_appointment_whatsapp`, `utils_whatsapp.py:152`, replaces `send_staff_credentials_whatsapp`).
+  - **SPOC `assign_coordinator`** (`routes_spoc.py:1225-1226`), **`upload_judges_csv`** (`:1370-1371`) and **`add_judge`** (`:1401-1402`): the link instead of a generated password.
+  - **Admin `appoint_spoc`** (`routes_admin.py:390-391`): the form has no password field (`templates/admin/dashboard.html:668`), and a password sent anyway is ignored.
+  - **Reset links:** `make_reset_token`/`load_reset_token` (`services_accounts.py:86-91`, shared checker `_load_bound_token`, `:96`) bind the token to the current password hash, one hour as before. `forgot_password` and `reset_token` use them (`routes_auth.py:360-361,393-394`). A used link, or one issued before the password changed, is refused with "already been used"; tokens in the old format are invalid.
+  - `utils_email.send_credentials_email` is no longer called by app code; it stays only for `scratch/send_all_demo_mails.py` (UPG-15).
+- **Files touched:** `services_accounts.py`, `utils_email.py`, `utils_whatsapp.py`, `routes_coordinator.py`, `routes_spoc.py`, `routes_admin.py`, `routes_auth.py`, `templates/admin/dashboard.html`, `tests/test_account_emails.py` (new).
 - **Effort:** S · **Depends on:** BLK-02 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test: a walk-in or a new staff member gets a set-password link and no password, by email or WhatsApp.
-  2. Test: a reset link works once; the second use is refused.
+- **Acceptance criteria** (`tests/test_account_emails.py`, real database layer; every plaintext handed to `generate_password_hash` during a request is recorded and must not appear in any email or WhatsApp message; all 8 tests fail on the old code):
+  1. ✅ A walk-in (`::test_walk_in_gets_a_set_password_link_and_no_password`), a new staff member through each of the four staff paths (`::test_new_staff_get_a_set_password_link_and_no_password`, 4 cases) and an admin-appointed SPOC (`::test_appointed_spoc_gets_a_set_password_link_and_the_form_asks_no_password`) get exactly one set-password link and no password, by email or WhatsApp. The account can't be logged into until the link sets a password, which logs them in with the right role; the link then stops working. App code no longer calls the credential senders (`::test_no_app_module_sends_credentials`).
+  2. ✅ A reset link works once; the same link again, and another link issued before the change, are refused and the password stays as first set (`::test_a_reset_link_works_once`).
+  - Full pytest: **712 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-34 — The legacy public registration route skips the "registration closed" check
 - **Status:** TODO
@@ -1248,9 +1359,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: the event page's registration form posts to the checked route.
 
 #### UPG-35 — Login and password-reset messages reveal whether an account exists
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** Found while building BLK-13 [C]. BLK-13's throttle answers the same for known and unknown accounts, but other messages don't:
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "UPG-35: …" on `production-ready` (parent `032e7c3`)
+- **Problem (as found at `986d108`):** Found while building BLK-13 [C]. BLK-13's throttle answers the same for known and unknown accounts, but other messages don't:
   - The web login says "Account not found. Please register or contact admin." for an unknown email and "Incorrect password or wrong role selected." for a known one (`routes_auth.py:127` vs `:149`).
   - The API login answers `403 account_locked` for an existing account that still has a legacy unhashed password, before checking the password (`routes_api_v1.py:83`); unknown accounts get `401 invalid_credentials` (`:76`).
   - The password-reset request already answers alike for known, unknown and SuperAdmin emails (`routes_auth.py:344-379`), in wording the owner wants changed.
@@ -1263,13 +1374,59 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - API login: the same three cases return the same `401 invalid_credentials` with the message "Email or password is incorrect". The legacy-hash account no longer gets its own `403`. Keep the error code, because the mobile apps may read it.
   - Password reset: every request (known, unknown or SuperAdmin email) flashes "If an account exists for this email, we've sent a reset link".
   - Sign-up and registration: unchanged.
-- **Files touched:** `routes_auth.py`, `routes_api_v1.py`, tests.
+- **What was built:**
+  - `routes_auth.LOGIN_FAILED_MESSAGE` and `RESET_REQUESTED_MESSAGE` (`routes_auth.py:18-19`) hold the two answers.
+  - **Web login:** an unknown email (`:127`), a wrong password and an old unhashed password (`:152`) flash "Email or password is incorrect." and redirect to `/login`. A correct password with the wrong role gets "Wrong role selected for this account…", which only someone who has the password can see.
+  - **API login:** the same three cases return `401 invalid_credentials` with the same message (`routes_api_v1.py:77` and the combined hash check below it); the old-password account no longer gets its own `403 account_locked`. Each counts as a BLK-13 failure.
+  - **Password reset:** every request flashes "If an account exists for this email, we've sent a reset link." (`routes_auth.py:348`); only an existing non-SuperAdmin account is emailed.
+  - **Sign-up and registration:** unchanged.
+  - `tests/test_login_throttle.py`'s API test expected the old 401 message word for word; it now expects the new one, still an exact match.
+- **Files touched:** `routes_auth.py`, `routes_api_v1.py`, `tests/test_uniform_auth_messages.py` (new), `tests/test_login_throttle.py`.
 - **Effort:** S · **Depends on:** BLK-13 · **Risk:** a user who mistypes their email no longer sees "Account not found"; the message says email *or* password.
+- **Acceptance criteria** (`tests/test_uniform_auth_messages.py`, real database layer; criteria 1–3 fail on the old code, and criterion 4 pins behaviour that stays the same):
+  1. ✅ Test: a web login with an unknown email, a wrong password for an existing account, and an existing account with a legacy unhashed password all get the same status, redirect and "Email or password is incorrect"; the wrong-role hint appears only with the right password (`::test_web_login_answers_alike_for_unknown_emails_wrong_and_old_passwords`).
+  2. ✅ Test: the API gives the same status and JSON body for those three cases (`::test_api_login_answers_alike_for_the_same_three_cases`).
+  3. ✅ Test: a password-reset request for an unknown, an existing and a SuperAdmin email shows the same page and "If an account exists for this email, we've sent a reset link"; only the existing non-SuperAdmin email is sent a link (`::test_reset_requests_answer_alike_and_only_the_real_account_gets_a_link`).
+  4. ✅ Test: sign-up (web and API) and registration with an existing email still tell the user to log in first (unchanged behaviour, now pinned: `::test_sign_up_and_registration_still_tell_an_existing_email_to_log_in`).
+  - Full pytest: **716 passed** on SQLite and PostgreSQL 16; ruff clean.
+
+#### UPG-36 — Coupons can be used more than `max_uses` times
+- **Status:** TODO
+- **Last verified:** 2026-10-02, commit `7aac9ca`
+- **Problem:** From the code review of PR #48 (owner, 2026-10-02) [C]. `find_valid_coupon` refuses a coupon only when `current_uses >= max_uses` at the moment the price is computed (`services_payments.py:58`, called when the order is created). `current_uses` is incremented only after a verified payment (`_use_coupon`, `routes_payment.py:177-184`). So payers who create orders before any of them pays all get the discount: with `max_uses` 1, two simultaneous checkouts both pay the discounted price, and `current_uses` ends at 2.
+- **Who benefits:** organisers and the finance office (discount budgets hold).
+- **What to build:** reserve a use atomically when the order is created (a conditional update that increments `current_uses` only while it's below `max_uses`), and release the reservation when the order expires or isn't paid. Or refuse at claim time when the coupon is exhausted and fall back to the full price. Choose whichever is smaller and race-free on PostgreSQL.
+- **Files touched:** `services_payments.py`, `routes_payment.py`, `routes_coupons.py`, tests.
+- **Effort:** S · **Depends on:** BLK-03 · **Risk:** a reservation that's never released blocks the last use; expiry guards it.
 - **Acceptance criteria:**
-  1. Test: a web login with an unknown email, a wrong password for an existing account, and an existing account with a legacy unhashed password all get the same status, redirect and "Email or password is incorrect".
-  2. Test: the API gives the same status and JSON body for those three cases.
-  3. Test: a password-reset request for an unknown, an existing and a SuperAdmin email shows the same page and "If an account exists for this email, we've sent a reset link"; only the existing non-SuperAdmin email is sent a link.
-  4. Test: sign-up (web and API) and registration with an existing email still tell the user to log in first (unchanged behaviour, now pinned).
+  1. Test: a coupon with `max_uses` 1 and two payers who both create orders before either pays: only one order gets the discount, and `current_uses` never exceeds 1.
+  2. Test: an order created with a coupon and never paid releases the use after it expires, and the next payer can use the coupon.
+  3. Test (PostgreSQL): 10 concurrent order creations for a coupon with `max_uses` 3 discount exactly 3 orders.
+
+#### UPG-37 — Hourly per-account login cap on top of the per-minute limit
+- **Status:** TODO
+- **Last verified:** 2026-10-02, commit `7aac9ca`
+- **Problem:** From the code review of PR #48 (owner, 2026-10-02). BLK-13 allows 5 failed logins per account per minute (`services_login_throttle.py`). A slow attacker can keep trying 4 passwords a minute, 240 an hour, without ever being refused.
+- **Who benefits:** every account.
+- **What to build:** a second window per account: at most about 20 failed logins per hour (`LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT`, default 20), on the same counters and with the same "try again in N seconds" answer. The per-IP limit is unchanged, and a successful login clears both account windows. Document the setting in `.env.example`.
+- **Files touched:** `services_login_throttle.py`, `config.py`, `.env.example`, tests.
+- **Effort:** S · **Depends on:** BLK-13 · **Risk:** a forgetful user locked out for up to an hour; the password-reset link still works.
+- **Acceptance criteria:**
+  1. Test: 20 failed logins on one account spread over 50 minutes (never more than 4 a minute) are all answered normally; the 21st within the hour is refused with 429 and the wait until the oldest failure leaves the hour.
+  2. Test: the same holds for `/api/v1/auth/login`, on the shared counter.
+  3. Test: a successful login clears the hourly count; the per-IP limit is unaffected.
+
+#### UPG-38 — Delete the sample Jekyll workflow
+- **Status:** TODO
+- **Last verified:** 2026-10-02, commit `7aac9ca`
+- **Problem:** From the code review of PR #48 (owner, 2026-10-02). `.github/workflows/jekyll-docker.yml` is GitHub's "Jekyll site CI" sample: it builds a Jekyll site in Docker on every push and pull request to `master`. The repo has no Jekyll site (no `_config.yml` or `Gemfile`), so the check means nothing and costs CI time.
+- **Who benefits:** developers (CI shows only real checks).
+- **What to build:** delete the file.
+- **Files touched:** `.github/workflows/jekyll-docker.yml`, `tests/test_repo_hygiene.py`.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`).
+  2. The next CI run on GitHub shows no "Jekyll site CI" check.
 ---
 
 ## 7. Production-ready plan (phases)
@@ -1279,11 +1436,11 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | Phase | Items, in order | Notes |
 |---|---|---|
 | 0. Sync the plan | — | Done 2026-09-30: every item re-verified; BLK-12, BLK-13, UPG-16 to UPG-32 added; sessions merged into BLK-08. |
-| 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11 | **Done 2026-10-01** (summary in the changelog). Waiting on the owner: BLK-01's last criterion (the PR refs, GitHub Support, D-2) and BLK-11's CI run on GitHub (push and a pull request into `master`). Neither blocks Phase 2. |
-| 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
+| 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11, then BLK-16 (added 2026-10-02 from the PR #48 review) and BLK-17 (found starting UPG-33), both built before Phase 2 | **Done** (2026-10-01; BLK-16 and BLK-11's CI on GitHub 2026-10-02). Waiting on the owner: BLK-01's last criterion (the PR refs, GitHub Support, D-2); it doesn't block Phase 2. |
+| 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-37 hourly login cap → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-36 coupon uses → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
 | 3. Production setup | UPG-16 migrations → UPG-17 uploads → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups → UPG-22 privacy | |
 | 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check | One commit per UPG-23 area. |
-| 5. Clean-up | UPG-14 → UPG-15 | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
+| 5. Clean-up | UPG-14 → UPG-15 → UPG-38 Jekyll workflow | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
 | 6. Release check | UPG-32 | Fresh clone, production boot, restart/two instances, all scans, `docs/DEPLOY.md`, final report. |
 
 Outside these phases (after Phase 6 unless the owner says otherwise): UPG-04 judging rubrics, UPG-09 venue booking on create, UPG-10 roster import and Google sign-in, UPG-11 participation ledger, UPG-12 faculty/external participants, UPG-13 sports fixtures.
@@ -1366,3 +1523,8 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-01 | "BLK-11: …" (parent `affcab7`) | Phase 1 summary | **Phase 1 (blockers) done.** **DONE:** BLK-02, BLK-14, BLK-03, BLK-04 (04a + 04b), BLK-12 (root app), BLK-05, BLK-06 (06a + 06b), BLK-07, BLK-08, BLK-10 (10a + 10b), BLK-13, BLK-15, BLK-11 (locally). **Still open, all waiting on the owner or a later phase:** BLK-01 criterion 0 (GitHub Support removing 47 PR refs); BLK-11 criterion 2 (CI green on GitHub after the push and a pull request into `master`); BLK-12 criterion 4 and BLK-14 criterion 3 (UPG-15 removes `functions/saptha_app` in Phase 5, D-1); BLK-03's manual Razorpay test-mode check (UPG-30). **Checks at the end of Phase 1:** full pytest 689 passed on SQLite and PostgreSQL 16 (414 + 1 xfailed at the start of the phase); ruff clean; bandit exit 0; CI's pytest command in a fresh clone with a Redis server: 689 passed. **Decisions recorded:** D-1 (Cloud Run only) and D-2 (push done). **New items opened during Phase 1:** BLK-14, BLK-15, UPG-33, UPG-34, UPG-35 (UPG-35 needs an owner decision). **Rule 8:** 13 items have been marked DONE since the Phase 0 re-verification, so a re-verification pass of every open item is due before Phase 2 starts. **Next:** the owner pushes `production-ready` and opens a pull request into `master` (CI only runs there); then the re-verification pass; then Phase 2, starting with UPG-33. |
 | 2026-10-02 | "docs: …" (parent `9e28bf3`) | UPG-35, D-3, BLK-13 | Owner decision D-3: UPG-35 makes the login and password-reset messages uniform and keeps sign-up and registration as they are; scheduled in Phase 2 right after UPG-33. UPG-35 rewritten to match (a correct password with the wrong role may keep a role hint). "Before the next deploy" gains `LOGIN_THROTTLE_IP_LIMIT` ≈ 50 for campus Wi-Fi and the ProxyFix hop count. Docs only. |
 | 2026-10-02 | "docs: …" (parent `986d108`) | ALL (re-verification after Phase 1) | **Full re-verification of every open item, plus sections 1–4, against the code at `986d108`** (rule 8: 13 items DONE since Phase 0; the count now restarts at 0). Each citation was mapped from its item's last-verified commit by exact line alignment, every moved or changed one was read, and the counts were re-run on `56a014d` and `986d108` with one script. **Status corrections:** UPG-06 → IN PROGRESS (criterion 2 already met by BLK-05's journey test); UPG-15 → IN PROGRESS (criterion 2 met by BLK-09's test). **Claims corrected:** UPG-02 (the kiosk/offline 403 now hits only unassigned coordinators; `get_ticket` is staff-only but still treats the token as an ID); UPG-03 (the AI report's gate passes for the owner; SPOC, coordinator and forms exports already check `export_data`, but only the forms one is tested); UPG-05 (the lead's feedback works on the real database; criterion 1 lacks only the read-back); UPG-06 (the certificate name is fixed; the bulk gate passes); UPG-08 (team settings persist; the fallback form adds only a team-name field); UPG-10 and UPG-12 (account creation moved to `services_accounts`); UPG-15 (the dead nav links are gone or resolve, there's no debug route, seed-script counts corrected); UPG-16 (tables and columns added since Phase 0 listed; `alembic upgrade head` on an empty DB still fails [R]); UPG-19 (25 `.stream()` calls in `routes_admin.py`); UPG-20 (43 of 91 env vars in `.env.example`); UPG-23 (111 standalone templates, not 110); UPG-25 (78 templates, 490 handlers). **Line moves only:** UPG-05, 06, 08, 10, 12, 14, 15, 16, 20, 25, 29, 30, 33, 34, BLK-01 and the deploy checklist. **Unchanged and still accurate:** UPG-01, 04, 07, 09, 11, 13, 17, 18, 21, 22, 24, 26, 27, 28, 31, 32, 35. **Inventory:** kiosk and venue-QR check-in → WORKING in the root app (BLK-12); org units → WORKING (BLK-07); audit log → WORKING (BLK-06a); manual check-in, feedback, offline, AI matching, results, email, admin dashboard and exports rows updated; line moves in 13 rows. **Journeys:** 18 steps updated with the item that fixed them. **Event types:** BLK items dropped from "Needed"; NSS/NCC keep their category (BLK-06a). No new items: nothing found needed one. **Checks [R]:** full pytest 689 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. BLK-01's remote state unchanged (47 PR refs). Next: Phase 2, starting with UPG-33 and then UPG-35. |
+| 2026-10-02 | "docs: …" (parent `7aac9ca`) | BLK-16, UPG-30, UPG-36, UPG-37, UPG-38, UPG-20 | Owner's code review of PR #48 (merged into `master` as `86348fe`). **New blocker BLK-16:** email, WhatsApp, QR and referral links are built from the request's host, and ProxyFix trusts `X-Forwarded-Host`, so a forged header on a reset or registration makes the real email link to an attacker's site; to be built before Phase 2. **UPG-30** gains (a) paid-but-unregistered orders (plus: completion doesn't re-check capacity, so a late payment overbooks) and (b) no webhook, with a signed `payment.captured` webhook, an admin list of paid orders without a registration and a refund action (effort M → L). **New:** UPG-36 coupon uses can exceed `max_uses`; UPG-37 hourly per-account login cap (~20/h); UPG-38 delete the sample Jekyll workflow. Scheduled: UPG-37 after UPG-35, UPG-36 after UPG-30, UPG-38 in Phase 5. UPG-20 gains the retired Railway logo URL. Docs only. |
+| 2026-10-02 | "BLK-16: …" (parent `0f22a5c`) | BLK-16, BLK-11 | **BLK-16 DONE.** One helper (`utils_email._base_url`) builds every outbound link from `BASE_URL`: reset and set-password emails, ticket and venue QR codes, referrals, WhatsApp messages, the waitlist pay link, reminder emails and certificate verify links. It never uses the request's host, and the old Cloud Run and Railway fallbacks are gone. Production refuses to start without an `https://`, non-localhost `BASE_URL`; ProxyFix trusts only `X-Forwarded-For` and `X-Forwarded-Proto`. 12 new real-database tests with a forged `Host` and `X-Forwarded-Host` (11 fail on the old code); the production-config test's valid config gains a `BASE_URL`. Full pytest 701 passed on SQLite and PostgreSQL 16; ruff clean. **BLK-11 DONE:** every CI job green on pull request #48 and, Docker build included, on `master` after the merge (`86348fe`). Rule 8: 2 items DONE since the 2026-10-02 re-verification. |
+| 2026-10-02 | "BLK-17: …" (parent `a417e88`) | BLK-17, UPG-29 | **New blocker, found while starting UPG-33, and DONE** (built before UPG-33 under rule 2). 10 ClubSPOC write routes (end event, publish results, add judges by form or CSV, rooms, room reassignment, announcements, agenda, open hall, certificate templates) and 4 read pages acted on any event with no ownership check. One helper now requires the right permission on the event first; room reassignment also checks the registration's event. 3 new real-database tests (2 fail on the old code, where another SPOC could end the event). UPG-29 notes the judge routes are now covered. Full pytest 704 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 3 items DONE since the 2026-10-02 re-verification. |
+| 2026-10-02 | "UPG-33: …" (parent `0b9463a`) | UPG-33 | **UPG-33 DONE** (first Phase 2 item). Before building, the item was widened (rule 3) to the three more paths that emailed passwords: SPOC `assign_coordinator`, `add_judge` and `upload_judges_csv`, and admin `appoint_spoc` with its typed password. Every account someone else creates (walk-in, coordinator staff, SPOC-appointed coordinator or judge, admin-appointed SPOC) is now unverified and opened with a one-time set-password link whose email says why it exists. The staff WhatsApp notice carries no credentials, and the admin form has no password field. Reset links are bound to the current password hash, so each works once. 8 new real-database tests (all fail on the old code) record every plaintext passed to `generate_password_hash` and assert none reaches an email or WhatsApp message. Full pytest 712 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 4 items DONE since the 2026-10-02 re-verification. |
+| 2026-10-02 | "UPG-35: …" (parent `032e7c3`) | UPG-35, BLK-13 | **UPG-35 DONE** (D-3). Web and API login answer "Email or password is incorrect." for an unknown email, a wrong password and an old unhashed password, and the API no longer gives the latter its own 403. Password reset always answers "If an account exists for this email, we've sent a reset link." A correct password with the wrong role still gets a role hint. Sign-up and registration unchanged and now pinned. 4 new real-database tests (criteria 1–3 fail on the old code); BLK-13's API test now expects the new 401 wording (still exact). Full pytest 716 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 5 items DONE since the 2026-10-02 re-verification (BLK-11, BLK-16, BLK-17, UPG-33, UPG-35). |

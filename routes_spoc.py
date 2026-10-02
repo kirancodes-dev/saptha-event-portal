@@ -5,6 +5,8 @@ import csv
 import io
 import json
 from utils import login_required, role_required, log_action
+from utils_email import _base_url as _public_base_url
+from services_accounts import create_unverified_account, send_set_password_link
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -23,6 +25,24 @@ class DynamicDBProxy:
 db = DynamicDBProxy()
 
 spoc_bp = Blueprint('spoc', __name__, url_prefix='/spoc')
+
+
+def _event_or_abort(event_id, permission):
+    """The event, if the logged-in user holds `permission` on it (BLK-17).
+
+    Call it first in a route, before any try block, so the 404/403 isn't
+    swallowed. A SPOC acts only on events they own or hold a unit grant for
+    (BLK-04 decision); sharing a category grants nothing.
+    """
+    from services_permission import can
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = doc.to_dict() or {}
+    event['id'] = event_id
+    if not can(session, permission, event, db=db):
+        abort(403)
+    return event
 
 # --- 1. SPOC DASHBOARD ---
 @spoc_bp.route('/dashboard')
@@ -527,6 +547,7 @@ def api_checkin(event_id, reg_id):
 @login_required
 @role_required('ClubSPOC')
 def end_event(event_id):
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
     try:
         template_id = request.form.get('template_id', 1)
         try:
@@ -549,7 +570,6 @@ def end_event(event_id):
         except Exception:
             # Inline sync fallback (no Celery / custom templates)
             from utils_certificate import generate_and_send_all_certificates_with_templates
-            import os
             ev   = db.collection('events').document(event_id).get().to_dict() or {}
             regs = [r.to_dict() | {'id': r.id}
                     for r in db.collection('registrations')
@@ -566,7 +586,7 @@ def end_event(event_id):
                 event_title=ev.get('title', 'Event'),
                 event_id=event_id,
                 event_date=str(ev.get('date', '')),
-                base_url=os.environ.get('BASE_URL', ''),
+                base_url=_public_base_url(),
                 template_id=template_id,
             )
         _award_achievements(event_id)
@@ -685,6 +705,7 @@ def _award_achievements(event_id: str):
 @login_required
 @role_required('ClubSPOC')
 def post_announcement(event_id):
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
     message  = request.form.get('message', '').strip()
     priority = request.form.get('priority', 'info')
     if not message:
@@ -760,6 +781,7 @@ def public_announcements(event_id):
 @login_required
 @role_required('ClubSPOC')
 def manage_agenda(event_id):
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
         flash("Event not found.", "danger")
@@ -787,6 +809,7 @@ def manage_agenda(event_id):
 @login_required
 @role_required('ClubSPOC')
 def publish_results(event_id):
+    _event_or_abort(event_id, 'publish_results')  # BLK-17
     try:
         # Mark event as "Ended" and "Results Published"
         db.collection('events').document(event_id).update({
@@ -1079,6 +1102,7 @@ def clone_event(event_id):
 @login_required
 @role_required('ClubSPOC')
 def toggle_openhall(event_id):
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         flash("Event not found.", "danger")
@@ -1172,10 +1196,7 @@ def delete_event(event_id):
 @login_required
 @role_required('ClubSPOC')
 def assign_coordinator(event_id):
-    import secrets
-    import string
-    from werkzeug.security import generate_password_hash
-    from utils_email import send_credentials_email, send_appointment_email
+    from utils_email import send_appointment_email
 
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
@@ -1199,20 +1220,12 @@ def assign_coordinator(event_id):
     user_docs = list(db.collection('users').where('email', '==', email).stream())
 
     if not user_docs:
-        # Create new EventCoordinator account with generated password
-        pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-        db.collection('users').document(email).set({
-            'name':       name,
-            'email':      email,
-            'role':       'EventCoordinator',
-            'password':   generate_password_hash(pwd),
-            'created_at': datetime.datetime.now().isoformat(),
-        })
-        try:
-            send_credentials_email(email, name, 'EventCoordinator', pwd)
-        except Exception:
-            pass
-        account_msg = f"Account created and login credentials emailed to {email}."
+        # New EventCoordinator account, opened with a one-time set-password
+        # link; no password is ever emailed (UPG-33)
+        create_unverified_account(db, email, name, role='EventCoordinator')
+        send_set_password_link(db, email, name,
+                               reason=f"when you were appointed as Event Coordinator for {event_title}")
+        account_msg = f"Account created; a link to set the password was emailed to {email}."
     else:
         user_data = user_docs[0].to_dict()
         user_role = user_data.get('role', '')
@@ -1254,6 +1267,7 @@ def assign_coordinator(event_id):
 @login_required
 @role_required('ClubSPOC')
 def upload_cert_templates(event_id):
+    _event_or_abort(event_id, 'issue_certificates')  # BLK-17
     import base64
     MAX_BYTES = 800 * 1024  # 800 KB
 
@@ -1320,9 +1334,7 @@ def upload_cert_templates(event_id):
 @login_required
 @role_required('ClubSPOC')
 def upload_judges_csv(event_id):
-    import secrets
-    import string
-    from werkzeug.security import generate_password_hash
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
 
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
@@ -1354,22 +1366,10 @@ def upload_judges_csv(event_id):
                 'judges': db.field_path_to_sentinel('judges') or []
             })
         else:
-            pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-            db.collection('users').document(email).set({
-                'name':      name,
-                'email':     email,
-                'role':      'Judge',
-                'password':  generate_password_hash(pwd),
-                'expertise': expertise,
-                'event_id':  event_id,
-                'created_at': datetime.datetime.now().isoformat(),
-            })
-            try:
-                from utils_email import send_credentials_email
-                send_credentials_email(email, name, 'Judge', pwd,
-                                       category=doc.to_dict().get('title', ''))
-            except Exception:
-                pass
+            # New judge: a one-time set-password link, never a password (UPG-33)
+            create_unverified_account(db, email, name, role='Judge', expertise=expertise, event_id=event_id)
+            send_set_password_link(db, email, name, reason=(
+                f"when you were appointed as a judge for {(doc.to_dict() or {}).get('title', 'an event')}"))
         created += 1
 
     flash(f"✅ {created} judge(s) created. {skipped} row(s) skipped.", "success")
@@ -1380,9 +1380,7 @@ def upload_judges_csv(event_id):
 @login_required
 @role_required('ClubSPOC')
 def add_judge(event_id):
-    import secrets
-    import string
-    from werkzeug.security import generate_password_hash
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
 
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
@@ -1399,22 +1397,11 @@ def add_judge(event_id):
 
     existing = list(db.collection('users').where('email', '==', email).limit(1).stream())
     if not existing:
-        pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-        db.collection('users').document(email).set({
-            'name':      name,
-            'email':     email,
-            'role':      'Judge',
-            'password':  generate_password_hash(pwd),
-            'expertise': expertise,
-            'created_at': datetime.datetime.now().isoformat(),
-        })
-        try:
-            from utils_email import send_credentials_email
-            send_credentials_email(email, name, 'Judge', pwd,
-                                   category=doc.to_dict().get('title', ''))
-        except Exception:
-            pass
-        flash(f"✅ Judge {name} created and credentials emailed.", "success")
+        # New judge: a one-time set-password link, never a password (UPG-33)
+        create_unverified_account(db, email, name, role='Judge', expertise=expertise)
+        send_set_password_link(db, email, name, reason=(
+            f"when you were appointed as a judge for {(doc.to_dict() or {}).get('title', 'an event')}"))
+        flash(f"✅ Judge {name} created; a link to set their password was emailed.", "success")
     else:
         existing_name = existing[0].to_dict().get('name', name)
         name = existing_name
@@ -1437,6 +1424,7 @@ def add_judge(event_id):
 @login_required
 @role_required('ClubSPOC')
 def setup_rooms(event_id):
+    _event_or_abort(event_id, 'manage_registrations')  # BLK-17
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         flash("Event not found.", "danger")
@@ -1527,6 +1515,10 @@ def room_allocation(event_id):
 @login_required
 @role_required('ClubSPOC')
 def reassign_room(event_id, reg_id):
+    _event_or_abort(event_id, 'manage_registrations')  # BLK-17
+    reg_doc = db.collection('registrations').document(reg_id).get()
+    if not reg_doc.exists or (reg_doc.to_dict() or {}).get('event_id') != event_id:
+        abort(404)  # only this event's registrations
     new_room = (request.get_json() or {}).get('room', '').strip()
     if not new_room:
         return jsonify({'status': 'error', 'message': 'No room specified'}), 400
@@ -1911,14 +1903,13 @@ def bulk_certs(event_id):
 
     try:
         from utils_certificate import generate_and_send_all_certificates_with_templates
-        import os
         generate_and_send_all_certificates_with_templates(
             leaderboard=[],
             registrations=all_regs,
             event_title=event.get('title', 'Event'),
             event_id=event_id,
             event_date=str(event.get('date', '')),
-            base_url=os.environ.get('BASE_URL', ''),
+            base_url=_public_base_url(),
         )
         log_action(db, "BULK_CERTS",
                    f"SPOC {session.get('user_id')} bulk-issued certs for event {event_id}")
@@ -1936,6 +1927,7 @@ def bulk_certs(event_id):
 @login_required
 @role_required('ClubSPOC')
 def judging_audit(event_id):
+    _event_or_abort(event_id, 'view_analytics')  # BLK-17
     import math
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
@@ -2048,6 +2040,7 @@ def judging_audit(event_id):
 @login_required
 @role_required('ClubSPOC')
 def schedule_optimize(event_id):
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         flash("Event not found.", "danger")
@@ -2146,6 +2139,7 @@ def schedule_optimize(event_id):
 @login_required
 @role_required('ClubSPOC')
 def nfc_verify(event_id):
+    _event_or_abort(event_id, 'check_in')  # BLK-17
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
         flash("Event not found.", "danger")
@@ -2179,6 +2173,7 @@ def nfc_verify(event_id):
 @login_required
 @role_required('ClubSPOC')
 def spoc_judge_matchmaker(event_id):
+    _event_or_abort(event_id, 'edit_event')  # BLK-17
     return redirect(f'/ai/match_page/{event_id}')
 
 

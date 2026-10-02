@@ -56,9 +56,8 @@ def send_reminder_email_task(self, to_email: str, name: str, event_title: str,
                               event_date: str, venue: str, reg_id: str):
     """Send a 24-hour event reminder email."""
     try:
-        import os
-        from utils_email import _send
-        base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
+        from utils_email import _base_url, _send
+        base_url = _base_url()
         ticket_url = f"{base_url}/ticket/{reg_id}"
         html = _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url)
         _send(to_email, f"⏰ Reminder: {event_title} is Tomorrow!", html)

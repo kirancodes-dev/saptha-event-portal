@@ -223,8 +223,8 @@ def venue_qr(event_id):
     serializer = _get_venue_serializer()
     venue_code = serializer.dumps({'event_id': str(event_id)})
 
-    base_url = request.host_url.rstrip('/')
-    url = f"{base_url}/checkin/{event_id}?code={venue_code}"
+    from utils_email import _base_url  # BASE_URL, never the request's host (BLK-16)
+    url = f"{_base_url()}/checkin/{event_id}?code={venue_code}"
     img = qrcode.make(url)
     buf = io.BytesIO()
     img.save(buf, format='PNG')

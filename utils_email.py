@@ -48,24 +48,21 @@ LAST_EMAIL_ERROR = ""
 # ─────────────────────────────────────────────────────────────
 
 def _base_url() -> str:
-    production_url = 'https://saptha-event-portal-762269836348.us-east4.run.app'
-    try:
-        from flask import request
-        if request and request.url_root:
-            return request.url_root.rstrip('/')
-    except Exception:
-        pass
+    """The site's public address for every link that leaves the app: emails,
+    WhatsApp messages, QR codes, referrals (BLK-16).
+
+    BASE_URL only, never the request's host: a client can forge Host or
+    X-Forwarded-Host, and a reset email would then link to their site.
+    Production refuses to start without an https BASE_URL
+    (config.validate_production_config)."""
+    url = ''
     try:
         from flask import current_app
-        url = current_app.config.get('BASE_URL')
-        if url:
-            return url.rstrip('/')
-    except Exception:
+        url = current_app.config.get('BASE_URL') or ''
+    except RuntimeError:  # outside an app context
         pass
-    url = os.environ.get('BASE_URL')
-    if url:
-        return url.rstrip('/')
-    return production_url
+    url = url or os.environ.get('BASE_URL') or 'http://127.0.0.1:5000'
+    return url.strip().rstrip('/')
 
 
 def _from_address() -> str:

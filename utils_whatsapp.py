@@ -32,6 +32,12 @@ GRACEFUL DEGRADATION:
 import os
 import logging
 
+
+def _public_base_url() -> str:
+    # BASE_URL, never a request host or a hard-coded deploy URL (BLK-16)
+    from utils_email import _base_url
+    return _base_url()
+
 logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────
@@ -112,8 +118,7 @@ def send_ticket_whatsapp(phone: str, name: str, event_title: str,
                          reg_id: str, base_url: str = '',
                          event_date: str = '', venue: str = '') -> bool:
     """Sent when a participant registers for a free or paid event."""
-    base = base_url or os.environ.get(
-        'BASE_URL', 'https://saptha-event-portal-production.up.railway.app')
+    base = base_url or _public_base_url()
     date_line = f"📅 *Date:* {event_date}\n" if event_date else ""
     venue_line = f"📍 *Venue:* {venue}\n" if venue else ""
     body = (
@@ -150,8 +155,7 @@ def send_staff_credentials_whatsapp(phone: str, name: str, role: str,
     """
     Sent when SPOC appoints a Judge or Coordinator.
     """
-    base = os.environ.get(
-        'BASE_URL', 'https://saptha-event-portal-production.up.railway.app')
+    base = _public_base_url()
     body = (
         f"🔐 *Your SapthaEvent Login*\n\n"
         f"Hi {name},\n"
@@ -206,8 +210,7 @@ def send_result_whatsapp(phone: str, lead_name: str, event_title: str,
     """
     rank_emojis = {1: '🥇', 2: '🥈', 3: '🥉'}
     emoji = rank_emojis.get(rank, '🏅')
-    base  = os.environ.get(
-        'BASE_URL', 'https://saptha-event-portal-production.up.railway.app')
+    base  = _public_base_url()
     body = (
         f"{emoji} *Congratulations, {lead_name}!*\n\n"
         f"Results are out for *{event_title}*.\n\n"

@@ -144,9 +144,11 @@ app = Flask(__name__)
 app.config.from_object(Config)
 validate_production_config(app.config)
 
-# Trust Railway/Heroku/Nginx proxy headers (X-Forwarded-Proto etc.)
-# Required so Talisman's force_https doesn't loop-redirect behind TLS-terminating proxies.
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+# One proxy hop (Cloud Run's front end): trust its client IP (login throttle)
+# and scheme (so Talisman's force_https doesn't loop). Never X-Forwarded-Host
+# or -Prefix: clients can forge them, and links must come from BASE_URL
+# anyway (BLK-16). If another proxy is put in front, raise x_for to match.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
 # =========================================================
 # EXTENSIONS

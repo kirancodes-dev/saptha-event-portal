@@ -362,8 +362,9 @@ def forgot_password():
                 return redirect('/forgot_password')
 
             token = _reset_serializer().dumps(email)
-            base  = request.host_url.rstrip('/')
-            reset_url = f"{base}/reset_token/{token}"
+            # BASE_URL, never the request's host: a forged Host would send
+            # the victim's token to another site (BLK-16)
+            reset_url = f"{utils_email._base_url()}/reset_token/{token}"
 
             user_name = user.get('name', 'User')
             sent = send_password_reset_email(email,

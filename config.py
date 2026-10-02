@@ -1,6 +1,7 @@
 import os
 import secrets
 import logging
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -167,8 +168,9 @@ class Config:
     # =========================================================
     # 8. APP BASE URL
     # ─────────────────────────────────────────────────────────
-    # Set BASE_URL in Railway Variables:
-    #   BASE_URL = https://saptha-event-portal-production.up.railway.app
+    # The public https:// address of the site. Every link that leaves the app
+    # (emails, WhatsApp, QR codes, referrals) is built from it, never from the
+    # request's host (BLK-16). Required in production.
     # =========================================================
     BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
 
@@ -262,5 +264,9 @@ def validate_production_config(config):
         problems.append('MASTER_SECRET_KEY must be set (12+ characters, not a published default)')
     if config.get('SUPER_ADMIN_DEFAULT_PASS') in _KNOWN_WEAK_SECRETS:
         problems.append('SUPER_ADMIN_PASS is a published default password')
+    base = urlparse((config.get('BASE_URL') or '').strip())
+    if base.scheme != 'https' or (base.hostname or 'localhost') in ('localhost', '127.0.0.1', '::1'):
+        problems.append('BASE_URL must be the public https:// address of the site '
+                        '(every emailed link is built from it)')
     if problems:
         raise RuntimeError('Refusing to start in production: ' + '; '.join(problems))

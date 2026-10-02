@@ -15,7 +15,7 @@ import secrets
 from typing import Optional, Tuple
 from urllib.parse import quote
 
-from flask import current_app, request, session
+from flask import current_app, session
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.security import generate_password_hash
 
@@ -92,12 +92,12 @@ def load_set_password_token(token: str, db) -> Tuple[Optional[str], Optional[dic
 
 def send_set_password_link(db, email: str, name: str) -> bool:
     """Email a one-time set-password link for a newly created account."""
-    from utils_email import send_set_password_email
+    from utils_email import _base_url, send_set_password_email
     doc = db.collection('users').document(email).get()
     if not doc.exists:
         return False
     token = make_set_password_token(email, (doc.to_dict() or {}).get('password', ''))
-    url = f"{request.host_url.rstrip('/')}/set_password/{token}"
+    url = f"{_base_url()}/set_password/{token}"  # BASE_URL, never the request's host (BLK-16)
     try:
         return bool(send_set_password_email(email, name, url))
     except Exception as exc:  # never fail a registration because mail is down

@@ -5,6 +5,7 @@ import csv
 import io
 import json
 from utils import login_required, role_required, log_action
+from utils_email import _base_url as _public_base_url
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -549,7 +550,6 @@ def end_event(event_id):
         except Exception:
             # Inline sync fallback (no Celery / custom templates)
             from utils_certificate import generate_and_send_all_certificates_with_templates
-            import os
             ev   = db.collection('events').document(event_id).get().to_dict() or {}
             regs = [r.to_dict() | {'id': r.id}
                     for r in db.collection('registrations')
@@ -566,7 +566,7 @@ def end_event(event_id):
                 event_title=ev.get('title', 'Event'),
                 event_id=event_id,
                 event_date=str(ev.get('date', '')),
-                base_url=os.environ.get('BASE_URL', ''),
+                base_url=_public_base_url(),
                 template_id=template_id,
             )
         _award_achievements(event_id)
@@ -1911,14 +1911,13 @@ def bulk_certs(event_id):
 
     try:
         from utils_certificate import generate_and_send_all_certificates_with_templates
-        import os
         generate_and_send_all_certificates_with_templates(
             leaderboard=[],
             registrations=all_regs,
             event_title=event.get('title', 'Event'),
             event_id=event_id,
             event_date=str(event.get('date', '')),
-            base_url=os.environ.get('BASE_URL', ''),
+            base_url=_public_base_url(),
         )
         log_action(db, "BULK_CERTS",
                    f"SPOC {session.get('user_id')} bulk-issued certs for event {event_id}")

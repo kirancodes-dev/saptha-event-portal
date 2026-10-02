@@ -13,6 +13,11 @@ from utils_email import send_password_reset_email
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 
+# One answer for every failed login, and one for every reset request, so
+# neither tells whether an email has an account (UPG-35)
+LOGIN_FAILED_MESSAGE = 'Email or password is incorrect.'
+RESET_REQUESTED_MESSAGE = "If an account exists for this email, we've sent a reset link."
+
 # Password-reset tokens: services_accounts.make_reset_token / load_reset_token
 # (one hour, bound to the current password so each link works once, UPG-33).
 
@@ -119,7 +124,7 @@ def login():
                     return redirect('/admin/dashboard')
 
                 throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
-                flash('Account not found. Please register or contact admin.', 'warning')
+                flash(LOGIN_FAILED_MESSAGE, 'danger')  # same as a wrong password (UPG-35)
                 return redirect('/login')
 
             db_role = _login_role(user.get('role', 'Participant'))
@@ -141,7 +146,11 @@ def login():
 
             if not valid or db_role != role:
                 throttle.record_failure(throttle.LOGIN, request.remote_addr, email)
-                flash('Incorrect password or wrong role selected.', 'danger')
+                # Unknown email, wrong password and an old unhashed password all
+                # get the same answer (UPG-35). Only someone who already has the
+                # right password learns that the role was wrong.
+                flash(LOGIN_FAILED_MESSAGE if not valid else
+                      'Wrong role selected for this account. Choose your role and try again.', 'danger')
                 log_action("LOGIN_FAILED", f"Bad credentials for {email} (role={role})")
                 return redirect('/login')
 
@@ -336,8 +345,7 @@ def forgot_password():
         throttle.record_failure(throttle.RESET, request.remote_addr, email)
 
         # Generic response in all cases — never reveal whether the email exists
-        generic_msg = ("If an account exists for that email, a reset link "
-                       "has been sent. Check your inbox (and spam folder).")
+        generic_msg = RESET_REQUESTED_MESSAGE  # the same for every email (UPG-35)
 
         try:
             user_doc = db.collection('users').document(email).get()

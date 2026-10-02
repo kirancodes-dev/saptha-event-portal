@@ -51,7 +51,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Home / event discovery / catalogue | WORKING [R] | `app.py:540`, `app.py:729`, crawl 200 | Home shows a hard-coded fake hackathon when no events exist (`app.py:699-710`). |
 | University calendar + event `.ics` | WORKING [R] | `app.py:1083`, `app.py:784` | Department-only visibility filter at `app.py:1001-1004`. |
 | Personal calendar feed | WORKING [R at BLK-04b] | `app.py:1125-1200`, `services_accounts.py:120-145` | Own events when logged in; calendar apps use a signed, resettable per-user token; `?user=` is ignored (BLK-04). |
-| Student sign-up / login | WORKING [R] | `routes_auth.py:272`, `routes_auth.py:66` | USN now persists (document shadow, `db_adapter.py` `extra_json`) [R at `1f4cdc8`]; it wasn't stored at `694c729`. |
+| Student sign-up / login | WORKING [R at UPG-35] | `routes_auth.py:272`, `routes_auth.py:66` | USN now persists (document shadow, `db_adapter.py` `extra_json`) [R at `1f4cdc8`]; it wasn't stored at `694c729`. Failed logins and reset requests answer the same for every email (UPG-35); sign-up still tells an existing email to log in. |
 | Google / Microsoft login | NOT CONNECTED [C] | `auth_oauth.py:32-135` | Login page has no link to `/auth/google` (`templates/login.html`). |
 | 2FA (TOTP) | NOT CONNECTED [C] | `auth_2fa.py:42-155` | No template links to `/auth/2fa/*`. `totp_*` keys now persist [R round-trip at `1f4cdc8`]. |
 | Event creation from template (SPOC) | WORKING [R at `1f4cdc8`] | `routes_spoc.py:96-274` | All settings now persist, e.g. a ₹500 fee and team 2–4 (`tests/test_integration_flow.py:56-83`) [R]. Presets only applied for seminar/workshop (`routes_spoc.py:131`). |
@@ -1359,9 +1359,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: the event page's registration form posts to the checked route.
 
 #### UPG-35 — Login and password-reset messages reveal whether an account exists
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** Found while building BLK-13 [C]. BLK-13's throttle answers the same for known and unknown accounts, but other messages don't:
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "UPG-35: …" on `production-ready` (parent `032e7c3`)
+- **Problem (as found at `986d108`):** Found while building BLK-13 [C]. BLK-13's throttle answers the same for known and unknown accounts, but other messages don't:
   - The web login says "Account not found. Please register or contact admin." for an unknown email and "Incorrect password or wrong role selected." for a known one (`routes_auth.py:127` vs `:149`).
   - The API login answers `403 account_locked` for an existing account that still has a legacy unhashed password, before checking the password (`routes_api_v1.py:83`); unknown accounts get `401 invalid_credentials` (`:76`).
   - The password-reset request already answers alike for known, unknown and SuperAdmin emails (`routes_auth.py:344-379`), in wording the owner wants changed.
@@ -1374,13 +1374,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - API login: the same three cases return the same `401 invalid_credentials` with the message "Email or password is incorrect". The legacy-hash account no longer gets its own `403`. Keep the error code, because the mobile apps may read it.
   - Password reset: every request (known, unknown or SuperAdmin email) flashes "If an account exists for this email, we've sent a reset link".
   - Sign-up and registration: unchanged.
-- **Files touched:** `routes_auth.py`, `routes_api_v1.py`, tests.
+- **What was built:**
+  - `routes_auth.LOGIN_FAILED_MESSAGE` and `RESET_REQUESTED_MESSAGE` (`routes_auth.py:18-19`) hold the two answers.
+  - **Web login:** an unknown email (`:127`), a wrong password and an old unhashed password (`:152`) flash "Email or password is incorrect." and redirect to `/login`. A correct password with the wrong role gets "Wrong role selected for this account…", which only someone who has the password can see.
+  - **API login:** the same three cases return `401 invalid_credentials` with the same message (`routes_api_v1.py:77` and the combined hash check below it); the old-password account no longer gets its own `403 account_locked`. Each counts as a BLK-13 failure.
+  - **Password reset:** every request flashes "If an account exists for this email, we've sent a reset link." (`routes_auth.py:348`); only an existing non-SuperAdmin account is emailed.
+  - **Sign-up and registration:** unchanged.
+  - `tests/test_login_throttle.py`'s API test expected the old 401 message word for word; it now expects the new one, still an exact match.
+- **Files touched:** `routes_auth.py`, `routes_api_v1.py`, `tests/test_uniform_auth_messages.py` (new), `tests/test_login_throttle.py`.
 - **Effort:** S · **Depends on:** BLK-13 · **Risk:** a user who mistypes their email no longer sees "Account not found"; the message says email *or* password.
-- **Acceptance criteria:**
-  1. Test: a web login with an unknown email, a wrong password for an existing account, and an existing account with a legacy unhashed password all get the same status, redirect and "Email or password is incorrect".
-  2. Test: the API gives the same status and JSON body for those three cases.
-  3. Test: a password-reset request for an unknown, an existing and a SuperAdmin email shows the same page and "If an account exists for this email, we've sent a reset link"; only the existing non-SuperAdmin email is sent a link.
-  4. Test: sign-up (web and API) and registration with an existing email still tell the user to log in first (unchanged behaviour, now pinned).
+- **Acceptance criteria** (`tests/test_uniform_auth_messages.py`, real database layer; criteria 1–3 fail on the old code, and criterion 4 pins behaviour that stays the same):
+  1. ✅ Test: a web login with an unknown email, a wrong password for an existing account, and an existing account with a legacy unhashed password all get the same status, redirect and "Email or password is incorrect"; the wrong-role hint appears only with the right password (`::test_web_login_answers_alike_for_unknown_emails_wrong_and_old_passwords`).
+  2. ✅ Test: the API gives the same status and JSON body for those three cases (`::test_api_login_answers_alike_for_the_same_three_cases`).
+  3. ✅ Test: a password-reset request for an unknown, an existing and a SuperAdmin email shows the same page and "If an account exists for this email, we've sent a reset link"; only the existing non-SuperAdmin email is sent a link (`::test_reset_requests_answer_alike_and_only_the_real_account_gets_a_link`).
+  4. ✅ Test: sign-up (web and API) and registration with an existing email still tell the user to log in first (unchanged behaviour, now pinned: `::test_sign_up_and_registration_still_tell_an_existing_email_to_log_in`).
+  - Full pytest: **716 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-36 — Coupons can be used more than `max_uses` times
 - **Status:** TODO
@@ -1519,3 +1527,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-02 | "BLK-16: …" (parent `0f22a5c`) | BLK-16, BLK-11 | **BLK-16 DONE.** One helper (`utils_email._base_url`) builds every outbound link from `BASE_URL`: reset and set-password emails, ticket and venue QR codes, referrals, WhatsApp messages, the waitlist pay link, reminder emails and certificate verify links. It never uses the request's host, and the old Cloud Run and Railway fallbacks are gone. Production refuses to start without an `https://`, non-localhost `BASE_URL`; ProxyFix trusts only `X-Forwarded-For` and `X-Forwarded-Proto`. 12 new real-database tests with a forged `Host` and `X-Forwarded-Host` (11 fail on the old code); the production-config test's valid config gains a `BASE_URL`. Full pytest 701 passed on SQLite and PostgreSQL 16; ruff clean. **BLK-11 DONE:** every CI job green on pull request #48 and, Docker build included, on `master` after the merge (`86348fe`). Rule 8: 2 items DONE since the 2026-10-02 re-verification. |
 | 2026-10-02 | "BLK-17: …" (parent `a417e88`) | BLK-17, UPG-29 | **New blocker, found while starting UPG-33, and DONE** (built before UPG-33 under rule 2). 10 ClubSPOC write routes (end event, publish results, add judges by form or CSV, rooms, room reassignment, announcements, agenda, open hall, certificate templates) and 4 read pages acted on any event with no ownership check. One helper now requires the right permission on the event first; room reassignment also checks the registration's event. 3 new real-database tests (2 fail on the old code, where another SPOC could end the event). UPG-29 notes the judge routes are now covered. Full pytest 704 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 3 items DONE since the 2026-10-02 re-verification. |
 | 2026-10-02 | "UPG-33: …" (parent `0b9463a`) | UPG-33 | **UPG-33 DONE** (first Phase 2 item). Before building, the item was widened (rule 3) to the three more paths that emailed passwords: SPOC `assign_coordinator`, `add_judge` and `upload_judges_csv`, and admin `appoint_spoc` with its typed password. Every account someone else creates (walk-in, coordinator staff, SPOC-appointed coordinator or judge, admin-appointed SPOC) is now unverified and opened with a one-time set-password link whose email says why it exists. The staff WhatsApp notice carries no credentials, and the admin form has no password field. Reset links are bound to the current password hash, so each works once. 8 new real-database tests (all fail on the old code) record every plaintext passed to `generate_password_hash` and assert none reaches an email or WhatsApp message. Full pytest 712 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 4 items DONE since the 2026-10-02 re-verification. |
+| 2026-10-02 | "UPG-35: …" (parent `032e7c3`) | UPG-35, BLK-13 | **UPG-35 DONE** (D-3). Web and API login answer "Email or password is incorrect." for an unknown email, a wrong password and an old unhashed password, and the API no longer gives the latter its own 403. Password reset always answers "If an account exists for this email, we've sent a reset link." A correct password with the wrong role still gets a role hint. Sign-up and registration unchanged and now pinned. 4 new real-database tests (criteria 1–3 fail on the old code); BLK-13's API test now expects the new 401 wording (still exact). Full pytest 716 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 5 items DONE since the 2026-10-02 re-verification (BLK-11, BLK-16, BLK-17, UPG-33, UPG-35). |

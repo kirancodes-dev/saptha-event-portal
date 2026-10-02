@@ -34,6 +34,7 @@ This file is the source of truth for planned work. Agents and developers work on
    - any SPOC or coordinator could delete any event through a GET link, and `/api/v1` was open to cross-site requests from a logged-in browser (BLK-04, found in Phase 0, **fixed**);
    - login had no rate limiting (BLK-13, **fixed** on `production-ready`);
    - a forged `Host`/`X-Forwarded-Host` made reset and set-password emails link to another site (BLK-16, found in the PR #48 review, **fixed**);
+   - any SPOC could end, publish, staff or edit another SPOC's event (BLK-17, **fixed**);
    - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
 7. **Not production-ready yet (Phase 0, 2026-09-30):** uploads live on the container's disk (UPG-17; sessions moved to the database, BLK-08), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 111 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan.
 5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool.
@@ -69,7 +70,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Venue-QR self check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Pinned on the real database by BLK-12. The `functions/` copy checks in by a typed email alone (removed in Phase 5, UPG-15, D-1). |
 | Offline check-in (PWA queue) | PARTLY BUILT [C] | `static/js/offline-sync.js:83` | Replays to kiosk confirm, which answers 403 to coordinators not assigned to the event (assigned ones can confirm); not run (UPG-02). `/api/v1/.../checkin-batch` is JWT-only with no UI. |
 | Coordinator assignment | WORKING [R at `1f4cdc8`] | `routes_spoc.py:1171-1252` | `spoc_id` now persists, so "assign coordinator" adds the coordinator to `staff` [R], and the coordinator can then open registrations (`tests/test_integration_flow.py:164-185`). |
-| Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists. |
+| Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists; only on events the SPOC manages since BLK-17 (`tests/test_spoc_event_authz.py`). |
 | Judge dashboard | PARTLY BUILT [R] | `routes_judge.py:58-59` | Lists only events with status `active`; new workflow states never appear. |
 | Judge scoring | PARTLY BUILT [R] | `routes_judge.py:158`, `templates/spoc/create_event.html:1116` | Criteria from the create form are objects; scoring crashes (`'dict' object has no attribute 'replace'` / 500) [R]. Works with string criteria [R]. |
 | Rounds, lock scoring, advance round | not re-run [C at `1f4cdc8`] | `routes_spoc.py` round panel / lock / advance | The `spoc_id` gate is now satisfiable (the field persists), so these are likely unblocked; not re-run. |
@@ -671,7 +672,7 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
 - **Effort:** S · **Depends on:** BLK-04 · **Risk:** low.
 - **Acceptance criteria:**
   1. Test (real DB): the SPOC assigns a coordinator and a judge on their own event; each sees it on their dashboard.
-  2. Test: another SPOC gets 403 and nothing changes.
+  2. Test: another SPOC gets 403 and nothing changes. (Since BLK-17, `add_judge` and `upload_judges_csv` are covered by `tests/test_spoc_event_authz.py`; `assign_coordinator` still needs its test.)
   3. Test: unassigning removes access to the event's registrations and scoring.
 
 #### UPG-30 — Paid events end to end: receipt email, refunds and cancellations
@@ -741,14 +742,14 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | Setting | Requirement | Checked by the app at start-up? |
 |---|---|---|
 | `FLASK_ENV` | `production` | This is what turns the production checks on |
-| `SECRET_KEY` | New random value, 32+ characters | Yes: start-up is refused otherwise (`config.py:35-39`, `validate_production_config`) |
+| `SECRET_KEY` | New random value, 32+ characters | Yes: start-up is refused otherwise (`config.py:36-40`, `validate_production_config`) |
 | `MASTER_SECRET_KEY` | New random value, 12+ characters, not a published value | Yes (`validate_production_config`) |
-| `JWT_SECRET_KEY` | New random value, different from `SECRET_KEY` | **No**: it silently falls back to `SECRET_KEY` (`config.py:215`) |
+| `JWT_SECRET_KEY` | New random value, different from `SECRET_KEY` | **No**: it silently falls back to `SECRET_KEY` (`config.py:217`) |
 | `SUPER_ADMIN_PASS` (with `SUPER_ADMIN_EMAIL`) | New strong password, used to create the first SuperAdmin | Only against the list of published passwords (`validate_production_config`) |
 | `RAZORPAY_KEY_SECRET` (with `RAZORPAY_KEY_ID`) | Set before any paid event is opened | **No**, but without them online payment refuses with 503 (fails closed since BLK-03). Never set `PAYMENT_SIMULATION` in production (it's ignored there anyway). |
 | `DATABASE_URL` | PostgreSQL (`postgresql://…`) | Yes: production refuses SQLite or no database (`db_pg.py:104-150`) |
 | `BASE_URL` | The site's public `https://` address, e.g. the Cloud Run URL or the university domain. Every emailed, WhatsApp, QR and referral link is built from it. | Yes: production refuses a missing, `http://` or localhost value (`config.py:267-270`, BLK-16) |
-| `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:130`, BLK-13) |
+| `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:131`, BLK-13) |
 
 - **Use a fresh database.** If an old one is reused (the earlier Cloud SQL or Supabase database), first reset every account's password (the SuperAdmin's was the published demo password) and delete the demo accounts (BLK-10) and walk-in accounts created with the default password (UPG-15).
 - **Proxy hops (owner, 2026-10-02).** `ProxyFix(x_for=1, x_proto=1)` (`app.py:151`) trusts exactly one proxy, which is right for Cloud Run alone; it never trusts `X-Forwarded-Host` (BLK-16). If Cloudflare or a load balancer is ever put in front, set `x_for` to the real number of proxies. Otherwise the app sees the proxy's address for every visitor, and BLK-13's per-IP limit counts everyone as one IP. Never set it higher than the real number: clients could then forge their IP in `X-Forwarded-For` and dodge the per-IP limit.
@@ -1279,6 +1280,43 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   5. ✅ Test: no app module builds a link from `request.host_url` or `request.url_root`. The allow-list covers `app.py`'s same-site referrer check and Stripe's own redirect URLs (until UPG-14). `utils_email.py`, `utils_whatsapp.py` and `routes_ticket.py` hold no hard-coded deploy URL (`::test_no_app_module_builds_links_from_the_request_host`, an AST scan of every tracked app module; `::test_outbound_message_modules_hold_no_hard_coded_deploy_url`). The tenant middleware's domain lookup is also allow-listed: multi-tenancy is off, and it builds no link.
   - Full pytest: **701 passed** on SQLite and PostgreSQL 16; ruff clean.
 
+#### BLK-17 — Any SPOC can end, publish, staff and edit other SPOCs' events
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "BLK-17: …" on `production-ready` (parent `a417e88`)
+- **Problem (as found at `a417e88`):** Found while starting UPG-33 [C at `a417e88`, AST scan of `routes_spoc.py` plus reading each route]. These ClubSPOC routes take an `event_id` but never check that the user may act on that event (no `spoc_id` comparison, no `can(...)`):
+  - **Writes:**
+    - `end_event` (`routes_spoc.py:530`): marks any event `completed` and starts certificate generation;
+    - `announce` (`:687`) and `agenda` (`:762`, GET and POST);
+    - `publish_results` (`:789`): marks it `completed` with results published;
+    - `toggle_openhall` (`:1081`) and `upload_cert_templates` (`:1256`);
+    - `upload_judges_csv` (`:1322`) and `add_judge` (`:1382`): appoint judges, who can then score that event;
+    - `setup_rooms` (`:1439`);
+    - `reassign_room` (`:1529`), which also doesn't check that the registration belongs to the event.
+  - **Reads:** `judging/audit` (`:1937`, every judge's scores), `schedule/optimize` (`:2049`), `ticket/nfc-verify` (`:2147`) and `judging/matchmaker` (`:2180`).
+  - `announcements/public` (`:737`) is public by design.
+  - BLK-04 fixed the coordinator routes, the form builder and the API; these SPOC routes weren't in its list. The SPOC isolation decision (BLK-04, owner 2026-09-29) says a SPOC manages only events they own or hold a unit grant for.
+- **Who benefits:** every organiser (nobody else can end, publish or staff their event) and every participant (scores and attendee data stay with the event's staff).
+- **What to build:** one helper that loads the event and requires a permission on it with `services_permission.can`, called before each route's `try` so the 403 isn't swallowed. The permissions are:
+  - `edit_event`: end, announce, agenda, open hall, judges, optimizer, matchmaker;
+  - `publish_results`: publish results;
+  - `issue_certificates`: certificate templates;
+  - `manage_registrations`: rooms and reassignment;
+  - `view_analytics`: the judging audit;
+  - `check_in`: NFC verify.
+  - Room reassignment refuses a registration from another event.
+- **What was built:**
+  - `_event_or_abort(event_id, permission)` (`routes_spoc.py:29`) loads the event (404 if missing) and requires `can(session, permission, event)` (403 otherwise).
+  - It's called first in each of the 14 routes (`routes_spoc.py:549,707,783,811,1104,1280,1347,1408,1466,1557,1969,2082,2181,2215`), with the permissions listed above.
+  - `reassign_room` also answers 404 unless the registration belongs to the event (`routes_spoc.py:1557-1560`).
+- **Files touched:** `routes_spoc.py`, `tests/test_spoc_event_authz.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** a page that some other role relied on now answers 403; the routes are ClubSPOC-only, so only other SPOCs lose access.
+- **Acceptance criteria** (`tests/test_spoc_event_authz.py`, real database layer; criteria 1–2 and 4 fail on the old code, where another SPOC's `end_event` ended the event):
+  1. ✅ Test (real DB): a SPOC who doesn't own the event gets 403 on each of the 10 write routes and nothing about the event, its staff, its registrations or its rooms changes, and no judge account is created (`::test_another_spoc_gets_403_on_every_route_and_nothing_changes`).
+  2. ✅ Test: the same SPOC gets 403 on the 4 read pages, and on the agenda page (same test).
+  3. ✅ Test: the owner can still add a judge, publish results, toggle open hall, open the agenda and the judging audit, and reassign their own registration's room (`::test_the_owner_still_manages_their_event`).
+  4. ✅ Test: the owner can't reassign a registration that belongs to another event: 404, and its room is unchanged (`::test_the_owner_cant_reassign_another_events_registration`).
+  - Full pytest: **704 passed** on SQLite and PostgreSQL 16; ruff clean.
+
 #### UPG-33 — Account emails: walk-in passwords by email, reusable reset links
 - **Status:** TODO
 - **Last verified:** 2026-10-02, commit `986d108`
@@ -1376,7 +1414,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | Phase | Items, in order | Notes |
 |---|---|---|
 | 0. Sync the plan | — | Done 2026-09-30: every item re-verified; BLK-12, BLK-13, UPG-16 to UPG-32 added; sessions merged into BLK-08. |
-| 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11, then BLK-16 (added 2026-10-02 from the PR #48 review, built before Phase 2) | **Done** (2026-10-01; BLK-16 and BLK-11's CI on GitHub 2026-10-02). Waiting on the owner: BLK-01's last criterion (the PR refs, GitHub Support, D-2); it doesn't block Phase 2. |
+| 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11, then BLK-16 (added 2026-10-02 from the PR #48 review) and BLK-17 (found starting UPG-33), both built before Phase 2 | **Done** (2026-10-01; BLK-16 and BLK-11's CI on GitHub 2026-10-02). Waiting on the owner: BLK-01's last criterion (the PR refs, GitHub Support, D-2); it doesn't block Phase 2. |
 | 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-37 hourly login cap → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-36 coupon uses → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
 | 3. Production setup | UPG-16 migrations → UPG-17 uploads → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups → UPG-22 privacy | |
 | 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check | One commit per UPG-23 area. |
@@ -1465,3 +1503,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-02 | "docs: …" (parent `986d108`) | ALL (re-verification after Phase 1) | **Full re-verification of every open item, plus sections 1–4, against the code at `986d108`** (rule 8: 13 items DONE since Phase 0; the count now restarts at 0). Each citation was mapped from its item's last-verified commit by exact line alignment, every moved or changed one was read, and the counts were re-run on `56a014d` and `986d108` with one script. **Status corrections:** UPG-06 → IN PROGRESS (criterion 2 already met by BLK-05's journey test); UPG-15 → IN PROGRESS (criterion 2 met by BLK-09's test). **Claims corrected:** UPG-02 (the kiosk/offline 403 now hits only unassigned coordinators; `get_ticket` is staff-only but still treats the token as an ID); UPG-03 (the AI report's gate passes for the owner; SPOC, coordinator and forms exports already check `export_data`, but only the forms one is tested); UPG-05 (the lead's feedback works on the real database; criterion 1 lacks only the read-back); UPG-06 (the certificate name is fixed; the bulk gate passes); UPG-08 (team settings persist; the fallback form adds only a team-name field); UPG-10 and UPG-12 (account creation moved to `services_accounts`); UPG-15 (the dead nav links are gone or resolve, there's no debug route, seed-script counts corrected); UPG-16 (tables and columns added since Phase 0 listed; `alembic upgrade head` on an empty DB still fails [R]); UPG-19 (25 `.stream()` calls in `routes_admin.py`); UPG-20 (43 of 91 env vars in `.env.example`); UPG-23 (111 standalone templates, not 110); UPG-25 (78 templates, 490 handlers). **Line moves only:** UPG-05, 06, 08, 10, 12, 14, 15, 16, 20, 25, 29, 30, 33, 34, BLK-01 and the deploy checklist. **Unchanged and still accurate:** UPG-01, 04, 07, 09, 11, 13, 17, 18, 21, 22, 24, 26, 27, 28, 31, 32, 35. **Inventory:** kiosk and venue-QR check-in → WORKING in the root app (BLK-12); org units → WORKING (BLK-07); audit log → WORKING (BLK-06a); manual check-in, feedback, offline, AI matching, results, email, admin dashboard and exports rows updated; line moves in 13 rows. **Journeys:** 18 steps updated with the item that fixed them. **Event types:** BLK items dropped from "Needed"; NSS/NCC keep their category (BLK-06a). No new items: nothing found needed one. **Checks [R]:** full pytest 689 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. BLK-01's remote state unchanged (47 PR refs). Next: Phase 2, starting with UPG-33 and then UPG-35. |
 | 2026-10-02 | "docs: …" (parent `7aac9ca`) | BLK-16, UPG-30, UPG-36, UPG-37, UPG-38, UPG-20 | Owner's code review of PR #48 (merged into `master` as `86348fe`). **New blocker BLK-16:** email, WhatsApp, QR and referral links are built from the request's host, and ProxyFix trusts `X-Forwarded-Host`, so a forged header on a reset or registration makes the real email link to an attacker's site; to be built before Phase 2. **UPG-30** gains (a) paid-but-unregistered orders (plus: completion doesn't re-check capacity, so a late payment overbooks) and (b) no webhook, with a signed `payment.captured` webhook, an admin list of paid orders without a registration and a refund action (effort M → L). **New:** UPG-36 coupon uses can exceed `max_uses`; UPG-37 hourly per-account login cap (~20/h); UPG-38 delete the sample Jekyll workflow. Scheduled: UPG-37 after UPG-35, UPG-36 after UPG-30, UPG-38 in Phase 5. UPG-20 gains the retired Railway logo URL. Docs only. |
 | 2026-10-02 | "BLK-16: …" (parent `0f22a5c`) | BLK-16, BLK-11 | **BLK-16 DONE.** One helper (`utils_email._base_url`) builds every outbound link from `BASE_URL`: reset and set-password emails, ticket and venue QR codes, referrals, WhatsApp messages, the waitlist pay link, reminder emails and certificate verify links. It never uses the request's host, and the old Cloud Run and Railway fallbacks are gone. Production refuses to start without an `https://`, non-localhost `BASE_URL`; ProxyFix trusts only `X-Forwarded-For` and `X-Forwarded-Proto`. 12 new real-database tests with a forged `Host` and `X-Forwarded-Host` (11 fail on the old code); the production-config test's valid config gains a `BASE_URL`. Full pytest 701 passed on SQLite and PostgreSQL 16; ruff clean. **BLK-11 DONE:** every CI job green on pull request #48 and, Docker build included, on `master` after the merge (`86348fe`). Rule 8: 2 items DONE since the 2026-10-02 re-verification. |
+| 2026-10-02 | "BLK-17: …" (parent `a417e88`) | BLK-17, UPG-29 | **New blocker, found while starting UPG-33, and DONE** (built before UPG-33 under rule 2). 10 ClubSPOC write routes (end event, publish results, add judges by form or CSV, rooms, room reassignment, announcements, agenda, open hall, certificate templates) and 4 read pages acted on any event with no ownership check. One helper now requires the right permission on the event first; room reassignment also checks the registration's event. 3 new real-database tests (2 fail on the old code, where another SPOC could end the event). UPG-29 notes the judge routes are now covered. Full pytest 704 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 3 items DONE since the 2026-10-02 re-verification. |

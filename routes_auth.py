@@ -2,7 +2,6 @@ import datetime
 import hmac
 import logging
 from flask import Blueprint, render_template, request, redirect, session, flash, current_app
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db
 
@@ -14,12 +13,8 @@ from utils_email import send_password_reset_email
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 
-RESET_TOKEN_SALT    = 'sapthaevent-password-reset'
-RESET_TOKEN_MAX_AGE = 3600  # 1 hour
-
-
-def _reset_serializer():
-    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=RESET_TOKEN_SALT)
+# Password-reset tokens: services_accounts.make_reset_token / load_reset_token
+# (one hour, bound to the current password so each link works once, UPG-33).
 
 # NOTE: ROLE_REDIRECTS is now defined in utils.py — single source of truth.
 
@@ -361,7 +356,9 @@ def forgot_password():
                            f"SuperAdmin {email} attempted email-based reset")
                 return redirect('/forgot_password')
 
-            token = _reset_serializer().dumps(email)
+            # Bound to the current password, so the link works once (UPG-33)
+            from services_accounts import make_reset_token
+            token = make_reset_token(email, user.get('password', ''))
             # BASE_URL, never the request's host: a forged Host would send
             # the victim's token to another site (BLK-16)
             reset_url = f"{utils_email._base_url()}/reset_token/{token}"
@@ -393,13 +390,12 @@ def forgot_password():
 # =========================================================
 @auth_bp.route('/reset_token/<token>', methods=['GET', 'POST'])
 def reset_token(token):
-    try:
-        email = _reset_serializer().loads(token, max_age=RESET_TOKEN_MAX_AGE)
-    except SignatureExpired:
-        flash("This reset link has expired. Please request a new one.", "danger")
-        return redirect('/forgot_password')
-    except BadSignature:
-        flash("Invalid reset link.", "danger")
+    from services_accounts import load_reset_token
+    email, _, error = load_reset_token(token, db)
+    if error:
+        flash({'expired': "This reset link has expired. Please request a new one.",
+               'used':    "This reset link has already been used. Request a new one if you need it.",
+               }.get(error, "Invalid reset link."), "danger")
         return redirect('/forgot_password')
 
     try:

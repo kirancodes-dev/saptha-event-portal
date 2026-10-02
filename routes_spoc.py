@@ -6,6 +6,7 @@ import io
 import json
 from utils import login_required, role_required, log_action
 from utils_email import _base_url as _public_base_url
+from services_accounts import create_unverified_account, send_set_password_link
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -1195,10 +1196,7 @@ def delete_event(event_id):
 @login_required
 @role_required('ClubSPOC')
 def assign_coordinator(event_id):
-    import secrets
-    import string
-    from werkzeug.security import generate_password_hash
-    from utils_email import send_credentials_email, send_appointment_email
+    from utils_email import send_appointment_email
 
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
@@ -1222,20 +1220,12 @@ def assign_coordinator(event_id):
     user_docs = list(db.collection('users').where('email', '==', email).stream())
 
     if not user_docs:
-        # Create new EventCoordinator account with generated password
-        pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-        db.collection('users').document(email).set({
-            'name':       name,
-            'email':      email,
-            'role':       'EventCoordinator',
-            'password':   generate_password_hash(pwd),
-            'created_at': datetime.datetime.now().isoformat(),
-        })
-        try:
-            send_credentials_email(email, name, 'EventCoordinator', pwd)
-        except Exception:
-            pass
-        account_msg = f"Account created and login credentials emailed to {email}."
+        # New EventCoordinator account, opened with a one-time set-password
+        # link; no password is ever emailed (UPG-33)
+        create_unverified_account(db, email, name, role='EventCoordinator')
+        send_set_password_link(db, email, name,
+                               reason=f"when you were appointed as Event Coordinator for {event_title}")
+        account_msg = f"Account created; a link to set the password was emailed to {email}."
     else:
         user_data = user_docs[0].to_dict()
         user_role = user_data.get('role', '')
@@ -1345,9 +1335,6 @@ def upload_cert_templates(event_id):
 @role_required('ClubSPOC')
 def upload_judges_csv(event_id):
     _event_or_abort(event_id, 'edit_event')  # BLK-17
-    import secrets
-    import string
-    from werkzeug.security import generate_password_hash
 
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
@@ -1379,22 +1366,10 @@ def upload_judges_csv(event_id):
                 'judges': db.field_path_to_sentinel('judges') or []
             })
         else:
-            pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-            db.collection('users').document(email).set({
-                'name':      name,
-                'email':     email,
-                'role':      'Judge',
-                'password':  generate_password_hash(pwd),
-                'expertise': expertise,
-                'event_id':  event_id,
-                'created_at': datetime.datetime.now().isoformat(),
-            })
-            try:
-                from utils_email import send_credentials_email
-                send_credentials_email(email, name, 'Judge', pwd,
-                                       category=doc.to_dict().get('title', ''))
-            except Exception:
-                pass
+            # New judge: a one-time set-password link, never a password (UPG-33)
+            create_unverified_account(db, email, name, role='Judge', expertise=expertise, event_id=event_id)
+            send_set_password_link(db, email, name, reason=(
+                f"when you were appointed as a judge for {(doc.to_dict() or {}).get('title', 'an event')}"))
         created += 1
 
     flash(f"✅ {created} judge(s) created. {skipped} row(s) skipped.", "success")
@@ -1406,9 +1381,6 @@ def upload_judges_csv(event_id):
 @role_required('ClubSPOC')
 def add_judge(event_id):
     _event_or_abort(event_id, 'edit_event')  # BLK-17
-    import secrets
-    import string
-    from werkzeug.security import generate_password_hash
 
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:
@@ -1425,22 +1397,11 @@ def add_judge(event_id):
 
     existing = list(db.collection('users').where('email', '==', email).limit(1).stream())
     if not existing:
-        pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-        db.collection('users').document(email).set({
-            'name':      name,
-            'email':     email,
-            'role':      'Judge',
-            'password':  generate_password_hash(pwd),
-            'expertise': expertise,
-            'created_at': datetime.datetime.now().isoformat(),
-        })
-        try:
-            from utils_email import send_credentials_email
-            send_credentials_email(email, name, 'Judge', pwd,
-                                   category=doc.to_dict().get('title', ''))
-        except Exception:
-            pass
-        flash(f"✅ Judge {name} created and credentials emailed.", "success")
+        # New judge: a one-time set-password link, never a password (UPG-33)
+        create_unverified_account(db, email, name, role='Judge', expertise=expertise)
+        send_set_password_link(db, email, name, reason=(
+            f"when you were appointed as a judge for {(doc.to_dict() or {}).get('title', 'an event')}"))
+        flash(f"✅ Judge {name} created; a link to set their password was emailed.", "success")
     else:
         existing_name = existing[0].to_dict().get('name', name)
         name = existing_name

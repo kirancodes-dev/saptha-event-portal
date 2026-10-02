@@ -23,10 +23,12 @@ logger = logging.getLogger(__name__)
 
 SET_PASSWORD_SALT = 'sapthaevent-set-password'
 SET_PASSWORD_MAX_AGE = 3 * 24 * 3600  # 3 days
+RESET_SALT = 'sapthaevent-password-reset'
+RESET_MAX_AGE = 3600  # 1 hour
 
 
-def _serializer() -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=SET_PASSWORD_SALT)
+def _serializer(salt: str = SET_PASSWORD_SALT) -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=salt)
 
 
 def _fingerprint(password_hash: str) -> str:
@@ -53,18 +55,22 @@ def login_url(next_path: str) -> str:
     return f"/login?next={quote(next_path, safe='/')}"
 
 
-def create_unverified_account(db, email: str, name: str, phone: str = '') -> None:
-    """Create a Student account nobody can log in to until the email link is used."""
+def create_unverified_account(db, email: str, name: str, phone: str = '',
+                              role: str = 'Student', **fields) -> None:
+    """Create an account nobody can log in to until the emailed set-password
+    link is used: for registrations (BLK-02), and for walk-ins and staff that
+    someone else creates (UPG-33). Its random password is never shown."""
     db.collection('users').document(email).set({
         'email':                email,
         'name':                 name,
-        'role':                 'Student',
+        'role':                 role,
         'category':             'General',
         'phone':                phone,
         'password':             generate_password_hash(secrets.token_urlsafe(32), method='pbkdf2:sha256'),
         'created_at':           datetime.datetime.now().strftime('%Y-%m-%d'),
         'needs_password_reset': True,
         'email_verified':       False,
+        **fields,
     })
 
 
@@ -74,13 +80,29 @@ def make_set_password_token(email: str, password_hash: str) -> str:
 
 def load_set_password_token(token: str, db) -> Tuple[Optional[str], Optional[dict], str]:
     """Return (email, user, error). error is '' when the token is usable."""
+    return _load_bound_token(token, db, SET_PASSWORD_SALT, SET_PASSWORD_MAX_AGE)
+
+
+def make_reset_token(email: str, password_hash: str) -> str:
+    """A password-reset link token, bound to the current password, so it works once (UPG-33)."""
+    return _serializer(RESET_SALT).dumps({'e': email, 'p': _fingerprint(password_hash)})
+
+
+def load_reset_token(token: str, db) -> Tuple[Optional[str], Optional[dict], str]:
+    """Return (email, user, error); error is 'expired', 'invalid', 'used' or ''."""
+    return _load_bound_token(token, db, RESET_SALT, RESET_MAX_AGE)
+
+
+def _load_bound_token(token: str, db, salt: str, max_age: int) -> Tuple[Optional[str], Optional[dict], str]:
     try:
-        data = _serializer().loads(token, max_age=SET_PASSWORD_MAX_AGE)
+        data = _serializer(salt).loads(token, max_age=max_age)
     except SignatureExpired:
         return None, None, 'expired'
     except BadSignature:
         return None, None, 'invalid'
-    email = (data or {}).get('e', '')
+    if not isinstance(data, dict):  # a token from before UPG-33
+        return None, None, 'invalid'
+    email = data.get('e', '')
     doc = db.collection('users').document(email).get() if email else None
     if not doc or not doc.exists:
         return None, None, 'invalid'
@@ -90,8 +112,9 @@ def load_set_password_token(token: str, db) -> Tuple[Optional[str], Optional[dic
     return email, user, ''
 
 
-def send_set_password_link(db, email: str, name: str) -> bool:
-    """Email a one-time set-password link for a newly created account."""
+def send_set_password_link(db, email: str, name: str, reason: str = '') -> bool:
+    """Email a one-time set-password link for a newly created account.
+    `reason` completes "A SapthaEvent account was created for this email ..."."""
     from utils_email import _base_url, send_set_password_email
     doc = db.collection('users').document(email).get()
     if not doc.exists:
@@ -99,7 +122,7 @@ def send_set_password_link(db, email: str, name: str) -> bool:
     token = make_set_password_token(email, (doc.to_dict() or {}).get('password', ''))
     url = f"{_base_url()}/set_password/{token}"  # BASE_URL, never the request's host (BLK-16)
     try:
-        return bool(send_set_password_email(email, name, url))
+        return bool(send_set_password_email(email, name, url, reason=reason))
     except Exception as exc:  # never fail a registration because mail is down
         logger.warning("Set-password email to %s failed: %s", email, exc)
         return False

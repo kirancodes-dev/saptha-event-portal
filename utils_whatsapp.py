@@ -149,21 +149,19 @@ def send_payment_receipt_whatsapp(phone: str, name: str, event_title: str,
     return _send(phone, body)
 
 
-def send_staff_credentials_whatsapp(phone: str, name: str, role: str,
-                                     event_title: str, email: str,
-                                     password: str) -> bool:
+def send_staff_appointment_whatsapp(phone: str, name: str, role: str,
+                                    event_title: str, email: str) -> bool:
     """
-    Sent when SPOC appoints a Judge or Coordinator.
+    Sent when a new staff account is created for an event. It never carries a
+    password: the set-password link goes to the email address (UPG-33).
     """
     base = _public_base_url()
     body = (
-        f"🔐 *Your SapthaEvent Login*\n\n"
+        f"📋 *SapthaEvent appointment*\n\n"
         f"Hi {name},\n"
         f"You've been appointed as *{role}* for *{event_title}*.\n\n"
-        f"📧 Email:    {email}\n"
-        f"🔑 Password: `{password}`\n\n"
-        f"👉 Login at: {base}/login\n\n"
-        f"⚠️ Change your password after first login."
+        f"We've emailed {email} a link to set your password.\n"
+        f"👉 Then log in at: {base}/login"
     )
     return _send(phone, body)
 

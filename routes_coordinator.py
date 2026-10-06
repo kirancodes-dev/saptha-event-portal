@@ -2,8 +2,6 @@ import csv
 import datetime
 import io
 import random
-import secrets
-import string
 from io import StringIO
 try:
     import openpyxl
@@ -42,14 +40,14 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from werkzeug.security import generate_password_hash
 from utils import login_required, role_required, log_action, safe_int
 from utils_email import (send_appointment_email, send_broadcast_email,
-                         send_credentials_email, send_ticket_email, send_result_email)
+                         send_ticket_email, send_result_email)
+from services_accounts import create_unverified_account, send_set_password_link
 try:
     from utils_whatsapp import (send_room_assignment_whatsapp, send_result_whatsapp,
         send_elimination_whatsapp, send_broadcast_whatsapp,
-        send_staff_credentials_whatsapp, send_ticket_whatsapp)
+        send_staff_appointment_whatsapp, send_ticket_whatsapp)
     _WA = True
 except ImportError:
     _WA = False
@@ -292,16 +290,13 @@ def assign_staff(event_id):
         event_title = event.get('title', 'Event')
         user_ref    = db.collection('users').document(email)
         if not user_ref.get().exists:
-            alphabet = string.ascii_letters + string.digits
-            raw_pw   = ''.join(secrets.choice(alphabet) for _ in range(10))
-            user_ref.set({'email': email, 'name': name, 'role': role, 'phone': phone,
-                'category': session.get('category', 'General'),
-                'password': generate_password_hash(raw_pw),
-                'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
-                'needs_password_reset': True})
-            send_credentials_email(email, name, role, raw_pw, session.get('category', 'General'))
-            _wa(send_staff_credentials_whatsapp, phone, name, role, event_title, email, raw_pw)
-            flash(f"Account created for {name}. Credentials emailed.", "success")
+            # No password by email or WhatsApp: a one-time set-password link (UPG-33)
+            create_unverified_account(db, email, name, phone, role=role,
+                                      category=session.get('category', 'General'))
+            send_set_password_link(db, email, name,
+                                   reason=f"when you were appointed as {role} for {event_title}")
+            _wa(send_staff_appointment_whatsapp, phone, name, role, event_title, email)
+            flash(f"Account created for {name}. A link to set their password was emailed.", "success")
         else:
             if user_ref.get().to_dict().get('role') == 'Student':
                 user_ref.update({'role': role})
@@ -721,15 +716,11 @@ def process_walkin():
                 session, 'manage_registrations', dict(walkin_event.to_dict() or {}, id=event_id), db=db):
             flash("You can only register walk-ins for events you're assigned to.", "danger")
             return redirect('/coordinator/on_spot')
-        # One-time password per new account (emailed; reset is forced on first login)
-        WALKIN_PASSWORD = secrets.token_urlsafe(9) + 'aA1!'
-        user_ref  = db.collection('users').document(email)
-        is_new    = not user_ref.get().exists
+        # A new walk-in gets an account they open with an emailed one-time
+        # set-password link; no password is ever sent (UPG-33)
+        is_new = not db.collection('users').document(email).get().exists
         if is_new:
-            user_ref.set({'email': email, 'name': name, 'phone': phone, 'usn': usn,
-                'role': 'Student', 'password': generate_password_hash(WALKIN_PASSWORD),
-                'created_at': datetime.datetime.now().strftime("%Y-%m-%d"),
-                'needs_password_reset': True})
+            create_unverified_account(db, email, name, phone, usn=usn)
 
         reg_id      = f"REG-{int(_time.time() * 1000)}"
         event_doc   = db.collection('events').document(event_id).get().to_dict() or {}
@@ -762,14 +753,15 @@ def process_walkin():
         except Exception:
             qr_bytes = None
 
-        send_ticket_email(email, name, event_title, reg_id,
-                          qr_bytes=qr_bytes or b'',
-                          is_new_user=is_new,
-                          raw_password=WALKIN_PASSWORD if is_new else '')
+        send_ticket_email(email, name, event_title, reg_id, qr_bytes=qr_bytes or b'')
+        if is_new:
+            send_set_password_link(db, email, name,
+                                   reason=f"when you registered at the desk for {event_title}")
         _wa(send_ticket_whatsapp, phone, name, event_title, reg_id,
             event_doc.get('date', ''), event_doc.get('venue', ''))
         log_action(db, "WALKIN_REGISTERED", f"Walk-in {email} for event {event_id}")
-        flash(f"Walk-in for {name} registered. Ticket + login details sent to {email}.", "success")
+        flash(f"Walk-in for {name} registered. Ticket sent to {email}"
+              + (", with a link to set a password." if is_new else "."), "success")
     except Exception as exc:
         flash(f"Walk-in error: {exc}", "danger")
     return redirect('/coordinator/on_spot')

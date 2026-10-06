@@ -8,7 +8,6 @@ Blueprint prefix: /waitlist
 """
 import logging
 import datetime
-import os
 import uuid
 
 from flask import Blueprint, request, session, jsonify
@@ -193,7 +192,8 @@ def promotion_terms(ev: dict, reg_id: str) -> dict:
     title = ev.get("title", "Event")
     is_paid = safe_int(ev.get("fee", 0)) > 0 or safe_int(ev.get("entry_fee", 0)) > 0
     pay_path = f"/payment/pay/{reg_id}"
-    base_url = os.environ.get("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+    from utils_email import _base_url
+    base_url = _base_url()
     if is_paid:
         return {
             "is_paid": True, "status": "pending_payment", "payment_status": "Pending",

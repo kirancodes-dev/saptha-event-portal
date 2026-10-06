@@ -10,7 +10,6 @@ Responsibilities:
   /ticket/api/wallet/<tok> — JSON API for digital ticket wallet details
 """
 import datetime
-import os
 import logging
 from typing import Optional, Tuple, Dict, Any
 
@@ -89,22 +88,9 @@ def _now() -> str:
 
 
 def _base_url() -> str:
-    """
-    Returns the correct base URL for QR codes.
-    Priority: BASE_URL env var > current request host > localhost fallback.
-    """
-    env_url = os.environ.get('BASE_URL', '').strip().rstrip('/')
-    if env_url:
-        return env_url
-    try:
-        host = request.host_url.rstrip('/')
-        if host and '127.0.0.1' not in host and 'localhost' not in host:
-            return host
-        if host:
-            return host
-    except RuntimeError:
-        pass  # outside request context
-    return 'http://127.0.0.1:5000'
+    """The public address for ticket QR codes: BASE_URL, never the request's host (BLK-16)."""
+    from utils_email import _base_url as public_base_url
+    return public_base_url()
 
 
 # =========================================================

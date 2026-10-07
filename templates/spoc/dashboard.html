@@ -1743,6 +1743,12 @@ h1, h2, h3, h4, h5, h6 {
                   {% for coord_email in coords %}
                   <span class="coord-chip">
                     <i class="fas fa-user-check"></i>{{ coord_email }}
+                    <form method="POST" action="/spoc/remove_staff/{{ event.id }}" style="display:inline;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <input type="hidden" name="email" value="{{ coord_email }}">
+                      <button type="submit" title="Remove {{ coord_email }}" aria-label="Remove {{ coord_email }}"
+                              style="background:none;border:none;color:#ef4444;padding:0 0 0 4px;cursor:pointer;">&times;</button>
+                    </form>
                   </span>
                   {% endfor %}
                 {% else %}
@@ -2082,7 +2088,23 @@ h1, h2, h3, h4, h5, h6 {
               <button onclick="closeModal('judgeModal-{{ event.id }}')" class="spoc-modal-close">×</button>
             </div>
             <div style="padding:24px;">
-              <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">Upload a CSV with columns: <code>name,email,expertise</code>. Each judge gets login credentials emailed.</p>
+              {% set judges = event.get('staff', []) | selectattr('role', 'equalto', 'Judge') | list %}
+              {% if judges %}
+              <h6 style="font-size:12px;font-weight:700;color:var(--ink-500);text-transform:uppercase;margin-bottom:10px;">Assigned Judges</h6>
+              <ul style="list-style:none;padding:0;margin:0 0 16px;">
+                {% for judge in judges %}
+                <li style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-subtle,#e2e8f0);font-size:13px;">
+                  <span>{{ judge.name or judge.email }} <span style="color:var(--ink-400);">{{ judge.email }}</span></span>
+                  <form method="POST" action="/spoc/remove_staff/{{ event.id }}" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="email" value="{{ judge.email }}">
+                    <button type="submit" class="action-btn btn-outline" style="padding:2px 10px;font-size:12px;">Remove</button>
+                  </form>
+                </li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+              <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">Upload a CSV with columns: <code>name,email,expertise</code>. New judges get an email with a link to set their password.</p>
               <form method="POST" action="/spoc/upload_judges_csv/{{ event.id }}" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label style="font-size:12px;font-weight:700;color:var(--snpsu-blue);display:block;margin-bottom:6px;">CSV File</label>

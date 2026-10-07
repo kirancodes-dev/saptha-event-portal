@@ -71,8 +71,8 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Kiosk check-in | WORKING in the root app [R at UPG-02] | `routes_checkin.py:236-352`, `templates/public/kiosk.html:699` | Login + coordinator role + `check_in` on the event; search returns no email or phone (BLK-12). Confirm after a name search uses the shared check-in (payment rule, "already checked in at HH:MM"); a USB scanner can scan tickets into the search box (UPG-02). Search results insert names with `innerHTML` (BLK-19). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); removed in Phase 5 (UPG-15, D-1). |
 | Venue-QR self check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Pinned on the real database by BLK-12. The `functions/` copy checks in by a typed email alone (removed in Phase 5, UPG-15, D-1). |
 | Offline check-in (PWA queue) | WORKING in tests [R at UPG-02] | `static/js/offline-sync.js`, `templates/coordinator/scan_hud.html:13`, `static/sw.js:20` | The HUD queues scans in IndexedDB when offline (one entry per ticket) and replays them to the shared endpoint; repeats answer "already in". Run in Node against the live app, not yet in a phone browser. `/api/v1/.../checkin-batch` is JWT-only with no UI. |
-| Coordinator assignment | WORKING [R at `1f4cdc8`] | `routes_spoc.py:1171-1252` | `spoc_id` now persists, so "assign coordinator" adds the coordinator to `staff` [R], and the coordinator can then open registrations (`tests/test_integration_flow.py:164-185`). |
-| Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists; only on events the SPOC manages since BLK-17 (`tests/test_spoc_event_authz.py`). |
+| Coordinator assignment | WORKING [R at UPG-29] | `routes_spoc.py:1187-1250`, `:1253` (remove) | The owner assigns and removes coordinators from the dashboard; another SPOC gets 403. Removing ends access to registrations, exports and check-in (`tests/test_assignment.py`). |
+| Judge assignment | WORKING [R at UPG-29] | `routes_spoc.py:1371-1430`, `:1253` (remove) | Writes `staff`; only on events the SPOC manages (BLK-17). Judges are listed and removable in the judges dialog; removing ends scoring. The judge dashboard shows only `active` events (UPG-04). |
 | Judge dashboard | PARTLY BUILT [R] | `routes_judge.py:58-59` | Lists only events with status `active`; new workflow states never appear. |
 | Judge scoring | PARTLY BUILT [R] | `routes_judge.py:158`, `templates/spoc/create_event.html:1116` | Criteria from the create form are objects; scoring crashes (`'dict' object has no attribute 'replace'` / 500) [R]. Works with string criteria [R]. |
 | Rounds, lock scoring, advance round | not re-run [C at `1f4cdc8`] | `routes_spoc.py` round panel / lock / advance | The `spoc_id` gate is now satisfiable (the field persists), so these are likely unblocked; not re-run. |
@@ -149,7 +149,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Build form | Page OK [R] | — |
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
 | Manage registrations / waitlist | Partly [R] | Exports work since UPG-03 (CSV and Excel with every column); no waitlist screen. |
-| Assign coordinators / judges / rooms | Judges and coordinators OK [R at `1f4cdc8`]; rooms not re-run | The `spoc_id` checks at `routes_spoc.py:1186,1508,1546` pass for the owner since BLK-09. End-to-end test: UPG-29. |
+| Assign coordinators / judges / rooms | Judges and coordinators: assign and remove [R at UPG-29]; rooms not re-run | Tested end to end (`tests/test_assignment.py`). |
 | Run the day | QR scans and the manual list [R at UPG-02] | Scans go through the shared check-in; the manual list still uses its own route (UPG-14); the blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09 (not re-run). WhatsApp groups used instead. |
 | Results | Publish OK [R]; lock/advance not re-run | Their `spoc_id` gates (`routes_spoc.py:1651,1672`) pass for the owner since BLK-09. |
 | Certificates | **Works** [R at UPG-06] | Ending the event or the bulk button issues each attendee's certificate once, through one path. |
@@ -159,7 +159,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Step | Result | Where it breaks |
 |---|---|---|
-| Get assigned | OK [R at `1f4cdc8`] | `tests/test_integration_flow.py:164-185`. |
+| Get assigned | OK [R at UPG-29] | The event appears on the coordinator's dashboard; removal by the SPOC ends access (`tests/test_assignment.py`). |
 | Scan tickets | **Works** [R at UPG-02] | Coordinator, SPOC and HUD scanners and the kiosk use `POST /ticket/api/checkin` (`tests/test_checkin_unified.py`). The scanner list shows only `active` events, so new events need the direct link (UPG-43). |
 | Walk-ins | Works [R at UPG-33] | `routes_coordinator.py:696-779`; needs `manage_registrations` on the chosen event (BLK-04a). A new walk-in gets the ticket and a one-time set-password link, never a password (`tests/test_account_emails.py`). |
 | Attendance (granular) | **Fixed** (BLK-04a) [R] | `routes_coordinator.py:914-916` needs `check_in` on the event; students and unassigned coordinators get 403 (`tests/test_coordinator_authz.py`). |
@@ -717,17 +717,27 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 Phase 2 flows that existing items already cover: check-in (UPG-02), certificates (UPG-06), exports (UPG-03), team events (UPG-08), feedback (UPG-05). The items below cover the rest.
 
 #### UPG-29 — Coordinator and judge assignment by a SPOC, end to end
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-29: …" on `production-ready` (parent `2f6262f`)
 - **Problem:** Assignment works since BLK-09 (`routes_spoc.py:1171-1252` coordinators, `:1379-1435` judges), and one test covers the SPOC assigning a coordinator (`tests/test_integration_flow.py:164-185`). Not tested: judge assignment, unassigning, a SPOC trying to assign on someone else's event, and the assigned person seeing the event on their dashboard.
 - **Who benefits:** SPOCs, coordinators and judges.
 - **What to build:** tests first; fix whatever they find (e.g. unassign doesn't remove access).
-- **Files touched:** `routes_spoc.py`, tests.
-- **Effort:** S · **Depends on:** BLK-04 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test (real DB): the SPOC assigns a coordinator and a judge on their own event; each sees it on their dashboard.
-  2. Test: another SPOC gets 403 and nothing changes. (Since BLK-17, `add_judge` and `upload_judges_csv` are covered by `tests/test_spoc_event_authz.py`; `assign_coordinator` still needs its test.)
-  3. Test: unassigning removes access to the event's registrations and scoring.
+- **Re-checked before building (2026-10-08, `2f6262f`; rule 3):** the routes moved (`assign_coordinator` at `routes_spoc.py:1187`, `add_judge` at `:1371`). What the tests found:
+  - there was no way to unassign anyone (no route, no button);
+  - `assign_coordinator` answered another SPOC with a flash and a redirect, not 403;
+  - the judge dashboard lists only events whose status is `active`, so a judge doesn't see an event in a workflow state. That's UPG-04 criterion 3 (after Phase 6), so the judge-dashboard check here uses an `active` event.
+  - A judge sees only teams allocated to them unless open hall is on; that's how judging works, not a fault.
+- **What was built:**
+  - `POST /spoc/remove_staff/<event_id>` (`routes_spoc.py:1253`): the owner (or anyone with `edit_event` on the event) removes an email from the event's `staff` and `coordinators`. Every permission on the event comes from those lists, so access to registrations, exports, check-in and scoring ends at once; the account stays.
+  - The SPOC dashboard shows a remove button on each coordinator chip and lists the assigned judges, each with a Remove button, in the judges dialog (`templates/spoc/dashboard.html:1746,2098`). The dialog's stale "credentials emailed" line now says new judges get a set-password link (UPG-33).
+  - `assign_coordinator` checks `edit_event` with BLK-17's helper first (`routes_spoc.py:1193`), so another SPOC gets 403 before anything is created.
+- **Files touched:** `routes_spoc.py`, `templates/spoc/dashboard.html`, `tests/test_assignment.py` (new).
+- **Effort:** S · **Depends on:** BLK-04 · **Risk:** low. Removing a judge leaves `assigned_judge_email` on the event's registrations, harmless since scoring needs the staff entry; the next allocation replaces it.
+- **Acceptance criteria** (`tests/test_assignment.py`, real database layer; all 4 cases fail on the old code):
+  1. ✅ Test (real DB): the SPOC assigns a coordinator and a judge on their own event; each sees it on their dashboard (`::test_the_owner_assigns_a_coordinator_and_a_judge_and_each_sees_the_event`; the coordinator opens the registrations, the judge the team list; the owner's dashboard offers removal). The judge's check uses an `active` event until UPG-04 criterion 3.
+  2. ✅ Test: another SPOC gets 403 and nothing changes (`::test_another_spoc_cant_assign_or_remove_and_nothing_changes`: assign coordinator, add judge and remove; no account is created for a new email).
+  3. ✅ Test: unassigning removes access to the event's registrations and scoring (`::test_removing_someone_ends_their_access`: the coordinator loses registrations, exports and attendance marking and the event leaves their dashboard; the judge loses the team list and scoring, nothing is saved, and the event leaves their dashboard). `::test_removing_someone_who_isnt_staff_changes_nothing` covers a wrong email.
+  - Full pytest: **830 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-30 — Paid events end to end: receipt email, refunds and cancellations
 - **Status:** TODO
@@ -1764,3 +1774,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "BLK-19: …" (parent `0a68ce6`) | BLK-19, UPG-15, UPG-25 | **BLK-19 DONE** (found in UPG-02; built before UPG-06 under rule 2). The audit found 241 places in 30 templates and scripts where a value went into HTML unescaped; other people's text could run as script on the public leaderboard, calendar, landing page and chatbot, on SPOC, judge, admin and coordinator pages, and in the student dashboard's notifications. New `static/js/escape.js` (`escapeHtml`, `escapeJsAttr` for handler attributes, `safeUrl` for links), loaded by the shared layout and each standalone page that uses it; shared scripts build text nodes instead; four page-local helpers, two of which missed single quotes, are gone. `tests/html_sinks.py` scans every tracked template and script, so new code is held to the same rule. 35 new test cases (the scan and the loader check fail on the old code; a Node test of the helpers; a real-database check that a markup name is stored as typed and shown as text). UPG-15's two dead templates are skipped by the scan until it deletes them; UPG-25 stays the second layer. Full pytest 817 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. |
 | 2026-10-08 | "UPG-06: …" (parent `816808c`) | UPG-06, UPG-14 | **UPG-06 DONE.** One issuing path, `utils_certificate.issue_event_certificates`, for ending the event (through the Celery task, inline without a broker) and the SPOC's bulk button. Each attendee marked Present gets a PDF (uploaded template or built-in design; the top three scores get winner certificates), a certificate record and ID, the verify URL on the registration and an emailed PDF, and never a second one. Drawing a PDF no longer writes records; the download route and the email use the stored ID, so their QR and link resolve. The broken per-registration task and the two old send-all functions are removed; the bulk button uses BLK-17's permission check. 3 new real-database tests (all fail on the old code). UPG-14 gains API v1's separate certificate store, which `/verify` can't see. Full pytest 820 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-08 | "UPG-03: …" (parent `f964a34`) | UPG-03 | **UPG-03 DONE.** New `services_export.py`: one export of an event's registrations (CSV and Excel) used by the SPOC, coordinator and admin routes, with every column the item lists. Department and year come from the profile, form or USN; spreadsheet-formula names are quoted. A one-click event report (Excel): summary, by department, by year, feedback, winners, registrations; linked from the SPOC dashboard. Every export route now answers 403 to anyone without `export_data` on the event (or, for the all-events export, to non-admins), instead of a login redirect; the coordinator's Excel export no longer swallows its 403. 6 new real-database cases (all fail on the old code). Full pytest 826 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-29: …" (parent `2f6262f`) | UPG-29, UPG-04 | **UPG-29 DONE.** Tests first, then the fixes they called for. New `POST /spoc/remove_staff/<event_id>` removes a coordinator or judge from the event's staff and coordinators, ending their access to registrations, exports, check-in and scoring; the SPOC dashboard gets remove buttons on coordinator chips and a judge list with Remove in the judges dialog. `assign_coordinator` now answers another SPOC with 403 (it redirected) before creating anything. The judge dashboard's `active`-only filter stays with UPG-04 criterion 3. 4 new real-database cases (all fail on the old code). Full pytest 830 passed on SQLite and PostgreSQL 16; ruff clean. |

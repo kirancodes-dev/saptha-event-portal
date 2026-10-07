@@ -1190,15 +1190,7 @@ def delete_event(event_id):
 def assign_coordinator(event_id):
     from utils_email import send_appointment_email
 
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-
-    data = doc.to_dict() or {}
-    if data.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised to modify this event.", "danger")
-        return redirect('/spoc/dashboard')
+    data = _event_or_abort(event_id, 'edit_event')  # 404 / 403 for someone else's event (UPG-29)
 
     email = request.form.get('coordinator_email', '').strip().lower()
     name  = request.form.get('coordinator_name', '').strip() or email.split('@')[0].title()
@@ -1249,6 +1241,31 @@ def assign_coordinator(event_id):
     })
     log_action(db, "COORDINATOR_ASSIGNED", f"SPOC {session.get('user_id')} assigned {email} to event {event_id}")
     flash(f"✅ {email} assigned as coordinator. {account_msg}", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 18b. REMOVE STAFF — undo a coordinator or judge assignment (UPG-29)
+# =========================================================
+@spoc_bp.route('/remove_staff/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def remove_staff(event_id):
+    """Every permission on an event comes from its staff and coordinators
+    lists (services_permission.can), so leaving both ends the person's access
+    to its registrations, check-in and scoring. Their account stays."""
+    event = _event_or_abort(event_id, 'edit_event')
+    email = request.form.get('email', '').strip().lower()
+    staff = event.get('staff') or []
+    coords = event.get('coordinators') or []
+    kept_staff = [s for s in staff if (s.get('email') or '').lower() != email]
+    kept_coords = [c for c in coords if (c or '').lower() != email]
+    if not email or (len(kept_staff) == len(staff) and len(kept_coords) == len(coords)):
+        flash(f"{email or 'That person'} isn't on this event's staff.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+    db.collection('events').document(event_id).update({'staff': kept_staff, 'coordinators': kept_coords})
+    log_action(db, "STAFF_REMOVED", f"SPOC {session.get('user_id')} removed {email} from event {event_id}")
+    flash(f"{email} removed from this event's staff.", "success")
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
 

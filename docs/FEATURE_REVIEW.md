@@ -83,7 +83,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Teams (create/join by code) | NOT CONNECTED [C] | `routes_teams.py:92` | Writes a separate `teams` collection; never linked to registrations, tickets or judging. |
 | Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:759` | Session-level attendance not found. |
 | Announcements | not run [C] | `routes_spoc.py:684-758` | — |
-| Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
+| Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
 | WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. |
 | In-app notifications | PARTLY BUILT [C] | `routes_notifications.py:20` vs `routes_notifications_v2.py:70` | Student dashboard feed reads `notifications`, which nothing writes; every writer uses `notifications_v2`. |
 | Scheduled reminders / lifecycle | NOT CONNECTED on free tier [C at `1f4cdc8`] | `celery_app.py:95-120`, `docker-compose.yml:27-37`, `Dockerfile:33` | `docker-compose.yml` now runs worker + beat for self-hosting; a single web service still runs only gunicorn (UPG-07). |
@@ -750,7 +750,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | `RAZORPAY_KEY_SECRET` (with `RAZORPAY_KEY_ID`) | Set before any paid event is opened | **No**, but without them online payment refuses with 503 (fails closed since BLK-03). Never set `PAYMENT_SIMULATION` in production (it's ignored there anyway). |
 | `DATABASE_URL` | PostgreSQL (`postgresql://…`) | Yes: production refuses SQLite or no database (`db_pg.py:104-150`) |
 | `BREVO_API_KEY` | A Brevo API key (Brevo → Settings → SMTP & API → API Keys). **Required in practice:** since UPG-33, new staff, SPOCs and walk-ins can get in only through the emailed set-password link. | **No** (UPG-20 adds a check) |
-| `MAIL_FROM` | The sender, e.g. `SapthaEvent <events@your-domain>`, an address verified as a sender in Brevo. Unset, it falls back to the old Gmail account's address (`utils_email.py:68-72`). | No |
+| `MAIL_FROM` | The sender, e.g. `SapthaEvent <events@your-domain>`, an address verified as a sender in Brevo. Unset, the sender is `MAIL_USER`; with neither, Brevo and Resend refuse to send and `/diag/email` says why (`utils_email.py:51-61`, UPG-41). | No |
 | `BASE_URL` | The site's public `https://` address, e.g. the Cloud Run URL or the university domain. Every emailed, WhatsApp, QR and referral link is built from it. | Yes: production refuses a missing, `http://` or localhost value (`config.py:267-270`, BLK-16) |
 | `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:131`, BLK-13) |
 
@@ -1485,17 +1485,41 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **731 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-41 — Remove the leftover Gmail app password from `utils_email.py`
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `37c2a5c`
+- **Status:** DONE
+- **Last verified:** 2026-10-07, commit "UPG-41: …" on `production-ready` (parent `dee2135`)
 - **Problem:** Found 2026-10-02 while recording UPG-39 [C]. The module docstring of `utils_email.py` (`:26-27`, also in `functions/saptha_app/utils_email.py`) shows a Gmail app password next to the old `MAIL_USER` account. It has been in the public repo since `45c24cc` (2026-04-19). It isn't one of BLK-01's two leaked `MAIL_PASS` values, but it belongs to the same old account. The owner changed that account's password on 2026-09-30, which revokes all its app passwords, so it should already be dead. Gitleaks doesn't flag this format. The same docstring and `_from_address` (`:68-72`) also hard-code that account as the default sender.
 - **Who benefits:** everyone (no credential-shaped text left in the code).
 - **What to build:** remove the value and the account from the docstring (document the settings by name only), and drop the hard-coded default sender (use `MAIL_FROM`, and fall back to `MAIL_USER` only when that is set). Add a hygiene test that fails on a `MAIL_PASS` assignment with a value in tracked app code. The `functions/` copy goes in Phase 5 (UPG-15).
-- **Files touched:** `utils_email.py`, `config.py` (the `MAIL_USERNAME` default), `tests/test_repo_hygiene.py`.
+- **Re-checked before building (2026-10-07, `dee2135`; rule 3):** UPG-39 added code to `utils_email.py` after `37c2a5c`, so `_from_address` had moved to `:68-72`; the docstring lines (`:26-27`) were unchanged. Also found: `config.py`'s `MAIL_PASSWORD` fell back to the literal `'SET_THIS_IN_ENV'` (unused, but it fails criterion 1), and the privacy, terms and payment-failed pages give the old account as the contact address (recorded as UPG-42; not part of this item).
+- **What was built:**
+  - The module docstring (`utils_email.py:1-16`) documents the settings by name only: no account, no password.
+  - `_from_address` (`:51`) returns `MAIL_FROM`, else `SapthaEvent <MAIL_USER>` when `MAIL_USER` is set, else `''`. With no sender, Brevo and Resend refuse before any request and say so in `LAST_EMAIL_ERROR`, which `/diag/email` shows (`NO_SENDER_ERROR`, `:61`, used at `:262` and `:324`). Before, an unverified or wrong sender failed inside the provider. The SMTP path already needs `MAIL_USER`.
+  - `config.py:113-114`: `MAIL_USERNAME` and `MAIL_PASSWORD` default to `''`; neither is read anywhere else.
+  - Criterion 1's scan (`tests/test_repo_hygiene.py:162-215`) parses every tracked `.py` file outside `functions/` and `scratch/`. It flags `MAIL_PASS`/`MAIL_PASSWORD` given a string by assignment, a dict entry, a keyword or a lookup default, and any string, docstrings included, that spells out such an assignment. Other tracked text files are checked line by line, with `$VAR`, `${{ … }}`, `<…>` and empty values allowed. It needs only the standard library, so CI's hygiene job (which installs only pytest) runs it.
+- **Files touched:** `utils_email.py`, `config.py`, `tests/test_repo_hygiene.py`, `tests/test_mail_sender.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** a deploy with Brevo or Resend but no `MAIL_FROM` now fails to send with a clear error instead of sending as the old account. The deploy checklist already sets `MAIL_FROM` (row updated).
+- **Acceptance criteria:**
+  1. ✅ Test: no tracked file outside `functions/` and `scratch/` assigns a literal value to `MAIL_PASS` (or `MAIL_PASSWORD`) in code or docstrings (`tests/test_repo_hygiene.py::test_no_mail_password_in_tracked_files`, plus 24 cases pinning what the scan flags and allows). Fails on the old code (the docstring and `config.py`'s placeholder).
+  2. ✅ Test: with neither `MAIL_FROM` nor `MAIL_USER` set, the sender address contains no hard-coded personal account: the sender is empty, Brevo and Resend send nothing, and `Config` has no built-in account (`tests/test_mail_sender.py::test_with_neither_setting_there_is_no_sender_and_nothing_is_sent`, `::test_config_has_no_built_in_mail_account`; both fail on the old code). `::test_the_sender_is_mail_from_else_the_mail_user_login` pins the order.
+  3. ✅ Owner: confirm the old Gmail account lists no app passwords. **Confirmed by the owner on 2026-10-07.**
+  - Full pytest: **759 passed** on SQLite and PostgreSQL 16; ruff clean.
+
+#### UPG-42 — The privacy, terms and payment-failed pages give the old Gmail account as the contact address
+- **Status:** TODO
+- **Last verified:** 2026-10-07, commit "UPG-41: …" on `production-ready`
+- **Problem:** Found 2026-10-07 while building UPG-41 [C]. Three public pages tell people to write to the old mail account, the one whose password was changed on 2026-09-30 (BLK-01, UPG-41):
+  - `templates/public/privacy.html:60` (exercising data rights) and `:77`;
+  - `templates/public/terms.html:68`;
+  - `templates/payment/failed.html:43`.
+  If nobody reads that inbox, privacy requests and payment problems go unanswered. The privacy notice's grievance contact is also part of the university's DPDP obligations (UPG-22).
+- **Who benefits:** students and external participants who need help; the university (privacy requests reach someone).
+- **What to build:** one contact address from a setting (e.g. `SUPPORT_EMAIL`, documented in `.env.example`), used by all three pages. When it's unset, the pages show no address rather than a personal one.
+- **Needs from the owner:** the contact address (D-4).
+- **Files touched:** `config.py` or a context processor in `app.py`, the three templates, `.env.example`, tests.
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
-  1. Test: no tracked file outside `functions/` and `scratch/` assigns a literal value to `MAIL_PASS` (or `MAIL_PASSWORD`) in code or docstrings.
-  2. Test: with neither `MAIL_FROM` nor `MAIL_USER` set, the sender address contains no hard-coded personal account.
-  3. Owner: confirm the old Gmail account lists no app passwords.
+  1. Test: with `SUPPORT_EMAIL` set, the privacy, terms and payment-failed pages show it, and no tracked template outside `functions/` and `scratch/` contains the old account's address.
+  2. Test: with it unset, those pages render without a `mailto:` link.
 ---
 
 ## 7. Production-ready plan (phases)
@@ -1521,6 +1545,7 @@ Outside these phases (after Phase 6 unless the owner says otherwise): UPG-04 jud
 | D-1 | **Is Cloud Run the only deploy target?** If yes, `functions/saptha_app/` (the Zoho Catalyst copy) and `catalyst.json` are removed in Phase 5. That copy still has the kiosk/ticket holes (BLK-12), the public SuperAdmin sign-up (BLK-14), the bandit findings (BLK-11) and the walk-in default password (UPG-15). If Catalyst stays, it needs a build step instead of a tracked copy. | BLK-12 criterion 4; BLK-14 criterion 3; UPG-15 criteria 3–4 | **Decided (owner, 2026-10-01): yes, Cloud Run is the only deploy target.** UPG-15 removes `functions/saptha_app/` and `catalyst.json` in Phase 5, which completes BLK-12 criterion 4 and BLK-14 criterion 3; no Catalyst build step is needed. Until then, BLK-11 fixes the two flagged files in place so CI can go green. |
 | D-2 | **BLK-01 owner actions:** force-push the rewritten `master`, delete the remote `main` and `claude/busy-davinci-6nkabi`, and ask GitHub Support to purge the 47 PR refs (commands in the 2026-09-29 changelog). The agent never pushes. | BLK-01 criteria 0 and 4 (CI green on GitHub); BLK-11 criterion 2 | **Done (owner, 2026-10-01):** `master` force-pushed, `main` and `claude/busy-davinci-6nkabi` deleted, `production-ready` pushed, GitHub Support contacted. Verified with `git ls-remote`; BLK-01 criterion 4 is met on GitHub. **Left:** Support removing the 47 PR refs (BLK-01 criterion 0). Nothing else waits on it. |
 | D-3 | **UPG-35: should login, password-reset and sign-up messages hide whether an account exists?** | UPG-35 | **Decided (owner, 2026-10-02):** login and password-reset messages become uniform ("Email or password is incorrect"; "If an account exists for this email, we've sent a reset link"). Sign-up and registration stay as they are: an existing email is told to log in first. Scheduled in Phase 2 right after UPG-33. |
+| D-4 | **UPG-42: which address should the privacy, terms and payment-failed pages give for help and privacy requests?** | UPG-42 | Open (2026-10-07). Until then the pages keep the old Gmail account's address. Not scheduled in a phase yet; it fits next to UPG-22 in Phase 3. |
 
 ---
 
@@ -1601,3 +1626,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-02 | "UPG-37: …" (parent `06f4b02`) | UPG-37, BLK-13 | **UPG-37 DONE.** Each throttle counter has its own window: logins are also capped at 20 failures per account per hour (`LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT`), on the same stored attempts, which are now kept for an hour. A success clears both account windows; IPs and reset requests have no hourly cap. 6 new cases on both counter stores (criteria 1–2 fail on the old code). One BLK-13 test's fixed list of 20 Redis connections ran out with three counters per check; it now gets a new connection per call (same assertions). Full pytest 722 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-02 | "UPG-39: …" (parent `1b04a80`) | UPG-39 | **UPG-39 DONE.** With no mail provider configured, the set-password and reset emails log their link in development (WARNING, marked development-only) so the flows can be tested locally. In production only an error naming the missing provider is logged, never the link, and with a provider nothing is logged. 3 new real-database tests (criteria 1–2 fail on the old code). Full pytest 725 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-07 | "UPG-40: …" (parent `118dbf3`) | UPG-40, UPG-15 | **UPG-40 DONE.** New Super Admin page `/admin/users` on the shared layout, linked from the layout and the admin dashboard: every account with its role and whether it has set a password. Accounts still waiting get a POST "Resend set-password link" button that emails a fresh link (UPG-33's sender) and audit-logs it. Super Admin accounts, accounts with a password and unknown emails are refused and get nothing. The never-rendered standalone `templates/admin/users.html` (GET delete link, form to a missing route) is replaced. 6 new real-database cases (all fail on the old code). UPG-15's dead-link and unused-template notes updated. Full pytest 731 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-07 | "UPG-41: …" (parent `dee2135`) | UPG-41, UPG-42, D-4 | **UPG-41 DONE.** `utils_email.py`'s docstring names the mail settings only: the old account's address and app password are gone. The sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send with an error naming `MAIL_FROM`. `config.py`'s mail account and password default to empty. New hygiene scan: no tracked file outside `functions/` and `scratch/` gives `MAIL_PASS`/`MAIL_PASSWORD` a value in code, docstrings or config (standard library only, so CI's hygiene job runs it). 28 new cases; criteria 1–2 fail on the old code. Criterion 3: the owner confirmed on 2026-10-07 that the old Gmail account lists no app passwords. Deploy checklist's `MAIL_FROM` row updated. **New:** UPG-42 (privacy, terms and payment-failed pages give the old account as the contact address) and D-4 (which address to use). Full pytest 759 passed on SQLite and PostgreSQL 16; ruff clean. |

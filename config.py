@@ -109,9 +109,9 @@ class Config:
         if not _mail_user_raw or not _mail_pass_raw:
             logger.warning("⚠️  PRODUCTION MODE: MAIL_USER and MAIL_PASS must be set!")
 
-    # Use defaults only for development
-    MAIL_USERNAME = _mail_user_raw or 'sapthhack@gmail.com'
-    MAIL_PASSWORD = _mail_pass_raw or 'SET_THIS_IN_ENV'
+    # No built-in account or password: unset stays empty (UPG-41)
+    MAIL_USERNAME = _mail_user_raw or ''
+    MAIL_PASSWORD = _mail_pass_raw or ''
     MAIL_DEFAULT_SENDER = (
         'SapthaEvent Team',
         os.environ.get('MAIL_SENDER') or MAIL_USERNAME

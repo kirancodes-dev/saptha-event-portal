@@ -1,35 +1,18 @@
 """
-utils_email.py — SapthaEvent Email (Auto-switching)
+utils_email.py — SapthaEvent email, sent through the first provider configured.
 
-Railway blocks outbound SMTP (ports 465/587) at the platform level.
-Use an HTTP-based provider instead — Brevo is free and works everywhere.
+Settings are environment variables; their values never belong in code (UPG-41):
+  1. BREVO_API_KEY          → Brevo HTTP API (recommended: free tier, sends to
+                              anyone, works where outbound SMTP is blocked)
+  2. RESEND_API_KEY         → Resend HTTP API (free tier sends to verified
+                              addresses only)
+  3. MAIL_USER + MAIL_PASS  → SMTP login (MAIL_SERVER, default Gmail; for Gmail,
+                              MAIL_PASS is an app password)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- RECOMMENDED (free, works on Railway):  BREVO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 1. Sign up free at https://brevo.com
- 2. Settings → SMTP & API → API Keys → Generate
- 3. In Railway Variables add:
-      BREVO_API_KEY = xkeysib-xxxxxxxxxxxxxxxxxxxx
-      MAIL_FROM     = SapthaEvent <sapthhack@gmail.com>
-
- Free tier: 300 emails/day, sends to ANYONE. No domain verification needed.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- FALLBACK: RESEND (free but only to verified emails)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      RESEND_API_KEY = re_xxxxxxxxxxxx
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- LAST RESORT: Gmail SMTP (blocked by Railway SMTP firewall)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      MAIL_USER = sapthhack@gmail.com
-      MAIL_PASS = yqfktmdnvxofqvxj
-
-PRIORITY ORDER (auto-detected at runtime):
-  1. BREVO_API_KEY set     → Brevo HTTP API  ✅ Railway-safe, free, anyone
-  2. RESEND_API_KEY set    → Resend HTTP API  ⚠️  verified emails only (free)
-  3. Neither               → Gmail SMTP       ❌ blocked on Railway
+MAIL_FROM is the sender, e.g. "SapthaEvent <events@your-domain>", verified with
+the provider. Without it the sender is MAIL_USER; with neither, Brevo and Resend
+refuse to send. With no provider at all, development logs the set-password and
+reset links instead (UPG-39).
 """
 
 from __future__ import annotations
@@ -66,10 +49,16 @@ def _base_url() -> str:
 
 
 def _from_address() -> str:
-    return os.environ.get(
-        'MAIL_FROM',
-        f"SapthaEvent <{os.environ.get('MAIL_USER', 'sapthhack@gmail.com')}>"
-    )
+    """MAIL_FROM, else the MAIL_USER login; '' when neither is set. There's no
+    built-in sender account (UPG-41)."""
+    mail_from = os.environ.get('MAIL_FROM', '').strip()
+    if mail_from:
+        return mail_from
+    mail_user = os.environ.get('MAIL_USER', '').strip()
+    return f"SapthaEvent <{mail_user}>" if mail_user else ''
+
+
+NO_SENDER_ERROR = "MAIL_FROM isn't set: set it to a sender address verified with the mail provider."
 
 
 def mail_provider() -> str:
@@ -269,6 +258,10 @@ def _send_via_brevo(to_email, subject: str, html: str,
 
         api_key  = os.environ.get('BREVO_API_KEY', '')
         from_raw = _from_address()
+        if not from_raw:
+            LAST_EMAIL_ERROR = f"Brevo: {NO_SENDER_ERROR}"
+            logger.error(LAST_EMAIL_ERROR)
+            return False
 
         # Parse "Name <email>" or plain email
         if '<' in from_raw and '>' in from_raw:
@@ -327,6 +320,10 @@ def _send_via_resend(to_email, subject: str, html: str,
                      attachments: list | None = None) -> bool:
     global LAST_EMAIL_ERROR
     try:
+        if not _from_address():
+            LAST_EMAIL_ERROR = f"Resend: {NO_SENDER_ERROR}"
+            logger.error(LAST_EMAIL_ERROR)
+            return False
         import resend
         resend.api_key = os.environ.get('RESEND_API_KEY', '')
         to_list = [to_email] if isinstance(to_email, str) else to_email

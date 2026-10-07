@@ -923,9 +923,10 @@ def mark_attendance_granular():
         members = reg_data.get('members', [])
         for m in members:
             m['attendance'] = 'Present' if m.get('usn') in present_usns else 'Absent'
+        # Keep the first check-in time: the scan already recorded it (UPG-02)
         reg_ref.update({'members': members,
                         'attendance': 'Present' if present_usns else 'Absent',
-                        'checkin_time': datetime.datetime.now().strftime("%H:%M:%S")})
+                        'checkin_time': reg_data.get('checkin_time') or datetime.datetime.now().strftime("%H:%M:%S")})
         log_action(db, "ATTENDANCE_MARKED",
                    f"Reg {reg_id}: {len(present_usns)} members marked present")
         return jsonify({'status': 'success',

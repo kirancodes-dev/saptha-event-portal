@@ -25,7 +25,7 @@ This file is the source of truth for planned work. Agents and developers work on
 ## 1. Summary
 
 1. Today the app does this end to end: public event discovery and calendar, student sign-up and login, SPOC event creation from a template, admin approval, free registration via SPOC-created forms, a ticket page, manual check-in on the event day, judge scoring (with plain-text criteria), a results leaderboard, and admin analytics pages [R].
-2. Almost everything after "register" breaks somewhere. Camera QR check-in, certificates, feedback, exports, coordinator assignment, team events and paid events all fail in postgres mode [R]. *(At `986d108`: coordinator assignment works (BLK-09); paid events are verified safely (BLK-03; not yet run against Razorpay test mode, UPG-30); feedback and the certificate page work for the lead (BLK-05 journey test). Camera QR check-in, certificate PDFs, team events and exports are still open.)*
+2. Almost everything after "register" breaks somewhere. Camera QR check-in, certificates, feedback, exports, coordinator assignment, team events and paid events all fail in postgres mode [R]. *(At `986d108`: coordinator assignment works (BLK-09); paid events are verified safely (BLK-03; not yet run against Razorpay test mode, UPG-30); feedback and the certificate page work for the lead (BLK-05 journey test). Camera QR check-in, certificate PDFs, team events and exports are still open. Since UPG-02 (2026-10-07), every scanner checks real tickets in.)*
 3. Biggest gap 1 — **data loss in the DB adapter:** at `694c729`, postgres mode silently dropped non-column fields, renamed others on read and ignored unknown filters (BLK-06). **Mostly fixed by merging BLK-09 (`1f4cdc8`)** [R]: fields round-trip, filters work, SPOCs can assign coordinators. The rest (enum columns, workflow states, `spoc_id` column, audit actor, newer tables) was fixed by BLK-06 (DONE 2026-10-01).
 4. Biggest gap 2 — **security holes that make new features unsafe** (found by `1f4cdc8` [R]; status at `986d108` per line):
    - anyone could log in as any student through the public registration form (BLK-02, **fixed** on `production-ready`);
@@ -38,7 +38,7 @@ This file is the source of truth for planned work. Agents and developers work on
    - any Volunteer account could mark attendance and open tickets at any event (BLK-18, found starting UPG-02, **fixed**);
    - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
 7. **Not production-ready yet (Phase 0, 2026-09-30):** uploads live on the container's disk (UPG-17; sessions moved to the database, BLK-08), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 111 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan.
-5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool.
+5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool. *(Since UPG-02, 2026-10-07: every scanner, the kiosk and the offline queue check real tickets in through one endpoint; certificates are still open, UPG-06.)*
 6. About 20 templates are never rendered, 3 blueprints are never registered, there are 2 parallel notification systems, 2 payment stacks, 13 seed scripts and a diverged copy of the whole app in `functions/saptha_app/` (UPG-14/15).
 
 ---
@@ -65,11 +65,11 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Stripe payments | NOT CONNECTED [C] | `routes_payment_stripe.py` | No template or JS references `/payment/stripe`. |
 | Coupons | NOT CONNECTED in the UI [C] | `routes_coupons.py`, `services_payments.py:36-73` | `create_order` applies a coupon validated on the server if one is sent (BLK-03), but no template or JS sends one or calls `/coupons/*`. |
 | Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:115-172` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:134`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. |
-| Camera QR check-in (coordinator, SPOC, HUD) | PARTLY BUILT — **fails with real QRs** [R] | `templates/coordinator/scan.html:231-234`, `templates/spoc/scan.html:447-458`, `routes_ticket.py:270-271,479-481` | Coordinator/SPOC scanners pass the signed token as a reg ID → "INVALID TICKET" / 404 [R]. `/ticket/verify` and `/ticket/api/verify` said "Payment pending" for free tickets [R at `694c729`]. At `1f4cdc8` `payment_status` reads back as written (`Free`), so that gate likely passes; the token-as-reg-ID break is unchanged [C]. Not re-run (UPG-02). At `56a014d`: `/ticket/verify` accepts signed tokens only (`routes_ticket.py:56-84`), its GET is read-only, and only authorised staff can POST a check-in (`routes_ticket.py:318-327`) [C]; the lower-case `free` written by waitlist promotion would still read as unpaid (`routes_ticket.py:271,332,480,535`). |
+| Camera QR check-in (coordinator, SPOC, HUD) | WORKING [R at UPG-02] | `routes_ticket.py:123-214`, `templates/coordinator/scan.html:238`, `templates/spoc/scan.html:452`, `templates/coordinator/scan_hud.html:340` | Every scanner posts the scanned ticket to `POST /ticket/api/checkin`: signed tokens only, assigned staff only (`can`, BLK-18), one payment rule (free/waived/paid in any case; a free event owes nothing), idempotent with the first check-in time, refuses another event's ticket and a ticket whose event is gone. Tested on the real database and against the page scripts; not yet driven with a phone camera. Scanner list shows only `active` events (UPG-43). |
 | Manual check-in (SPOC list) | WORKING on event day [R at BLK-05] | `routes_spoc.py:451-525` | Locked until event date (intended). Names read back since BLK-09; BLK-05's journey test checks in through this route on the real database. |
-| Kiosk check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:236-400` | Secured in the root app: login + coordinator role + `can(…, 'check_in', event)`, searches only the chosen event, returns no email or phone (`routes_checkin.py:286-297`). Pinned on the real database by BLK-12; coordinators can be assigned (BLK-09). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); that copy is removed in Phase 5 (UPG-15, D-1). |
+| Kiosk check-in | WORKING in the root app [R at UPG-02] | `routes_checkin.py:236-352`, `templates/public/kiosk.html:699` | Login + coordinator role + `check_in` on the event; search returns no email or phone (BLK-12). Confirm after a name search uses the shared check-in (payment rule, "already checked in at HH:MM"); a USB scanner can scan tickets into the search box (UPG-02). Search results insert names with `innerHTML` (BLK-19). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); removed in Phase 5 (UPG-15, D-1). |
 | Venue-QR self check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Pinned on the real database by BLK-12. The `functions/` copy checks in by a typed email alone (removed in Phase 5, UPG-15, D-1). |
-| Offline check-in (PWA queue) | PARTLY BUILT [C] | `static/js/offline-sync.js:83` | Replays to kiosk confirm, which answers 403 to coordinators not assigned to the event (assigned ones can confirm); not run (UPG-02). `/api/v1/.../checkin-batch` is JWT-only with no UI. |
+| Offline check-in (PWA queue) | WORKING in tests [R at UPG-02] | `static/js/offline-sync.js`, `templates/coordinator/scan_hud.html:13`, `static/sw.js:20` | The HUD queues scans in IndexedDB when offline (one entry per ticket) and replays them to the shared endpoint; repeats answer "already in". Run in Node against the live app, not yet in a phone browser. `/api/v1/.../checkin-batch` is JWT-only with no UI. |
 | Coordinator assignment | WORKING [R at `1f4cdc8`] | `routes_spoc.py:1171-1252` | `spoc_id` now persists, so "assign coordinator" adds the coordinator to `staff` [R], and the coordinator can then open registrations (`tests/test_integration_flow.py:164-185`). |
 | Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists; only on events the SPOC manages since BLK-17 (`tests/test_spoc_event_authz.py`). |
 | Judge dashboard | PARTLY BUILT [R] | `routes_judge.py:58-59` | Lists only events with status `active`; new workflow states never appear. |
@@ -132,7 +132,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Register (team) | **Broken** [R] | Hackathon form shows only name/email/phone/USN, because `is_team_event` and `limits` were dropped. `/teams/*` isn't linked to registration (`routes_teams.py:92`). Teams are formed on WhatsApp. |
 | Pay | **Fixed in code** (BLK-09, BLK-03) | The fee persists and is charged at the server's price; forged, foreign or reused payments are refused (`tests/test_payments_secure.py`). Not yet run against Razorpay test mode (UPG-30). |
 | Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). No payment reference stored. |
-| Check-in | **Broken** for camera scans [R] | See Coordinator. |
+| Check-in | **Works** [R at UPG-02] | The ticket's QR is accepted by every scanner; see Coordinator. |
 | Attend sessions | Not found | No session-level attendance. |
 | Submit work (hackathon) | Page loads [R] | — |
 | See results | OK [R] | Names read back since BLK-09 [R round-trip]. |
@@ -149,7 +149,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
 | Manage registrations / waitlist | Partly [R] | Exports have blank identity columns; no waitlist screen. Organisers rebuild the list in Excel. |
 | Assign coordinators / judges / rooms | Judges and coordinators OK [R at `1f4cdc8`]; rooms not re-run | The `spoc_id` checks at `routes_spoc.py:1186,1508,1546` pass for the owner since BLK-09. End-to-end test: UPG-29. |
-| Run the day | Manual list check-in only [R] | Camera scans fail (UPG-02); the blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09 (not re-run). WhatsApp groups used instead. |
+| Run the day | QR scans and the manual list [R at UPG-02] | Scans go through the shared check-in; the manual list still uses its own route (UPG-14); the blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09 (not re-run). WhatsApp groups used instead. |
 | Results | Publish OK [R]; lock/advance not re-run | Their `spoc_id` gates (`routes_spoc.py:1651,1672`) pass for the owner since BLK-09. |
 | Certificates | **PDF broken** | Bulk send's `spoc_id` gate (`routes_spoc.py:1900`) passes for the owner; the PDF task still fails (`tasks/cert_tasks.py:44`, UPG-06). |
 | Report | AI report's `spoc_id` gate (`routes_spoc.py:816`) passes for the owner; it needs a Gemini key. Admin report page loads [R] | IQAC/NAAC report written by hand (UPG-03). |
@@ -159,10 +159,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Step | Result | Where it breaks |
 |---|---|---|
 | Get assigned | OK [R at `1f4cdc8`] | `tests/test_integration_flow.py:164-185`. |
-| Scan tickets | **Broken** [R] | Coordinator scanner sends the token to `/coordinator/get_ticket/` → "INVALID TICKET". HUD scanner → "Payment pending". |
+| Scan tickets | **Works** [R at UPG-02] | Coordinator, SPOC and HUD scanners and the kiosk use `POST /ticket/api/checkin` (`tests/test_checkin_unified.py`). The scanner list shows only `active` events, so new events need the direct link (UPG-43). |
 | Walk-ins | Works [R at UPG-33] | `routes_coordinator.py:696-779`; needs `manage_registrations` on the chosen event (BLK-04a). A new walk-in gets the ticket and a one-time set-password link, never a password (`tests/test_account_emails.py`). |
 | Attendance (granular) | **Fixed** (BLK-04a) [R] | `routes_coordinator.py:914-916` needs `check_in` on the event; students and unassigned coordinators get 403 (`tests/test_coordinator_authz.py`). |
-| Offline | Partly [C] | Queue replays to kiosk confirm, which returns 403 for unassigned coordinators. |
+| Offline | **Works in tests** [R at UPG-02] | The HUD queues scans offline and replays them to the shared check-in without duplicates (run in Node against the live app). |
 
 ### Judge
 
@@ -192,10 +192,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Event type | Works today | Done outside the app | Needed |
 |---|---|---|---|
-| Seminar | Create from template, approval, free registration (SPOC-created form), ticket, manual check-in, calendar | Attendance sheet (exports blank), feedback (Google Forms), certificates (separate tool), IQAC report | UPG-01, UPG-02, UPG-03, UPG-05, UPG-06 |
+| Seminar | Create from template, approval, free registration (SPOC-created form), ticket, QR and manual check-in (UPG-02), calendar | Attendance sheet (exports blank), feedback (Google Forms), certificates (separate tool), IQAC report | UPG-01, UPG-03, UPG-05, UPG-06 |
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:131`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
-| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard | Team formation (WhatsApp), check-in list, rubric scoring, round shortlists, certificates | UPG-08, UPG-04, UPG-02, UPG-06 |
+| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02) | Team formation (WhatsApp), rubric scoring, round shortlists, certificates | UPG-08, UPG-04, UPG-06 |
 | Sports | Create, registration (solo only), leaderboard page | Team rosters, fixtures, match results, standings (whiteboard/Excel) | UPG-08, UPG-13 |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon | Slots, judging sheets, certificates | UPG-04, UPG-06 |
 | Club activities | Org units can be clubs (`routes_admin.py:685`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
@@ -228,8 +228,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. A student can register for the seeded conference event through the UI.
 
 #### UPG-02 — QR check-in that works with real tickets, for assigned coordinators only
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-07, commit "UPG-02: …" on `production-ready` (parent `5c54cb8`)
 - **Problem:** Three scanners, three broken paths [R]:
   - `templates/coordinator/scan.html:231-234` sends the signed token to `/coordinator/get_ticket/` → "INVALID TICKET".
   - `templates/spoc/scan.html:447-458` sends it to `/spoc/api/checkin/` → 404.
@@ -238,14 +238,35 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Found in BLK-12 [C]: the `/ticket/verify` POST skips the per-event check when the registration's event no longer exists (`if db_exists and event and not can_checkin`, `routes_ticket.py:325`), so any coordinator-level role could mark an orphaned registration present. Deleting an event removes its registrations, so this is rare; the unified endpoint must refuse when the event is missing.
 - **Who benefits:** every coordinator and volunteer on event day; removes paper sign-in sheets.
 - **What to build:** one check-in endpoint, shared by the coordinator, SPOC and kiosk screens, that accepts the signed token only (`routes_ticket._parse_signed_token`), authorises with `can(session, 'check_in', event)`, applies a payment rule on the normalised status (free/waived/paid, any case), is idempotent, and returns name, team and the first check-in time. Point all three scanners and the offline queue at it. Offline scans queue in the browser (IndexedDB, `static/js/offline-sync.js`, registered by `static/sw.js`) and sync later without duplicates. Make kiosk name search use the corrected keys.
-- **Files touched:** `routes_ticket.py`, `routes_coordinator.py`, `routes_spoc.py`, `routes_checkin.py`, `templates/coordinator/scan.html`, `templates/spoc/scan.html`, `templates/coordinator/scan_hud.html`, `templates/public/kiosk.html`, `static/js/offline-sync.js`, `static/sw.js`, tests.
-- **Effort:** M · **Depends on:** BLK-04, BLK-06, BLK-12 · **Risk:** event-day critical path; ship behind a test that replays a real ticket token.
-- **Acceptance criteria:**
-  1. Test: token taken from the ticket page, scanned by the assigned coordinator → attendance `Present`; a second scan → "already checked in at HH:MM" with the first scan's time.
-  2. Test: an unassigned coordinator and a student both get 403.
-  3. Test: a free registration (`Free` or `free`) is never reported as unpaid; an unpaid paid registration is refused.
-  4. Test: replaying an offline queue of 3 tokens marks 3 attendees present; replaying the same queue again changes nothing and reports each as already checked in.
-  5. Test: the coordinator, SPOC and kiosk scanner pages all call the same endpoint (template check), and a raw registration ID is refused there.
+- **Re-checked before building (2026-10-07, `2db0db1`; rule 3):** BLK-16 shortened `routes_ticket.py` above the cited code (the payment gates were at `:257,318,466,521` and the missing-event skip at `:311`); the claims hold. Also found:
+  - `can()` gave every Volunteer `check_in` on every event. Recorded and fixed first as **BLK-18**, so the endpoint's `can()` check means assigned staff only.
+  - The HUD scanner sent a read-only GET with the whole scanned link, so it never marked anyone present. Its offline queue was never loaded (`offline-sync.js` was included only by the shared layout).
+  - The kiosk's search box was `readonly`, so a USB scanner couldn't type into it.
+- **What was built:**
+  - **One check-in, `routes_ticket.check_in` (`routes_ticket.py:123`).** It needs a logged-in user (401 otherwise) and the registration (404). Its event must exist (404: the BLK-12 gap is closed). The user needs `can(…, 'check_in', event)` (403). An `event_id` from the scanner must match the ticket's event (409 `wrong_event`).
+    - A repeat changes nothing and answers `already_in`, "Already checked in at HH:MM.", with the first time.
+    - Payment uses `payment_allows_entry` (`:100`): free, waived, exempt, completed and anything starting with "paid", in any case, may enter. On an event with a fee, anything else is refused (402 `unpaid`); on a free event nothing is owed.
+    - It marks `Present` with the time and who scanned, updates the wallet ticket, awards the XP and audit-logs `CHECKIN`.
+    - It returns name, team, room, first check-in time, registration ID and member names and USNs (no emails or phones).
+  - **The endpoint: `POST /ticket/api/checkin` (`:200`).** It takes `{token, event_id}` in the body, so the token stays out of URLs and logs. It accepts the ticket-page link or either signed token format (`_token_from_scan`, `:113`, then `_parse_signed_token`), and refuses registration IDs with 400.
+  - **Every scanner and desk uses it:**
+    - the coordinator scanner (`templates/coordinator/scan.html:238`), which then shows the team so member attendance can be adjusted;
+    - the SPOC scanner's QR path (`templates/spoc/scan.html:452`); its manual list still uses `/spoc/api/checkin`, see UPG-14;
+    - the HUD (`templates/coordinator/scan_hud.html:340`), which now loads the offline queue (`:13`) and sends a CSRF token;
+    - the kiosk, when a USB or camera scanner types a ticket into the search box (`templates/public/kiosk.html:699`; the box takes typing with `inputmode="none"`, `:509`).
+  - **The other routes use the shared function.** `/ticket/verify` POST (`:426`), `/ticket/api/verify` POST for registrations (`:557`) and kiosk confirm after a name search (`routes_checkin.py:341`) all call it. Their GET checks use the same payment rule, and their response keys are kept.
+  - **The offline queue (`static/js/offline-sync.js`).** It stores each ticket once in IndexedDB and replays to the endpoint with the CSRF token. An item leaves the queue on any final answer (checked in, already in, refused); it stays after a network error, an expired login or a 5xx. Old queued items are still read. `static/sw.js:20` precaches the script (cache `v4`).
+  - **Small fixes in the same flows.** Saving member attendance keeps the first check-in time (`routes_coordinator.py:926`). The SPOC scanner's rows carry the ticket's ID, so a scan updates the right row (`routes_spoc.py:445`). The kiosk's search keys were already right since BLK-06/09; criterion tests pin them.
+- **Files touched:** `routes_ticket.py`, `routes_checkin.py`, `routes_coordinator.py`, `routes_spoc.py`, `templates/coordinator/scan.html`, `templates/coordinator/scan_hud.html`, `templates/spoc/scan.html`, `templates/public/kiosk.html`, `static/js/offline-sync.js`, `static/sw.js`, `tests/test_checkin_unified.py` and `tests/js/offline_sync_harness.js` (new).
+- **Effort:** M · **Depends on:** BLK-04, BLK-06, BLK-12 · **Risk:** event-day critical path. Two concurrent first scans of one ticket both answer "Entry granted" (no transaction in the adapter); attendance is still right. The scanner pages weren't driven in a real browser: their scripts were parsed with Node, and the endpoint, the routes and the offline queue were tested.
+- **Acceptance criteria** (`tests/test_checkin_unified.py`, real database layer; all 20 cases fail on the old code):
+  1. ✅ Test: token taken from the ticket page, scanned by the assigned coordinator → attendance `Present`; a second scan → "already checked in at HH:MM" with the first scan's time (`::test_the_ticket_page_qr_checks_in_once_and_a_rescan_reports_the_first_time`; the token is what the page's QR encodes; saving member attendance afterwards keeps the time).
+  2. ✅ Test: an unassigned coordinator and a student both get 403 (`::test_unassigned_staff_students_and_visitors_cant_check_in`; a visitor gets 401).
+  3. ✅ Test: a free registration (`Free` or `free`) is never reported as unpaid; an unpaid paid registration is refused (`::test_free_waived_and_paid_registrations_are_let_in_in_any_case` with 7 spellings, also on both GET checks; `::test_an_unpaid_registration_on_a_paid_event_is_refused` for Pending, unpaid, Refunded and none; `::test_no_status_on_a_free_event_is_free`).
+  4. ✅ Test: replaying an offline queue of 3 tokens marks 3 attendees present; replaying the same queue again changes nothing and reports each as already checked in (`::test_replaying_an_offline_queue_twice_checks_each_in_once`). Also `::test_the_browser_queue_sends_each_scan_once_and_replays_safely`, which runs `offline-sync.js` itself in Node against a live copy of the app: 3 tickets, one scanned twice, are queued once, sent as 3 posts, then replayed as "already in"; a scan made while the server is unreachable stays queued. It's skipped where Node isn't installed; CI's test job has no Node.
+  5. ✅ Test: the coordinator, SPOC and kiosk scanner pages all call the same endpoint (template check), and a raw registration ID is refused there (`::test_every_scanner_calls_the_one_endpoint_and_it_refuses_registration_ids`; the HUD and the offline queue too; none of the scan handlers calls an old by-ID route).
+  - Also tested: a ticket whose event is gone is refused by all three POST routes (`::test_a_ticket_whose_event_is_gone_is_refused_everywhere`), another event's ticket is refused at this event's scanner, and kiosk name search finds by name, team, member and USN and confirms once.
+  - Full pytest: **782 passed** on SQLite and PostgreSQL 16; ruff clean; bandit exit 0.
 
 #### UPG-03 — Exports and an event report with real participant data
 - **Status:** TODO
@@ -429,6 +450,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - **Login throttling (found in BLK-13):** `security_middleware.py`'s in-memory `record_login_attempt`, `is_account_locked` and `get_remaining_lockout` were never called and are superseded by `services_login_throttle.py`. Nothing calls `block_ip` outside them, so the `is_ip_blocked` check in `init_security_middleware` never blocks anyone. Remove them, along with their unit tests in `tests/test_security.py`, which only test this dead code (keep the header and sanitiser tests).
   - **Waitlist promotion (found in BLK-03):** two implementations, `routes_waitlist.auto_promote` (ordered by `position`, no ticket) and `tasks/waitlist_tasks.promote_from_waitlist` (ordered by `joined_at`, issues a ticket, used by the cancel route). BLK-03 made both use `promotion_terms`; merge them into one.
   - **Not duplicates (checked 2026-09-30 at `56a014d`):** `models.py` (91 lines) is the `db` entry point imported by 70 modules, not a copy of `models_pg.py`; keep it. `routes_ai_matching.py` (judge↔team) is a different feature from the matchmaker; keep it.
+  - **Check-in paths left beside the shared check-in (found building UPG-02):** the SPOC manual list (`/spoc/api/checkin`, with rounds and no payment check) and the coordinator's `get_ticket` and `mark_attendance_granular` still work by registration ID with their own rules; the scanners and desks now use `routes_ticket.check_in`. `/ticket/api/verify` POST's Bearer-token login imports `auth_jwt.decode_access_token`, which doesn't exist, so it only ever accepts the session (fails closed).
 - **Who benefits:** developers; students get a working notification feed.
 - **What to build:** a v2-only notification API and dashboard feed; remove v1, Stripe, both scheduler files and `tests.py`; hide the matchmaker behind a flag until it uses real profiles.
 - **Files touched:** `routes_notifications.py`, `templates/participant/dashboard.html`, `app.py`, `routes_payment_stripe.py`, `scheduler*.py`, `routes_matchmaker.py`, `tests.py`.
@@ -1342,6 +1364,23 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **762 passed** on SQLite and PostgreSQL 16; ruff clean.
 - **Rule 8 (early pass, `services_permission.py` changed):** every open item (37) was checked against this change. Three mention the permission layer: UPG-02 (built next; it wants check-in for assigned staff only, which this enforces), UPG-03 (`export_data`, which volunteers never had) and UPG-12 (cites `services_permission.py:53-80`, unchanged). No other open item's claims change. The full re-verification still runs at the end of Phase 2.
 
+#### BLK-19 — Registrant names run as HTML on staff pages (stored XSS)
+- **Status:** TODO
+- **Last verified:** 2026-10-07, commit "UPG-02: …" on `production-ready` (parent `5c54cb8`)
+- **Problem:** Found while building UPG-02 [C]. Registration stores the lead's name, the team name and member names exactly as typed (`routes_forms.py:404,407,443-455`); nothing escapes or rejects markup on input. Pages Jinja renders escape them, but several staff pages build HTML in JavaScript with `innerHTML` and template strings:
+  - the SPOC scanner's manual list, which runs as soon as the SPOC opens the scanner (`templates/spoc/scan.html:338`: name, team), and its scan log (`:543`);
+  - the kiosk's search results (`templates/public/kiosk.html:747`: name, team, event title).
+  - There are 180 `innerHTML` uses in 43 tracked templates and scripts; the rest haven't been checked.
+  The Content-Security-Policy allows inline scripts (`app.py:221`, `'unsafe-inline'`; UPG-25), so a registrant named `<img src=x onerror=…>` runs script in the SPOC's or coordinator's session. That script can read the page's CSRF token and act as them. UPG-02's new code adds no `innerHTML` with data and didn't change these three places.
+- **Who benefits:** every organiser, coordinator and admin who opens a page that lists registrants.
+- **What to build:** every place a page's JavaScript inserts stored or server-supplied text uses `textContent`, DOM nodes, or one shared escaping helper; markup with values goes through that helper. Keep names as typed (no input mangling).
+- **Files touched:** the templates and `static/js` files the audit finds, a small shared helper (e.g. `static/js/escape.js`), tests.
+- **Effort:** M · **Depends on:** none · **Risk:** a missed sink; UPG-25 (no `'unsafe-inline'`) is the second layer.
+- **Acceptance criteria:**
+  1. Test: a scan of every tracked template and `static/js` file finds each `innerHTML`, `outerHTML`, `insertAdjacentHTML` and `document.write` that interpolates a value (`${…}` or `+ value`). Each value goes through the escaping helper, or the line is on a short reviewed list of trusted values (counts, icons).
+  2. Test (Node, as UPG-02's harness): the escaping helper turns `<img src=x onerror=alert(1)>`, quotes and `&` into text.
+  3. Test (real database): a registrant named `<img src=x onerror=alert(1)>` is stored unchanged and appears escaped on the server-rendered staff pages that list registrants.
+
 #### UPG-33 — Account emails: walk-in passwords by email, reusable reset links
 - **Status:** DONE
 - **Last verified:** 2026-10-02, commit "UPG-33: …" on `production-ready` (parent `0b9463a`)
@@ -1541,6 +1580,37 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: with `SUPPORT_EMAIL` set, the privacy, terms and payment-failed pages show it, and no tracked template outside `functions/` and `scratch/` contains the old account's address.
   2. Test: with it unset, those pages render without a `mailto:` link.
+
+#### UPG-43 — Event-day lists show only events whose status is the old `active`
+- **Status:** TODO
+- **Last verified:** 2026-10-07, commit "UPG-02: …" on `production-ready` (parent `5c54cb8`)
+- **Problem:** Found while building UPG-02 [C]. Events created by SPOCs move through workflow states (`services_workflow.py:25-40`: published, registration_open, in_progress, …) and never become `active`, but:
+  - the coordinator's scanner list shows only `active` events (`routes_coordinator.py:783`), so an assigned coordinator doesn't see today's event and needs the direct link `/coordinator/scan/<event>`;
+  - the walk-in form lists only `active` events (`routes_coordinator.py:695`);
+  - venue-QR self check-in refuses any other status (`routes_checkin.py:77,102`).
+  - The judge dashboard has the same filter (`routes_judge.py:59`), covered by UPG-04.
+  The kiosk's own `active` check went away in UPG-02 (it now uses the shared check-in, which has no status rule).
+- **Who benefits:** coordinators and volunteers on event day; participants using self check-in.
+- **What to build:** one helper that says whether an event is running for event-day purposes (published, registration open or closed, in progress, and the old `active`; not draft, pending, cancelled or completed), used by these three places.
+- **Files touched:** `routes_coordinator.py`, `routes_checkin.py`, `services_workflow.py` (the helper), tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test (real DB): an assigned coordinator's scanner list shows today's `registration_open` event; a `cancelled` one isn't listed.
+  2. Test: the walk-in form lists the same event.
+  3. Test: venue self check-in works for an `in_progress` event and refuses a `cancelled` one.
+- **Not scheduled yet:** it fits Phase 2 next to UPG-29 (owner's call).
+
+#### UPG-44 — An empty payment status reads back as `unpaid` (postgres mode)
+- **Status:** TODO
+- **Last verified:** 2026-10-07, commit "UPG-02: …" on `production-ready` (parent `5c54cb8`)
+- **Problem:** Found while building UPG-02 [R]. A registration written with `payment_status: ''` reads back as `'unpaid'` on the SQL adapter: the enum column gets its default and the read returns it. Every live registration path sets a status (form, waitlist, walk-in, payment), so this affects old, seeded or imported rows. Reports then count them as unpaid. Before UPG-02's rule (a free event owes nothing), such an attendee would have been refused at the gate.
+- **Who benefits:** organisers reading payment figures.
+- **What to build:** an empty or missing payment status reads back as written, as other fields do since BLK-06b; an explicit `unpaid` still reads `unpaid`.
+- **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
+- **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test (SQLite and PostgreSQL): `''` and a missing `payment_status` read back as `''` and missing; `'unpaid'` reads back `'unpaid'`; filters on `payment_status == 'unpaid'` find only the explicit one.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -1649,3 +1719,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-07 | "UPG-40: …" (parent `118dbf3`) | UPG-40, UPG-15 | **UPG-40 DONE.** New Super Admin page `/admin/users` on the shared layout, linked from the layout and the admin dashboard: every account with its role and whether it has set a password. Accounts still waiting get a POST "Resend set-password link" button that emails a fresh link (UPG-33's sender) and audit-logs it. Super Admin accounts, accounts with a password and unknown emails are refused and get nothing. The never-rendered standalone `templates/admin/users.html` (GET delete link, form to a missing route) is replaced. 6 new real-database cases (all fail on the old code). UPG-15's dead-link and unused-template notes updated. Full pytest 731 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-07 | "UPG-41: …" (parent `dee2135`) | UPG-41, UPG-42, D-4 | **UPG-41 DONE.** `utils_email.py`'s docstring names the mail settings only: the old account's address and app password are gone. The sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send with an error naming `MAIL_FROM`. `config.py`'s mail account and password default to empty. New hygiene scan: no tracked file outside `functions/` and `scratch/` gives `MAIL_PASS`/`MAIL_PASSWORD` a value in code, docstrings or config (standard library only, so CI's hygiene job runs it). 28 new cases; criteria 1–2 fail on the old code. Criterion 3: the owner confirmed on 2026-10-07 that the old Gmail account lists no app passwords. Deploy checklist's `MAIL_FROM` row updated. **New:** UPG-42 (privacy, terms and payment-failed pages give the old account as the contact address) and D-4 (which address to use). Full pytest 759 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-07 | "BLK-18: …" (parent `2db0db1`) | BLK-18, Rule 8 | **New blocker, found while starting UPG-02, and DONE** (built before UPG-02 under rule 2, as with BLK-17). `can()` gave every Volunteer `check_in` on every event. On the real database an unassigned volunteer marked another event's registration `Present`, and could read its scanner view and open its ticket and QR. A Volunteer now has `check_in` only on events whose staff lists them, like an EventCoordinator. 3 new real-database tests (2 fail on the old code; the third guards against over-blocking). Full pytest 762 passed on SQLite and PostgreSQL 16; ruff clean. **Rule 8 early pass** (`services_permission.py` touched): all 37 open items checked against the change; only UPG-02 is affected, and in the direction it asks for. |
+| 2026-10-07 | "UPG-02: …" (parent `5c54cb8`) | UPG-02, BLK-19, UPG-43, UPG-44, UPG-14 | **UPG-02 DONE.** One check-in, `routes_ticket.check_in`, behind `POST /ticket/api/checkin`. It takes the scanned link or signed token, never a registration ID. It needs `check_in` on the ticket's event and that the event exists, and refuses another event's ticket. One payment rule: free, waived or paid in any case; a free event owes nothing. A repeat answers "Already checked in at HH:MM." with the first time. The coordinator, SPOC and HUD scanners, a USB scanner at the kiosk and the rewritten offline queue (IndexedDB, one entry per ticket, replay-safe) all use it. `/ticket/verify` POST, `/ticket/api/verify` POST and kiosk confirm call the same function, which closes BLK-12's missing-event gap. 20 new cases, all failing on the old code, including a Node run of `offline-sync.js` against a live copy of the app. **New:** BLK-19 (registrant names inserted with `innerHTML` on staff pages run as script: stored XSS; to be built before UPG-06 under rule 2), UPG-43 (scanner list, walk-in list and venue self check-in accept only the old `active` status), UPG-44 (an empty payment status reads back `unpaid`). UPG-14 gains the by-ID check-in routes left beside the shared one, and `/ticket/api/verify`'s Bearer login, which imports a function that doesn't exist. Full pytest 782 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. |

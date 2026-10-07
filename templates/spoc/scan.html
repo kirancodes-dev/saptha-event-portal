@@ -442,40 +442,35 @@ function playScanSound(type) {
   }
 }
 
+// Every scan goes through the shared check-in (UPG-02); it takes the ticket
+// link or code, never a registration ID.
 async function onQRDetected(decoded) {
   if (cooldown) return;
-
-  const match = decoded.match(/\/ticket\/verify\/([^/?#]+)/);
-  if (!match) {
-    showResult('invalid', null);
-    triggerCooldown(1500);
-    return;
-  }
-  const regId = match[1];
   triggerCooldown(3000);
 
   try {
-    const resp = await fetch(`/spoc/api/checkin/${EVENT_ID}/${regId}`, {
+    const resp = await fetch('/ticket/api/checkin', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': CSRF_TOKEN,
       },
+      body: JSON.stringify({ token: decoded, event_id: EVENT_ID, source: 'spoc scanner' }),
     });
     const data = await resp.json();
     showResult(data.status, data);
     addLog(data.status, data);
-    
+
     if (data.status === 'success') {
       // Find and update item locally if it exists
-      const item = registrations.find(r => r.id === regId);
+      const item = registrations.find(r => r.id === data.reg_id || r.reg_id === data.reg_id);
       if (item) {
         item.attendance = 'Present';
         item.checkin_time = data.checkin_time;
       } else {
         // Fallback: push dynamic new attendee if not in list
         registrations.push({
-          id: regId,
+          id: data.reg_id,
           lead_name: data.name || 'Unknown',
           lead_email: '',
           team_name: data.team || '',
@@ -525,7 +520,7 @@ function showResult(status, data) {
   } else {
     panel.classList.add('result-panel', 'rp-invalid');
     icon.textContent  = '❌';
-    stat.textContent  = 'Invalid Ticket';
+    stat.textContent  = {unpaid: 'Payment Pending', wrong_event: 'Different Event', forbidden: 'Not Allowed'}[status] || 'Invalid Ticket';
     detail.textContent = data?.message || 'This QR code is not valid for this event.';
   }
 

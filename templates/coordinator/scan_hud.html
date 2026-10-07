@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>High-Speed Entry Scanner HUD | {{ event.title }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="/static/js/offline-sync.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -251,7 +253,8 @@
 </div>
 
 <script>
-const EVENT_ID = "{{ event_id }}";
+const EVENT_ID = {{ event_id|tojson }};
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 let scanner = null;
 let isProcessing = false;
 let audioCtx = null;
@@ -327,40 +330,52 @@ function showFeedback(type, title, msg, name = '', tier = '') {
     }, 2200);
 }
 
-// Process Scanned Code via API or local sync
+// Process a scan through the shared check-in (UPG-02); queue it if offline
 async function processScan(decodedText) {
     if (isProcessing) return;
     isProcessing = true;
 
+    let resp, data;
     try {
-        const resp = await fetch(`/ticket/api/verify/${encodeURIComponent(decodedText)}`);
-        const data = await resp.json();
-
-        if (resp.status === 200 && data.status === 'success') {
-            const countEl = document.getElementById('count-in');
-            countEl.textContent = parseInt(countEl.textContent || '0', 10) + 1;
-            showFeedback('success', 'Entry Granted', 'Attendee verified and marked present.', data.name, data.ticket_type);
-        } else if (data.status === 'already_in') {
-            showFeedback('warning', 'Already Checked In', `Scanned at ${data.checkin_time || 'earlier session'}.`, data.name);
-        } else if (resp.status === 402 || data.status === 'unpaid') {
-            showFeedback('danger', 'Payment Pending', 'Outstanding ticket fee required at registration desk.');
-        } else {
-            showFeedback('danger', 'Invalid Ticket', data.message || 'Ticket not recognized.');
-        }
+        resp = await fetch('/ticket/api/checkin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN},
+            body: JSON.stringify({ token: decodedText, event_id: EVENT_ID, source: 'scan hud' })
+        });
+        data = await resp.json();
     } catch (err) {
-        // Queue check-in locally if offline
-        if (window.queueOfflineCheckin) {
-            window.queueOfflineCheckin(decodedText, EVENT_ID);
-            showFeedback('warning', 'Offline Check-In Queued', 'Saved locally. Will sync when back online.');
+        // No connection: keep the scan on this device and send it later
+        if (window.queueOfflineCheckin && await window.queueOfflineCheckin(decodedText, EVENT_ID)) {
+            showFeedback('warning', 'Offline Check-In Queued', 'Saved on this device. It will be sent when back online.');
         } else {
             showFeedback('danger', 'Network Error', 'Connection failed. Please retry.');
         }
+        updateSyncCount();
+        return;
+    }
+
+    if (data.status === 'success') {
+        const countEl = document.getElementById('count-in');
+        countEl.textContent = parseInt(countEl.textContent || '0', 10) + 1;
+        showFeedback('success', 'Entry Granted', 'Attendee verified and marked present.', data.name, data.team);
+    } else if (data.status === 'already_in') {
+        showFeedback('warning', 'Already Checked In', data.message, data.name);
+    } else if (data.status === 'unpaid') {
+        showFeedback('danger', 'Payment Pending', 'Outstanding ticket fee required at registration desk.');
+    } else {
+        showFeedback('danger', 'Not Checked In', data.message || 'Ticket not recognized.');
+    }
+}
+
+async function updateSyncCount() {
+    if (window.countOfflineCheckins) {
+        document.getElementById('sync-count').textContent = await window.countOfflineCheckins();
     }
 }
 
 // Manual ticket code prompt
 function promptManualEntry() {
-    const code = prompt("Enter Ticket Code or Registration ID (e.g. TKT-... or REG-...):");
+    const code = prompt("Paste the ticket link or code:");
     if (code && code.trim()) {
         processScan(code.trim());
     }
@@ -368,7 +383,7 @@ function promptManualEntry() {
 
 function syncLocalQueue() {
     if (window.syncOfflineCheckins) {
-        window.syncOfflineCheckins();
+        window.syncOfflineCheckins().then(updateSyncCount);
     }
 }
 
@@ -396,6 +411,8 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', updateNetStatus);
     window.addEventListener('offline', updateNetStatus);
     updateNetStatus();
+    updateSyncCount();
+    window.addEventListener('offline-checkins-synced', updateSyncCount);
 });
 </script>
 </body>

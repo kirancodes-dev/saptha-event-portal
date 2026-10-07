@@ -506,7 +506,7 @@
         <!-- Search Input -->
         <div class="search-input-wrapper">
             <i class="fas fa-magnifying-glass search-icon"></i>
-            <input type="text" id="kiosk-search-input" class="search-input-field" placeholder="Lookup registration details..." readonly>
+            <input type="text" id="kiosk-search-input" class="search-input-field" placeholder="Search by name, or scan a ticket..." inputmode="none" autocomplete="off" autofocus>
         </div>
 
         <!-- Search Results Viewport -->
@@ -664,6 +664,21 @@
             });
         });
 
+        // A USB scanner types into the box and presses Enter; the on-screen
+        // keyboard stays the touch input (inputmode="none" keeps the phone's away)
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                triggerSearch();
+            }
+        });
+
+        // A USB or camera scanner types the ticket's link (or code) into the box
+        function looksLikeTicket(val) {
+            return val.indexOf('/ticket/verify/') !== -1 ||
+                   (val.length >= 24 && val.indexOf('@') === -1 && /^[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-.]+$/.test(val));
+        }
+
         // Search trigger
         function triggerSearch() {
             var val = searchInput.value.trim();
@@ -676,6 +691,12 @@
             if (!eventId) {
                 resultsPanel.innerHTML = '<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>Please select an event above first.</div>';
                 resultsPanel.style.display = 'block';
+                return;
+            }
+
+            // A scanned ticket checks in through the shared check-in (UPG-02)
+            if (looksLikeTicket(val)) {
+                runCheckIn('/ticket/api/checkin', { token: val, event_id: eventId, source: 'kiosk scan' });
                 return;
             }
 
@@ -755,26 +776,38 @@
 
         // Confirm Kiosk Check-In with badge print animation
         function confirmCheckIn(regId) {
+            runCheckIn('/checkin/kiosk/confirm/' + encodeURIComponent(regId), null);
+        }
+
+        function setPrintStatus(iconClass, text) {
+            var statusText = document.getElementById('lbl-print-status');
+            var icon = document.createElement('i');
+            icon.className = iconClass + ' me-2';
+            statusText.replaceChildren(icon, document.createTextNode(text));
+        }
+
+        // Both the scanned ticket and the name search end here: the same
+        // check-in answers success, "already checked in at HH:MM", or why not.
+        function runCheckIn(url, body) {
             var overlay = document.getElementById('badge-overlay');
-            var printerBox = document.getElementById('printer-box');
             var checkmark = document.getElementById('print-success-check');
             var badge = document.getElementById('badge-ticket');
-            var statusText = document.getElementById('lbl-print-status');
 
             // Reset animation states
             overlay.classList.add('active');
             checkmark.style.display = 'none';
             badge.classList.remove('print-active');
-            statusText.innerHTML = '<i class="fas fa-spinner fa-spin me-2 text-primary"></i>Accessing server database...';
+            setPrintStatus('fas fa-spinner fa-spin text-primary', 'Accessing server database...');
 
             var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
 
-            fetch(`/checkin/kiosk/confirm/${regId}`, {
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
-                }
+                },
+                body: body ? JSON.stringify(body) : null
             })
             .then(res => res.json())
             .then(data => {
@@ -782,8 +815,8 @@
                     // Pre-fill Badge details
                     document.getElementById('lbl-badge-name').textContent = data.lead_name;
                     document.getElementById('lbl-badge-event').textContent = data.event_title;
-                    document.getElementById('lbl-badge-regid').textContent = regId;
-                    
+                    document.getElementById('lbl-badge-regid').textContent = data.reg_id;
+
                     var teamRow = document.getElementById('badge-row-team');
                     if (data.team_name) {
                         document.getElementById('lbl-badge-team').textContent = data.team_name;
@@ -791,21 +824,21 @@
                     } else {
                         teamRow.style.display = 'none';
                     }
-                    
-                    var checkinTime = data.checkin_time || new Date().toLocaleTimeString();
-                    document.getElementById('lbl-badge-time').textContent = checkinTime;
+
+                    document.getElementById('lbl-badge-time').textContent = data.checkin_time || '';
 
                     // Start badge print animation sequence
                     setTimeout(function() {
-                        statusText.innerHTML = '<i class="fas fa-print fa-bounce me-2 text-primary"></i>Printing gate badge... Please wait';
+                        setPrintStatus('fas fa-print fa-bounce text-primary', 'Printing gate badge... Please wait');
                         badge.classList.add('print-active');
                     }, 800);
 
                     // Complete animation sequence
                     setTimeout(function() {
-                        statusText.innerHTML = '<i class="fas fa-circle-check text-success me-2"></i>Attendance Confirmed! Access Granted.';
+                        setPrintStatus('fas fa-circle-check text-success',
+                            data.already_present ? data.message : 'Attendance Confirmed! Access Granted.');
                         checkmark.style.display = 'flex';
-                        
+
                         // Flash success glow
                         checkmark.style.animation = 'bounceIn 0.5s ease both';
                     }, 2800);
@@ -818,7 +851,7 @@
                     }, 8000);
 
                 } else {
-                    statusText.innerHTML = `<i class="fas fa-triangle-exclamation text-danger me-2"></i>Error: ${data.error}`;
+                    setPrintStatus('fas fa-triangle-exclamation text-danger', 'Error: ' + (data.message || data.error));
                     setTimeout(function() {
                         overlay.classList.remove('active');
                     }, 4000);
@@ -826,7 +859,7 @@
             })
             .catch(err => {
                 console.error("Check-in error:", err);
-                statusText.innerHTML = '<i class="fas fa-circle-xmark text-danger me-2"></i>Network communication failure.';
+                setPrintStatus('fas fa-circle-xmark text-danger', 'Network communication failure.');
                 setTimeout(function() {
                     overlay.classList.remove('active');
                 }, 4000);

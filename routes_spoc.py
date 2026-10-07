@@ -442,6 +442,7 @@ def scan_page(event_id):
         d = r.to_dict()
         registrations.append({
             'id': r.id,
+            'reg_id': d.get('reg_id') or r.id,  # the ID in the ticket, which a scan reports (UPG-02)
             'lead_name': d.get('lead_name', ''),
             'lead_email': d.get('lead_email', ''),
             'team_name': d.get('team_name', ''),

@@ -492,6 +492,7 @@
             color: #475569;
         }
     </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -1089,18 +1090,18 @@
             row.innerHTML = `
                 <i class="fas fa-grip-vertical" style="color:#cbd5e1;flex-shrink:0;"></i>
                 <input type="text" class="form-control cr-input criteria-name"
-                       placeholder="Criterion name (e.g. Innovation)" value="${name || ''}"
+                       placeholder="Criterion name (e.g. Innovation)" value="${escapeHtml(name || '')}"
                        oninput="syncCriteria()" style="flex:2;">
                 <input type="text" class="form-control cr-input criteria-desc"
-                       placeholder="What judges look for (optional)" value="${desc || ''}"
+                       placeholder="What judges look for (optional)" value="${escapeHtml(desc || '')}"
                        oninput="syncCriteria()" style="flex:3;">
                 <div class="input-group cr-pts-group" style="max-width:120px;flex-shrink:0;">
                     <input type="number" class="form-control cr-input criteria-max"
-                           value="${maxScore||10}" min="1" max="100" oninput="syncCriteria()">
+                           value="${escapeHtml(maxScore || 10)}" min="1" max="100" oninput="syncCriteria()">
                     <span class="input-group-text" style="background:#f8fafc;border:1.5px solid #e2e8f0;color:#64748b;font-size:11px;font-weight:700;">pts</span>
                 </div>
                 <button type="button" class="fb-type-btn danger" style="padding:7px 12px;flex-shrink:0;"
-                        onclick="document.getElementById('${uid}').remove();syncCriteria()">
+                        onclick="this.closest('.criteria-row').remove();syncCriteria()">
                     <i class="fas fa-trash"></i>
                 </button>`;
             container.appendChild(row);
@@ -1208,14 +1209,14 @@
                 });
                 row.innerHTML = `
                     <span class="fb-drag-handle"><i class="fas fa-grip-vertical"></i></span>
-                    <div class="fb-field-info" style="cursor:pointer;" onclick="fb_selectField('${f.id}')">
-                        <span class="fb-field-lbl">${fb_esc(f.label || f.type)}</span>
-                        <span class="fb-field-typ">${FB_TYPE_LABELS[f.type] || f.type}</span>
+                    <div class="fb-field-info" style="cursor:pointer;" onclick="fb_selectField(${escapeJsAttr(f.id)})">
+                        <span class="fb-field-lbl">${escapeHtml(f.label || f.type)}</span>
+                        <span class="fb-field-typ">${escapeHtml(FB_TYPE_LABELS[f.type] || f.type)}</span>
                     </div>
                     ${f.required ? '<span class="fb-req-badge">Required</span>' : ''}
                     <div class="fb-actions">
-                        <button type="button" title="Edit" onclick="fb_selectField('${f.id}')"><i class="fas fa-edit"></i></button>
-                        <button type="button" title="Delete" class="fb-del" onclick="fb_deleteField('${f.id}')"><i class="fas fa-trash"></i></button>
+                        <button type="button" title="Edit" onclick="fb_selectField(${escapeJsAttr(f.id)})"><i class="fas fa-edit"></i></button>
+                        <button type="button" title="Delete" class="fb-del" onclick="fb_deleteField(${escapeJsAttr(f.id)})"><i class="fas fa-trash"></i></button>
                     </div>`;
                 canvas.appendChild(row);
             });
@@ -1243,13 +1244,13 @@
             const isLayout = ['heading','divider'].includes(f.type);
             let html = '<div class="row g-3">';
             if (f.type !== 'divider') {
-                html += `<div class="col-md-6"><label class="form-label">Label</label><input type="text" class="form-control" value="${fb_esc(f.label)}" oninput="fb_setProp('label',this.value)" placeholder="Field label"></div>`;
+                html += `<div class="col-md-6"><label class="form-label">Label</label><input type="text" class="form-control" value="${escapeHtml(f.label)}" oninput="fb_setProp('label',this.value)" placeholder="Field label"></div>`;
             }
             if (!isLayout && f.type !== 'checkbox') {
-                html += `<div class="col-md-6"><label class="form-label">Placeholder</label><input type="text" class="form-control" value="${fb_esc(f.placeholder)}" oninput="fb_setProp('placeholder',this.value)" placeholder="Hint shown inside field"></div>`;
+                html += `<div class="col-md-6"><label class="form-label">Placeholder</label><input type="text" class="form-control" value="${escapeHtml(f.placeholder)}" oninput="fb_setProp('placeholder',this.value)" placeholder="Hint shown inside field"></div>`;
             }
             if (!isLayout) {
-                html += `<div class="col-md-6"><label class="form-label">Help Text</label><input type="text" class="form-control" value="${fb_esc(f.help_text || '')}" oninput="fb_setProp('help_text',this.value)" placeholder="Optional description"></div>`;
+                html += `<div class="col-md-6"><label class="form-label">Help Text</label><input type="text" class="form-control" value="${escapeHtml(f.help_text || '')}" oninput="fb_setProp('help_text',this.value)" placeholder="Optional description"></div>`;
                 html += `<div class="col-md-6 d-flex align-items-end pb-1">
                            <div class="form-check form-switch mb-0">
                              <input type="checkbox" id="fb_req_chk" class="form-check-input" style="width:40px;height:22px;cursor:pointer;" ${f.required?'checked':''} onchange="fb_setProp('required',this.checked)">
@@ -1261,7 +1262,7 @@
             if (needsOptions) {
                 html += `<div class="mt-3"><label class="form-label d-block" style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#475569;">Options</label><div id="fb_opt_list">`;
                 f.options.forEach((opt, i) => {
-                    html += `<div class="d-flex gap-2 mb-2"><input type="text" class="form-control form-control-sm" style="background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important;" value="${fb_esc(opt)}" oninput="fb_setOpt(${i},this.value)"><button type="button" class="fb-type-btn danger" style="padding:4px 10px;" onclick="fb_removeOpt(${i})"><i class="fas fa-times"></i></button></div>`;
+                    html += `<div class="d-flex gap-2 mb-2"><input type="text" class="form-control form-control-sm" style="background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important;" value="${escapeHtml(opt)}" oninput="fb_setOpt(${escapeJsAttr(i)},this.value)"><button type="button" class="fb-type-btn danger" style="padding:4px 10px;" onclick="fb_removeOpt(${escapeJsAttr(i)})"><i class="fas fa-times"></i></button></div>`;
                 });
                 html += `</div><button type="button" class="fb-type-btn info mt-1" onclick="fb_addOpt()"><i class="fas fa-plus me-1"></i>Add Option</button></div>`;
             }
@@ -1309,10 +1310,6 @@
         function fb_sync() {
             document.getElementById('autoFormJson').value = JSON.stringify(fb_fields);
         }
-        function fb_esc(s) {
-            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-        }
-
         // ── GEMINI AI EVENT WRITER JS ──
         function toggleAIGenerator() {
             var card = document.getElementById('ai-generator-card');
@@ -1334,7 +1331,7 @@
                 return;
             }
             
-            var oldText = submitBtn.innerHTML;
+            var oldHtml = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
@@ -1367,7 +1364,7 @@
             })
             .finally(function() {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = oldText;
+                submitBtn.innerHTML = oldHtml;
             });
         }
     </script>

@@ -1295,6 +1295,7 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 1px 0 rgba(0,0,0,0.1);
   }
 </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -2628,10 +2629,10 @@ function selectRoom(name, cap, max, element) {
     const detailsContent = container.querySelector('.room-details-content');
     if (detailsContent) {
       detailsContent.innerHTML = `
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Zone ID:</strong> ${name}</div>
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Live Capacity:</strong> ${cap} / ${max} (${pct}%)</div>
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Status:</strong> <span class="${statusClass}">${pct}% Filled</span></div>
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Recommendation:</strong><br>${statusMsg}</div>
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Zone ID:</strong> ${escapeHtml(name)}</div>
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Live Capacity:</strong> ${escapeHtml(cap)} / ${escapeHtml(max)} (${escapeHtml(pct)}%)</div>
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Status:</strong> <span class="${escapeHtml(statusClass)}">${escapeHtml(pct)}% Filled</span></div>
+        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Recommendation:</strong><br>${escapeHtml(statusMsg)}</div>
       `;
     }
     
@@ -2842,7 +2843,7 @@ function generateAICopy() {
   }
 
   const btn = document.querySelector('button[onclick="generateAICopy()"]');
-  const oldText = btn.innerHTML;
+  const oldHtml = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
@@ -2870,7 +2871,7 @@ function generateAICopy() {
   })
   .finally(() => {
     btn.disabled = false;
-    btn.innerHTML = oldText;
+    btn.innerHTML = oldHtml;
   });
 }
 </script>
@@ -2918,9 +2919,9 @@ function showToast(message, type = 'success', duration = 3500) {
   
   toast.innerHTML = `
     <div class="toast-icon">
-      <i class="fas ${icon}"></i>
+      <i class="fas ${escapeHtml(icon)}"></i>
     </div>
-    <div class="toast-content">${message}</div>
+    <div class="toast-content">${escapeHtml(message)}</div>
   `;
   
   container.appendChild(toast);
@@ -2995,14 +2996,14 @@ function refreshStats() {
           var iconClass = act.type === 'checkin' ? 'fa-user-check' : 'fa-user-plus';
           
           item.innerHTML = `
-            <div class="activity-icon-badge ${badgeClass}">
-              <i class="fas ${iconClass}"></i>
+            <div class="activity-icon-badge ${escapeHtml(badgeClass)}">
+              <i class="fas ${escapeHtml(iconClass)}"></i>
             </div>
             <div class="activity-details">
-              <div class="fw-bold text-white" style="color: var(--ink-900) !important;">${act.name}</div>
-              <div class="text-muted small">${act.details} in <span class="fw-semibold text-primary" style="color: var(--snpsu-blue-lighter) !important;">${act.event}</span></div>
+              <div class="fw-bold text-white" style="color: var(--ink-900) !important;">${escapeHtml(act.name)}</div>
+              <div class="text-muted small">${escapeHtml(act.details)} in <span class="fw-semibold text-primary" style="color: var(--snpsu-blue-lighter) !important;">${escapeHtml(act.event)}</span></div>
             </div>
-            <div class="activity-time">${act.time}</div>
+            <div class="activity-time">${escapeHtml(act.time)}</div>
           `;
           feedContainer.appendChild(item);
         });
@@ -3211,11 +3212,11 @@ function filterPaletteCommands() {
     
     el.innerHTML = `
       <div class="cmd-item-left">
-        <i class="fas ${item.icon} cmd-item-icon"></i>
-        <span class="cmd-item-title">${item.title}</span>
+        <i class="fas ${escapeHtml(item.icon)} cmd-item-icon"></i>
+        <span class="cmd-item-title">${escapeHtml(item.title)}</span>
       </div>
       <div>
-        ${item.category ? `<span class="cmd-item-badge">${item.category}</span>` : ''}
+        ${item.category ? `<span class="cmd-item-badge">${escapeHtml(item.category)}</span>` : ''}
         ${itemIndex === 0 ? '<span class="cmd-item-shortcut">Enter</span>' : ''}
       </div>
     `;

@@ -66,10 +66,10 @@
 function shareCopy(btn){
   var url = btn.dataset.url || window.location.href;
   navigator.clipboard.writeText(url).then(function(){
-    var orig = btn.innerHTML;
+    var origHtml = btn.innerHTML;
     btn.style.background = '#d1fae5'; btn.style.color = '#065f46';
     btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-    setTimeout(function(){ btn.style.background=''; btn.style.color=''; btn.innerHTML=orig; }, 2000);
+    setTimeout(function(){ btn.style.background=''; btn.style.color=''; btn.innerHTML=origHtml; }, 2000);
   });
 }
 

@@ -795,6 +795,7 @@ body {
 }
 </script>
 
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -1683,17 +1684,17 @@ function showEventModalFromCol(col){
     
     // Banner image
     var bannerHtml = bannerSrc
-      ? '<div style="margin:-24px -24px 20px;border-radius:12px 12px 0 0;overflow:hidden;max-height:200px;"><img src="' + bannerSrc + '" style="width:100%;height:200px;object-fit:cover;display:block;" alt=""></div>'
+      ? '<div style="margin:-24px -24px 20px;border-radius:12px 12px 0 0;overflow:hidden;max-height:200px;"><img src="' + safeUrl(bannerSrc) + '" style="width:100%;height:200px;object-fit:cover;display:block;" alt=""></div>'
       : '';
     
     // Category badge colour
     var catColour = {technical:'#3b82f6',cultural:'#a855f7',sports:'#10b981',management:'#f59e0b'};
     var badgeBg = catColour[evCat.toLowerCase()] || '#6b7280';
     
-    // Register button
-    var regBtn = evReg && evRegId
-      ? '<button class="modal-btn" style="background:#10b981;color:#fff;border:none;" onclick="location.href=\'/ticket/' + evRegId + '\'"><i class="fas fa-ticket-alt me-1"></i>View My Ticket</button>'
-      : '<button class="modal-btn modal-btn-primary" onclick="location.href=\'/forms/register/' + evId + '\'"><i class="fas fa-arrow-right me-1"></i>Register Now</button>';
+    // Register button (the card's text and IDs are escaped into the HTML: BLK-19)
+    var regBtnHtml = evReg && evRegId
+      ? '<button class="modal-btn" style="background:#10b981;color:#fff;border:none;" onclick="location.href=' + escapeJsAttr('/ticket/' + encodeURIComponent(evRegId)) + '"><i class="fas fa-ticket-alt me-1"></i>View My Ticket</button>'
+      : '<button class="modal-btn modal-btn-primary" onclick="location.href=' + escapeJsAttr('/forms/register/' + encodeURIComponent(evId)) + '"><i class="fas fa-arrow-right me-1"></i>Register Now</button>';
     
     // Calendar section (only if we have a valid date)
     var calHtml = '';
@@ -1702,27 +1703,27 @@ function showEventModalFromCol(col){
       calHtml = '<div class="event-modal-section">'
         + '<h5>Add to Calendar</h5>'
         + '<div class="d-flex flex-wrap gap-2">'
-        + '<a href="' + gUrl + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fab fa-google me-1"></i>Google Calendar</a>'
+        + '<a href="' + safeUrl(gUrl) + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fab fa-google me-1"></i>Google Calendar</a>'
         + '</div></div>';
     }
     
     body.innerHTML =
       bannerHtml +
       '<div class="event-modal-meta">'
-        + '<div class="event-modal-meta-item"><i class="fas fa-calendar-alt"></i><span>' + dateText + '</span></div>'
-        + '<div class="event-modal-meta-item"><i class="fas fa-map-marker-alt"></i><span>' + venue + '</span></div>'
-        + '<div class="event-modal-meta-item"><i class="fas fa-tag"></i><span style="text-transform:capitalize;color:' + badgeBg + ';font-weight:700;">' + evCat + '</span></div>'
-        + '<div class="event-modal-meta-item"><i class="fas fa-users"></i><span>' + regCount + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-calendar-alt"></i><span>' + escapeHtml(dateText) + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-map-marker-alt"></i><span>' + escapeHtml(venue) + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-tag"></i><span style="text-transform:capitalize;color:' + escapeHtml(badgeBg) + ';font-weight:700;">' + escapeHtml(evCat) + '</span></div>'
+        + '<div class="event-modal-meta-item"><i class="fas fa-users"></i><span>' + escapeHtml(regCount) + '</span></div>'
       + '</div>'
-      + '<div class="event-modal-section"><h5>About This Event</h5><p>' + description + '</p></div>'
-      + '<div class="event-modal-section"><h5>Entry Fee</h5><p style="font-size:18px;font-weight:800;color:var(--orange);">' + fee + '</p></div>'
+      + '<div class="event-modal-section"><h5>About This Event</h5><p>' + escapeHtml(description) + '</p></div>'
+      + '<div class="event-modal-section"><h5>Entry Fee</h5><p style="font-size:18px;font-weight:800;color:var(--orange);">' + escapeHtml(fee) + '</p></div>'
       + calHtml
       + '<div class="event-modal-section"><h5>Event Highlights</h5><p>\uD83C\uDFAF Competitive spirit \u2022 \uD83C\uDFC6 Amazing prizes \u2022 \uD83E\uDD1D Networking opportunities \u2022 \uD83C\uDF93 Skill development</p></div>'
-      + '<div class="modal-btn-group">' + regBtn + '<button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+      + '<div class="modal-btn-group">' + regBtnHtml + '<button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
       
   } catch(err) {
     // Safety net — show error in modal so page is NEVER frozen
-    if(body) body.innerHTML = '<div class="alert alert-danger"><strong>Could not load event details.</strong><br><small>' + err.message + '</small></div><div class="modal-btn-group"><button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
+    if(body) body.innerHTML = '<div class="alert alert-danger"><strong>Could not load event details.</strong><br><small>' + escapeHtml(err.message) + '</small></div><div class="modal-btn-group"><button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
     console.error('showEventModalFromCol error:', err);
   }
 }
@@ -2108,7 +2109,8 @@ function addBubble(text, role){
   var msgs = document.getElementById('chatMsgs');
   var wrap = document.createElement('div');
   wrap.className = 'bw ' + role;
-  wrap.innerHTML = '<div class="bb ' + role + '">' + text + '</div>';
+  // The visitor's message and the AI's reply are text (BLK-19)
+  wrap.innerHTML = '<div class="bb ' + escapeHtml(role) + '">' + escapeHtml(text) + '</div>';
   msgs.appendChild(wrap);
   msgs.scrollTop = msgs.scrollHeight;
   return wrap;

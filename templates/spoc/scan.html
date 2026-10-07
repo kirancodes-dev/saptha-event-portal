@@ -233,6 +233,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="/static/js/escape.js"></script>
 <script>
 const EVENT_ID        = {{ event_id | tojson }};
 const CSRF_TOKEN      = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -313,32 +314,33 @@ function renderManualList() {
     const item = document.createElement('div');
     item.className = 'manual-item';
     
-    let deliveryBadge = '';
+    let deliveryBadgeHtml = '';
     const dStatus = r.delivery_status || 'Unknown';
     if (dStatus === 'Sent') {
-      deliveryBadge = ` <span class="badge bg-secondary text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-paper-plane me-1"></i>Sent</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-secondary text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-paper-plane me-1"></i>Sent</span>`;
     } else if (dStatus === 'Delivered') {
-      deliveryBadge = ` <span class="badge bg-info text-dark" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-check-double me-1"></i>Delivered</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-info text-dark" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-check-double me-1"></i>Delivered</span>`;
     } else if (dStatus === 'Opened') {
-      deliveryBadge = ` <span class="badge bg-success text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-envelope-open me-1"></i>Opened</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-success text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-envelope-open me-1"></i>Opened</span>`;
     } else if (dStatus === 'Bounced') {
-      deliveryBadge = ` <span class="badge bg-danger text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-exclamation-triangle me-1"></i>Bounced</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-danger text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-exclamation-triangle me-1"></i>Bounced</span>`;
     }
 
-    const nameStr = r.lead_name + (r.team_name ? ` · <span style="color:var(--orange);">${r.team_name}</span>` : '');
-    const subStr = r.lead_email + deliveryBadge;
+    // Registrants typed these: escape them (BLK-19)
+    const nameHtml = escapeHtml(r.lead_name) + (r.team_name ? ` · <span style="color:var(--orange);">${escapeHtml(r.team_name)}</span>` : '');
+    const subHtml = escapeHtml(r.lead_email) + deliveryBadgeHtml;
     
     let actionHtml = '';
     if (r.attendance === 'Present') {
       actionHtml = `<span class="manual-status status-present"><i class="fas fa-check-circle"></i> Checked In</span>`;
     } else {
-      actionHtml = `<button class="manual-btn" id="btn-${r.id}" onclick="manualCheckIn('${r.id}')"><i class="fas fa-user-check"></i> Check In</button>`;
+      actionHtml = `<button class="manual-btn" id="btn-${escapeHtml(r.id)}" onclick="manualCheckIn(${escapeJsAttr(r.id)})"><i class="fas fa-user-check"></i> Check In</button>`;
     }
     
     item.innerHTML = `
       <div>
-        <div class="manual-name">${nameStr}</div>
-        <div class="manual-sub">${subStr}</div>
+        <div class="manual-name">${nameHtml}</div>
+        <div class="manual-sub">${subHtml}</div>
       </div>
       <div>
         ${actionHtml}
@@ -541,9 +543,9 @@ function addLog(status, data) {
   const item = document.createElement('div');
   item.className = 'log-item';
   item.innerHTML = `
-    <span class="log-dot ${dot}"></span>
-    <span class="log-name">${nameText}</span>
-    <span class="log-time">${now} · ${label}</span>
+    <span class="log-dot ${escapeHtml(dot)}"></span>
+    <span class="log-name">${escapeHtml(nameText)}</span>
+    <span class="log-time">${escapeHtml(now)} · ${escapeHtml(label)}</span>
   `;
   list.insertBefore(item, list.firstChild);
 }

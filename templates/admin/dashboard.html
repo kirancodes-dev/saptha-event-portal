@@ -358,6 +358,7 @@
       .main-content { margin-left: 0; }
     }
   </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -873,7 +874,7 @@ async function generateAiProposal() {
     (proposal.workflow_steps || []).forEach(step => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-center py-1 px-0 bg-transparent';
-      li.innerHTML = `<span><strong>${step.order}.</strong> ${step.label || step.id}</span> <span class="badge bg-light text-dark border">${step.status || 'pending'}</span>`;
+      li.innerHTML = `<span><strong>${escapeHtml(step.order)}.</strong> ${escapeHtml(step.label || step.id)}</span> <span class="badge bg-light text-dark border">${escapeHtml(step.status || 'pending')}</span>`;
       wfList.appendChild(li);
     });
 
@@ -881,19 +882,19 @@ async function generateAiProposal() {
     const rubricCont = document.getElementById('aiPropRubricContainer');
     rubricCont.innerHTML = '';
     (proposal.rubric || []).forEach(r => {
-      rubricCont.innerHTML += `<div class="d-flex justify-content-between mb-1"><span>${r.name}</span> <span class="badge bg-secondary">${r.weight}%</span></div>`;
+      rubricCont.innerHTML += `<div class="d-flex justify-content-between mb-1"><span>${escapeHtml(r.name)}</span> <span class="badge bg-secondary">${escapeHtml(r.weight)}%</span></div>`;
     });
 
     // Tiers
     const tiersCont = document.getElementById('aiPropTicketTiers');
     tiersCont.innerHTML = '';
     (proposal.ticket_tiers || []).forEach(t => {
-      tiersCont.innerHTML += `<div class="d-flex justify-content-between mb-1"><span>${t.name}</span> <span class="fw-bold">₹${t.price}</span></div>`;
+      tiersCont.innerHTML += `<div class="d-flex justify-content-between mb-1"><span>${escapeHtml(t.name)}</span> <span class="fw-bold">₹${escapeHtml(t.price)}</span></div>`;
     });
 
     // Forms
     const formCont = document.getElementById('aiPropFormFields');
-    formCont.innerHTML = (proposal.form_fields || []).map(f => `<span class="badge bg-white text-dark border me-1 mb-1">${f.label || f.id}</span>`).join('') || '<span class="text-muted">Standard Registration</span>';
+    formCont.innerHTML = (proposal.form_fields || []).map(f => `<span class="badge bg-white text-dark border me-1 mb-1">${escapeHtml(f.label || f.id)}</span>`).join('') || '<span class="text-muted">Standard Registration</span>';
 
     container.classList.remove('d-none');
   } catch (err) {

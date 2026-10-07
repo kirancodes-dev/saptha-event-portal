@@ -112,6 +112,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .applied-text{font-size:13.5px;color:#166534;font-weight:600;}
 .applied-sub{font-size:12px;color:#4ade80;margin-top:2px;}
 </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -376,7 +377,7 @@ async function runMatching() {
 
     if (data.status !== 'ok') {
       banner.className = 'status-banner error';
-      banner.innerHTML = `<i class="fas fa-exclamation-circle" style="font-size:18px;flex-shrink:0;"></i><div><div style="font-weight:600;margin-bottom:2px;">Matching failed</div><div style="font-size:12px;">${data.message}</div></div>`;
+      banner.innerHTML = `<i class="fas fa-exclamation-circle" style="font-size:18px;flex-shrink:0;"></i><div><div style="font-weight:600;margin-bottom:2px;">Matching failed</div><div style="font-size:12px;">${escapeHtml(data.message)}</div></div>`;
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-brain"></i> Try Again';
       return;
@@ -393,7 +394,7 @@ async function runMatching() {
 
   } catch(e) {
     banner.className = 'status-banner error';
-    banner.innerHTML = `<i class="fas fa-exclamation-circle" style="font-size:18px;flex-shrink:0;"></i><div><div style="font-weight:600;">Network error</div><div style="font-size:12px;">${e.message}</div></div>`;
+    banner.innerHTML = `<i class="fas fa-exclamation-circle" style="font-size:18px;flex-shrink:0;"></i><div><div style="font-weight:600;">Network error</div><div style="font-size:12px;">${escapeHtml(e.message)}</div></div>`;
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-brain"></i> Try Again';
   }
@@ -425,11 +426,11 @@ function renderPlan(plan) {
       return `
         <div class="match-team-row">
           <div style="flex:1;min-width:0;">
-            <p class="match-team-name">${escHtml(t.team_name)}</p>
-            <p class="match-reason">${escHtml(t.match_reason || '')}</p>
+            <p class="match-team-name">${escapeHtml(t.team_name)}</p>
+            <p class="match-reason">${escapeHtml(t.match_reason || '')}</p>
           </div>
           <div>
-            <span class="conf-badge ${confClass}">${conf}%</span>
+            <span class="conf-badge ${escapeHtml(confClass)}">${escapeHtml(conf)}%</span>
           </div>
         </div>`;
     }).join('');
@@ -443,10 +444,10 @@ function renderPlan(plan) {
       <div class="match-group">
         <div class="match-judge-head">
           <div>
-            <div class="match-judge-name">${escHtml(m.judge_name)}</div>
-            ${expertiseLine ? `<div class="match-judge-exp">${escHtml(expertiseLine)}</div>` : ''}
+            <div class="match-judge-name">${escapeHtml(m.judge_name)}</div>
+            ${expertiseLine ? `<div class="match-judge-exp">${escapeHtml(expertiseLine)}</div>` : ''}
           </div>
-          <span class="match-count-badge">${(m.assigned_teams||[]).length} team${(m.assigned_teams||[]).length !== 1 ? 's' : ''}</span>
+          <span class="match-count-badge">${escapeHtml((m.assigned_teams||[]).length)} team${(m.assigned_teams||[]).length !== 1 ? 's' : ''}</span>
         </div>
         ${teams_html}
       </div>`;
@@ -476,7 +477,7 @@ async function applyMatch() {
       btn.style.display = 'none';
       const banner = document.getElementById('statusBanner');
       banner.className = 'status-banner applied';
-      banner.innerHTML = `<i class="fas fa-check-circle" style="font-size:18px;flex-shrink:0;color:#22c55e;"></i><div><div style="font-weight:600;">Applied! ${data.applied} assignments saved to Firestore.</div><div style="font-size:12px;opacity:.8;">Students will receive their room details when you trigger notifications on the dashboard.</div></div>`;
+      banner.innerHTML = `<i class="fas fa-check-circle" style="font-size:18px;flex-shrink:0;color:#22c55e;"></i><div><div style="font-weight:600;">Applied! ${escapeHtml(data.applied)} assignments saved to Firestore.</div><div style="font-size:12px;opacity:.8;">Students will receive their room details when you trigger notifications on the dashboard.</div></div>`;
     } else {
       alert('Apply failed: ' + data.message);
       btn.disabled = false;
@@ -490,11 +491,6 @@ async function applyMatch() {
 }
 
 /* ── Helpers ── */
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 /* ── Load saved plan on page load if it exists ── */
 (async function loadSaved() {

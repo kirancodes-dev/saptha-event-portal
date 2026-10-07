@@ -214,6 +214,7 @@
             background: rgba(59, 130, 246, 0.1);
         }
     </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
     <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-2">
@@ -394,7 +395,7 @@
             div.className = 'chat-msg';
             
             var userClass = isSelf ? 'text-primary fw-bold' : '';
-            div.innerHTML = `<div class="chat-msg-user ${userClass}">${user}</div>
+            div.innerHTML = `<div class="chat-msg-user ${escapeHtml(userClass)}">${escapeHtml(user)}</div>
                              <div class="chat-msg-text">${escapeHtml(msg)}</div>`;
             
             container.appendChild(div);
@@ -404,10 +405,6 @@
             while (container.childNodes.length > 40) {
                 container.removeChild(container.firstChild);
             }
-        }
-
-        function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
         // Live Chat Submit

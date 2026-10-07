@@ -211,7 +211,7 @@
             return;
         }
         
-        var oldText = submitBtn.innerHTML;
+        var oldHtml = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
@@ -244,7 +244,7 @@
         })
         .finally(function() {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = oldText;
+            submitBtn.innerHTML = oldHtml;
         });
     }
 </script>

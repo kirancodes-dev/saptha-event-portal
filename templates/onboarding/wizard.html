@@ -88,6 +88,7 @@
       display: block;
     }
   </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body class="mkt-page">
 
@@ -206,7 +207,7 @@
       var wrap = document.getElementById('deptTags');
       var tag = document.createElement('span');
       tag.className = 'badge bg-secondary p-2 d-flex align-items-center gap-2';
-      tag.innerHTML = val + ' <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove()"></i>';
+      tag.innerHTML = escapeHtml(val) + ' <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove()"></i>';
       wrap.appendChild(tag);
       
       input.value = '';

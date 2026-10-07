@@ -116,12 +116,11 @@
             toast.setAttribute('role', 'alert');
             toast.innerHTML = `
                 <div class="d-flex">
-                    <div class="toast-body font-weight-bold">
-                        ${message}
-                    </div>
+                    <div class="toast-body font-weight-bold"></div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.parentElement.parentElement.remove()"></button>
                 </div>
             `;
+            toast.querySelector('.toast-body').textContent = message;
             container.appendChild(toast);
 
             setTimeout(() => {

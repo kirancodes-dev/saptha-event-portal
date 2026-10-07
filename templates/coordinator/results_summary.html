@@ -135,6 +135,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   transform:translateY(80px);opacity:0;transition:.3s;z-index:9998;max-width:320px;}
 #toast.show{transform:translateY(0);opacity:1;}
 </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -452,32 +453,28 @@ async function regenOne(evt, regId, teamName) {
   }
 }
 
-function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 
 function renderSummaryInline(bodyEl, s) {
   const criteria = {{ criteria | tojson | safe }};
   const critAvgs = s.crit_avgs || {};
 
   const strengthsHtml = (s.strengths||[])
-    .map(x => `<div class="strength-item">${esc(x)}</div>`).join('');
+    .map(x => `<div class="strength-item">${escapeHtml(x)}</div>`).join('');
   const improvesHtml  = (s.improvements||[])
-    .map(x => `<div class="improve-item">${esc(x)}</div>`).join('');
+    .map(x => `<div class="improve-item">${escapeHtml(x)}</div>`).join('');
   const critHtml = criteria.map(c => {
     const v = critAvgs[c] || 0;
     return `<div class="crit-row">
-      <div class="crit-label">${esc(c)}</div>
-      <div class="crit-bar"><div class="crit-fill" style="width:${v}%;"></div></div>
-      <div class="crit-val">${v}</div>
+      <div class="crit-label">${escapeHtml(c)}</div>
+      <div class="crit-bar"><div class="crit-fill" style="width:${escapeHtml(v)}%;"></div></div>
+      <div class="crit-val">${escapeHtml(v)}</div>
     </div>`;
   }).join('');
 
   bodyEl.innerHTML = `
     <div class="headline-pill">
       <i class="fas fa-lightbulb" style="color:var(--orange);font-size:13px;flex-shrink:0;"></i>
-      <span class="headline-text">${esc(s.headline||'')}</span>
+      <span class="headline-text">${escapeHtml(s.headline||'')}</span>
     </div>
     <div class="row g-3 mb-3">
       <div class="col-12 col-md-6">
@@ -492,10 +489,10 @@ function renderSummaryInline(bodyEl, s) {
     ${critHtml ? `<span class="sub-label" style="margin-bottom:8px;"><i class="fas fa-chart-bar me-1"></i>Criterion scores</span>${critHtml}` : ''}
     <div style="margin-top:12px;">
       <span class="sub-label"><i class="fas fa-align-left me-1"></i>Coordinator's view</span>
-      <div class="narrative-box">${esc(s.narrative||'')}</div>
+      <div class="narrative-box">${escapeHtml(s.narrative||'')}</div>
     </div>
     ${s.student_message ? `<span class="sub-label"><i class="fas fa-user me-1"></i>Shown to student</span>
-    <div class="student-msg-box"><i class="fas fa-quote-left me-1" style="opacity:.4;"></i>${esc(s.student_message)}</div>` : ''}
+    <div class="student-msg-box"><i class="fas fa-quote-left me-1" style="opacity:.4;"></i>${escapeHtml(s.student_message)}</div>` : ''}
   `;
 }
 </script>

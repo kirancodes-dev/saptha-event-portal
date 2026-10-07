@@ -21,6 +21,7 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;}
 .add-row-btn{background:var(--orange);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;}
 .save-btn{background:var(--blue);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;}
 </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -98,7 +99,7 @@ function addRow() {
   if (p) p.remove();
   var div = document.createElement('div');
   div.className = 'd-flex gap-3 align-items-start mb-3 agenda-row';
-  div.innerHTML = '<div class="row-num">' + rowCount + '</div>' +
+  div.innerHTML = '<div class="row-num">' + escapeHtml(rowCount) + '</div>' +
     '<div class="row g-2 flex-grow-1">' +
     '<div class="col-auto"><input type="time" name="time[]" class="form-control form-control-sm" style="width:110px;" required></div>' +
     '<div class="col"><input type="text" name="title[]" placeholder="Item title" class="form-control form-control-sm" required></div>' +

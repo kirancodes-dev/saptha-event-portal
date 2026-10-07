@@ -183,6 +183,7 @@ body{
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
 </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -313,13 +314,13 @@ function render(data) {
   const labels  = ['1st Place','2nd Place','3rd Place'];
   const top3    = scored.slice(0, 3);
   const podHtml = top3.map((r, i) => `
-    <div class="podium-card ${classes[i]}">
-      <div class="podium-medal">${medals[i]}</div>
-      <div class="podium-rank">${labels[i]}</div>
-      <div class="podium-team">${esc(r.team)}</div>
-      <div class="podium-lead">${esc(r.lead)}</div>
-      <div class="podium-score">${r.score.toFixed(1)}<span>/100</span></div>
-      <div class="judge-count">${r.judges} judge${r.judges !== 1 ? 's' : ''}</div>
+    <div class="podium-card ${escapeHtml(classes[i])}">
+      <div class="podium-medal">${escapeHtml(medals[i])}</div>
+      <div class="podium-rank">${escapeHtml(labels[i])}</div>
+      <div class="podium-team">${escapeHtml(r.team)}</div>
+      <div class="podium-lead">${escapeHtml(r.lead)}</div>
+      <div class="podium-score">${escapeHtml(r.score.toFixed(1))}<span>/100</span></div>
+      <div class="judge-count">${escapeHtml(r.judges)} judge${r.judges !== 1 ? 's' : ''}</div>
     </div>`).join('');
   document.getElementById('podiumRow').innerHTML = podHtml;
 
@@ -327,28 +328,28 @@ function render(data) {
   const rest = scored.slice(3);
   if (rest.length) {
     document.getElementById('boardWrap').style.display = '';
-    const rows = rest.map(r => {
+    const rowsHtml = rest.map(r => {
       const prev   = prevRanks[r.reg_id];
       const cls    = prev === undefined ? '' : (r.rank < prev ? 'rank-up' : r.rank > prev ? 'rank-down' : '');
       const barPct = maxScore > 0 ? Math.round((r.score / maxScore) * 100) : 0;
-      return `<tr class="board-row ${cls}" data-id="${r.reg_id}">
-        <td class="td-rank"><span class="rank-num">${r.rank}</span></td>
+      return `<tr class="board-row ${escapeHtml(cls)}" data-id="${escapeHtml(r.reg_id)}">
+        <td class="td-rank"><span class="rank-num">${escapeHtml(r.rank)}</span></td>
         <td>
-          <div class="td-team">${esc(r.team)}</div>
-          <div class="td-lead">${esc(r.lead)}</div>
+          <div class="td-team">${escapeHtml(r.team)}</div>
+          <div class="td-lead">${escapeHtml(r.lead)}</div>
         </td>
         <td class="td-score">
-          <div class="score-val">${r.score.toFixed(1)}</div>
+          <div class="score-val">${escapeHtml(r.score.toFixed(1))}</div>
           <div class="score-bar-wrap">
             <div class="score-bar">
-              <div class="score-bar-fill" style="width:${barPct}%"></div>
+              <div class="score-bar-fill" style="width:${escapeHtml(barPct)}%"></div>
             </div>
           </div>
         </td>
-        <td class="td-judges">${r.judges}</td>
+        <td class="td-judges">${escapeHtml(r.judges)}</td>
       </tr>`;
     }).join('');
-    document.getElementById('boardBody').innerHTML = rows;
+    document.getElementById('boardBody').innerHTML = rowsHtml;
   } else {
     document.getElementById('boardWrap').style.display = 'none';
   }
@@ -363,9 +364,6 @@ function render(data) {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
 function toggleFS() {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen();
   else document.exitFullscreen();

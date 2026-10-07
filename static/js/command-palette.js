@@ -57,7 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const el = document.createElement('a');
             el.href = item.url;
             el.className = `command-palette-item ${index === 0 ? 'active' : ''}`;
-            el.innerHTML = `<span>${item.name}</span> <span class="ms-auto text-muted small" style="font-size: 0.75rem;">Go to →</span>`;
+            el.innerHTML = '<span></span> <span class="ms-auto text-muted small" style="font-size: 0.75rem;">Go to →</span>';
+            el.firstChild.textContent = item.name;
             resultsContainer.appendChild(el);
         });
     }

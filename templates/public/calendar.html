@@ -46,6 +46,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
   .filter-bar .row > div{margin-bottom:8px;}
 }
 </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -240,9 +241,10 @@ var cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
   height: 'auto',
   handleWindowResize: true,
   eventMouseEnter: function(info) {
-    var venueStr = info.event.extendedProps.venue ? '<i class="fas fa-map-marker-alt me-1"></i>' + info.event.extendedProps.venue + '<br>' : '';
-    var catStr = info.event.extendedProps.category ? '<span class="badge bg-secondary">' + info.event.extendedProps.category + '</span>' : '';
-    tooltip.innerHTML = '<strong style="color:#fbbf24;">' + info.event.title + '</strong><br>' + venueStr + catStr;
+    // Organisers typed the title, venue and category (BLK-19)
+    var venueHtml = info.event.extendedProps.venue ? '<i class="fas fa-map-marker-alt me-1"></i>' + escapeHtml(info.event.extendedProps.venue) + '<br>' : '';
+    var catHtml = info.event.extendedProps.category ? '<span class="badge bg-secondary">' + escapeHtml(info.event.extendedProps.category) + '</span>' : '';
+    tooltip.innerHTML = '<strong style="color:#fbbf24;">' + escapeHtml(info.event.title) + '</strong><br>' + venueHtml + catHtml;
     tooltip.style.display = 'block';
   },
   eventMouseLeave: function() { tooltip.style.display = 'none'; },

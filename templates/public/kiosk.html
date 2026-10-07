@@ -463,6 +463,7 @@
             font-weight: 600;
         }
     </style>
+    <script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -719,7 +720,7 @@
                     renderSearchResults(data.results);
                 } else {
                     var msg = data.error || 'No active registrations found. Please verify details.';
-                    resultsPanel.innerHTML = `<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>${msg}</div>`;
+                    resultsPanel.innerHTML = `<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>${escapeHtml(msg)}</div>`;
                 }
             })
             .catch(err => {
@@ -743,10 +744,11 @@
                 row.className = 'result-item';
 
                 var info = document.createElement('div');
-                var teamText = item.team_name ? ` // Team: ${item.team_name}` : '';
+                // Registrants typed the name and team: escape them (BLK-19)
+                var teamHtml = item.team_name ? ' // Team: ' + escapeHtml(item.team_name) : '';
                 info.innerHTML = `
-                    <div class="info-title">${item.lead_name}${teamText}</div>
-                    <div class="info-sub"><i class="fas fa-award text-primary me-1"></i>${item.event_title} &bull; <i class="fas fa-fingerprint me-1"></i>${item.reg_id}</div>
+                    <div class="info-title">${escapeHtml(item.lead_name)}${teamHtml}</div>
+                    <div class="info-sub"><i class="fas fa-award text-primary me-1"></i>${escapeHtml(item.event_title)} &bull; <i class="fas fa-fingerprint me-1"></i>${escapeHtml(item.reg_id)}</div>
                 `;
 
                 var actionWrapper = document.createElement('div');

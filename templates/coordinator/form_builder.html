@@ -140,6 +140,7 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
   .panel{border-right:none;border-bottom:1px solid #e2e8f0;}
 }
 </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -486,15 +487,15 @@ function renderCanvas() {
 
     card.innerHTML = `
       <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
-      <div class="field-meta" onclick="selectField('${f.id}')">
-        <div class="field-label">${escHtml(f.label || f.type)}</div>
-        <div class="field-type-badge">${typeLabel(f.type)}${f.help_text ? ' · ' + escHtml(f.help_text) : ''}</div>
+      <div class="field-meta" onclick="selectField(${escapeJsAttr(f.id)})">
+        <div class="field-label">${escapeHtml(f.label || f.type)}</div>
+        <div class="field-type-badge">${escapeHtml(typeLabel(f.type))}${escapeHtml(f.help_text ? ' · ' + f.help_text : '')}</div>
       </div>
       <div class="field-actions">
-        <button title="Duplicate" onclick="duplicateField('${f.id}')"><i class="fas fa-copy"></i></button>
-        <button title="Move up"   onclick="moveField('${f.id}',-1)"><i class="fas fa-arrow-up"></i></button>
-        <button title="Move down" onclick="moveField('${f.id}',1)"><i class="fas fa-arrow-down"></i></button>
-        <button class="del" title="Delete" onclick="deleteField('${f.id}')"><i class="fas fa-trash"></i></button>
+        <button title="Duplicate" onclick="duplicateField(${escapeJsAttr(f.id)})"><i class="fas fa-copy"></i></button>
+        <button title="Move up"   onclick="moveField(${escapeJsAttr(f.id)},-1)"><i class="fas fa-arrow-up"></i></button>
+        <button title="Move down" onclick="moveField(${escapeJsAttr(f.id)},1)"><i class="fas fa-arrow-down"></i></button>
+        <button class="del" title="Delete" onclick="deleteField(${escapeJsAttr(f.id)})"><i class="fas fa-trash"></i></button>
       </div>
       ${f.required ? '<span class="required-dot" title="Required"></span>' : ''}
     `;
@@ -511,10 +512,6 @@ function typeLabel(t) {
     heading:'Heading', paragraph:'Info Text', divider:'Divider'
   };
   return m[t] || t;
-}
-
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── CANVAS DRAG/DROP FROM PALETTE ─────────────────────
@@ -581,14 +578,14 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Field Label</div>
-      <input class="prop-input" id="p-label" value="${escHtml(f.label)}"
+      <input class="prop-input" id="p-label" value="${escapeHtml(f.label)}"
              oninput="updateProp('label',this.value)" placeholder="Label shown to user">
     </div>`;
   } else {
     html += `
     <div class="prop-group">
       <div class="prop-label">${f.type === 'heading' ? 'Heading Text' : f.type === 'paragraph' ? 'Info Text' : 'Divider'}</div>
-      ${f.type !== 'divider' ? `<input class="prop-input" id="p-label" value="${escHtml(f.label)}"
+      ${f.type !== 'divider' ? `<input class="prop-input" id="p-label" value="${escapeHtml(f.label)}"
         oninput="updateProp('label',this.value)" placeholder="Text content">` : '<p style="font-size:12px;color:#94a3b8;margin:0;">A horizontal line separator.</p>'}
     </div>`;
   }
@@ -597,7 +594,7 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Placeholder Text</div>
-      <input class="prop-input" id="p-ph" value="${escHtml(f.placeholder)}"
+      <input class="prop-input" id="p-ph" value="${escapeHtml(f.placeholder)}"
              oninput="updateProp('placeholder',this.value)" placeholder="Hint inside the field">
     </div>`;
   }
@@ -606,7 +603,7 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Help Text</div>
-      <input class="prop-input" id="p-help" value="${escHtml(f.help_text)}"
+      <input class="prop-input" id="p-help" value="${escapeHtml(f.help_text)}"
              oninput="updateProp('help_text',this.value)" placeholder="Small description below field">
     </div>
     <div class="prop-group">
@@ -622,12 +619,12 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Min Value</div>
-      <input class="prop-input" type="number" value="${f.min}"
+      <input class="prop-input" type="number" value="${escapeHtml(f.min)}"
              oninput="updateProp('min',this.value)" placeholder="No minimum">
     </div>
     <div class="prop-group">
       <div class="prop-label">Max Value</div>
-      <input class="prop-input" type="number" value="${f.max}"
+      <input class="prop-input" type="number" value="${escapeHtml(f.max)}"
              oninput="updateProp('max',this.value)" placeholder="No maximum">
     </div>`;
   }
@@ -639,9 +636,9 @@ function renderProps() {
       <div class="option-list" id="option-list">`;
     f.options.forEach((opt, i) => {
       html += `<div class="option-item">
-        <input value="${escHtml(opt)}" oninput="updateOption(${i},this.value)"
-               placeholder="Option ${i+1}">
-        <button onclick="removeOption(${i})"><i class="fas fa-times"></i></button>
+        <input value="${escapeHtml(opt)}" oninput="updateOption(${escapeJsAttr(i)},this.value)"
+               placeholder="Option ${escapeHtml(i + 1)}">
+        <button onclick="removeOption(${escapeJsAttr(i)})"><i class="fas fa-times"></i></button>
       </div>`;
     });
     html += `</div>
@@ -655,7 +652,7 @@ function renderProps() {
   <div class="prop-group mt-3">
     <div class="prop-label">Field ID (internal)</div>
     <input class="prop-input" style="font-family:monospace;font-size:12px;"
-           value="${escHtml(f.id)}" readonly>
+           value="${escapeHtml(f.id)}" readonly>
     <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
       Used in CSV exports and the submissions database.
     </div>
@@ -697,8 +694,8 @@ function openPreview() {
   const title = document.getElementById('form-title').value || 'Registration Form';
   const desc  = document.getElementById('form-desc').value  || '';
   let html    = `<div class="preview-form">
-    <h5 class="fw-bold mb-1" style="color:var(--blue);">${escHtml(title)}</h5>
-    ${desc ? `<p class="text-muted mb-4" style="font-size:13px;">${escHtml(desc)}</p>` : '<div class="mb-4"></div>'}`;
+    <h5 class="fw-bold mb-1" style="color:var(--blue);">${escapeHtml(title)}</h5>
+    ${desc ? `<p class="text-muted mb-4" style="font-size:13px;">${escapeHtml(desc)}</p>` : '<div class="mb-4"></div>'}`;
 
   fields.forEach(f => {
     if (f.type === 'divider') {
@@ -706,37 +703,37 @@ function openPreview() {
       return;
     }
     if (f.type === 'heading') {
-      html += `<h6 class="fw-bold mt-4 mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;">${escHtml(f.label)}</h6>`;
+      html += `<h6 class="fw-bold mt-4 mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;">${escapeHtml(f.label)}</h6>`;
       return;
     }
     if (f.type === 'paragraph') {
-      html += `<p class="text-muted mb-3" style="font-size:13px;">${escHtml(f.label)}</p>`;
+      html += `<p class="text-muted mb-3" style="font-size:13px;">${escapeHtml(f.label)}</p>`;
       return;
     }
 
-    html += `<div class="mb-3"><label>${escHtml(f.label)}${f.required ? ' <span class="required-star">*</span>' : ''}</label>`;
-    if (f.help_text) html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${escHtml(f.help_text)}</div>`;
+    html += `<div class="mb-3"><label>${escapeHtml(f.label)}${f.required ? ' <span class="required-star">*</span>' : ''}</label>`;
+    if (f.help_text) html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${escapeHtml(f.help_text)}</div>`;
 
     if (f.type === 'textarea') {
-      html += `<textarea placeholder="${escHtml(f.placeholder)}" rows="3"></textarea>`;
+      html += `<textarea placeholder="${escapeHtml(f.placeholder)}" rows="3"></textarea>`;
     } else if (f.type === 'select') {
       html += `<select><option value="">Select...</option>` +
-        f.options.map(o => `<option>${escHtml(o)}</option>`).join('') + `</select>`;
+        f.options.map(o => `<option>${escapeHtml(o)}</option>`).join('') + `</select>`;
     } else if (f.type === 'radio') {
       html += f.options.map(o =>
         `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
-          <input type="radio" name="${f.id}"> ${escHtml(o)}</label></div>`
+          <input type="radio" name="${escapeHtml(f.id)}"> ${escapeHtml(o)}</label></div>`
       ).join('');
     } else if (f.type === 'checkbox_group') {
       html += f.options.map(o =>
         `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
-          <input type="checkbox"> ${escHtml(o)}</label></div>`
+          <input type="checkbox"> ${escapeHtml(o)}</label></div>`
       ).join('');
     } else if (f.type === 'checkbox') {
       html += `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
-        <input type="checkbox"> ${escHtml(f.label)}</label></div>`;
+        <input type="checkbox"> ${escapeHtml(f.label)}</label></div>`;
     } else {
-      html += `<input type="${f.type}" placeholder="${escHtml(f.placeholder)}">`;
+      html += `<input type="${escapeHtml(f.type)}" placeholder="${escapeHtml(f.placeholder)}">`;
     }
     html += `</div>`;
   });
@@ -829,7 +826,7 @@ function toast(msg, type='success') {
   const wrap = document.getElementById('toast-wrap');
   const el   = document.createElement('div');
   el.className = `toast-msg ${type}`;
-  el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
+  el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${escapeHtml(msg)}`;
   wrap.appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }

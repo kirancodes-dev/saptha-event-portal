@@ -144,6 +144,7 @@
             border-bottom: none;
         }
     </style>
+<script src="/static/js/escape.js"></script>
 </head>
 <body>
     <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-4">
@@ -262,7 +263,7 @@
 
                         // Update viewfinder visual UI
                         viewfinder.style.color = "var(--emerald)";
-                        statusBox.innerHTML = `<i class="fas fa-circle-check text-success"></i> Checked In: ${studentName}`;
+                        statusBox.innerHTML = `<i class="fas fa-circle-check text-success"></i> Checked In: ${escapeHtml(studentName)}`;
                         
                         // Update status list badges
                         var badge = document.getElementById(`status-badge-${regId}`);
@@ -279,7 +280,7 @@
                         setTimeout(resetViewfinder, 3000);
                     } else {
                         viewfinder.style.color = "var(--danger)";
-                        statusBox.innerHTML = `<i class="fas fa-circle-xmark text-danger"></i> ${data.message || 'Read Error!'}`;
+                        statusBox.innerHTML = `<i class="fas fa-circle-xmark text-danger"></i> ${escapeHtml(data.message || 'Read Error!')}`;
                         setTimeout(resetViewfinder, 3000);
                     }
                 })

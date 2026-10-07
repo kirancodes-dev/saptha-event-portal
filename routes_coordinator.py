@@ -1,20 +1,5 @@
-import csv
 import datetime
-import io
 import random
-from io import StringIO
-try:
-    import openpyxl
-except Exception:
-    openpyxl = None
-try:
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-except Exception:
-    openpyxl = None
-try:
-    from openpyxl.utils import get_column_letter
-except Exception:
-    openpyxl = None
 from flask import (Blueprint, Response, flash, jsonify,
                    redirect, render_template, request, session)
 try:
@@ -527,162 +512,25 @@ def publish_results(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# 12. EXPORT CSV
+# 12–13. EXPORTS: the shared export service (UPG-03); 403 without export_data
 @coord_bp.route('/export_registrations/<event_id>')
 @login_required
-@role_required(COORD_ROLES)
 def export_registrations(event_id):
-    from flask import abort
-    from services_permission import can
-    try:
-        event_doc  = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            abort(404)
-        event_data = event_doc.to_dict() or {}
-        event_data['id'] = event_id
-        if not can(session, 'export_data', event_data, db=db):
-            abort(403)
-        is_team    = event_data.get('is_team_event', False)
-        regs       = list(db.collection('registrations')
-                          .where(filter=_ff('event_id', '==', event_id)).stream())
-        output = StringIO()
-        writer = csv.writer(output)
-        header = ['Ticket ID', 'Lead Name', 'Email', 'Phone', 'USN', 'Team Name',
-                  'Payment Status', 'Amount (Rs)', 'Room', 'Judge', 'Round',
-                  'Status', 'Attendance', 'Check-in Time', 'Registered At']
-        if is_team:
-            for i in range(2, 6):
-                header += [f'M{i} Name', f'M{i} Email', f'M{i} Phone', f'M{i} USN']
-        writer.writerow(header)
-        for r in regs:
-            d      = r.to_dict()
-            status = 'Eliminated' if d.get('is_eliminated') else 'Active'
-            row    = [d.get('reg_id', r.id), d.get('lead_name', ''), d.get('lead_email', ''),
-                      d.get('lead_phone', ''), d.get('lead_usn', ''),
-                      d.get('team_name', 'Individual'), d.get('payment_status', 'Free'),
-                      d.get('amount_paid', 0), d.get('assigned_room', ''),
-                      d.get('assigned_judge_name', ''), d.get('current_round', 1),
-                      status, d.get('attendance', 'Pending'),
-                      d.get('checkin_time', ''), d.get('registered_at', '')]
-            if is_team:
-                mems = [m for m in d.get('members', [])
-                        if m.get('email', '') != d.get('lead_email', '')]
-                for i in range(4):
-                    m = mems[i] if i < len(mems) else {}
-                    row += [m.get('name', ''), m.get('email', ''),
-                             m.get('phone', ''), m.get('usn', '')]
-            writer.writerow(row)
-        title = str(event_data.get('title', 'Event')).replace(' ', '_')
-        return Response(output.getvalue(), mimetype='text/csv',
-            headers={"Content-Disposition": f"attachment; filename={title}_Registrations.csv"})
-    except Exception as exc:
-        if getattr(exc, 'code', None) == 403:
-            abort(403)
-        flash(f"CSV export error: {exc}", "danger")
-        return redirect('/coordinator/dashboard')
+    import services_export
+    from routes_spoc import _export_name
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+                    headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.csv')}"})
 
 
-# 13. EXPORT EXCEL (branded, all team members expanded)
 @coord_bp.route('/export_excel/<event_id>')
 @login_required
-@role_required(COORD_ROLES)
 def export_excel(event_id):
-    from flask import abort
-    from services_permission import can
-    try:
-        event_doc  = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            abort(404)
-        event_data = event_doc.to_dict() or {}
-        event_data['id'] = event_id
-        if not can(session, 'export_data', event_data, db=db):
-            abort(403)
-        is_team    = event_data.get('is_team_event', False)
-        regs       = list(db.collection('registrations')
-                          .where(filter=_ff('event_id', '==', event_id)).stream())
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        assert ws is not None
-        ws.title = "Registrations"
-        hf    = PatternFill("solid", fgColor="0D2D62")
-        hfont = Font(bold=True, color="FFFFFF", size=11)
-        haln  = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        dfont = Font(size=10)
-        daln  = Alignment(vertical="center")
-        afill = PatternFill("solid", fgColor="EEF3FA")
-        thin  = Side(style="thin", color="CCCCCC")
-        bdr   = Border(left=thin, right=thin, top=thin, bottom=thin)
-        event_title = str(event_data.get('title', 'Event'))
-        last_col    = 15 + (16 if is_team else 0)
-        last_ltr    = get_column_letter(last_col)
-        # Row 1 — title banner
-        ws.merge_cells(f'A1:{last_ltr}1')
-        c = ws['A1']
-        c.value = f"Sapthagiri NPS University  |  {event_title}  |  Registrations"
-        c.font  = Font(bold=True, color="F37021", size=13)
-        c.fill  = PatternFill("solid", fgColor="0D2D62")
-        c.alignment = Alignment(horizontal="center", vertical="center")
-        ws.row_dimensions[1].height = 28
-        # Row 2 — subtitle
-        ws.merge_cells(f'A2:{last_ltr}2')
-        c2 = ws['A2']
-        c2.value = (f"Date: {event_data.get('date','TBD')}  |  "
-                    f"Venue: {event_data.get('venue','SNPSU')}  |  "
-                    f"Total Registrations: {len(regs)}  |  "
-                    f"Exported: {datetime.datetime.now().strftime('%d %b %Y %H:%M')}")
-        c2.font  = Font(italic=True, color="FFFFFF", size=9)
-        c2.fill  = PatternFill("solid", fgColor="1A3A6B")
-        c2.alignment = Alignment(horizontal="center", vertical="center")
-        ws.row_dimensions[2].height = 16
-        # Row 3 — headers
-        headers = ['S.No', 'Ticket ID', 'Lead Name', 'Email', 'Phone', 'USN',
-                   'Team Name', 'Payment', 'Amount (Rs)', 'Room', 'Round',
-                   'Status', 'Attendance', 'Check-in', 'Registered At']
-        if is_team:
-            for i in range(2, 6):
-                headers += [f'M{i} Name', f'M{i} Email', f'M{i} Phone', f'M{i} USN']
-        for ci, h in enumerate(headers, 1):
-            cell = ws.cell(row=3, column=ci, value=h)
-            cell.font = hfont; cell.fill = hf; cell.alignment = haln; cell.border = bdr
-        ws.row_dimensions[3].height = 26
-        # Data rows
-        for ri, r in enumerate(regs, 1):
-            d      = r.to_dict()
-            status = 'Eliminated' if d.get('is_eliminated') else 'Active'
-            fill   = afill if ri % 2 == 0 else PatternFill()
-            row    = [ri, d.get('reg_id', r.id), d.get('lead_name', ''),
-                      d.get('lead_email', ''), d.get('lead_phone', ''),
-                      d.get('lead_usn', ''), d.get('team_name', 'Individual'),
-                      d.get('payment_status', 'Free'), d.get('amount_paid', 0),
-                      d.get('assigned_room', ''), d.get('current_round', 1),
-                      status, d.get('attendance', 'Pending'),
-                      d.get('checkin_time', ''), d.get('registered_at', '')]
-            if is_team:
-                mems = [m for m in d.get('members', [])
-                        if m.get('email', '') != d.get('lead_email', '')]
-                for i in range(4):
-                    m = mems[i] if i < len(mems) else {}
-                    row += [m.get('name', ''), m.get('email', ''),
-                             m.get('phone', ''), m.get('usn', '')]
-            xlsx_row = ri + 3
-            for ci, val in enumerate(row, 1):
-                cell = ws.cell(row=xlsx_row, column=ci, value=val)
-                cell.font = dfont; cell.alignment = daln; cell.border = bdr
-                if fill.fill_type: cell.fill = fill
-            ws.row_dimensions[xlsx_row].height = 17
-        widths = [5, 22, 20, 28, 14, 15, 20, 12, 10, 12, 7, 12, 12, 10, 20]
-        if is_team: widths += [18, 26, 13, 13] * 4
-        for i, w in enumerate(widths, 1):
-            ws.column_dimensions[get_column_letter(i)].width = w
-        ws.freeze_panes = 'A4'
-        buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-        clean = event_title.replace(' ', '_')
-        return Response(buf.getvalue(),
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={"Content-Disposition": f"attachment; filename={clean}_Registrations.xlsx"})
-    except Exception as exc:
-        flash(f"Excel export error: {exc}", "danger")
-        return redirect('/coordinator/dashboard')
+    import services_export
+    from routes_spoc import XLSX_MIMETYPE, _export_name
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.registrations_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.xlsx')}"})
 
 
 # 14. WALK-IN / ON-SPOT

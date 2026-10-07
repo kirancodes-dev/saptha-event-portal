@@ -651,8 +651,8 @@ def view_responses(event_id):
 # =========================================================
 @forms_bp.route('/responses/export/<event_id>')
 @login_required
-@role_required(BUILDER_ROLES)
 def export_responses(event_id):
+    # export_data on the event, else 403 for every role (UPG-03)
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
         abort(404)

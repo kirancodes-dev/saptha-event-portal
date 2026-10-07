@@ -1944,6 +1944,15 @@ h1, h2, h3, h4, h5, h6 {
                     <a href="/spoc/results/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-trophy"></i> Live Leaderboard &amp; Judging Scores
                     </a>
+                    <a href="/spoc/event_report/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-file-excel"></i> Download Event Report (Excel)
+                    </a>
+                    <a href="/spoc/export_excel/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-table"></i> Export Registrations (Excel)
+                    </a>
+                    <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-file-csv"></i> Export Registrations (CSV)
+                    </a>
                     <a href="/spoc/judging/audit/{{ event.id }}" class="action-btn btn-purple-outline justify-content-start">
                       <i class="fas fa-scale-balanced"></i> Run Judging Strictness Audit
                     </a>

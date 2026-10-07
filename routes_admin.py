@@ -281,12 +281,13 @@ def analytics():
 # =========================================================
 @admin_bp.route('/analytics/export/<kind>')
 @login_required
-@role_required(SUPER_ROLES)
 def analytics_export(kind):
     import csv
     import io
-    from flask import Response
+    from flask import Response, abort
 
+    if session.get('role') not in SUPER_ROLE_NAMES:
+        abort(403)  # every registration of every event: Super Admins only (UPG-03)
     if kind not in ('registrations', 'events', 'revenue'):
         flash("Unknown export type.", "warning")
         return redirect('/admin/analytics')
@@ -301,29 +302,9 @@ def analytics_export(kind):
     writer = csv.writer(buf)
 
     if kind == 'registrations':
-        writer.writerow([
-            'reg_id', 'event_title', 'lead_name', 'lead_email', 'lead_usn',
-            'team_name', 'member_count', 'status', 'payment_status',
-            'amount_paid', 'attendance', 'final_rank', 'final_score', 'registered_at'
-        ])
-        for r in db.collection('registrations').stream():
-            d = r.to_dict() or {}
-            writer.writerow([
-                d.get('reg_id', r.id),
-                d.get('event_title', events_map.get(d.get('event_id', ''), {}).get('title', '')),
-                d.get('lead_name', ''),
-                d.get('lead_email', ''),
-                d.get('lead_usn', ''),
-                d.get('team_name', ''),
-                d.get('member_count', 1),
-                d.get('status', ''),
-                d.get('payment_status', ''),
-                d.get('amount_paid', 0),
-                d.get('attendance', ''),
-                d.get('final_rank', ''),
-                d.get('final_score', ''),
-                d.get('registered_at', ''),
-            ])
+        import services_export
+        buf.write(services_export.to_csv(services_export.all_registration_rows(db),
+                                         ['Event'] + services_export.COLUMNS))
         filename = 'registrations.csv'
 
     elif kind == 'events':

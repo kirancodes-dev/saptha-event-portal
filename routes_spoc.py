@@ -2,11 +2,14 @@ from flask import Blueprint, render_template, request, redirect, session, flash,
 from models import FirebaseWrapper
 import datetime
 import csv
+import re
 import io
 import json
 from utils import login_required, role_required, log_action
 from utils_email import _base_url as _public_base_url
 from services_accounts import create_unverified_account, send_set_password_link
+
+XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -330,36 +333,42 @@ def transition_event(event_id):
 
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
-# --- 3. EXPORT CSV ---
+# --- 3. EXPORTS AND THE EVENT REPORT (one service, UPG-03) ---
+# Anyone with export_data on the event: its owner, unit admins, assigned
+# coordinators; everyone else gets 403.
+def _export_name(event, suffix):
+    title = re.sub(r'[^A-Za-z0-9_-]+', '_', str(event.get('title', 'Event'))).strip('_') or 'Event'
+    return f"{title}_{suffix}"
+
+
 @spoc_bp.route('/export_csv/<event_id>')
 @login_required
-@role_required('ClubSPOC')
 def export_csv(event_id):
-    from services_permission import can
-    try:
-        event_doc = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            return redirect('/spoc/dashboard')
-        ev_data = event_doc.to_dict() or {}
-        ev_data['id'] = event_id
-        if not can(session, 'export_data', ev_data, db=db):
-            abort(403)
-        title = ev_data.get('title', 'Event')
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Team/Name', 'Lead Email', 'Members', 'Status', 'Attendance', 'Score', 'Date'])
-        regs = db.collection('registrations').where('event_id', '==', event_id).stream()
-        for doc in regs:
-            r = doc.to_dict()
-            member_count = len(r.get('members', []))
-            scores = r.get('scores', {})
-            final_score = max([v['total'] for v in scores.values()]) if scores else 0
-            writer.writerow([r.get('team_name', 'Individual'), r.get('lead_email'), f"{member_count} Members", r.get('status'), r.get('attendance'), final_score, r.get('registered_at')])
-        return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": f"attachment; filename={title}_report.csv"})
-    except Exception as e:
-        if getattr(e, 'code', None) == 403:
-            abort(403)
-        return redirect('/spoc/dashboard')
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Registrations.csv")}'})
+
+
+@spoc_bp.route('/export_excel/<event_id>')
+@login_required
+def export_excel(event_id):
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.registrations_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Registrations.xlsx")}'})
+
+
+@spoc_bp.route('/event_report/<event_id>')
+@login_required
+def event_report(event_id):
+    """Registrations against attendance by department and year, feedback and winners."""
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    log_action(db, "EVENT_REPORT", f"{session.get('user_id')} downloaded the report for event {event_id}")
+    return Response(services_export.event_report_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Report.xlsx")}'})
+
 
 # --- 4. RESULTS DASHBOARD ---
 @spoc_bp.route('/results/<event_id>')

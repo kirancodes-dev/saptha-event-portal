@@ -417,6 +417,18 @@ def _with_column_aliases(collection_name, data):
     return d
 
 
+def _submission_document(text):
+    """A form submission's stored JSON as a document. Rows written before
+    UPG-45 hold only the answers, so those become {'answers': …}."""
+    try:
+        doc = json.loads(text) if text else {}
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(doc, dict):
+        return {}
+    return doc if isinstance(doc.get('answers'), dict) else {'answers': doc}
+
+
 def _normalize_out(val):
     """Normalise a column value to the plain form documents expose."""
     if hasattr(val, 'value') and val.__class__.__module__ != 'builtins':
@@ -1016,13 +1028,12 @@ class SQLDocumentReference:
                 d = {'fields': [], 'form_title': 'Registration Form', 'form_desc': ''}
 
         elif self.collection_name == 'form_submissions':
-            if record.answers_json:
-                try:
-                    d = json.loads(record.answers_json)
-                except Exception:
-                    pass
+            # The whole submission, answers nested as written (UPG-45)
+            d = _submission_document(record.answers_json)
             d['event_id'] = str(record.event_id)
             d['registration_id'] = str(record.registration_id)
+            if record.submitted_at and not d.get('submitted_at'):
+                d['submitted_at'] = record.submitted_at.isoformat()
 
         elif self.collection_name == 'push_subscriptions':
             d['user_id'] = record.user_email
@@ -1382,6 +1393,13 @@ class SQLDocumentReference:
 
     def _update_record_fields(self, record, data, session):
         """Update fields on an existing record based on Firestore inputs."""
+        if self.collection_name == 'form_submissions':
+            # Keep the whole submission (who, when, answers) in its JSON
+            # column, not only the answers (UPG-45)
+            stored = _submission_document(record.answers_json)
+            stored.update({k: v for k, v in data.items() if k not in ('id', 'answersJson', 'answers_json')})
+            record.answers_json = json.dumps(stored, default=str)
+            data = {k: v for k, v in data.items() if FIELD_MAP.get(k, k) != 'answers_json'}
         for key, val in data.items():
             # Translate keys
             mapped_key = FIELD_MAP.get(key, key)

@@ -89,6 +89,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Scheduled reminders / lifecycle | NOT CONNECTED on free tier [C at `1f4cdc8`] | `celery_app.py:95-120`, `docker-compose.yml:27-37`, `Dockerfile:33` | `docker-compose.yml` now runs worker + beat for self-hosting; a single web service still runs only gunicorn (UPG-07). |
 | Registration exports (CSV/Excel) | not re-run [C at `1f4cdc8`] | `routes_spoc.py:314`, `routes_coordinator.py`, `routes_admin.py:283` | Blank columns at `694c729` [R] came from renamed keys, which now read back correctly [R round-trip]. The SPOC, coordinator and forms exports check `export_data` on the event (only the forms one is tested); exports not re-run (UPG-03). |
 | Admin dashboard / analytics / report | WORKING (page load) [R] | `routes_admin.py:39,124,563` | Figures come from records that keep every field since BLK-06; not re-run. |
+| Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:438-478`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. Unpaginated (UPG-19). |
 | Org units, scoped roles | WORKING [R at BLK-07] | `routes_admin.py:629-823` | Viewing never migrates; "Migrate roles" previews first, and migrated SuperAdmin and SPOC accounts keep access (BLK-07). |
 | Venues, rooms, conflict check | PARTLY BUILT [C] | `routes_admin.py:830-1026`, `routes_spoc.py:1122-1128`, `services_workflow.py:190-218` | Admin CRUD page loads [R]; the create-event form has no room field, so conflicts are only checked on edit/publish. |
 | Student portfolio `/u/<usn>` | WORKING [R at `1f4cdc8`] | `routes_portfolio.py:27` | Shows the right student; at `694c729` the ignored `usn` filter showed the Super Admin. |
@@ -177,7 +178,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 |---|---|---|
 | Departments / clubs (org units) | Works [R at BLK-07] | Viewing never migrates; migration previews first and keeps everyone's access (BLK-07). |
 | Approvals | OK [R] | — |
-| Users / roles | Role assignment page OK [R]; the dead `/admin/users` and `/admin/events` links are gone from every template [C at `986d108`] | Other dead links: UPG-15. |
+| Users / roles | Role assignment page OK [R]; `/admin/users` lists accounts and resends set-password links (UPG-40) [R]; the dead `/admin/events` link is gone from every template [C at `986d108`] | Other dead links: UPG-15. |
 | Calendar | OK [R] | — |
 | Analytics / exports | Pages OK [R]; exports not re-run | Names read back since BLK-06 [R round-trip]; UPG-03. |
 | Bulk student import | MISSING | UPG-10. |
@@ -442,8 +443,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Last verified:** 2026-10-02, commit `986d108`
 - **Problem:**
   - **Unregistered blueprints:** `routes_public.py`, `routes_head.py` and `routes_super.py` (not in `app.py:300-391`), yet live pages link to them: `/event_head/*` from `templates/coordinator/manage_event.html:50` and `/super_admin/*` from `templates/public/home.html:528`.
-  - **Dead nav links:** re-checked 2026-10-02 against the app's URL map [R]. `/admin/users`, `/admin/events` and `/settings` are no longer linked from any template, and `/dashboard` now resolves (`dashboard_redirect`). The links to the unregistered blueprints above still 404.
-  - **Unused files:** about 20 templates are never rendered; `routes_api.py` is empty. (The debug route is gone since BLK-09: `/debug-modal` → 404, `tests/test_integration_flow.py:195`.)
+  - **Dead nav links:** re-checked 2026-10-02 against the app's URL map [R]. `/admin/events` and `/settings` are no longer linked from any template, and `/dashboard` now resolves (`dashboard_redirect`). `/admin/users` is linked again and resolves since UPG-40. The links to the unregistered blueprints above still 404.
+  - **Unused files:** about 20 templates are never rendered (`admin/users.html` is rendered since UPG-40); `routes_api.py` is empty. (The debug route is gone since BLK-09: `/debug-modal` → 404, `tests/test_integration_flow.py:195`.)
   - **Broken or risky scripts:** `reset_system.py` imports a nonexistent `Participant` model; `wipe_data.py` deletes all events and registrations with no prompt (since BLK-10 it refuses production-looking databases, but it still doesn't ask).
   - **Seed scripts:** 13 `seed_*.py` scripts, plus `seed_safety.py` (BLK-10's guard, not a seed). In all, 10 seed/setup scripts write straight to Firestore, and since BLK-10/BLK-15 only after the project is confirmed.
   - **Copies:** `scratch/` (26 tracked files); untracked `saptha-event-portal-source*` folders and ~54 MB of zips; `functions/saptha_app/` is a tracked, diverged copy of the app (`app.py` differs by 522 lines) that `catalyst.json` deploys.
@@ -1457,8 +1458,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **725 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-40 — The Super Admin can resend a set-password link from a users page
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `37c2a5c`
+- **Status:** DONE
+- **Last verified:** 2026-10-07, commit "UPG-40: …" on `production-ready` (parent `118dbf3`)
 - **Problem:** Owner, 2026-10-02. Since UPG-33, staff, SPOCs and walk-ins can get in only through the emailed set-password link, which expires after 3 days. There's no way to send a new one:
   - no routed users page exists (`/admin/users` is a 404);
   - `templates/admin/users.html` is never rendered (UPG-15) and links to delete with a GET;
@@ -1469,12 +1470,19 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - A SuperAdmin-only users page at `/admin/users` (on the shared layout, linked from the admin navigation) listing each account's name, email, role and whether they've set a password.
   - For accounts still waiting for their first password, a POST "Resend set-password link" button (CSRF) that emails a fresh link and audit-logs it.
   - SuperAdmin accounts and accounts that already have a password are refused. Pagination is UPG-19's job.
-- **Files touched:** `routes_admin.py`, `templates/admin/users.html`, `templates/base_classic.html` (nav link), tests.
+- **Re-checked before building (2026-10-07, `118dbf3`; rule 3):** `routes_admin.py`, `templates/admin/users.html` and `templates/base_classic.html` are unchanged since `37c2a5c`; `/admin/users` is still a 404.
+- **What was built:**
+  - `GET /admin/users` (`routes_admin.py:438`, SuperAdmin only) lists every account's name, email, role and password state, waiting accounts first. "Waiting for first password" means `needs_password_reset` is set (`_waiting_for_password`, `:429`): accounts someone else creates keep it until the set-password link or a reset is used.
+  - `POST /admin/users/resend_set_password` (`:458`, CSRF token in the form) emails a fresh link through UPG-33's `send_set_password_link`, explaining that an administrator sent it, and audit-logs `SET_PASSWORD_LINK_RESENT`. It refuses Super Admin roles (`SUPER_ROLE_NAMES`, `:421`), accounts that already have a password and unknown emails, and sends nothing for them.
+  - `templates/admin/users.html` is rewritten on the shared layout. The old standalone page, never rendered, is gone, along with its GET delete link and its form posting to a non-existent `/admin/add_user`.
+  - Linked from the layout's Management section (`templates/base_classic.html:61`) and from the admin dashboard's own sidebar (`templates/admin/dashboard.html:395`), where Super Admins land; that page doesn't use the layout yet (UPG-23).
+- **Files touched:** `routes_admin.py`, `templates/admin/users.html`, `templates/base_classic.html`, `templates/admin/dashboard.html` (nav links), `tests/test_admin_users.py` (new).
 - **Effort:** S · **Depends on:** UPG-33 · **Risk:** a long unpaginated list until UPG-19.
-- **Acceptance criteria:**
-  1. Test: a SuperAdmin opens `/admin/users` and sees an account waiting for its password with a resend button, and an account with a password without one.
-  2. Test: the resend sends exactly one set-password email whose link opens the account with its role, and the action is audit-logged.
-  3. Test: a SPOC and a student get 403 or a login redirect on the page and the action; resending for an account that has a password, or for a SuperAdmin, is refused and nothing is sent.
+- **Acceptance criteria** (`tests/test_admin_users.py`, real database layer; all 6 cases fail on the old code):
+  1. ✅ Test: a SuperAdmin opens `/admin/users` and sees an account waiting for its password with a resend button, and an account with a password without one (`::test_the_super_admin_sees_who_is_waiting_and_a_resend_button_only_for_them`).
+  2. ✅ Test: the resend sends exactly one set-password email whose link opens the account with its role, and the action is audit-logged (`::test_a_resend_emails_one_working_link_and_is_audit_logged`).
+  3. ✅ Test: a SPOC and a student get 403 or a login redirect on the page and the action; resending for an account that has a password, or for a SuperAdmin, is refused and nothing is sent (`::test_only_the_super_admin_can_open_the_page_or_resend`, with an anonymous visitor too, and `::test_accounts_with_a_password_and_super_admins_are_refused`).
+  - Full pytest: **731 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-41 — Remove the leftover Gmail app password from `utils_email.py`
 - **Status:** TODO
@@ -1592,3 +1600,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-02 | "docs: …" (parent `37c2a5c`) | Process, UPG-39, UPG-40, UPG-41 | Owner: AGENTS.md (and the identical CLAUDE.md) rule 8 now runs the re-verification once at the end of each phase, or early when a change touches files many open items depend on. "Before the next deploy" gains `BREVO_API_KEY`, `MAIL_FROM` and a test-send step, since UPG-33 makes the emailed link the only way into new accounts. **New:** UPG-39 (development logs set-password and reset links when no mail provider is set; never in production), UPG-40 (SuperAdmin users page with a resend button; no users page is routed today), UPG-41 (a third Gmail app password for the old mail account in `utils_email.py`'s docstring since 2026-04-19, revoked by the 2026-09-30 password change; remove it and the hard-coded sender). Scheduled after UPG-37. Docs only. |
 | 2026-10-02 | "UPG-37: …" (parent `06f4b02`) | UPG-37, BLK-13 | **UPG-37 DONE.** Each throttle counter has its own window: logins are also capped at 20 failures per account per hour (`LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT`), on the same stored attempts, which are now kept for an hour. A success clears both account windows; IPs and reset requests have no hourly cap. 6 new cases on both counter stores (criteria 1–2 fail on the old code). One BLK-13 test's fixed list of 20 Redis connections ran out with three counters per check; it now gets a new connection per call (same assertions). Full pytest 722 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-02 | "UPG-39: …" (parent `1b04a80`) | UPG-39 | **UPG-39 DONE.** With no mail provider configured, the set-password and reset emails log their link in development (WARNING, marked development-only) so the flows can be tested locally. In production only an error naming the missing provider is logged, never the link, and with a provider nothing is logged. 3 new real-database tests (criteria 1–2 fail on the old code). Full pytest 725 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-07 | "UPG-40: …" (parent `118dbf3`) | UPG-40, UPG-15 | **UPG-40 DONE.** New Super Admin page `/admin/users` on the shared layout, linked from the layout and the admin dashboard: every account with its role and whether it has set a password. Accounts still waiting get a POST "Resend set-password link" button that emails a fresh link (UPG-33's sender) and audit-logs it. Super Admin accounts, accounts with a password and unknown emails are refused and get nothing. The never-rendered standalone `templates/admin/users.html` (GET delete link, form to a missing route) is replaced. 6 new real-database cases (all fail on the old code). UPG-15's dead-link and unused-template notes updated. Full pytest 731 passed on SQLite and PostgreSQL 16; ruff clean. |

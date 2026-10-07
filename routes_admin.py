@@ -416,6 +416,67 @@ def delete_user(email):
 
 
 # =========================================================
+# 4b. USERS — who still has to set a password; resend their link (UPG-40)
+# =========================================================
+SUPER_ROLE_NAMES = {'SuperAdmin', 'Super Admin', 'UniversityAdmin', 'Admin'}
+
+
+def _role_name(user: dict) -> str:
+    role = user.get('role') or ''
+    return str(getattr(role, 'value', role))
+
+
+def _waiting_for_password(user: dict) -> bool:
+    # Accounts someone else creates stay locked until the set-password link
+    # is used (UPG-33); using it, or a reset, clears the flag.
+    return bool(user.get('needs_password_reset'))
+
+
+@admin_bp.route('/users')
+@login_required
+@role_required(SUPER_ROLES)
+def users():
+    accounts = []
+    for doc in db.collection('users').stream():
+        u = doc.to_dict() or {}
+        role = _role_name(u)
+        waiting = _waiting_for_password(u)
+        accounts.append({
+            'email':      doc.id,
+            'name':       u.get('name', ''),
+            'role':       role,
+            'waiting':    waiting,
+            'can_resend': waiting and role not in SUPER_ROLE_NAMES,
+        })
+    accounts.sort(key=lambda a: (not a['waiting'], a['email']))
+    return render_template('admin/users.html', accounts=accounts, current_page='users')
+
+
+@admin_bp.route('/users/resend_set_password', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def resend_set_password():
+    email = request.form.get('email', '').strip().lower()
+    doc = db.collection('users').document(email).get() if email else None
+    user = (doc.to_dict() or {}) if doc is not None and doc.exists else None
+
+    if user is None:
+        flash("No account with that email.", "warning")
+    elif _role_name(user) in SUPER_ROLE_NAMES:
+        flash("Set-password links can't be sent for Super Admin accounts.", "danger")
+    elif not _waiting_for_password(user):
+        flash(f"{email} has already set a password. If they've lost it, they can use \"Forgot password\".", "warning")
+    elif send_set_password_link(db, email, user.get('name', ''),
+                                reason="earlier, and an administrator has sent you a new link"):
+        log_action(db, "SET_PASSWORD_LINK_RESENT",
+                   f"Set-password link resent to {email} by {session.get('user_id')}")
+        flash(f"✅ A new set-password link was emailed to {email}.", "success")
+    else:
+        flash(f"The email to {email} couldn't be sent. Check the mail settings and try again.", "danger")
+    return redirect('/admin/users')
+
+
+# =========================================================
 # 5. VIEW AUDIT LOG
 # =========================================================
 @admin_bp.route('/audit_log')

@@ -563,33 +563,15 @@ def end_event(event_id):
             'cert_template_id': template_id,
             'cert_issued_by': issued_by,
         })
-        # Use template-aware cert task if available; fall back to Celery task
+        # Certificates go out through the one issuing path (UPG-06); the task
+        # runs inline without a broker, and directly if it can't be queued
+        from tasks.cert_tasks import bulk_generate_certificates
         try:
-            from tasks.cert_tasks import bulk_generate_certificates
-            bulk_generate_certificates.delay(event_id,
-                                             triggered_by=session.get('email', 'spoc'))
-        except Exception:
-            # Inline sync fallback (no Celery / custom templates)
-            from utils_certificate import generate_and_send_all_certificates_with_templates
-            ev   = db.collection('events').document(event_id).get().to_dict() or {}
-            regs = [r.to_dict() | {'id': r.id}
-                    for r in db.collection('registrations')
-                              .where('event_id', '==', event_id).stream()]
-            lb   = sorted(
-                [r for r in regs if r.get('scores')],
-                key=lambda x: -sum(s.get('total', 0)
-                                   for s in x.get('scores', {}).values())
-                               / max(len(x.get('scores', {})), 1)
-            )
-            generate_and_send_all_certificates_with_templates(
-                leaderboard=lb,
-                registrations=regs,
-                event_title=ev.get('title', 'Event'),
-                event_id=event_id,
-                event_date=str(ev.get('date', '')),
-                base_url=_public_base_url(),
-                template_id=template_id,
-            )
+            bulk_generate_certificates.delay(event_id, triggered_by=session.get('user_id', 'spoc'))
+        except Exception as exc:
+            current_app.logger.warning("Certificate task for %s not queued (%s); issuing inline", event_id, exc)
+            from utils_certificate import issue_event_certificates
+            issue_event_certificates(event_id, base_url=_public_base_url())
         _award_achievements(event_id)
         flash("Event ended. Certificates sent, achievements awarded!", "success")
     except Exception as e:
@@ -1884,37 +1866,24 @@ def api_coordinators():
 @login_required
 @role_required('ClubSPOC')
 def bulk_certs(event_id):
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-
-    event = doc.to_dict() or {}
-    if event.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised.", "danger")
-        return redirect('/spoc/dashboard')
-
-    regs     = list(db.collection('registrations').where('event_id', '==', event_id).stream())
-    all_regs = [r.to_dict() | {'id': r.id} for r in regs]
-    attended = [r for r in all_regs if r.get('attendance') == 'Present']
-
+    _event_or_abort(event_id, 'issue_certificates')
+    attended = [r for r in db.collection('registrations').where('event_id', '==', event_id).stream()
+                if (r.to_dict() or {}).get('attendance') == 'Present']
     if not attended:
         flash("No checked-in attendees found. Mark attendance via QR Scanner first.", "warning")
         return redirect(f'/spoc/dashboard#event-{event_id}')
 
     try:
-        from utils_certificate import generate_and_send_all_certificates_with_templates
-        generate_and_send_all_certificates_with_templates(
-            leaderboard=[],
-            registrations=all_regs,
-            event_title=event.get('title', 'Event'),
-            event_id=event_id,
-            event_date=str(event.get('date', '')),
-            base_url=_public_base_url(),
-        )
+        # The same issuing path as ending the event (UPG-06); repeats issue nothing twice
+        from utils_certificate import issue_event_certificates
+        result = issue_event_certificates(event_id, base_url=_public_base_url())
         log_action(db, "BULK_CERTS",
-                   f"SPOC {session.get('user_id')} bulk-issued certs for event {event_id}")
-        flash(f"✅ Participation certificates sent to {len(attended)} attendee(s).", "success")
+                   f"SPOC {session.get('user_id')} issued certificates for event {event_id}: {result}")
+        if result['failed']:
+            flash(f"{result['issued']} certificate(s) issued; {result['failed']} failed. Try again to retry those.", "warning")
+        else:
+            flash(f"✅ {result['issued']} certificate(s) issued and {result['emailed']} emailed; "
+                  f"{result['already_issued']} attendee(s) already had one.", "success")
     except Exception as e:
         flash(f"Error sending certificates: {e}", "danger")
 

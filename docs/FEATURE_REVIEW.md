@@ -39,7 +39,7 @@ This file is the source of truth for planned work. Agents and developers work on
    - names, titles and messages other people typed ran as script where page scripts built HTML: public leaderboard, calendar and landing page, staff and student pages (BLK-19, found in UPG-02, **fixed**);
    - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
 7. **Not production-ready yet (Phase 0, 2026-09-30):** uploads live on the container's disk (UPG-17; sessions moved to the database, BLK-08), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 111 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan.
-5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool. *(Since UPG-02, 2026-10-07: every scanner, the kiosk and the offline queue check real tickets in through one endpoint; certificates are still open, UPG-06.)*
+5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool. *(Since UPG-02, 2026-10-07: every scanner, the kiosk and the offline queue check real tickets in through one endpoint; since UPG-06, 2026-10-08, certificates are issued, emailed and verifiable.)*
 6. About 20 templates are never rendered, 3 blueprints are never registered, there are 2 parallel notification systems, 2 payment stacks, 13 seed scripts and a diverged copy of the whole app in `functions/saptha_app/` (UPG-14/15).
 
 ---
@@ -78,8 +78,8 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Rounds, lock scoring, advance round | not re-run [C at `1f4cdc8`] | `routes_spoc.py` round panel / lock / advance | The `spoc_id` gate is now satisfiable (the field persists), so these are likely unblocked; not re-run. |
 | AI judge↔team matching | PARTLY BUILT [C] | `routes_ai_matching.py:87-116` | Reads `form_answers`/`team_name`, which persist since BLK-09/BLK-06 [R round-trip]; matching not re-run. |
 | Results + public leaderboard | WORKING [R] | `routes_spoc.py:786`, `routes_live.py:161` | Team and lead names read back since BLK-09 [R round-trip]; leaderboard not re-run. |
-| Certificates | PARTLY BUILT [C at `1f4cdc8`] | `tasks/cert_tasks.py:44-50` vs `utils_certificate.py:145` | The PDF task signature mismatch (`TypeError ... 'name'`, [R] at `694c729`) is **unchanged**. Page name and bulk gate depend on fields that now persist, so they're likely fixed; not re-run (UPG-06). |
-| Certificate public verification | not run [C] | `routes_verification.py:21-124` | Depends on certificates being issued. |
+| Certificates | WORKING [R at UPG-06] | `utils_certificate.py:778`, `tasks/cert_tasks.py:25`, `routes_spoc.py:570,1868` | One issuing path for end-event and the bulk button: a PDF per attendee marked Present (winner certificates for the top three scores), a certificate ID and verify URL on the registration, an emailed PDF; never issued twice. PDFs are drawn again on download, not stored (UPG-17). |
+| Certificate public verification | WORKING [R at UPG-06] | `routes_verification.py:21-185` | `/verify/<certificate_id>` shows the issued certificate and offers the PDF; an unknown ID shows invalid (404). Certificates from API v1's `CertificateService` aren't found there (UPG-14). |
 | Feedback | PARTLY BUILT [R at BLK-05] | `routes_feedback.py`, `routes_participant.py:283` | `/feedback/view` redirects to `/feedback/analytics`, which returns 200 [R at `1f4cdc8`]. The lead can open and submit the form on the real database (BLK-05 journey test); team members, one response per person and the attendance check are UPG-05. |
 | Hackathon submission + kanban | WORKING (page load) [R] | `routes_hackathon.py:20-206` | Pipeline and project pages are public (`routes_hackathon.py:107,137`). |
 | Teams (create/join by code) | NOT CONNECTED [C] | `routes_teams.py:92` | Writes a separate `teams` collection; never linked to registrations, tickets or judging. |
@@ -138,7 +138,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Submit work (hackathon) | Page loads [R] | — |
 | See results | OK [R] | Names read back since BLK-09 [R round-trip]. |
 | Feedback | **Works for the lead** [R at BLK-05] | BLK-05's journey test submits it on the real database; team members are still refused (`routes_participant.py:290`, UPG-05). |
-| Certificate | Page **fixed**; PDF **broken** | The page shows the name (BLK-05 journey test); the PDF task still raises a `TypeError` (UPG-06). A separate certificate tool is used instead. |
+| Certificate | **Works** [R at UPG-06] | The page shows the name and links the official PDF; it's emailed when the event ends, and `/verify/<id>` confirms it. |
 | Portfolio | **Fixed** [R at `1f4cdc8`] | `/u/<usn>` shows the right student. |
 
 ### SPOC / organiser
@@ -152,7 +152,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Assign coordinators / judges / rooms | Judges and coordinators OK [R at `1f4cdc8`]; rooms not re-run | The `spoc_id` checks at `routes_spoc.py:1186,1508,1546` pass for the owner since BLK-09. End-to-end test: UPG-29. |
 | Run the day | QR scans and the manual list [R at UPG-02] | Scans go through the shared check-in; the manual list still uses its own route (UPG-14); the blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09 (not re-run). WhatsApp groups used instead. |
 | Results | Publish OK [R]; lock/advance not re-run | Their `spoc_id` gates (`routes_spoc.py:1651,1672`) pass for the owner since BLK-09. |
-| Certificates | **PDF broken** | Bulk send's `spoc_id` gate (`routes_spoc.py:1900`) passes for the owner; the PDF task still fails (`tasks/cert_tasks.py:44`, UPG-06). |
+| Certificates | **Works** [R at UPG-06] | Ending the event or the bulk button issues each attendee's certificate once, through one path. |
 | Report | AI report's `spoc_id` gate (`routes_spoc.py:816`) passes for the owner; it needs a Gemini key. Admin report page loads [R] | IQAC/NAAC report written by hand (UPG-03). |
 
 ### Coordinator / volunteer
@@ -193,12 +193,12 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Event type | Works today | Done outside the app | Needed |
 |---|---|---|---|
-| Seminar | Create from template, approval, free registration (SPOC-created form), ticket, QR and manual check-in (UPG-02), calendar | Attendance sheet (exports blank), feedback (Google Forms), certificates (separate tool), IQAC report | UPG-01, UPG-03, UPG-05, UPG-06 |
+| Seminar | Create from template, approval, free registration (SPOC-created form), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), calendar | Attendance sheet (exports blank), feedback (Google Forms), IQAC report | UPG-01, UPG-03, UPG-05 |
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:131`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
-| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02) | Team formation (WhatsApp), rubric scoring, round shortlists, certificates | UPG-08, UPG-04, UPG-06 |
+| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06) | Team formation (WhatsApp), rubric scoring, round shortlists | UPG-08, UPG-04 |
 | Sports | Create, registration (solo only), leaderboard page | Team rosters, fixtures, match results, standings (whiteboard/Excel) | UPG-08, UPG-13 |
-| Cultural | Template exists (`services_templates.py:494`); judging as hackathon | Slots, judging sheets, certificates | UPG-04, UPG-06 |
+| Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06) | Slots, judging sheets | UPG-04 |
 | Club activities | Org units can be clubs (`routes_admin.py:685`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
 | Placement drives | Generic registration only | Eligibility (branch / CGPA / backlogs), shortlists per round, company communication — all Excel | Eligibility rules + shortlist rounds (not in this list; add as next free ID when prioritised) |
 | FDPs | Registration creates a **Student** account (`services_accounts.py:61`, used at `routes_forms.py:438`) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
@@ -320,21 +320,36 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   6. Test: the SPOC summary export returns one CSV row per response, for the event owner only.
 
 #### UPG-06 — Certificates generate with the right name and can be issued in bulk
-- **Status:** IN PROGRESS (criterion 2 met by BLK-05's journey test; 1, 3 and 4 open)
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-06: …" on `production-ready` (parent `816808c`)
 - **Problem:** (the signature mismatch is re-checked unchanged at `1f4cdc8` [C]; the name and bulk-gate bullets were caused by BLK-06 and are likely fixed, not re-run)
   - `tasks/cert_tasks.py:44-50` calls `generate_certificate_pdf(reg_id=, name=, event_date=, venue=)`, but the signature is `(student_name, event_title, reg_id, cert_type, ...)` (`utils_certificate.py:145`). End-event certificate generation fails with a `TypeError` [R].
   - The certificate page reads `lead_name` (`routes_participant.py:230`) → "presented to None" [R at `694c729`]. Fixed: the key persists since BLK-09, and BLK-05's journey test checks that the page shows the name.
   - Bulk send's `spoc_id` gate (`routes_spoc.py:1900`) passes for the owner since BLK-09; not re-run (criterion 4).
 - **Who benefits:** every attendee; removes the separate certificate tool.
 - **What to build:** fix the call signature; one issuing path (end event or button) producing a PDF per attendee with a stored certificate ID and verify URL; emailing on top.
-- **Files touched:** `tasks/cert_tasks.py`, `utils_certificate.py`, `routes_spoc.py`, `routes_participant.py`, `routes_verification.py`, tests.
-- **Effort:** M · **Depends on:** BLK-06 (was also UPG-05; the "require feedback first" option belongs to UPG-05, so certificates don't wait for it) · **Risk:** PDF rendering on free-tier memory; generate lazily or in small batches.
-- **Acceptance criteria:**
-  1. Test: ending an event with 2 Present and 1 Absent attendee creates exactly 2 certificates without exceptions (eager Celery).
+- **Re-checked before building (2026-10-08, `816808c`; rule 3):** only `routes_spoc.py` changed since `986d108` (BLK-17's ownership checks). The signature mismatch was still there. Also found:
+  - three certificate stores: the PDF generator wrote `verified_certificates/<hash>` as a side effect of drawing; `CertificateService` writes `certificates/<id>`, which `/verify` never reads (API v1 only; added to UPG-14);
+  - end-event's fallback and the bulk button each re-sent every certificate on every run;
+  - the email's verify link used the registration ID;
+  - `/verify/<id>/download` re-drew the PDF with a recomputed hash, so its QR pointed at a record that didn't exist.
+- **What was built:**
+  - **One issuing path, `utils_certificate.issue_event_certificates` (`utils_certificate.py:778`).** For each registration marked Present that has no certificate yet, it renders the PDF (the event's uploaded template, else the built-in design) and records `verified_certificates/<certificate_id>`. It then stores `certificate_id`, `certificate_verify_url`, `certificate_type` and the time on the registration, and emails the PDF.
+    - The top three scored attendees get a winner certificate instead of participation.
+    - A rerun issues nothing twice.
+    - It returns counts (issued, emailed, already issued, not present, failed).
+    - The certificate ID is `certificate_id_for(...)` (`:145`), the hash the generator used before.
+  - **End-event and the bulk button share it.** End-event queues `tasks.cert_tasks.bulk_generate_certificates` (`tasks/cert_tasks.py:25`, inline without a broker), which calls it, or calls it directly if queueing fails (`routes_spoc.py:570`). The bulk button calls it directly (`routes_spoc.py:1868`) and now uses BLK-17's `_event_or_abort(…, 'issue_certificates')`. The broken per-registration task and the two old send-all functions are gone.
+  - **Drawing only draws.** `generate_certificate_pdf` takes `certificate_id` (`:164`) for the QR and footer and no longer writes records. The download route passes the stored ID (`routes_verification.py:177`), and the email links `/verify/<certificate_id>` (`utils_email.py:788`).
+  - **The attendee's certificate page** links the official PDF and the verification page when one was issued (`routes_participant.py:232`).
+- **Files touched:** `utils_certificate.py`, `tasks/cert_tasks.py`, `routes_spoc.py`, `routes_verification.py`, `routes_participant.py`, `utils_email.py`, `templates/participant/certificate.html`, `tests/test_certificates.py` (new).
+- **Effort:** M · **Depends on:** BLK-06 (was also UPG-05; the "require feedback first" option belongs to UPG-05, so certificates don't wait for it) · **Risk:** PDF rendering on free-tier memory: about 0.1 s per certificate here, done inline when there's no broker (UPG-18 adds timeouts). PDFs aren't stored: `/verify/<id>/download` draws them again from the record (object storage is UPG-17).
+- **Acceptance criteria** (`tests/test_certificates.py`, real database layer; all 3 fail on the old code):
+  1. ✅ Test: ending an event with 2 Present and 1 Absent attendee creates exactly 2 certificates without exceptions (eager Celery) (`::test_ending_the_event_issues_exactly_one_certificate_per_attendee`). It also checks: the scored attendee gets a winner certificate; the records and registrations hold the ID and verify URL; each attendee gets one email with a PDF and the right verify link; the absent one gets nothing.
   2. ✅ Test: the certificate page shows the attendee's name (`tests/test_event_journey_real_db.py:80-84`, BLK-05; it also checks there's no ">None<").
-  3. Test: `/verify/<certificate_id>` shows valid; a random ID shows invalid.
-  4. The SPOC "bulk certificates" button succeeds for the event owner.
+  3. ✅ Test: `/verify/<certificate_id>` shows valid; a random ID shows invalid (`::test_verify_shows_an_issued_certificate_and_refuses_a_random_id`; the PDF downloads, and the attendee's page links it).
+  4. ✅ The SPOC "bulk certificates" button succeeds for the event owner (`::test_the_bulk_button_issues_through_the_same_path_once`: 2 issued; pressing again or ending the event afterwards issues and emails nothing more; another SPOC gets 403).
+  - Full pytest: **820 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-07 — Reminders and lifecycle jobs run on free-tier hosting
 - **Status:** TODO
@@ -452,6 +467,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - **Waitlist promotion (found in BLK-03):** two implementations, `routes_waitlist.auto_promote` (ordered by `position`, no ticket) and `tasks/waitlist_tasks.promote_from_waitlist` (ordered by `joined_at`, issues a ticket, used by the cancel route). BLK-03 made both use `promotion_terms`; merge them into one.
   - **Not duplicates (checked 2026-09-30 at `56a014d`):** `models.py` (91 lines) is the `db` entry point imported by 70 modules, not a copy of `models_pg.py`; keep it. `routes_ai_matching.py` (judge↔team) is a different feature from the matchmaker; keep it.
   - **Check-in paths left beside the shared check-in (found building UPG-02):** the SPOC manual list (`/spoc/api/checkin`, with rounds and no payment check) and the coordinator's `get_ticket` and `mark_attendance_granular` still work by registration ID with their own rules; the scanners and desks now use `routes_ticket.check_in`. `/ticket/api/verify` POST's Bearer-token login imports `auth_jwt.decode_access_token`, which doesn't exist, so it only ever accepts the session (fails closed).
+  - **Two certificate stores (found building UPG-06):** the web path records `verified_certificates/<id>` (`utils_certificate.issue_event_certificates`), which `/verify` reads; API v1's `services_certificate.CertificateService` writes `certificates/<id>`, which `/verify` doesn't read, so API-issued certificates can't be verified there.
 - **Who benefits:** developers; students get a working notification feed.
 - **What to build:** a v2-only notification API and dashboard feed; remove v1, Stripe, both scheduler files and `tests.py`; hide the matchmaker behind a flag until it uses real profiles.
 - **Files touched:** `routes_notifications.py`, `templates/participant/dashboard.html`, `app.py`, `routes_payment_stripe.py`, `scheduler*.py`, `routes_matchmaker.py`, `tests.py`.
@@ -1733,3 +1749,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-07 | "BLK-18: …" (parent `2db0db1`) | BLK-18, Rule 8 | **New blocker, found while starting UPG-02, and DONE** (built before UPG-02 under rule 2, as with BLK-17). `can()` gave every Volunteer `check_in` on every event. On the real database an unassigned volunteer marked another event's registration `Present`, and could read its scanner view and open its ticket and QR. A Volunteer now has `check_in` only on events whose staff lists them, like an EventCoordinator. 3 new real-database tests (2 fail on the old code; the third guards against over-blocking). Full pytest 762 passed on SQLite and PostgreSQL 16; ruff clean. **Rule 8 early pass** (`services_permission.py` touched): all 37 open items checked against the change; only UPG-02 is affected, and in the direction it asks for. |
 | 2026-10-07 | "UPG-02: …" (parent `5c54cb8`) | UPG-02, BLK-19, UPG-43, UPG-44, UPG-14 | **UPG-02 DONE.** One check-in, `routes_ticket.check_in`, behind `POST /ticket/api/checkin`. It takes the scanned link or signed token, never a registration ID. It needs `check_in` on the ticket's event and that the event exists, and refuses another event's ticket. One payment rule: free, waived or paid in any case; a free event owes nothing. A repeat answers "Already checked in at HH:MM." with the first time. The coordinator, SPOC and HUD scanners, a USB scanner at the kiosk and the rewritten offline queue (IndexedDB, one entry per ticket, replay-safe) all use it. `/ticket/verify` POST, `/ticket/api/verify` POST and kiosk confirm call the same function, which closes BLK-12's missing-event gap. 20 new cases, all failing on the old code, including a Node run of `offline-sync.js` against a live copy of the app. **New:** BLK-19 (registrant names inserted with `innerHTML` on staff pages run as script: stored XSS; to be built before UPG-06 under rule 2), UPG-43 (scanner list, walk-in list and venue self check-in accept only the old `active` status), UPG-44 (an empty payment status reads back `unpaid`). UPG-14 gains the by-ID check-in routes left beside the shared one, and `/ticket/api/verify`'s Bearer login, which imports a function that doesn't exist. Full pytest 782 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. |
 | 2026-10-08 | "BLK-19: …" (parent `0a68ce6`) | BLK-19, UPG-15, UPG-25 | **BLK-19 DONE** (found in UPG-02; built before UPG-06 under rule 2). The audit found 241 places in 30 templates and scripts where a value went into HTML unescaped; other people's text could run as script on the public leaderboard, calendar, landing page and chatbot, on SPOC, judge, admin and coordinator pages, and in the student dashboard's notifications. New `static/js/escape.js` (`escapeHtml`, `escapeJsAttr` for handler attributes, `safeUrl` for links), loaded by the shared layout and each standalone page that uses it; shared scripts build text nodes instead; four page-local helpers, two of which missed single quotes, are gone. `tests/html_sinks.py` scans every tracked template and script, so new code is held to the same rule. 35 new test cases (the scan and the loader check fail on the old code; a Node test of the helpers; a real-database check that a markup name is stored as typed and shown as text). UPG-15's two dead templates are skipped by the scan until it deletes them; UPG-25 stays the second layer. Full pytest 817 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. |
+| 2026-10-08 | "UPG-06: …" (parent `816808c`) | UPG-06, UPG-14 | **UPG-06 DONE.** One issuing path, `utils_certificate.issue_event_certificates`, for ending the event (through the Celery task, inline without a broker) and the SPOC's bulk button. Each attendee marked Present gets a PDF (uploaded template or built-in design; the top three scores get winner certificates), a certificate record and ID, the verify URL on the registration and an emailed PDF, and never a second one. Drawing a PDF no longer writes records; the download route and the email use the stored ID, so their QR and link resolve. The broken per-registration task and the two old send-all functions are removed; the bulk button uses BLK-17's permission check. 3 new real-database tests (all fail on the old code). UPG-14 gains API v1's separate certificate store, which `/verify` can't see. Full pytest 820 passed on SQLite and PostgreSQL 16; ruff clean. |

@@ -771,7 +771,8 @@ def send_broadcast_email(to_list: list, subject: str,
 def _send_cert_email(to_email: str, student_name: str,
                      event_title: str, cert_type: str,
                      rank: int, score: float,
-                     pdf_bytes: bytes, reg_id: str | None = None) -> bool:
+                     pdf_bytes: bytes, reg_id: str | None = None,
+                     certificate_id: str | None = None) -> bool:
     rank_labels = {1: '🥇 1st Place Winner', 2: '🥈 2nd Place Winner', 3: '🥉 3rd Place Winner'}
     if cert_type == 'winner':
         subject  = f"🏆 Your Achievement Certificate — {event_title}"
@@ -783,7 +784,9 @@ def _send_cert_email(to_email: str, student_name: str,
         cert_color = "#1d4ed8"  # blue
 
     base = _base_url().rstrip('/')
-    verify_url = f"{base}/verify/{reg_id}" if reg_id else "#"
+    # The certificate's own ID when it has one (UPG-06), else the registration's
+    verify_id = certificate_id or reg_id
+    verify_url = f"{base}/verify/{verify_id}" if verify_id else "#"
 
     verified_block = ""
     if reg_id:

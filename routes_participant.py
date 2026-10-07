@@ -228,7 +228,8 @@ def view_certificate(reg_id):
 
     return render_template('participant/certificate.html',
                             student_name=reg_data.get('lead_name'),
-                            event=event_data)
+                            event=event_data,
+                            certificate_id=reg_data.get('certificate_id'))  # issued by UPG-06's path
 
 
 # =========================================================

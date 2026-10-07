@@ -170,6 +170,12 @@
     </div>
 
     <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
+    {% if certificate_id %}
+    <p class="no-print" style="text-align:center;margin-top:12px;font-family:Montserrat,sans-serif;font-size:14px;">
+      <a href="/verify/{{ certificate_id }}/download">Download the official certificate (PDF)</a>
+      · <a href="/verify/{{ certificate_id }}">Verification page</a>
+    </p>
+    {% endif %}
 
     <div style="max-width:680px;margin:16px auto;padding:0 20px;" class="no-print">
       {% set share_title = "I earned a certificate for " ~ event.title ~ " at Sapthagiri NPS University! #SapthaEvent #SNPSU" %}

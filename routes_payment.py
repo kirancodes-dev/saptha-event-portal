@@ -6,8 +6,11 @@ import os
 import time
 from flask import (Blueprint, flash, jsonify, redirect, render_template, request, session)
 from services_payments import (PaymentError, amount_inr, attach_registration, claim_order,
-                               claim_paid_order, get_order, mark_unmatched, record_order,
-                               server_price, simulation_enabled)
+                               claim_paid_order, get_order, give_back_coupon_use, mark_unmatched,
+                               record_order, release_payer_holds, server_price, simulation_enabled,
+                               take_coupon_use)
+
+COUPON_GONE = 'the coupon had no uses left when this late payment arrived'  # UPG-36
 from utils import login_required, record_form_submission, safe_int
 
 # What a payer sees when their money arrived but the registration couldn't be
@@ -104,12 +107,25 @@ def create_order():
         return jsonify({'error': 'Online payment is not configured. Please contact the organiser.'}), 503
 
     email = (reg_data.get('lead_email') or '').lower()
-    order = _rzp().order.create({  # type: ignore[union-attr]
-        'amount':   price['amount_paise'],
-        'currency': 'INR',
-        'receipt':  f"reg_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}",
-        'notes':    {'event_id': event_id, 'email': email},
-    })
+    coupon = price.get('coupon')
+    if coupon:
+        # Hold one use for this order, atomically; a retry gives back the
+        # payer's earlier hold first (UPG-36)
+        release_payer_holds(event_id, email, price['coupon_code'])
+        if not take_coupon_use(event_id, price['coupon_code'], int(coupon.get('max_uses', 0) or 0),
+                               int(coupon.get('current_uses', 0) or 0)):
+            return jsonify({'error': 'Coupon usage limit reached'}), 400
+    try:
+        order = _rzp().order.create({  # type: ignore[union-attr]
+            'amount':   price['amount_paise'],
+            'currency': 'INR',
+            'receipt':  f"reg_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            'notes':    {'event_id': event_id, 'email': email},
+        })
+    except Exception:
+        if coupon:
+            give_back_coupon_use(event_id, price['coupon_code'])
+        raise
     record_order(order['id'], event_id, email, price['amount_paise'], price['coupon_code'],
                  reg_data=dict(reg_data, event_id=event_id))  # the webhook completes from it (UPG-30)
     session['pending_reg_data'] = dict(reg_data, event_id=event_id)
@@ -172,6 +188,11 @@ def verify_payment():
         log_action(_db(), "PAYMENT_REJECTED",
                    f"Order {razorpay_order_id} / {razorpay_payment_id} for event {event_id}: {exc}")
         return jsonify({'error': str(exc)}), exc.status
+
+    if order.get('coupon_over_limit'):  # paid after its coupon hold ran out, and none left (UPG-36)
+        mark_unmatched(razorpay_order_id, COUPON_GONE)
+        session.pop('pending_reg_data', None)
+        return jsonify({'recorded': True, 'message': RECORDED_MESSAGE}), 202
 
     result = _complete_registration(
         event_id=event_id,
@@ -396,6 +417,9 @@ def razorpay_webhook():
     order = claim_paid_order(order_id, payment_id, safe_int(payment.get('amount')))
     if order is None:  # unknown, already completed by the browser, or the amount differs
         return jsonify({'status': 'nothing to do'})
+    if order.get('coupon_over_limit'):  # UPG-36
+        mark_unmatched(order_id, COUPON_GONE)
+        return jsonify({'status': 'recorded'})
     if not order['reg_data']:
         mark_unmatched(order_id, 'no registration details were stored with the order')
         return jsonify({'status': 'recorded'})

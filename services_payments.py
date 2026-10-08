@@ -94,9 +94,88 @@ def server_price(db, event_id: str, event_data: dict, coupon_code: str = '') -> 
         'fee':          fee,
         'discount':     discount,
         'coupon_code':  coupon.get('code', '') if coupon else '',
+        'coupon':       coupon,
         'multiplier':   multiplier,
         'reason':       reason,
     }
+
+
+# ── Coupon uses (UPG-36) ───────────────────────────────────────────────────
+# An order with a coupon holds one use from the moment it's created. An
+# unpaid order lets go of it after COUPON_HOLD_MINUTES, so a checkout that's
+# abandoned doesn't block the last use for long.
+
+def coupon_hold() -> datetime.timedelta:
+    return datetime.timedelta(minutes=int(os.environ.get('COUPON_HOLD_MINUTES', '30') or 30))
+
+
+def _coupon_key(event_id: str, code: str) -> str:
+    return f"{event_id}:{(code or '').upper()}"
+
+
+def take_coupon_use(event_id: str, code: str, max_uses: int, recorded_uses: int = 0) -> bool:
+    """Take one use if one is free. One conditional UPDATE, so it's race-free.
+    The counter starts at the uses the coupon already records."""
+    from db_pg import get_session
+    from models_pg import CouponUse
+    release_expired_holds(event_id, code)
+    key = _coupon_key(event_id, code)
+    try:
+        with get_session() as s:
+            if s.get(CouponUse, key) is None:
+                s.add(CouponUse(key=key, used=int(recorded_uses or 0)))
+    except IntegrityError:
+        pass  # another checkout created it first
+    with get_session() as s:
+        result = s.execute(update(CouponUse).where(CouponUse.key == key, CouponUse.used < int(max_uses))
+                           .values(used=CouponUse.used + 1))
+        return result.rowcount == 1
+
+
+def give_back_coupon_use(event_id: str, code: str) -> None:
+    from db_pg import get_session
+    from models_pg import CouponUse
+    with get_session() as s:
+        s.execute(update(CouponUse).where(CouponUse.key == _coupon_key(event_id, code), CouponUse.used > 0)
+                  .values(used=CouponUse.used - 1))
+
+
+def release_payer_holds(event_id: str, email: str, code: str) -> None:
+    """A payer starting checkout again gives back the use their earlier,
+    unpaid order held, so retries don't hold two (UPG-36)."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        mine = [o.id for o in s.query(PaymentOrder.id).filter(
+            PaymentOrder.event_id == str(event_id), PaymentOrder.email == (email or '').lower(),
+            PaymentOrder.coupon_code == (code or '').upper(), PaymentOrder.status == 'created')]
+    for order_id in mine:
+        with get_session() as s:
+            won = s.execute(update(PaymentOrder).where(PaymentOrder.id == order_id, PaymentOrder.status == 'created')
+                            .values(status='replaced')).rowcount == 1
+        if won:
+            give_back_coupon_use(event_id, code)
+
+
+def release_expired_holds(event_id: str, code: str) -> int:
+    """Unpaid orders older than the hold give their coupon use back, each once."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - coupon_hold()
+    with get_session() as s:
+        stale = [o.id for o in s.query(PaymentOrder.id).filter(
+            PaymentOrder.event_id == str(event_id), PaymentOrder.coupon_code == (code or '').upper(),
+            PaymentOrder.status == 'created', PaymentOrder.created_at < cutoff)]
+    released = 0
+    for order_id in stale:
+        with get_session() as s:
+            result = s.execute(update(PaymentOrder).where(PaymentOrder.id == order_id, PaymentOrder.status == 'created')
+                               .values(status='expired'))
+            won = result.rowcount == 1
+        if won:
+            give_back_coupon_use(event_id, code)
+            released += 1
+    return released
 
 
 def amount_inr(amount_paise: int):
@@ -114,7 +193,7 @@ def record_order(order_id: str, event_id: str, email: str, amount_paise: int, co
     from models_pg import PaymentOrder
     with get_session() as s:
         s.add(PaymentOrder(id=order_id, event_id=str(event_id), email=email.lower(),
-                           amount_paise=int(amount_paise), coupon_code=coupon_code or None,
+                           amount_paise=int(amount_paise), coupon_code=(coupon_code or '').upper() or None,
                            reg_data_json=json.dumps(reg_data, default=str) if reg_data else None))
 
 
@@ -163,20 +242,24 @@ def claim_paid_order(order_id: str, payment_id: str, amount_paise: int) -> Optio
     from db_pg import get_session
     from models_pg import PaymentOrder
     order = get_order(order_id)
-    if order is None or order['status'] != 'created' or int(amount_paise) != order['amount_paise']:
+    if order is None or order['status'] not in ('created', 'expired') or int(amount_paise) != order['amount_paise']:
         return None
+    was_expired = order['status'] == 'expired'
     try:
         with get_session() as s:
             result = s.execute(
                 update(PaymentOrder)
-                .where(PaymentOrder.id == order_id, PaymentOrder.status == 'created')
+                .where(PaymentOrder.id == order_id, PaymentOrder.status.in_(('created', 'expired')))
                 .values(status='paid', payment_id=payment_id,
                         paid_at=datetime.datetime.now(datetime.timezone.utc)))
             if result.rowcount != 1:
                 return None
     except IntegrityError:
         return None
-    return get_order(order_id)
+    claimed = get_order(order_id)
+    claimed['coupon_over_limit'] = _late_coupon_over_limit(
+        order['event_id'], {'was_expired': was_expired, 'coupon_code': order['coupon_code']})
+    return claimed
 
 
 def start_refund(order_id: str) -> Optional[dict]:
@@ -224,15 +307,16 @@ def claim_order(order_id: str, payment_id: str, event_id: str, email: str) -> di
         if (order is None or order.event_id != str(event_id)
                 or order.email != (email or '').lower()):
             raise PaymentError('This payment does not match your registration.', 400)
-        if order.status != 'created':
+        if order.status not in ('created', 'expired'):
             raise PaymentError('This payment has already been used.', 409)
-        snapshot = {'amount_paise': order.amount_paise, 'coupon_code': order.coupon_code or ''}
+        snapshot = {'amount_paise': order.amount_paise, 'coupon_code': order.coupon_code or '',
+                    'was_expired': order.status == 'expired'}
 
     try:
         with get_session() as s:
             result = s.execute(
                 update(PaymentOrder)
-                .where(PaymentOrder.id == order_id, PaymentOrder.status == 'created')
+                .where(PaymentOrder.id == order_id, PaymentOrder.status.in_(('created', 'expired')))
                 .values(status='paid', payment_id=payment_id,
                         paid_at=datetime.datetime.now(datetime.timezone.utc))
             )
@@ -240,7 +324,28 @@ def claim_order(order_id: str, payment_id: str, event_id: str, email: str) -> di
                 raise PaymentError('This payment has already been used.', 409)
     except IntegrityError:
         raise PaymentError('This payment has already been used.', 409)
+    snapshot['coupon_over_limit'] = _late_coupon_over_limit(event_id, snapshot)
     return snapshot
+
+
+def _late_coupon_over_limit(event_id: str, order: dict) -> bool:
+    """An order paid after its coupon hold ran out takes a use again; True
+    when none is free, so the payment is kept for the admin instead (UPG-36)."""
+    if not (order.get('was_expired') and order.get('coupon_code')):
+        return False
+    coupon = None
+    try:
+        from models import db
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        for doc in (db.collection('coupons').where(filter=FieldFilter('code', '==', order['coupon_code']))
+                    .where(filter=FieldFilter('event_id', '==', str(event_id))).limit(1).stream()):
+            coupon = doc.to_dict() or {}
+    except Exception:
+        coupon = None
+    if not coupon:
+        return True
+    return not take_coupon_use(event_id, order['coupon_code'], int(coupon.get('max_uses', 0) or 0),
+                               int(coupon.get('current_uses', 0) or 0))
 
 
 def attach_registration(order_id: str, reg_id: str) -> None:

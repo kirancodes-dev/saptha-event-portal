@@ -627,6 +627,16 @@ class PaymentOrder(Base):
     refunded_by    = Column("refundedBy", String(255), nullable=True)
 
 
+class CouponUse(Base):
+    """How many uses of one event's coupon are taken: paid, or held by an
+    order that isn't paid yet (UPG-36). Taken with one conditional UPDATE,
+    so two checkouts can't both get the last use."""
+    __tablename__ = "coupon_uses"
+
+    key  = Column(String(300), primary_key=True)  # "<event_id>:<CODE>"
+    used = Column(Integer, nullable=False, default=0)
+
+
 class Announcement(Base):
     __tablename__ = "announcements"
 

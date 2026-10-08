@@ -1,12 +1,20 @@
 import datetime
 import hashlib
 import hmac as _hmac  # alias to avoid shadowing module with local var
+import json
 import os
 import time
 from flask import (Blueprint, flash, jsonify, redirect, render_template, request, session)
 from services_payments import (PaymentError, amount_inr, attach_registration, claim_order,
-                               record_order, server_price, simulation_enabled)
-from utils import login_required, record_form_submission
+                               claim_paid_order, get_order, mark_unmatched, record_order,
+                               server_price, simulation_enabled)
+from utils import login_required, record_form_submission, safe_int
+
+# What a payer sees when their money arrived but the registration couldn't be
+# completed (UPG-30)
+RECORDED_MESSAGE = ("Your payment is recorded, but we couldn't complete the registration (the event may be "
+                    "full, or you may already be registered). The organisers will complete it or refund you; "
+                    "you don't need to pay again.")
 
 try:
     import razorpay
@@ -20,9 +28,10 @@ except ImportError:
     firestore = FieldFilter = None
 
 try:
-    from tasks.email_tasks import send_ticket_email_task
+    from tasks.email_tasks import send_ticket_email_task, send_payment_receipt_email_task
 except ImportError:
     def send_ticket_email_task(*a, **kw): pass
+    def send_payment_receipt_email_task(*a, **kw): pass
 
 try:
     from tasks.notification_tasks import send_ticket_whatsapp_task, send_payment_receipt_whatsapp_task
@@ -101,7 +110,8 @@ def create_order():
         'receipt':  f"reg_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}",
         'notes':    {'event_id': event_id, 'email': email},
     })
-    record_order(order['id'], event_id, email, price['amount_paise'], price['coupon_code'])
+    record_order(order['id'], event_id, email, price['amount_paise'], price['coupon_code'],
+                 reg_data=dict(reg_data, event_id=event_id))  # the webhook completes from it (UPG-30)
     session['pending_reg_data'] = dict(reg_data, event_id=event_id)
     return jsonify({
         'order_id': order['id'],
@@ -151,6 +161,14 @@ def verify_payment():
         order = claim_order(razorpay_order_id, razorpay_payment_id, event_id,
                             reg_data.get('lead_email', ''))
     except PaymentError as exc:
+        # The webhook may have finished this same payment first (UPG-30)
+        done = get_order(razorpay_order_id)
+        if (exc.status == 409 and done and done['payment_id'] == razorpay_payment_id
+                and done['email'] == (reg_data.get('lead_email') or '').lower()):
+            session.pop('pending_reg_data', None)
+            if done['reg_id']:
+                return jsonify({'redirect': _after_payment_url({'reg_id': done['reg_id'], 'email': done['email']})})
+            return jsonify({'recorded': True, 'message': RECORDED_MESSAGE}), 202
         log_action(_db(), "PAYMENT_REJECTED",
                    f"Order {razorpay_order_id} / {razorpay_payment_id} for event {event_id}: {exc}")
         return jsonify({'error': str(exc)}), exc.status
@@ -164,9 +182,13 @@ def verify_payment():
         razorpay_order_id=razorpay_order_id,
     )
     if 'error' in result:
+        # Paid, but no registration: the order stays paid and appears on the
+        # admin's payments page to complete or refund (UPG-30)
+        mark_unmatched(razorpay_order_id, result['error'])
         log_action(_db(), "PAYMENT_UNMATCHED",
                    f"Paid order {razorpay_order_id} could not complete a registration: {result['error']}")
-        return jsonify(result), 400
+        session.pop('pending_reg_data', None)
+        return jsonify({'recorded': True, 'message': RECORDED_MESSAGE}), 202
     attach_registration(razorpay_order_id, result['reg_id'])
     if order.get('coupon_code'):
         _use_coupon(event_id, order['coupon_code'])
@@ -260,6 +282,15 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             session.pop('pending_reg_data', None)
             return {'error': 'already_registered'}
 
+        # The seat may have gone while they paid: never overbook (UPG-30). A
+        # held (pending_payment) seat is already theirs.
+        event_ref  = _db().collection('events').document(event_id)
+        event_data = event_ref.get().to_dict() or {}
+        max_cap = (safe_int((event_data.get('limits') or {}).get('max_participants', 0))
+                   or safe_int(event_data.get('capacity', 0)))
+        if held is None and max_cap and safe_int(event_data.get('registration_count', 0)) >= max_cap:
+            return {'error': 'event_full'}
+
         reg_data.update({
             'reg_id':               reg_id,
             'status':               'Confirmed',
@@ -282,8 +313,6 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
         except Exception as e:
             pass
 
-        event_ref  = _db().collection('events').document(event_id)
-        event_data = event_ref.get().to_dict() or {}
         # Atomic increment — safe under concurrent registrations. A held
         # (pending_payment) seat was already counted when it was held.
         if held is None:
@@ -297,6 +326,11 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             to_email=email, name=name, event_title=event_title,
             reg_id=reg_id, event_date=event_date, venue=venue,
         )
+        if str(payment_status).lower().startswith('paid') and float(amount_paid or 0) > 0:
+            send_payment_receipt_email_task.delay(  # UPG-30
+                to_email=email, name=name, event_title=event_title, amount=amount_paid,
+                reg_id=reg_id, payment_id=razorpay_payment_id,
+            )
         if phone:
             send_payment_receipt_whatsapp_task.delay(
                 phone=phone, name=name, event_title=event_title,
@@ -333,6 +367,49 @@ def _after_payment_url(result):
         'user_email':  result.get('email', ''),
     }
     return '/registration/confirmed'
+
+
+# =========================================================
+# 1c. RAZORPAY WEBHOOK (UPG-30)
+# =========================================================
+@payment_bp.route('/webhook/razorpay', methods=['POST'])
+def razorpay_webhook():
+    """Razorpay's server-to-server events. payment.captured completes the
+    registration stored with the order, once, whether or not the payer's
+    browser came back to /payment/verify. Signed with RAZORPAY_WEBHOOK_SECRET."""
+    secret = os.environ.get('RAZORPAY_WEBHOOK_SECRET', '')
+    if not secret:
+        return jsonify({'error': 'Webhook not configured'}), 503
+    body = request.get_data()
+    expected = _hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    if not _hmac.compare_digest(expected, request.headers.get('X-Razorpay-Signature', '')):
+        return jsonify({'error': 'Invalid signature'}), 400
+    try:
+        event = json.loads(body or b'{}')
+        payment = event['payload']['payment']['entity'] if event.get('event') == 'payment.captured' else None
+    except (ValueError, KeyError, TypeError):
+        return jsonify({'error': 'Malformed event'}), 400
+    if not payment:
+        return jsonify({'status': 'ignored'})
+
+    order_id, payment_id = str(payment.get('order_id', '')), str(payment.get('id', ''))
+    order = claim_paid_order(order_id, payment_id, safe_int(payment.get('amount')))
+    if order is None:  # unknown, already completed by the browser, or the amount differs
+        return jsonify({'status': 'nothing to do'})
+    if not order['reg_data']:
+        mark_unmatched(order_id, 'no registration details were stored with the order')
+        return jsonify({'status': 'recorded'})
+    result = _complete_registration(order['event_id'], dict(order['reg_data']), 'Paid',
+                                    amount_inr(order['amount_paise']), payment_id, order_id)
+    if 'error' in result:
+        mark_unmatched(order_id, result['error'])
+        log_action(_db(), "PAYMENT_UNMATCHED", f"Webhook: paid order {order_id} could not complete: {result['error']}")
+        return jsonify({'status': 'recorded'})
+    attach_registration(order_id, result['reg_id'])
+    if order.get('coupon_code'):
+        _use_coupon(order['event_id'], order['coupon_code'])
+    log_action(_db(), "PAYMENT_WEBHOOK_COMPLETED", f"Order {order_id} completed registration {result['reg_id']}")
+    return jsonify({'status': 'completed', 'reg_id': result['reg_id']})
 
 
 # =========================================================

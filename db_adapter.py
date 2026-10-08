@@ -226,6 +226,13 @@ def verify_and_align_schema():
         ('certificateConfigJson', 'TEXT'),
         ('visibility', "VARCHAR(50) DEFAULT 'Public'"),
     ]
+    cols_payment_orders = [  # UPG-30
+        ('regDataJson', 'TEXT'),
+        ('failureReason', 'TEXT'),
+        ('refundId', 'VARCHAR(128)'),
+        ('refundedAt', 'TIMESTAMP WITH TIME ZONE'),
+        ('refundedBy', 'VARCHAR(255)'),
+    ]
     cols_registrations = [
         ('assigned_judge_email', 'VARCHAR(255)'),
         ('amount_paid', 'DOUBLE PRECISION'),
@@ -266,6 +273,11 @@ def verify_and_align_schema():
                         conn.execute(text(f"ALTER TABLE registrations ADD COLUMN {col} {col_type}"))
                     except Exception:
                         pass
+                for col, col_type in cols_payment_orders:
+                    try:
+                        conn.execute(text(f'ALTER TABLE payment_orders ADD COLUMN "{col}" {col_type}'))
+                    except Exception:
+                        pass
                 conn.commit()
         except Exception as e:
             logger.debug("SQLite schema alignment note: %s", e)
@@ -304,6 +316,10 @@ def verify_and_align_schema():
                 if not res:
                     logger.info("Aligning Schema: Adding column '%s' to 'registrations'...", col)
                     conn.execute(text(f'ALTER TABLE registrations ADD COLUMN "{col}" {col_type}'))
+
+            # Payment orders alignment (UPG-30)
+            for col, col_type in cols_payment_orders:
+                conn.execute(text(f'ALTER TABLE IF EXISTS payment_orders ADD COLUMN IF NOT EXISTS "{col}" {col_type}'))
             conn.commit()
     except Exception as e:
         logger.error("Failed to run schema alignment checks: %s", e)

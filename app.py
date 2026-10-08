@@ -418,6 +418,10 @@ for _bearer_bp in (api_v1_bp,):
     except Exception as exc:
         logger.warning("CSRF exempt failed for %s: %s", _bearer_bp.name, exc)
 
+# Razorpay calls its webhook server to server; its signature authenticates it (UPG-30)
+from routes_payment import razorpay_webhook  # noqa: E402
+csrf.exempt(razorpay_webhook)
+
 
 
 # =========================================================

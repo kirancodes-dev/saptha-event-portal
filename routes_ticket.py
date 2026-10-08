@@ -166,6 +166,9 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
     }
     details.update(lead_name=details['name'], team_name=details['team'])
 
+    if str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded'):
+        return answer('cancelled', f"This registration was {str(reg.get('status')).lower()}; no entry.", 409, **details)
+
     if str(reg.get('attendance') or '').strip().lower() == 'present':
         first = reg.get('checkin_time') or ''
         message = f"Already checked in at {first[:5]}." if first else "Already checked in."

@@ -89,6 +89,22 @@ def send_generic_email_task(self, to_email: str, subject: str,
         raise
 
 
+@celery.task(
+    bind=True,
+    queue='email',
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=5,
+    name='tasks.email_tasks.send_payment_receipt_email_task',
+)
+def send_payment_receipt_email_task(self, to_email: str, name: str, event_title: str, amount,
+                                    reg_id: str, payment_id: str = ''):
+    """The payment receipt (UPG-30)."""
+    from utils_email import send_payment_receipt_email
+    send_payment_receipt_email(to_email, name, event_title, amount, reg_id, payment_id)
+    logger.info("receipt email sent to %s reg=%s", to_email, reg_id)
+
+
 # ── HTML template helper ──────────────────────────────────
 
 def _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url):

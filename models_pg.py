@@ -613,11 +613,18 @@ class PaymentOrder(Base):
     amount_paise = Column("amountPaise", Integer, nullable=False)
     currency     = Column(String(8), nullable=False, default="INR")
     coupon_code  = Column("couponCode", String(64), nullable=True)
-    status       = Column(String(20), nullable=False, default="created")  # created | paid
+    status       = Column(String(20), nullable=False, default="created")  # created | paid | refunding | refunded
     payment_id   = Column("paymentId", String(128), nullable=True, unique=True)
     reg_id       = Column("regId", String(128), nullable=True)
     created_at   = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     paid_at      = Column("paidAt", DateTime(timezone=True), nullable=True)
+    # UPG-30: the registration to complete (so the webhook can), why a paid
+    # order has no registration, and its refund
+    reg_data_json  = Column("regDataJson", Text, nullable=True)
+    failure_reason = Column("failureReason", Text, nullable=True)
+    refund_id      = Column("refundId", String(128), nullable=True)
+    refunded_at    = Column("refundedAt", DateTime(timezone=True), nullable=True)
+    refunded_by    = Column("refundedBy", String(255), nullable=True)
 
 
 class Announcement(Base):

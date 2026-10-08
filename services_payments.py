@@ -10,6 +10,7 @@ services_payments.py — server-side pricing and Razorpay order records (BLK-03)
     never in production.
 """
 import datetime
+import json
 import os
 from typing import Optional, Tuple
 
@@ -105,12 +106,109 @@ def amount_inr(amount_paise: int):
 
 # ── Orders ─────────────────────────────────────────────────────────────────
 
-def record_order(order_id: str, event_id: str, email: str, amount_paise: int, coupon_code: str = '') -> None:
+def record_order(order_id: str, event_id: str, email: str, amount_paise: int, coupon_code: str = '',
+                 reg_data: Optional[dict] = None) -> None:
+    """Record the order, and the registration it pays for, so the webhook can
+    complete it if the browser never comes back (UPG-30)."""
     from db_pg import get_session
     from models_pg import PaymentOrder
     with get_session() as s:
         s.add(PaymentOrder(id=order_id, event_id=str(event_id), email=email.lower(),
-                           amount_paise=int(amount_paise), coupon_code=coupon_code or None))
+                           amount_paise=int(amount_paise), coupon_code=coupon_code or None,
+                           reg_data_json=json.dumps(reg_data, default=str) if reg_data else None))
+
+
+def _order_dict(order) -> dict:
+    return {
+        'id': order.id, 'event_id': order.event_id, 'email': order.email,
+        'amount_paise': order.amount_paise, 'coupon_code': order.coupon_code or '',
+        'status': order.status, 'payment_id': order.payment_id or '', 'reg_id': order.reg_id or '',
+        'created_at': order.created_at, 'paid_at': order.paid_at,
+        'reg_data': json.loads(order.reg_data_json) if order.reg_data_json else {},
+        'failure_reason': order.failure_reason or '', 'refund_id': order.refund_id or '',
+        'refunded_at': order.refunded_at, 'refunded_by': order.refunded_by or '',
+    }
+
+
+def get_order(order_id: str) -> Optional[dict]:
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        order = s.get(PaymentOrder, order_id) if order_id else None
+        return _order_dict(order) if order else None
+
+
+def all_orders() -> list:
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        return [_order_dict(o) for o in s.query(PaymentOrder).order_by(PaymentOrder.created_at).all()]
+
+
+def unmatched_orders() -> list:
+    """Paid orders with no registration: money taken, nothing to show for it (UPG-30)."""
+    return [o for o in all_orders() if o['status'] == 'paid' and not o['reg_id']]
+
+
+def mark_unmatched(order_id: str, reason: str) -> None:
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        s.execute(update(PaymentOrder).where(PaymentOrder.id == order_id).values(failure_reason=reason[:500]))
+
+
+def claim_paid_order(order_id: str, payment_id: str, amount_paise: int) -> Optional[dict]:
+    """The webhook's claim: mark a recorded order paid, if Razorpay's amount
+    matches and nobody claimed it yet. None when there's nothing to do."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    order = get_order(order_id)
+    if order is None or order['status'] != 'created' or int(amount_paise) != order['amount_paise']:
+        return None
+    try:
+        with get_session() as s:
+            result = s.execute(
+                update(PaymentOrder)
+                .where(PaymentOrder.id == order_id, PaymentOrder.status == 'created')
+                .values(status='paid', payment_id=payment_id,
+                        paid_at=datetime.datetime.now(datetime.timezone.utc)))
+            if result.rowcount != 1:
+                return None
+    except IntegrityError:
+        return None
+    return get_order(order_id)
+
+
+def start_refund(order_id: str) -> Optional[dict]:
+    """Move a paid order with no registration to 'refunding', once; None if
+    it isn't one (already refunded, has a registration, unknown)."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        result = s.execute(update(PaymentOrder)
+                           .where(PaymentOrder.id == order_id, PaymentOrder.status == 'paid',
+                                  PaymentOrder.reg_id.is_(None))
+                           .values(status='refunding'))
+        if result.rowcount != 1:
+            return None
+    return get_order(order_id)
+
+
+def finish_refund(order_id: str, refund_id: str, by: str) -> None:
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        s.execute(update(PaymentOrder).where(PaymentOrder.id == order_id).values(
+            status='refunded', refund_id=refund_id, refunded_by=by,
+            refunded_at=datetime.datetime.now(datetime.timezone.utc)))
+
+
+def undo_refund(order_id: str) -> None:
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        s.execute(update(PaymentOrder).where(PaymentOrder.id == order_id, PaymentOrder.status == 'refunding')
+                  .values(status='paid'))
 
 
 def claim_order(order_id: str, payment_id: str, event_id: str, email: str) -> dict:

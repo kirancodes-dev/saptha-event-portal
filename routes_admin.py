@@ -288,7 +288,7 @@ def analytics_export(kind):
 
     if session.get('role') not in SUPER_ROLE_NAMES:
         abort(403)  # every registration of every event: Super Admins only (UPG-03)
-    if kind not in ('registrations', 'events', 'revenue'):
+    if kind not in ('registrations', 'events', 'revenue', 'payments'):
         flash("Unknown export type.", "warning")
         return redirect('/admin/analytics')
 
@@ -317,6 +317,16 @@ def analytics_export(kind):
                 e.get('entry_fee', 0), e.get('registration_count', 0),
             ])
         filename = 'events.csv'
+
+    elif kind == 'payments':  # one row per Razorpay order, for the finance office (UPG-30)
+        from services_payments import all_orders
+        writer.writerow(['order_id', 'payment_id', 'event_id', 'event_title', 'email', 'amount_inr', 'status',
+                         'reg_id', 'paid_at', 'refund_id', 'refunded_at', 'note'])
+        for o in all_orders():
+            writer.writerow([o['id'], o['payment_id'], o['event_id'], events_map.get(o['event_id'], {}).get('title', ''),
+                             o['email'], o['amount_paise'] / 100, o['status'], o['reg_id'], o['paid_at'] or '',
+                             o['refund_id'], o['refunded_at'] or '', o['failure_reason']])
+        filename = 'payments.csv'
 
     else:  # revenue
         by_event = collections.defaultdict(lambda: {'count': 0, 'revenue': 0})
@@ -455,6 +465,89 @@ def resend_set_password():
     else:
         flash(f"The email to {email} couldn't be sent. Check the mail settings and try again.", "danger")
     return redirect('/admin/users')
+
+
+# =========================================================
+# 4c. PAYMENTS — refunds, cancellations, payments with no registration (UPG-30)
+# =========================================================
+def _super_only():
+    from flask import abort
+    if session.get('role') not in SUPER_ROLE_NAMES:
+        abort(403)
+
+
+def _is_paid(reg):
+    return (float(reg.get('amount_paid') or 0) > 0
+            or str(reg.get('payment_status') or '').lower().startswith(('paid', 'refunded')))
+
+
+@admin_bp.route('/payments')
+@login_required
+def payments():
+    _super_only()
+    from services_payments import unmatched_orders
+    titles = {e.id: (e.to_dict() or {}).get('title', '') for e in db.collection('events').stream()}
+    orders = [dict(o, event_title=titles.get(o['event_id'], o['event_id']), amount=o['amount_paise'] / 100)
+              for o in unmatched_orders()]
+    regs = sorted(([d.id, d.to_dict() or {}] for d in db.collection('registrations').stream()),
+                  key=lambda r: str(r[1].get('registered_at') or ''), reverse=True)
+    paid = [dict(r, doc_id=rid, event_title=titles.get(str(r.get('event_id')), r.get('event_title', '')))
+            for rid, r in regs if _is_paid(r)]
+    return render_template('admin/payments.html', orders=orders, registrations=paid, current_page='payments')
+
+
+@admin_bp.route('/registrations/<reg_id>/mark', methods=['POST'])
+@login_required
+def mark_registration(reg_id):
+    """Record that a registration was refunded (money returned some other
+    way) or cancelled. Either way it no longer checks in."""
+    _super_only()
+    action = request.form.get('action', '')
+    reason = request.form.get('reason', '').strip()
+    if action not in ('refunded', 'cancelled') or not reason:
+        flash("Choose refunded or cancelled and give a reason.", "warning")
+        return redirect('/admin/payments')
+    ref = db.collection('registrations').document(reg_id)
+    if not ref.get().exists:
+        flash("Registration not found.", "warning")
+        return redirect('/admin/payments')
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    updates = {'status': 'cancelled', 'cancel_reason': reason, 'cancelled_at': now,
+               'cancelled_by': session.get('user_id')}
+    if action == 'refunded':
+        updates.update(payment_status='Refunded', refunded_at=now)
+    ref.update(updates)
+    log_action(db, f"REGISTRATION_{action.upper()}", f"{reg_id} marked {action} by {session.get('user_id')}: {reason}")
+    flash(f"Registration {reg_id} marked {action}.", "success")
+    return redirect('/admin/payments')
+
+
+@admin_bp.route('/payments/<order_id>/refund', methods=['POST'])
+@login_required
+def refund_order(order_id):
+    """Refund a paid order that has no registration through Razorpay, once."""
+    _super_only()
+    from services_payments import finish_refund, start_refund, undo_refund
+    if request.form.get('confirm') != 'yes':
+        flash("Tick the box to confirm the refund.", "warning")
+        return redirect('/admin/payments')
+    order = start_refund(order_id)
+    if order is None:
+        flash("Nothing to refund: it was already refunded, or the payment has a registration.", "info")
+        return redirect('/admin/payments')
+    try:
+        import routes_payment
+        refund = routes_payment._rzp().payment.refund(order['payment_id'], {'amount': order['amount_paise']})
+    except Exception as exc:
+        undo_refund(order_id)
+        flash(f"The refund failed and nothing changed: {exc}", "danger")
+        return redirect('/admin/payments')
+    finish_refund(order_id, str((refund or {}).get('id', '')), session.get('user_id', ''))
+    log_action(db, "PAYMENT_REFUNDED",
+               f"Order {order_id} (payment {order['payment_id']}, ₹{order['amount_paise'] / 100:g}) refunded by "
+               f"{session.get('user_id')}: refund {(refund or {}).get('id', '')}")
+    flash(f"Refunded ₹{order['amount_paise'] / 100:g} to {order['email']}.", "success")
+    return redirect('/admin/payments')
 
 
 # =========================================================

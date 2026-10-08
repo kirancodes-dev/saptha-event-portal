@@ -715,6 +715,26 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
     return _send(to_email, "🔐 Set your SapthaEvent password", html)
 
 
+def send_payment_receipt_email(to_email: str, name: str, event_title: str, amount,
+                               reg_id: str, payment_id: str = '', paid_on: str = '') -> bool:
+    """The receipt after a verified payment (UPG-30)."""
+    import html as _html
+    e = lambda v: _html.escape(str(v or ''))  # noqa: E731
+    rows = [('Event', event_title), ('Amount paid', f"₹{amount}"), ('Registration', reg_id),
+            ('Payment ID', payment_id), ('Paid on', paid_on or __import__('datetime').date.today().isoformat())]
+    table = ''.join(
+        f'<tr><td style="padding:6px 0;color:#64748b;">{e(label)}</td>'
+        f'<td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;">{e(value)}</td></tr>'
+        for label, value in rows if value)
+    body = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{e(name) or 'Participant'}</strong>,</p>
+        <p style="color:#475569;">We received your payment. Keep this email as your receipt.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:16px 0;">{table}</table>
+        <p style="color:#64748b;font-size:12px;">Your ticket: {e(_base_url())}/ticket/{e(reg_id)}</p>
+    """, "Payment Receipt")
+    return _send(to_email, f"🧾 Payment receipt — {event_title}", body, reg_id=reg_id)
+
+
 def send_appointment_email(to_email: str, name: str, role: str,
                            event_title: str) -> bool:
     base = _base_url()

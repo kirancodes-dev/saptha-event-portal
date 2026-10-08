@@ -445,7 +445,6 @@
       }
     }
     </script>
-<script src="/static/js/escape.js"></script>
 </head>
 <body>
 
@@ -473,7 +472,7 @@
             <a href="/login" class="topnav-link">Login</a>
         {% endif %}
         {% if not is_registered %}
-        <a href="#" class="topnav-link btn-reg" data-bs-toggle="modal" data-bs-target="#registerModal">
+        <a href="/forms/register/{{ event.id }}" class="topnav-link btn-reg">
             Register <i class="fas fa-arrow-right ms-1"></i>
         </a>
         {% endif %}
@@ -719,81 +718,11 @@
             <i class="fas fa-check-circle me-2"></i> Already Registered
         </button>
         {% else %}
-        <button class="btn-register" data-bs-toggle="modal" data-bs-target="#registerModal">
+        {# The event's own registration form, which checks the event is open (UPG-34) #}
+        <a class="btn-register" href="/forms/register/{{ event.id }}" style="display:block;text-align:center;text-decoration:none;">
             Register Now <i class="fas fa-arrow-right ms-2"></i>
-        </button>
+        </a>
         {% endif %}
-    </div>
-</div>
-
-<!-- REGISTRATION MODAL -->
-<div class="modal fade" id="registerModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-hdr">
-                <p class="modal-hdr-title"><i class="fas fa-user-plus me-2"></i>Register for {{ event.title }}</p>
-                <button class="modal-hdr-close" data-bs-dismiss="modal">✕</button>
-            </div>
-            <div class="modal-body">
-                <form action="/participant/public_register/{{ event.id }}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                    <p class="form-section-title">1. Primary Contact</p>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label-sm">Full Name *</label>
-                            <input type="text" name="full_name" class="form-control" required
-                                   value="{{ prefill.name if prefill else '' }}" placeholder="Enter full name">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label-sm">Email Address *</label>
-                            <input type="email" name="email" class="form-control" required
-                                   value="{{ prefill.email if prefill else '' }}"
-                                   {% if prefill %}readonly style="opacity:.7"{% endif %}
-                                   placeholder="name@example.com">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label-sm">USN / Roll Number *</label>
-                            <input type="text" name="usn" class="form-control" required
-                                   value="{{ prefill.usn if prefill else '' }}" placeholder="e.g. 1SG25CS001">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label-sm">Phone Number *</label>
-                            <input type="tel" name="phone" class="form-control" required
-                                   value="{{ prefill.phone if prefill else '' }}" placeholder="+91 98765 43210">
-                        </div>
-                    </div>
-
-                    {% if event.is_team_event %}
-                    <p class="form-section-title">2. Team Details
-                        <span style="float:right;font-size:10px;background:var(--blue);color:#fff;padding:2px 8px;border-radius:100px;">Max {{ event.limits.team_max }} members</span>
-                    </p>
-                    <div class="mb-3">
-                        <label class="form-label-sm">Team Name *</label>
-                        <input type="text" name="team_name" class="form-control" placeholder="e.g. CodeWarriors" required>
-                    </div>
-                    <div id="membersContainer"></div>
-                    <button type="button" class="btn-add-member mb-4" onclick="addMember()">
-                        <i class="fas fa-plus-circle"></i> Add Team Member
-                    </button>
-                    {% endif %}
-
-                    {% if event.form_schema and event.form_schema.submission_type and event.form_schema.submission_type != 'none' %}
-                    <p class="form-section-title">3. Submission</p>
-                    <div class="mb-4">
-                        <label class="form-label-sm">
-                            {% if event.form_schema.submission_type == 'github' %}GitHub Repository Link{% else %}Project Drive Link{% endif %} *
-                        </label>
-                        <input type="url" name="submission_link" class="form-control" placeholder="https://..." required>
-                    </div>
-                    {% endif %}
-
-                    <button type="submit" class="btn-submit">
-                        <i class="fas fa-check-circle me-2"></i> Confirm Registration
-                    </button>
-                </form>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -833,28 +762,6 @@ function copyLink(){
         b.classList.add('copied'); b.innerHTML='<i class="fas fa-check"></i> Copied!';
         setTimeout(function(){b.classList.remove('copied');b.innerHTML='<i class="fas fa-link"></i> Copy Link';},2000);
     });
-}
-
-// ── TEAM MEMBER FORM ────────────────────────────────
-var memberCount = 1;
-var maxMembers  = parseInt("{{ (event.limits.team_max if event.limits and event.limits.team_max else 1) }}") || 1;
-var reqUsn      = "{{ 'true' if event.form_schema and event.form_schema.require_member_usn else 'false' }}" === "true";
-var reqEmail    = "{{ 'true' if event.form_schema and event.form_schema.require_member_email else 'false' }}" === "true";
-var reqWa       = "{{ 'true' if event.form_schema and event.form_schema.require_member_whatsapp else 'false' }}" === "true";
-
-function addMember(){
-    if(memberCount >= maxMembers){alert('Maximum team size reached!');return;}
-    memberCount++;
-    var html = '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px;position:relative;">'
-        + '<button type="button" onclick="this.parentElement.remove();memberCount--;" style="position:absolute;top:8px;right:8px;background:#fee2e2;border:none;color:#ef4444;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>'
-        + '<p style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;">Member '+escapeHtml(memberCount)+'</p>'
-        + '<div class="row g-2">'
-        + '<div class="col-12"><input type="text" name="member_name[]" class="form-control" placeholder="Full Name *" required></div>';
-    if(reqUsn)   html += '<div class="col-md-6"><input type="text" name="member_usn[]" class="form-control" placeholder="USN / SRN *" required></div>';
-    if(reqEmail) html += '<div class="col-md-6"><input type="email" name="member_email[]" class="form-control" placeholder="Email ID *" required></div>';
-    if(reqWa)    html += '<div class="col-12"><input type="tel" name="member_whatsapp[]" class="form-control" placeholder="WhatsApp Number *" required></div>';
-    html += '</div></div>';
-    document.getElementById('membersContainer').insertAdjacentHTML('beforeend', html);
 }
 </script>
 <script src="/static/js/global.js"></script>

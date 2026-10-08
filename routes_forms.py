@@ -83,6 +83,18 @@ def _allowed(event_id, event: dict, permission: str) -> bool:
 
 LAYOUT_TYPES = ('heading', 'paragraph', 'divider')
 
+CLOSED_STATUSES = ('draft', 'pending_approval', 'published', 'registration_closed',
+                   'completed', 'certified', 'cancelled', 'archived')
+
+
+def registration_closed(event: dict) -> bool:
+    """Not open yet, past its deadline, or over: the one check every
+    registration route applies (UPG-34)."""
+    if (event.get('status') or '').lower() in CLOSED_STATUSES:
+        return True
+    deadline = str(event.get('deadline') or event.get('reg_deadline') or '')[:10]
+    return bool(deadline) and datetime.datetime.now().strftime('%Y-%m-%d') > deadline
+
 # The identity every registration needs, with the ids forms already use for it
 IDENTITY_FIELDS = (
     (('full_name', 'name', 'participant_name'),
@@ -360,14 +372,7 @@ def registration_page(event_id):
     event       = event_doc.to_dict()
     event['id'] = event_id
 
-    # Deadline check
-    deadline = event.get('deadline') or event.get('reg_deadline', '')
-    today    = datetime.datetime.now().strftime('%Y-%m-%d')
-    if deadline and today > deadline:
-        return render_template('public/registration_closed.html', event=event)
-
-    status = (event.get('status') or '').lower()
-    if status in ('draft', 'pending_approval', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
+    if registration_closed(event):
         return render_template('public/registration_closed.html', event=event)
 
     # Capacity check
@@ -459,8 +464,7 @@ def submit_form(event_id):
             flash("Name and email are required.", "warning")
             return redirect(f'/forms/register/{event_id}')
 
-        status = (event_data.get('status') or '').lower()
-        if status in ('draft', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
+        if registration_closed(event_data):
             flash("Registration is closed for this event.", "warning")
             return redirect(f'/forms/register/{event_id}')
 

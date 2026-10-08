@@ -1470,16 +1470,23 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **712 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-34 — The legacy public registration route skips the "registration closed" check
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-34: …" on `production-ready` (parent `2fb6e01`)
 - **Problem:** Found while building BLK-02 [C]. `POST /participant/public_register/<event_id>` (`routes_participant.py:355`), still used by the form on `templates/public/event_details.html:737`, never checks the event status or deadline, so it accepts registrations for draft, closed, completed or cancelled events. `/forms/submit` does check (`routes_forms.py:413-416`).
 - **Who benefits:** organisers (no registrations after closing).
 - **What to build:** point the event page's form at `/forms/register/<event_id>` and make the legacy route apply the same status check (or redirect to the form), keeping the URL.
-- **Files touched:** `routes_participant.py`, `templates/public/event_details.html`, tests.
-- **Effort:** S · **Depends on:** BLK-02 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test: the legacy route refuses a draft, closed or cancelled event and creates nothing.
-  2. Test: the event page's registration form posts to the checked route.
+- **Re-checked before building (2026-10-08, `2fb6e01`; rule 3):** still true (the legacy route is at `routes_participant.py:355`, the modal form at `templates/public/event_details.html:738`). Also found:
+  - `/forms/submit` checked the status but not the deadline or `pending_approval`, which the registration page refuses, so a past-deadline event still took registrations by POST;
+  - the event page's modal posted team members as `member_name[]`, a format `/forms/submit` doesn't read.
+- **What was built:**
+  - **One check, `routes_forms.registration_closed` (`routes_forms.py:90`).** Registration is closed for a draft, pending, published-but-not-open, closed, completed, certified, cancelled or archived event, and after its deadline. The registration page (`:375`), `/forms/submit` (`:467`) and the legacy route (`routes_participant.py:367`) all use it. The legacy route refuses before anything is created and sends the visitor back to the event page; its URL stays.
+  - **The event page's Register buttons link to the event's own form** (`/forms/register/<id>`, which UPG-01 made work for every form). Its separate modal form and member script, which bypassed the form, are removed.
+- **Files touched:** `routes_forms.py`, `routes_participant.py`, `templates/public/event_details.html`, `tests/test_registration_closed.py` (new).
+- **Effort:** S · **Depends on:** BLK-02 · **Risk:** low; no existing test registered after a deadline.
+- **Acceptance criteria** (`tests/test_registration_closed.py`, real database layer; 6 of 7 cases fail on the old code, the seventh guards an open event):
+  1. ✅ Test: the legacy route refuses a draft, closed or cancelled event and creates nothing (`::test_the_legacy_route_refuses_a_closed_event_and_creates_nothing`, also pending approval and past the deadline: no registration, no account; `/forms/submit` refuses the same; `::test_the_legacy_route_still_registers_for_an_open_event`).
+  2. ✅ Test: the event page's registration form posts to the checked route (`::test_the_event_page_sends_registrants_to_the_checked_form`: no form posts to the legacy route; Register links to `/forms/register/<id>`, whose form posts to `/forms/submit/<id>`).
+  - Full pytest: **849 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-35 — Login and password-reset messages reveal whether an account exists
 - **Status:** DONE
@@ -1804,3 +1811,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "UPG-29: …" (parent `2f6262f`) | UPG-29, UPG-04 | **UPG-29 DONE.** Tests first, then the fixes they called for. New `POST /spoc/remove_staff/<event_id>` removes a coordinator or judge from the event's staff and coordinators, ending their access to registrations, exports, check-in and scoring; the SPOC dashboard gets remove buttons on coordinator chips and a judge list with Remove in the judges dialog. `assign_coordinator` now answers another SPOC with 403 (it redirected) before creating anything. The judge dashboard's `active`-only filter stays with UPG-04 criterion 3. 4 new real-database cases (all fail on the old code). Full pytest 830 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-08 | "UPG-45: …" (parent `b5afda8`) | UPG-45, UPG-01, Rule 8 | **New item, found while building UPG-01, and DONE** (UPG-01's criterion 2 depends on it). On the SQL adapter a form submission kept only its answers, and read them back flattened with no `answers` key, so the responses page and the forms export showed every answer empty in postgres mode. The adapter now keeps and returns the whole submission; old rows read back as `{'answers': …}`. No schema change. 2 new tests on SQLite and PostgreSQL (both fail on the old adapter). Full pytest 832 passed on both; ruff clean. **Rule 8 early pass** (`db_adapter.py` touched): all 35 open items checked; only UPG-01 is affected. |
 | 2026-10-08 | "UPG-01: …" (parent `2a69b17`) | UPG-01 | **UPG-01 DONE.** One normaliser, used by `_get_form`, gives every stored form field an id (else its `field_name`) and prepends full name, email, phone and USN once unless the form already asks for them. So template forms made by API v1's `instantiate_event` and the seeded events render named inputs and ask for identity, without rewriting stored data. Saving a form with an unnamed input field returns 400. Criterion 2 found UPG-45 (built first). 10 new real-database cases (all fail on the old code), including every template and the seeded conference registered end to end. Full pytest 842 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-34: …" (parent `2fb6e01`) | UPG-34 | **UPG-34 DONE.** One check, `routes_forms.registration_closed` (status and deadline), used by the registration page, `/forms/submit` (which missed the deadline and pending approval) and the legacy `/participant/public_register`, which now refuses closed events before creating anything. The public event page's Register buttons link to the event's own form; its bypassing modal form is removed. 7 new real-database cases (6 fail on the old code). Full pytest 849 passed on SQLite and PostgreSQL 16; ruff clean. |

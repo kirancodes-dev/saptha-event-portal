@@ -362,6 +362,12 @@ def public_register(event_id):
             return redirect('/')
 
         event_data = event_doc.to_dict()
+        # The same check as the registration form (UPG-34)
+        from routes_forms import registration_closed
+        if registration_closed(event_data):
+            flash("Registration is closed for this event.", "warning")
+            return redirect(f'/event/{event_id}')
+
         email      = request.form.get('email', '').lower().strip()
         full_name  = request.form.get('full_name', '').strip()
         usn        = request.form.get('usn', '').upper().strip()

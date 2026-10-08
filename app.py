@@ -329,6 +329,7 @@ from routes_verification   import verification_bp   # noqa: E402
 from routes_matchmaker     import matchmaker_bp     # noqa: E402
 from routes_dynamic_pricing import dynamic_pricing_bp # noqa: E402
 from routes_referrals       import referrals_bp       # noqa: E402
+from routes_cron            import cron_bp            # noqa: E402
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(api_bp)
@@ -355,6 +356,7 @@ app.register_blueprint(verification_bp)
 app.register_blueprint(matchmaker_bp)
 app.register_blueprint(dynamic_pricing_bp)
 app.register_blueprint(referrals_bp)
+app.register_blueprint(cron_bp)
 
 # ── Phase 1–4 Industrial Upgrade blueprints ──────────────
 from routes_api_v1          import api_v1_bp          # noqa: E402
@@ -421,6 +423,8 @@ for _bearer_bp in (api_v1_bp,):
 # Razorpay calls its webhook server to server; its signature authenticates it (UPG-30)
 from routes_payment import razorpay_webhook  # noqa: E402
 csrf.exempt(razorpay_webhook)
+# The scheduler calls the cron endpoint with a shared secret, not a session (UPG-07)
+csrf.exempt(cron_bp)
 
 
 

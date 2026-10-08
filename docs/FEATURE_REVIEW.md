@@ -88,7 +88,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
 | WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. |
 | In-app notifications | PARTLY BUILT [C] | `routes_notifications.py:20` vs `routes_notifications_v2.py:70` | Student dashboard feed reads `notifications`, which nothing writes; every writer uses `notifications_v2`. |
-| Scheduled reminders / lifecycle | NOT CONNECTED on free tier [C at `1f4cdc8`] | `celery_app.py:95-120`, `docker-compose.yml:27-37`, `Dockerfile:33` | `docker-compose.yml` now runs worker + beat for self-hosting; a single web service still runs only gunicorn (UPG-07). |
+| Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:533`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders still look only at `active` events (UPG-43), and the day-before ticket email task fails on a wrong signature (UPG-31). |
 | Registration exports (CSV/Excel) | WORKING [R at UPG-03] | `services_export.py`, `routes_spoc.py:346,355`, `routes_coordinator.py:518,528`, `routes_admin.py:285` | One export for SPOC, coordinator and admin: lead name, USN, department, year, email, phone, team, members, attendance, payment, amount, score, rank, certificate ID. 403 without `export_data` on the event. Department and year are inferred from the profile, form or USN when not asked. |
 | Admin dashboard / analytics / report | WORKING (page load) [R] | `routes_admin.py:39,124,563` | Figures come from records that keep every field since BLK-06; not re-run. |
 | Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:438-478`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. Unpaginated (UPG-19). |
@@ -109,7 +109,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Sessions | WORKING [R at BLK-08] | `session_store.py`, `config.py:48-63` | In the database (Redis if `REDIS_URL`): survive restarts, shared by instances, none for plain anonymous page views (BLK-08). |
 | Database migrations | PARTLY BUILT [R at `56a014d`] | `migrations/versions/`, `db_adapter.py:201-310` | Two incremental migrations; `alembic upgrade head` on an empty DB fails. Schema comes from start-up `create_all` + `ALTER TABLE` (UPG-16). |
 | File uploads (certificates, exports) | PARTLY BUILT [C at `56a014d`] | `utils_storage.py:10-93` | Local disk unless `STORAGE_TYPE=s3`/`gcs`; S3 errors silently fall back to local disk (UPG-17). |
-| Background jobs | PARTLY BUILT [C at `56a014d`] | `celery_app.py:49-58` | Without a Redis broker, tasks run inline with no timeout or retry (UPG-18); scheduled jobs don't run (UPG-07). |
+| Background jobs | PARTLY BUILT [C at `56a014d`] | `celery_app.py:49-58` | Without a Redis broker, tasks run inline with no timeout or retry (UPG-18). Scheduled jobs run through the cron endpoint since UPG-07. |
 | Health check | PARTLY BUILT [C at `986d108`] | `app.py:492-528` | Calls `.stream()` without reading it, so it may not reach the DB; returns exception text (UPG-20). |
 | Error monitoring (Sentry) | PARTLY BUILT [C at `56a014d`] | `app.py:124-138` | Initialises when `SENTRY_DSN` is set; untested, not in `.env.example` docs (UPG-20). |
 | Database backups | MISSING [C] | — | Nothing in the repo dumps or restores the database (UPG-21). |
@@ -383,19 +383,33 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Full pytest: **820 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-07 — Reminders and lifecycle jobs run on free-tier hosting
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-07: …" on `production-ready` (parent `125f7f7`)
 - **Problem:** Reminders, the day-before QR email and lifecycle transitions are Celery beat jobs (`celery_app.py:95-120`). Since BLK-09, `docker-compose.yml:27-37` runs a Celery worker and beat for self-hosting. But the Dockerfile (what a single free-tier web service runs) starts only gunicorn (`Dockerfile:33`), and without Redis Celery runs eagerly (`celery_app.py:51-58`), so beat never runs there. The APScheduler files are unused (`scheduler_enhanced.py:284` has `start()` commented out; neither file is imported by the app).
 - **Who benefits:** all registrants, and organisers who now send WhatsApp reminders by hand.
 - **What to build:** a protected `POST /internal/cron/<job>` (shared secret header, compared in constant time; 503 when the secret isn't configured) that runs the existing task functions idempotently: reminders, lifecycle transitions, clean-up of expired sessions, old login attempts (`services_login_throttle.purge_expired`, BLK-13) and old outbox rows, and outbox retries (UPG-18). An external scheduler calls it: Cloud Scheduler on Cloud Run, or a GitHub Actions `schedule` workflow. Document both. Delete the unused schedulers (see UPG-14).
-- **Files touched:** new `routes_cron.py`, `app.py`, `tasks/scheduled_tasks.py`, `.github/workflows/cron.yml`, `docs/DEPLOY.md`, tests.
+- **Re-checked before building (2026-10-08, `125f7f7`; rule 3):** still as described (only `services_login_throttle.py` changed since `986d108`, adding the hourly window). Also found:
+  - **The lifecycle job deleted data.** `run_event_lifecycle` deleted every event 5 days after its date, with its registrations, and any registrations 30 days after. Under self-hosted beat this would have removed results, attendance and certificates' records. Criterion 3 asks it to complete events instead, so it was rewritten to change statuses only; how long data is kept is UPG-22.
+  - **Events saved without times get the save time as `start_datetime`/`end_datetime`** on the SQL layer, so "end date" alone would complete any event created a day earlier: new item UPG-47.
+  - The reminders (and the velocity alert) look only at the old `active` status: added to UPG-43. Scheduled emails link to a fixed `https://sapthaevent.in`: new item UPG-46.
+- **What was built:**
+  - **`POST /internal/cron/<job>`** (`routes_cron.py:45`): 503 while `CRON_SECRET` is unset (`:48`); the `X-Cron-Secret` header is compared with `hmac.compare_digest` (`:50`), missing or wrong → 403; unknown job → 404; a failing job → 500 and logged. Registered and CSRF-exempt in `app.py:359,427` (the scheduler sends a secret, not a session). Jobs (`:41`):
+    - `reminders`: `send_24h_reminders` and `send_3day_reminders`, each skipping registrations already reminded (`ticket_sent`, `early_reminder_sent`);
+    - `lifecycle`: `run_event_lifecycle`;
+    - `cleanup`: `session_store.purge_expired_sessions` and `services_login_throttle.purge_expired` (`:34`).
+  - **`run_event_lifecycle` changes statuses and deletes nothing** (`tasks/scheduled_tasks.py:533`). Registration closes after the deadline (`registration_open` or the old `active` → `registration_closed`). An event whose last day has passed and is still published, open, closed or in progress → `completed`; its last day is the later of `date` and `end_datetime` (`:569`, because of UPG-47). Each move goes through `WorkflowEngine.transition_event`, so it's in the audit trail; a second run moves nothing.
+  - **`.github/workflows/cron.yml`**: hourly reminders, 6-hourly lifecycle, daily clean-up, and a manual run; it does nothing until the repository secrets `CRON_URL` and `CRON_SECRET` are set, and takes no permissions.
+  - **`docs/DEPLOY.md`** (new; the rest of the guide is UPG-32): the endpoint, the jobs and their answers, Cloud Scheduler set-up with `gcloud`, the GitHub Actions alternative (use one, not both), and the request timeout needed while emails go out inline (UPG-18). `CRON_SECRET` is in `.env.example` and the deploy checklist (section 6).
+  - **Not done here:** outbox clean-up and retries wait for UPG-18's outbox (a new job on this endpoint). The unused schedulers stay for UPG-14: `tests/test_event_maintenance.py:10` imports two jobs from `scheduler_enhanced.py`. The velocity alert and the daily analytics roll-up still run only under Celery beat (noted in `docs/DEPLOY.md`).
+- **Files touched:** new `routes_cron.py`, `app.py`, `tasks/scheduled_tasks.py`, `celery_app.py` (a comment), `.env.example`, new `.github/workflows/cron.yml`, new `docs/DEPLOY.md`, new `tests/test_cron.py`.
 - **Effort:** S · **Depends on:** BLK-05 (tests), BLK-06 (`*_sent` flags persist) · **Risk:** double sends; rely on the existing `*_sent` flags.
-- **Acceptance criteria:**
-  1. Test: calling without the secret, or with a wrong one → 403; with no secret configured → 503.
-  2. Test: `send_24h_reminders` with the secret, for an event tomorrow, sends once; a second call sends nothing.
-  3. Test: the lifecycle job moves an event past its end date to `completed`.
-  4. Test: the clean-up job deletes expired sessions (BLK-08) and login attempts older than the throttle window (BLK-13), and nothing else.
-  5. `.github/workflows/cron.yml` exists and targets the endpoint; `docs/DEPLOY.md` shows the Cloud Scheduler set-up.
+- **Acceptance criteria** (`tests/test_cron.py`, real database layer; criteria 1–4 fail on the old code):
+  1. ✅ Test: calling without the secret, or with a wrong one → 403; with no secret configured → 503 (`::test_the_endpoint_needs_the_secret_and_is_off_without_one`; with CSRF protection on, a right secret → 200; GET → 405).
+  2. ✅ Test: `send_24h_reminders` with the secret, for an event tomorrow, sends once; a second call sends nothing (`::test_the_day_before_reminder_goes_out_once`: two confirmed registrants get one ticket email each and the one with a phone one WhatsApp; a cancelled registrant and an event in 5 days get nothing; the event is `active` because of UPG-43).
+  3. ✅ Test: the lifecycle job moves an event past its end date to `completed` (`::test_the_lifecycle_completes_past_events_and_deletes_nothing`: open, in-progress, closed and `active` events past their date → `completed`; a multi-day event still running, today's event, an event saved without times, a draft and a cancelled event stay; a passed deadline closes registration; a 40-day-old event and its registration still exist; the moves are in the audit trail; a second run moves nothing).
+  4. ✅ Test: the clean-up job deletes expired sessions (BLK-08) and login attempts older than the throttle window (BLK-13), and nothing else (`::test_the_clean_up_deletes_only_expired_sessions_and_old_login_attempts`: a live session and a 30-minute-old attempt, still counted by the hourly cap, stay).
+  5. ✅ `.github/workflows/cron.yml` exists and targets the endpoint; `docs/DEPLOY.md` shows the Cloud Scheduler set-up (`::test_the_github_workflow_and_the_deploy_guide_target_the_endpoint`).
+  - Full pytest: **883 passed** on PostgreSQL 16, **882 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-08 — Team registration linked to tickets and judging
 - **Status:** DONE
@@ -504,7 +518,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Problem:**
   - **Notifications:** the v1 feed reads `notifications` (`routes_notifications.py:20`), but every writer uses `notifications_v2` (`routes_notifications_v2.py:70`, `services_automation.py:185`, `routes_waitlist.py:97`). The student dashboard feed (`templates/participant/dashboard.html:1758`) is always empty, while the header badge counts v2.
   - **Payments:** Stripe has no UI reference (`routes_payment_stripe.py`).
-  - **Schedulers:** `scheduler.py` / `scheduler_enhanced.py` aren't used by the app.
+  - **Schedulers:** `scheduler.py` / `scheduler_enhanced.py` aren't used by the app. Since UPG-07, scheduled jobs run through `/internal/cron/<job>` or Celery beat. `tests/test_event_maintenance.py:10` imports `_create_cleanup_job` and `_create_event_status_transition_job` from `scheduler_enhanced.py`; removing the file means deciding what happens to those two tests (rule 5), whose behaviour `tests/test_cron.py` now covers for the live job.
   - **Matchmaker:** `routes_matchmaker.py` suggests mock people (`routes_matchmaker.py:12`). `routes_ai_matching.py` is a different feature (judge↔team) and stays.
   - **Tests:** `tests.py` fails at collection [R] and duplicates `tests/`.
   - **Login throttling (found in BLK-13):** `security_middleware.py`'s in-memory `record_login_attempt`, `is_account_locked` and `get_remaining_lockout` were never called and are superseded by `services_login_throttle.py`. Nothing calls `block_ip` outside them, so the `is_ip_blocked` check in `init_security_middleware` never blocks anyone. Remove them, along with their unit tests in `tests/test_security.py`, which only test this dead code (keep the header and sanitiser tests).
@@ -590,6 +604,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **What to build:** an outbox table (task name, arguments, attempts, next attempt, status, last error); with no broker, tasks run inline under a per-task timeout, and failures or timeouts are stored in the outbox; UPG-07's cron endpoint retries due rows with backoff and a maximum number of attempts. With a broker, behaviour is unchanged. Document both modes.
 - **Files touched:** `celery_app.py`, new `services_outbox.py`, `models_pg.py` + migration, `tasks/*`, `docs/DEPLOY.md`, tests.
 - **Effort:** M · **Depends on:** UPG-07 (retry trigger), UPG-16 (migration) · **Risk:** sending twice; each task keeps an idempotency key.
+- **Noted in UPG-07 (2026-10-08):** the endpoint is built (`routes_cron.py`, jobs in `JOBS`). Add an `outbox` job there for due retries, and old outbox rows to the `cleanup` job, with a schedule line in `docs/DEPLOY.md` and `.github/workflows/cron.yml`. Until then, the day-before reminder's emails go out inline in the cron request, which `docs/DEPLOY.md` covers with a 30-minute deadline.
 - **Acceptance criteria:**
   1. Test: with no broker, a task that raises leaves one outbox row (attempts 1) and the request still succeeds.
   2. Test: a task that runs past its timeout returns control to the request within the limit and is stored for retry.
@@ -655,6 +670,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **What to build:** a privacy notice linked from the shared footer; a required consent checkbox at registration and sign-up, stored with the time and notice version; a working export (the user's own data as a download) and deletion (account removed, registrations anonymised, kept only where records must be retained).
 - **Files touched:** `routes_compliance.py`, `routes_forms.py`, `routes_auth.py`, `templates/public/registration_form.html`, the shared layout, tests.
 - **Effort:** M · **Depends on:** BLK-02, UPG-23 (footer) · **Risk:** what must be kept (e.g. certificates, finance records) is a policy question; record it under "Decisions needed" if it blocks.
+- **Noted in UPG-07 (2026-10-08):** the scheduled lifecycle job used to delete events 5 days after their date and registrations after 30 days. It now only changes statuses, so nothing is deleted on a schedule. If old data should go after some time, that rule belongs here, with the policy above.
 - **Acceptance criteria:**
   1. Test: registration without consent → refused with a clear message; with consent → stored with time and notice version.
   2. Test: export returns the user's profile and registrations and nothing about anyone else.
@@ -821,7 +837,8 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
 - **Status:** TODO
 - **Last verified:** 2026-10-02, commit `986d108`
 - **Found while building UPG-30 (2026-10-08) [R]:** after a payment, `tasks.email_tasks.send_ticket_email_task` calls `utils_email.send_ticket_email(event_date=…, venue=…)`, which takes neither. So the task fails and retries five times, and a paid registrant never gets their ticket email. `send_payment_receipt_whatsapp_task` passes `reg_id` to `send_payment_receipt_whatsapp`, which expects `payment_id`.
-- **Problem:** [C at `56a014d`] Confirmation (`utils_email.send_registration_confirmed_email`, `utils_email.py:439`) and cancellation notices (`services_workflow.py:287-322`, idempotent per email) exist. The day-before reminder is a Celery beat job that doesn't run (UPG-07). There's no notice when an event's date, time or venue changes. In-app notifications are split between v1 and v2 (UPG-14).
+- **Found while building UPG-07 (2026-10-08) [C]:** the day-before WhatsApp reminder task imports `utils_whatsapp.send_event_reminder_whatsapp` (`tasks/notification_tasks.py:53`), which doesn't exist, so every WhatsApp reminder fails and retries three times. The day-before email uses the same broken `send_ticket_email_task` call as above.
+- **Problem:** [C at `56a014d`] Confirmation (`utils_email.send_registration_confirmed_email`, `utils_email.py:439`) and cancellation notices (`services_workflow.py:287-322`, idempotent per email) exist. The day-before reminder is a Celery beat job that doesn't run (UPG-07; since 2026-10-08 it runs through `/internal/cron/reminders`, but its sends fail, see above). There's no notice when an event's date, time or venue changes. In-app notifications are split between v1 and v2 (UPG-14).
 - **Who benefits:** every registrant.
 - **What to build:** a notice to all registrants when date, time or venue changes; the reminder through UPG-07's cron; every email through `utils_email` (Brevo first), each sent once (idempotency key), and never sent from tests.
 - **Files touched:** `routes_spoc.py` (edit event), `services_workflow.py`, `tasks/scheduled_tasks.py`, `utils_email.py`, tests.
@@ -870,6 +887,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | `BREVO_API_KEY` | A Brevo API key (Brevo → Settings → SMTP & API → API Keys). **Required in practice:** since UPG-33, new staff, SPOCs and walk-ins can get in only through the emailed set-password link. | **No** (UPG-20 adds a check) |
 | `MAIL_FROM` | The sender, e.g. `SapthaEvent <events@your-domain>`, an address verified as a sender in Brevo. Unset, the sender is `MAIL_USER`; with neither, Brevo and Resend refuse to send and `/diag/email` says why (`utils_email.py:51-61`, UPG-41). | No |
 | `BASE_URL` | The site's public `https://` address, e.g. the Cloud Run URL or the university domain. Every emailed, WhatsApp, QR and referral link is built from it. | Yes: production refuses a missing, `http://` or localhost value (`config.py:267-270`, BLK-16) |
+| `CRON_SECRET` | New random value. Needed where Celery beat doesn't run (Cloud Run): Cloud Scheduler or GitHub Actions sends it to `/internal/cron/<job>` (`docs/DEPLOY.md`, UPG-07). | **No**, but without it the endpoint answers 503 and no reminders or lifecycle changes happen |
 | `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:131`, BLK-13) |
 
 - **Use a fresh database.** If an old one is reused (the earlier Cloud SQL or Supabase database), first reset every account's password (the SuperAdmin's was the published demo password) and delete the demo accounts (BLK-10) and walk-in accounts created with the default password (UPG-15).
@@ -1710,15 +1728,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - the walk-in form lists only `active` events (`routes_coordinator.py:695`);
   - venue-QR self check-in refuses any other status (`routes_checkin.py:77,102`).
   - The judge dashboard has the same filter (`routes_judge.py:59`), covered by UPG-04.
+  - **Found while building UPG-07:** the scheduled day-before reminder, the 3-day reminder and the SPOC's velocity alert also look only at `active` events (`tasks/scheduled_tasks.py:47,244,377`), so no SPOC-created event gets them. UPG-07's test uses an `active` event.
   The kiosk's own `active` check went away in UPG-02 (it now uses the shared check-in, which has no status rule).
 - **Who benefits:** coordinators and volunteers on event day; participants using self check-in.
 - **What to build:** one helper that says whether an event is running for event-day purposes (published, registration open or closed, in progress, and the old `active`; not draft, pending, cancelled or completed), used by these three places.
-- **Files touched:** `routes_coordinator.py`, `routes_checkin.py`, `services_workflow.py` (the helper), tests.
+- **Files touched:** `routes_coordinator.py`, `routes_checkin.py`, `services_workflow.py` (the helper), `tasks/scheduled_tasks.py`, tests.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
   1. Test (real DB): an assigned coordinator's scanner list shows today's `registration_open` event; a `cancelled` one isn't listed.
   2. Test: the walk-in form lists the same event.
   3. Test: venue self check-in works for an `in_progress` event and refuses a `cancelled` one.
+  4. Test: the day-before reminder, through `/internal/cron/reminders`, reaches registrants of a `registration_closed` event tomorrow, and not of a `cancelled` one.
 - **Not scheduled yet:** it fits Phase 2 next to UPG-29 (owner's call).
 
 #### UPG-44 — An empty payment status reads back as `unpaid` (postgres mode)
@@ -1750,6 +1770,33 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. ✅ Test: a row stored before the fix reads back as `{'answers': …}` with its time (`::test_a_row_stored_before_the_fix_reads_back_as_answers`).
   - Full pytest: **832 passed** on SQLite and PostgreSQL 16; ruff clean.
 - **Rule 8 (early pass, `db_adapter.py` changed):** all 35 open items checked against this change. Only UPG-01 reads form submissions (its criterion 2 needs this item). UPG-16's citation of the schema check's call site (`db_adapter.py:1822` at `986d108`) is now at `:1840`; its claims are unchanged. No other open item's claims change.
+#### UPG-46 — Scheduled emails link to a fixed `sapthaevent.in`, not `BASE_URL`
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit "UPG-07: …" on `production-ready` (parent `125f7f7`)
+- **Problem:** Found while building UPG-07 [C]. The coordinators' day-before briefing links `https://sapthaevent.in/coordinator/scanner` (`tasks/scheduled_tasks.py:182`), and the SPOC's velocity alert links `https://sapthaevent.in/forms/register/<event>` (`:415`). BLK-16 moved every other emailed link to `BASE_URL`; these two point at a domain the deployment may not use.
+- **Who benefits:** coordinators and SPOCs who click the link.
+- **What to build:** both links built from `BASE_URL`, like the other emails (BLK-16's helper).
+- **Files touched:** `tasks/scheduled_tasks.py`, tests.
+- **Effort:** S · **Depends on:** BLK-16 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with `BASE_URL=https://events.example.edu`, the briefing and the velocity alert link only to that host; `sapthaevent.in` appears in neither.
+- **Not scheduled yet** (owner's call; it fits next to UPG-31).
+
+#### UPG-47 — Events saved without times get the save time as their start and end (postgres mode)
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit "UPG-07: …" on `production-ready` (parent `125f7f7`)
+- **Problem:** Found while building UPG-07 [R]. The SQL adapter stores an event's `start_datetime` and `end_datetime` through `parse_datetime`, which returns *now* for an empty value (`db_adapter.py:1126-1127,1938-1940`). The SPOC's create form sends neither, so every such event reads back with its save time as start and end, not its `date`. Readers trust them [C]:
+  - room-conflict checks (`services_venue.py:376,407,462`, `services_workflow.py:204`) compare the wrong times;
+  - the calendar feeds read `start_datetime` before `date` (`app.py:1069-1070,1106-1111`), so they place each event at its save time;
+  - UPG-07's lifecycle job works around it by using the later of `date` and `end_datetime`.
+- **Who benefits:** SPOCs booking rooms; anyone reading the calendar.
+- **What to build:** an empty start or end reads back empty (or derived from `date` and `time`), not the save time; readers fall back to `date`.
+- **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
+- **Effort:** S · **Depends on:** BLK-06 · **Risk:** existing rows already hold save times; decide whether to clear them (a one-off script) or leave them.
+- **Acceptance criteria:**
+  1. Test (real DB): an event created through the SPOC form reads back with no `end_datetime` (or one on its `date`), never its save time.
+  2. Test: a room conflict check for an event saved without times uses its date: a second event in the same room on that date and time clashes, one on another day doesn't.
+- **Not scheduled yet** (owner's call).
 
 ---
 
@@ -1871,3 +1918,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "UPG-30: …" (parent `f5ae29d`) | UPG-30, UPG-31, UPG-16, Rule 8 | **UPG-30 built; IN PROGRESS** until the owner's checkout in Razorpay test mode (criterion 4). Built: a receipt email after payment; capacity re-checked at completion, and a paid order that can't complete stays paid with its reason, the payer told it's recorded; a signed `payment.captured` webhook completing the stored registration once, whichever of webhook and browser arrives first; the admin's payments page listing paid orders with no registration, with a confirmed, once-only Razorpay refund; mark-refunded and cancel on paid registrations, audit-logged, which check-in then refuses; a one-row-per-payment finance export. `payment_orders` gains five columns (schema check for existing databases; UPG-16 updated). **Found:** the paid flow's ticket email and WhatsApp receipt tasks call their senders with the wrong arguments, so neither is sent; added to UPG-31. 12 new real-database cases with Razorpay mocked (all fail on the old code). Full pytest 867 passed on SQLite and PostgreSQL 16; ruff clean. **Rule 8 early pass:** only UPG-16 is affected (updated). |
 | 2026-10-08 | "UPG-36: …" (parent `caaa317`) | UPG-36, UPG-16, Rule 8 | **UPG-36 DONE.** An order with a coupon now holds a use from the moment it's created, taken with one conditional UPDATE on a new `coupon_uses` counter (coupons themselves are schemaless documents). No use left means the payer is told and can pay full price. Unpaid holds expire after `COUPON_HOLD_MINUTES` (30) and give the use back once; a payer's retry gives back their earlier hold; an expired order paid late takes a use again or is kept for the admin, never lost. 4 new cases (all fail on the old code), including 10 concurrent checkouts on PostgreSQL getting exactly 3 discounts. Full pytest 871 passed on PostgreSQL 16 and 870 + 1 skipped on SQLite; ruff clean. **Rule 8** (`models_pg.py`: a new table): only UPG-16 is affected; its baseline list now includes `coupon_uses`. |
 | 2026-10-08 | "UPG-05: …" (parent `c35bd09`) | UPG-05 | **UPG-05 DONE.** Feedback opens after check-in, to the lead and the registration's team members (others 403), and each person answers once. Each answer is its own document; the lead's is still kept on the registration, and older responses still count. The summary pages now need `view_analytics` on the event: before, any SPOC or coordinator could read any event's feedback. A new CSV export (one row per response) needs `export_data`. The certificate's feedback rule asks each person. 7 new real-database cases (6 fail on the old code). Full pytest 878 passed on PostgreSQL 16 and 877 + 1 skipped on SQLite; ruff clean. |
+| 2026-10-08 | "UPG-07: …" (parent `125f7f7`) | UPG-07, UPG-14, UPG-18, UPG-22, UPG-31, UPG-43, UPG-46, UPG-47 | **UPG-07 DONE.** An outside scheduler runs the scheduled jobs through `POST /internal/cron/<job>` (`reminders`, `lifecycle`, `cleanup`): 503 until `CRON_SECRET` is set, 403 for a missing or wrong `X-Cron-Secret` (constant-time compare), CSRF-exempt. Reminders send once per registration (existing `*_sent` flags). **The lifecycle job no longer deletes anything:** it used to delete every event 5 days after its date, with its registrations; now it closes registration after the deadline and moves past events to `completed`, through the audited workflow transition. The clean-up deletes expired sessions and login attempts older than an hour, nothing else. New `.github/workflows/cron.yml` (idle until `CRON_URL`/`CRON_SECRET` are set) and `docs/DEPLOY.md` (Cloud Scheduler set-up); `CRON_SECRET` added to `.env.example` and the deploy checklist. 5 new real-database cases (criteria 1–4 fail on the old code). Full pytest 883 passed on PostgreSQL 16, 882 passed and 1 skipped on SQLite; ruff clean. Recorded: the reminders and velocity alert look only at `active` events (UPG-43 criterion 4); UPG-31's ticket-email signature bug also breaks the day-before reminder; UPG-18's outbox job goes on this endpoint; UPG-22 owns any retention rule; UPG-14 must decide on `tests/test_event_maintenance.py`, which imports `scheduler_enhanced.py`. **New:** UPG-46 (scheduled emails link to a fixed `sapthaevent.in`), UPG-47 (events saved without times get the save time as start and end on the SQL layer). |

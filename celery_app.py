@@ -101,7 +101,7 @@ celery.conf.update(
             'task':     'tasks.scheduled_tasks.send_3day_reminders',
             'schedule': crontab(minute=30),          # 30 min past every hour
         },
-        # Event lifecycle (close regs, delete old events)
+        # Event lifecycle (close registration, complete past events)
         'event-lifecycle': {
             'task':     'tasks.scheduled_tasks.run_event_lifecycle',
             'schedule': crontab(minute=0, hour='*/6'),  # every 6 hours

@@ -534,7 +534,11 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
 def send_ticket_email(to_email: str, name: str, event_title: str,
                       reg_id: str, qr_bytes: bytes | None = None,
                       is_new_user: bool = False,
-                      raw_password: str | None = None) -> bool:
+                      raw_password: str | None = None,
+                      event_date: str = '', venue: str = '') -> bool:
+    """The ticket: after payment, at the desk, and the day before the event
+    (with the QR, tasks/scheduled_tasks.send_24h_reminders). Date and venue
+    come from the caller, else from the registration's event."""
     base = _base_url()
     credentials_block = ""
     if is_new_user and raw_password:
@@ -589,12 +593,10 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
             'data':     qr_bytes,
         })
 
-    # Attempt to fetch event_date and venue from database using reg_id for calendar invite
-    event_date = ''
-    venue = ''
+    # Date and venue for the calendar invite, from the event if not given
     try:
         from models import db
-        if db is not None:
+        if db is not None and not (event_date or venue):
             reg_doc = db.collection('registrations').document(reg_id).get()
             if reg_doc.exists:
                 reg_dict = reg_doc.to_dict()
@@ -771,6 +773,17 @@ def send_result_email(to_email: str, name: str, event_title: str,
            Your certificate is in a separate email.</p>
     """, f"🏆 Results — {event_title}")
     return _send(to_email, f"🏆 Results — {event_title}", html)
+
+
+def send_email_notification(to_email: str, subject: str, message: str,
+                            event_name: str = 'SapthaEvent') -> bool:
+    """A plain notice (event changed or cancelled, services_automation's email
+    channel). The message is text: it's escaped, never read as HTML."""
+    import html as _html
+    body = _html_wrapper(f"""
+        <div style="color:#475569;font-size:14px;line-height:1.8;white-space:pre-line;">{_html.escape(message)}</div>
+    """, _html.escape(subject or event_name))
+    return _send(to_email, subject, body)
 
 
 def send_broadcast_email(to_list: list, subject: str,

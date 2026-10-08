@@ -85,8 +85,8 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Teams (create/join by code) | WORKING [R at UPG-08] | `routes_teams.py`, `routes_forms.py:156-225` | A team is one registration: the form asks for members within the event's limits, others join with the lead's invite code, the lead removes members and replaces the code; tickets, judging and check-in read its members. |
 | Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:759` | Session-level attendance not found. |
 | Announcements | not run [C] | `routes_spoc.py:684-758` | — |
-| Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
-| WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. |
+| Email (Brevo / Resend / Gmail) | WORKING in tests [R at UPG-31] | `utils_email.py`, `routes_auth.py:473-478` | Confirmation, day-before ticket with the entry QR, and change and cancellation notices go through Brevo once each (`tests/test_notices.py`, HTTP mocked); not yet sent through a real Brevo account. Notices reach only the registration's lead (UPG-48). Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
+| WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. The day-before reminder and the payment receipt tasks call their functions correctly since UPG-31; the automation's WhatsApp channel still doesn't (UPG-49). |
 | In-app notifications | PARTLY BUILT [C] | `routes_notifications.py:20` vs `routes_notifications_v2.py:70` | Student dashboard feed reads `notifications`, which nothing writes; every writer uses `notifications_v2`. |
 | Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:533`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders still look only at `active` events (UPG-43), and the day-before ticket email task fails on a wrong signature (UPG-31). |
 | Registration exports (CSV/Excel) | WORKING [R at UPG-03] | `services_export.py`, `routes_spoc.py:346,355`, `routes_coordinator.py:518,528`, `routes_admin.py:285` | One export for SPOC, coordinator and admin: lead name, USN, department, year, email, phone, team, members, attendance, payment, amount, score, rank, certificate ID. 403 without `export_data` on the event. Department and year are inferred from the profile, form or USN when not asked. |
@@ -132,7 +132,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Register (solo) | **Works** [R at UPG-01] | Every template's form names its fields and asks for name, email, phone and USN once; the seeded conference registers end to end. |
 | Register (team) | **Works** [R at UPG-08] | The form asks for the team name and members within the event's limits; teammates join with the lead's code (`tests/test_teams.py`). |
 | Pay | **Works in tests** (BLK-03, UPG-30) | Charged at the server's price; a receipt email; a webhook completes payments whose browser closed; a paid order that can't complete stays paid for the admin to complete or refund. Not yet run against Razorpay test mode (UPG-30 criterion 4). |
-| Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). No payment reference stored. |
+| Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). The day before, the ticket email brings the same QR, and a WhatsApp reminder goes out (UPG-31, through UPG-07's cron). Changes of date, time or venue, and cancellation, are emailed once. No payment reference stored. |
 | Check-in | **Works** [R at UPG-02] | The ticket's QR is accepted by every scanner; see Coordinator. |
 | Attend sessions | Not found | No session-level attendance. |
 | Submit work (hackathon) | Page loads [R] | — |
@@ -604,7 +604,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **What to build:** an outbox table (task name, arguments, attempts, next attempt, status, last error); with no broker, tasks run inline under a per-task timeout, and failures or timeouts are stored in the outbox; UPG-07's cron endpoint retries due rows with backoff and a maximum number of attempts. With a broker, behaviour is unchanged. Document both modes.
 - **Files touched:** `celery_app.py`, new `services_outbox.py`, `models_pg.py` + migration, `tasks/*`, `docs/DEPLOY.md`, tests.
 - **Effort:** M · **Depends on:** UPG-07 (retry trigger), UPG-16 (migration) · **Risk:** sending twice; each task keeps an idempotency key.
-- **Noted in UPG-07 (2026-10-08):** the endpoint is built (`routes_cron.py`, jobs in `JOBS`). Add an `outbox` job there for due retries, and old outbox rows to the `cleanup` job, with a schedule line in `docs/DEPLOY.md` and `.github/workflows/cron.yml`. Until then, the day-before reminder's emails go out inline in the cron request, which `docs/DEPLOY.md` covers with a 30-minute deadline.
+- **Noted in UPG-07 (2026-10-08):** the endpoint is built (`routes_cron.py`, jobs in `JOBS`). Add an `outbox` job there for due retries, and old outbox rows to the `cleanup` job, with a schedule line in `docs/DEPLOY.md` and `.github/workflows/cron.yml`. Until then, the day-before reminder's emails go out inline in the cron request, which `docs/DEPLOY.md` covers with a 30-minute deadline. **Noted in UPG-31:** the notice keys (`notification_dedup`, the reminders' `*_sent` flags) are read, then written, so two runs at the same instant could both send; the outbox's idempotency key should be a unique insert.
 - **Acceptance criteria:**
   1. Test: with no broker, a task that raises leaves one outbox row (attempts 1) and the request still succeeds.
   2. Test: a task that runs past its timeout returns control to the request within the limit and is stored for retry.
@@ -834,20 +834,33 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
 - **Rule 8 (early pass, `db_adapter.py` and `models_pg.py` changed):** the change only adds columns to `payment_orders`. Of the 32 open items, UPG-16 lists that table for its baseline; its line now names the new columns. The other items citing `models_pg.py` (UPG-11 to UPG-14, UPG-18) don't touch `payment_orders`, and their claims are unchanged.
 
 #### UPG-31 — Notifications: confirmation, day-before reminder, change and cancellation notices through Brevo
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-31: …" on `production-ready` (parent `f570f07`)
 - **Found while building UPG-30 (2026-10-08) [R]:** after a payment, `tasks.email_tasks.send_ticket_email_task` calls `utils_email.send_ticket_email(event_date=…, venue=…)`, which takes neither. So the task fails and retries five times, and a paid registrant never gets their ticket email. `send_payment_receipt_whatsapp_task` passes `reg_id` to `send_payment_receipt_whatsapp`, which expects `payment_id`.
 - **Found while building UPG-07 (2026-10-08) [C]:** the day-before WhatsApp reminder task imports `utils_whatsapp.send_event_reminder_whatsapp` (`tasks/notification_tasks.py:53`), which doesn't exist, so every WhatsApp reminder fails and retries three times. The day-before email uses the same broken `send_ticket_email_task` call as above.
 - **Problem:** [C at `56a014d`] Confirmation (`utils_email.send_registration_confirmed_email`, `utils_email.py:439`) and cancellation notices (`services_workflow.py:287-322`, idempotent per email) exist. The day-before reminder is a Celery beat job that doesn't run (UPG-07; since 2026-10-08 it runs through `/internal/cron/reminders`, but its sends fail, see above). There's no notice when an event's date, time or venue changes. In-app notifications are split between v1 and v2 (UPG-14).
 - **Who benefits:** every registrant.
 - **What to build:** a notice to all registrants when date, time or venue changes; the reminder through UPG-07's cron; every email through `utils_email` (Brevo first), each sent once (idempotency key), and never sent from tests.
-- **Files touched:** `routes_spoc.py` (edit event), `services_workflow.py`, `tasks/scheduled_tasks.py`, `utils_email.py`, tests.
+- **Re-checked before building (2026-10-08, `f570f07`; rule 3):** the confirmation is as described. The rest is worse than the Problem says [R]:
+  - **The change notice exists** (`services_venue.notify_event_details_changed`, called by the SPOC's edit, `routes_spoc.py:1152`), and **neither it nor the cancellation notice ever sent an email:** both go through `services_automation.dispatch_trigger`, whose email channel imports `utils_email.send_email_notification`, which didn't exist. The error was caught and recorded as `email_fallback`, so only the in-app notice was created.
+  - The change notice's "once" key used Python's `hash()`, which differs between processes, so it held only within one worker.
+  - The coordinator's edit form (`/coordinator/edit_event`) changes date and venue without any notice.
+  - The confirmation email promises the entry QR the day before, but the reminder attached none. It also used the stream's internal ID, not the ticket ID.
+- **What was built:**
+  - **The missing and mismatched senders:** `utils_email.send_email_notification` (`utils_email.py:778`) sends a plain notice through `_send` (Brevo first) and escapes the text. `send_ticket_email` takes `event_date` and `venue` (`:534-538`), which the tasks already passed. `utils_whatsapp.send_event_reminder_whatsapp` (`utils_whatsapp.py:137`) is the day-before WhatsApp. The receipt WhatsApp task passes the payment ID (`tasks/notification_tasks.py:87`; callers `routes_payment.py`, `tasks/webhook_tasks.py`).
+  - **The day-before ticket** (`tasks/scheduled_tasks.py:70,95`) uses the ticket's ID and attaches the entry QR: `tasks/email_tasks.ticket_qr_png` (`:112`) makes the same signed token the ticket page shows, which the scanners accept. Sent once per registration (`ticket_sent`), through `/internal/cron/reminders` (UPG-07).
+  - **Change notices** use a stable key over the old and new venue, room, date, time and start (`services_venue.py:568-571`), so the same change is sent once on any instance. The coordinator's edit sends them too (`routes_coordinator.py:231`). **Cancellation** keeps its key `event_cancelled_<event>_<email>` (`services_workflow.py:321`), so cancelling again after a restore sends nothing.
+  - Because the email channel now exists, API v1's automation triggers (`routes_api_v1.py:1100,1137`: payment success, round advanced, certificate issued, …) now send their emails too, under each user's email preference.
+  - **Not done here:** notices go to the registration's lead only (UPG-48). The automation's WhatsApp channel calls a function that doesn't exist (UPG-49). Older email templates insert names and titles without escaping (UPG-50). The "once" checks read then write, so two runs at the same instant could both send; UPG-18's outbox should make the key a unique insert.
+- **Files touched:** `utils_email.py`, `utils_whatsapp.py`, `tasks/email_tasks.py`, `tasks/notification_tasks.py`, `tasks/scheduled_tasks.py`, `tasks/webhook_tasks.py`, `routes_payment.py`, `routes_coordinator.py`, `services_venue.py`, new `tests/test_notices.py`. (`routes_spoc.py` and `services_workflow.py` already called the notices.)
 - **Effort:** S · **Depends on:** UPG-07, BLK-05 (UPG-18's outbox adds retries later but isn't required) · **Risk:** double sends; idempotency keys guard it.
-- **Acceptance criteria:**
-  1. Test: a registration sends one confirmation through the Brevo client (HTTP mocked) with the event's details.
-  2. Test: the day-before reminder, run twice through the cron endpoint, sends once per registrant.
-  3. Test: changing an event's venue notifies every registrant once; cancelling notifies once.
-  4. Test: with no mail keys configured (tests), nothing is sent over the network.
+- **Acceptance criteria** (`tests/test_notices.py`, real database layer, Brevo's HTTP API mocked and any connection beyond localhost refused; 4 of 5 fail on the old code, and the confirmation already worked):
+  1. ✅ Test: a registration sends one confirmation through the Brevo client (HTTP mocked) with the event's details (`::test_a_registration_sends_one_confirmation_through_brevo`: title, date, venue and calendar invite; registering again sends nothing).
+  2. ✅ Test: the day-before reminder, run twice through the cron endpoint, sends once per registrant (`::test_the_day_before_ticket_goes_out_once_with_the_entry_qr`: one ticket email each with the signed entry QR, one WhatsApp each; the event is `active` because of UPG-43).
+  3. ✅ Test: changing an event's venue notifies every registrant once; cancelling notifies once (`::test_a_venue_change_and_a_cancellation_each_notify_every_registrant_once`: saving the same change twice sends one notice; a cancelled registration gets none; the coordinator's date edit notifies; cancel, cancel, restore to draft, cancel sends one cancellation notice each).
+  4. ✅ Test: with no mail keys configured (tests), nothing is sent over the network (`::test_with_no_mail_keys_nothing_leaves_the_machine`: registration, reminders, a venue change and a cancellation make no connection and no name lookup beyond localhost).
+  - Also: `::test_notices_escape_what_people_type`.
+  - Full pytest: **888 passed** on PostgreSQL 16, **887 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-32 — Release check and `docs/DEPLOY.md`
 - **Status:** TODO
@@ -1798,6 +1811,43 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: a room conflict check for an event saved without times uses its date: a second event in the same room on that date and time clashes, one on another day doesn't.
 - **Not scheduled yet** (owner's call).
 
+#### UPG-48 — Team members get no confirmation, reminder or notice
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit "UPG-31: …" on `production-ready` (parent `f570f07`)
+- **Problem:** Found while building UPG-31 [C]. Since UPG-08 a team's members are on the registration and can open its ticket, but every message goes to the lead only: the confirmation (`routes_forms.py:702`), the day-before ticket and the 3-day reminder (`tasks/scheduled_tasks.py:81,279`), and the change and cancellation notices (`services_venue.py:550`, `services_workflow.py:300`). Members find out only from the lead.
+- **Who benefits:** every team member.
+- **What to build:** each member with an email gets the day-before ticket (with the same QR) and the change and cancellation notices, once each, keyed per person; the confirmation tells members they were added.
+- **Files touched:** `tasks/scheduled_tasks.py`, `services_venue.py`, `services_workflow.py`, `routes_forms.py`, `routes_teams.py`, tests.
+- **Effort:** S · **Depends on:** UPG-08, UPG-31 · **Risk:** more email volume (Brevo's free tier allows 300 a day).
+- **Acceptance criteria:**
+  1. Test: for a team of three, the day-before reminder through the cron endpoint emails each member once.
+  2. Test: a venue change and a cancellation reach each member once.
+- **Not scheduled yet** (owner's call).
+
+#### UPG-49 — The automation's WhatsApp channel calls a function that doesn't exist
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit "UPG-31: …" on `production-ready` (parent `f570f07`)
+- **Problem:** Found while building UPG-31 [C]. `services_automation.dispatch_trigger` sends WhatsApp through `utils_whatsapp.send_whatsapp_message` (`services_automation.py:223`), which doesn't exist; the error is caught and recorded as `whatsapp_fallback`. The default rules for check-in and event reminders use that channel (`services_automation.py:51,75`), so those WhatsApp messages never go out.
+- **Who benefits:** participants who opt in to WhatsApp.
+- **What to build:** the channel sends through `utils_whatsapp._send`, and a failure is recorded as a failure, not a fallback.
+- **Files touched:** `services_automation.py` or `utils_whatsapp.py`, tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low; nothing goes out without Twilio settings.
+- **Acceptance criteria:**
+  1. Test: a trigger with the WhatsApp channel, for a user who opted in, calls the Twilio client once (mocked).
+- **Not scheduled yet** (owner's call).
+
+#### UPG-50 — Email templates insert names and titles without escaping
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit "UPG-31: …" on `production-ready` (parent `f570f07`)
+- **Problem:** Found while building UPG-31 [C]. The HTML emails put the recipient's name, the event title and messages straight into the markup (for example `utils_email.py:499,501,563,565,744,764,793`). A name typed at registration, or an event title, containing HTML is rendered as HTML in the email. Today the typed text mostly reaches its own author or comes from staff (titles, broadcast messages), so the risk is low; the notices from UPG-31 already escape.
+- **Who benefits:** everyone who gets email from the app.
+- **What to build:** escape every value inserted into an email template (one helper), keeping the templates' own markup.
+- **Files touched:** `utils_email.py`, `tasks/scheduled_tasks.py` (the briefing and 3-day emails), tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a registrant named `<b>Ann</b>` gets a confirmation that shows the text `<b>Ann</b>`, not bold.
+- **Not scheduled yet** (owner's call).
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -1919,3 +1969,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "UPG-36: …" (parent `caaa317`) | UPG-36, UPG-16, Rule 8 | **UPG-36 DONE.** An order with a coupon now holds a use from the moment it's created, taken with one conditional UPDATE on a new `coupon_uses` counter (coupons themselves are schemaless documents). No use left means the payer is told and can pay full price. Unpaid holds expire after `COUPON_HOLD_MINUTES` (30) and give the use back once; a payer's retry gives back their earlier hold; an expired order paid late takes a use again or is kept for the admin, never lost. 4 new cases (all fail on the old code), including 10 concurrent checkouts on PostgreSQL getting exactly 3 discounts. Full pytest 871 passed on PostgreSQL 16 and 870 + 1 skipped on SQLite; ruff clean. **Rule 8** (`models_pg.py`: a new table): only UPG-16 is affected; its baseline list now includes `coupon_uses`. |
 | 2026-10-08 | "UPG-05: …" (parent `c35bd09`) | UPG-05 | **UPG-05 DONE.** Feedback opens after check-in, to the lead and the registration's team members (others 403), and each person answers once. Each answer is its own document; the lead's is still kept on the registration, and older responses still count. The summary pages now need `view_analytics` on the event: before, any SPOC or coordinator could read any event's feedback. A new CSV export (one row per response) needs `export_data`. The certificate's feedback rule asks each person. 7 new real-database cases (6 fail on the old code). Full pytest 878 passed on PostgreSQL 16 and 877 + 1 skipped on SQLite; ruff clean. |
 | 2026-10-08 | "UPG-07: …" (parent `125f7f7`) | UPG-07, UPG-14, UPG-18, UPG-22, UPG-31, UPG-43, UPG-46, UPG-47 | **UPG-07 DONE.** An outside scheduler runs the scheduled jobs through `POST /internal/cron/<job>` (`reminders`, `lifecycle`, `cleanup`): 503 until `CRON_SECRET` is set, 403 for a missing or wrong `X-Cron-Secret` (constant-time compare), CSRF-exempt. Reminders send once per registration (existing `*_sent` flags). **The lifecycle job no longer deletes anything:** it used to delete every event 5 days after its date, with its registrations; now it closes registration after the deadline and moves past events to `completed`, through the audited workflow transition. The clean-up deletes expired sessions and login attempts older than an hour, nothing else. New `.github/workflows/cron.yml` (idle until `CRON_URL`/`CRON_SECRET` are set) and `docs/DEPLOY.md` (Cloud Scheduler set-up); `CRON_SECRET` added to `.env.example` and the deploy checklist. 5 new real-database cases (criteria 1–4 fail on the old code). Full pytest 883 passed on PostgreSQL 16, 882 passed and 1 skipped on SQLite; ruff clean. Recorded: the reminders and velocity alert look only at `active` events (UPG-43 criterion 4); UPG-31's ticket-email signature bug also breaks the day-before reminder; UPG-18's outbox job goes on this endpoint; UPG-22 owns any retention rule; UPG-14 must decide on `tests/test_event_maintenance.py`, which imports `scheduler_enhanced.py`. **New:** UPG-46 (scheduled emails link to a fixed `sapthaevent.in`), UPG-47 (events saved without times get the save time as start and end on the SQL layer). |
+| 2026-10-08 | "UPG-31: …" (parent `f570f07`) | UPG-31, UPG-18, UPG-48, UPG-49, UPG-50 | **UPG-31 DONE.** The change and cancellation notices existed but never emailed anyone: their email channel imported `utils_email.send_email_notification`, which didn't exist. Added it (escaped, through Brevo first), so those notices, and API v1's automation emails, now go out. The ticket-email task's `event_date`/`venue` are now accepted, so paid registrants get their ticket email again; the receipt WhatsApp gets the payment ID; the missing day-before WhatsApp function exists. The day-before email carries the entry QR (the ticket page's signed token) under the ticket's ID. Change notices use a stable key (Python's `hash()` differs per process), and the coordinator's edit sends them too. 5 new real-database cases with Brevo's HTTP API mocked and outside connections refused (4 fail on the old code). Full pytest 888 passed on PostgreSQL 16, 887 passed and 1 skipped on SQLite; ruff clean. A first draft of the tests overwrote the existing `tests/test_notifications.py`; it was restored unchanged before any commit, and the new tests are in `tests/test_notices.py`. **New:** UPG-48 (team members get no notices), UPG-49 (automation WhatsApp channel), UPG-50 (email templates don't escape). |

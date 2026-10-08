@@ -67,7 +67,7 @@ def send_24h_reminders(self):
 
             for reg_doc in regs:
                 reg    = reg_doc.to_dict()
-                reg_id = reg_doc.id
+                reg_id = reg.get('reg_id') or reg_doc.id   # the ID on the ticket page
 
                 if reg.get('ticket_sent'):
                     skipped += 1
@@ -92,6 +92,7 @@ def send_24h_reminders(self):
                         reg_id=reg_id,
                         event_date=event_date,
                         venue=venue,
+                        with_qr=True,
                     )
                     queued_emails += 1
 

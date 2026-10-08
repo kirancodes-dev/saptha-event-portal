@@ -211,7 +211,7 @@ def edit_event(event_id):
         criteria_list = [c.strip() for c in
             request.form.get('criteria', 'Overall Score').split(',') if c.strip()] or ['Overall Score']
         media_urls = [u.strip() for u in request.form.getlist('media_urls[]') if u.strip()]
-        db.collection('events').document(event_id).update({
+        updates = {
             'title':            request.form.get('title', '').strip(),
             'date':             request.form.get('date'),
             'deadline':         request.form.get('deadline'),
@@ -225,7 +225,12 @@ def edit_event(event_id):
             'banner_url':       media_urls[0] if media_urls else '',
             'entry_fee':        safe_int(request.form.get('entry_fee', 0)),
             'is_team_event':    request.form.get('is_team') == 'on',
-        })
+        }
+        db.collection('events').document(event_id).update(updates)
+        # Registrants hear about a new date or venue, once (UPG-31)
+        from services_venue import notify_event_details_changed
+        notify_event_details_changed(db, event_id=event_id, previous_data=event_data,
+                                     new_data={**event_data, **updates})
         log_action(db, "EVENT_EDITED", f"Event {event_id} by {session.get('user_id')}")
         flash("Event updated!", "success")
     except Exception as exc:

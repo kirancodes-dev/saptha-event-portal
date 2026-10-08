@@ -8,6 +8,8 @@ retries, back-off, and delivery tracking.
 Queued on: 'email'
 """
 
+from __future__ import annotations
+
 import logging
 from celery_app import celery
 
@@ -24,8 +26,9 @@ logger = logging.getLogger(__name__)
 )
 def send_ticket_email_task(self, to_email: str, name: str, event_title: str,
                             reg_id: str, event_date: str = '', venue: str = '',
-                            is_new_user: bool = False, raw_password: str = ''):
-    """Send a registration confirmation / QR ticket email."""
+                            is_new_user: bool = False, raw_password: str = '',
+                            with_qr: bool = False):
+    """Send the ticket email; with_qr attaches the entry QR (the day before)."""
     try:
         from utils_email import send_ticket_email
         send_ticket_email(
@@ -33,6 +36,7 @@ def send_ticket_email_task(self, to_email: str, name: str, event_title: str,
             name=name,
             event_title=event_title,
             reg_id=reg_id,
+            qr_bytes=ticket_qr_png(reg_id) if with_qr else None,
             event_date=event_date,
             venue=venue,
             is_new_user=is_new_user,
@@ -103,6 +107,25 @@ def send_payment_receipt_email_task(self, to_email: str, name: str, event_title:
     from utils_email import send_payment_receipt_email
     send_payment_receipt_email(to_email, name, event_title, amount, reg_id, payment_id)
     logger.info("receipt email sent to %s reg=%s", to_email, reg_id)
+
+
+def ticket_qr_png(reg_id: str) -> bytes | None:
+    """The entry QR the ticket page shows (a signed token the scanners
+    accept, routes_ticket), as PNG bytes; None if it can't be made."""
+    try:
+        import base64
+        from models import db
+        from routes_ticket import _base_url, generate_ticket_token
+        from utils_qr import generate_qr_base64
+        doc = db.collection('registrations').document(reg_id).get()
+        reg = (doc.to_dict() or {}) if doc.exists else {}
+        if not reg:
+            return None
+        token = generate_ticket_token(reg_id, reg.get('event_id', ''), reg.get('lead_name', ''))
+        return base64.b64decode(generate_qr_base64(f"{_base_url()}/ticket/verify/{token}"))
+    except Exception as exc:
+        logger.warning("ticket QR for %s failed: %s", reg_id, exc)
+        return None
 
 
 # ── HTML template helper ──────────────────────────────────

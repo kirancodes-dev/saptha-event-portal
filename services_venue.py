@@ -13,6 +13,7 @@ Features:
 4. Per-event Google Calendar URL generation and RFC 5545 iCalendar (.ics) exports.
 """
 
+import hashlib
 import json
 import uuid
 import urllib.parse
@@ -563,7 +564,11 @@ def notify_event_details_changed(
                     "notif_type": "event_reminder",
                     "channels": ["in_app", "email"],
                 }
-                idempotency_key = f"event_change_{event_id}_{email}_{abs(hash(change_summary))}"
+                # Stable across processes (hash() isn't): the same change is sent once
+                change_id = hashlib.sha256(
+                    f"{prev_venue}|{prev_room}|{prev_date}|{prev_time}|{prev_start}>"
+                    f"{new_venue}|{new_room}|{new_date}|{new_time}|{new_start}".encode()).hexdigest()[:16]
+                idempotency_key = f"event_change_{event_id}_{email}_{change_id}"
                 NotificationAutomationEngine.dispatch_trigger(
                     db,
                     trigger_name="on_event_details_changed",

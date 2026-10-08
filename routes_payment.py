@@ -355,7 +355,7 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
         if phone:
             send_payment_receipt_whatsapp_task.delay(
                 phone=phone, name=name, event_title=event_title,
-                amount=str(amount_paid), reg_id=reg_id,
+                amount=str(amount_paid), reg_id=reg_id, payment_id=razorpay_payment_id,
             )
             send_ticket_whatsapp_task.delay(
                 phone=phone, name=name, event_title=event_title,

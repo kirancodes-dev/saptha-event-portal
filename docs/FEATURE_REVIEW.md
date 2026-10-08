@@ -80,7 +80,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Results + public leaderboard | WORKING [R] | `routes_spoc.py:786`, `routes_live.py:161` | Team and lead names read back since BLK-09 [R round-trip]; leaderboard not re-run. |
 | Certificates | WORKING [R at UPG-06] | `utils_certificate.py:778`, `tasks/cert_tasks.py:25`, `routes_spoc.py:570,1868` | One issuing path for end-event and the bulk button: a PDF per attendee marked Present (winner certificates for the top three scores), a certificate ID and verify URL on the registration, an emailed PDF; never issued twice. PDFs are drawn again on download, not stored (UPG-17). |
 | Certificate public verification | WORKING [R at UPG-06] | `routes_verification.py:21-185` | `/verify/<certificate_id>` shows the issued certificate and offers the PDF; an unknown ID shows invalid (404). Certificates from API v1's `CertificateService` aren't found there (UPG-14). |
-| Feedback | PARTLY BUILT [R at BLK-05] | `routes_feedback.py`, `routes_participant.py:283` | `/feedback/view` redirects to `/feedback/analytics`, which returns 200 [R at `1f4cdc8`]. The lead can open and submit the form on the real database (BLK-05 journey test); team members, one response per person and the attendance check are UPG-05. |
+| Feedback | WORKING [R at UPG-05] | `routes_feedback.py`, `routes_participant.py:290-340` | Opens after check-in; each attendee (lead or team member) answers once; the event's staff see the summary and export it (others 403). An optional rule requires each person's feedback before their certificate. |
 | Hackathon submission + kanban | WORKING (page load) [R] | `routes_hackathon.py:20-206` | Pipeline and project pages are public (`routes_hackathon.py:107,137`). |
 | Teams (create/join by code) | WORKING [R at UPG-08] | `routes_teams.py`, `routes_forms.py:156-225` | A team is one registration: the form asks for members within the event's limits, others join with the lead's invite code, the lead removes members and replaces the code; tickets, judging and check-in read its members. |
 | Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:759` | Session-level attendance not found. |
@@ -137,7 +137,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Attend sessions | Not found | No session-level attendance. |
 | Submit work (hackathon) | Page loads [R] | — |
 | See results | OK [R] | Names read back since BLK-09 [R round-trip]. |
-| Feedback | **Works for the lead** [R at BLK-05] | BLK-05's journey test submits it on the real database; team members are still refused (`routes_participant.py:290`, UPG-05). |
+| Feedback | **Works** [R at UPG-05] | Every checked-in attendee, team members included, answers once; the SPOC dashboard links the summary and its CSV export. |
 | Certificate | **Works** [R at UPG-06] | The page shows the name and links the official PDF; it's emailed when the event ends, and `/verify/<id>` confirms it. |
 | Portfolio | **Fixed** [R at `1f4cdc8`] | `/u/<usn>` shows the right student. |
 
@@ -193,7 +193,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Event type | Works today | Done outside the app | Needed |
 |---|---|---|---|
-| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), calendar | Feedback (Google Forms) | UPG-05 |
+| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), feedback (UPG-05), calendar | — | — |
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:131`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
 | Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08) | Rubric scoring, round shortlists | UPG-04 |
@@ -321,8 +321,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   5. ✅ Test: an unassigned judge gets 403 on `submit_score` and `score_inline`, and nothing is saved (`tests/test_integration_flow.py::test_unassigned_judge_gets_403_and_nothing_is_saved`); `ruff check .` is clean (`4699478`).
 
 #### UPG-05 — Feedback forms that load, save, and feed the report
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-05: …" on `production-ready` (parent `c35bd09`)
 - **Problem:** At `694c729` students were told "Unauthorised access." on `/feedback/submit/<reg>` and `/participant/feedback/<reg>`, because both read `lead_email` [R]. Re-checked at `56a014d` [C]:
   - `/feedback/submit/<reg>` is already a 307 redirect to `/participant/feedback/<reg>` (`routes_feedback.py:30-33`, from the BLK-09 merge), so there's one student route. No test pins the redirect.
   - The student route still checks `lead_email` only (`routes_participant.py:290`), so team members can't give feedback. For the lead it works on the real database: BLK-05's journey test opens and submits it (`tests/test_event_journey_real_db.py:74-77`), so criterion 1 is met except the read-back on `/feedback/view/<event>`.
@@ -330,15 +330,25 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - `/feedback/view` redirects to `/feedback/analytics`, which returns 200 [R at `1f4cdc8`].
 - **Who benefits:** every attendee and organiser; replaces Google Forms feedback.
 - **What to build:** feedback that opens only after check-in, one response per person (lead or team member), a SPOC summary page with a CSV export, and an option to require feedback before the certificate is issued.
-- **Files touched:** `routes_feedback.py`, `routes_participant.py`, `templates/feedback/*`, tests.
+- **Re-checked before building (2026-10-08, `c35bd09`; rule 3):** still as described. Also found:
+  - `/feedback/analytics` and `/feedback/summary` checked only the role, so any SPOC or coordinator could read any event's feedback, comments and names included. The owner-only summary needed a per-event check anyway.
+  - The single `feedback` field on a registration gave team members nowhere to answer.
+- **What was built:**
+  - **One response per person**, each its own document in `feedback_responses` (`routes_feedback.py:34`), keyed by event, registration and email. The lead's answer is also kept on the registration, where the certificate rule and older responses are read. `event_responses` (`:48`) gathers both, so responses from before still count once.
+  - **The student route** (`routes_participant.py:290-340`) is open to the lead and the registration's team members; anyone else gets 403 (`:301`). It opens only once the registration is checked in, and not for a member marked absent at the door (`:303`). A second answer from the same person is refused and the first stays (`has_responded`, `routes_feedback.py:41`).
+  - **The summary and export are for the event's staff only.** `/feedback/analytics` and `/feedback/summary` need `view_analytics` on the event (`:94`, `:139`). The new `/feedback/export/<event>` (`:162`) needs `export_data`: one CSV row per response (time, name, email, team, rating, sentiment, tags, comments), through UPG-03's CSV writer. The analytics page links the export; the SPOC dashboard links the summary.
+  - **"Require feedback before the certificate"** (the event's workflow rule) now asks each person for their own answer (`routes_participant.py:225`).
+- **Files touched:** `routes_feedback.py`, `routes_participant.py`, `templates/feedback/analytics.html`, `templates/spoc/dashboard.html`, `tests/test_feedback.py` (new).
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test: the attendee `GET`s the feedback form → 200, `POST` → saved, read back on `/feedback/view/<event>` (200).
-  2. Test: `/feedback/analytics/<event>` returns 200 with 0 and with 3 responses.
-  3. Test: a non-owner student gets 403.
-  4. Test: `/feedback/submit/<reg>` redirects to the single route (code exists at `routes_feedback.py:30-33`; the test is missing).
-  5. Test: an attendee who isn't checked in can't submit; a second submission by the same person is refused and doesn't change the stored response.
-  6. Test: the SPOC summary export returns one CSV row per response, for the event owner only.
+- **Acceptance criteria** (`tests/test_feedback.py`, real database layer; 6 of 7 fail on the old code, and criterion 4's redirect already existed):
+  1. ✅ Test: the attendee `GET`s the feedback form → 200, `POST` → saved, read back on `/feedback/view/<event>` (200) (`::test_an_attendee_sends_feedback_and_staff_read_it_back`).
+  2. ✅ Test: `/feedback/analytics/<event>` returns 200 with 0 and with 3 responses (`::test_the_summary_works_with_no_responses_and_with_three`; the three are a team's lead and two members; the JSON summary averages them).
+  3. ✅ Test: a non-owner student gets 403 (`::test_someone_not_on_the_registration_gets_403`).
+  4. ✅ Test: `/feedback/submit/<reg>` redirects to the single route (`::test_the_old_submit_url_redirects_to_the_one_route`).
+  5. ✅ Test: an attendee who isn't checked in can't submit; a second submission by the same person is refused and doesn't change the stored response (`::test_feedback_needs_check_in_and_each_person_answers_once`; also a member marked absent).
+  6. ✅ Test: the SPOC summary export returns one CSV row per response, for the event owner only (`::test_the_export_has_one_row_per_response_for_the_events_staff_only`: another SPOC and a student are refused; another SPOC also gets 403 on the analytics and summary).
+  - Also: `::test_the_certificate_rule_asks_each_member_for_their_own_feedback`.
+  - Full pytest: **878 passed** on PostgreSQL 16, **877 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-06 — Certificates generate with the right name and can be issued in bulk
 - **Status:** DONE
@@ -1860,3 +1870,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "UPG-08: …" (parent `98c3556`) | UPG-08 | **UPG-08 DONE.** Teams live on the registration. The form adds team name and member rows from the event's limits, and the server enforces team size (refusing extra member fields and duplicate emails). A team registration gets an invite code; `/teams/join` adds the student to its members (refusing full teams, closed events and people already registered). The lead removes members and replaces the code; members can leave; the team page shows the roster and ticket. The separate `teams` collection is no longer used. 6 new real-database cases (5 fail on the old code). `test_student_registers_for_free_team_event_and_spoc_checks_in` registered one person for a 2–4 team event, which the item now refuses; its form gained a second member, assertions unchanged. Full pytest 855 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-08 | "UPG-30: …" (parent `f5ae29d`) | UPG-30, UPG-31, UPG-16, Rule 8 | **UPG-30 built; IN PROGRESS** until the owner's checkout in Razorpay test mode (criterion 4). Built: a receipt email after payment; capacity re-checked at completion, and a paid order that can't complete stays paid with its reason, the payer told it's recorded; a signed `payment.captured` webhook completing the stored registration once, whichever of webhook and browser arrives first; the admin's payments page listing paid orders with no registration, with a confirmed, once-only Razorpay refund; mark-refunded and cancel on paid registrations, audit-logged, which check-in then refuses; a one-row-per-payment finance export. `payment_orders` gains five columns (schema check for existing databases; UPG-16 updated). **Found:** the paid flow's ticket email and WhatsApp receipt tasks call their senders with the wrong arguments, so neither is sent; added to UPG-31. 12 new real-database cases with Razorpay mocked (all fail on the old code). Full pytest 867 passed on SQLite and PostgreSQL 16; ruff clean. **Rule 8 early pass:** only UPG-16 is affected (updated). |
 | 2026-10-08 | "UPG-36: …" (parent `caaa317`) | UPG-36, UPG-16, Rule 8 | **UPG-36 DONE.** An order with a coupon now holds a use from the moment it's created, taken with one conditional UPDATE on a new `coupon_uses` counter (coupons themselves are schemaless documents). No use left means the payer is told and can pay full price. Unpaid holds expire after `COUPON_HOLD_MINUTES` (30) and give the use back once; a payer's retry gives back their earlier hold; an expired order paid late takes a use again or is kept for the admin, never lost. 4 new cases (all fail on the old code), including 10 concurrent checkouts on PostgreSQL getting exactly 3 discounts. Full pytest 871 passed on PostgreSQL 16 and 870 + 1 skipped on SQLite; ruff clean. **Rule 8** (`models_pg.py`: a new table): only UPG-16 is affected; its baseline list now includes `coupon_uses`. |
+| 2026-10-08 | "UPG-05: …" (parent `c35bd09`) | UPG-05 | **UPG-05 DONE.** Feedback opens after check-in, to the lead and the registration's team members (others 403), and each person answers once. Each answer is its own document; the lead's is still kept on the registration, and older responses still count. The summary pages now need `view_analytics` on the event: before, any SPOC or coordinator could read any event's feedback. A new CSV export (one row per response) needs `export_data`. The certificate's feedback rule asks each person. 7 new real-database cases (6 fail on the old code). Full pytest 878 passed on PostgreSQL 16 and 877 + 1 skipped on SQLite; ruff clean. |

@@ -222,7 +222,9 @@ def view_certificate(reg_id):
         return redirect('/participant/dashboard')
 
     rules = (event_data.get('workflow_config') or {}).get('rules', {})
-    if rules.get('require_feedback_for_certificate') and not reg_data.get('feedback'):
+    from routes_feedback import has_responded
+    if rules.get('require_feedback_for_certificate') and not has_responded(
+            reg_data.get('event_id', ''), reg_id, user_email or '', reg_data):
         flash("Please provide your feedback to receive your certificate.", "info")
         return redirect(f'/participant/feedback/{reg_id}')
 
@@ -285,14 +287,27 @@ def leaderboard(event_id):
 @login_required
 @role_required('Student')
 def submit_feedback(reg_id):
+    from flask import abort
+    from routes_feedback import RESPONSES, has_responded, response_id
     reg_ref = db.collection('registrations').document(reg_id)
     reg     = reg_ref.get()
+    me      = (session.get('user_id') or '').lower()
+    if not reg.exists:
+        abort(404)
+    reg_data = reg.to_dict() or {}
+    is_lead  = (reg_data.get('lead_email') or '').lower() == me
+    member   = next((m for m in reg_data.get('members') or [] if (m.get('email') or '').lower() == me), None)
+    if not (is_lead or member):
+        abort(403)  # the lead or a team member, nobody else (UPG-05)
 
-    if not reg.exists or reg.to_dict().get('lead_email') != session.get('user_id'):
-        flash("Unauthorised access.", "danger")
+    # Feedback opens once the attendee checked in, and each person answers once
+    if reg_data.get('attendance') != 'Present' or (member and member.get('attendance') == 'Absent'):
+        flash("Feedback opens once you've been checked in at the event.", "info")
         return redirect('/participant/dashboard')
-
-    reg_data = reg.to_dict()
+    event_id = str(reg_data.get('event_id', ''))
+    if has_responded(event_id, reg_id, me, reg_data):
+        flash("You've already sent your feedback for this event. Thank you!", "info")
+        return redirect('/participant/dashboard')
 
     if request.method == 'POST':
         rating   = request.form.get('rating', '0')
@@ -333,15 +348,14 @@ def submit_feedback(reg_id):
             except Exception as e:
                 pass
 
-        reg_ref.update({
-            'feedback': {
-                'rating':    int(rating),
-                'comments':  comments,
-                'tags':      tags,
-                'timestamp': datetime.datetime.now(datetime.timezone.utc),
-                'sentiment': sentiment,
-            }
-        })
+        now = datetime.datetime.now(datetime.timezone.utc)
+        response = {'rating': int(rating), 'comments': comments, 'tags': tags, 'sentiment': sentiment}
+        name = reg_data.get('lead_name', '') if is_lead else (member or {}).get('name', '')
+        db.collection(RESPONSES).document(response_id(event_id, reg_id, me)).set(dict(
+            response, event_id=event_id, reg_id=reg_id, email=me, name=name,
+            team=reg_data.get('team_name', ''), submitted_at=now.isoformat()))
+        if is_lead:  # where the certificate rule and older reports look for it
+            reg_ref.update({'feedback': dict(response, timestamp=now)})
         flash("Thank you for your feedback!", "success")
         return redirect('/participant/dashboard')
 

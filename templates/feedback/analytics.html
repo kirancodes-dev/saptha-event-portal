@@ -35,7 +35,8 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;color:#1e293b;}
 <div class="topnav">
   <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;">
   <span class="brand">Feedback Analytics — {{ event.get('title','Event') }}</span>
-  <a href="/spoc/dashboard" class="ms-auto" style="color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+  <a href="/feedback/export/{{ event_id }}" class="ms-auto me-3" style="color:#fff;font-size:12px;text-decoration:none;"><i class="fas fa-file-csv me-1"></i>Export responses (CSV)</a>
+  <a href="/spoc/dashboard" style="color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
 </div>
 
 <div class="container-fluid px-4 py-4" style="max-width:1100px;">

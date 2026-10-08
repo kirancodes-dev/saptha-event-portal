@@ -60,8 +60,8 @@ def tracked_sources():
     out = subprocess.run(['git', '-C', ROOT, 'ls-files', 'templates', 'static/js'],
                          capture_output=True, text=True, check=True).stdout.split()
     for path in out:
-        if not path.endswith(('.html', '.js')) or path in NOT_RENDERED:
-            continue
+        if not path.endswith(('.html', '.js')) or path in NOT_RENDERED or not os.path.isfile(os.path.join(ROOT, path)):
+            continue  # (a file deleted but not yet committed is gone)
         with open(os.path.join(ROOT, path), encoding='utf-8') as fh:
             text = fh.read()
         if path.endswith('.js'):

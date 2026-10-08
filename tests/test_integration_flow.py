@@ -97,9 +97,11 @@ def test_student_registers_for_free_team_event_and_spoc_checks_in(real_app):
     assert b'name="team_name"' in form.data  # team event renders team fields
 
     email = f"{_unique('stu')}@test.edu"
+    mate = f"{_unique('mate')}@test.edu"  # the event's teams have 2–4 people (UPG-08)
     resp = student.post(f'/forms/submit/{event_id}', data={
         'full_name': 'Stu Dent', 'email': email, 'phone': '9876543210',
         'usn': '1SN20CS001', 'team_name': 'Team Rocket',
+        'member_1_name': 'Tea Mate', 'member_1_email': mate,
     })
     assert resp.status_code == 302
 
@@ -116,6 +118,7 @@ def test_student_registers_for_free_team_event_and_spoc_checks_in(real_app):
     student.post(f'/forms/submit/{event_id}', data={
         'full_name': 'Stu Dent', 'email': email, 'phone': '9876543210',
         'usn': '1SN20CS001', 'team_name': 'Team Rocket',
+        'member_1_name': 'Tea Mate', 'member_1_email': mate,
     })
     assert len(list(db.collection('registrations').where('event_id', '==', event_id).stream())) == 1
 

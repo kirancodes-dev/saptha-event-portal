@@ -383,7 +383,8 @@
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="label">Team Name</div>
-                                <div class="value">{{ reg.get('team_name', 'Individual') }}</div>
+                                <div class="value">{{ reg.get('team_name', 'Individual') }}
+                                    {% if reg.get('team_code') %}<a href="/teams/{{ reg.get('reg_id') }}" style="font-size:12px;">Team page</a>{% endif %}</div>
                             </div>
                             <div class="info-item">
                                 <div class="label">Members</div>

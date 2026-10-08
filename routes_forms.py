@@ -151,6 +151,80 @@ def _get_form(event_id: str) -> Optional[dict]:
     return None
 
 
+# ── Teams (UPG-08) ─────────────────────────────────────────────────────────
+
+def team_limits(event: dict) -> tuple:
+    """(fewest, most) people in a team, the lead included; (1, 1) when the
+    event isn't a team event."""
+    limits = event.get('limits') or {}
+    lo = safe_int(limits.get('team_min') or event.get('min_team_size') or 1) or 1
+    hi = safe_int(limits.get('team_max') or event.get('max_team_size') or 1) or 1
+    if hi <= 1 and not event.get('is_team_event'):
+        return 1, 1
+    return max(lo, 1), max(hi, lo, 1)
+
+
+def team_fields(event: dict, existing_ids=()) -> list:
+    """The team name and one name / email / USN row per possible member,
+    required up to the team's minimum."""
+    lo, hi = team_limits(event)
+    if hi <= 1:
+        return []
+    fields = []
+    if 'team_name' not in existing_ids:
+        fields.append({'id': 'team_name', 'type': 'text', 'label': 'Team Name', 'placeholder': 'e.g. ByteCraft',
+                       'required': True, 'options': [], 'help_text': ''})
+    fields.append({'id': 'team_members', 'type': 'heading', 'options': [],
+                   'label': f'Team members: {lo}–{hi} people including you'})
+    for i in range(1, hi):
+        for key, label, ftype in (('name', 'Name', 'text'), ('email', 'Email', 'email'), ('usn', 'USN', 'text')):
+            fid = f'member_{i}_{key}'
+            if fid not in existing_ids:
+                fields.append({'id': fid, 'type': ftype, 'label': f'Member {i + 1} {label}', 'placeholder': '',
+                               'required': i < lo and key != 'usn', 'options': [], 'help_text': ''})
+    return fields
+
+
+def registration_schema(event_id: str, event: dict) -> dict:
+    """The form a registrant fills: the event's form (or the default one)
+    plus the team fields its limits call for."""
+    schema = _get_form(event_id) or _simple_schema_fallback(is_team=team_limits(event)[1] > 1)
+    schema['fields'] = schema['fields'] + team_fields(event, {f['id'] for f in schema['fields']})
+    return schema
+
+
+def submitted_members(form, lead_email: str, hi: int):
+    """(members, error) from the member_N_* fields a browser sent."""
+    numbers = sorted({int(m.group(1)) for key in form.keys()
+                      for m in [re.fullmatch(r'member_(\d+)_name', key)]
+                      if m and str(form.get(key) or '').strip()})
+    if numbers and numbers[-1] >= hi:
+        return [], f"A team can have at most {hi} people."
+    members, seen = [], {lead_email}
+    for i in numbers:
+        email = str(form.get(f'member_{i}_email') or '').strip().lower()
+        if email and email in seen:
+            return [], f"{email} is listed twice; each team member needs their own email."
+        if email:
+            seen.add(email)
+        members.append({'role': 'Member', 'name': str(form.get(f'member_{i}_name')).strip(), 'email': email,
+                        'usn': str(form.get(f'member_{i}_usn') or '').strip().upper(),
+                        'phone': str(form.get(f'member_{i}_phone') or '').strip()})
+    return members, ''
+
+
+def new_team_code(db_client) -> str:
+    """A 6-character invite code no other registration uses."""
+    import secrets
+    import string
+    alphabet = string.ascii_uppercase + string.digits
+    for _ in range(10):
+        code = ''.join(secrets.choice(alphabet) for _ in range(6))
+        if not list(db_client.collection('registrations').where('team_code', '==', code).limit(1).stream()):
+            return code
+    raise RuntimeError('Could not find a free team code')
+
+
 def _validate_submission(schema: dict, form_data: dict) -> list:
     errors = []
     for field in schema.get('fields', []):
@@ -390,10 +464,8 @@ def registration_page(event_id):
                .limit(1).stream())
         is_registered = any(q)
 
-    # Load schema — always exists after wizard, fallback just in case
-    schema = _get_form(event_id) or _simple_schema_fallback(
-        is_team=event.get('is_team_event', False)
-    )
+    # The event's form, plus team fields from its team limits (UPG-08)
+    schema = registration_schema(event_id, event)
 
     return render_template(
         'public/registration_form.html',
@@ -417,10 +489,7 @@ def submit_form(event_id):
             return redirect('/')
         event_data = event_doc.to_dict()
 
-        schema = _get_form(event_id) or {
-            'fields': _simple_schema_fallback(
-                event_data.get('is_team_event', False))['fields']
-        }
+        schema = registration_schema(event_id, event_data)
 
         # Collect all answers — values are str for most fields, list[str] for checkbox_group
         answers: dict = {}
@@ -468,6 +537,17 @@ def submit_form(event_id):
             flash("Registration is closed for this event.", "warning")
             return redirect(f'/forms/register/{event_id}')
 
+        # Team size is checked here, whatever the browser sent (UPG-08)
+        team_min, team_max = team_limits(event_data)
+        team_members, team_error = submitted_members(request.form, email, team_max)
+        if team_max > 1 and not team_error and not (team_min <= 1 + len(team_members) <= team_max):
+            team_error = f"A team needs {team_min}–{team_max} people, you included."
+        if team_max > 1 and not team_error and team_name in ('', 'Individual'):
+            team_error = "Please give your team a name."
+        if team_error:
+            flash(team_error, 'danger')
+            return redirect(f'/forms/register/{event_id}')
+
         if login_redirect:
             flash("An account already exists for this email. Please log in to register; "
                   "you'll come back to this form.", "info")
@@ -492,20 +572,9 @@ def submit_form(event_id):
             send_set_password_link(db, email, full_name)
             flash("🆕 We've emailed you a link to set your password.", "info")
 
-        # Build members list — lead + any member_N_* fields from team forms
+        # Members: the lead, then the team's other members (UPG-08)
         members = [{'role': 'Lead', 'name': full_name,
-                    'email': email, 'usn': usn, 'phone': phone}]
-        for i in range(1, 10):
-            m_name = str(answers.get(f'member_{i}_name') or '').strip()
-            if not m_name:
-                break
-            members.append({
-                'role':  'Member',
-                'name':  m_name,
-                'email': str(answers.get(f'member_{i}_email') or '').strip().lower(),
-                'usn':   str(answers.get(f'member_{i}_usn')   or '').strip().upper(),
-                'phone': str(answers.get(f'member_{i}_phone') or '').strip(),
-            })
+                    'email': email, 'usn': usn, 'phone': phone}] + (team_members if team_max > 1 else [])
 
         # Build registration
         reg_id   = f"REG-{int(time.time() * 1000)}"
@@ -527,6 +596,8 @@ def submit_form(event_id):
             'form_answers':    answers,
             'form_type':       schema.get('form_type', 'simple'),
         }
+        if team_max > 1:
+            reg_data['team_code'] = new_team_code(db)  # others join with it (UPG-08)
 
         # Free vs paid fee calculation
         fee = safe_int(event_data.get('entry_fee', 0))

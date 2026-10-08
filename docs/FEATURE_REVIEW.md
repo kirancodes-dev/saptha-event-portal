@@ -82,7 +82,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Certificate public verification | WORKING [R at UPG-06] | `routes_verification.py:21-185` | `/verify/<certificate_id>` shows the issued certificate and offers the PDF; an unknown ID shows invalid (404). Certificates from API v1's `CertificateService` aren't found there (UPG-14). |
 | Feedback | PARTLY BUILT [R at BLK-05] | `routes_feedback.py`, `routes_participant.py:283` | `/feedback/view` redirects to `/feedback/analytics`, which returns 200 [R at `1f4cdc8`]. The lead can open and submit the form on the real database (BLK-05 journey test); team members, one response per person and the attendance check are UPG-05. |
 | Hackathon submission + kanban | WORKING (page load) [R] | `routes_hackathon.py:20-206` | Pipeline and project pages are public (`routes_hackathon.py:107,137`). |
-| Teams (create/join by code) | NOT CONNECTED [C] | `routes_teams.py:92` | Writes a separate `teams` collection; never linked to registrations, tickets or judging. |
+| Teams (create/join by code) | WORKING [R at UPG-08] | `routes_teams.py`, `routes_forms.py:156-225` | A team is one registration: the form asks for members within the event's limits, others join with the lead's invite code, the lead removes members and replaces the code; tickets, judging and check-in read its members. |
 | Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:759` | Session-level attendance not found. |
 | Announcements | not run [C] | `routes_spoc.py:684-758` | — |
 | Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
@@ -130,7 +130,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 |---|---|---|
 | Discover | OK [R] | — |
 | Register (solo) | **Works** [R at UPG-01] | Every template's form names its fields and asks for name, email, phone and USN once; the seeded conference registers end to end. |
-| Register (team) | **Broken** [R] | Hackathon form shows only name/email/phone/USN, because `is_team_event` and `limits` were dropped. `/teams/*` isn't linked to registration (`routes_teams.py:92`). Teams are formed on WhatsApp. |
+| Register (team) | **Works** [R at UPG-08] | The form asks for the team name and members within the event's limits; teammates join with the lead's code (`tests/test_teams.py`). |
 | Pay | **Fixed in code** (BLK-09, BLK-03) | The fee persists and is charged at the server's price; forged, foreign or reused payments are refused (`tests/test_payments_secure.py`). Not yet run against Razorpay test mode (UPG-30). |
 | Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). No payment reference stored. |
 | Check-in | **Works** [R at UPG-02] | The ticket's QR is accepted by every scanner; see Coordinator. |
@@ -196,8 +196,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), calendar | Feedback (Google Forms) | UPG-05 |
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:131`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
-| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06) | Team formation (WhatsApp), rubric scoring, round shortlists | UPG-08, UPG-04 |
-| Sports | Create, registration (solo only), leaderboard page | Team rosters, fixtures, match results, standings (whiteboard/Excel) | UPG-08, UPG-13 |
+| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08) | Rubric scoring, round shortlists | UPG-04 |
+| Sports | Create, registration (teams since UPG-08), leaderboard page | Fixtures, match results, standings (whiteboard/Excel) | UPG-13 |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06) | Slots, judging sheets | UPG-04 |
 | Club activities | Org units can be clubs (`routes_admin.py:685`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
 | Placement drives | Generic registration only | Eligibility (branch / CGPA / backlogs), shortlists per round, company communication — all Excel | Eligibility rules + shortlist rounds (not in this list; add as next free ID when prioritised) |
@@ -388,20 +388,33 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   5. `.github/workflows/cron.yml` exists and targets the endpoint; `docs/DEPLOY.md` shows the Cloud Scheduler set-up.
 
 #### UPG-08 — Team registration linked to tickets and judging
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-08: …" on `production-ready` (parent `98c3556`)
 - **Problem:** The SPOC-created team hackathon form showed only name/email/phone/USN [R at `694c729`], because `is_team_event` and `limits` were dropped. They persist since BLK-09, but the fallback schema adds only a team-name field, never member fields from `team_min`/`team_max` (`routes_forms.py:191-214`, used at `:340-342`). `/teams/*` writes a separate `teams` collection (`routes_teams.py:92`) that registrations, tickets and judges never read. Members are parsed only from `member_N_*` fields (`routes_forms.py:445-455`).
 - **Who benefits:** hackathon, sports and cultural teams; removes WhatsApp team collection.
 - **What to build:** team fields generated from `team_min`/`team_max`; create a team, then join by invite code, which adds the member to the same registration; team size limits enforced on the server; the lead manages the team (remove a member, regenerate the code); each member sees the ticket; team check-in marks the members who are present; judges see the team name.
-- **Files touched:** `routes_forms.py`, `routes_teams.py`, `routes_ticket.py`, `templates/public/registration_form.html`, `templates/teams/*`, tests.
-- **Effort:** M · **Depends on:** BLK-06, UPG-01 · **Risk:** medium; changes the registration record shape.
-- **Acceptance criteria:**
-  1. Test: a team event with limits 2–4 renders member fields and rejects a 1-member team.
-  2. Test: joining by invite code adds the member to `members` and they can open the ticket.
-  3. Test: the judge event page lists the team name.
-  4. Test: a team at `team_max` rejects another join, even when the browser submits extra member fields.
-  5. Test: only the lead can remove a member or regenerate the code; a removed member loses the ticket.
-  6. Test: scanning the team ticket with 2 of 3 members marked present records exactly those 2.
+- **Re-checked before building (2026-10-08, `98c3556`; rule 3):** still as described. Nothing links to `/teams/*`, and no test covered it. Tickets (`routes_ticket.view_ticket`), the scanner's member list (UPG-02) and per-member attendance already read the registration's `members`, so the team had to live there.
+- **What was built:**
+  - **The form asks for the team.** `team_limits` (`routes_forms.py:156`) reads the event's `limits`. `team_fields` (`:167`) adds the team name and one name / email / USN row per possible member (required up to the minimum); `registration_schema` (`:188`) is what the registration page and submit both use.
+  - **Size is checked on the server** (`:540`), whatever the browser sends: `submitted_members` (`:196`) refuses a member number beyond the maximum and an email listed twice. The team must have between the minimum and maximum people, the lead included, and a name; the check runs before any account is created.
+  - **Invite code.** A team registration gets a unique 6-character `team_code` (`new_team_code`, `:216`; set at `:600`).
+  - **`routes_teams.py`, rewritten on the registration.** The separate `teams` collection is no longer used.
+    - `/teams/join` adds the logged-in student to the registration's `members`. It refuses a full team, a closed event and anyone already registered for the event.
+    - `/teams/<reg_id>` is the team page: members, the ticket link, and for the lead the code.
+    - The lead can remove a member (not themselves) and replace the code; a member can leave.
+    - `/teams/create/<event_id>` now opens the event's form.
+    - Templates are on the shared layout; `templates/teams/create.html` is gone. The ticket page links to the team page.
+  - **What already worked, now tested:** a member opens the team ticket; the judge sees the team name; scanning the team ticket then saving member attendance marks exactly who came (UPG-02).
+- **Files touched:** `routes_forms.py`, `routes_teams.py`, `templates/teams/view.html`, `templates/teams/join.html` (rewritten), `templates/teams/create.html` (removed), `templates/participant/ticket.html`, `tests/test_teams.py` (new), `tests/test_integration_flow.py` (see below), `tests/html_sinks.py` (skips a tracked file deleted before commit). `routes_ticket.py` and the registration template needed no change.
+- **Effort:** M · **Depends on:** BLK-06, UPG-01 · **Risk:** medium; the registration gains `team_code`, and team events now refuse registrations below the team minimum. `tests/test_integration_flow.py::test_student_registers_for_free_team_event_and_spoc_checks_in` registered one person for a 2–4 team event, which criterion 1 now refuses. Its form gained a second member; its assertions are unchanged.
+- **Acceptance criteria** (`tests/test_teams.py`, real database layer; 5 of 6 fail on the old code, and criterion 3 already held):
+  1. ✅ Test: a team event with limits 2–4 renders member fields and rejects a 1-member team (`::test_the_form_asks_for_members_and_refuses_a_one_person_team`; three member rows, a 2-person team is accepted with an invite code).
+  2. ✅ Test: joining by invite code adds the member to `members` and they can open the ticket (`::test_joining_by_code_adds_the_member_and_they_can_open_the_ticket`; only the lead sees the code; someone registered with another team can't join).
+  3. ✅ Test: the judge event page lists the team name (`::test_the_judge_sees_the_team_name`).
+  4. ✅ Test: a team at `team_max` rejects another join, even when the browser submits extra member fields (`::test_a_full_team_takes_nobody_else`).
+  5. ✅ Test: only the lead can remove a member or regenerate the code; a removed member loses the ticket (`::test_only_the_lead_manages_the_team_and_a_removed_member_loses_the_ticket`; the old code stops working).
+  6. ✅ Test: scanning the team ticket with 2 of 3 members marked present records exactly those 2 (`::test_a_team_check_in_records_exactly_the_members_who_came`).
+  - Full pytest: **855 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-09 — Book the venue while creating the event
 - **Status:** TODO
@@ -1812,3 +1825,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "UPG-45: …" (parent `b5afda8`) | UPG-45, UPG-01, Rule 8 | **New item, found while building UPG-01, and DONE** (UPG-01's criterion 2 depends on it). On the SQL adapter a form submission kept only its answers, and read them back flattened with no `answers` key, so the responses page and the forms export showed every answer empty in postgres mode. The adapter now keeps and returns the whole submission; old rows read back as `{'answers': …}`. No schema change. 2 new tests on SQLite and PostgreSQL (both fail on the old adapter). Full pytest 832 passed on both; ruff clean. **Rule 8 early pass** (`db_adapter.py` touched): all 35 open items checked; only UPG-01 is affected. |
 | 2026-10-08 | "UPG-01: …" (parent `2a69b17`) | UPG-01 | **UPG-01 DONE.** One normaliser, used by `_get_form`, gives every stored form field an id (else its `field_name`) and prepends full name, email, phone and USN once unless the form already asks for them. So template forms made by API v1's `instantiate_event` and the seeded events render named inputs and ask for identity, without rewriting stored data. Saving a form with an unnamed input field returns 400. Criterion 2 found UPG-45 (built first). 10 new real-database cases (all fail on the old code), including every template and the seeded conference registered end to end. Full pytest 842 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-08 | "UPG-34: …" (parent `2fb6e01`) | UPG-34 | **UPG-34 DONE.** One check, `routes_forms.registration_closed` (status and deadline), used by the registration page, `/forms/submit` (which missed the deadline and pending approval) and the legacy `/participant/public_register`, which now refuses closed events before creating anything. The public event page's Register buttons link to the event's own form; its bypassing modal form is removed. 7 new real-database cases (6 fail on the old code). Full pytest 849 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-08: …" (parent `98c3556`) | UPG-08 | **UPG-08 DONE.** Teams live on the registration. The form adds team name and member rows from the event's limits, and the server enforces team size (refusing extra member fields and duplicate emails). A team registration gets an invite code; `/teams/join` adds the student to its members (refusing full teams, closed events and people already registered). The lead removes members and replaces the code; members can leave; the team page shows the roster and ticket. The separate `teams` collection is no longer used. 6 new real-database cases (5 fail on the old code). `test_student_registers_for_free_team_event_and_spoc_checks_in` registered one person for a 2–4 team event, which the item now refuses; its form gained a second member, assertions unchanged. Full pytest 855 passed on SQLite and PostgreSQL 16; ruff clean. |

@@ -58,7 +58,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | 2FA (TOTP) | NOT CONNECTED [C] | `auth_2fa.py:42-155` | No template links to `/auth/2fa/*`. `totp_*` keys now persist [R round-trip at `1f4cdc8`]. |
 | Event creation from template (SPOC) | WORKING [R at `1f4cdc8`] | `routes_spoc.py:96-274` | All settings now persist, e.g. a ₹500 fee and team 2–4 (`tests/test_integration_flow.py:56-83`) [R]. Presets only applied for seminar/workshop (`routes_spoc.py:131`). |
 | Approval workflow (unit → admin) | WORKING [R] | `services_workflow.py:130-217`, `routes_admin.py:786` | Admin approval sets `published`; SPOC must still move it to `registration_open` (`routes_forms.py:321` treats `published` as closed). |
-| Registration form (custom fields) | PARTLY BUILT [R] | `templates/public/registration_form.html:485`, `routes_spoc.py:252-256` | Works for SPOC-created seminar/workshop. Seeded and template-created forms store `field_name`; the template renders `name="{{ field.id }}"`, so inputs get `name=""` and there's no name/email field. |
+| Registration form (custom fields) | WORKING [R at UPG-01] | `routes_forms.py:103-140` | Every form, template, seeded or SPOC-built, is normalised on read: each field has a name and the identity fields appear once. Answers are stored and shown on the responses page (UPG-45 fixed postgres mode). |
 | Form builder | WORKING (page load and save [R at BLK-04b]) | `routes_forms.py:223-300` | Only the event's owner (or admins) can edit the form; assigned staff can see responses (BLK-04). |
 | Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:403-439`, `routes_auth.py:227` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
 | Waitlist | PARTLY BUILT [R at BLK-03] | `routes_forms.py`, `routes_waitlist.py:186-300`, `tasks/waitlist_tasks.py` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
@@ -129,7 +129,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Step | Result | Where it breaks / leaves the app |
 |---|---|---|
 | Discover | OK [R] | — |
-| Register (solo) | OK for SPOC-created seminar [R]; **broken** for seeded/template forms [R] | Inputs have `name=""` (`registration_form.html:485`). Student falls back to a Google Form. |
+| Register (solo) | **Works** [R at UPG-01] | Every template's form names its fields and asks for name, email, phone and USN once; the seeded conference registers end to end. |
 | Register (team) | **Broken** [R] | Hackathon form shows only name/email/phone/USN, because `is_team_event` and `limits` were dropped. `/teams/*` isn't linked to registration (`routes_teams.py:92`). Teams are formed on WhatsApp. |
 | Pay | **Fixed in code** (BLK-09, BLK-03) | The fee persists and is charged at the server's price; forged, foreign or reused payments are refused (`tests/test_payments_secure.py`). Not yet run against Razorpay test mode (UPG-30). |
 | Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). No payment reference stored. |
@@ -193,7 +193,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Event type | Works today | Done outside the app | Needed |
 |---|---|---|---|
-| Seminar | Create from template, approval, free registration (SPOC-created form), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), calendar | Feedback (Google Forms) | UPG-01, UPG-05 |
+| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), calendar | Feedback (Google Forms) | UPG-05 |
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:131`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
 | Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06) | Team formation (WhatsApp), rubric scoring, round shortlists | UPG-08, UPG-04 |
@@ -204,7 +204,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | FDPs | Registration creates a **Student** account (`services_accounts.py:61`, used at `routes_forms.py:438`) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
 | NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a | Volunteer hours register, unit rolls, hours certificates | UPG-11 |
 | Department events | Department-only visibility (`app.py:1001-1004`), unit approval [R] | Same as seminar | Seminar items |
-| Conference / webinar | Templates exist; seeded forms render empty inputs [R] | External attendee registration | UPG-01, UPG-12 |
+| Conference / webinar | Templates exist; their forms work since UPG-01 [R] | External attendee registration | UPG-12 |
 
 ---
 
@@ -215,18 +215,26 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### A. Finish what's half-built
 
 #### UPG-01 — Registration forms render every template field and always ask for identity
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-01: …" on `production-ready` (parent `2a69b17`)
 - **Problem:** Template and seeded forms store `field_name` (`services_templates.py` `form_config`; seeded `event_forms` rows), but `templates/public/registration_form.html:405,425,443,485` render `name="{{ field.id }}"`. Inputs get `name=""`, and there's no name or email field, so submissions fail [R]. The SPOC path patches `id` only for its own preset (`routes_spoc.py:252-256`).
 - **Who benefits:** every student registering for a seeded or template-created event, plus organisers who otherwise fall back to Google Forms.
 - **What to build:** normalise the schema in one place (`_get_form` in `routes_forms.py`) so every field has an `id`; always prepend the identity fields (full_name, email, phone, usn) once; add a check that fails form save if any field lacks an id.
-- **Files touched:** `routes_forms.py`, `templates/public/registration_form.html`, `services_templates.py`, tests.
-- **Effort:** S · **Depends on:** BLK-02, BLK-06 · **Risk:** low; existing SPOC forms already carry `id`.
-- **Acceptance criteria:**
-  1. Test: `GET /forms/register/<event from each of the 7 templates>` has no `name=""` input and contains `name="email"` exactly once.
-  2. Test: submitting a template form stores the answers and they are read back from `form_submissions` for the responses page.
-  3. Test: saving a form with a field that has neither `id` nor `field_name` returns 400.
-  4. A student can register for the seeded conference event through the UI.
+- **Re-checked before building (2026-10-08, `b5afda8`; rule 3):** the form files were unchanged since `986d108` apart from UPG-03's one line. Two findings:
+  - The broken forms come from `TemplateService.instantiate_event` (API v1's create-from-template) and the seeder, which store the template's `field_name` fields with no identity fields. The SPOC's own create path already adds both (`routes_spoc.py:267-282`).
+  - Criterion 2 found that the SQL adapter dropped the answers' envelope; recorded and fixed first as **UPG-45**.
+- **What was built:**
+  - **One normaliser on read: `normalise_fields` (`routes_forms.py:103`), used by `_get_form` (`:129`).** Every field gets an `id` (else its `field_name`); layout fields without one get `layout_N`; duplicate ids are dropped. Full name, email, phone and USN (`IDENTITY_FIELDS`, `:87`) are prepended once unless the form already asks for them under that id or a known synonym (`name`, `email_address`, `mobile`, `roll_number`, …).
+  - The registration page, submission, validation, builder and schema API all read through `_get_form`. So stored forms, old and seeded included, are fixed without rewriting them; the template and `services_templates.py` need no change.
+  - **Saving refuses an input field with neither `id` nor `field_name`** (400 naming the field, `:312`) instead of inventing `field_N`. A `field_name` becomes its id.
+- **Files touched:** `routes_forms.py`, `tests/test_registration_forms.py` (new). (`templates/public/registration_form.html` and `services_templates.py` needed no change.)
+- **Effort:** S · **Depends on:** BLK-02, BLK-06, UPG-45 (found here) · **Risk:** low; existing SPOC forms already carry `id`.
+- **Acceptance criteria** (`tests/test_registration_forms.py`, real database layer; all 10 cases fail on the old code):
+  1. ✅ Test: `GET /forms/register/<event from each of the 7 templates>` has no `name=""` input and contains `name="email"` exactly once (`::test_every_template_form_names_its_fields_and_asks_for_email_once`, one case per template, made the way API v1 makes them; every template field and all four identity fields are named).
+  2. ✅ Test: submitting a template form stores the answers and they are read back from `form_submissions` for the responses page (`::test_a_template_form_submission_is_stored_and_shown_on_the_responses_page`, hackathon template).
+  3. ✅ Test: saving a form with a field that has neither `id` nor `field_name` returns 400 (`::test_saving_a_field_with_no_id_is_refused`; the stored form is unchanged, and a `field_name`-only field saves under that id).
+  4. ✅ A student can register for the seeded conference event through the UI (`::test_a_student_registers_for_the_seeded_conference_through_the_ui`: `seed_universal_portal`, the student opens the form, submits it and pays through the simulated checkout).
+  - Full pytest: **842 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-02 — QR check-in that works with real tickets, for assigned coordinators only
 - **Status:** DONE
@@ -1795,3 +1803,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "UPG-03: …" (parent `f964a34`) | UPG-03 | **UPG-03 DONE.** New `services_export.py`: one export of an event's registrations (CSV and Excel) used by the SPOC, coordinator and admin routes, with every column the item lists. Department and year come from the profile, form or USN; spreadsheet-formula names are quoted. A one-click event report (Excel): summary, by department, by year, feedback, winners, registrations; linked from the SPOC dashboard. Every export route now answers 403 to anyone without `export_data` on the event (or, for the all-events export, to non-admins), instead of a login redirect; the coordinator's Excel export no longer swallows its 403. 6 new real-database cases (all fail on the old code). Full pytest 826 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-08 | "UPG-29: …" (parent `2f6262f`) | UPG-29, UPG-04 | **UPG-29 DONE.** Tests first, then the fixes they called for. New `POST /spoc/remove_staff/<event_id>` removes a coordinator or judge from the event's staff and coordinators, ending their access to registrations, exports, check-in and scoring; the SPOC dashboard gets remove buttons on coordinator chips and a judge list with Remove in the judges dialog. `assign_coordinator` now answers another SPOC with 403 (it redirected) before creating anything. The judge dashboard's `active`-only filter stays with UPG-04 criterion 3. 4 new real-database cases (all fail on the old code). Full pytest 830 passed on SQLite and PostgreSQL 16; ruff clean. |
 | 2026-10-08 | "UPG-45: …" (parent `b5afda8`) | UPG-45, UPG-01, Rule 8 | **New item, found while building UPG-01, and DONE** (UPG-01's criterion 2 depends on it). On the SQL adapter a form submission kept only its answers, and read them back flattened with no `answers` key, so the responses page and the forms export showed every answer empty in postgres mode. The adapter now keeps and returns the whole submission; old rows read back as `{'answers': …}`. No schema change. 2 new tests on SQLite and PostgreSQL (both fail on the old adapter). Full pytest 832 passed on both; ruff clean. **Rule 8 early pass** (`db_adapter.py` touched): all 35 open items checked; only UPG-01 is affected. |
+| 2026-10-08 | "UPG-01: …" (parent `2a69b17`) | UPG-01 | **UPG-01 DONE.** One normaliser, used by `_get_form`, gives every stored form field an id (else its `field_name`) and prepends full name, email, phone and USN once unless the form already asks for them. So template forms made by API v1's `instantiate_event` and the seeded events render named inputs and ask for identity, without rewriting stored data. Saving a form with an unnamed input field returns 400. Criterion 2 found UPG-45 (built first). 10 new real-database cases (all fail on the old code), including every template and the seeded conference registered end to end. Full pytest 842 passed on SQLite and PostgreSQL 16; ruff clean. |

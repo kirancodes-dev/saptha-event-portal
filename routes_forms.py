@@ -81,16 +81,60 @@ def _allowed(event_id, event: dict, permission: str) -> bool:
 # HELPERS
 # =========================================================
 
+LAYOUT_TYPES = ('heading', 'paragraph', 'divider')
+
+# The identity every registration needs, with the ids forms already use for it
+IDENTITY_FIELDS = (
+    (('full_name', 'name', 'participant_name'),
+     {'id': 'full_name', 'type': 'text', 'label': 'Full Name', 'placeholder': 'Enter your full name',
+      'required': True, 'options': [], 'help_text': ''}),
+    (('email', 'email_address'),
+     {'id': 'email', 'type': 'email', 'label': 'Email Address', 'placeholder': 'you@example.com',
+      'required': True, 'options': [], 'help_text': ''}),
+    (('phone', 'phone_number', 'mobile', 'contact'),
+     {'id': 'phone', 'type': 'tel', 'label': 'Phone Number', 'placeholder': '10-digit mobile',
+      'required': True, 'options': [], 'help_text': ''}),
+    (('usn', 'roll_number', 'roll_no', 'id_number'),
+     {'id': 'usn', 'type': 'text', 'label': 'USN / Roll Number', 'placeholder': 'e.g. 1SN21CS001',
+      'required': False, 'options': [], 'help_text': ''}),
+)
+
+
+def normalise_fields(fields) -> list:
+    """Every field gets an `id` (template and seeded forms store `field_name`),
+    the identity fields come first unless the form already asks for them, and
+    each id appears once (UPG-01)."""
+    out, seen = [], set()
+    for i, raw in enumerate(fields or []):
+        if not isinstance(raw, dict):
+            continue
+        field = dict(raw)
+        fid = field.get('id') or field.get('field_name')
+        if not fid:
+            if field.get('type') not in LAYOUT_TYPES:
+                continue  # an input nobody can name can't be answered; saving refuses these
+            fid = f'layout_{i}'
+        field['id'] = str(fid)
+        field.setdefault('type', 'text')
+        field.setdefault('label', field['id'].replace('_', ' ').title())
+        field.setdefault('options', [])
+        if field['id'] in seen:
+            continue
+        seen.add(field['id'])
+        out.append(field)
+    missing = [dict(standard) for ids, standard in IDENTITY_FIELDS if not seen.intersection(ids)]
+    return missing + out
+
+
 def _get_form(event_id: str) -> Optional[dict]:
     doc = db.collection('event_forms').document(event_id).get()
     if not doc.exists:
         return None
     data = doc.to_dict()
     if isinstance(data, list):
-        return {'fields': data, 'form_title': 'Registration Form', 'form_desc': ''}
+        data = {'fields': data, 'form_title': 'Registration Form', 'form_desc': ''}
     if isinstance(data, dict):
-        if 'fields' not in data:
-            data['fields'] = []
+        data['fields'] = normalise_fields(data.get('fields') or [])
         return data
     return None
 
@@ -261,8 +305,13 @@ def save_form(event_id):
 
         clean_fields = []
         for i, f in enumerate(fields_raw):
+            fid = f.get('id') or f.get('field_name')
+            if not fid and f.get('type') not in LAYOUT_TYPES:
+                # Its answers would have no name to be stored under (UPG-01)
+                return jsonify({'status': 'error', 'message':
+                                f"Field {i + 1} ('{f.get('label') or f.get('type') or 'untitled'}') has no id."}), 400
             clean_fields.append({
-                'id':          f.get('id') or f"field_{i}",
+                'id':          fid or f"layout_{i}",
                 'type':        f.get('type', 'text'),
                 'label':       f.get('label', f'Field {i+1}'),
                 'placeholder': f.get('placeholder', ''),

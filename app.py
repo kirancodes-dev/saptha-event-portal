@@ -1044,6 +1044,15 @@ def _filter_calendar_events(events_stream, args, session_dict, db_client):
             if filter_fee == 'paid' and is_free:
                 continue
 
+        if (ev.get('room_id') or ev.get('roomId')) and not ev.get('room_name') and db_client:
+            try:
+                r_id = ev.get('room_id') or ev.get('roomId')
+                rdoc = db_client.collection('rooms').document(str(r_id)).get()
+                if rdoc.exists:
+                    ev['room_name'] = rdoc.to_dict().get('name')
+            except Exception:
+                pass
+
         ev['google_calendar_url'] = get_google_calendar_url(ev)
         ev['ics_url'] = f"/events/{ev.get('slug') or ev_id}/calendar.ics"
         filtered_events.append(ev)

@@ -447,8 +447,13 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Full pytest: **855 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-09 — Book the venue while creating the event
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Evidence:** `routes_spoc.py:126,134-156,237-261`, `templates/spoc/create_event.html:631-640`, `services_workflow.py:282-300`, `app.py:1047-1055`
+- **Last verified:** 2026-10-10, commit `UPG-09`
+- **To test later:**
+  1. Test: creating an event in a room already booked for an overlapping time → error, no event created.
+  2. Test: approval turns the tentative booking into confirmed.
+  3. The calendar shows the room name for the event.
 - **Problem:** Room conflict detection exists (`services_venue.check_room_conflict`), but it runs only on edit (`routes_spoc.py:1138-1144`) and publish (`services_workflow.py:190-218`). The create form has no room field (no `room_id` in `templates/spoc/create_event.html`), so clashes surface late and rooms are booked by email or phone.
 - **Who benefits:** SPOCs, the estates/admin office, and anyone who double-books halls.
 - **What to build:** a room picker with availability on create; a booking created as tentative on submit and confirmed on approval.
@@ -2285,6 +2290,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "chore: …" (parent `1b1131b`) | Phase 5 Item 4 / UPG-15 | **Unified seed script & clean scratch tools BUILT (untested).** Created `seed.py` with `--profile demo|events|scale` and `--all` options guarded by `seed_safety.guard()`; moved `generate_vapid.py` to `scripts/`; deleted `reset_system.py`, `run_alembic.py`, all 26 files in `scratch/`, and redundant seed scripts (`seed_100_days_biradar.py`, `seed_100_events.py`, `seed_10_production.py`, `seed_30_events.py`, `seed_hackathon_regs.py`, `seed_live_demo.py`, `seed_presentation.py`, `seed_upcoming_10days_events.py`, `setup_tomorrow_demo.py`). ruff clean; app starts. |
 | 2026-10-10 | "docs: …" (parent `55c5241`) | Phase 5 summary | **Phase 5 (clean-up) built, development-only run (rules 5 and 8 suspended by the owner).** **BUILT (untested):** UPG-14 (duplicate notifications, Stripe, matchmaker, and schedulers merged/cleaned), UPG-15 (Zoho Catalyst copy `functions/saptha_app/` and `catalyst.json` deleted; stale gitlink removed; unregistered blueprints `routes_public`, `routes_head`, `routes_super`, `routes_api` removed; 17 unrendered templates deleted; dead ticket link fixed; `WALKIN_DEFAULT_PASSWORD` eliminated), UPG-38 (sample Jekyll workflow `.github/workflows/jekyll-docker.yml` deleted), and Phase 5 Item 4 (seed scripts consolidated into unified `seed.py` with `--profile demo|events|scale` and `--all` under `seed_safety.guard()`; `generate_vapid.py` moved to `scripts/`; `reset_system.py`, `run_alembic.py`, `scratch/` directory, and 9 redundant seed scripts deleted). Over 4,500 lines of dead code removed. **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200. **Next:** Phase 6 (university features), starting with UPG-04. |
 | 2026-10-10 | "UPG-04: …" (parent `cffd2ae`) | UPG-04 | **UPG-04 BUILT (untested).** Implemented judging criteria normalizer `normalize_criteria` handling dicts and strings with `{name, max_score, key, slug}`; added max score and range validation (400 on out of bounds) in `submit_score` and `score_inline`; returned locked indicator when SPOC locks scoring; updated judge dashboard to query events in `in_progress` and `evaluation` states; updated `templates/judge/teams.html` to render per-criterion max score inputs and sliders. ruff clean; app starts. |
+| 2026-10-10 | "UPG-09: …" (parent `0630122`) | UPG-09 | **UPG-09 BUILT (untested).** Added room picker and conflict detection to event creation in `routes_spoc.py` and `templates/spoc/create_event.html` (returns 400 on conflict without creating event); creates tentative booking in `venue_bookings`; confirms tentative bookings on approval/publish transition in `services_workflow.py`; populates room name on calendar JSON feeds in `app.py`. ruff clean; app starts. |
 
 
 

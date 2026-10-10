@@ -628,7 +628,14 @@
                         <input aria-label="Registration Deadline" type="date" name="reg_deadline" class="form-control">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Venue Name</label>
+                        <label class="form-label">Campus Room / Hall <span style="font-weight:400;color:#94a3b8;">(optional booking)</span></label>
+                        <select aria-label="Campus Room / Hall" name="room_id" id="room_select" class="form-select mb-2">
+                            <option value="">-- Select a Room (Optional) --</option>
+                            {% for r in rooms %}
+                            <option value="{{ r.id }}">{{ r.name }} (Capacity: {{ r.capacity or 'N/A' }})</option>
+                            {% endfor %}
+                        </select>
+                        <label class="form-label">Venue Display Name</label>
                         <input aria-label="Venue Name" type="text" name="venue" class="form-control" placeholder="e.g. Block A Auditorium">
                     </div>
                     <div class="col-md-6">

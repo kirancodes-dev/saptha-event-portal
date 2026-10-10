@@ -279,6 +279,24 @@ class WorkflowEngine:
         doc_ref.set(updates, merge=True)
         event_data.update(updates)
 
+        # Confirm tentative room bookings on approval or publish (UPG-09)
+        if t_state in ("approved", "published"):
+            bookings = list(db.collection("venue_bookings").where("event_id", "==", str(event_id)).stream())
+            for b in bookings:
+                bd = b.to_dict()
+                if (bd.get("status") or "").strip().lower() == "tentative":
+                    db.collection("venue_bookings").document(b.id).set({
+                        "status": "confirmed",
+                        "updated_at": now_str,
+                    }, merge=True)
+        elif t_state == "cancelled":
+            bookings = list(db.collection("venue_bookings").where("event_id", "==", str(event_id)).stream())
+            for b in bookings:
+                db.collection("venue_bookings").document(b.id).set({
+                    "status": "cancelled",
+                    "updated_at": now_str,
+                }, merge=True)
+
         # Record immutable audit log
         cls._record_audit_entry(
             db,

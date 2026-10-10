@@ -124,13 +124,37 @@ def dashboard():
 @role_required('ClubSPOC')
 def create_event():
     if request.method == 'GET':
-        return render_template('spoc/create_event.html')
+        rooms = [dict(r.to_dict() or {}, id=r.id) for r in db.collection('rooms').stream()] if db else []
+        return render_template('spoc/create_event.html', rooms=rooms)
 
     try:
         def get_bool(key): return True if request.form.get(key) == 'on' else False
         def get_int(key, default=0):
             try: return int(request.form.get(key, default))
             except: return default
+
+        # 0. Room conflict check on create (UPG-09)
+        room_id = (request.form.get('room_id') or request.form.get('roomId') or '').strip()
+        date_val = (request.form.get('date') or '').strip()
+        time_val = (request.form.get('time') or '').strip()
+        start_time_val = f"{date_val} {time_val}".strip() if time_val else date_val
+        end_time_val = (request.form.get('end_time') or request.form.get('end_datetime') or start_time_val).strip()
+
+        if room_id and start_time_val:
+            from services_venue import check_room_conflict
+            has_clash, clash_info = check_room_conflict(
+                db,
+                room_id=room_id,
+                start_time=start_time_val,
+                end_time=end_time_val,
+            )
+            if has_clash:
+                msg = (clash_info or {}).get("message", "Room is already booked for an overlapping time.")
+                if request.is_json or 'json' in request.headers.get('Accept', ''):
+                    return jsonify({'status': 'error', 'message': msg}), 400
+                flash(f"Error: {msg}", "danger")
+                rooms = [dict(r.to_dict() or {}, id=r.id) for r in db.collection('rooms').stream()] if db else []
+                return render_template('spoc/create_event.html', rooms=rooms), 400
 
         # 1. Capture Multiple Coordinators (Comma separated string -> List)
         coord_string = request.form.get('coordinators', '')
@@ -236,6 +260,15 @@ def create_event():
             'results_published': False
         }
 
+        if room_id:
+            event_data['room_id'] = room_id
+            rdoc = db.collection('rooms').document(room_id).get()
+            if rdoc.exists:
+                r_name = rdoc.to_dict().get('name')
+                event_data['room_name'] = r_name
+                if not event_data.get('venue'):
+                    event_data['venue'] = r_name
+
         if preset:
             event_data['workflow_config'] = preset.get('workflow_config', {})
             event_data['evaluation_config'] = preset.get('evaluation_config', {})
@@ -247,6 +280,21 @@ def create_event():
         # we can attach an auto-generated form schema if one was provided.
         _, new_event_ref = db.collection('events').add(event_data)
         new_event_id = new_event_ref.id
+
+        if room_id and start_time_val:
+            from services_venue import create_or_update_venue_booking
+            try:
+                create_or_update_venue_booking(
+                    db,
+                    room_id=room_id,
+                    start_time=start_time_val,
+                    end_time=end_time_val,
+                    event_id=new_event_id,
+                    status="tentative",
+                    notes=f"Tentative booking for event '{event_data['title']}'",
+                )
+            except Exception as b_exc:
+                print(f"Warning: failed to create tentative room booking: {b_exc}")
 
         auto_form_raw = request.form.get('auto_form_json', '').strip()
         if auto_form_raw:

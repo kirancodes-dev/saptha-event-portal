@@ -742,7 +742,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### E. Frontend (added in Phase 0, 2026-09-30)
 
 #### UPG-23 — Every page on one shared layout (split by area: UPG-23a–h)
-- **Status:** IN PROGRESS (development-only run): 23a–23e built (untested)
+- **Status:** IN PROGRESS (development-only run): 23a–23f built (untested)
 - **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
 - **Problem:** [C at `56a014d`, counted with a script] Of 129 templates, 16 extend `base_classic.html` (12 at `986d108`; Phase 2 added `admin/payments.html` and moved `admin/users.html`, `teams/join.html` and `teams/view.html` onto it), 1 extends `coordinator/base.html`, which doesn't exist (`templates/coordinator/view_scores.html`; nothing renders it, UPG-15), 5 are partials, and **107 are standalone pages** with their own `<head>`, CDN tags and navigation (111 at `986d108`; the plan's prompt said 108 of 126 and ~13). So fixes to navigation, CSP, fonts, footer or loading states have to be made 107 times. (Re-counted 2026-10-02: Phase 0 wrote 110, which left the four groups one short of 129.)
 - **Who benefits:** every user (consistent navigation, mobile layout); every later frontend item.
@@ -2173,3 +2173,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-23c: …" (parent `51d16c5`) | UPG-23c | **UPG-23c built (untested): profile and payment pages** (`profile/dashboard.html`, `payment/checkout.html`; the team pages and the payment-failed page already extended the shared layout) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
 | 2026-10-10 | "UPG-23d: …" (parent `2498633`) | UPG-23d | **UPG-23d built (untested): SPOC pages** (dashboard, create and edit event, agenda, AI report, judging audit, profile, results, room allocation, round panel, schedule optimiser, feedback analytics; the scan and NFC scanner pages full-screen) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
 | 2026-10-10 | "UPG-23e: …" (parent `d6635e3`) | UPG-23e | **UPG-23e built (untested): coordinator pages** (dashboard, AI matching, form builder and responses, walk-ins, results summary, scanner list; verify result with the footer pinned; scanner and HUD full-screen) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23f: …" (parent `e3c8816`) | UPG-23f | **UPG-23f built (untested): judge pages** (dashboard, team scoring) moved onto the shared document; the four unrendered judge templates are left for UPG-15. Crawl: no difference. ruff clean; app starts. |

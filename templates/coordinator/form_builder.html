@@ -149,10 +149,10 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
   </div>
   <div class="d-flex align-items-center gap-3">
     <button class="btn btn-outline-light btn-sm rounded-pill px-3"
-            onclick="openPreview()">
+            data-h-click="coordinator/form_builder:1">
       <i class="fas fa-eye me-1"></i> Preview
     </button>
-    <button class="btn-save" id="btn-save" onclick="saveForm()">
+    <button class="btn-save" id="btn-save" data-h-click="coordinator/form_builder:2">
       <i class="fas fa-save"></i> Save Form
     </button>
     <a href="{{ '/spoc/dashboard' if session.get('role') == 'ClubSPOC' else '/coordinator/dashboard' }}" class="btn btn-outline-light btn-sm rounded-pill px-3">
@@ -173,25 +173,25 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
         Basic
       </div>
     </div>
-    <button class="field-btn" onclick="addField('text')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:3">
       <span class="icon"><i class="fas fa-font"></i></span> Short Text
     </button>
-    <button class="field-btn" onclick="addField('textarea')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:4">
       <span class="icon"><i class="fas fa-align-left"></i></span> Long Text
     </button>
-    <button class="field-btn" onclick="addField('email')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:5">
       <span class="icon"><i class="fas fa-envelope"></i></span> Email
     </button>
-    <button class="field-btn" onclick="addField('tel')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:6">
       <span class="icon"><i class="fas fa-phone"></i></span> Phone
     </button>
-    <button class="field-btn" onclick="addField('number')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:7">
       <span class="icon"><i class="fas fa-hashtag"></i></span> Number
     </button>
-    <button class="field-btn" onclick="addField('date')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:8">
       <span class="icon"><i class="fas fa-calendar"></i></span> Date
     </button>
-    <button class="field-btn" onclick="addField('url')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:9">
       <span class="icon"><i class="fas fa-link"></i></span> URL / Link
     </button>
 
@@ -201,16 +201,16 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
         Choice
       </div>
     </div>
-    <button class="field-btn" onclick="addField('select')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:10">
       <span class="icon"><i class="fas fa-caret-square-down"></i></span> Dropdown
     </button>
-    <button class="field-btn" onclick="addField('radio')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:11">
       <span class="icon"><i class="fas fa-dot-circle"></i></span> Multiple Choice
     </button>
-    <button class="field-btn" onclick="addField('checkbox_group')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:12">
       <span class="icon"><i class="fas fa-check-square"></i></span> Checkboxes
     </button>
-    <button class="field-btn" onclick="addField('checkbox')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:13">
       <span class="icon"><i class="fas fa-toggle-on"></i></span> Single Checkbox
     </button>
 
@@ -220,20 +220,20 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
         Layout
       </div>
     </div>
-    <button class="field-btn" onclick="addField('heading')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:14">
       <span class="icon"><i class="fas fa-heading"></i></span> Section Heading
     </button>
-    <button class="field-btn" onclick="addField('paragraph')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:15">
       <span class="icon"><i class="fas fa-info-circle"></i></span> Info Text
     </button>
-    <button class="field-btn" onclick="addField('divider')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:16">
       <span class="icon"><i class="fas fa-minus"></i></span> Divider
     </button>
 
     <!-- Simple form reset -->
     <div style="padding:16px;">
       <button class="btn btn-outline-secondary btn-sm w-100 rounded-pill"
-              onclick="loadSimpleTemplate()">
+              data-h-click="coordinator/form_builder:17">
         <i class="fas fa-magic me-1"></i> Load Simple Template
       </button>
     </div>
@@ -249,12 +249,12 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
           <!-- Form type switcher -->
           <div class="prop-label mb-2">Registration Type</div>
           <div class="type-switcher">
-            <div class="type-card" id="type-simple" onclick="setFormType('simple')">
+            <div class="type-card" id="type-simple" data-h-click="coordinator/form_builder:18">
               <span class="type-icon">📋</span>
               <h6>Simple Registration</h6>
               <p>Pre-built form with standard fields</p>
             </div>
-            <div class="type-card" id="type-custom" onclick="setFormType('custom')">
+            <div class="type-card" id="type-custom" data-h-click="coordinator/form_builder:19">
               <span class="type-icon">🎨</span>
               <h6>Custom Form Builder</h6>
               <p>Design your own form with any fields</p>
@@ -277,7 +277,7 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
           <div class="input-group">
             <input type="text" id="ai-prompt-input" class="prop-input" style="flex:1;"
                    placeholder="e.g., Build a robotics team form with github url, team size of 4 and dietary preference">
-            <button class="btn btn-primary ms-2 px-4" style="border-radius:20px;" id="btn-ai-gen" onclick="generateFromAI()">
+            <button class="btn btn-primary ms-2 px-4" style="border-radius:20px;" id="btn-ai-gen" data-h-click="coordinator/form_builder:20">
               <i class="fas fa-bolt me-1"></i> Generate
             </button>
           </div>
@@ -290,8 +290,8 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 
     <!-- Drop canvas -->
     <div id="canvas" class="canvas-drop"
-         ondragover="onDragOver(event)" ondrop="onDrop(event)"
-         ondragleave="onDragLeave(event)">
+         data-h-dragover="coordinator/form_builder:21" data-h-drop="coordinator/form_builder:22"
+         data-h-dragleave="coordinator/form_builder:23">
       <div class="canvas-empty" id="canvas-empty">
         <i class="fas fa-mouse-pointer"></i>
         <p class="fw-bold mb-1">Click a field type on the left to add it</p>
@@ -303,7 +303,7 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 
     <div class="d-flex gap-2 mt-3">
       <button class="btn btn-outline-danger btn-sm rounded-pill"
-              onclick="clearAll()">
+              data-h-click="coordinator/form_builder:24">
         <i class="fas fa-trash me-1"></i> Clear All Fields
       </button>
       <a href="/forms/responses/{{ event.id }}"
@@ -355,7 +355,7 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 <div class="toast-wrap" id="toast-wrap"></div>
 
 {% include "layouts/_bootstrap_js.html" %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 // ── STATE ──────────────────────────────────────────────
 let fields       = [];
 let selectedId   = null;
@@ -484,15 +484,15 @@ function renderCanvas() {
 
     card.innerHTML = `
       <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
-      <div class="field-meta" onclick="selectField(${escapeJsAttr(f.id)})">
+      <div class="field-meta" data-h-click="se:call" data-call="selectField" data-args="${escapeHtml(JSON.stringify([f.id]))}">
         <div class="field-label">${escapeHtml(f.label || f.type)}</div>
         <div class="field-type-badge">${escapeHtml(typeLabel(f.type))}${escapeHtml(f.help_text ? ' · ' + f.help_text : '')}</div>
       </div>
       <div class="field-actions">
-        <button title="Duplicate" onclick="duplicateField(${escapeJsAttr(f.id)})"><i class="fas fa-copy"></i></button>
-        <button title="Move up"   onclick="moveField(${escapeJsAttr(f.id)},-1)"><i class="fas fa-arrow-up"></i></button>
-        <button title="Move down" onclick="moveField(${escapeJsAttr(f.id)},1)"><i class="fas fa-arrow-down"></i></button>
-        <button class="del" title="Delete" onclick="deleteField(${escapeJsAttr(f.id)})"><i class="fas fa-trash"></i></button>
+        <button title="Duplicate" data-h-click="se:call" data-call="duplicateField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-copy"></i></button>
+        <button title="Move up"   data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, -1]))}"><i class="fas fa-arrow-up"></i></button>
+        <button title="Move down" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, 1]))}"><i class="fas fa-arrow-down"></i></button>
+        <button class="del" title="Delete" data-h-click="se:call" data-call="deleteField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-trash"></i></button>
       </div>
       ${f.required ? '<span class="required-dot" title="Required"></span>' : ''}
     `;
@@ -576,14 +576,14 @@ function renderProps() {
     <div class="prop-group">
       <div class="prop-label">Field Label</div>
       <input class="prop-input" id="p-label" value="${escapeHtml(f.label)}"
-             oninput="updateProp('label',this.value)" placeholder="Label shown to user">
+             data-h-input="coordinator/form_builder:prop" data-prop="label" placeholder="Label shown to user">
     </div>`;
   } else {
     html += `
     <div class="prop-group">
       <div class="prop-label">${f.type === 'heading' ? 'Heading Text' : f.type === 'paragraph' ? 'Info Text' : 'Divider'}</div>
       ${f.type !== 'divider' ? `<input class="prop-input" id="p-label" value="${escapeHtml(f.label)}"
-        oninput="updateProp('label',this.value)" placeholder="Text content">` : '<p style="font-size:12px;color:#94a3b8;margin:0;">A horizontal line separator.</p>'}
+        data-h-input="coordinator/form_builder:prop" data-prop="label" placeholder="Text content">` : '<p style="font-size:12px;color:#94a3b8;margin:0;">A horizontal line separator.</p>'}
     </div>`;
   }
 
@@ -592,7 +592,7 @@ function renderProps() {
     <div class="prop-group">
       <div class="prop-label">Placeholder Text</div>
       <input class="prop-input" id="p-ph" value="${escapeHtml(f.placeholder)}"
-             oninput="updateProp('placeholder',this.value)" placeholder="Hint inside the field">
+             data-h-input="coordinator/form_builder:prop" data-prop="placeholder" placeholder="Hint inside the field">
     </div>`;
   }
 
@@ -601,12 +601,12 @@ function renderProps() {
     <div class="prop-group">
       <div class="prop-label">Help Text</div>
       <input class="prop-input" id="p-help" value="${escapeHtml(f.help_text)}"
-             oninput="updateProp('help_text',this.value)" placeholder="Small description below field">
+             data-h-input="coordinator/form_builder:prop" data-prop="help_text" placeholder="Small description below field">
     </div>
     <div class="prop-group">
       <label class="prop-toggle">
         <input type="checkbox" ${f.required ? 'checked' : ''}
-               onchange="updateProp('required',this.checked)">
+               data-h-change="coordinator/form_builder:prop-checked" data-prop="required">
         Required field
       </label>
     </div>`;
@@ -617,12 +617,12 @@ function renderProps() {
     <div class="prop-group">
       <div class="prop-label">Min Value</div>
       <input class="prop-input" type="number" value="${escapeHtml(f.min)}"
-             oninput="updateProp('min',this.value)" placeholder="No minimum">
+             data-h-input="coordinator/form_builder:prop" data-prop="min" placeholder="No minimum">
     </div>
     <div class="prop-group">
       <div class="prop-label">Max Value</div>
       <input class="prop-input" type="number" value="${escapeHtml(f.max)}"
-             oninput="updateProp('max',this.value)" placeholder="No maximum">
+             data-h-input="coordinator/form_builder:prop" data-prop="max" placeholder="No maximum">
     </div>`;
   }
 
@@ -633,13 +633,13 @@ function renderProps() {
       <div class="option-list" id="option-list">`;
     f.options.forEach((opt, i) => {
       html += `<div class="option-item">
-        <input value="${escapeHtml(opt)}" oninput="updateOption(${escapeJsAttr(i)},this.value)"
+        <input value="${escapeHtml(opt)}" data-h-input="coordinator/form_builder:option" data-i="${escapeHtml(String(i))}"
                placeholder="Option ${escapeHtml(i + 1)}">
-        <button onclick="removeOption(${escapeJsAttr(i)})"><i class="fas fa-times"></i></button>
+        <button data-h-click="se:call" data-call="removeOption" data-args="${escapeHtml(JSON.stringify([i]))}"><i class="fas fa-times"></i></button>
       </div>`;
     });
     html += `</div>
-      <button class="btn-add-option" onclick="addOption()">
+      <button class="btn-add-option" data-h-click="se:call" data-call="addOption">
         <i class="fas fa-plus me-1"></i> Add Option
       </button>
     </div>`;
@@ -828,13 +828,6 @@ function toast(msg, type='success') {
   setTimeout(() => el.remove(), 3500);
 }
 </script>
-<script>
-(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
-if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
-var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
-if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
-var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
-var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
-if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
-</script>
+<script src="/static/js/pages/coordinator__form_builder.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__form_builder.js"></script>{% endblock %}

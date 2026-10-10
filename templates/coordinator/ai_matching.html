@@ -172,7 +172,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
                         placeholder="e.g. Machine Learning, Web Dev, IoT, Finance..."
               >{{ j.expertise }}</textarea>
               <div style="display:flex;align-items:center;gap:6px;">
-                <button class="save-exp-btn" onclick="saveExpertise('{{ j.email }}', {{ loop.index }})">
+                <button class="save-exp-btn" data-h-click="coordinator/ai_matching:1" data-h-a0="{{ j.email }}" data-h-a1="{{ loop.index }}">
                   Save expertise
                 </button>
                 <span class="saved-tick" id="tick-{{ loop.index }}">
@@ -249,7 +249,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
           </div>
 
           <button class="btn-ai" id="runBtn"
-                  onclick="runMatching()"
+                  data-h-click="coordinator/ai_matching:2"
                   {% if not judges or not teams %}disabled{% endif %}>
             <i class="fas fa-brain"></i>
             Generate Match Plan
@@ -315,7 +315,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 
         <!-- Apply button -->
         <button class="btn-apply" id="applyBtn" style="display:none;"
-                onclick="applyMatch()">
+                data-h-click="coordinator/ai_matching:3">
           <i class="fas fa-check-circle"></i>
           Apply This Plan to All Teams
         </button>
@@ -327,7 +327,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 </div><!-- /.content -->
 
 {% include "layouts/_bootstrap_js.html" %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 const EVENT_ID  = "{{ event.id }}";
 let   lastPlan  = null;
 
@@ -513,13 +513,6 @@ async function applyMatch() {
   {% endif %}
 })();
 </script>
-<script>
-(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
-if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
-var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
-if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
-var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
-var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
-if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
-</script>
+<script src="/static/js/pages/coordinator__ai_matching.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__ai_matching.js"></script>{% endblock %}

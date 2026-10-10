@@ -146,7 +146,7 @@
 
     <!-- PROCTORING SCRIPT -->
     <script src="/static/js/proctor.js"></script>
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         document.addEventListener('DOMContentLoaded', () => {
             // Initialize Anti-cheat Proctoring
             ProctorGuard.init({

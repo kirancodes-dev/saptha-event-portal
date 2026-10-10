@@ -274,7 +274,7 @@
                 <h5 class="fw-bold mt-4 mb-3"><i class="fas fa-list-ul text-primary me-2"></i>Active Fest Channels</h5>
                 <div class="row g-3">
                     <div class="col-sm-6 col-md-4">
-                        <div class="card glass-panel stream-card p-3 active" onclick="switchChannel('cultural', 'Cultural Night Main Stage - SNPSU Campus', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')">
+                        <div class="card glass-panel stream-card p-3 active" data-h-click="public/live_streams:1">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="badge bg-danger rounded-sm" style="font-size: 9px;">LIVE</span>
                                 <span class="text-muted small"><i class="fas fa-eye me-1"></i> 1.4K</span>
@@ -284,7 +284,7 @@
                         </div>
                     </div>
                     <div class="col-sm-6 col-md-4">
-                        <div class="card glass-panel stream-card p-3" onclick="switchChannel('hackathon', 'AI Hackathon Final Pitch Deck Arena', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4')">
+                        <div class="card glass-panel stream-card p-3" data-h-click="public/live_streams:2">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="badge bg-danger rounded-sm" style="font-size: 9px;">LIVE</span>
                                 <span class="text-muted small"><i class="fas fa-eye me-1"></i> 520</span>
@@ -294,7 +294,7 @@
                         </div>
                     </div>
                     <div class="col-sm-6 col-md-4">
-                        <div class="card glass-panel stream-card p-3" onclick="switchChannel('sports', 'RoboWars Arena - Tech Center Room 3', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4')">
+                        <div class="card glass-panel stream-card p-3" data-h-click="public/live_streams:3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="badge bg-secondary rounded-sm" style="font-size: 9px;">ENDED</span>
                                 <span class="text-muted small"><i class="fas fa-eye-slash me-1"></i> VOD</span>
@@ -345,129 +345,6 @@
     </div>
 
     <!-- Client Script -->
-    <script>
-        var botNames = ["Shubham Sharma", "Vikram Patel", "Sneha Roy", "Deepika G.", "Abhishek P.", "Anjali Nair", "Arjun Gowda", "Nisha Das", "Siddharth Rao"];
-        var botMessages = [
-            "This livestream quality is brilliant! SNPSU rocks!",
-            "OMG! Team Zenith just got a perfect 10 score!",
-            "Where can I find the wayfinder map? I'm lost near Seminar Block.",
-            "Certificates issued with cryptographic hashes are super cool.",
-            "Let's go team Cosmic! Break a leg!",
-            "Who won the robo combat round 1?",
-            "Is the food court still open? I am starving.",
-            "The choreography was absolutely stellar!",
-            "Hackathon pitches start in 10 minutes at CS lab block."
-        ];
-
-        var viewCounterVal = 1420;
-        var likesCounterVal = 854;
-
-        // Fluctuating viewers and random chat simulation
-        setInterval(function() {
-            // Viewers
-            viewCounterVal += Math.floor(Math.random() * 21) - 10;
-            document.getElementById('view-counter').innerText = viewCounterVal.toLocaleString();
-
-            // Bot likes increments
-            if (Math.random() > 0.4) {
-                likesCounterVal += Math.floor(Math.random() * 4) + 1;
-                document.getElementById('likes-counter').innerText = likesCounterVal;
-                // occasional bubble
-                if (Math.random() > 0.7) {
-                    spawnLikeBubble();
-                }
-            }
-
-            // Append bot chats occasionally
-            if (Math.random() > 0.7) {
-                var randomName = botNames[Math.floor(Math.random() * botNames.length)];
-                var randomMsg = botMessages[Math.floor(Math.random() * botMessages.length)];
-                appendChatMessage(randomName, randomMsg);
-            }
-        }, 3000);
-
-        function appendChatMessage(user, msg, isSelf = false) {
-            var container = document.getElementById('chat-messages-container');
-            var div = document.createElement('div');
-            div.className = 'chat-msg';
-            
-            var userClass = isSelf ? 'text-primary fw-bold' : '';
-            div.innerHTML = `<div class="chat-msg-user ${escapeHtml(userClass)}">${escapeHtml(user)}</div>
-                             <div class="chat-msg-text">${escapeHtml(msg)}</div>`;
-            
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-
-            // Cap chats to 40 max to save memory
-            while (container.childNodes.length > 40) {
-                container.removeChild(container.firstChild);
-            }
-        }
-
-        // Live Chat Submit
-        document.getElementById('chat-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            var input = document.getElementById('chat-input');
-            var val = input.value.trim();
-            if (val) {
-                appendChatMessage("You", val, true);
-                input.value = "";
-            }
-        });
-
-        // Like Button click logic
-        document.getElementById('like-btn').addEventListener('click', function() {
-            likesCounterVal += 1;
-            document.getElementById('likes-counter').innerText = likesCounterVal;
-            spawnLikeBubble();
-        });
-
-        function spawnLikeBubble() {
-            var container = document.getElementById('bubble-box');
-            var icon = document.createElement('i');
-            icon.className = 'fas fa-heart like-bubble';
-            
-            // Randomize styling properties slightly
-            var drift = (Math.random() * 60 - 30) + 'px';
-            icon.style.setProperty('--drift', drift);
-            
-            // random color variation
-            var colors = ["#ec4899", "#f43f5e", "#d946ef", "#a855f7"];
-            icon.style.color = colors[Math.floor(Math.random() * colors.length)];
-            
-            container.appendChild(icon);
-            
-            // Remove after animation completes
-            setTimeout(function() {
-                icon.remove();
-            }, 2500);
-        }
-
-        // Switch Channels
-        function switchChannel(type, title, videoUrl) {
-            // update stream title
-            document.getElementById('stream-title').innerText = title;
-            
-            // update video source and load
-            var video = document.getElementById('main-video');
-            video.src = videoUrl;
-            video.load();
-            video.play();
-
-            // adjust view numbers simulation
-            if (type === 'cultural') {
-                viewCounterVal = 1420;
-            } else if (type === 'hackathon') {
-                viewCounterVal = 520;
-            } else {
-                viewCounterVal = 0;
-            }
-            document.getElementById('view-counter').innerText = viewCounterVal;
-
-            // Highlight card
-            var cards = document.querySelectorAll('.stream-card');
-            cards.forEach(c => c.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-        }
-    </script>
+    <script src="/static/js/pages/public__live_streams.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__live_streams.js"></script>{% endblock %}

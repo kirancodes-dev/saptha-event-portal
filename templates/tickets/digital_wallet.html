@@ -255,7 +255,7 @@
 
         <!-- Footer -->
         <div class="card-footer">
-            <button class="btn-action btn-primary" onclick="window.print()">
+            <button class="btn-action btn-primary" data-h-click="tickets/digital_wallet:1">
                 <span>🖨️ Save or Print Pass</span>
             </button>
             <div class="security-hash" title="HMAC Signature Verification Hash">
@@ -266,3 +266,4 @@
 </div>
 
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/tickets__digital_wallet.js"></script>{% endblock %}

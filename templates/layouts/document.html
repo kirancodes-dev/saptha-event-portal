@@ -14,6 +14,8 @@
     {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_meta_token() }}">{% endblock %}
     {% include 'includes/csrf_fetch.html' %}
     <link rel="stylesheet" href="/static/css/fonts.css">
+    {# Binds the data-h-<event> handlers each page registers (UPG-25) #}
+    <script src="/static/js/handlers.js"></script>
     <style>
         /* Shared footer (includes/site_footer.html): takes the page's own text colour */
         .site-footer { text-align: center; font-size: 0.85rem; padding: 1rem; color: inherit; opacity: 0.8; }
@@ -27,6 +29,8 @@
 <body{% block body_attrs %}{% endblock %}>
 {% block body %}{% endblock %}
 {% block site_footer %}{% include 'includes/site_footer.html' %}{% endblock %}
+{# Each page's handler file, static/js/handlers/<page>.js (UPG-25) #}
+{% block handler_scripts %}{% endblock %}
 {% block body_end %}{% endblock %}
 </body>
 </html>

@@ -63,7 +63,7 @@
 <!-- TOPNAV -->
 <div class="topnav">
     <div class="d-flex align-items-center gap-2">
-        <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" onerror="this.style.display='none'">
+        <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" data-h-error="admin/audit_log:1">
         <span class="brand">Admin HQ</span>
     </div>
     <div class="d-flex align-items-center gap-2">
@@ -197,3 +197,4 @@
 
 {% include "layouts/_bootstrap_js.html" %}
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__audit_log.js"></script>{% endblock %}

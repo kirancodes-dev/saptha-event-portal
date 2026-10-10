@@ -188,7 +188,7 @@ body{
 <div class="hdr">
   <div class="hdr-left">
     <img src="/static/snpsu-logo.png" alt="SNPSU" class="hdr-logo"
-         onerror="this.style.display='none'">
+         data-h-error="live/leaderboard:1">
     <span class="hdr-brand">SapthaEvent</span>
   </div>
 
@@ -202,7 +202,7 @@ body{
   <div class="hdr-right">
     <span class="round-pill" id="roundPill">Round 1</span>
     <span class="live-badge"><span class="live-dot"></span>LIVE</span>
-    <button class="fullscreen-btn" onclick="toggleFS()" title="Fullscreen">
+    <button class="fullscreen-btn" data-h-click="live/leaderboard:2" title="Fullscreen">
       <i class="fas fa-expand"></i>
     </button>
   </div>
@@ -251,7 +251,7 @@ body{
   </span>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 const EVENT_ID = {{ event_id | tojson }};
 
 // ── Rank memory for change detection ──────────────────────────────────
@@ -367,3 +367,4 @@ function toggleFS() {
 }
 </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/live__leaderboard.js"></script>{% endblock %}

@@ -442,7 +442,7 @@
     <div class="header-right">
       <span class="text-muted d-none d-md-inline" style="font-size:12px;">{{ today }}</span>
       <!-- Theme Toggle -->
-      <button class="btn btn-icon-link me-2" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
+      <button class="btn btn-icon-link me-2" data-h-click="admin/dashboard:1" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
         <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
       </button>
       <button class="btn btn-sm btn-outline-primary fw-bold ms-2" data-bs-toggle="modal" data-bs-target="#appointSpocModal">
@@ -566,7 +566,7 @@
               <input type="search" id="eventSearch" name="q" value="{{ page.q }}" placeholder="Search events…">
             </div>
             <label for="statusFilter" class="visually-hidden">Status</label>
-            <select id="statusFilter" name="status" class="form-select form-select-sm" style="width:120px;font-size:12px;" onchange="this.form.submit()">
+            <select id="statusFilter" name="status" class="form-select form-select-sm" style="width:120px;font-size:12px;" data-h-change="admin/dashboard:2">
               <option value="">All Status</option>
               <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
               <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
@@ -620,7 +620,7 @@
                   {% endif %}
                   <a href="/coordinator/export_registrations/{{ event.id }}" class="action-btn green" title="Export Excel"><i class="fas fa-file-excel"></i></a>
                   <form method="POST" action="/coordinator/delete_event/{{ event.id }}" class="d-inline m-0"
-                        onsubmit="return confirm('Delete {{ event.title }}?')">
+                        data-h-submit="admin/dashboard:3" data-h-a0="{{ event.title }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="action-btn red" title="Delete"><i class="fas fa-trash"></i></button>
                   </form>
@@ -712,7 +712,7 @@
               <div id="createAdminMediaContainer">
                 <div class="input-group mb-2">
                   <input type="url" name="media_urls[]" class="form-control" placeholder="https://…" required>
-                  <button class="btn btn-outline-primary" type="button" onclick="addMediaField('createAdminMediaContainer')"><i class="fas fa-plus"></i></button>
+                  <button class="btn btn-outline-primary" type="button" data-h-click="admin/dashboard:4"><i class="fas fa-plus"></i></button>
                 </div>
               </div>
             </div>
@@ -757,15 +757,15 @@
           <!-- Preset Prompts -->
           <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
             <span class="text-muted small fw-bold"><i class="fas fa-bolt text-warning me-1"></i>Presets:</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('2-day AI & GenAI Hackathon for 300 students with GitHub repo submissions and multi-judge rubrics.')">AI Hackathon</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('IEEE International Conference on Quantum Cryptography for 200 delegates with VIP & Student tickets.')">Quantum Conference</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('Hands-on Cloud Kubernetes & Docker Workshop for 60 participants with practical lab quiz.')">DevOps Workshop</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" onclick="setCopilotPrompt('Inter-University Badminton Championship with 64 knockout teams, referee scorecards, and podium awards.')">Sports Tournament</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" data-h-click="admin/dashboard:5">AI Hackathon</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" data-h-click="admin/dashboard:6">Quantum Conference</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" data-h-click="admin/dashboard:7">DevOps Workshop</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 small rounded-pill" data-h-click="admin/dashboard:8">Sports Tournament</button>
           </div>
         </div>
 
         <div class="text-end mb-4">
-          <button id="btnGenerateAiProposal" class="btn fw-bold text-white px-4" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);" onclick="generateAiProposal()">
+          <button id="btnGenerateAiProposal" class="btn fw-bold text-white px-4" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);" data-h-click="admin/dashboard:9">
             <span id="aiGenSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
             <i class="fas fa-wand-magic-sparkles me-1"></i> Synthesize Proposal
           </button>
@@ -816,8 +816,8 @@
           </div>
 
           <div class="d-flex justify-content-end gap-2">
-            <button class="btn btn-outline-secondary btn-sm" onclick="generateAiProposal()"><i class="fas fa-redo me-1"></i> Regenerate</button>
-            <button id="btnApproveAiProposal" class="btn btn-success fw-bold px-4" onclick="approveAiProposal()">
+            <button class="btn btn-outline-secondary btn-sm" data-h-click="admin/dashboard:10"><i class="fas fa-redo me-1"></i> Regenerate</button>
+            <button id="btnApproveAiProposal" class="btn btn-success fw-bold px-4" data-h-click="admin/dashboard:11">
               <span id="aiApproveSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
               <i class="fas fa-check-circle me-1"></i> Approve & Deploy Event
             </button>
@@ -830,7 +830,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 let currentAiProposalId = null;
 
 function setCopilotPrompt(text) {
@@ -995,7 +995,7 @@ async function approveAiProposal() {
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-danger w-100 fw-bold"
-                  onclick="return confirm('Permanently eliminate teams below cut-off?')">
+                  data-h-click="admin/dashboard:12">
             Execute Elimination <i class="fas fa-skull-crossbones ms-2"></i>
           </button>
         </div>
@@ -1019,7 +1019,7 @@ async function approveAiProposal() {
             <div class="row g-2 mb-3 align-items-end room-row">
               <div class="col-7"><label class="form-label">Room / Venue Name</label><input type="text" name="room_name[]" class="form-control" placeholder="Room 101" required></div>
               <div class="col-4"><label class="form-label">Capacity</label><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div>
-              <div class="col-1 pb-1"><button type="button" class="btn btn-primary w-100" onclick="addRoomField('roomContainer{{ event.id }}')"><i class="fas fa-plus"></i></button></div>
+              <div class="col-1 pb-1"><button type="button" class="btn btn-primary w-100" data-h-click="admin/dashboard:13" data-h-a1="{{ event.id }}"><i class="fas fa-plus"></i></button></div>
             </div>
           </div>
         </div>
@@ -1083,92 +1083,7 @@ async function approveAiProposal() {
 
 {% include "layouts/_bootstrap_js.html" %}
 <script id="adminChartData" type="application/json">{"labels":{{ events|map(attribute='title')|list|tojson }},"regs":{{ events|map(attribute='registration_count')|list|tojson }},"cats":{{ cat_counts|tojson }}}</script>
-<script>
-// ── CHARTS ──
-var _chartData = JSON.parse(document.getElementById('adminChartData').textContent);
-
-if (_chartData.labels.length) {
-  var labels = _chartData.labels.map(function(l){ return l.length>18?l.slice(0,18)+'…':l; });
-  var rc = document.getElementById('adminRegChart');
-  
-  // Theme check
-  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(11, 21, 48, 0.06)';
-  var textColor = isDark ? '#cbd5e1' : '#64748b';
-  
-  if (rc) {
-    new Chart(rc, {
-      type: 'bar',
-      data: { labels: labels, datasets: [{
-        label: 'Registrations', data: _chartData.regs,
-        backgroundColor: labels.map(function(_,i){ return i%2===0?'rgba(26,37,87,.85)':'rgba(201,164,94,.85)'; }),
-        borderRadius: 6, borderSkipped: false
-      }]},
-      options: { responsive:true, plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{display:false},ticks:{color:textColor,font:{size:10}}},
-          y:{grid:{color:gridColor},ticks:{color:textColor,stepSize:1,font:{size:10}},beginAtZero:true}
-        } }
-    });
-  }
-  var cc = document.getElementById('adminCatChart');
-  if (cc && Object.keys(_chartData.cats).length) {
-    var catLabels = Object.keys(_chartData.cats);
-    var catVals   = Object.values(_chartData.cats);
-    new Chart(cc, {
-      type: 'doughnut',
-      data: { labels: catLabels, datasets: [{
-        data: catVals,
-        backgroundColor: ['#1a2557','#c9a45e','#10b981','#6366f1','#0891b2'],
-        borderWidth: 0, hoverOffset: 4
-      }]},
-      options: { responsive:true, cutout:'68%',
-        plugins:{legend:{position:'bottom',labels:{color:textColor,font:{size:11},boxWidth:10}}} }
-    });
-  }
-}
-
-// Search and the status filter run on the server (UPG-19).
-
-// ── MEDIA FIELD ──
-function addMediaField(containerId) {
-  var c = document.getElementById(containerId);
-  var d = document.createElement('div');
-  d.className = 'input-group mb-2';
-  d.innerHTML = '<input type="url" name="media_urls[]" class="form-control" placeholder="Image URL" required>' +
-    '<button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>';
-  c.appendChild(d);
-}
-
-// ── ROOM FIELD ──
-function addRoomField(containerId) {
-  var c = document.getElementById(containerId);
-  var d = document.createElement('div');
-  d.className = 'row g-2 mb-3 align-items-end room-row';
-  d.innerHTML = '<div class="col-7"><input type="text" name="room_name[]" class="form-control" placeholder="Room 102" required></div>' +
-    '<div class="col-4"><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div>' +
-    '<div class="col-1 pb-1"><button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-trash"></i></button></div>';
-  c.appendChild(d);
-}
-
-// ── MOBILE SIDEBAR TOGGLE ──
-document.addEventListener('DOMContentLoaded', function() {
-  var menuToggle = document.querySelector('.menu-toggle');
-  var sidebar = document.querySelector('.sidebar');
-  var overlay = document.querySelector('.sidebar-overlay');
-  if (menuToggle && sidebar) {
-    menuToggle.addEventListener('click', function() {
-      sidebar.classList.toggle('active');
-      if (overlay) overlay.classList.toggle('active');
-    });
-  }
-  if (overlay) {
-    overlay.addEventListener('click', function() {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('active');
-    });
-  }
-});
-</script>
+<script src="/static/js/pages/admin__dashboard.js"></script>
 <script src="/static/js/global.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__dashboard.js"></script>{% endblock %}

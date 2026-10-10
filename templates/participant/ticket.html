@@ -348,7 +348,7 @@
                         {% if event.get('category') %}
                         <span class="category-badge" style="right: 60px;">{{ event.category }}</span>
                         {% endif %}
-                        <button class="flip-trigger-btn" onclick="toggleCardFlip(event)" aria-label="Flip card for guidelines" type="button">
+                        <button class="flip-trigger-btn" data-h-click="participant/ticket:1" aria-label="Flip card for guidelines" type="button">
                           <i class="fas fa-info"></i>
                         </button>
                         <div class="org">Sapthagiri NPS University</div>
@@ -461,7 +461,7 @@
                         <img src="/static/snpsu-logo.png"
                              alt="Sapthagiri NPS University"
                              style="height:18px;width:auto;object-fit:contain;margin:0 4px;"
-                             onerror="this.style.display='none'">
+                             data-h-error="participant/ticket:2">
                         Sapthagiri NPS University
                         Powered by AI Event Management
                     </div>
@@ -471,7 +471,7 @@
                 <div class="card-face card-face-back">
                     <!-- Header -->
                     <div class="ticket-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
-                        <button class="flip-trigger-btn" onclick="toggleCardFlip(event)" aria-label="Flip card for ticket" type="button">
+                        <button class="flip-trigger-btn" data-h-click="participant/ticket:3" aria-label="Flip card for ticket" type="button">
                           <i class="fas fa-ticket-alt"></i>
                         </button>
                         <div class="org">Event Guidelines &amp; SPOC</div>
@@ -533,7 +533,7 @@
 
         <!-- Action buttons (outside ticket so they don't print) -->
         <div class="action-row">
-            <button class="btn-download" onclick="window.print()">
+            <button class="btn-download" data-h-click="participant/ticket:4">
                 <i class="fas fa-print me-1"></i> Save / Print
             </button>
             {% if navigator_share_supported %}
@@ -557,7 +557,7 @@
     </div><!-- /wrapper -->
 
 <script src="/static/js/global.js"></script>
-<script>
+<script nonce="{{ csp_nonce() }}">
 // Card flip logic
 function toggleCardFlip(event) {
     if (event) event.stopPropagation();
@@ -601,3 +601,4 @@ if (navigator.share) {
 }
 </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/participant__ticket.js"></script>{% endblock %}

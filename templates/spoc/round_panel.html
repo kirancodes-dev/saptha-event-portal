@@ -72,7 +72,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 <!-- TOPNAV -->
 <div class="topnav">
   <div class="d-flex align-items-center gap-2">
-    <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" onerror="this.style.display='none'">
+    <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" data-h-error="spoc/round_panel:1">
     <span class="brand">Round Manager</span>
   </div>
   <div class="d-flex align-items-center gap-2">
@@ -234,16 +234,16 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
   </p>
 
   <div class="d-flex gap-2 mb-4" id="modeTabs">
-    <button class="mode-tab active" onclick="switchMode('top_n', this)">
+    <button class="mode-tab active" data-h-click="spoc/round_panel:2">
       <i class="fas fa-list-ol me-1"></i> Top N
     </button>
-    <button class="mode-tab" onclick="switchMode('cutoff', this)">
+    <button class="mode-tab" data-h-click="spoc/round_panel:3">
       <i class="fas fa-filter me-1"></i> Score Cutoff
     </button>
   </div>
 
   <form method="POST" action="/spoc/advance_round/{{ event.id }}"
-        onsubmit="return confirmAdvance()">
+        data-h-submit="spoc/round_panel:4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="mode" id="modeInput" value="top_n">
 
@@ -256,7 +256,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
         <input type="number" name="top_n" id="topNInput" value="{{ [scored_count // 2, 1]|max }}"
                min="1" max="{{ scored_count }}"
                style="width:120px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:700;outline:none;"
-               onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#e2e8f0'">
+               data-h-focus="spoc/round_panel:5" data-h-blur="spoc/round_panel:6">
         <span style="font-size:13px;color:#64748b;">of {{ scored_count }} scored participants</span>
       </div>
       <p style="font-size:12px;color:#94a3b8;margin-top:8px;">e.g. enter 10 to advance the top 10 scorers</p>
@@ -270,7 +270,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
       <div class="d-flex align-items-center gap-3">
         <input type="number" name="cutoff" id="cutoffInput" value="50" min="0" max="100" step="0.1"
                style="width:120px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:700;outline:none;"
-               onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#e2e8f0'">
+               data-h-focus="spoc/round_panel:7" data-h-blur="spoc/round_panel:8">
         <span style="font-size:13px;color:#64748b;">points (average across judges)</span>
       </div>
       <p style="font-size:12px;color:#94a3b8;margin-top:8px;">
@@ -316,7 +316,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 </div><!-- /container -->
 
 {% include "layouts/_bootstrap_js.html" %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 // Score data for cutoff preview
 const scores = {{ leaderboard | map(attribute='score') | select | list | tojson }};
 
@@ -356,3 +356,4 @@ function confirmAdvance() {
 }
 </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__round_panel.js"></script>{% endblock %}

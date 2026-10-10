@@ -140,10 +140,10 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 <!-- TABS -->
 <div class="tabs-container">
   <div class="nav-tabs-custom">
-    <button class="tab-btn active" id="btnTabScan" onclick="setTab('scan')">
+    <button class="tab-btn active" id="btnTabScan" data-h-click="spoc/scan:1">
       <i class="fas fa-qrcode"></i> QR Scan
     </button>
-    <button class="tab-btn" id="btnTabManual" onclick="setTab('manual')">
+    <button class="tab-btn" id="btnTabManual" data-h-click="spoc/scan:2">
       <i class="fas fa-list-ul"></i> Manual List
     </button>
   </div>
@@ -179,10 +179,10 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 
   <!-- CONTROLS -->
   <div class="px-4 d-flex flex-column gap-2 mb-3">
-    <button class="start-btn" id="startBtn" onclick="startScanner()">
+    <button class="start-btn" id="startBtn" data-h-click="spoc/scan:3">
       <i class="fas fa-camera me-2"></i>Start Camera
     </button>
-    <button class="stop-btn" id="stopBtn" onclick="stopScanner()">
+    <button class="stop-btn" id="stopBtn" data-h-click="spoc/scan:4">
       <i class="fas fa-stop me-2"></i>Stop Camera
     </button>
   </div>
@@ -195,15 +195,15 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
   <div class="search-wrap">
     <div class="search-box-custom">
       <i class="fas fa-search"></i>
-      <input type="text" id="searchInput" placeholder="Search by name, email, or team..." oninput="onSearchChange()">
+      <input type="text" id="searchInput" placeholder="Search by name, email, or team..." data-h-input="spoc/scan:5">
     </div>
   </div>
 
   <!-- FILTERS -->
   <div class="filter-pills-wrap">
-    <button class="filter-pill active" id="pillAll" onclick="setFilter('all')">All</button>
-    <button class="filter-pill" id="pillAbsent" onclick="setFilter('absent')">Absent</button>
-    <button class="filter-pill" id="pillPresent" onclick="setFilter('present')">Checked In</button>
+    <button class="filter-pill active" id="pillAll" data-h-click="spoc/scan:6">All</button>
+    <button class="filter-pill" id="pillAbsent" data-h-click="spoc/scan:7">Absent</button>
+    <button class="filter-pill" id="pillPresent" data-h-click="spoc/scan:8">Checked In</button>
   </div>
 
   <!-- LIST -->
@@ -231,7 +231,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 
 <script integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="/static/js/escape.js"></script>
-<script>
+<script nonce="{{ csp_nonce() }}">
 const EVENT_ID        = {{ event_id | tojson }};
 const CSRF_TOKEN      = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const registrations   = {{ registrations | tojson }};
@@ -331,7 +331,7 @@ function renderManualList() {
     if (r.attendance === 'Present') {
       actionHtml = `<span class="manual-status status-present"><i class="fas fa-check-circle"></i> Checked In</span>`;
     } else {
-      actionHtml = `<button class="manual-btn" id="btn-${escapeHtml(r.id)}" onclick="manualCheckIn(${escapeJsAttr(r.id)})"><i class="fas fa-user-check"></i> Check In</button>`;
+      actionHtml = `<button class="manual-btn" id="btn-${escapeHtml(r.id)}" data-h-click="se:call" data-call="manualCheckIn" data-args="${escapeHtml(JSON.stringify([r.id]))}"><i class="fas fa-user-check"></i> Check In</button>`;
     }
     
     item.innerHTML = `
@@ -590,3 +590,4 @@ function stopScanner() {
 updateProgress();
 </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__scan.js"></script>{% endblock %}

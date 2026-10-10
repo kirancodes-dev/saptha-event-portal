@@ -102,7 +102,7 @@
                             <strong id="impactVal">{{ project.score_impact or 0.0 }}</strong>
                         </label>
                         <input type="range" class="form-range" id="scoreImpact" min="0" max="10" step="0.5" 
-                               value="{{ project.score_impact or 0.0 }}" oninput="updateRubric()">
+                               value="{{ project.score_impact or 0.0 }}" data-h-input="hackathon/project_detail:1">
                     </div>
 
                     <div class="mb-3">
@@ -111,7 +111,7 @@
                             <strong id="techVal">{{ project.score_tech or 0.0 }}</strong>
                         </label>
                         <input type="range" class="form-range" id="scoreTech" min="0" max="10" step="0.5" 
-                               value="{{ project.score_tech or 0.0 }}" oninput="updateRubric()">
+                               value="{{ project.score_tech or 0.0 }}" data-h-input="hackathon/project_detail:2">
                     </div>
 
                     <div class="mb-3">
@@ -120,7 +120,7 @@
                             <strong id="uxVal">{{ project.score_ux or 0.0 }}</strong>
                         </label>
                         <input type="range" class="form-range" id="scoreUx" min="0" max="10" step="0.5" 
-                               value="{{ project.score_ux or 0.0 }}" oninput="updateRubric()">
+                               value="{{ project.score_ux or 0.0 }}" data-h-input="hackathon/project_detail:3">
                     </div>
 
                     <div class="mb-4">
@@ -129,7 +129,7 @@
                             <strong id="pitchVal">{{ project.score_pitch or 0.0 }}</strong>
                         </label>
                         <input type="range" class="form-range" id="scorePitch" min="0" max="10" step="0.5" 
-                               value="{{ project.score_pitch or 0.0 }}" oninput="updateRubric()">
+                               value="{{ project.score_pitch or 0.0 }}" data-h-input="hackathon/project_detail:4">
                     </div>
 
                     <div class="p-3 bg-secondary bg-opacity-10 border border-secondary rounded text-center mb-4">
@@ -138,7 +138,7 @@
                     </div>
 
                     {% if session.get('role') in ['Judge', 'ClubSPOC', 'Admin', 'SuperAdmin'] %}
-                    <button class="btn btn-success w-100 font-weight-bold py-2" onclick="saveRubricScore()">
+                    <button class="btn btn-success w-100 font-weight-bold py-2" data-h-click="hackathon/project_detail:5">
                         <i class="fas fa-save me-2"></i> Save Rubric Scores
                     </button>
                     {% else %}
@@ -153,7 +153,7 @@
 
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 function updateRubric() {
     const impact = parseFloat(document.getElementById('scoreImpact').value);
     const tech = parseFloat(document.getElementById('scoreTech').value);
@@ -192,3 +192,4 @@ function saveRubricScore() {
 }
 </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/hackathon__project_detail.js"></script>{% endblock %}

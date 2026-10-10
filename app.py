@@ -204,7 +204,9 @@ _csp = {
     # Fonts are self-hosted (static/fonts, UPG-24); Font Awesome's come from cdnjs
     'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net'],
     'font-src':    ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
-    'script-src':  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
+    # No 'unsafe-inline': page scripts live in static/js, and the few inline
+    # scripts that carry template values have a per-request nonce (UPG-25)
+    'script-src':  ["'self'", 'https://cdnjs.cloudflare.com',
                     'https://cdn.jsdelivr.net', 'https://www.gstatic.com',
                     'https://checkout.razorpay.com'],
     'connect-src': ["'self'", 'https://api.razorpay.com',
@@ -223,7 +225,7 @@ Talisman(
     strict_transport_security_include_subdomains=False,
     strict_transport_security_max_age=31536000,
     content_security_policy=_csp,
-    content_security_policy_nonce_in=[],
+    content_security_policy_nonce_in=['script-src'],
     session_cookie_secure=app.config.get('SESSION_COOKIE_SECURE', False),
     referrer_policy='strict-origin-when-cross-origin',
     frame_options='SAMEORIGIN',

@@ -456,7 +456,7 @@
     <a href="/" class="topnav-brand">
         <img src="/static/snpsu-logo.png" alt="SNPSU"
              style="height:32px;width:auto;object-fit:contain;background:#fff;border-radius:5px;padding:2px 5px;"
-             onerror="this.style.display='none'">
+             data-h-error="public/event_details:1">
         SapthaEvent
     </a>
     <div class="topnav-links">
@@ -690,7 +690,7 @@
                 <a class="share-btn s-wa" id="s-wa" href="#" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>
                 <a class="share-btn s-li" id="s-li" href="#" target="_blank" rel="noopener"><i class="fab fa-linkedin-in"></i> LinkedIn</a>
                 <a class="share-btn s-tw" id="s-tw" href="#" target="_blank" rel="noopener"><i class="fab fa-x-twitter"></i> Twitter</a>
-                <button class="share-btn s-cp" id="s-cp" onclick="copyLink()"><i class="fas fa-link"></i> Copy Link</button>
+                <button class="share-btn s-cp" id="s-cp" data-h-click="public/event_details:2"><i class="fas fa-link"></i> Copy Link</button>
             </div>
         </div>
     </div>
@@ -724,7 +724,7 @@
 </div>
 
 {% include "layouts/_bootstrap_js.html" %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 // ── COUNTDOWN ────────────────────────────────────────
 (function(){
     var t = new Date("{{ event.date }}T{{ event.time or '09:00' }}");
@@ -763,3 +763,4 @@ function copyLink(){
 </script>
 <script src="/static/js/global.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__event_details.js"></script>{% endblock %}

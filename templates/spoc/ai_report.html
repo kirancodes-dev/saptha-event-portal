@@ -104,12 +104,12 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 {% block body %}
 
 <div class="topbar">
-  <img src="/static/snpsu-logo.png" alt="" style="height:32px;" onerror="this.style.display='none'">
+  <img src="/static/snpsu-logo.png" alt="" style="height:32px;" data-h-error="spoc/ai_report:1">
   <span class="topbar-brand">SapthaEvent</span>
   <a href="/spoc/dashboard" class="back-link ms-auto">
     <i class="fas fa-arrow-left"></i> Back to Dashboard
   </a>
-  <button onclick="window.print()" class="no-print"
+  <button data-h-click="spoc/ai_report:2" class="no-print"
           style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
                  color:#fff;font-size:12px;font-weight:700;padding:6px 16px;
                  border-radius:8px;cursor:pointer;margin-left:10px;">
@@ -265,3 +265,4 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 {% include "layouts/_bootstrap_js.html" %}
 <script src="/static/js/global.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__ai_report.js"></script>{% endblock %}

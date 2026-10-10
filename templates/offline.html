@@ -44,7 +44,8 @@
     <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
     <h1>You're offline</h1>
     <p>We couldn't reach the network. Your already-opened tickets and cached pages will still work.</p>
-    <a href="/" class="btn" onclick="location.reload();return false;">Retry</a>
+    <a href="/" class="btn" data-h-click="offline:1">Retry</a>
     <p class="hint">Tip: open your ticket while online once and it'll be available offline at the event gate.</p>
   </div>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/offline.js"></script>{% endblock %}

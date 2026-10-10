@@ -56,7 +56,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 <!-- TOPNAV -->
 <div class="topnav">
   <div class="d-flex align-items-center gap-2">
-    <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" onerror="this.style.display='none'">
+    <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" data-h-error="spoc/room_allocation:1">
     <span class="brand">Room Allocation</span>
   </div>
   <div class="d-flex align-items-center gap-2">
@@ -124,7 +124,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
   <div class="section-title"><i class="fas fa-bolt" style="color:var(--orange);"></i>Actions</div>
   <div class="d-flex flex-wrap gap-3 align-items-center">
     <form method="POST" action="/spoc/send_room_emails/{{ event.id }}"
-          onsubmit="return confirm('Send room assignment emails to all {{ assigned_count }} assigned participant(s)?')">
+          data-h-submit="spoc/room_allocation:2" data-h-a0="{{ assigned_count }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn-action btn-green">
         <i class="fas fa-paper-plane"></i>
@@ -170,7 +170,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
     <div class="section-title mb-0"><i class="fas fa-list-ol" style="color:var(--blue);"></i>Participant Allocation</div>
     <input type="text" id="searchBox" placeholder="Search name or room…"
            style="font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 12px;outline:none;width:220px;"
-           oninput="filterTable()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='#e2e8f0'">
+           data-h-input="spoc/room_allocation:3" data-h-focus="spoc/room_allocation:4" data-h-blur="spoc/room_allocation:5">
   </div>
   <div style="overflow-x:auto;">
     <table class="alloc-table" id="allocTable">
@@ -198,7 +198,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
           <td>
             {% if rooms %}
             <select class="room-select" data-reg="{{ reg.id }}" data-event="{{ event.id }}"
-                    onchange="reassignRoom(this)">
+                    data-h-change="spoc/room_allocation:6">
               <option value="">— Unassigned —</option>
               {% for room in rooms %}
               <option value="{{ room.name }}" {% if reg.get('assigned_room') == room.name %}selected{% endif %}>
@@ -230,44 +230,6 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 </div><!-- /container -->
 
 {% include "layouts/_bootstrap_js.html" %}
-<script>
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
-
-function reassignRoom(sel) {
-  const regId   = sel.dataset.reg;
-  const eventId = sel.dataset.event;
-  const room    = sel.value;
-  const orig    = sel.getAttribute('data-orig') || '';
-
-  fetch(`/spoc/reassign_room/${eventId}/${regId}`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
-    body: JSON.stringify({room: room}),
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.status === 'ok') {
-      sel.style.background = '#f0fdf4';
-      sel.style.borderColor = '#86efac';
-      setTimeout(() => { sel.style.background = '#f8fafc'; sel.style.borderColor = '#e2e8f0'; }, 1800);
-      // Update search data
-      const row = sel.closest('tr');
-      const cur = row.dataset.search || '';
-      row.dataset.search = cur.replace(orig, room);
-      sel.setAttribute('data-orig', room);
-    } else {
-      alert('Error: ' + (data.message || 'unknown'));
-      sel.value = orig;
-    }
-  })
-  .catch(() => { alert('Network error. Try again.'); sel.value = orig; });
-}
-
-function filterTable() {
-  const q = document.getElementById('searchBox').value.toLowerCase();
-  document.querySelectorAll('#allocBody tr').forEach(row => {
-    row.style.display = (!q || (row.dataset.search || '').includes(q)) ? '' : 'none';
-  });
-}
-</script>
+<script src="/static/js/pages/spoc__room_allocation.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__room_allocation.js"></script>{% endblock %}

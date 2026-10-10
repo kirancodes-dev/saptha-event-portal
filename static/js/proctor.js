@@ -117,7 +117,7 @@
             toast.innerHTML = `
                 <div class="d-flex">
                     <div class="toast-body font-weight-bold"></div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.parentElement.parentElement.remove()"></button>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-h-click="se:remove-grandparent"></button>
                 </div>
             `;
             toast.querySelector('.toast-body').textContent = message;

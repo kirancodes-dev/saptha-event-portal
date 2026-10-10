@@ -45,17 +45,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800
     <img src="/static/snpsu-logo.png"
          alt="Sapthagiri NPS University"
          style="height:24px;width:auto;object-fit:contain;"
-         onerror="this.style.display='none'">
+         data-h-error="429:1">
   </div>
   <p class="uni">Sapthagiri NPS University, Bengaluru</p>
 </div>
-<script>
-let t = 60;
-const el = document.getElementById('timer');
-const iv = setInterval(() => {
-  t--;
-  el.textContent = t;
-  if (t <= 0) { clearInterval(iv); window.location.href = '/'; }
-}, 1000);
-</script>
+<script src="/static/js/pages/429.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/429.js"></script>{% endblock %}

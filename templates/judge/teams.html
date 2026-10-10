@@ -101,11 +101,11 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
             <div class="d-flex flex-column align-items-end gap-2">
               {% if team.my_score %}
               <div class="score-badge done">{{ team.my_score.total }}</div>
-              <button class="btn-edit-sm" onclick="openScoreModal('{{ team.id }}')">
+              <button class="btn-edit-sm" data-h-click="judge/teams:1" data-h-a0="{{ team.id }}">
                 Edit
               </button>
               {% else %}
-              <button class="btn-score-sm" onclick="openScoreModal('{{ team.id }}')">
+              <button class="btn-score-sm" data-h-click="judge/teams:2" data-h-a1="{{ team.id }}">
                 <i class="fas fa-star me-1"></i> Score
               </button>
               {% endif %}
@@ -140,7 +140,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
             Loading scores...
           </p>
         </div>
-        <button onclick="fetchLeaderboard()" class="btn-edit-sm w-100 mt-2">
+        <button data-h-click="judge/teams:3" class="btn-edit-sm w-100 mt-2">
           <i class="fas fa-sync-alt me-1"></i> Refresh
         </button>
       </div>
@@ -163,7 +163,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn text-white fw-bold px-4"
                 style="background:var(--orange);border-radius:9px;"
-                id="submitScoreBtn" onclick="submitScore()">
+                id="submitScoreBtn" data-h-click="judge/teams:4">
           <i class="fas fa-check me-1"></i> Save Score
         </button>
       </div>
@@ -172,7 +172,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 </div>
 
 {% include "layouts/_bootstrap_js.html" %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 const EVENT_ID    = "{{ event.id }}";
 const CRITERIA    = {{ (event.judging_criteria or ['Overall Score']) | tojson | safe }};
 const TEAMS_DATA  = {{ teams | tojson | safe }};
@@ -198,10 +198,10 @@ function openScoreModal(regId) {
                         text-transform:uppercase;letter-spacing:.6px;">${escapeHtml(c)}</label>
           <input type="number" class="score-input" id="${escapeHtml('score-' + c.replace(/\s/g,'_'))}"
                  min="0" max="100" value="${escapeHtml(val)}"
-                 oninput="updateTotal()">
+                 data-h-input="se:call" data-call="updateTotal">
         </div>
         <input type="range" class="criteria-slider" min="0" max="100" value="${escapeHtml(val)}"
-               oninput="syncSlider(this,${escapeJsAttr('score-' + c.replace(/\s/g,'_'))})">
+               data-h-input="judge/teams:sync-slider" data-target="${escapeHtml('score-' + c.replace(/\s/g,'_'))}">
       </div>`;
   });
 
@@ -226,7 +226,7 @@ function openScoreModal(regId) {
         <i class="fas fa-microphone me-1"></i>Voice Dictation Scoring
       </label>
       <div style="display:flex; gap:8px; margin-top:6px;">
-        <button type="button" class="btn btn-success btn-sm px-3" style="font-size:12px; border-radius:20px;" id="micBtn" onclick="toggleDictation()">
+        <button type="button" class="btn btn-success btn-sm px-3" style="font-size:12px; border-radius:20px;" id="micBtn" data-h-click="se:call" data-call="toggleDictation">
           <i class="fas fa-microphone"></i> Dictate Score
         </button>
         <div id="dictationStatus" class="small text-success d-flex align-items-center" style="font-size:11px;">Ready</div>
@@ -440,13 +440,6 @@ function stopDictation() {
 fetchLeaderboard();
 setInterval(fetchLeaderboard, 20000);
 </script>
-<script>
-(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
-if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
-var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
-if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
-var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
-var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
-if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
-</script>
+<script src="/static/js/pages/judge__teams.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/judge__teams.js"></script>{% endblock %}

@@ -783,13 +783,22 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   3. Test: only the font families used by `global.css` are requested.
 
 #### UPG-25 — Move inline scripts into static files; remove `'unsafe-inline'` from `script-src`
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-25: …" on `production-ready` (parent `244b889`)
 - **Problem:** [C at `56a014d`] 70 templates contain inline `<script>` blocks, and 76 templates contain 483 inline event handlers (`onclick=` and similar; re-counted 2026-10-08: 72, 78 and 490 at `986d108`). So the CSP's `script-src` allows `'unsafe-inline'` (`app.py:221`), which removes most of its protection against injected scripts; `content_security_policy_nonce_in=[]` (`app.py:236`).
 - **Who benefits:** every user (XSS protection).
 - **What to build:** page scripts in `static/js/`; event handlers bound with `addEventListener`; a per-request nonce (`content_security_policy_nonce_in=['script-src']`) for anything that must stay inline (e.g. a small JSON bootstrap); then remove `'unsafe-inline'` from `script-src`.
 - **Files touched:** `templates/**`, `static/js/**`, `app.py`, tests.
 - **Effort:** L (split by area like UPG-23) · **Depends on:** UPG-23 · **Risk:** a missed handler breaks a button; a headless click-through catches CSP violations.
+- **What was built (2026-10-10, development-only run):**
+  - **`script-src` has no `'unsafe-inline'`**; it carries a per-request nonce (`content_security_policy_nonce_in=['script-src']`, `app.py`). Since the nonce makes browsers ignore `'unsafe-inline'` anyway, every inline script and handler had to move first.
+  - **Inline handlers (403 `on…=` attributes in 63 live templates):** each became `data-h-<event>="<page>:<n>"`, and its code moved, unchanged, into `static/js/handlers/<page>.js` (63 files), registered in `window.SE_H`. **`static/js/handlers.js`** (loaded by `layouts/document.html`) binds them on `DOMContentLoaded` and for elements added later (a `MutationObserver`), with the same `this`, `event`, scope chain (`with (document) / (this.form) / (this)`, as the browser does for inline handlers) and `return false` behaviour; an `<img>` that already failed or loaded gets its handler once; `<body>` load waits for `window` load. Template values that were rendered into handler code (34 handlers) now travel as `data-h-aN` attributes the code reads from `this.dataset`. Each page includes its handler file through a `handler_scripts` block (includes load theirs where they're included).
+  - **Handlers that scripts build into HTML strings (51, plus 3 in `static/js`):** converted by hand to `data-h-*` with shared helpers in `handlers.js` (`se:remove-parent`, `se:remove-grandparent`, `se:remove-closest`, `se:hide`, `se:go`, `se:back`, and `se:call` with `data-call`/`data-args` JSON) or to page keys registered in that page's handler file (form builders, judge sliders, notification rows).
+  - **Inline `<script>` blocks:** the 49 without template values moved unchanged to `static/js/pages/` and are loaded from the same place in the page (so execution order is unchanged); the 21 that carry template values stay inline with `nonce="{{ csp_nonce() }}"`. JSON data blocks (8) aren't executed and need no nonce.
+  - **`javascript:` links (5):** "Go back" links now go to `/` and run `history.back()` through `se:back`; the closed-registration link is `href="#"` and prevents the jump.
+  - Unrendered templates (UPG-15 deletes them) and `public/home.html` (listed as not rendered in `tests/html_sinks.py`) keep their inline scripts.
+  - **Checked [R] in Chromium (Playwright) over every page that answers 200 for some role (240 page loads):** every `data-h-*` handler on each page is bound; **no script CSP violation** under the strict policy; no page error or console error that the same pass doesn't also show on the code before UPG-23a (the only new message is the HUD scanner reaching its camera start in headless Chromium, which before this run never loaded its QR library: the CSP blocked unpkg, fixed by UPG-24). Click-throughs: the login password toggle, the SPOC dashboard's event selection, and the form builder's add / select / rename / delete of a field drawn at run time all work. The 858-fetch crawl's text is unchanged; full pytest 893 passed, 1 skipped; the HTML-sink scan now also reads `static/js/pages/` and `static/js/handlers/` and passes (two `data-href` values use `safeUrl`).
+- **To test later:** criteria 1–2 (the header has no `'unsafe-inline'` in `script-src`; no live template has an inline `<script>` without the nonce or an `on…=` attribute) and 3 (key pages load with no CSP violation; the Playwright pass used here is in the scratch harness, not in the repo yet; UPG-28 adds a browser check to the repo).
 - **Acceptance criteria:**
   1. Test: the CSP header's `script-src` has no `'unsafe-inline'`.
   2. Test: no template has an inline `<script>` without the nonce, and no inline `on*=` handler.
@@ -2051,6 +2060,22 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500.
 
+#### UPG-60 — Front-end errors the browser pass found (before and after this run)
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit "UPG-25: …" (parent `244b889`)
+- **Problem:** Found by UPG-25's Chromium pass over every page [R]; each also appears on the code before UPG-23a:
+  - files the pages ask for don't exist: `/static/favicon.ico` (linked by the app layout and most pages, so nearly every page logs a 404), `/static/banner-bg.png`, and the payment logos under `/static/assets/logo/` (`visa.svg`, `mastercard.svg`, `upi.svg`, `netbanking.svg`);
+  - the reels page plays sample videos from `commondatastorage.googleapis.com`, which the CSP's `media-src` refuses, so it shows nothing;
+  - `/spoc/create_event` throws "Identifier 'cr_step2_init' has already been declared" (two scripts declare it);
+  - `/spoc/ai_report/<event>` throws "Cannot read properties of null (reading 'addEventListener')";
+  - some charts log "Unknown option 'mousemove'" and an SVG gets `height="auto"`.
+- **Who benefits:** everyone (no broken images or icons); SPOCs creating events.
+- **What to build:** add the favicon and the missing images (or drop the references); give the reels page real event media or remove the demo videos; fix the two script errors and the chart options.
+- **Files touched:** `static/`, `templates/public/reels.html`, `static/js/pages/spoc__create_event*.js`, `static/js/pages/spoc__ai_report.js`, tests.
+- **Effort:** S · **Depends on:** UPG-25 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Headless check: no page logs a 404 for a `/static/` file or a page error.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -2202,3 +2227,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-23g: …" (parent `649a58f`) | UPG-23g | **UPG-23g built (untested): admin pages** (dashboard, analytics, audit log, org units, report, send email, sponsors, venues, the analytics dashboard, the super admin and head dashboards, API docs) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
 | 2026-10-10 | "UPG-23h: …" (parent `be0b13f`) | UPG-23h, UPG-23, UPG-59 | **UPG-23h built (untested): marketing and onboarding pages** moved onto the shared document. **UPG-23 BUILT (untested):** every template a route renders now extends `layouts/document.html` (through `base_classic.html`, `layouts/standalone.html` or `layouts/fullscreen.html`); 18 unrendered templates remain for UPG-15. Crawl of 858 fetches identical before and after every area; full pytest 893 passed, 1 skipped; ruff clean; app starts. **New:** UPG-59 (five pages answer 500, before and after this run). |
 | 2026-10-10 | "UPG-24: …" (parent `0c49f70`) | UPG-24 | **UPG-24 BUILT (untested).** Bootstrap 5.3.3 and Font Awesome 6.5.1 each defined once in a layout partial with SRI, included by each page at the position of its old tag (cascade unchanged; no page gains Bootstrap). Inter, Plus Jakarta Sans and Outfit self-hosted (`static/fonts`, `static/css/fonts.css`, loaded by the document); all Google Fonts requests removed; other families mapped to these (Poppins → Outfit changes heading glyphs). Chart.js, FullCalendar, html5-qrcode, Leaflet and confetti pinned with SRI (Leaflet and html5-qrcode moved off unpkg, which the CSP blocked); Razorpay checkout.js is the exception. CSP drops Google Fonts. Crawl identical; tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-25: …" (parent `244b889`) | UPG-25, UPG-60 | **UPG-25 BUILT (untested).** `script-src` drops `'unsafe-inline'` and uses a per-request nonce. 403 inline handlers moved verbatim into per-page files under `static/js/handlers/`, bound by `static/js/handlers.js` (same `this`, `event`, scope and `return false`); 54 handlers built inside JS strings converted by hand to data attributes; 49 Jinja-free inline scripts moved to `static/js/pages/` at the same position; 21 scripts with template values keep a nonce; `javascript:` links replaced. Chromium pass over 240 page loads: all handlers bound, no script CSP violation, no error that the pre-run code doesn't also show; click-throughs work; crawl unchanged; full pytest 893 passed, 1 skipped; the HTML-sink scan covers the moved code. Found on the way: the HUD scanner's QR library and the wayfinder map had been blocked by the CSP before this run (fixed by UPG-24), and a malformed Permissions-Policy (fixed in `UPG-20: Permissions-Policy …`). **New:** UPG-60 (missing favicon and images, reels videos blocked, two script errors). |

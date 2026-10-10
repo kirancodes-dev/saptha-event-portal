@@ -516,7 +516,7 @@
               <h3 class="action-card-title"><i class="fas fa-link"></i> Verification Link</h3>
               <div class="verification-link-box">
                 <span class="verification-url" id="verify-url-text">{{ request.url }}</span>
-                <button class="btn-copy" onclick="copyVerificationLink()" title="Copy Link">
+                <button class="btn-copy" data-h-click="public/verify_certificate:1" title="Copy Link">
                   <i class="far fa-copy" id="copy-icon"></i>
                 </button>
               </div>
@@ -589,46 +589,7 @@
 {% if success %}
 <!-- Canvas Confetti Library & Script -->
 <script integrity="sha384-HAH79XdRvHr6axVGh4xQWVCp14kcd32bNk4Xu0sHDHtFQ42n6BAM8ykvB47dGz6D" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-<script>
-  // Shoot confetti on load
-  window.addEventListener('DOMContentLoaded', () => {
-    const duration = 4 * 1000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 28, spread: 360, ticks: 60, zIndex: 1000 };
-
-    function randomInRange(min, max) {
-      return Math.random() * (max - min) + min;
-    }
-
-    const interval = setInterval(() => {
-      const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
-      const particleCount = 45 * (timeLeft / duration);
-      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-    }, 250);
-  });
-
-  // Copy URL Script
-  function copyVerificationLink() {
-    const copyText = document.getElementById("verify-url-text").textContent;
-    navigator.clipboard.writeText(copyText).then(() => {
-      const toast = document.getElementById("copy-toast");
-      const icon = document.getElementById("copy-icon");
-      
-      icon.className = "fas fa-check text-success";
-      toast.classList.add("show");
-      
-      setTimeout(() => {
-        toast.classList.remove("show");
-        icon.className = "far fa-copy";
-      }, 2500);
-    });
-  }
-</script>
+<script src="/static/js/pages/public__verify_certificate.js"></script>
 {% endif %}
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__verify_certificate.js"></script>{% endblock %}

@@ -192,11 +192,11 @@
                             </select>
                         </div>
                         
-                        <button class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3 wristband-nfc-hotspot" onclick="simulateNFCDetection()">
+                        <button class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3 wristband-nfc-hotspot" data-h-click="spoc/nfc_scanner:1">
                             <i class="fas fa-rss me-2 text-white"></i> Tap Mock Wristband (Check-in)
                         </button>
 
-                        <button class="btn btn-outline-info w-100 py-2 rounded-pill fw-bold mt-2" onclick="startWebNFC()">
+                        <button class="btn btn-outline-info w-100 py-2 rounded-pill fw-bold mt-2" data-h-click="spoc/nfc_scanner:2">
                             <i class="fas fa-mobile-screen-button me-2"></i> Start WebNFC Hardware Scan
                         </button>
                     </div>
@@ -227,7 +227,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         function getCsrfToken() {
             var meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? meta.getAttribute('content') : '';
@@ -360,3 +360,4 @@
         }
     </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__nfc_scanner.js"></script>{% endblock %}

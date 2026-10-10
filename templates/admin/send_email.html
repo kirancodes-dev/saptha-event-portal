@@ -30,7 +30,7 @@
     <div class="container-fluid px-4">
         <a class="navbar-brand d-flex align-items-center" href="/admin/dashboard">
             <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:38px;width:auto;object-fit:contain;margin-right:10px;"
-                 onerror="this.style.display='none'">
+                 data-h-error="admin/send_email:1">
             <small style="color:#64748b;font-size:.7rem;font-weight:700;letter-spacing:1.5px;">ADMIN · SEND EMAIL</small>
         </a>
         <div class="d-flex align-items-center gap-3">
@@ -202,40 +202,6 @@
 </div>
 
 {% include "layouts/_bootstrap_js.html" %}
-<script>
-    // Show/hide audience sub-pickers
-    document.querySelectorAll('input[name="audience"]').forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            document.getElementById('eventPicker').style.display =
-                this.value === 'event_regs' ? 'block' : 'none';
-            document.getElementById('rolePicker').style.display =
-                this.value === 'role_filter' ? 'block' : 'none';
-        });
-    });
-
-    // Live message preview + char counter
-    const msgBody   = document.getElementById('msgBody');
-    const preview   = document.getElementById('previewText');
-    const charCount = document.getElementById('charCount');
-
-    msgBody.addEventListener('input', function() {
-        preview.textContent  = this.value || 'Your message will appear here…';
-        charCount.textContent = this.value.length + ' characters';
-    });
-
-    // Confirm before sending to all
-    document.getElementById('emailForm').addEventListener('submit', function(e) {
-        const audience = document.querySelector('input[name="audience"]:checked').value;
-        const label    = audience === 'all_users'   ? 'ALL users in the system'
-                       : audience === 'event_regs'  ? 'all registrants of the selected event'
-                       : 'all users with the selected role';
-        if (!confirm('Send "' + document.querySelector('[name=subject]').value + '" to ' + label + '?')) {
-            e.preventDefault();
-        } else {
-            document.getElementById('sendBtn').innerHTML =
-                '<i class="fas fa-spinner fa-spin me-2"></i> Sending…';
-            document.getElementById('sendBtn').disabled = true;
-        }
-    });
-</script>
+<script src="/static/js/pages/admin__send_email.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__send_email.js"></script>{% endblock %}

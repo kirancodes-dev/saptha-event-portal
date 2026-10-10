@@ -114,7 +114,7 @@
                     </a>
                     
                     <!-- Theme Toggle -->
-                    <button class="btn-icon-link me-3" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
+                    <button class="btn-icon-link me-3" data-h-click="base_classic:1" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
                         <span id="theme-toggle-icon"><i class="fas fa-moon" aria-hidden="true"></i></span>
                     </button>
 
@@ -145,36 +145,7 @@
         </footer>
     </div>
 
-    <script>
-        // Mobile sidebar toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const menuToggle = document.querySelector('.menu-toggle');
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.sidebar-overlay');
-
-            if (menuToggle) {
-                menuToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('active');
-                    overlay.classList.toggle('active');
-                });
-            }
-
-            if (overlay) {
-                overlay.addEventListener('click', function() {
-                    sidebar.classList.remove('active');
-                    overlay.classList.remove('active');
-                });
-            }
-
-            // Clean up mobile sidebar classes on window resize
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 991) {
-                    if (sidebar) sidebar.classList.remove('active');
-                    if (overlay) overlay.classList.remove('active');
-                }
-            });
-        });
-    </script>
+    <script src="/static/js/pages/base_classic.js"></script>
     <script src="/static/js/global.js"></script>
     <script src="/static/js/command-palette.js" defer></script>
     <script src="/static/js/offline-sync.js" defer></script>
@@ -183,3 +154,4 @@
 {% endblock %}
 {# This layout's footer sits inside the content column, beside the sidebar #}
 {% block site_footer %}{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/base_classic.js"></script>{% endblock %}

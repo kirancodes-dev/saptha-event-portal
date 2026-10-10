@@ -138,7 +138,7 @@
                     <div class="pw-wrap input-icon-wrap">
                         <i class="fas fa-lock inp-icon"></i>
                         <input type="password" id="passwordInput" name="password" class="form-control" required minlength="6" placeholder="••••••••">
-                        <button type="button" class="pw-toggle" onclick="spTogglePw('passwordInput',this)" tabindex="-1" aria-label="Toggle password visibility">
+                        <button type="button" class="pw-toggle" data-h-click="register:1" tabindex="-1" aria-label="Toggle password visibility">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -163,28 +163,6 @@
         </div>
     </div>
 
-    <script>
-        // ── SKELETON LOADER INITIALIZATION ────
-        document.addEventListener('DOMContentLoaded', function(){
-            setTimeout(function(){
-                const skeleton = document.getElementById('formSkeleton');
-                const form = document.getElementById('main-content');
-                if(skeleton) skeleton.style.display = 'none';
-                if(form) form.style.display = '';
-            }, 250);
-        });
-
-        // ── PASSWORD TOGGLE ────
-        function spTogglePw(id, btn) {
-            const inp = document.getElementById(id);
-            const icon = btn.querySelector('i');
-            if (inp.type === 'password') {
-                inp.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                inp.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
-    </script>
+    <script src="/static/js/pages/register.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/register.js"></script>{% endblock %}

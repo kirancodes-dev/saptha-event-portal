@@ -74,7 +74,7 @@
     // Fixed markup first, then the title and body as text (BLK-19)
     toast.innerHTML = '<div class="d-flex justify-content-between align-items-center mb-1">' +
                       '<strong class="text-warning"></strong>' +
-                      '<button type="button" class="btn-close btn-close-white small" onclick="this.parentElement.parentElement.remove()"></button>' +
+                      '<button type="button" class="btn-close btn-close-white small" data-h-click="se:remove-grandparent"></button>' +
                       '</div><div class="pwa-toast-body"></div>' +
                       (action ? '<button class="btn btn-sm btn-warning mt-2 w-100" id="toastActionBtn">Execute</button>' : '');
     toast.querySelector('strong').textContent = title;

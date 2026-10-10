@@ -115,7 +115,7 @@
                             <td>
                                 {% if s.logo_url %}
                                     <img src="{{ s.logo_url }}" alt="{{ s.name }} logo" class="logo-thumb"
-                                         onerror="this.src='/static/snpsu-logo.png';">
+                                         data-h-error="admin/sponsors:1">
                                 {% else %}
                                     <div class="logo-thumb d-flex align-items-center justify-content-center text-muted">
                                         <i class="fas fa-image"></i>
@@ -152,7 +152,7 @@
                                     </button>
                                 </form>
                                 <form action="/admin/sponsors/{{ s.id }}/delete" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Remove {{ s.name }}?');">
+                                      data-h-submit="admin/sponsors:2" data-h-a0="{{ s.name }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="btn btn-sm btn-outline-danger">
                                         <i class="fas fa-trash"></i>
@@ -173,3 +173,4 @@
         </div>
     </div>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__sponsors.js"></script>{% endblock %}

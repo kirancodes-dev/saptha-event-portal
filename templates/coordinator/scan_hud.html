@@ -228,8 +228,8 @@
 
 <!-- Bottom Control Floating Buttons -->
 <div class="hud-actions" id="hud-actions-bar">
-    <button class="btn-hud" onclick="promptManualEntry()"><i class="fas fa-keyboard"></i> Manual Code</button>
-    <button class="btn-hud" onclick="syncLocalQueue()"><i class="fas fa-sync"></i> Sync (<span id="sync-count">0</span>)</button>
+    <button class="btn-hud" data-h-click="coordinator/scan_hud:1"><i class="fas fa-keyboard"></i> Manual Code</button>
+    <button class="btn-hud" data-h-click="coordinator/scan_hud:2"><i class="fas fa-sync"></i> Sync (<span id="sync-count">0</span>)</button>
 </div>
 
 <!-- Slide-Up Result HUD Banner -->
@@ -247,7 +247,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 const EVENT_ID = {{ event_id|tojson }};
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 let scanner = null;
@@ -411,3 +411,4 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__scan_hud.js"></script>{% endblock %}

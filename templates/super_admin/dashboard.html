@@ -131,9 +131,9 @@
 
     <div class="mobile-nav">
         <img src="/static/snpsu-logo.png" alt="Logo" class="mobile-logo">
-        <button class="btn btn-light border" onclick="toggleSidebar()"><i class="fas fa-bars text-primary"></i></button>
+        <button class="btn btn-light border" data-h-click="super_admin/dashboard:1"><i class="fas fa-bars text-primary"></i></button>
     </div>
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar-overlay" data-h-click="super_admin/dashboard:2"></div>
 
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -242,7 +242,7 @@
                             <td><span class="badge bg-warning text-dark bg-opacity-25">{{ spoc.category }}</span></td>
                             <td class="text-muted small">{{ spoc.email }}</td>
                             <td class="text-end pe-4">
-                                <a href="/super_admin/delete_user/{{ spoc.id }}" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('Revoke access?')">
+                                <a href="/super_admin/delete_user/{{ spoc.id }}" class="btn btn-sm btn-outline-danger border-0" data-h-click="super_admin/dashboard:3">
                                     <i class="fas fa-trash-alt"></i>
                                 </a>
                             </td>
@@ -303,10 +303,6 @@
     </div>
 
     {% include "layouts/_bootstrap_js.html" %}
-    <script>
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.querySelector('.sidebar-overlay').classList.toggle('active');
-        }
-    </script>
+    <script src="/static/js/pages/super_admin__dashboard.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/super_admin__dashboard.js"></script>{% endblock %}

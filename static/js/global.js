@@ -148,7 +148,7 @@
     t.innerHTML = `
       <span style="flex-shrink:0;font-size:16px;margin-top:1px">${iconHtml}</span>
       <span style="flex:1" class="sp-t-message"></span>
-      <button onclick="this.closest('[id^=sp-t]').remove()" style="background:none;border:none;cursor:pointer;color:var(--ink-400,#94a3b8);padding:0 0 0 6px;font-size:15px;line-height:1;flex-shrink:0" aria-label="Dismiss">&times;</button>
+      <button data-h-click="se:remove-closest" data-closest="[id^=sp-t]" style="background:none;border:none;cursor:pointer;color:var(--ink-400,#94a3b8);padding:0 0 0 6px;font-size:15px;line-height:1;flex-shrink:0" aria-label="Dismiss">&times;</button>
     `;
     t.querySelector('.sp-t-message').textContent = message;
     t.id = 'sp-t-' + Date.now();

@@ -490,7 +490,7 @@
         <p class="text-center text-muted small mb-3">Select your event and enter your Registration ID or Name</p>
 
         <div class="mb-3 text-center" style="max-width: 450px; margin: 0 auto 1.5rem auto;">
-            <select id="kiosk-event-id" class="form-select bg-dark text-white border-secondary shadow-sm" onchange="hideResults()">
+            <select id="kiosk-event-id" class="form-select bg-dark text-white border-secondary shadow-sm" data-h-change="public/kiosk:1">
                 {% if not events %}
                 <option value="">No managed events available</option>
                 {% else %}
@@ -621,7 +621,7 @@
     </div>
 
     <!-- Scripts -->
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         // Kiosk Clock
         function updateClock() {
             var now = new Date();
@@ -866,3 +866,4 @@
         }
     </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__kiosk.js"></script>{% endblock %}

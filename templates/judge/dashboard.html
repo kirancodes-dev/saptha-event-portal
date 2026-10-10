@@ -42,7 +42,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
     <i class="fas fa-crown" style="color: #c9a45e;"></i>
     Logged in as <strong style="color: #c9a45e;">Super Admin</strong> (Wildcard Mode)
   </span>
-  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(201, 164, 94, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" data-h-mouseover="judge/dashboard:1" data-h-mouseout="judge/dashboard:2">
     Return to Admin HQ <i class="fas fa-arrow-right"></i>
   </a>
 </div>
@@ -176,3 +176,4 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 {% include "layouts/_bootstrap_js.html" %}
 <script src="/static/js/global.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/judge__dashboard.js"></script>{% endblock %}

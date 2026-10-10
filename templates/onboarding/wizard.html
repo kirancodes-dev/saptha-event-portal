@@ -120,7 +120,7 @@
         </div>
       </div>
 
-      <button type="button" onclick="nextStep(2)" class="btn btn-warning py-3 px-5 rounded-pill fw-bold text-dark mt-3">
+      <button type="button" data-h-click="onboarding/wizard:1" class="btn btn-warning py-3 px-5 rounded-pill fw-bold text-dark mt-3">
         Next step <i class="fas fa-arrow-right ms-1"></i>
       </button>
     </div>
@@ -134,21 +134,21 @@
         <label class="form-label small text-white-50">Department Name</label>
         <div class="d-flex gap-2">
           <input type="text" id="deptInput" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Computer Science">
-          <button type="button" onclick="addDept()" class="btn btn-warning fw-bold text-dark px-3">+</button>
+          <button type="button" data-h-click="onboarding/wizard:2" class="btn btn-warning fw-bold text-dark px-3">+</button>
         </div>
       </div>
 
       <!-- Department lists -->
       <div class="mb-4 text-start">
         <div class="d-flex flex-wrap gap-2" id="deptTags">
-          <span class="badge bg-secondary p-2 d-flex align-items-center gap-2">Engineering <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove()"></i></span>
-          <span class="badge bg-secondary p-2 d-flex align-items-center gap-2">Management <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove()"></i></span>
+          <span class="badge bg-secondary p-2 d-flex align-items-center gap-2">Engineering <i class="fas fa-times cursor-pointer" data-h-click="onboarding/wizard:3"></i></span>
+          <span class="badge bg-secondary p-2 d-flex align-items-center gap-2">Management <i class="fas fa-times cursor-pointer" data-h-click="onboarding/wizard:4"></i></span>
         </div>
       </div>
 
       <div class="d-flex justify-content-between mt-3">
-        <button type="button" onclick="nextStep(1)" class="btn btn-outline-light py-3 px-4 rounded-pill">Back</button>
-        <button type="button" onclick="nextStep(3)" class="btn btn-warning py-3 px-5 rounded-pill fw-bold text-dark">
+        <button type="button" data-h-click="onboarding/wizard:5" class="btn btn-outline-light py-3 px-4 rounded-pill">Back</button>
+        <button type="button" data-h-click="onboarding/wizard:6" class="btn btn-warning py-3 px-5 rounded-pill fw-bold text-dark">
           Next step <i class="fas fa-arrow-right ms-1"></i>
         </button>
       </div>
@@ -164,8 +164,8 @@
       </div>
 
       <div class="d-flex justify-content-between mt-3">
-        <button type="button" onclick="nextStep(2)" class="btn btn-outline-light py-3 px-4 rounded-pill">Back</button>
-        <button type="button" onclick="submitWizard()" class="btn btn-success py-3 px-5 rounded-pill fw-bold text-white">
+        <button type="button" data-h-click="onboarding/wizard:7" class="btn btn-outline-light py-3 px-4 rounded-pill">Back</button>
+        <button type="button" data-h-click="onboarding/wizard:8" class="btn btn-success py-3 px-5 rounded-pill fw-bold text-white">
           Deploy Portal <i class="fas fa-rocket ms-1"></i>
         </button>
       </div>
@@ -174,76 +174,6 @@
   </div>
 
   {% include "layouts/_bootstrap_js.html" %}
-  <script>
-    function nextStep(step) {
-      // Hide all steps
-      document.querySelectorAll('.wizard-step').forEach(function(el) {
-        el.classList.remove('active');
-      });
-      // Show requested step
-      document.getElementById('step-' + step).classList.add('active');
-
-      // Update dot styles
-      document.querySelectorAll('.step-dot').forEach(function(dot, idx) {
-        var num = idx + 1;
-        dot.className = 'step-dot';
-        if (num < step) {
-          dot.classList.add('completed');
-        } else if (num === step) {
-          dot.classList.add('active');
-        }
-      });
-
-      // Update progress bar width
-      var pct = ((step - 1) / 2) * 100;
-      document.getElementById('progressBar').style.width = pct + '%';
-    }
-
-    function addDept() {
-      var input = document.getElementById('deptInput');
-      var val = input.value.trim();
-      if (!val) return;
-
-      var wrap = document.getElementById('deptTags');
-      var tag = document.createElement('span');
-      tag.className = 'badge bg-secondary p-2 d-flex align-items-center gap-2';
-      tag.innerHTML = escapeHtml(val) + ' <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove()"></i>';
-      wrap.appendChild(tag);
-      
-      input.value = '';
-    }
-
-    function submitWizard() {
-      var depts = [];
-      document.querySelectorAll('#deptTags span').forEach(function(span) {
-        depts.push(span.textContent.trim().split(' ')[0]);
-      });
-
-      var payload = {
-        primary_color: document.getElementById('primaryColor').value,
-        logo_url: document.getElementById('logoUrl').value,
-        departments: depts
-      };
-
-      fetch('/onboarding/wizard', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
-        },
-        body: JSON.stringify(payload)
-      })
-      .then(r => r.json())
-      .then(d => {
-        if(d.redirect) {
-          window.location.href = d.redirect;
-        } else if(d.error) {
-          alert('Error: ' + d.error);
-        }
-      })
-      .catch(err => {
-        alert('Network Error: ' + err.message);
-      });
-    }
-  </script>
+  <script src="/static/js/pages/onboarding__wizard.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/onboarding__wizard.js"></script>{% endblock %}

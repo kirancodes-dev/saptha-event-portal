@@ -138,7 +138,7 @@
                         <h2 class="fw-bold text-white mb-1"><i class="fas fa-scale-balanced text-primary me-2"></i>Scoring & Sentiment Audit</h2>
                         <p class="text-muted mb-0">Event: <span class="text-white fw-semibold">{{ event.title }}</span> | Analytics layer for normalized grading consistency.</p>
                     </div>
-                    <button class="btn btn-primary rounded-pill px-4" onclick="applyNormalization()">
+                    <button class="btn btn-primary rounded-pill px-4" data-h-click="spoc/judging_audit:1">
                         <i class="fas fa-wand-magic-sparkles me-2"></i>Apply Normalization Matrix
                     </button>
                 </div>
@@ -260,10 +260,6 @@
     </div>
 
     {% include "layouts/_bootstrap_js.html" %}
-    <script>
-        function applyNormalization() {
-            var myModal = new bootstrap.Modal(document.getElementById('normModal'));
-            myModal.show();
-        }
-    </script>
+    <script src="/static/js/pages/spoc__judging_audit.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__judging_audit.js"></script>{% endblock %}

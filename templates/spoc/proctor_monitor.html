@@ -99,7 +99,7 @@
 </div>
 
 <!-- SSE STREAM SCRIPT -->
-<script>
+<script nonce="{{ csp_nonce() }}">
 document.addEventListener('DOMContentLoaded', () => {
     const eventId = "{{ event.id }}";
     const feed = document.getElementById('violationFeed');

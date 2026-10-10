@@ -164,7 +164,7 @@
         
     </div>
 
-    <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
+    <button class="print-btn" data-h-click="participant/certificate:1">🖨️ Save as PDF / Print</button>
     {% if certificate_id %}
     <p class="no-print" style="text-align:center;margin-top:12px;font-family:'Inter',sans-serif;font-size:14px;">
       <a href="/verify/{{ certificate_id }}/download">Download the official certificate (PDF)</a>
@@ -179,3 +179,4 @@
     </div>
 
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/participant__certificate.js"></script>{% endblock %}

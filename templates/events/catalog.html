@@ -216,14 +216,14 @@
       </div>
       
       <div class="filter-controls">
-        <select name="category" class="filter-select" aria-label="Filter by category" onchange="this.form.submit()">
+        <select name="category" class="filter-select" aria-label="Filter by category" data-h-change="events/catalog:1">
           <option value="">All Categories</option>
           {% for cat in categories %}
             <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
           {% endfor %}
         </select>
         
-        <select name="type" class="filter-select" aria-label="Filter by event type" onchange="this.form.submit()">
+        <select name="type" class="filter-select" aria-label="Filter by event type" data-h-change="events/catalog:2">
           <option value="">All Types</option>
           <option value="hackathon" {% if selected_type == 'hackathon' %}selected{% endif %}>Hackathon</option>
           <option value="conference" {% if selected_type == 'conference' %}selected{% endif %}>Conference</option>
@@ -233,7 +233,7 @@
           <option value="general" {% if selected_type == 'general' %}selected{% endif %}>General</option>
         </select>
 
-        <select name="mode" class="filter-select" aria-label="Filter by mode" onchange="this.form.submit()">
+        <select name="mode" class="filter-select" aria-label="Filter by mode" data-h-change="events/catalog:3">
           <option value="">All Modes</option>
           <option value="offline" {% if selected_mode == 'offline' %}selected{% endif %}>In-Person (Offline)</option>
           <option value="online" {% if selected_mode == 'online' %}selected{% endif %}>Virtual (Online)</option>
@@ -297,3 +297,4 @@
   {% endif %}
 </div>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/events__catalog.js"></script>{% endblock %}

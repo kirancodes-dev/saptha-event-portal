@@ -593,9 +593,9 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
                         box-shadow: 0 8px 32px 0 rgba(0,0,0,0.3);
                         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         cursor: pointer;"
-                 onclick="window.location.href='/event/{{ fev.id }}'"
-                 onmouseover="this.style.transform='translateY(-6px) scale(1.02)'; this.style.borderColor='rgba(255,255,255,0.2)';"
-                 onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.08)';"
+                 data-h-click="public/home:1" data-h-a0="{{ fev.id }}"
+                 data-h-mouseover="public/home:2"
+                 data-h-mouseout="public/home:3"
                  class="floating-featured-card">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                 <div style="width:40px;height:40px;
@@ -698,7 +698,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
         <div class="ev-banner">
           <img src="{{ event.banner_url | default('') }}"
                alt="{{ event.title }}"
-               onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=60';">
+               data-h-error="public/home:4">
           <div class="ev-banner-overlay"></div>
           <span class="cat-badge cat-{{ cat }}">{{ cat }}</span>
           <span class="ev-type">{{ ptype }}</span>
@@ -742,7 +742,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
               {% endif %}
             </div>
             <div class="d-flex gap-2 align-items-center">
-              <button class="btn-det" onclick="showDetails('{{ event.id }}')"><i class="fas fa-info-circle"></i> Details</button>
+              <button class="btn-det" data-h-click="public/home:5" data-h-a1="{{ event.id }}"><i class="fas fa-info-circle"></i> Details</button>
               <a href="/event/{{ event.id }}" class="btn-ev">Register <i class="fas fa-arrow-right"></i></a>
             </div>
           </div>
@@ -789,7 +789,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
           <span class="cal-stat-val" id="calOpenCount">{{ total_events | default(0) }}</span>
         </div>
         <div class="cal-stat-row" style="border:none;">
-          <button class="btn btn-sm w-100 mt-2" id="calResetBtn" onclick="resetFilter()" style="background:rgba(255, 255, 255, 0.05);color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px;border:1px solid rgba(255,255,255,0.08);display:none;">
+          <button class="btn btn-sm w-100 mt-2" id="calResetBtn" data-h-click="public/home:6" style="background:rgba(255, 255, 255, 0.05);color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px;border:1px solid rgba(255,255,255,0.08);display:none;">
             <i class="fas fa-times me-1"></i> Clear Date Filter
           </button>
         </div>
@@ -801,21 +801,21 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
       <div style="font-size:11.5px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Quick Links</div>
       <div class="d-flex flex-column gap-2">
         {% if not session.get('user_id') %}
-        <a href="/login" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+        <a href="/login" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" data-h-mouseover="public/home:7" data-h-mouseout="public/home:8">
           <i class="fas fa-sign-in-alt text-primary" style="width:16px;"></i><span style="font-size:13px;">Login to your account</span>
         </a>
-        <a href="/register" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+        <a href="/register" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" data-h-mouseover="public/home:9" data-h-mouseout="public/home:10">
           <i class="fas fa-user-plus text-success" style="width:16px;"></i><span style="font-size:13px;">Register as Student</span>
         </a>
         {% else %}
-        <a href="/participant/dashboard" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+        <a href="/participant/dashboard" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" data-h-mouseover="public/home:11" data-h-mouseout="public/home:12">
           <i class="fas fa-ticket-alt text-primary" style="width:16px;"></i><span style="font-size:13px;">My Tickets / Dashboard</span>
         </a>
         {% endif %}
-        <a href="/verify" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+        <a href="/verify" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" data-h-mouseover="public/home:13" data-h-mouseout="public/home:14">
           <i class="fas fa-qrcode text-warning" style="width:16px;"></i><span style="font-size:13px;">Verify Ticket</span>
         </a>
-        <a href="/results" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+        <a href="/results" class="d-flex align-items-center gap-2 text-decoration-none p-2.5 rounded-3" style="color:var(--text-primary);background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background 0.2s ease;" data-h-mouseover="public/home:15" data-h-mouseout="public/home:16">
           <i class="fas fa-trophy text-warning" style="width:16px;"></i><span style="font-size:13px;">View Results</span>
         </a>
       </div>
@@ -837,20 +837,20 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
 </section>
 
 <!-- ══ CHATBOT ═══════════════════════════════════════════ -->
-<button class="chat-btn" onclick="toggleChat()" title="Chat with Event Assistant">
+<button class="chat-btn" data-h-click="public/home:17" title="Chat with Event Assistant">
   <i class="fas fa-comment-dots"></i>
 </button>
 <div class="chat-window" id="chatWindow">
   <div class="chat-header">
     <span><i class="fas fa-robot me-2 text-warning"></i>Event Assistant</span>
-    <button onclick="toggleChat()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;"><i class="fas fa-times"></i></button>
+    <button data-h-click="public/home:18" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;"><i class="fas fa-times"></i></button>
   </div>
   <div class="chat-body" id="chatBody">
     <div class="msg msg-bot">Hi! I can help you find events, check dates, or answer registration questions. What do you need?</div>
   </div>
   <div class="chat-input-area">
-    <input type="text" id="chatInput" class="chat-input" placeholder="Ask anything…" onkeypress="handleEnter(event)">
-    <button class="chat-send" onclick="sendMessage()"><i class="fas fa-paper-plane" style="font-size:12px;"></i></button>
+    <input type="text" id="chatInput" class="chat-input" placeholder="Ask anything…" data-h-keypress="public/home:19">
+    <button class="chat-send" data-h-click="public/home:20"><i class="fas fa-paper-plane" style="font-size:12px;"></i></button>
   </div>
 </div>
 
@@ -891,7 +891,7 @@ function showDetails(eventId) {
   document.getElementById('detailModalRegBtn').href = '/event/' + eventId;
   let html = '';
   if (ev.banner_url) {
-    html += `<img src="${ev.banner_url}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:16px;" onerror="this.style.display='none'">`;
+    html += `<img src="${ev.banner_url}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:16px;" data-h-error="se:hide">`;
   }
   // Info grid
   html += `<div class="row g-3 mb-4">`;
@@ -1155,3 +1155,4 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 <script src="/static/js/global.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__home.js"></script>{% endblock %}

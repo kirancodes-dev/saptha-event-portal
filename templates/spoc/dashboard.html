@@ -22,384 +22,36 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--ink-900);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SAPTHAGIRI UNIVERSITY LMS / NEO-PAT DASHBOARD STYLES (SPOC)
-   ═══════════════════════════════════════════════════════════════════════════ */
-:root {
-  --lms-navy: #0d1b3e;
-  --lms-navy-dark: #071126;
-  --lms-navy-light: #162a56;
-  --lms-blue: #2563eb;
-  --lms-blue-hover: #1d4ed8;
-  --lms-bg: #f4f6fb;
-  --lms-card: #ffffff;
-  --lms-border: #e2e8f0;
-  --lms-text-main: #0f172a;
-  --lms-text-muted: #64748b;
-  --lms-text-subtle: #94a3b8;
-  --lms-green: #22c55e;
-  --lms-amber: #eab308;
-  --lms-rose: #ef4444;
-  --rail-width: 78px;
-  --topbar-height: 64px;
-}
-
-/* TOP RIBBON */
-.portal-top-ribbon {
-  background: #18191c;
-  color: #d1d5db;
-  height: 34px;
+/* TOPNAV */
+.topnav {
+  background: rgba(26, 37, 87, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0 24px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  position: relative;
-  z-index: 1042;
-}
-.portal-top-ribbon-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #f3f4f6;
-  text-decoration: none;
-}
-.portal-top-ribbon-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 13px;
-  color: #9ca3af;
-}
-
-/* SECONDARY WHITE NAVBAR */
-.portal-secondary-navbar {
-  background: #ffffff;
-  border-bottom: 1px solid var(--lms-border);
-  height: var(--topbar-height);
   position: sticky;
   top: 0;
-  z-index: 1030;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.portal-search-wrap {
-  position: relative;
-  width: clamp(200px, 32vw, 360px);
-}
-.portal-search-wrap .search-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--lms-text-subtle);
-  font-size: 14px;
-  pointer-events: none;
-}
-.portal-search-input {
-  width: 100%;
-  height: 40px;
-  padding: 8px 14px 8px 38px;
-  border-radius: 8px;
-  border: 1px solid var(--lms-border);
-  background: #ffffff;
-  font-size: 14px;
-  color: var(--lms-text-main);
-  outline: none;
-  transition: all 0.2s;
-}
-.portal-search-input:focus {
-  border-color: var(--lms-blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-.portal-header-right {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.portal-icon-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  border: 1px solid var(--lms-border);
-  background: #ffffff;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  text-decoration: none;
-}
-.portal-icon-btn:hover {
-  background: #f8fafc;
-  color: var(--lms-text-main);
-}
-.portal-user-dropdown-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 12px 4px 6px;
-  border-radius: 100px;
-  border: 1px solid var(--lms-border);
-  background: #ffffff;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  color: var(--lms-text-main);
-}
-.portal-user-avatar-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #f1f5f9;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-.portal-user-name-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--lms-text-main);
-}
-
-/* LEFT NAVIGATION RAIL (DESKTOP) */
-.portal-sidebar-rail {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: var(--rail-width);
-  background: var(--lms-navy);
-  z-index: 1045;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px 0;
-  box-shadow: 2px 0 8px rgba(0,0,0,0.12);
-}
-.portal-rail-logo {
-  width: 50px;
-  height: 50px;
-  border-radius: 10px;
-  background: var(--lms-navy-light);
-  border: 1px solid rgba(255,255,255,0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 12px;
-  overflow: hidden;
-  padding: 5px;
-}
-.portal-rail-logo img { width: 100%; height: 100%; object-fit: contain; }
-.portal-rail-nav {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-.portal-rail-nav::-webkit-scrollbar { width: 0; height: 0; }
-.portal-rail-item {
-  width: 64px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 4px;
-  border-radius: 8px;
-  text-decoration: none;
-  color: #94a3b8;
-  font-size: 10px;
-  font-weight: 500;
-  text-align: center;
-  transition: all 0.2s;
-  gap: 4px;
-}
-.portal-rail-item i { font-size: 18px; line-height: 1; }
-.portal-rail-item span {
-  display: block;
-  max-width: 60px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.portal-rail-item:hover { color: #ffffff; background: rgba(255,255,255,0.06); }
-.portal-rail-item.active {
-  background: var(--lms-blue);
-  color: #ffffff;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-}
-.portal-rail-bottom {
-  margin-top: auto;
-  padding-top: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-/* MOBILE BOTTOM BAR */
-.portal-mobile-bottom-nav { display: none; }
-@media (max-width: 768px) {
-  .portal-sidebar-rail { display: none !important; }
-  .portal-mobile-bottom-nav {
-    display: flex !important;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 62px;
-    background: var(--lms-navy);
-    z-index: 1050;
-    align-items: center;
-    justify-content: space-around;
-    padding: 0 10px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 -4px 16px rgba(0,0,0,0.25);
-  }
-  .portal-mobile-nav-item {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px; color: #94a3b8; text-decoration: none; font-size: 10px; font-weight: 500;
-    padding: 6px 12px; border-radius: 8px;
-  }
-  .portal-mobile-nav-item i { font-size: 18px; line-height: 1; }
-  .portal-mobile-nav-item.active { color: #ffffff; background: rgba(37, 99, 235, 0.3); }
-}
-
-/* MAIN WRAPPER */
-.portal-main-wrapper {
-  margin-left: var(--rail-width);
-  min-height: 100vh;
-  background-color: var(--lms-bg);
-  display: flex;
-  flex-direction: column;
-}
-@media (max-width: 768px) {
-  .portal-main-wrapper {
-    margin-left: 0 !important;
-    padding-bottom: 76px !important;
-  }
-}
-.portal-content-body {
-  padding: 24px clamp(16px, 3.5vw, 40px) 60px;
-  max-width: 1400px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-/* PILLS */
-.portal-filter-pills {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-.portal-filter-pills::-webkit-scrollbar { height: 0; width: 0; }
-.portal-pill-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 7px 18px; border-radius: 6px; font-size: 13.5px; font-weight: 600;
-  cursor: pointer; border: 1px solid transparent; background: #ffffff; color: #475569;
-  text-decoration: none; transition: all 0.2s; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-}
-.portal-pill-btn:hover { background: #f8fafc; color: var(--lms-text-main); border-color: #cbd5e1; }
-.portal-pill-btn.active { background: var(--lms-blue); color: #ffffff; border-color: var(--lms-blue); }
-
-/* DASHBOARD HEADER */
-.portal-dashboard-header {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 18px;
-}
-.portal-dashboard-title {
-  font-size: 24px; font-weight: 800; color: var(--lms-text-main); margin: 0;
-}
-.portal-last-updated-box {
-  background: #ffffff; border: 1px solid var(--lms-border); border-radius: 6px;
-  padding: 6px 14px; font-size: 13px; font-weight: 500; color: #475569;
-  display: inline-flex; align-items: center; gap: 8px;
-}
-
-/* HERO PROFILE BANNER CARD */
-.portal-hero-card {
-  background: #ffffff; border: 1px solid var(--lms-border); border-radius: 12px;
-  overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 24px;
-}
-.portal-hero-banner {
-  width: 100%; height: 180px; position: relative; overflow: hidden; background: #e2e8f0;
-}
-.portal-hero-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-@media (max-width: 768px) { .portal-hero-banner { height: 120px; } }
-.portal-hero-body { padding: 0 28px 20px; position: relative; }
-@media (max-width: 768px) { .portal-hero-body { padding: 0 16px 16px; } }
-.portal-hero-avatar-wrap {
-  width: 96px; height: 96px; border-radius: 50%; border: 4px solid #ffffff; background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-top: -48px; display: flex; align-items: center; justify-content: center;
-  position: relative; z-index: 2; overflow: hidden;
-}
-.portal-hero-avatar-svg { width: 80px; height: 80px; color: #64748b; }
-.portal-hero-name { font-size: 20px; font-weight: 800; color: var(--lms-text-main); margin: 12px 0 2px; }
-.portal-hero-email { font-size: 13.5px; color: var(--lms-text-muted); margin: 0 0 12px; }
-.portal-hero-meta-row {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13.5px; color: var(--lms-text-muted);
-}
-.portal-hero-meta-item strong { color: var(--lms-text-main); font-weight: 700; }
-.portal-hero-meta-sep { color: #cbd5e1; font-weight: 300; }
-@media (max-width: 768px) {
-  .portal-hero-meta-sep { display: none; }
-  .portal-hero-meta-row { gap: 8px; }
-  .portal-hero-meta-item { background: #f8fafc; border: 1px solid var(--lms-border); padding: 4px 10px; border-radius: 6px; font-size: 12px; }
-}
-
-/* 3-WIDGET CARDS GRID */
-.portal-widgets-grid {
-  display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 20px; margin-bottom: 28px;
-}
-@media (max-width: 992px) { .portal-widgets-grid { grid-template-columns: 1fr; gap: 16px; } }
-.portal-widget-card {
-  background: #ffffff; border: 1px solid var(--lms-border); border-radius: 12px; padding: 22px 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; flex-direction: column;
-}
-.portal-widget-header {
-  font-size: 16px; font-weight: 800; color: var(--lms-text-main); margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between;
-}
-.neo-pat-score-box {
-  background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 20px; width: 140px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-}
-.neo-pat-score-label { font-size: 13px; font-weight: 600; color: var(--lms-text-muted); margin-bottom: 6px; }
-.neo-pat-score-value { font-size: 34px; font-weight: 800; color: var(--lms-text-main); line-height: 1; }
-.solved-questions-layout { display: flex; align-items: center; gap: 28px; flex: 1; }
-@media (max-width: 500px) { .solved-questions-layout { flex-direction: column; align-items: center; } }
-.donut-chart-box { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
-.donut-chart-box svg { width: 120px; height: 120px; transform: rotate(-90deg); }
-.donut-chart-center {
-  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-}
-.donut-chart-center-num { font-size: 20px; font-weight: 800; color: var(--lms-text-main); line-height: 1.1; }
-.donut-chart-center-sub { font-size: 11px; color: var(--lms-text-muted); font-weight: 500; }
-.category-bars-list { flex: 1; display: flex; flex-direction: column; gap: 12px; width: 100%; }
-.category-bar-item { display: flex; flex-direction: column; gap: 4px; }
-.category-bar-header { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--lms-text-main); }
-.category-bar-progress { height: 6px; border-radius: 100px; background: #f1f5f9; overflow: hidden; position: relative; }
-.category-bar-fill { height: 100%; border-radius: 100px; transition: width 0.6s ease; }
+.brand { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #fff; margin-left: 10px; }
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-link-item { color: rgba(255, 255, 255, 0.75); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: var(--radius-sm); transition: var(--t-fast); font-weight: 500; }
+.nav-link-item:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.nav-link-item.btn-orange { background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color: #fff; font-weight: 700; border: none; }
+.nav-link-item.btn-orange:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold); color: #fff; }
 
 /* Dashboard Two-Column Layout */
 .dashboard-layout {
   display: grid;
   grid-template-columns: 340px 1fr;
   gap: 24px;
-  min-height: 600px;
-  margin-top: 14px;
+  min-height: calc(100vh - 90px);
+  margin-top: 10px;
 }
 @media (max-width: 992px) {
   .dashboard-layout {
@@ -1655,241 +1307,31 @@ h1, h2, h3, h4, h5, h6 {
 </div>
 {% endif %}
 
-<!-- ═══ TOP DARK RIBBON ═══ -->
-<header class="portal-top-ribbon">
-  <a href="/" class="portal-top-ribbon-brand">
-    <i class="fas fa-university" style="color: #60a5fa;"></i>
-    <span>Sapthagiri</span>
-  </a>
-  <div class="portal-top-ribbon-actions">
-    <span title="Language"><i class="fas fa-globe"></i></span>
-    <span title="Full Screen"><i class="fas fa-expand"></i></span>
-    <span title="Menu"><i class="fas fa-ellipsis-v"></i></span>
+<!-- TOPNAV -->
+<div class="topnav">
+  <div class="d-flex align-items-center gap-2">
+    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="topnav-logo" style="height:36px;width:auto;object-fit:contain;" onerror="this.src='/static/app-icon.png'">
+    <span class="brand d-none d-sm-inline">Club SPOC Console</span>
+    <span class="badge" style="background:rgba(201,164,94,0.2);color:var(--snpsu-gold);font-size:11px;font-weight:600;">{{ category or 'Campus' }}</span>
   </div>
-</header>
-
-<!-- ═══ LEFT NAVIGATION RAIL (DESKTOP) ═══ -->
-<aside class="portal-sidebar-rail" aria-label="SPOC Portal Navigation">
-  <div class="portal-rail-logo" title="Sapthagiri NPS University">
-    <img src="/static/app-icon.png" alt="University Crest" onerror="this.src='/static/snpsu-logo.png'">
-  </div>
-
-  <nav class="portal-rail-nav">
-    <a href="/spoc/dashboard" class="portal-rail-item active" title="Dashboard">
-      <i class="fas fa-th-large"></i>
-      <span>Dashboard</span>
-    </a>
-    <a href="/" class="portal-rail-item" title="Events Catalog">
-      <i class="fas fa-book-open"></i>
-      <span>Events</span>
-    </a>
-    <a href="/spoc/create_event" class="portal-rail-item" title="Create Event">
-      <i class="fas fa-plus-circle"></i>
-      <span>Create</span>
-    </a>
-    <a href="/calendar" class="portal-rail-item" title="Calendar">
-      <i class="fas fa-calendar-alt"></i>
-      <span>Calendar</span>
-    </a>
-    <a href="/spoc/profile" class="portal-rail-item" title="Profile">
-      <i class="fas fa-user-tie"></i>
-      <span>Profile</span>
-    </a>
-  </nav>
-
-  <div class="portal-rail-bottom">
-    <button class="portal-rail-item" data-h-click="spoc/dashboard:3" type="button" title="Command Palette (Cmd+K)" style="background:none;border:none;">
-      <i class="fas fa-search"></i>
+  <div class="nav-links">
+    <button class="nav-link-item" data-h-click="spoc/dashboard:3" title="Command Palette (Cmd+K)" style="background:none; border:none; cursor:pointer; color:rgba(255,255,255,.75); display:inline-flex; align-items:center; gap:4px;">
+      <i class="fas fa-terminal"></i><span class="d-none d-lg-inline ms-1" style="font-size:11px; opacity:0.6; background:rgba(255,255,255,0.15); padding:1px 5px; border-radius:4px; font-weight:bold;">⌘K</span>
     </button>
-    <a href="/logout" class="portal-rail-item" title="Logout">
-      <i class="fas fa-sign-out-alt"></i>
-    </a>
+    <a href="/" class="nav-link-item" title="Events Portal"><i class="fas fa-home"></i><span class="d-none d-sm-inline ms-1">Portal</span></a>
+    <a href="/calendar" class="nav-link-item" title="Calendar"><i class="fas fa-calendar-alt"></i><span class="d-none d-sm-inline ms-1">Calendar</span></a>
+    <a href="/spoc/profile" class="nav-link-item" title="My Profile"><i class="fas fa-user-circle"></i><span class="d-none d-sm-inline ms-1">Profile</span></a>
+    {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
+    <a href="/admin/dashboard" class="nav-link-item" style="color:var(--snpsu-gold);font-weight:700;" title="Admin HQ"><i class="fas fa-crown"></i><span class="d-none d-sm-inline ms-1">Admin</span></a>
+    {% endif %}
+    <a href="/spoc/create_event" class="nav-link-item btn-orange" title="Create Event"><i class="fas fa-plus"></i><span class="d-none d-sm-inline ms-1">Create Event</span></a>
+    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
   </div>
-</aside>
+</div>
 
-<!-- ═══ MOBILE BOTTOM NAVIGATION BAR ═══ -->
-<nav class="portal-mobile-bottom-nav" aria-label="Mobile Navigation">
-  <a href="/spoc/dashboard" class="portal-mobile-nav-item active">
-    <i class="fas fa-th-large"></i>
-    <span>Dashboard</span>
-  </a>
-  <a href="/spoc/create_event" class="portal-mobile-nav-item">
-    <i class="fas fa-plus-circle"></i>
-    <span>Create</span>
-  </a>
-  <a href="/calendar" class="portal-mobile-nav-item">
-    <i class="fas fa-calendar-alt"></i>
-    <span>Calendar</span>
-  </a>
-  <a href="/spoc/profile" class="portal-mobile-nav-item">
-    <i class="fas fa-user-circle"></i>
-    <span>Profile</span>
-  </a>
-</nav>
-
-<!-- ═══ MAIN LAYOUT WRAPPER ═══ -->
-<div class="portal-main-wrapper">
-  <!-- SECONDARY NAVBAR -->
-  <header class="portal-secondary-navbar">
-    <div class="portal-search-wrap">
-      <i class="fas fa-search search-icon"></i>
-      <input type="text" class="portal-search-input" placeholder="Search events..." aria-label="Search" data-h-click="spoc/dashboard:3">
-    </div>
-
-    <div class="portal-header-right">
-      <a href="/spoc/create_event" class="btn btn-sm btn-primary fw-bold px-3 py-2 d-none d-sm-inline-flex align-items-center gap-2" style="font-size:12.5px;border-radius:6px;">
-        <i class="fas fa-plus"></i> Create Event
-      </a>
-
-      <!-- Profile Dropdown -->
-      <div class="dropdown">
-        <button class="portal-user-dropdown-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <div class="portal-user-avatar-circle">
-            <i class="fas fa-user-tie"></i>
-          </div>
-          <span class="portal-user-name-text">{{ user_name.split(' ')[0] if user_name else 'SPOC' }}</span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 10px; border: 1px solid var(--lms-border); padding: 6px 0; font-size: 13.5px;">
-          <li><h6 class="dropdown-header text-truncate" style="max-width: 200px;">{{ user_name }}</h6></li>
-          <li><span class="dropdown-item-text text-muted small">{{ user_email }}</span></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="/spoc/profile"><i class="fas fa-user-circle me-2 text-muted"></i>My Profile</a></li>
-          <li><a class="dropdown-item" href="/calendar"><i class="fas fa-calendar-alt me-2 text-muted"></i>Calendar</a></li>
-          {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
-          <li><a class="dropdown-item text-warning" href="/admin/dashboard"><i class="fas fa-crown me-2"></i>Admin HQ</a></li>
-          {% endif %}
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item text-danger" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
-        </ul>
-      </div>
-    </div>
-  </header>
-
-  <main class="portal-content-body">
-    <!-- 1. CATEGORY PILLS -->
-    <div class="portal-filter-pills" role="tablist">
-      <a href="/spoc/dashboard" class="portal-pill-btn {% if not status_filter %}active{% endif %}">All Events</a>
-      <a href="/spoc/dashboard?status=active" class="portal-pill-btn {% if status_filter == 'active' %}active{% endif %}">Active</a>
-      <a href="/spoc/dashboard?status=completed" class="portal-pill-btn {% if status_filter == 'completed' %}active{% endif %}">Completed</a>
-      <a href="/spoc/create_event" class="portal-pill-btn">+ Create Event</a>
-    </div>
-
-    <!-- 2. DASHBOARD HEADER & LAST UPDATED -->
-    <div class="portal-dashboard-header">
-      <h1 class="portal-dashboard-title">Dashboard</h1>
-      <div class="portal-last-updated-box">
-        <span>Last Updated on {{ last_updated or '03/08/2026  12:54 PM' }}</span>
-      </div>
-    </div>
-
-    <!-- 3. SPOC HERO PROFILE BANNER CARD -->
-    <section class="portal-hero-card" aria-label="SPOC Profile Banner">
-      <div class="portal-hero-banner">
-        <img src="/static/img/dashboard-banner.jpg" alt="Campus Panoramic View">
-      </div>
-      <div class="portal-hero-body">
-        <div class="portal-hero-avatar-wrap">
-          <svg class="portal-hero-avatar-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-        </div>
-        <h2 class="portal-hero-name">{{ user_name or 'Dr. Priya Sharma (Tech Club SPOC)' }}</h2>
-        <p class="portal-hero-email">{{ user_email or 'spoc@snpsu.edu.in' }}</p>
-
-        {% set up = (user_profile if user_profile is defined and user_profile else {}) %}
-        <div class="portal-hero-meta-row">
-          <span class="portal-hero-meta-item">Employee ID : <strong>{{ up.get('usn') or 'SNPSU-FAC-042' }}</strong></span>
-          <span class="portal-hero-meta-sep">|</span>
-          <span class="portal-hero-meta-item">Department : <strong>{{ up.get('department') or 'Computer Science & Engineering' }}</strong></span>
-          <span class="portal-hero-meta-sep">|</span>
-          <span class="portal-hero-meta-item">Role : <strong>Club SPOC</strong></span>
-          <span class="portal-hero-meta-sep">|</span>
-          <span class="portal-hero-meta-item">College : <strong>{{ up.get('college') or 'Sapthagiri NPS University' }}</strong></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4. 3-WIDGET CARDS GRID -->
-    <section class="portal-widgets-grid" aria-label="SPOC Metrics">
-      <!-- Card 1: Total Events Hosted -->
-      <div class="portal-widget-card">
-        <div class="portal-widget-header">
-          <span>Events Hosted</span>
-        </div>
-        <div class="neo-pat-score-box">
-          <div class="neo-pat-score-label">Your Events</div>
-          <div class="neo-pat-score-value">{{ stats.total_events or 0 }}</div>
-        </div>
-      </div>
-
-      <!-- Card 2: Total Registrations -->
-      <div class="portal-widget-card">
-        <div class="portal-widget-header">
-          <span>Registrations</span>
-        </div>
-        <div class="neo-pat-score-box">
-          <div class="neo-pat-score-label">Total Signups</div>
-          <div class="neo-pat-score-value">{{ stats.total_regs or 0 }}</div>
-        </div>
-      </div>
-
-      <!-- Card 3: Attendance Turnout Donut & Bars -->
-      <div class="portal-widget-card">
-        <div class="portal-widget-header">
-          <span>Attendance Turnout</span>
-        </div>
-        <div class="solved-questions-layout">
-          <div class="donut-chart-box">
-            <svg viewBox="0 0 44 44">
-              <circle cx="22" cy="22" r="18" fill="none" stroke="#f1f5f9" stroke-width="3.5" />
-              {% set turnout_pct = ((stats.present_count / (stats.total_regs or 1)) * 100)|int if stats.total_regs else 0 %}
-              <circle cx="22" cy="22" r="18" fill="none" stroke="var(--lms-blue)" stroke-width="3.5" stroke-linecap="round"
-                      stroke-dasharray="113" stroke-dashoffset="{{ 113 - (turnout_pct * 113 // 100) }}" />
-            </svg>
-            <div class="donut-chart-center">
-              <div class="donut-chart-center-num">{{ stats.present_count or 0 }}/{{ stats.total_regs or 0 }}</div>
-              <div class="donut-chart-center-sub">Attended</div>
-            </div>
-          </div>
-
-          <div class="category-bars-list">
-            <div class="category-bar-item">
-              <div class="category-bar-header">
-                <span>Present</span>
-                <span>{{ stats.present_count or 0 }}</span>
-              </div>
-              <div class="category-bar-progress">
-                <div class="category-bar-fill" style="width: {{ turnout_pct }}%; background: var(--lms-green);"></div>
-              </div>
-            </div>
-
-            <div class="category-bar-item">
-              <div class="category-bar-header">
-                <span>Registered</span>
-                <span>{{ stats.total_regs or 0 }}</span>
-              </div>
-              <div class="category-bar-progress">
-                <div class="category-bar-fill" style="width: 100%; background: var(--lms-blue);"></div>
-              </div>
-            </div>
-
-            <div class="category-bar-item">
-              <div class="category-bar-header">
-                <span>Staff &amp; Volunteers</span>
-                <span>{{ stats.staff_count or 0 }}</span>
-              </div>
-              <div class="category-bar-progress">
-                <div class="category-bar-fill" style="width: {{ [stats.staff_count * 10, 100]|min }}%; background: var(--lms-amber);"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Master-Detail Grid Container -->
-    <div class="dashboard-layout">
+<div class="container-fluid px-3 px-sm-4 py-3">
+  <!-- Master-Detail Grid Container -->
+  <div class="dashboard-layout">
     
     <!-- LEFT COLUMN: SIDEBAR -->
     <div class="sidebar-column" id="tour-sidebar">
@@ -2784,9 +2226,9 @@ h1, h2, h3, h4, h5, h6 {
         {% endfor %}
       {% endif %}
       
-  </div>
+  </div><!-- /dashboard-layout -->
 
-</main></div><!-- /portal-main-wrapper -->
+</div><!-- /container-fluid -->
 
 <!-- Hidden form for End Event POST -->
 <form id="end-event-form" method="POST" style="display:none;">

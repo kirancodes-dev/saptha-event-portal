@@ -72,24 +72,6 @@ h1, h2, h3, h4, h5, h6 {
   text-decoration: none;
 }
 .portal-top-ribbon-brand:hover { color: #fff; }
-.portal-top-ribbon-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 13px;
-  color: #9ca3af;
-}
-.portal-top-ribbon-actions a,
-.portal-top-ribbon-actions button {
-  color: #9ca3af;
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-.portal-top-ribbon-actions a:hover,
-.portal-top-ribbon-actions button:hover { color: #ffffff; }
 
 /* ── SECONDARY WHITE NAVBAR ── */
 .portal-secondary-navbar {
@@ -570,8 +552,8 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
 }
 
-/* Neo-PAT Score Box */
-.neo-pat-score-box {
+/* Performance Metric Score Box */
+.score-metric-box {
   background: #f8fafc;
   border: 1px solid #f1f5f9;
   border-radius: 12px;
@@ -579,21 +561,21 @@ h1, h2, h3, h4, h5, h6 {
   width: 140px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.02);
 }
-.neo-pat-score-label {
+.score-metric-label {
   font-size: 13px;
   font-weight: 600;
   color: var(--lms-text-muted);
   margin-bottom: 6px;
 }
-.neo-pat-score-value {
+.score-metric-value {
   font-size: 34px;
   font-weight: 800;
   color: var(--lms-text-main);
   line-height: 1;
 }
 
-/* Neo-Colab Empty State */
-.neo-colab-empty {
+/* Empty Metric State */
+.empty-metric-box {
   flex: 1;
   display: flex;
   align-items: center;
@@ -606,15 +588,15 @@ h1, h2, h3, h4, h5, h6 {
   padding: 20px 0;
 }
 
-/* Solved Questions Donut & Bars */
-.solved-questions-layout {
+/* Attendance Metric Layout */
+.attendance-metric-layout {
   display: flex;
   align-items: center;
   gap: 28px;
   flex: 1;
 }
 @media (max-width: 500px) {
-  .solved-questions-layout {
+  .attendance-metric-layout {
     flex-direction: column;
     align-items: center;
   }
@@ -882,12 +864,10 @@ h1, h2, h3, h4, h5, h6 {
 <header class="portal-top-ribbon">
   <a href="/" class="portal-top-ribbon-brand">
     <i class="fas fa-university" style="color: #60a5fa;"></i>
-    <span>Sapthagiri</span>
+    <span>Sapthagiri NPS University</span>
   </a>
-  <div class="portal-top-ribbon-actions">
-    <span title="Language"><i class="fas fa-globe"></i></span>
-    <span title="Full Screen"><i class="fas fa-expand"></i></span>
-    <span title="Menu"><i class="fas fa-ellipsis-v"></i></span>
+  <div style="font-size: 12px; color: #9ca3af; font-weight: 500;">
+    <span>Academic Portal · 2025–26</span>
   </div>
 </header>
 
@@ -915,33 +895,25 @@ h1, h2, h3, h4, h5, h6 {
       <i class="fas fa-th-large"></i>
       <span>Dashboard</span>
     </a>
-    <a href="/" class="portal-rail-item" title="Events & Courses">
-      <i class="fas fa-book-open"></i>
-      <span>Courses</span>
+    <a href="/" class="portal-rail-item" title="Events Catalog">
+      <i class="fas fa-calendar-check"></i>
+      <span>Events</span>
     </a>
-    <a href="/#hackathons" class="portal-rail-item" title="Contest & Hackathons">
-      <i class="fas fa-trophy"></i>
-      <span>Contest</span>
-    </a>
-    <a href="/#workshops" class="portal-rail-item" title="Assessments & Workshops">
-      <i class="fas fa-clipboard-check"></i>
-      <span>Assessments</span>
-    </a>
-    <a href="/#drives" class="portal-rail-item" title="Company Specific Tests & Drives">
-      <i class="fas fa-briefcase"></i>
-      <span>Drives</span>
-    </a>
-    <a href="/#practices" class="portal-rail-item" title="Practices">
-      <i class="fas fa-hands-helping"></i>
-      <span>Practices</span>
+    <a href="/participant/dashboard#tickets-section" class="portal-rail-item" title="My Tickets">
+      <i class="fas fa-ticket-alt"></i>
+      <span>Tickets</span>
     </a>
     <a href="/calendar" class="portal-rail-item" title="Event Calendar">
       <i class="fas fa-calendar-alt"></i>
       <span>Calendar</span>
     </a>
     <a href="/participant/leaderboard/hacksaptha-2026-flagship" class="portal-rail-item" title="Leaderboard">
-      <i class="fas fa-chart-bar"></i>
-      <span>Leaderboard</span>
+      <i class="fas fa-trophy"></i>
+      <span>Ranks</span>
+    </a>
+    <a href="/profile/" class="portal-rail-item" title="My Profile">
+      <i class="fas fa-user-circle"></i>
+      <span>Profile</span>
     </a>
   </nav>
 
@@ -962,12 +934,12 @@ h1, h2, h3, h4, h5, h6 {
     <span>Dashboard</span>
   </a>
   <a href="/" class="portal-mobile-nav-item">
-    <i class="fas fa-book-open"></i>
-    <span>Courses</span>
+    <i class="fas fa-calendar-check"></i>
+    <span>Events</span>
   </a>
-  <a href="/#hackathons" class="portal-mobile-nav-item">
-    <i class="fas fa-trophy"></i>
-    <span>Contest</span>
+  <a href="/participant/dashboard#tickets-section" class="portal-mobile-nav-item">
+    <i class="fas fa-ticket-alt"></i>
+    <span>Tickets</span>
   </a>
   <a href="/calendar" class="portal-mobile-nav-item">
     <i class="fas fa-calendar-alt"></i>
@@ -986,7 +958,7 @@ h1, h2, h3, h4, h5, h6 {
   <header class="portal-secondary-navbar">
     <div class="portal-search-wrap">
       <i class="fas fa-search search-icon"></i>
-      <input type="text" class="portal-search-input" placeholder="Search" aria-label="Search" data-h-click="participant/dashboard:2">
+      <input type="text" class="portal-search-input" placeholder="Search events..." aria-label="Search" data-h-click="participant/dashboard:2">
     </div>
 
     <div class="portal-header-right">
@@ -1015,11 +987,6 @@ h1, h2, h3, h4, h5, h6 {
         </div>
       </div>
 
-      <!-- Cart / Browse Icon -->
-      <a href="/" class="portal-icon-btn" title="Browse Events" aria-label="Cart">
-        <i class="fas fa-shopping-cart" style="font-size: 15px;"></i>
-      </a>
-
       <!-- Profile Dropdown -->
       <div class="dropdown">
         <button class="portal-user-dropdown-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -1047,11 +1014,12 @@ h1, h2, h3, h4, h5, h6 {
 
     <!-- 1. CATEGORY PILLS FILTER -->
     <div class="portal-filter-pills" role="tablist">
-      <a href="#events" class="portal-pill-btn active">Skill</a>
-      <a href="#courses" class="portal-pill-btn">Course</a>
-      <a href="#drives" class="portal-pill-btn">Drives</a>
-      <a href="#hackathons" class="portal-pill-btn">Contest</a>
-      <a href="#past" class="portal-pill-btn">Certificates</a>
+      <button type="button" class="portal-pill-btn active" data-filter="all">All Tickets</button>
+      <button type="button" class="portal-pill-btn" data-filter="active">Upcoming</button>
+      <button type="button" class="portal-pill-btn" data-filter="technical">Technical</button>
+      <button type="button" class="portal-pill-btn" data-filter="cultural">Cultural</button>
+      <button type="button" class="portal-pill-btn" data-filter="sports">Sports</button>
+      <button type="button" class="portal-pill-btn" data-filter="certificates">Certificates</button>
     </div>
 
     <!-- 2. DASHBOARD HEADER & LAST UPDATED -->
@@ -1093,21 +1061,26 @@ h1, h2, h3, h4, h5, h6 {
 
     <!-- 4. 3-WIDGET CARDS GRID -->
     <section class="portal-widgets-grid" aria-label="Performance Metrics">
-      <!-- Card 1: Neo-PAT (Score) -->
+      <!-- Card 1: Activity Score & Points -->
       <div class="portal-widget-card">
         <div class="portal-widget-header">
-          <span>Neo-PAT</span>
+          <span>Activity Score</span>
+          <span class="badge bg-light text-primary border" style="font-size:11px;">Points</span>
         </div>
-        <div class="neo-pat-score-box">
-          <div class="neo-pat-score-label">Your Score</div>
-          <div class="neo-pat-score-value">{{ user_xp or 20 }}</div>
+        <div class="score-metric-box">
+          <div class="score-metric-label">Total Points</div>
+          <div class="score-metric-value">{{ user_xp or 0 }}</div>
+        </div>
+        <div class="mt-2 text-muted" style="font-size:12px;">
+          <i class="fas fa-medal me-1" style="color:var(--lms-amber);"></i> Level {{ ((user_xp or 0) // 100) + 1 }} · Activity Tier
         </div>
       </div>
 
-      <!-- Card 2: Neo-Colab (Courses / Events) -->
+      <!-- Card 2: Registered Events -->
       <div class="portal-widget-card">
         <div class="portal-widget-header">
-          <span>Neo-Colab</span>
+          <span>My Registrations</span>
+          <span class="badge bg-light text-secondary border" style="font-size:11px;">{{ active_tickets|length }} Active</span>
         </div>
         {% if active_tickets %}
         <div class="d-flex flex-column gap-2" style="max-height: 140px; overflow-y: auto;">
@@ -1116,33 +1089,35 @@ h1, h2, h3, h4, h5, h6 {
             <div style="font-size: 13px; font-weight: 700; color: var(--lms-text-main); max-width: 160px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
               {{ t.event_title }}
             </div>
-            <span class="ticket-chip ticket-chip-upcoming" style="font-size: 11px;">Active</span>
+            <span class="ticket-chip ticket-chip-upcoming" style="font-size: 11px;">Registered</span>
           </div>
           {% endfor %}
         </div>
         {% else %}
-        <div class="neo-colab-empty">
-          No Colab Courses Taken
+        <div class="empty-metric-box" style="font-size:14px;color:var(--lms-text-muted);">
+          <span>No upcoming registrations.<br><a href="/" style="font-size:12.5px;color:var(--lms-blue);font-weight:700;">Explore Events →</a></span>
         </div>
         {% endif %}
       </div>
 
-      <!-- Card 3: Solved Questions (Progress Donut & Categories) -->
+      <!-- Card 3: Event Attendance Breakdown -->
       <div class="portal-widget-card">
         <div class="portal-widget-header">
-          <span>Solved Questions</span>
+          <span>Event Attendance</span>
+          <span class="badge bg-light text-success border" style="font-size:11px;">Verified</span>
         </div>
-        <div class="solved-questions-layout">
+        <div class="attendance-metric-layout">
           <!-- Donut Progress Ring -->
           <div class="donut-chart-box">
             <svg viewBox="0 0 44 44">
               <circle cx="22" cy="22" r="18" fill="none" stroke="#f1f5f9" stroke-width="3.5" />
+              {% set turn_pct = ((attended_count / (total_regs_count or 1)) * 100)|int if total_regs_count else 0 %}
               <circle cx="22" cy="22" r="18" fill="none" stroke="var(--lms-blue)" stroke-width="3.5" stroke-linecap="round"
-                      stroke-dasharray="113" stroke-dashoffset="40" />
+                      stroke-dasharray="113" stroke-dashoffset="{{ 113 - (turn_pct * 113 // 100) }}" />
             </svg>
             <div class="donut-chart-center">
-              <div class="donut-chart-center-num">{{ attended_count or 33 }}/{{ total_regs_count if (total_regs_count is defined and total_regs_count > 0) else 52 }}</div>
-              <div class="donut-chart-center-sub">Questions</div>
+              <div class="donut-chart-center-num">{{ attended_count or 0 }}/{{ total_regs_count or 0 }}</div>
+              <div class="donut-chart-center-sub">Events</div>
             </div>
           </div>
 
@@ -1150,31 +1125,34 @@ h1, h2, h3, h4, h5, h6 {
           <div class="category-bars-list">
             <div class="category-bar-item">
               <div class="category-bar-header">
-                <span>Easy</span>
-                <span>{{ cc.get('technical', 32) if cc.get('technical') else '32' }}/49</span>
+                <span>Technical</span>
+                <span>{{ cc.get('technical', 0) }}</span>
               </div>
               <div class="category-bar-progress">
-                <div class="category-bar-fill" style="width: 65%; background: var(--lms-green);"></div>
+                {% set tech_pct = [(cc.get('technical', 0) * 25), 100]|min %}
+                <div class="category-bar-fill" style="width: {{ tech_pct }}%; background: var(--lms-blue);"></div>
               </div>
             </div>
 
             <div class="category-bar-item">
               <div class="category-bar-header">
-                <span>Medium</span>
-                <span>{{ cc.get('cultural', 1) if cc.get('cultural') else '1' }}/3</span>
+                <span>Cultural</span>
+                <span>{{ cc.get('cultural', 0) }}</span>
               </div>
               <div class="category-bar-progress">
-                <div class="category-bar-fill" style="width: 33%; background: var(--lms-amber);"></div>
+                {% set cult_pct = [(cc.get('cultural', 0) * 25), 100]|min %}
+                <div class="category-bar-fill" style="width: {{ cult_pct }}%; background: var(--lms-amber);"></div>
               </div>
             </div>
 
             <div class="category-bar-item">
               <div class="category-bar-header">
-                <span>Hard</span>
-                <span>{{ cc.get('sports', '-') if cc.get('sports') else '-' }}</span>
+                <span>Sports</span>
+                <span>{{ cc.get('sports', 0) }}</span>
               </div>
               <div class="category-bar-progress">
-                <div class="category-bar-fill" style="width: 0%; background: #94a3b8;"></div>
+                {% set sport_pct = [(cc.get('sports', 0) * 25), 100]|min %}
+                <div class="category-bar-fill" style="width: {{ sport_pct }}%; background: var(--lms-green);"></div>
               </div>
             </div>
           </div>
@@ -1247,7 +1225,7 @@ h1, h2, h3, h4, h5, h6 {
 
       {% if active_tickets %}
       {% for reg in active_tickets %}
-      <div class="ticket-card-lms">
+      <div class="ticket-card-lms" data-ticket="active" data-category="{{ (reg.event_cat or reg.category or 'technical')|lower }}">
         <div class="ticket-header-lms">
           <div style="flex:1;min-width:0;">
             <h4 style="font-size:16px;font-weight:700;color:var(--lms-text-main);margin:0 0 6px;">{{ reg.event_title }}</h4>
@@ -1381,7 +1359,7 @@ h1, h2, h3, h4, h5, h6 {
 
       <div class="row g-3">
         {% for reg in completed_events %}
-        <div class="col-md-6">
+        <div class="col-md-6 past-event-card" data-ticket="past" data-category="{{ (reg.event_cat or reg.category or 'technical')|lower }}" data-cert="{{ 'true' if reg.cert_eligible else 'false' }}">
           <div style="background:#ffffff;border:1px solid var(--lms-border);border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
             <div>
               <div style="font-weight:700;font-size:14px;color:var(--lms-text-main);">{{ reg.event_title }}</div>
@@ -1640,6 +1618,53 @@ function claimPayout() {
 
 function togglePushSubscription(el) { /* push stub */ }
 function toggleTheme() { /* theme stub */ }
+
+/* Category Pill Filtering */
+document.querySelectorAll('.portal-pill-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.portal-pill-btn').forEach(function(b) { b.classList.remove('active'); });
+    this.classList.add('active');
+    var filter = this.getAttribute('data-filter') || 'all';
+    var activeTickets = document.querySelectorAll('.ticket-card-lms');
+    var pastCards = document.querySelectorAll('.past-event-card');
+    var pastSection = document.getElementById('past');
+    var ticketsSection = document.getElementById('tickets-section');
+
+    if (filter === 'all') {
+      activeTickets.forEach(function(t) { t.style.display = ''; });
+      pastCards.forEach(function(p) { p.style.display = ''; });
+      if (ticketsSection) ticketsSection.style.display = '';
+      if (pastSection) pastSection.style.display = '';
+    } else if (filter === 'active') {
+      activeTickets.forEach(function(t) { t.style.display = ''; });
+      if (ticketsSection) ticketsSection.style.display = '';
+      if (pastSection) pastSection.style.display = 'none';
+    } else if (filter === 'certificates') {
+      if (ticketsSection) ticketsSection.style.display = 'none';
+      if (pastSection) {
+        pastSection.style.display = '';
+        pastCards.forEach(function(p) {
+          p.style.display = (p.getAttribute('data-cert') === 'true') ? '' : 'none';
+        });
+        pastSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      // Technical, Cultural, Sports
+      if (ticketsSection) ticketsSection.style.display = '';
+      activeTickets.forEach(function(t) {
+        var c = (t.getAttribute('data-category') || '').toLowerCase();
+        t.style.display = (c.indexOf(filter) !== -1) ? '' : 'none';
+      });
+      if (pastSection) {
+        pastSection.style.display = '';
+        pastCards.forEach(function(p) {
+          var c = (p.getAttribute('data-category') || '').toLowerCase();
+          p.style.display = (c.indexOf(filter) !== -1) ? '' : 'none';
+        });
+      }
+    }
+  });
+});
 </script>
 {% endblock %}
 {% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/participant__dashboard.js"></script>{% endblock %}

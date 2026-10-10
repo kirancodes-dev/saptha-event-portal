@@ -422,6 +422,27 @@ csrf.exempt(razorpay_webhook)
 csrf.exempt(cron_bp)
 
 
+@app.context_processor
+def inject_auth_features():
+    google_configured = bool(
+        app.config.get('OAUTH_GOOGLE_CLIENT_ID')
+        or app.config.get('GOOGLE_CLIENT_ID')
+    )
+    twofa_available = bool(app.config.get('TWO_FA_AVAILABLE', True))
+    try:
+        import pyotp
+        import qrcode
+        if pyotp is None or qrcode is None:
+            twofa_available = False
+    except Exception:
+        twofa_available = False
+
+    return {
+        'google_oauth_configured': google_configured,
+        'twofa_available': twofa_available,
+    }
+
+
 
 # =========================================================
 # ROLE → DASHBOARD MAP  (defined in utils.py — imported above)

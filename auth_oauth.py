@@ -32,7 +32,7 @@ GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 @oauth_bp.route("/google")
 def google_login():
     """Redirect to Google OAuth consent screen."""
-    client_id = current_app.config.get("OAUTH_GOOGLE_CLIENT_ID")
+    client_id = current_app.config.get("OAUTH_GOOGLE_CLIENT_ID") or current_app.config.get("GOOGLE_CLIENT_ID")
     if not client_id:
         flash("Google login is not configured for this instance.", "warning")
         return redirect("/login")

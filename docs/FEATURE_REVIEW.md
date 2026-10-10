@@ -2012,8 +2012,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Verify running `scripts/configure_capacitor.py` with `BASE_URL=https://events.example.edu` sets `url` to `https://events.example.edu` and `allowNavigation` to `["events.example.edu"]`.
 
 #### UPG-55 — Google sign-in and 2FA exist but nothing links to them
-- **Status:** TODO
-- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-55: …" on `production-ready` (parent `2acf8a5`)
+- **Evidence:** `app.py:425-443`, `templates/login.html:206-215`, `templates/profile/dashboard.html:238-285`, `auth_oauth.py:35`, `auth_2fa.py:169-181`
 - **Problem:** [C] `auth_oauth.py` serves `/auth/google` and `auth_2fa.py` serves `/auth/2fa/*`, but no template links to either (`grep -rn 'auth/google\|auth/2fa' templates` finds nothing). Users can't find them. (The matchmaker's `MOCK_STUDENTS`, also on the launch list, is already UPG-14 criterion 4.)
 - **Who benefits:** every user (one-click login, a second factor for staff accounts).
 - **What to build:** a "Sign in with Google" button on the login page only when Google OAuth is configured; a "Two-factor authentication" section on the profile page (set up / turn off) only when 2FA is available. UPG-10 later restricts Google sign-in to the university domain.
@@ -2022,6 +2023,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: with Google OAuth configured, the login page links `/auth/google`; without it, it doesn't.
   2. Test: the profile page links the 2FA set-up when 2FA is available and not when it isn't.
+- **To test later:**
+  - Verify `/login` displays the "Sign in with Google" button linking `/auth/google` when `OAUTH_GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_ID` is set, and omits it when empty.
+  - Verify `/profile/` displays the 2FA section with "Set Up 2FA" linking `/auth/2fa/setup` when 2FA dependencies are available, and omits the section when unavailable.
 
 #### UPG-56 — Checkout has no coupon field
 - **Status:** TODO
@@ -2246,6 +2250,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-28: …" (parent `68cafdf`) | UPG-28 | **UPG-28 BUILT (untested).** Global mobile responsive overflow safeguard in `templates/layouts/document.html` (`max-width: 100%; overflow-x: hidden;`); responsive certificate container scaling on mobile viewports; verified student journey templates (home, details, registration, payment checkout, ticket, feedback, certificate) and scanner templates on 375px phone layout. ruff clean; app starts. |
 | 2026-10-10 | "UPG-53: …" (parent `486bc08`) | UPG-53 | **UPG-53 BUILT (untested).** Removed hard-coded `demo-hackathon-2026` fallback from `app.py`. With no events, `/` passes `events = []` and renders the template's clean empty state instead of a fake hackathon. ruff clean; app starts. |
 | 2026-10-10 | "UPG-54: …" (parent `7c0bd90`) | UPG-54 | **UPG-54 BUILT (untested).** Android Capacitor webview config generated from `BASE_URL` at build time (`scripts/configure_capacitor.py`, `npm run cap:config`); retired Railway host removed from `capacitor.config.json`; `allowNavigation` restricted strictly to configured host; documented in `docs/DEPLOY.md`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-55: …" (parent `2acf8a5`) | UPG-55 | **UPG-55 BUILT (untested).** Google sign-in linked on `/login` only when Google OAuth is configured (`google_oauth_configured` context processor); TOTP Two-Factor Authentication management (setup link / disable modal) displayed on `/profile/` when 2FA dependencies are available (`twofa_available`). ruff clean; app starts. |
 
 
 

@@ -52,6 +52,48 @@ def _save_members(reg_id, members):
     db.collection('registrations').document(reg_id).update({'members': members, 'member_count': len(members)})
 
 
+def _add_member(reg_id, member, team_max):
+    """Add one member atomically: 'added', 'already' or 'full' (UPG-52).
+
+    On the SQL layer the registration row is locked (SELECT ... FOR UPDATE on
+    PostgreSQL) while its member rows are counted and the new one inserted, so
+    two people joining at once can neither overwrite each other nor push the
+    team past team_max. Firestore mode (legacy) keeps the read-then-write."""
+    from db_adapter import SQLFirestoreAdapter
+    if not isinstance(db, SQLFirestoreAdapter):
+        doc = db.collection('registrations').document(reg_id).get()
+        members = list((doc.to_dict() or {}).get('members') or [])
+        if any(_email(m) == _email(member) for m in members):
+            return 'already'
+        if len(members) >= team_max:
+            return 'full'
+        _save_members(reg_id, members + [member])
+        return 'added'
+
+    import json
+    import uuid
+    from sqlalchemy.orm import Session
+    from db_adapter import to_uuid
+    from db_pg import get_engine
+    from models_pg import Registration, TeamMember
+    with Session(get_engine()) as s, s.begin():
+        reg = (s.query(Registration).filter(Registration.id == to_uuid(reg_id))
+                .with_for_update().one_or_none())
+        if reg is None:
+            return 'full'
+        rows = s.query(TeamMember).filter(TeamMember.registration_id == reg.id).all()
+        if any((r.email or '').strip().lower() == _email(member) for r in rows):
+            return 'already'
+        if len(rows) >= team_max:
+            return 'full'
+        s.add(TeamMember(id=uuid.uuid4(), registration_id=reg.id, name=member.get('name') or 'Unknown',
+                         email=member.get('email', ''), phone=member.get('phone', ''),
+                         usn=member.get('usn', ''), extra_json=json.dumps(member)))
+        count = len(rows) + 1
+    db.collection('registrations').document(reg_id).update({'member_count': count})
+    return 'added'
+
+
 @teams_bp.route('/create/<event_id>', methods=['GET', 'POST'])
 def create_team(event_id):
     """A team is created by registering it through the event's form."""
@@ -94,9 +136,16 @@ def join_team():
 
     profile_doc = db.collection('users').document(me).get()
     profile = (profile_doc.to_dict() or {}) if profile_doc.exists else {}
-    members.append({'role': 'Member', 'email': me, 'name': profile.get('name') or session.get('name', ''),
-                    'usn': (profile.get('usn') or '').upper(), 'phone': profile.get('phone', '')})
-    _save_members(reg_id, members)
+    member = {'role': 'Member', 'email': me, 'name': profile.get('name') or session.get('name', ''),
+              'usn': (profile.get('usn') or '').upper(), 'phone': profile.get('phone', '')}
+    # The checks above are re-made atomically while adding (UPG-52)
+    added = _add_member(reg_id, member, team_max)
+    if added == 'full':
+        flash(f"This team is full ({team_max} people).", "warning")
+        return redirect('/teams/join')
+    if added == 'already':
+        flash("You're already on this team.", "info")
+        return redirect(f'/teams/{reg_id}')
     log_action(db, "TEAM_JOIN", f"{me} joined {reg.get('team_name')} ({reg_id})")
     flash(f"You joined {reg.get('team_name')}. Your ticket is on the team page.", "success")
     return redirect(f'/teams/{reg_id}')

@@ -23,6 +23,12 @@ from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_S
 logger = logging.getLogger(__name__)
 
 
+def _e(value) -> str:
+    """Escape a value put into an email's HTML (UPG-50)."""
+    import html as _html
+    return _html.escape(str(value if value is not None else ''))
+
+
 @celery.task(
     bind=True,
     queue='default',
@@ -152,24 +158,24 @@ def send_24h_reminders(self):
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;max-width:560px;">
   <tr><td style="background:#1a2557;padding:28px 32px 22px;border-radius:14px 14px 0 0;">
     <div style="display:inline-block;background:#c9a45e;color:#fff;font-size:10px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:100px;margin-bottom:10px;">COORDINATOR BRIEFING</div>
-    <h2 style="margin:0;font-size:20px;color:#fff;">{title}</h2>
+    <h2 style="margin:0;font-size:20px;color:#fff;">{_e(title)}</h2>
     <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,.7);">Happening Tomorrow</p>
   </td></tr>
   <tr><td style="padding:28px 32px;">
-    <p style="font-size:15px;color:#1e293b;">Hello <strong>{coord_name}</strong>,</p>
-    <p style="font-size:14px;color:#475569;line-height:1.6;">You are assigned as Event Coordinator for <strong>{title}</strong> happening <strong>tomorrow</strong>. Here is your event briefing.</p>
+    <p style="font-size:15px;color:#1e293b;">Hello <strong>{_e(coord_name)}</strong>,</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">You are assigned as Event Coordinator for <strong>{_e(title)}</strong> happening <strong>tomorrow</strong>. Here is your event briefing.</p>
     <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin:20px 0;">
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Date &amp; Time</span><br>
-        <strong style="color:#1a2557;">📅 {date_str} &nbsp;⏰ {time_str}</strong>
+        <strong style="color:#1a2557;">📅 {_e(date_str)} &nbsp;⏰ {_e(time_str)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Venue</span><br>
-        <strong style="color:#1a2557;">📍 {venue}</strong>
+        <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Registered Participants</span><br>
-        <strong style="color:#1a2557;">👥 {cap_line}</strong>
+        <strong style="color:#1a2557;">👥 {_e(cap_line)}</strong>
       </td></tr>
     </table>
     <p style="font-size:13px;font-weight:700;color:#1a2557;margin-bottom:10px;">📋 Day-of Checklist</p>
@@ -300,18 +306,18 @@ def send_3day_reminders(self):
     <h2 style="margin:0;font-size:18px;color:#fff;">📅 Your Event is in 3 Days!</h2>
   </td></tr>
   <tr><td style="padding:28px 32px;">
-    <p style="font-size:15px;color:#1e293b;">Hello <strong>{name}</strong>,</p>
+    <p style="font-size:15px;color:#1e293b;">Hello <strong>{_e(name)}</strong>,</p>
     <p style="font-size:14px;color:#475569;">
-      <strong>{event_title}</strong> is happening in just 3 days.
+      <strong>{_e(event_title)}</strong> is happening in just 3 days.
     </p>
     <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
       <tr><td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Date</span><br>
-        <strong style="color:#1a2557;">📅 {event_date}</strong>
+        <strong style="color:#1a2557;">📅 {_e(event_date)}</strong>
       </td></tr>
       <tr><td style="padding:14px 20px;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Venue</span><br>
-        <strong style="color:#1a2557;">📍 {venue}</strong>
+        <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
       </td></tr>
     </table>
     <p style="font-size:13px;color:#64748b;">
@@ -440,8 +446,8 @@ def check_registration_velocity(self):
   <tr><td style="padding:28px 32px;">
     <p style="font-size:15px;color:#1e293b;">Hello,</p>
     <p style="font-size:14px;color:#475569;line-height:1.6;">
-      Your event <strong style="color:#1a2557;">{title}</strong> has its registration deadline
-      on <strong>{reg_deadline}</strong>, but registrations are below the expected threshold.
+      Your event <strong style="color:#1a2557;">{_e(title)}</strong> has its registration deadline
+      on <strong>{_e(reg_deadline)}</strong>, but registrations are below the expected threshold.
     </p>
     <table width="100%" style="background:#fff8f0;border-radius:10px;border:1px solid #fde68a;
            margin:20px 0;border-left:4px solid #c9a45e;">
@@ -449,21 +455,21 @@ def check_registration_velocity(self):
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;letter-spacing:.5px;">
           Current Fill Rate
         </span><br>
-        <strong style="font-size:18px;color:#1a2557;">{fill_display}</strong>
+        <strong style="font-size:18px;color:#1a2557;">{_e(fill_display)}</strong>
       </td></tr>
     </table>
     <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Reg Deadline</span><br>
-        <strong style="color:#1a2557;">📅 {reg_deadline}</strong>
+        <strong style="color:#1a2557;">📅 {_e(reg_deadline)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Event Date</span><br>
-        <strong style="color:#1a2557;">🗓 {event_date}</strong>
+        <strong style="color:#1a2557;">🗓 {_e(event_date)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Venue</span><br>
-        <strong style="color:#1a2557;">📍 {venue}</strong>
+        <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
       </td></tr>
     </table>
     <p style="font-size:14px;color:#1e293b;font-weight:600;margin-bottom:8px;">
@@ -472,11 +478,11 @@ def check_registration_velocity(self):
     <table width="100%" style="background:#f1f5f9;border-radius:10px;margin-bottom:20px;">
       <tr><td style="padding:14px 18px;font-family:monospace;font-size:13px;
               color:#1a2557;word-break:break-all;">
-        {reg_link}
+        {_e(reg_link)}
       </td></tr>
     </table>
     <table><tr><td>
-      <a href="{reg_link}"
+      <a href="{_e(reg_link)}"
          style="display:inline-block;padding:12px 28px;background:#c9a45e;color:#fff;
                 font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;">
         View Event Page →

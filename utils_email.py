@@ -119,6 +119,13 @@ def _update_delivery_status(to_email: str, status: str, reg_id: str | None = Non
         logger.warning("Failed to update email delivery status: %s", exc)
 
 
+def _e(value) -> str:
+    """Escape a value put into an email's HTML (UPG-50): names, titles,
+    venues and messages are text, never markup."""
+    import html as _html
+    return _html.escape(str(value if value is not None else ''))
+
+
 def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
     logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip()
     if not logo_url:
@@ -480,25 +487,25 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
             🔑 Your Login Credentials</p>
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr><td style="color:#64748b;padding:4px 0;width:30%;">Email</td>
-                <td style="font-weight:700;color:#1a2557;">{to_email}</td></tr>
+                <td style="font-weight:700;color:#1a2557;">{_e(to_email)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Password</td>
                 <td style="font-family:monospace;font-weight:700;color:#c9a227;
-                           letter-spacing:1px;">{raw_password}</td></tr>
+                           letter-spacing:1px;">{_e(raw_password)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Login</td>
-                <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">{base}/login</a></td></tr>
+                <td><a href="{_e(base)}/login" style="color:#1a2557;font-weight:700;">{_e(base)}/login</a></td></tr>
           </table>
           <p style="color:#ef4444;font-size:12px;margin:10px 0 0;font-weight:600;">
             ⚠️ Change your password after first login.</p>
         </div>"""
     details = ""
     if event_date:
-        details += f"<tr><td style='color:#64748b;padding:4px 0;width:30%;'>Date</td><td style='font-weight:600;color:#1a2557;'>📅 {event_date}</td></tr>"
+        details += f"<tr><td style='color:#64748b;padding:4px 0;width:30%;'>Date</td><td style='font-weight:600;color:#1a2557;'>📅 {_e(event_date)}</td></tr>"
     if venue:
-        details += f"<tr><td style='color:#64748b;padding:4px 0;'>Venue</td><td style='font-weight:600;color:#1a2557;'>📍 {venue}</td></tr>"
+        details += f"<tr><td style='color:#64748b;padding:4px 0;'>Venue</td><td style='font-weight:600;color:#1a2557;'>📍 {_e(venue)}</td></tr>"
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">Your registration for
-           <strong style="color:#1a2557;">{event_title}</strong> is confirmed!</p>
+           <strong style="color:#1a2557;">{_e(event_title)}</strong> is confirmed!</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:16px;margin:16px 0;">
           <p style="color:#166534;font-size:13px;margin:0 0 10px;font-weight:700;">
@@ -512,7 +519,7 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
           Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
           Keep an eye on your inbox!
         </p>
-    """, f"Registration Confirmed — {event_title}")
+    """, f"Registration Confirmed — {_e(event_title)}")
 
     atts = []
     if event_date:
@@ -548,27 +555,27 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
             🔑 Your Login Credentials</p>
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr><td style="color:#64748b;padding:4px 0;width:30%;">Email</td>
-                <td style="font-weight:700;color:#1a2557;">{to_email}</td></tr>
+                <td style="font-weight:700;color:#1a2557;">{_e(to_email)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Password</td>
                 <td style="font-family:monospace;font-weight:700;color:#c9a227;
-                           letter-spacing:1px;">{raw_password}</td></tr>
+                           letter-spacing:1px;">{_e(raw_password)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Login</td>
-                <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">
-                  {base}/login</a></td></tr>
+                <td><a href="{_e(base)}/login" style="color:#1a2557;font-weight:700;">
+                  {_e(base)}/login</a></td></tr>
           </table>
           <p style="color:#ef4444;font-size:12px;margin:10px 0 0;font-weight:600;">
             ⚠️ Change your password after first login.</p>
         </div>"""
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">You are successfully registered for
-           <strong style="color:#1a2557;">{event_title}</strong>.</p>
+           <strong style="color:#1a2557;">{_e(event_title)}</strong>.</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:16px;text-align:center;margin:16px 0;">
           <p style="color:#166534;font-size:13px;margin:0 0 6px;font-weight:700;">
             Your Ticket ID</p>
           <p style="font-family:monospace;font-size:22px;color:#1a2557;
-                    font-weight:700;margin:0;">{reg_id}</p>
+                    font-weight:700;margin:0;">{_e(reg_id)}</p>
         </div>
         {credentials_block}
         <p style="color:#475569;font-size:13px;">
@@ -576,13 +583,13 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
           {'Your QR code is attached.' if qr_bytes else ''}
         </p>
         <p style="margin-top:20px;">
-          <a href="{base}/participant/dashboard"
+          <a href="{_e(base)}/participant/dashboard"
              style="background:#1a2557;color:#fff;padding:10px 24px;
                     border-radius:8px;text-decoration:none;font-weight:700;">
             View My Dashboard →
           </a>
         </p>
-    """, f"Registration Confirmed — {event_title}")
+    """, f"Registration Confirmed — {_e(event_title)}")
 
     atts = []
     if qr_bytes:
@@ -630,43 +637,43 @@ def send_credentials_email(to_email: str, name: str, role: str,
                            password: str, category: str = '') -> bool:
     base = _base_url()
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">You have been appointed as
-           <strong style="color:#1a2557;">{role}</strong>
-           {f'for <strong>{category}</strong> events' if category else ''}.</p>
+           <strong style="color:#1a2557;">{_e(role)}</strong>
+           {f'for <strong>{_e(category)}</strong> events' if category else ''}.</p>
         <div style="background:#e8f0fe;border-radius:10px;padding:20px;margin:16px 0;">
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr>
               <td style="color:#64748b;padding:8px 0;width:30%;">Login URL</td>
-              <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">
-                {base}/login</a></td>
+              <td><a href="{_e(base)}/login" style="color:#1a2557;font-weight:700;">
+                {_e(base)}/login</a></td>
             </tr>
             <tr>
               <td style="color:#64748b;padding:8px 0;">Email</td>
-              <td style="font-weight:700;color:#1a2557;">{to_email}</td>
+              <td style="font-weight:700;color:#1a2557;">{_e(to_email)}</td>
             </tr>
             <tr>
               <td style="color:#64748b;padding:8px 0;">Password</td>
               <td style="font-family:monospace;font-size:20px;font-weight:700;
-                         color:#c9a227;letter-spacing:2px;">{password}</td>
+                         color:#c9a227;letter-spacing:2px;">{_e(password)}</td>
             </tr>
           </table>
         </div>
         <p style="color:#ef4444;font-size:13px;font-weight:600;">
           ⚠️ Change your password after first login.
         </p>
-    """, f"Your Login — {role}")
+    """, f"Your Login — {_e(role)}")
     return _send(to_email, f"🔐 Your SapthaEvent Login — {role}", html)
 
 
 def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name or 'User'}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name or 'User')}</strong>,</p>
         <p style="color:#475569;">We received a request to reset your
            SapthaEvent password. Click the button below to set a new one.
            This link expires in <strong>1 hour</strong>.</p>
         <p style="text-align:center;margin:24px 0;">
-          <a href="{reset_url}"
+          <a href="{_e(reset_url)}"
              style="background:#1a2557;color:#fff;padding:12px 32px;
                     border-radius:8px;text-decoration:none;font-weight:700;
                     display:inline-block;">
@@ -675,7 +682,7 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
         </p>
         <p style="color:#64748b;font-size:12px;">
           If the button doesn't work, copy this link into your browser:<br>
-          <span style="word-break:break-all;color:#1a2557;">{reset_url}</span>
+          <span style="word-break:break-all;color:#1a2557;">{_e(reset_url)}</span>
         </p>
         <p style="color:#ef4444;font-size:12px;margin-top:18px;">
           Didn't request this? You can safely ignore this email — your
@@ -692,12 +699,12 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
     one-time link to choose a password. No password is ever emailed (UPG-33)."""
     reason = reason or 'when you registered for an event'
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name or 'User'}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name or 'User')}</strong>,</p>
         <p style="color:#475569;">A SapthaEvent account was created for this
-           email {reason}. Choose a password to open your dashboard. This link
+           email {_e(reason)}. Choose a password to open your dashboard. This link
            works once and expires in <strong>3 days</strong>.</p>
         <p style="text-align:center;margin:24px 0;">
-          <a href="{set_password_url}"
+          <a href="{_e(set_password_url)}"
              style="background:#1a2557;color:#fff;padding:12px 32px;
                     border-radius:8px;text-decoration:none;font-weight:700;
                     display:inline-block;">
@@ -706,7 +713,7 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
         </p>
         <p style="color:#64748b;font-size:12px;">
           If the button doesn't work, copy this link into your browser:<br>
-          <span style="word-break:break-all;color:#1a2557;">{set_password_url}</span>
+          <span style="word-break:break-all;color:#1a2557;">{_e(set_password_url)}</span>
         </p>
         <p style="color:#ef4444;font-size:12px;margin-top:18px;">
           Not expecting this? You can ignore this email; nobody can log in to
@@ -756,18 +763,18 @@ def send_appointment_email(to_email: str, name: str, role: str,
                            event_title: str) -> bool:
     base = _base_url()
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">You have been appointed as
-           <strong style="color:#1a2557;">{role}</strong>
-           for <strong>{event_title}</strong>.</p>
+           <strong style="color:#1a2557;">{_e(role)}</strong>
+           for <strong>{_e(event_title)}</strong>.</p>
         <p style="margin-top:20px;">
-          <a href="{base}/login"
+          <a href="{_e(base)}/login"
              style="background:#c9a227;color:#fff;padding:10px 24px;
                     border-radius:8px;text-decoration:none;font-weight:700;">
             Login to Dashboard →
           </a>
         </p>
-    """, f"Appointment — {event_title}")
+    """, f"Appointment — {_e(event_title)}")
     return _send(to_email, f"📋 Appointed as {role} — {event_title}", html)
 
 
@@ -776,17 +783,17 @@ def send_result_email(to_email: str, name: str, event_title: str,
     rank_labels = {1: '🥇 1st Place', 2: '🥈 2nd Place', 3: '🥉 3rd Place'}
     rank_text   = rank_labels.get(rank, f'Rank {rank}')
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:24px;text-align:center;margin:16px 0;">
           <p style="font-size:32px;margin:0 0 6px;">{rank_text}</p>
           <p style="color:#1a2557;font-weight:700;font-size:16px;margin:0;">
-            Final Score: {score}</p>
+            Final Score: {_e(score)}</p>
         </div>
         <p style="color:#475569;">Congratulations in
-           <strong>{event_title}</strong>!
+           <strong>{_e(event_title)}</strong>!
            Your certificate is in a separate email.</p>
-    """, f"🏆 Results — {event_title}")
+    """, f"🏆 Results — {_e(event_title)}")
     return _send(to_email, f"🏆 Results — {event_title}", html)
 
 
@@ -805,7 +812,7 @@ def send_broadcast_email(to_list: list, subject: str,
                          message: str, event_title: str = '') -> bool:
     html = _html_wrapper(f"""
         <div style="color:#475569;font-size:14px;line-height:1.8;white-space:pre-line;">
-          {message}
+          {_e(message)}
         </div>
     """, subject)
     success = True
@@ -919,23 +926,23 @@ def send_room_assignment_email(to_email: str, name: str, event_title: str,
     details = ''
     if event_date:
         details += (f"<tr><td style='color:#64748b;padding:6px 0;width:30%;'>Date</td>"
-                    f"<td style='font-weight:600;color:#1a2557;'>📅 {event_date}</td></tr>")
+                    f"<td style='font-weight:600;color:#1a2557;'>📅 {_e(event_date)}</td></tr>")
     if event_time:
         details += (f"<tr><td style='color:#64748b;padding:6px 0;'>Time</td>"
-                    f"<td style='font-weight:600;color:#1a2557;'>🕐 {event_time}</td></tr>")
+                    f"<td style='font-weight:600;color:#1a2557;'>🕐 {_e(event_time)}</td></tr>")
     if venue:
         details += (f"<tr><td style='color:#64748b;padding:6px 0;'>Venue</td>"
-                    f"<td style='font-weight:600;color:#1a2557;'>📍 {venue}</td></tr>")
+                    f"<td style='font-weight:600;color:#1a2557;'>📍 {_e(venue)}</td></tr>")
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">Your room assignment for
-           <strong style="color:#1a2557;">{event_title}</strong> is confirmed.</p>
+           <strong style="color:#1a2557;">{_e(event_title)}</strong> is confirmed.</p>
         <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;
                     padding:24px;text-align:center;margin:16px 0;">
           <p style="color:#64748b;font-size:12px;margin:0 0 8px;font-weight:700;
                     text-transform:uppercase;letter-spacing:.5px;">Your Assigned Room</p>
           <p style="font-family:monospace;font-size:34px;font-weight:800;
-                    color:#15803d;margin:0;">{room_name}</p>
+                    color:#15803d;margin:0;">{_e(room_name)}</p>
         </div>
         <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:16px 0;">
           <table style="width:100%;font-size:14px;border-collapse:collapse;">{details}</table>
@@ -944,7 +951,7 @@ def send_room_assignment_email(to_email: str, name: str, event_title: str,
           Please report directly to your assigned room on the event day.
           Carry your QR ticket for check-in at the room entrance.
         </p>
-    """, f"Room Assignment — {event_title}")
+    """, f"Room Assignment — {_e(event_title)}")
     return _send(to_email, f"🏛️ Your Room: {room_name} — {event_title}", html)
 
 
@@ -957,26 +964,26 @@ def send_advancement_email(to_email: str, name: str, event_title: str,
         <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;
                     padding:16px;margin:12px 0;text-align:center;">
           <p style="color:#1d4ed8;font-size:11px;margin:0 0 6px;font-weight:700;
-                    text-transform:uppercase;letter-spacing:.5px;">Round {next_round} Room</p>
+                    text-transform:uppercase;letter-spacing:.5px;">Round {_e(next_round)} Room</p>
           <p style="font-family:monospace;font-size:26px;font-weight:800;
-                    color:#1a2557;margin:0;">{room_name}</p>
+                    color:#1a2557;margin:0;">{_e(room_name)}</p>
         </div>"""
     time_note = (f"<p style='color:#475569;font-size:13px;'>Report time: "
-                 f"<strong>{event_time}</strong></p>") if event_time else ''
+                 f"<strong>{_e(event_time)}</strong></p>") if event_time else ''
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;
                     padding:20px;text-align:center;margin:16px 0;">
           <p style="font-size:30px;margin:0 0 8px;">🎉</p>
           <p style="color:#15803d;font-weight:800;font-size:18px;margin:0 0 6px;">Congratulations!</p>
           <p style="color:#475569;margin:0;">You have advanced to
-             <strong>Round {next_round}</strong> of
-             <strong style="color:#1a2557;">{event_title}</strong>!</p>
+             <strong>Round {_e(next_round)}</strong> of
+             <strong style="color:#1a2557;">{_e(event_title)}</strong>!</p>
         </div>
         {room_block}
         {time_note}
         <p style="color:#475569;font-size:13px;">Keep up the great work — best of luck in the next round!</p>
-    """, f"Round {next_round} Advancement — {event_title}")
+    """, f"Round {_e(next_round)} Advancement — {_e(event_title)}")
     return _send(to_email, f"🎉 You advanced to Round {next_round}! — {event_title}", html)
 
 

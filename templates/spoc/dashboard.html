@@ -1588,7 +1588,7 @@ h1, h2, h3, h4, h5, h6 {
               <div class="d-flex gap-2 flex-wrap align-items-end">
                 <div style="flex: 0 1 250px;">
                   <label class="form-label" style="margin-bottom:6px; display:block;">Select Event</label>
-                  <select name="event_id" id="ann-event-select" class="form-select" style="font-size:13.5px;"
+                  <select aria-label="Select Event" name="event_id" id="ann-event-select" class="form-select" style="font-size:13.5px;"
                           data-h-change="spoc/dashboard:13">
                     {% for event in events %}
                     <option value="{{ event.id }}">{{ event.title[:30] }}</option>
@@ -1597,12 +1597,12 @@ h1, h2, h3, h4, h5, h6 {
                 </div>
                 <div style="flex: 1; min-width: 200px;">
                   <label class="form-label" style="margin-bottom:6px; display:block;">Announcement Message</label>
-                  <input type="text" name="message" placeholder="Type your announcement…"
+                  <input aria-label="Announcement Message" type="text" name="message" placeholder="Type your announcement…"
                          class="form-control" style="font-size:13.5px;" required>
                 </div>
                 <div style="flex: 0 1 140px;">
                   <label class="form-label" style="margin-bottom:6px; display:block;">Priority</label>
-                  <select name="priority" class="form-select" style="font-size:13.5px;">
+                  <select aria-label="Priority" name="priority" class="form-select" style="font-size:13.5px;">
                     <option value="info">Info</option>
                     <option value="warning">Warning</option>
                     <option value="success">Success</option>
@@ -1892,10 +1892,10 @@ h1, h2, h3, h4, h5, h6 {
                   <form method="POST" action="/spoc/announce/{{ event.id }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-2">
-                      <input type="text" name="message" placeholder="Type notification broadcast message…" class="form-control" style="font-size:13px;" required>
+                      <input aria-label="Type notification broadcast message" type="text" name="message" placeholder="Type notification broadcast message…" class="form-control" style="font-size:13px;" required>
                     </div>
                     <div class="d-flex gap-2 align-items-center">
-                      <select name="priority" class="form-select py-1" style="font-size:12px; height: 34px;">
+                      <select aria-label="Priority" name="priority" class="form-select py-1" style="font-size:12px; height: 34px;">
                         <option value="info">Info Priority</option>
                         <option value="warning">Warning Priority</option>
                         <option value="success">Success Priority</option>
@@ -2059,14 +2059,14 @@ h1, h2, h3, h4, h5, h6 {
                   <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">
                     Coordinator Name <span style="color:var(--ink-400);font-weight:400;">(for new accounts)</span>
                   </label>
-                  <input type="text" name="coordinator_name" id="coordName-{{ event.id }}" class="form-control"
+                  <input aria-label="Coordinator Name (for new accounts)" type="text" name="coordinator_name" id="coordName-{{ event.id }}" class="form-control"
                          placeholder="Full name">
                 </div>
                 <div style="margin-bottom:16px;">
                   <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">
                     Coordinator Email
                   </label>
-                  <input type="email" name="coordinator_email" id="coordEmail-{{ event.id }}" class="form-control" required
+                  <input aria-label="Coordinator Email" type="email" name="coordinator_email" id="coordEmail-{{ event.id }}" class="form-control" required
                          placeholder="coordinator@example.com"
                          list="coordSuggestions"
                          autocomplete="off"
@@ -2113,7 +2113,7 @@ h1, h2, h3, h4, h5, h6 {
               <form method="POST" action="/spoc/upload_judges_csv/{{ event.id }}" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label style="font-size:12px;font-weight:700;color:var(--snpsu-blue);display:block;margin-bottom:6px;">CSV File</label>
-                <input type="file" name="judges_csv" accept=".csv" required class="form-control mb-3">
+                <input aria-label="CSV File" type="file" name="judges_csv" accept=".csv" required class="form-control mb-3">
                 <button type="submit" class="modal-btn-primary w-100">
                   <i class="fas fa-upload me-1"></i> Upload &amp; Create Judge Logins
                 </button>
@@ -2123,10 +2123,10 @@ h1, h2, h3, h4, h5, h6 {
               <form method="POST" action="/spoc/add_judge/{{ event.id }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-row-grid" style="margin-bottom:10px;">
-                  <input type="text" name="judge_name" placeholder="Full Name" class="form-control">
-                  <input type="email" name="judge_email" placeholder="Email" class="form-control">
+                  <input aria-label="Full Name" type="text" name="judge_name" placeholder="Full Name" class="form-control">
+                  <input aria-label="Email" type="email" name="judge_email" placeholder="Email" class="form-control">
                 </div>
-                <input type="text" name="expertise" placeholder="Expertise (e.g. AI, Robotics)" class="form-control mb-3">
+                <input aria-label="Expertise (e.g. AI, Robotics)" type="text" name="expertise" placeholder="Expertise (e.g. AI, Robotics)" class="form-control mb-3">
                 <button type="submit" class="modal-btn-primary w-100" style="background:var(--snpsu-blue-dark) !important;">
                   Add Judge &amp; Send Login
                 </button>
@@ -2149,8 +2149,8 @@ h1, h2, h3, h4, h5, h6 {
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="roomRows-{{ event.id }}">
                   <div class="room-row" style="display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;">
-                    <input type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">
-                    <input type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">
+                    <input aria-label="Room / Hall name" type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">
+                    <input aria-label="Capacity" type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">
                     <button type="button" data-h-click="spoc/dashboard:40" data-h-a18="{{ event.id }}"
                             style="background:var(--success);color:#fff;border:none;border-radius:7px;font-size:16px;cursor:pointer;">+</button>
                   </div>
@@ -2196,7 +2196,7 @@ h1, h2, h3, h4, h5, h6 {
                     <span style="font-size:10px;background:rgba(16, 185, 129, 0.15);color:var(--success);padding:2px 7px;border-radius:100px;font-weight:600;">Uploaded</span>
                     {% endif %}
                   </label>
-                  <input type="file" name="{{ ckey }}" accept="image/png,image/jpeg"
+                  <input aria-label="File" type="file" name="{{ ckey }}" accept="image/png,image/jpeg"
                          class="ct-{{ ccls }}-border form-control">
                 </div>
                 {% endfor %}
@@ -2205,11 +2205,11 @@ h1, h2, h3, h4, h5, h6 {
                   <div class="modal-row-grid">
                     <div>
                       <label style="font-size:11px;color:var(--ink-500);">Horizontal % (50 = centre)</label>
-                      <input type="number" name="name_x_pct" value="{{ event.get('cert_name_pos',{}).get('x',50) }}" min="10" max="90" class="form-control">
+                      <input aria-label="Horizontal % (50 = centre)" type="number" name="name_x_pct" value="{{ event.get('cert_name_pos',{}).get('x',50) }}" min="10" max="90" class="form-control">
                     </div>
                     <div>
                       <label style="font-size:11px;color:var(--ink-500);">Vertical % (42 = middle-ish)</label>
-                      <input type="number" name="name_y_pct" value="{{ event.get('cert_name_pos',{}).get('y',42) }}" min="10" max="90" class="form-control">
+                      <input aria-label="Vertical % (42 = middle-ish)" type="number" name="name_y_pct" value="{{ event.get('cert_name_pos',{}).get('y',42) }}" min="10" max="90" class="form-control">
                     </div>
                   </div>
                 </div>
@@ -2258,7 +2258,7 @@ h1, h2, h3, h4, h5, h6 {
         
         <div>
           <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
-          <select id="certTemplateSelect" data-h-change="spoc/dashboard:43" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+          <select aria-label="Certificate Template Style" id="certTemplateSelect" data-h-change="spoc/dashboard:43" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
             <option value="1">Classic Navy (Default SNPSU)</option>
             <option value="2">Tech Blue (Hackathons)</option>
             <option value="3">Cultural Gold (Arts &amp; Fests)</option>
@@ -2270,7 +2270,7 @@ h1, h2, h3, h4, h5, h6 {
         
         <div>
           <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
-          <input type="text" id="certSignatoryInput" data-h-input="spoc/dashboard:44" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+          <input aria-label="Authorized Signatory Name" type="text" id="certSignatoryInput" data-h-input="spoc/dashboard:44" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
         </div>
         
         <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2e8f0;font-size:12px;color:#64748b;line-height:1.5;">
@@ -2367,20 +2367,20 @@ h1, h2, h3, h4, h5, h6 {
           <i class="fas fa-wand-magic-sparkles me-1"></i>AI Copywriter Assistant
         </label>
         <div style="display:flex;gap:6px;">
-          <input type="text" id="ai-copy-prompt" placeholder="e.g. Friendly reminder to complete profiles..." class="form-control form-control-sm" style="font-size:12px; height:32px;">
+          <input aria-label="AI Copywriter Assistant" type="text" id="ai-copy-prompt" placeholder="e.g. Friendly reminder to complete profiles..." class="form-control form-control-sm" style="font-size:12px; height:32px;">
           <button type="button" class="btn btn-primary btn-sm px-3" style="border-radius:20px; font-size:12px; height:32px; background:#3b82f6; border:none;" data-h-click="spoc/dashboard:48">Generate</button>
         </div>
       </div>
 
       <div style="margin-bottom:16px;">
         <label class="form-label" style="display:block;margin-bottom:6px;">Subject</label>
-        <input type="text" name="subject" id="blast-subject-input" required maxlength="150"
+        <input aria-label="Subject" type="text" name="subject" id="blast-subject-input" required maxlength="150"
                placeholder="e.g. Important update about the event"
                class="form-control">
       </div>
       <div style="margin-bottom:20px;">
         <label class="form-label" style="display:block;margin-bottom:6px;">Message</label>
-        <textarea name="body" id="blast-body-input" required rows="6" maxlength="5000"
+        <textarea aria-label="Message" name="body" id="blast-body-input" required rows="6" maxlength="5000"
                   placeholder="Write your message here…"
                   class="form-control" style="resize:vertical;"></textarea>
         <div style="font-size:11px;color:var(--ink-400);margin-top:4px;">
@@ -2477,7 +2477,7 @@ h1, h2, h3, h4, h5, h6 {
   <div class="cmd-palette-box">
     <div class="cmd-palette-search-wrapper">
       <i class="fas fa-search cmd-palette-search-icon"></i>
-      <input type="text" id="cmd-palette-input" class="cmd-palette-input" placeholder="Type a command or event title..." data-h-input="spoc/dashboard:61" autocomplete="off">
+      <input aria-label="Type a command or event title" type="text" id="cmd-palette-input" class="cmd-palette-input" placeholder="Type a command or event title..." data-h-input="spoc/dashboard:61" autocomplete="off">
     </div>
     <div class="cmd-palette-results" id="cmd-palette-results">
       <!-- Generated dynamically by JS -->

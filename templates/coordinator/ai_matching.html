@@ -165,7 +165,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
             <div style="flex:1;min-width:0;">
               <p class="judge-name">{{ j.name }}</p>
               <p class="judge-email">{{ j.email }}</p>
-              <textarea class="expertise-input"
+              <textarea aria-label="Exp" class="expertise-input"
                         id="exp-{{ loop.index }}"
                         data-email="{{ j.email }}"
                         rows="2"

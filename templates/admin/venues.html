@@ -102,15 +102,15 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Campus Name *</label>
-                                <input type="text" name="name" class="form-control" placeholder="e.g. Main Campus" required>
+                                <input aria-label="Campus Name" type="text" name="name" class="form-control" placeholder="e.g. Main Campus" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Slug (Optional)</label>
-                                <input type="text" name="slug" class="form-control" placeholder="e.g. main-campus">
+                                <input aria-label="Slug (Optional)" type="text" name="slug" class="form-control" placeholder="e.g. main-campus">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Address</label>
-                                <textarea name="address" class="form-control" rows="2" placeholder="Full postal address"></textarea>
+                                <textarea aria-label="Address" name="address" class="form-control" rows="2" placeholder="Full postal address"></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary w-100">Create Campus</button>
                         </form>
@@ -129,7 +129,7 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Campus *</label>
-                                <select name="campus_id" class="form-select" required>
+                                <select aria-label="Campus" name="campus_id" class="form-select" required>
                                     <option value="" disabled selected>-- Select Campus --</option>
                                     {% for c in campuses %}
                                     <option value="{{ c.id }}">{{ c.name }}</option>
@@ -138,11 +138,11 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Building Name *</label>
-                                <input type="text" name="name" class="form-control" placeholder="e.g. Academic Block A" required>
+                                <input aria-label="Building Name" type="text" name="name" class="form-control" placeholder="e.g. Academic Block A" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Building Code</label>
-                                <input type="text" name="code" class="form-control" placeholder="e.g. BLOCK-A">
+                                <input aria-label="Building Code" type="text" name="code" class="form-control" placeholder="e.g. BLOCK-A">
                             </div>
                             <button type="submit" class="btn btn-info text-white w-100">Create Building</button>
                         </form>
@@ -161,7 +161,7 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Building *</label>
-                                <select name="building_id" class="form-select" required>
+                                <select aria-label="Building" name="building_id" class="form-select" required>
                                     <option value="" disabled selected>-- Select Building --</option>
                                     {% for b in buildings %}
                                     <option value="{{ b.id }}">{{ b.name }} ({{ b.code or b.id }})</option>
@@ -170,21 +170,21 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Room Name *</label>
-                                <input type="text" name="name" class="form-control" placeholder="e.g. Seminar Hall 1" required>
+                                <input aria-label="Room Name" type="text" name="name" class="form-control" placeholder="e.g. Seminar Hall 1" required>
                             </div>
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold">Room Number</label>
-                                    <input type="text" name="room_number" class="form-control" placeholder="e.g. SH-101">
+                                    <input aria-label="Room Number" type="text" name="room_number" class="form-control" placeholder="e.g. SH-101">
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold">Capacity *</label>
-                                    <input type="number" name="capacity" class="form-control" value="100" min="1" required>
+                                    <input aria-label="Capacity" type="number" name="capacity" class="form-control" value="100" min="1" required>
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Type *</label>
-                                <select name="type" class="form-select" required>
+                                <select aria-label="Type" name="type" class="form-select" required>
                                     <option value="classroom">Classroom</option>
                                     <option value="seminar_hall">Seminar Hall</option>
                                     <option value="auditorium">Auditorium</option>
@@ -194,7 +194,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Facilities (comma-separated)</label>
-                                <input type="text" name="facilities" class="form-control" placeholder="Projector, AC, WiFi, Sound System">
+                                <input aria-label="Facilities (comma-separated)" type="text" name="facilities" class="form-control" placeholder="Projector, AC, WiFi, Sound System">
                             </div>
                             <button type="submit" class="btn btn-success w-100">Create Room</button>
                         </form>

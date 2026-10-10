@@ -226,7 +226,18 @@ def new_team_code(db_client) -> str:
 
 
 def _validate_submission(schema: dict, form_data: dict) -> list:
-    errors = []
+    """The error messages, in field order."""
+    return [msg for _, msg in _field_errors(schema, form_data)]
+
+
+def _field_errors(schema: dict, form_data: dict) -> list:
+    """(field id, message) for each problem, so the form can show it beside
+    the field (UPG-26)."""
+    class _Errors(list):
+        """Each check below appends a message; it's recorded with the field being checked."""
+        def append(self, msg):
+            super().append((fid, msg))
+    errors = _Errors()
     for field in schema.get('fields', []):
         fid      = field.get('id', '')
         label    = field.get('label', fid)
@@ -294,7 +305,7 @@ def _validate_submission(schema: dict, form_data: dict) -> list:
             except (ValueError, TypeError):
                 errors.append(f"'{label}' must be a number.")
 
-    return errors
+    return list(errors)
 
 
 def _extract_core(answers: dict) -> dict:
@@ -467,12 +478,22 @@ def registration_page(event_id):
     # The event's form, plus team fields from its team limits (UPG-08)
     schema = registration_schema(event_id, event)
 
+    # A form sent back with errors keeps what was typed, with each message
+    # beside its field (UPG-26)
+    state = session.pop('form_state', None) if 'form_state' in session else None
+    if not state or state.get('event_id') != event_id:
+        state = {}
+
+    import uuid
     return render_template(
         'public/registration_form.html',
         event=event,
         schema=schema,
         is_registered=is_registered,
-        is_waitlist=is_waitlist
+        is_waitlist=is_waitlist,
+        values=state.get('values') or {},
+        field_errors=state.get('errors') or {},
+        submission_id=uuid.uuid4().hex,   # one registration per form, however often it's sent
     )
 
 
@@ -482,6 +503,7 @@ def registration_page(event_id):
 @forms_bp.route('/submit/<event_id>', methods=['POST'])
 @limiter.limit("20 per hour")
 def submit_form(event_id):
+    sub_key = ''
     try:
         event_doc = db.collection('events').document(event_id).get()
         if not event_doc.exists:
@@ -514,11 +536,13 @@ def submit_form(event_id):
                 if email_key in answers:
                     answers[email_key] = session_email
 
-        # Validate
-        errors = _validate_submission(schema, answers)
-        if errors:
-            for err in errors:
+        # Validate: messages go beside their fields, and the form keeps what was typed (UPG-26)
+        field_errors = _field_errors(schema, answers)
+        if field_errors:
+            for _, err in field_errors:
                 flash(err, 'danger')
+            session['form_state'] = {'event_id': event_id, 'values': answers,
+                                     'errors': {fid: msg for fid, msg in field_errors}}
             return redirect(f'/forms/register/{event_id}')
 
         # Extract core fields. BLK-02: registration never logs anyone in.
@@ -569,7 +593,21 @@ def submit_form(event_id):
         from services_privacy import consent_given, consent_record, record_consent
         if not consent_given(request.form):
             flash("Please tick the box to agree to the privacy notice; we can't register you without it.", 'danger')
+            session['form_state'] = {'event_id': event_id, 'values': answers,
+                                     'errors': {'privacy_consent': "Tick this box to register."}}
             return redirect(f'/forms/register/{event_id}')
+
+        # One registration per form, however many times it's sent (UPG-26)
+        from services_idempotency import claim_submission, finish_submission, submission_result
+        sub_key = (request.form.get('submission_id') or '').strip()[:64]
+        if sub_key and not claim_submission(sub_key):
+            done = submission_result(sub_key)
+            flash("We already have this form: it was sent twice, and we registered it once.", "info")
+            if done == 'pending_payment':
+                return redirect(f'/payment/checkout/{event_id}')
+            if done and done not in ('waitlist',) and session.get('reg_confirmed'):
+                return redirect('/registration/confirmed')
+            return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # New email: an unverified account nobody can log in to until the
         # emailed one-time link is used (never a password in email or session)
@@ -655,6 +693,7 @@ def submit_form(event_id):
             }
             db.collection('waitlists').document(wl_id).set(wl_entry)
 
+            finish_submission(sub_key, 'waitlist')
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
@@ -666,6 +705,7 @@ def submit_form(event_id):
                 'amount_paid':    0
             })
             session['pending_reg_data'] = reg_data
+            finish_submission(sub_key, 'pending_payment')
             return redirect(f'/payment/checkout/{event_id}')
 
         reg_data.update({
@@ -738,9 +778,13 @@ def submit_form(event_id):
             'is_new_user': is_new_user,
             'user_email':  email,
         }
+        finish_submission(sub_key, reg_id)
         return redirect('/registration/confirmed')
 
     except Exception as exc:
+        if sub_key:
+            from services_idempotency import release_submission
+            release_submission(sub_key)
         logger.error("Form submission error for event %s: %s", event_id, exc, exc_info=True)
         flash(f"Submission failed: {exc}", "danger")
         return redirect(f'/forms/register/{event_id}')

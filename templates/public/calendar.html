@@ -89,7 +89,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         <!-- Department / Club Filter -->
         <div class="col-6 col-md-3">
           <label class="form-label small fw-semibold text-muted mb-1">Department / Club</label>
-          <select name="dept" id="filter-dept" class="form-select form-select-sm">
+          <select aria-label="Department / Club" name="dept" id="filter-dept" class="form-select form-select-sm">
             <option value="">All Departments &amp; Clubs</option>
             {% for u in org_units %}
             <option value="{{ u.slug or u.id }}" {% if filters.get('dept') in (u.slug, u.id) %}selected{% endif %}>
@@ -102,7 +102,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         <!-- Event Type Filter -->
         <div class="col-6 col-md-2">
           <label class="form-label small fw-semibold text-muted mb-1">Event Type</label>
-          <select name="event_type" id="filter-type" class="form-select form-select-sm">
+          <select aria-label="Event Type" name="event_type" id="filter-type" class="form-select form-select-sm">
             <option value="">All Types</option>
             <option value="Technical" {% if filters.get('event_type') == 'Technical' %}selected{% endif %}>Technical</option>
             <option value="Cultural" {% if filters.get('event_type') == 'Cultural' %}selected{% endif %}>Cultural</option>
@@ -116,7 +116,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         <!-- Mode Filter -->
         <div class="col-6 col-md-2">
           <label class="form-label small fw-semibold text-muted mb-1">Mode</label>
-          <select name="mode" id="filter-mode" class="form-select form-select-sm">
+          <select aria-label="Mode" name="mode" id="filter-mode" class="form-select form-select-sm">
             <option value="">All Modes</option>
             <option value="offline" {% if filters.get('mode') == 'offline' %}selected{% endif %}>Offline (Campus)</option>
             <option value="online" {% if filters.get('mode') == 'online' %}selected{% endif %}>Online (Virtual)</option>
@@ -126,7 +126,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         <!-- Fee Filter -->
         <div class="col-6 col-md-2">
           <label class="form-label small fw-semibold text-muted mb-1">Fee</label>
-          <select name="fee" id="filter-fee" class="form-select form-select-sm">
+          <select aria-label="Fee" name="fee" id="filter-fee" class="form-select form-select-sm">
             <option value="">All Pricing</option>
             <option value="free" {% if filters.get('fee') == 'free' %}selected{% endif %}>Free Events</option>
             <option value="paid" {% if filters.get('fee') == 'paid' %}selected{% endif %}>Paid Events</option>

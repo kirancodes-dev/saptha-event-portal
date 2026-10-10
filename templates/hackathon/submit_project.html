@@ -31,13 +31,13 @@
                         <div class="row g-3 mb-4">
                             <div class="col-md-7">
                                 <label class="form-label text-light font-weight-bold">Project Name *</label>
-                                <input type="text" name="project_title" class="form-control bg-dark text-light border-secondary" 
+                                <input aria-label="Project Name" type="text" name="project_title" class="form-control bg-dark text-light border-secondary" 
                                        placeholder="e.g. EcoPulse — AI Carbon Footprint Tracker" 
                                        value="{{ submission.project_title or '' }}" required>
                             </div>
                             <div class="col-md-5">
                                 <label class="form-label text-light font-weight-bold">Catchy Tagline</label>
-                                <input type="text" name="tagline" class="form-control bg-dark text-light border-secondary" 
+                                <input aria-label="Catchy Tagline" type="text" name="tagline" class="form-control bg-dark text-light border-secondary" 
                                        placeholder="e.g. Empowering green choices with real-time AI" 
                                        value="{{ submission.tagline or '' }}">
                             </div>
@@ -46,21 +46,21 @@
                         <!-- PROBLEM STATEMENT -->
                         <div class="mb-4">
                             <label class="form-label text-light font-weight-bold">Problem Statement</label>
-                            <textarea name="problem_statement" class="form-control bg-dark text-light border-secondary" rows="3" 
+                            <textarea aria-label="Problem Statement" name="problem_statement" class="form-control bg-dark text-light border-secondary" rows="3" 
                                       placeholder="What specific issue does your project solve?">{{ submission.problem_statement or '' }}</textarea>
                         </div>
 
                         <!-- SOLUTION OVERVIEW -->
                         <div class="mb-4">
                             <label class="form-label text-light font-weight-bold">Solution Overview *</label>
-                            <textarea name="solution_overview" class="form-control bg-dark text-light border-secondary" rows="4" 
+                            <textarea aria-label="Solution Overview" name="solution_overview" class="form-control bg-dark text-light border-secondary" rows="4" 
                                       placeholder="Describe your technical architecture, workflow, and core innovations..." required>{{ submission.solution_overview or '' }}</textarea>
                         </div>
 
                         <!-- TECH STACK -->
                         <div class="mb-4">
                             <label class="form-label text-light font-weight-bold">Tech Stack Used</label>
-                            <input type="text" name="tech_stack" class="form-control bg-dark text-light border-secondary" 
+                            <input aria-label="Tech Stack Used" type="text" name="tech_stack" class="form-control bg-dark text-light border-secondary" 
                                    placeholder="e.g. Python, Flask, React, Supabase, Google Cloud Platform" 
                                    value="{{ submission.tech_stack or '' }}">
                         </div>
@@ -69,25 +69,25 @@
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
                                 <label class="form-label text-light font-weight-bold"><i class="fab fa-github me-1 text-light"></i> GitHub Repository Link</label>
-                                <input type="url" name="github_url" class="form-control bg-dark text-light border-secondary" 
+                                <input aria-label="GitHub Repository Link" type="url" name="github_url" class="form-control bg-dark text-light border-secondary" 
                                        placeholder="https://github.com/username/project-repo" 
                                        value="{{ submission.github_url or '' }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light font-weight-bold"><i class="fas fa-external-link-alt me-1 text-info"></i> Live Demo Link</label>
-                                <input type="url" name="demo_url" class="form-control bg-dark text-light border-secondary" 
+                                <input aria-label="Live Demo Link" type="url" name="demo_url" class="form-control bg-dark text-light border-secondary" 
                                        placeholder="https://myproject.vercel.app" 
                                        value="{{ submission.demo_url or '' }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light font-weight-bold"><i class="fab fa-youtube me-1 text-danger"></i> Video Pitch / Demo Link</label>
-                                <input type="url" name="video_url" class="form-control bg-dark text-light border-secondary" 
+                                <input aria-label="Video Pitch / Demo Link" type="url" name="video_url" class="form-control bg-dark text-light border-secondary" 
                                        placeholder="https://youtube.com/watch?v=..." 
                                        value="{{ submission.video_url or '' }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-light font-weight-bold"><i class="fas fa-file-pdf me-1 text-warning"></i> Presentation Slide Deck Link</label>
-                                <input type="url" name="slide_deck_url" class="form-control bg-dark text-light border-secondary" 
+                                <input aria-label="Presentation Slide Deck Link" type="url" name="slide_deck_url" class="form-control bg-dark text-light border-secondary" 
                                        placeholder="https://drive.google.com/file/d/..." 
                                        value="{{ submission.slide_deck_url or '' }}">
                             </div>

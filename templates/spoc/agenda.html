@@ -54,16 +54,16 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;}
             <div class="row-num">{{ loop.index }}</div>
             <div class="row g-2 flex-grow-1">
               <div class="col-auto">
-                <input type="time" name="time[]" value="{{ item.time }}"
+                <input aria-label="Time" type="time" name="time[]" value="{{ item.time }}"
                        class="form-control form-control-sm" style="width:110px;" required>
               </div>
               <div class="col">
-                <input type="text" name="title[]" value="{{ item.title }}"
+                <input aria-label="Item title (e.g. Opening Ceremony)" type="text" name="title[]" value="{{ item.title }}"
                        placeholder="Item title (e.g. Opening Ceremony)"
                        class="form-control form-control-sm" required>
               </div>
               <div class="col-12">
-                <input type="text" name="desc[]" value="{{ item.desc }}"
+                <input aria-label="Details (optional)" type="text" name="desc[]" value="{{ item.desc }}"
                        placeholder="Details (optional)"
                        class="form-control form-control-sm">
               </div>

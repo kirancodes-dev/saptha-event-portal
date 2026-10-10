@@ -431,7 +431,7 @@
                             </div>
                             <div class="mb-3 mt-4">
                                 <label class="form-label text-danger">Cut-off Score</label>
-                                <input type="number" step="0.1" name="cutoff_score"
+                                <input aria-label="Cut-off Score" type="number" step="0.1" name="cutoff_score"
                                        class="form-control border-danger form-control-lg text-center fw-bold fs-3"
                                        placeholder="e.g. 75" required>
                             </div>
@@ -466,11 +466,11 @@
                                 <div class="row g-2 mb-3 align-items-end room-row">
                                     <div class="col-md-7">
                                         <label class="form-label">Room / Venue Name</label>
-                                        <input type="text" name="room_name[]" class="form-control border-dark" placeholder="e.g. Room 101" required>
+                                        <input aria-label="Room / Venue Name" type="text" name="room_name[]" class="form-control border-dark" placeholder="e.g. Room 101" required>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Capacity (Teams)</label>
-                                        <input type="number" name="capacity[]" class="form-control border-dark" placeholder="e.g. 25" required>
+                                        <input aria-label="Capacity (Teams)" type="number" name="capacity[]" class="form-control border-dark" placeholder="e.g. 25" required>
                                     </div>
                                     <div class="col-md-1 pb-1">
                                         <button type="button" class="btn btn-primary w-100"
@@ -505,25 +505,25 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-md-8">
                                     <label class="form-label">Event Title</label>
-                                    <input type="text" name="title" class="form-control" value="{{ event.title }}" required>
+                                    <input aria-label="Event Title" type="text" name="title" class="form-control" value="{{ event.title }}" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Entry Fee (₹)</label>
-                                    <input type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee }}">
+                                    <input aria-label="Entry Fee (₹)" type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee }}">
                                 </div>
                             </div>
                             <div class="row g-3 mb-3">
                                 <div class="col-md-4">
                                     <label class="form-label">Event Date &amp; Time</label>
-                                    <input type="text" name="date" class="form-control" value="{{ event.date }}" required>
+                                    <input aria-label="Event Date &amp; Time" type="text" name="date" class="form-control" value="{{ event.date }}" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label text-danger">Reg Deadline</label>
-                                    <input type="text" name="deadline" class="form-control border-danger" value="{{ event.deadline }}">
+                                    <input aria-label="Reg Deadline" type="text" name="deadline" class="form-control border-danger" value="{{ event.deadline }}">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Venue</label>
-                                    <input type="text" name="venue" class="form-control" value="{{ event.venue }}" required>
+                                    <input aria-label="Venue" type="text" name="venue" class="form-control" value="{{ event.venue }}" required>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -534,7 +534,7 @@
                                     {% if event.media_urls %}
                                         {% for url in event.media_urls %}
                                         <div class="input-group mb-2">
-                                            <input type="url" name="media_urls[]" class="form-control" value="{{ url }}">
+                                            <input aria-label="Event Media Gallery" type="url" name="media_urls[]" class="form-control" value="{{ url }}">
                                             {% if loop.index == 1 %}
                                             <button class="btn btn-outline-success px-4" type="button"
                                                     data-h-click="coordinator/dashboard:10" data-h-a1="{{ event.id }}">
@@ -550,7 +550,7 @@
                                         {% endfor %}
                                     {% else %}
                                         <div class="input-group mb-2">
-                                            <input type="url" name="media_urls[]" class="form-control"
+                                            <input aria-label="Primary Image URL" type="url" name="media_urls[]" class="form-control"
                                                    value="{{ event.banner_url }}" placeholder="Primary Image URL">
                                             <button class="btn btn-outline-success px-4" type="button"
                                                     data-h-click="coordinator/dashboard:12" data-h-a2="{{ event.id }}">
@@ -564,23 +564,23 @@
                                 <label class="form-label text-success">
                                     <i class="fas fa-balance-scale me-2"></i>Judging Criteria (Comma Separated)
                                 </label>
-                                <input type="text" name="criteria" class="form-control border-success"
+                                <input aria-label="Judging Criteria (Comma Separated)" type="text" name="criteria" class="form-control border-success"
                                        value="{{ event.judging_criteria | default([]) | join(', ') }}" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-primary">Overview</label>
-                                <textarea name="overview" class="form-control" rows="3" required>{{ event.overview }}</textarea>
+                                <textarea aria-label="Overview" name="overview" class="form-control" rows="3" required>{{ event.overview }}</textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-danger">Rules</label>
-                                <textarea name="rules" class="form-control" rows="3">{{ event.rules }}</textarea>
+                                <textarea aria-label="Rules" name="rules" class="form-control" rows="3">{{ event.rules }}</textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-warning">Prizes</label>
-                                <textarea name="prizes" class="form-control" rows="2">{{ event.prizes }}</textarea>
+                                <textarea aria-label="Prizes" name="prizes" class="form-control" rows="2">{{ event.prizes }}</textarea>
                             </div>
                             <div class="form-check form-switch mt-3">
-                                <input class="form-check-input" type="checkbox" name="is_team"
+                                <input aria-label="Is team" class="form-check-input" type="checkbox" name="is_team"
                                        {% if event.is_team_event %}checked{% endif %}>
                                 <label class="form-check-label fw-bold text-dark">Team Event</label>
                             </div>
@@ -606,18 +606,18 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label">Role</label>
-                                <select name="role" class="form-select">
+                                <select aria-label="Role" name="role" class="form-select">
                                     <option value="EventCoordinator">Event Coordinator (Scanner)</option>
                                     <option value="Judge">Event Judge</option>
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Name</label>
-                                <input type="text" name="name" class="form-control" required>
+                                <input aria-label="Name" type="text" name="name" class="form-control" required>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label">Email</label>
-                                <input type="email" name="email" class="form-control" required>
+                                <input aria-label="Email" type="email" name="email" class="form-control" required>
                             </div>
                             <button type="submit" class="btn btn-snpsu-blue w-100 py-2">
                                 Appoint &amp; Send Login
@@ -643,12 +643,12 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label text-danger">Subject</label>
-                                <input type="text" name="subject" class="form-control"
+                                <input aria-label="Subject" type="text" name="subject" class="form-control"
                                        placeholder="URGENT: Venue Change" required>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label text-danger">Message</label>
-                                <textarea name="message" class="form-control" rows="4" required></textarea>
+                                <textarea aria-label="Message" name="message" class="form-control" rows="4" required></textarea>
                             </div>
                             <button type="submit" class="btn btn-danger w-100 fw-bold py-2">
                                 <i class="fas fa-paper-plane me-2"></i>Send to All Participants
@@ -723,23 +723,23 @@
                             <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Basic Information</h5>
                             <div class="mb-3">
                                 <label class="form-label">Event Title</label>
-                                <input type="text" name="title" class="form-control"
+                                <input aria-label="Event Title" type="text" name="title" class="form-control"
                                        placeholder="Hackathon 2026" required>
                             </div>
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Event Date &amp; Time</label>
-                                    <input type="text" name="date" class="form-control"
+                                    <input aria-label="Event Date &amp; Time" type="text" name="date" class="form-control"
                                            placeholder="Oct 15, 10:00 AM" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-danger">Registration Deadline</label>
-                                    <input type="text" name="deadline" class="form-control border-danger"
+                                    <input aria-label="Registration Deadline" type="text" name="deadline" class="form-control border-danger"
                                            placeholder="Oct 12, 11:59 PM" required>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Venue</label>
-                                    <input type="text" name="venue" class="form-control"
+                                    <input aria-label="Venue" type="text" name="venue" class="form-control"
                                            placeholder="Main Auditorium" required>
                                 </div>
                             </div>
@@ -756,23 +756,23 @@
                             <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Brochure Content</h5>
                             <div class="mb-3">
                                 <label class="form-label text-primary">Overview / Description</label>
-                                <textarea name="overview" class="form-control" rows="3" required></textarea>
+                                <textarea aria-label="Overview / Description" name="overview" class="form-control" rows="3" required></textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-danger">Rules &amp; Guidelines</label>
-                                <textarea name="rules" class="form-control" rows="3"
+                                <textarea aria-label="Rules &amp; Guidelines" name="rules" class="form-control" rows="3"
                                           placeholder="- Rule 1&#10;- Rule 2"></textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-warning">Prizes</label>
-                                <textarea name="prizes" class="form-control" rows="2"></textarea>
+                                <textarea aria-label="Prizes" name="prizes" class="form-control" rows="2"></textarea>
                             </div>
                             <div class="mb-3 p-3 bg-light border border-success rounded">
                                 <label class="form-label text-success">
                                     <i class="fas fa-balance-scale me-2"></i>
                                     Judging Criteria (Comma Separated)
                                 </label>
-                                <input type="text" name="criteria" class="form-control border-success"
+                                <input aria-label="Judging Criteria (Comma Separated)" type="text" name="criteria" class="form-control border-success"
                                        placeholder="Innovation, Code Quality, Presentation" required>
                             </div>
                             <div class="d-flex justify-content-between mt-4">
@@ -788,7 +788,7 @@
                             <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Registration Settings</h5>
                             <div class="mb-3">
                                 <label class="form-label">Entry Fee (₹)</label>
-                                <input type="number" name="entry_fee" class="form-control" value="0" required>
+                                <input aria-label="Entry Fee (₹)" type="number" name="entry_fee" class="form-control" value="0" required>
                             </div>
                             <div class="col-12 mb-4">
                                 <label class="form-label text-primary">
@@ -796,7 +796,7 @@
                                 </label>
                                 <div id="createMediaContainer">
                                     <div class="input-group mb-2">
-                                        <input type="url" name="media_urls[]" class="form-control border-primary"
+                                        <input aria-label="Event Media Gallery" type="url" name="media_urls[]" class="form-control border-primary"
                                                placeholder="Image or Video URL (.mp4)" required>
                                         <button class="btn btn-primary px-4" type="button"
                                                 data-h-click="coordinator/dashboard:16">

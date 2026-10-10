@@ -673,11 +673,11 @@
       <div class="modal-body p-4">
         <form action="/admin/appoint_spoc" method="POST">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="mb-3"><label class="form-label">Full Name</label><input class="form-control" name="name" required placeholder="Kiran Biradar"></div>
-          <div class="mb-3"><label class="form-label">Email (Login ID)</label><input class="form-control" type="email" name="email" required placeholder="spoc@snpsu.edu.in"></div>
+          <div class="mb-3"><label class="form-label">Full Name</label><input aria-label="Full Name" class="form-control" name="name" required placeholder="Kiran Biradar"></div>
+          <div class="mb-3"><label class="form-label">Email (Login ID)</label><input aria-label="Email (Login ID)" class="form-control" type="email" name="email" required placeholder="spoc@snpsu.edu.in"></div>
           <p class="text-muted small mb-3">They'll get an email with a one-time link to set their own password.</p>
           <div class="mb-4"><label class="form-label">Division</label>
-            <select class="form-select" name="category" required>
+            <select aria-label="Division" class="form-select" name="category" required>
               <option value="Technical">Technical Division</option>
               <option value="Cultural">Cultural Division</option>
               <option value="Sports">Sports Division</option>
@@ -703,23 +703,23 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body p-4">
           <div class="row g-3">
-            <div class="col-md-8"><label class="form-label">Event Title</label><input type="text" name="title" class="form-control" placeholder="Hackathon 2026" required></div>
-            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="0" min="0"></div>
-            <div class="col-md-4"><label class="form-label">Date</label><input type="text" name="date" class="form-control" placeholder="2026-05-10" required></div>
-            <div class="col-md-4"><label class="form-label">Deadline</label><input type="text" name="deadline" class="form-control" placeholder="2026-05-09" required></div>
-            <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" placeholder="Main Auditorium" required></div>
+            <div class="col-md-8"><label class="form-label">Event Title</label><input aria-label="Event Title" type="text" name="title" class="form-control" placeholder="Hackathon 2026" required></div>
+            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input aria-label="Entry Fee (₹)" type="number" name="entry_fee" class="form-control" value="0" min="0"></div>
+            <div class="col-md-4"><label class="form-label">Date</label><input aria-label="Date" type="text" name="date" class="form-control" placeholder="2026-05-10" required></div>
+            <div class="col-md-4"><label class="form-label">Deadline</label><input aria-label="Deadline" type="text" name="deadline" class="form-control" placeholder="2026-05-09" required></div>
+            <div class="col-md-4"><label class="form-label">Venue</label><input aria-label="Venue" type="text" name="venue" class="form-control" placeholder="Main Auditorium" required></div>
             <div class="col-12"><label class="form-label">Primary Image URL</label>
               <div id="createAdminMediaContainer">
                 <div class="input-group mb-2">
-                  <input type="url" name="media_urls[]" class="form-control" placeholder="https://…" required>
+                  <input aria-label="Primary Image URL" type="url" name="media_urls[]" class="form-control" placeholder="https://…" required>
                   <button class="btn btn-outline-primary" type="button" data-h-click="admin/dashboard:4"><i class="fas fa-plus"></i></button>
                 </div>
               </div>
             </div>
-            <div class="col-12"><label class="form-label">Overview</label><textarea name="overview" class="form-control" rows="3" required></textarea></div>
-            <div class="col-md-6"><label class="form-label">Rules</label><textarea name="rules" class="form-control" rows="3"></textarea></div>
-            <div class="col-md-6"><label class="form-label">Prizes</label><textarea name="prizes" class="form-control" rows="3"></textarea></div>
-            <div class="col-12"><label class="form-label">Judging Criteria (comma-separated)</label><input type="text" name="criteria" class="form-control" placeholder="Innovation, Code Quality, Presentation" required></div>
+            <div class="col-12"><label class="form-label">Overview</label><textarea aria-label="Overview" name="overview" class="form-control" rows="3" required></textarea></div>
+            <div class="col-md-6"><label class="form-label">Rules</label><textarea aria-label="Rules" name="rules" class="form-control" rows="3"></textarea></div>
+            <div class="col-md-6"><label class="form-label">Prizes</label><textarea aria-label="Prizes" name="prizes" class="form-control" rows="3"></textarea></div>
+            <div class="col-12"><label class="form-label">Judging Criteria (comma-separated)</label><input aria-label="Judging Criteria (comma-separated)" type="text" name="criteria" class="form-control" placeholder="Innovation, Code Quality, Presentation" required></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -752,7 +752,7 @@
             <span>Natural Language Prompt</span>
             <span class="text-muted small">Type event specifics, capacity, rules, and rubric needs</span>
           </label>
-          <textarea id="aiCopilotPrompt" class="form-control" rows="3" placeholder="e.g. Create a 3-day National IoT & Robotics Hackathon for 250 students with ₹350 registration fee, autonomous maze navigation tracks, hardware demo rubrics, and 4 milestone stages."></textarea>
+          <textarea aria-label="Natural Language Prompt Type event specifics, capacity, rules, and rubric needs" id="aiCopilotPrompt" class="form-control" rows="3" placeholder="e.g. Create a 3-day National IoT & Robotics Hackathon for 250 students with ₹350 registration fee, autonomous maze navigation tracks, hardware demo rubrics, and 4 milestone stages."></textarea>
           
           <!-- Preset Prompts -->
           <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
@@ -962,13 +962,13 @@ async function approveAiProposal() {
         <form action="/coordinator/assign_staff/{{ event.id }}" method="POST">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3"><label class="form-label">Role</label>
-            <select name="role" class="form-select">
+            <select aria-label="Role" name="role" class="form-select">
               <option value="EventCoordinator">Registration Coordinator</option>
               <option value="Judge">Event Judge</option>
             </select>
           </div>
-          <div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" required></div>
-          <div class="mb-4"><label class="form-label">Email</label><input type="email" name="email" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Full Name</label><input aria-label="Full Name" type="text" name="name" class="form-control" required></div>
+          <div class="mb-4"><label class="form-label">Email</label><input aria-label="Email" type="email" name="email" class="form-control" required></div>
           <button type="submit" class="btn btn-primary w-100 fw-bold">Assign & Email Credentials</button>
         </form>
       </div>
@@ -991,7 +991,7 @@ async function approveAiProposal() {
             <small>Teams at or above the cut-off advance to Round {{ (event.active_round|default(1)) + 1 }}.</small>
           </div>
           <label class="form-label text-danger">Cut-off Score</label>
-          <input type="number" step="0.1" name="cutoff_score" class="form-control form-control-lg text-center fw-bold border-danger" placeholder="e.g. 75" required>
+          <input aria-label="Cut-off Score" type="number" step="0.1" name="cutoff_score" class="form-control form-control-lg text-center fw-bold border-danger" placeholder="e.g. 75" required>
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-danger w-100 fw-bold"
@@ -1017,8 +1017,8 @@ async function approveAiProposal() {
           <div class="alert alert-info"><strong>Registered:</strong> {{ event.registration_count|default(0) }} teams/participants</div>
           <div id="roomContainer{{ event.id }}">
             <div class="row g-2 mb-3 align-items-end room-row">
-              <div class="col-7"><label class="form-label">Room / Venue Name</label><input type="text" name="room_name[]" class="form-control" placeholder="Room 101" required></div>
-              <div class="col-4"><label class="form-label">Capacity</label><input type="number" name="capacity[]" class="form-control" placeholder="25" required></div>
+              <div class="col-7"><label class="form-label">Room / Venue Name</label><input aria-label="Room / Venue Name" type="text" name="room_name[]" class="form-control" placeholder="Room 101" required></div>
+              <div class="col-4"><label class="form-label">Capacity</label><input aria-label="Capacity" type="number" name="capacity[]" class="form-control" placeholder="25" required></div>
               <div class="col-1 pb-1"><button type="button" class="btn btn-primary w-100" data-h-click="admin/dashboard:13" data-h-a1="{{ event.id }}"><i class="fas fa-plus"></i></button></div>
             </div>
           </div>
@@ -1058,17 +1058,17 @@ async function approveAiProposal() {
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body p-4">
           <div class="row g-3">
-            <div class="col-md-8"><label class="form-label">Title</label><input type="text" name="title" class="form-control" value="{{ event.title }}" required></div>
-            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee|default(0) }}"></div>
-            <div class="col-md-4"><label class="form-label">Date</label><input type="text" name="date" class="form-control" value="{{ event.date }}" required></div>
-            <div class="col-md-4"><label class="form-label">Deadline</label><input type="text" name="deadline" class="form-control" value="{{ event.deadline|default('') }}" required></div>
-            <div class="col-md-4"><label class="form-label">Venue</label><input type="text" name="venue" class="form-control" value="{{ event.venue|default('') }}" required></div>
+            <div class="col-md-8"><label class="form-label">Title</label><input aria-label="Title" type="text" name="title" class="form-control" value="{{ event.title }}" required></div>
+            <div class="col-md-4"><label class="form-label">Entry Fee (₹)</label><input aria-label="Entry Fee (₹)" type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee|default(0) }}"></div>
+            <div class="col-md-4"><label class="form-label">Date</label><input aria-label="Date" type="text" name="date" class="form-control" value="{{ event.date }}" required></div>
+            <div class="col-md-4"><label class="form-label">Deadline</label><input aria-label="Deadline" type="text" name="deadline" class="form-control" value="{{ event.deadline|default('') }}" required></div>
+            <div class="col-md-4"><label class="form-label">Venue</label><input aria-label="Venue" type="text" name="venue" class="form-control" value="{{ event.venue|default('') }}" required></div>
             <div class="col-12"><label class="form-label">Judging Criteria (comma-separated)</label>
-              <input type="text" name="criteria" class="form-control" value="{{ event.judging_criteria|default([])|join(', ') }}" required>
+              <input aria-label="Judging Criteria (comma-separated)" type="text" name="criteria" class="form-control" value="{{ event.judging_criteria|default([])|join(', ') }}" required>
             </div>
-            <div class="col-12"><label class="form-label">Overview</label><textarea name="overview" class="form-control" rows="3">{{ event.overview|default('') }}</textarea></div>
-            <div class="col-md-6"><label class="form-label">Rules</label><textarea name="rules" class="form-control" rows="3">{{ event.rules|default('') }}</textarea></div>
-            <div class="col-md-6"><label class="form-label">Prizes</label><textarea name="prizes" class="form-control" rows="3">{{ event.prizes|default('') }}</textarea></div>
+            <div class="col-12"><label class="form-label">Overview</label><textarea aria-label="Overview" name="overview" class="form-control" rows="3">{{ event.overview|default('') }}</textarea></div>
+            <div class="col-md-6"><label class="form-label">Rules</label><textarea aria-label="Rules" name="rules" class="form-control" rows="3">{{ event.rules|default('') }}</textarea></div>
+            <div class="col-md-6"><label class="form-label">Prizes</label><textarea aria-label="Prizes" name="prizes" class="form-control" rows="3">{{ event.prizes|default('') }}</textarea></div>
           </div>
         </div>
         <div class="modal-footer">

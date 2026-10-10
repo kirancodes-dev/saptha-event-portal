@@ -106,7 +106,7 @@
             <i class="fas fa-wand-magic-sparkles me-1"></i>AI Assist Outline
           </button>
         </div>
-        <input type="text" name="title" id="event-title-input" class="form-control"
+        <input aria-label="Event Title" type="text" name="title" id="event-title-input" class="form-control"
                value="{{ event.get('title', '') }}" placeholder="Enter event title">
       </div>
 
@@ -118,7 +118,7 @@
             <button type="button" class="btn-close" style="font-size: 10px;" data-h-click="spoc/edit_event:2"></button>
           </div>
           <div class="input-group">
-            <input type="text" id="ai-prompt-input" class="form-control form-control-sm" placeholder="e.g. A 24-hour web dev hackathon on climate changes.">
+            <input aria-label="Ai prompt input" type="text" id="ai-prompt-input" class="form-control form-control-sm" placeholder="e.g. A 24-hour web dev hackathon on climate changes.">
             <button type="button" class="btn btn-sm btn-primary" data-h-click="spoc/edit_event:3" id="ai-gen-submit-btn">Generate</button>
           </div>
           <div class="form-text mt-1 text-muted" style="font-size: 10px;">Autofills description and rules fields using AI.</div>
@@ -127,25 +127,25 @@
 
       <div class="mb-4">
         <label class="form-label">Description</label>
-        <textarea name="description" class="form-control"
+        <textarea aria-label="Description" name="description" class="form-control"
                   placeholder="Describe the event...">{{ event.get('description', '') }}</textarea>
       </div>
 
       <div class="mb-4">
         <label class="form-label">Rules & Guidelines</label>
-        <textarea name="rules" class="form-control"
+        <textarea aria-label="Rules &amp; Guidelines" name="rules" class="form-control"
                   placeholder="Rules and guidelines for the event...">{{ event.get('rules', '') }}</textarea>
       </div>
 
       <div class="row g-3 mb-4">
         <div class="col-md-6">
           <label class="form-label">Venue</label>
-          <input type="text" name="venue" class="form-control"
+          <input aria-label="Venue" type="text" name="venue" class="form-control"
                  value="{{ event.get('venue', '') }}" placeholder="e.g. Auditorium, Block A">
         </div>
         <div class="col-md-6">
           <label class="form-label">Category / Type</label>
-          <input type="text" name="event_type" class="form-control"
+          <input aria-label="Category / Type" type="text" name="event_type" class="form-control"
                  value="{{ event.get('event_type', '') }}" placeholder="e.g. Technical, Cultural">
         </div>
       </div>
@@ -153,21 +153,21 @@
       <div class="row g-3 mb-4">
         <div class="col-md-4">
           <label class="form-label">Event Date</label>
-          <input type="date" name="date" class="form-control" value="{{ event.get('date', '') }}">
+          <input aria-label="Event Date" type="date" name="date" class="form-control" value="{{ event.get('date', '') }}">
         </div>
         <div class="col-md-4">
           <label class="form-label">Event Time</label>
-          <input type="time" name="time" class="form-control" value="{{ event.get('time', '') }}">
+          <input aria-label="Event Time" type="time" name="time" class="form-control" value="{{ event.get('time', '') }}">
         </div>
         <div class="col-md-4">
           <label class="form-label">Registration Deadline</label>
-          <input type="date" name="reg_deadline" class="form-control" value="{{ event.get('reg_deadline', '') }}">
+          <input aria-label="Registration Deadline" type="date" name="reg_deadline" class="form-control" value="{{ event.get('reg_deadline', '') }}">
         </div>
       </div>
 
       <div class="mb-4">
         <label class="form-label">Banner Image URL</label>
-        <input type="url" name="banner_url" class="form-control"
+        <input aria-label="Banner Image URL" type="url" name="banner_url" class="form-control"
                value="{{ event.get('banner_url', '') }}" placeholder="https://...">
         <div class="hint">Paste a direct image link. Leave blank to keep the current banner.</div>
       </div>

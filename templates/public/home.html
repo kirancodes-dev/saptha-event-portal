@@ -550,7 +550,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
       <h1 class="hero-title">Discover &amp;<br>Register for<br><span>Amazing Events</span></h1>
       <p class="hero-sub">Hackathons, cultural fests, sports meets, workshops &amp; more — all in one place. Get instant QR tickets &amp; real-time updates.</p>
       <div class="search-wrap">
-        <input type="text" id="searchInput" placeholder="Search events by name or venue…" autocomplete="off">
+        <input aria-label="Search events by name or venue" type="text" id="searchInput" placeholder="Search events by name or venue…" autocomplete="off">
         <button type="button"><i class="fas fa-search"></i></button>
       </div>
       <div class="hero-stats">
@@ -676,7 +676,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
   <div class="col-lg-8">
     <div class="results-bar">
       <div class="results-count" id="resultsCount">Loading events…</div>
-      <select class="sort-select" id="sortSelect">
+      <select aria-label="SortSelect" class="sort-select" id="sortSelect">
         <option value="date">Sort: Upcoming</option>
         <option value="name">Sort: A–Z</option>
       </select>
@@ -849,7 +849,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
     <div class="msg msg-bot">Hi! I can help you find events, check dates, or answer registration questions. What do you need?</div>
   </div>
   <div class="chat-input-area">
-    <input type="text" id="chatInput" class="chat-input" placeholder="Ask anything…" data-h-keypress="public/home:19">
+    <input aria-label="Ask anything" type="text" id="chatInput" class="chat-input" placeholder="Ask anything…" data-h-keypress="public/home:19">
     <button class="chat-send" data-h-click="public/home:20"><i class="fas fa-paper-plane" style="font-size:12px;"></i></button>
   </div>
 </div>

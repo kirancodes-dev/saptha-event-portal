@@ -263,19 +263,19 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
         </div>
         <div class="col-md-6">
           <label class="prop-label">Form Title</label>
-          <input type="text" id="form-title" class="prop-input"
+          <input aria-label="Form Title" type="text" id="form-title" class="prop-input"
                  value="Registration Form" placeholder="e.g. Hackathon 2026 Registration">
         </div>
         <div class="col-md-6">
           <label class="prop-label">Form Description (optional)</label>
-          <input type="text" id="form-desc" class="prop-input"
+          <input aria-label="Form Description (optional)" type="text" id="form-desc" class="prop-input"
                  placeholder="Shown to participants at the top of the form">
         </div>
         <!-- AI prompt builder -->
         <div class="col-12 mt-3 pt-3 border-top border-secondary border-opacity-10">
           <label class="prop-label"><i class="fas fa-wand-magic-sparkles text-primary me-1"></i>Generate Form from AI Prompt</label>
           <div class="input-group">
-            <input type="text" id="ai-prompt-input" class="prop-input" style="flex:1;"
+            <input aria-label="Generate Form from AI Prompt" type="text" id="ai-prompt-input" class="prop-input" style="flex:1;"
                    placeholder="e.g., Build a robotics team form with github url, team size of 4 and dietary preference">
             <button class="btn btn-primary ms-2 px-4" style="border-radius:20px;" id="btn-ai-gen" data-h-click="coordinator/form_builder:20">
               <i class="fas fa-bolt me-1"></i> Generate

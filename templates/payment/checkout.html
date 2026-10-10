@@ -142,6 +142,13 @@
                     .then(function (res) {
                         if (res.redirect) { window.location.href = res.redirect; }
                         else { alert(res.message || res.error || 'Verification failed'); resetBtn(); }
+                    })
+                    .catch(function () {
+                        // Razorpay took the payment but our check didn't answer: keep the
+                        // button locked so nobody pays twice (UPG-26). The webhook completes it.
+                        btn.innerHTML = '<i class="fas fa-hourglass-half me-2"></i> Payment received, confirming…';
+                        alert('Your payment went through, but we could not confirm it just now. ' +
+                              'Check your dashboard in a minute; do not pay again.');
                     });
                 },
                 modal: { ondismiss: resetBtn },

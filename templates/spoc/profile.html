@@ -127,12 +127,12 @@
         <div class="row g-4 mb-4">
           <div class="col-sm-6">
             <label class="field-label">Display Name</label>
-            <input type="text" name="name" class="field-input"
+            <input aria-label="Display Name" type="text" name="name" class="field-input"
                    value="{{ user.get('name', '') }}" placeholder="Your full name" required>
           </div>
           <div class="col-sm-6">
             <label class="field-label">Club Name</label>
-            <input type="text" name="club_name" class="field-input"
+            <input aria-label="Club Name" type="text" name="club_name" class="field-input"
                    value="{{ user.get('club_name', '') }}" placeholder="e.g. IEEE Student Chapter">
             <div class="field-hint">Shown on event pages and emails.</div>
           </div>
@@ -141,13 +141,13 @@
         <div class="row g-4 mb-4">
           <div class="col-sm-6">
             <label class="field-label">Phone / WhatsApp</label>
-            <input type="tel" name="phone" class="field-input"
+            <input aria-label="Phone / WhatsApp" type="tel" name="phone" class="field-input"
                    value="{{ user.get('phone', '') }}" placeholder="+91 99999 99999">
             <div class="field-hint">Used on event contact info.</div>
           </div>
           <div class="col-sm-6">
             <label class="field-label">Group / WhatsApp Link</label>
-            <input type="url" name="whatsapp_link" class="field-input"
+            <input aria-label="Group / WhatsApp Link" type="url" name="whatsapp_link" class="field-input"
                    value="{{ user.get('whatsapp_link', '') }}" placeholder="https://chat.whatsapp.com/...">
             <div class="field-hint">Participants see this to join the event group.</div>
           </div>

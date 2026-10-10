@@ -168,7 +168,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 <div class="card" style="padding:0;overflow:hidden;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9;">
     <div class="section-title mb-0"><i class="fas fa-list-ol" style="color:var(--blue);"></i>Participant Allocation</div>
-    <input type="text" id="searchBox" placeholder="Search name or room…"
+    <input aria-label="Search name or room" type="text" id="searchBox" placeholder="Search name or room…"
            style="font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 12px;outline:none;width:220px;"
            data-h-input="spoc/room_allocation:3" data-h-focus="spoc/room_allocation:4" data-h-blur="spoc/room_allocation:5">
   </div>
@@ -197,7 +197,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
           <td style="font-size:12px;color:#94a3b8;white-space:nowrap;">{{ reg.registered_at or '—' }}</td>
           <td>
             {% if rooms %}
-            <select class="room-select" data-reg="{{ reg.id }}" data-event="{{ event.id }}"
+            <select aria-label="Text" class="room-select" data-reg="{{ reg.id }}" data-event="{{ event.id }}"
                     data-h-change="spoc/room_allocation:6">
               <option value="">— Unassigned —</option>
               {% for room in rooms %}

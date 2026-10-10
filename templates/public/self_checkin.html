@@ -47,7 +47,7 @@ body{background:linear-gradient(135deg,var(--blue),#1a4fa0);min-height:100vh;dis
       <input type="hidden" name="code" value="{{ code }}">
       <div class="mb-3">
         <label class="form-label">Your Registered Email</label>
-        <input type="email" name="email" value="{{ pre_email }}" class="form-control"
+        <input aria-label="Your Registered Email" type="email" name="email" value="{{ pre_email }}" class="form-control"
                placeholder="you@example.com" required autofocus>
       </div>
       <button type="submit" class="btn-checkin">

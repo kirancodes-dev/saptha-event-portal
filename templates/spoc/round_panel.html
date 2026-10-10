@@ -253,7 +253,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
         Advance Top N participants
       </label>
       <div class="d-flex align-items-center gap-3">
-        <input type="number" name="top_n" id="topNInput" value="{{ [scored_count // 2, 1]|max }}"
+        <input aria-label="Advance Top N participants" type="number" name="top_n" id="topNInput" value="{{ [scored_count // 2, 1]|max }}"
                min="1" max="{{ scored_count }}"
                style="width:120px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:700;outline:none;"
                data-h-focus="spoc/round_panel:5" data-h-blur="spoc/round_panel:6">
@@ -268,7 +268,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
         Advance everyone with score &ge; cutoff
       </label>
       <div class="d-flex align-items-center gap-3">
-        <input type="number" name="cutoff" id="cutoffInput" value="50" min="0" max="100" step="0.1"
+        <input aria-label="Advance everyone with score ≥ cutoff" type="number" name="cutoff" id="cutoffInput" value="50" min="0" max="100" step="0.1"
                style="width:120px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:700;outline:none;"
                data-h-focus="spoc/round_panel:7" data-h-blur="spoc/round_panel:8">
         <span style="font-size:13px;color:#64748b;">points (average across judges)</span>

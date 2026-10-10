@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="/static/css/fonts.css">
     {# Binds the data-h-<event> handlers each page registers (UPG-25) #}
     <script src="/static/js/handlers.js"></script>
+    {# One submit per click on every form (UPG-26) #}
+    <script src="/static/js/forms.js"></script>
     <style>
         /* Shared footer (includes/site_footer.html): takes the page's own text colour */
         .site-footer { text-align: center; font-size: 0.85rem; padding: 1rem; color: inherit; opacity: 0.8; }
@@ -23,6 +25,12 @@
         .site-footer--fixed { position: fixed; left: 0; right: 0; bottom: 0; padding: 0.35rem; font-size: 0.75rem;
                               pointer-events: none; z-index: 1; }
         .site-footer--fixed a { pointer-events: auto; }
+        /* forms.js: the spinner on a submit button while its form is sent */
+        .se-spinner { display: inline-block; width: 0.9em; height: 0.9em; border: 2px solid currentColor;
+                      border-right-color: transparent; border-radius: 50%; vertical-align: -0.1em;
+                      animation: se-spin 0.7s linear infinite; }
+        @keyframes se-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .se-spinner { animation: none; } }
     </style>
     {% block head %}{% endblock %}
 </head>

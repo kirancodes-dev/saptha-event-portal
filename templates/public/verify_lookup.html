@@ -92,7 +92,7 @@ body {
         <form method="POST" action="/verify">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label class="form-label mb-1">Certificate / Ticket ID</label>
-            <input type="text" name="cert_id" class="form-control text-center"
+            <input aria-label="Certificate / Ticket ID" type="text" name="cert_id" class="form-control text-center"
                    placeholder="e.g. REG-ABC123"
                    autocomplete="off" required autofocus>
             <button type="submit" class="btn btn-verify mt-3">

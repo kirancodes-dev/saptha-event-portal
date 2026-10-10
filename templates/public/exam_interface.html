@@ -108,7 +108,7 @@
                             </label>
                             {% endfor %}
                         {% else %}
-                            <textarea name="ans_{{ q.id }}" class="form-control bg-dark text-light border-secondary" rows="4" placeholder="Type your answer here..."></textarea>
+                            <textarea aria-label="Type your answer here" name="ans_{{ q.id }}" class="form-control bg-dark text-light border-secondary" rows="4" placeholder="Type your answer here..."></textarea>
                         {% endif %}
                     </div>
                     {% endfor %}

@@ -101,7 +101,7 @@
                             <span>Impact & Innovation</span>
                             <strong id="impactVal">{{ project.score_impact or 0.0 }}</strong>
                         </label>
-                        <input type="range" class="form-range" id="scoreImpact" min="0" max="10" step="0.5" 
+                        <input aria-label="Impact &amp; Innovation" type="range" class="form-range" id="scoreImpact" min="0" max="10" step="0.5" 
                                value="{{ project.score_impact or 0.0 }}" data-h-input="hackathon/project_detail:1">
                     </div>
 
@@ -110,7 +110,7 @@
                             <span>Technical Complexity</span>
                             <strong id="techVal">{{ project.score_tech or 0.0 }}</strong>
                         </label>
-                        <input type="range" class="form-range" id="scoreTech" min="0" max="10" step="0.5" 
+                        <input aria-label="Technical Complexity" type="range" class="form-range" id="scoreTech" min="0" max="10" step="0.5" 
                                value="{{ project.score_tech or 0.0 }}" data-h-input="hackathon/project_detail:2">
                     </div>
 
@@ -119,7 +119,7 @@
                             <span>UI/UX & Design</span>
                             <strong id="uxVal">{{ project.score_ux or 0.0 }}</strong>
                         </label>
-                        <input type="range" class="form-range" id="scoreUx" min="0" max="10" step="0.5" 
+                        <input aria-label="UI/UX &amp; Design" type="range" class="form-range" id="scoreUx" min="0" max="10" step="0.5" 
                                value="{{ project.score_ux or 0.0 }}" data-h-input="hackathon/project_detail:3">
                     </div>
 
@@ -128,7 +128,7 @@
                             <span>Pitch & Presentation</span>
                             <strong id="pitchVal">{{ project.score_pitch or 0.0 }}</strong>
                         </label>
-                        <input type="range" class="form-range" id="scorePitch" min="0" max="10" step="0.5" 
+                        <input aria-label="Pitch &amp; Presentation" type="range" class="form-range" id="scorePitch" min="0" max="10" step="0.5" 
                                value="{{ project.score_pitch or 0.0 }}" data-h-input="hackathon/project_detail:4">
                     </div>
 

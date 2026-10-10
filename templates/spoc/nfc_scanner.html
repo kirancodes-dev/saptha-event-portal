@@ -183,7 +183,7 @@
                         <label class="form-label text-muted small fw-bold">SIMULATE ACTIVE WRISTBAND PAYLOAD</label>
                         <div class="input-group">
                             <span class="input-group-text bg-dark border-secondary border-opacity-25 text-emerald"><i class="fas fa-address-card"></i></span>
-                            <select id="student-payload" class="form-select border-opacity-25 bg-dark text-white">
+                            <select aria-label="SIMULATE ACTIVE WRISTBAND PAYLOAD" id="student-payload" class="form-select border-opacity-25 bg-dark text-white">
                                 {% for r in registrations %}
                                     {% if r.attendance != 'Present' %}
                                     <option value="{{ r.id }}">{{ r.name }} ({{ r.email }})</option>

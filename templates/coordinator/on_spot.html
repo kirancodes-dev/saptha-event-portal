@@ -43,7 +43,7 @@
                     
                     <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">1. Select Event</h5>
                     <div class="mb-4">
-                        <select name="event_id" class="form-select form-select-lg fw-bold" required>
+                        <select aria-label="Event id" name="event_id" class="form-select form-select-lg fw-bold" required>
                             <option value="" disabled selected>-- Choose Event --</option>
                             {% for event in events %}
                                 <option value="{{ event.id }}">{{ event.title }}</option>
@@ -53,10 +53,10 @@
 
                     <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">2. Student Details</h5>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-6"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" placeholder="Enter Name" required></div>
-                        <div class="col-md-6"><label class="form-label">College USN / ID</label><input type="text" name="usn" class="form-control" placeholder="Ex: 1XY23CS001" required></div>
-                        <div class="col-md-6"><label class="form-label">Email Address (For Ticket)</label><input type="email" name="email" class="form-control" placeholder="student@college.edu" required></div>
-                        <div class="col-md-6"><label class="form-label">Phone Number</label><input type="tel" name="phone" class="form-control" placeholder="10-digit number" required></div>
+                        <div class="col-md-6"><label class="form-label">Full Name</label><input aria-label="Full Name" type="text" name="name" class="form-control" placeholder="Enter Name" required></div>
+                        <div class="col-md-6"><label class="form-label">College USN / ID</label><input aria-label="College USN / ID" type="text" name="usn" class="form-control" placeholder="Ex: 1XY23CS001" required></div>
+                        <div class="col-md-6"><label class="form-label">Email Address (For Ticket)</label><input aria-label="Email Address (For Ticket)" type="email" name="email" class="form-control" placeholder="student@college.edu" required></div>
+                        <div class="col-md-6"><label class="form-label">Phone Number</label><input aria-label="Phone Number" type="tel" name="phone" class="form-control" placeholder="10-digit number" required></div>
                     </div>
 
                     <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">3. Payment Collection</h5>

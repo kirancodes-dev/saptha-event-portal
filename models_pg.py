@@ -637,6 +637,16 @@ class CouponUse(Base):
     used = Column(Integer, nullable=False, default=0)
 
 
+class SubmissionKey(Base):
+    """One row per form a browser sent (its hidden submission_id), so sending
+    the same registration twice creates one registration (UPG-26)."""
+    __tablename__ = "submission_keys"
+
+    key        = Column(String(64), primary_key=True)
+    result     = Column(String(128), nullable=True)   # the registration ID, or 'waitlist' / 'pending_payment'
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+
+
 class NativeDocument(Base):
     """Documents of collections with no table of their own, stored as JSON
     (db_adapter's native document store). Built by migrations like every

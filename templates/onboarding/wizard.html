@@ -109,13 +109,13 @@
       
       <div class="mb-4 text-start">
         <label class="form-label small text-white-50">Logo Image Link (URL)</label>
-        <input type="url" id="logoUrl" class="form-control bg-dark text-white border-secondary" placeholder="https://example.com/logo.png" value="/static/snpsu-logo.png">
+        <input aria-label="Logo Image Link (URL)" type="url" id="logoUrl" class="form-control bg-dark text-white border-secondary" placeholder="https://example.com/logo.png" value="/static/snpsu-logo.png">
       </div>
 
       <div class="mb-4 text-start">
         <label class="form-label small text-white-50 font-semibold d-block">Branding Highlight Color</label>
         <div class="d-flex align-items-center gap-3 mt-2">
-          <input type="color" id="primaryColor" class="form-control form-control-color bg-dark border-secondary p-1" value="#1a2557" style="width: 60px; height: 46px;">
+          <input aria-label="Branding Highlight Color" type="color" id="primaryColor" class="form-control form-control-color bg-dark border-secondary p-1" value="#1a2557" style="width: 60px; height: 46px;">
           <span class="text-white-50 small">This color sets the theme highlight button profiles.</span>
         </div>
       </div>
@@ -133,7 +133,7 @@
       <div class="mb-4 text-start">
         <label class="form-label small text-white-50">Department Name</label>
         <div class="d-flex gap-2">
-          <input type="text" id="deptInput" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Computer Science">
+          <input aria-label="Department Name" type="text" id="deptInput" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Computer Science">
           <button type="button" data-h-click="onboarding/wizard:2" class="btn btn-warning fw-bold text-dark px-3">+</button>
         </div>
       </div>

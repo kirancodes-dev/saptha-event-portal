@@ -38,10 +38,11 @@ def _cleanup():
     from models import db
     from services_login_throttle import purge_expired
     from services_outbox import purge_old
+    from services_idempotency import purge_old as purge_submission_keys
     from services_privacy import process_due_deletions
     from session_store import purge_expired_sessions
     return {'sessions': purge_expired_sessions(), 'login_attempts': purge_expired(), 'outbox': purge_old(),
-            'accounts_deleted': process_due_deletions(db)}
+            'accounts_deleted': process_due_deletions(db), 'submission_keys': purge_submission_keys()}
 
 
 def _outbox():

@@ -490,7 +490,7 @@
         <p class="text-center text-muted small mb-3">Select your event and enter your Registration ID or Name</p>
 
         <div class="mb-3 text-center" style="max-width: 450px; margin: 0 auto 1.5rem auto;">
-            <select id="kiosk-event-id" class="form-select bg-dark text-white border-secondary shadow-sm" data-h-change="public/kiosk:1">
+            <select aria-label="Kiosk event id" id="kiosk-event-id" class="form-select bg-dark text-white border-secondary shadow-sm" data-h-change="public/kiosk:1">
                 {% if not events %}
                 <option value="">No managed events available</option>
                 {% else %}
@@ -504,7 +504,7 @@
         <!-- Search Input -->
         <div class="search-input-wrapper">
             <i class="fas fa-magnifying-glass search-icon"></i>
-            <input type="text" id="kiosk-search-input" class="search-input-field" placeholder="Search by name, or scan a ticket..." inputmode="none" autocomplete="off" autofocus>
+            <input aria-label="Search by name, or scan a ticket" type="text" id="kiosk-search-input" class="search-input-field" placeholder="Search by name, or scan a ticket..." inputmode="none" autocomplete="off" autofocus>
         </div>
 
         <!-- Search Results Viewport -->

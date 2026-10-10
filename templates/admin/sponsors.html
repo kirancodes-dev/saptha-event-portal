@@ -61,25 +61,25 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label small fw-bold">Sponsor Name</label>
-                        <input type="text" name="name" class="form-control" required placeholder="e.g. Infosys">
+                        <input aria-label="Sponsor Name" type="text" name="name" class="form-control" required placeholder="e.g. Infosys">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Tier</label>
-                        <select name="tier" class="form-select" required>
+                        <select aria-label="Tier" name="tier" class="form-select" required>
                             {% for t in tiers %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Website URL</label>
-                        <input type="url" name="website" class="form-control" placeholder="https://">
+                        <input aria-label="Website URL" type="url" name="website" class="form-control" placeholder="https://">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Logo URL</label>
-                        <input type="url" name="logo_url" class="form-control" placeholder="https://.../logo.png">
+                        <input aria-label="Logo URL" type="url" name="logo_url" class="form-control" placeholder="https://.../logo.png">
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Short Description (optional)</label>
-                        <input type="text" name="description" class="form-control" maxlength="150">
+                        <input aria-label="Short Description (optional)" type="text" name="description" class="form-control" maxlength="150">
                     </div>
                     <div class="col-12">
                         <button type="submit" class="btn" style="background:var(--gold);color:#fff;font-weight:600;">

@@ -184,20 +184,20 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Email (Cannot Change)</label>
-                            <input type="text" class="form-control" value="{{ user.email }}" disabled>
+                            <input aria-label="Email (Cannot Change)" type="text" class="form-control" value="{{ user.email }}" disabled>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Full Name</label>
-                            <input type="text" name="name" class="form-control" value="{{ user.name }}" required>
+                            <input aria-label="Full Name" type="text" name="name" class="form-control" value="{{ user.name }}" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Phone Number</label>
-                            <input type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
+                            <input aria-label="Phone Number" type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
                         </div>
                         {% if user.role == 'Student' %}
                         <div class="mb-3">
                             <label class="form-label">USN / Roll No</label>
-                            <input type="text" name="usn" class="form-control" value="{{ user.usn or '' }}">
+                            <input aria-label="USN / Roll No" type="text" name="usn" class="form-control" value="{{ user.usn or '' }}">
                         </div>
                         {% endif %}
                         <div class="text-end">
@@ -220,15 +220,15 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Current Password</label>
-                            <input type="password" name="current_password" class="form-control" required>
+                            <input aria-label="Current Password" type="password" name="current_password" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">New Password</label>
-                            <input type="password" name="new_password" class="form-control" required>
+                            <input aria-label="New Password" type="password" name="new_password" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Confirm New Password</label>
-                            <input type="password" name="confirm_password" class="form-control" required>
+                            <input aria-label="Confirm New Password" type="password" name="confirm_password" class="form-control" required>
                         </div>
                         <div class="text-end">
                             <button type="submit" class="btn-pw">Update Password</button>

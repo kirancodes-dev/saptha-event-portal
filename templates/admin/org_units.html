@@ -160,11 +160,11 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Unit Name</label>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. Mechanical Engineering or Coding Club" required>
+                            <input aria-label="Unit Name" type="text" name="name" class="form-control" placeholder="e.g. Mechanical Engineering or Coding Club" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Unit Type</label>
-                            <select name="type" class="form-select" required>
+                            <select aria-label="Unit Type" name="type" class="form-select" required>
                                 <option value="department">Department</option>
                                 <option value="club">Club / Society</option>
                                 <option value="central">Central Office</option>
@@ -172,12 +172,12 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Slug (Identifier)</label>
-                            <input type="text" name="slug" class="form-control" placeholder="e.g. mech-dept or coding-club (optional)">
+                            <input aria-label="Slug (Identifier)" type="text" name="slug" class="form-control" placeholder="e.g. mech-dept or coding-club (optional)">
                             <div class="form-text">Leave blank to auto-generate from name.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Parent Unit</label>
-                            <select name="parent_id" class="form-select">
+                            <select aria-label="Parent Unit" name="parent_id" class="form-select">
                                 <option value="central">central (Central Administration)</option>
                                 {% for u in units %}
                                     {% if u.id != 'central' %}
@@ -255,7 +255,7 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label small fw-bold">User Email</label>
-                            <input type="email" name="user_id" class="form-control" placeholder="staff@college.edu" required list="user_list">
+                            <input aria-label="User Email" type="email" name="user_id" class="form-control" placeholder="staff@college.edu" required list="user_list">
                             <datalist id="user_list">
                                 {% for u in users %}
                                 <option value="{{ u.email or u.id }}">{{ u.name }} ({{ u.role }})</option>
@@ -264,7 +264,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Role</label>
-                            <select name="role" class="form-select fw-bold" required>
+                            <select aria-label="Role" name="role" class="form-select fw-bold" required>
                                 <option value="UniversityAdmin">🏛️ UniversityAdmin</option>
                                 <option value="UnitAdmin">🏢 UnitAdmin (Dept/Club Head)</option>
                                 <option value="EventOrganizer">📋 EventOrganizer</option>
@@ -276,7 +276,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Scope Type</label>
-                            <select name="scope_type" id="scope_type_select" class="form-select" required data-h-change="admin/org_units:3">
+                            <select aria-label="Scope Type" name="scope_type" id="scope_type_select" class="form-select" required data-h-change="admin/org_units:3">
                                 <option value="university">University-Wide</option>
                                 <option value="unit">Specific OrgUnit (Department/Club)</option>
                                 <option value="event">Specific Event</option>
@@ -284,7 +284,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Scope Identifier</label>
-                            <input type="text" name="scope_id" id="scope_id_input" class="form-control" placeholder="default / unit id / event id" value="default" required list="scope_list">
+                            <input aria-label="Scope Identifier" type="text" name="scope_id" id="scope_id_input" class="form-control" placeholder="default / unit id / event id" value="default" required list="scope_list">
                             <datalist id="scope_list">
                                 <option value="default">Default University</option>
                                 {% for u in units %}

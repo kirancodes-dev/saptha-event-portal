@@ -208,28 +208,8 @@
   }
   document.addEventListener('DOMContentLoaded', processFlashMessages);
 
-  /* ── 5. BUTTON LOADING STATE ──────────────────────────────────────────── */
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('form').forEach(function (form) {
-      form.addEventListener('submit', function () {
-        const btn = form.querySelector('[type="submit"]');
-        if (!btn || btn.dataset.noLoader) return;
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.dataset.originalHtml = originalHtml;
-        btn.innerHTML = '<span class="sp-spinner"></span> ';
-        btn.appendChild(document.createTextNode(btn.dataset.loadingText || 'Please wait…'));
-
-        // Safety timeout to re-enable
-        setTimeout(function () {
-          if (btn.disabled) {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-          }
-        }, 15000);
-      });
-    });
-  });
+  /* ── 5. BUTTON LOADING STATE ──────────────────────────────────────────
+     Moved to static/js/forms.js, which every page loads (UPG-26). */
 
   /* ── 6. BACK TO TOP BUTTON ────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {

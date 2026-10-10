@@ -128,11 +128,11 @@
                 <form class="try-api-form" data-endpoint-id="login" data-method="POST" data-path="/api/v1/auth/login">
                   <div class="mb-3">
                     <label class="form-label small text-white-50">Email Address</label>
-                    <input type="email" name="email" class="form-control form-control-sm bg-dark text-white border-secondary" required value="admin@sapthaevent.com">
+                    <input aria-label="Email Address" type="email" name="email" class="form-control form-control-sm bg-dark text-white border-secondary" required value="admin@sapthaevent.com">
                   </div>
                   <div class="mb-3">
                     <label class="form-label small text-white-50">Password</label>
-                    <input type="password" name="password" class="form-control form-control-sm bg-dark text-white border-secondary" required value="Admin@123">
+                    <input aria-label="Password" type="password" name="password" class="form-control form-control-sm bg-dark text-white border-secondary" required value="Admin@123">
                   </div>
                   <button type="submit" class="btn-execute">Send Request</button>
                 </form>
@@ -254,11 +254,11 @@ print(res.json())</code></pre>
                   <div class="row g-2 mb-3">
                     <div class="col-6">
                       <label class="form-label small text-white-50">Limit</label>
-                      <input type="number" name="limit" data-param-type="query" class="form-control form-control-sm bg-dark text-white border-secondary" value="10">
+                      <input aria-label="Limit" type="number" name="limit" data-param-type="query" class="form-control form-control-sm bg-dark text-white border-secondary" value="10">
                     </div>
                     <div class="col-6">
                       <label class="form-label small text-white-50">Category</label>
-                      <select name="category" data-param-type="query" class="form-select form-select-sm bg-dark text-white border-secondary">
+                      <select aria-label="Category" name="category" data-param-type="query" class="form-select form-select-sm bg-dark text-white border-secondary">
                         <option value="">All</option>
                         <option value="Technical">Technical</option>
                         <option value="Cultural">Cultural</option>

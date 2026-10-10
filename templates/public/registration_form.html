@@ -294,6 +294,8 @@ body{
   .form-control,.form-select{font-size:16px;} /* prevent iOS zoom */
   .btn-submit{font-size:14px;padding:13px;}
 }
+.field-error { color: #dc2626; font-size: 13px; margin-top: 4px; font-weight: 500; }
+[aria-invalid="true"] { border-color: #dc2626 !important; }
 </style>
 {% endblock %}
 {% block body %}
@@ -378,6 +380,7 @@ body{
     <form method="POST" action="/forms/submit/{{ event.id }}"
           id="reg-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="submission_id" value="{{ submission_id }}">
 
       {% for field in schema.fields %}
 
@@ -400,13 +403,14 @@ body{
           {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
           <div class="select-wrap">
             <select class="form-select" id="{{ field.id }}" name="{{ field.id }}"
-                    {% if field.required %}required{% endif %}>
+                    {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
               <option value="">{{ field.placeholder or 'Select an option…' }}</option>
               {% for opt in field.options %}
-              <option value="{{ opt }}">{{ opt }}</option>
+              <option value="{{ opt }}" {% if values.get(field.id) == opt %}selected{% endif %}>{{ opt }}</option>
               {% endfor %}
             </select>
           </div>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Multiple choice (radio) ── #}
@@ -420,11 +424,12 @@ body{
             {% for opt in field.options %}
             <label class="choice-item">
               <input type="radio" name="{{ field.id }}" value="{{ opt }}"
-                     {% if field.required %}required{% endif %}>
+                     {% if field.required %}required{% endif %} {% if values.get(field.id) == opt %}checked{% endif %}>
               <span>{{ opt }}</span>
             </label>
             {% endfor %}
           </div>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Checkbox group ── #}
@@ -437,11 +442,12 @@ body{
           <div class="choice-list mt-1">
             {% for opt in field.options %}
             <label class="choice-item">
-              <input type="checkbox" name="{{ field.id }}" value="{{ opt }}">
+              <input type="checkbox" name="{{ field.id }}" value="{{ opt }}" {% if opt in (values.get(field.id) or []) %}checked{% endif %}>
               <span>{{ opt }}</span>
             </label>
             {% endfor %}
           </div>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Single checkbox ── #}
@@ -449,12 +455,13 @@ body{
         <div class="form-group">
           <label class="single-check">
             <input type="checkbox" name="{{ field.id }}" value="yes"
-                   {% if field.required %}required{% endif %}>
+                   {% if field.required %}required{% endif %} {% if values.get(field.id) == 'yes' %}checked{% endif %}>
             <span>
               {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
             </span>
           </label>
           {% if field.help_text %}<div class="help-text mt-1">{{ field.help_text }}</div>{% endif %}
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Textarea ── #}
@@ -466,7 +473,8 @@ body{
           {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
           <textarea class="form-control" id="{{ field.id }}" name="{{ field.id }}"
                     placeholder="{{ field.placeholder }}"
-                    {% if field.required %}required{% endif %}></textarea>
+                    {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>{{ values.get(field.id, '') }}</textarea>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── All other inputs (text, email, tel, number, date, url) ── #}
@@ -485,7 +493,9 @@ body{
                  {% if field.max is defined and field.max != '' %}max="{{ field.max }}"{% endif %}
                  {% if field.required %}required{% endif %}
                  autocomplete="{{ 'email' if field.type == 'email' else 'tel' if field.type == 'tel' else 'off' }}"
-                 inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}">
+                 inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}"
+                 value="{{ values.get(field.id, '') if values.get(field.id) is string else '' }}" {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
         {% endif %}
 
@@ -493,11 +503,13 @@ body{
 
       <!-- Privacy notice consent (UPG-22) -->
       <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="privacy_consent" name="privacy_consent" value="yes" required>
+        <input class="form-check-input" type="checkbox" id="privacy_consent" name="privacy_consent" value="yes" required
+               {% if field_errors.get('privacy_consent') %}aria-invalid="true" aria-describedby="privacy_consent-error"{% endif %}>
         <label class="form-check-label" for="privacy_consent">
           I have read the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a> and agree that
           SapthaEvent uses my details to run this event.
         </label>
+        {% if field_errors.get('privacy_consent') %}<div class="field-error" id="privacy_consent-error" role="alert">{{ field_errors['privacy_consent'] }}</div>{% endif %}
       </div>
 
       <!-- Submit -->

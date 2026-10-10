@@ -173,7 +173,8 @@
         }
 
         // ── Judging Criteria ──────────────────────────────────
-        let cr_step2_init = false;
+        // (cr_step2_init is declared once, at the top: a second `let` stopped
+        // this whole script from running, UPG-60)
 
         function addCriteria(name, desc, maxScore) {
             const container = document.getElementById('criteriaRows');

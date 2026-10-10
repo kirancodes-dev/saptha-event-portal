@@ -14,6 +14,7 @@
     {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_meta_token() }}">{% endblock %}
     {% include 'includes/csrf_fetch.html' %}
     <link rel="stylesheet" href="/static/css/fonts.css">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     {# Binds the data-h-<event> handlers each page registers (UPG-25) #}
     <script src="/static/js/handlers.js"></script>
     {# One submit per click on every form (UPG-26) #}

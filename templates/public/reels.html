@@ -271,6 +271,7 @@
 
     <!-- Phone Bezel Container -->
     <div class="reel-viewport">
+        {# No external sample videos: the CSP only plays this site's media; event images show instead (UPG-60) #}
         <!-- Next/Prev Buttons for Desktop -->
         <div class="nav-overlay-arrow arrow-up" data-h-click="public/reels:1"><i class="fas fa-chevron-up"></i></div>
         <div class="nav-overlay-arrow arrow-down" data-h-click="public/reels:2"><i class="fas fa-chevron-down"></i></div>
@@ -281,8 +282,7 @@
         <div class="reel-slider" id="reel-slider">
             <!-- Slide 1 -->
             <div class="reel-slide" data-index="0">
-                <video class="reel-video" loop muted playsinline data-h-click="public/reels:3">
-                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                <video class="reel-video" loop muted playsinline poster="/static/img/event_slide1.webp" data-h-click="public/reels:3">
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
@@ -310,8 +310,7 @@
 
             <!-- Slide 2 -->
             <div class="reel-slide" data-index="1">
-                <video class="reel-video" loop muted playsinline data-h-click="public/reels:5">
-                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" type="video/mp4">
+                <video class="reel-video" loop muted playsinline poster="/static/img/event_slide2.webp" data-h-click="public/reels:5">
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
@@ -339,8 +338,7 @@
 
             <!-- Slide 3 -->
             <div class="reel-slide" data-index="2">
-                <video class="reel-video" loop muted playsinline data-h-click="public/reels:7">
-                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
+                <video class="reel-video" loop muted playsinline poster="/static/img/event_slide3.webp" data-h-click="public/reels:7">
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">

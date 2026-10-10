@@ -2135,8 +2135,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500.
 
 #### UPG-60 — Front-end errors the browser pass found (before and after this run)
-- **Status:** TODO
-- **Last verified:** 2026-10-10, commit "UPG-25: …" (parent `244b889`)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-60: …" on `production-ready` (parent `59f081f`)
 - **Problem:** Found by UPG-25's Chromium pass over every page [R]; each also appears on the code before UPG-23a:
   - files the pages ask for don't exist: `/static/favicon.ico` (linked by the app layout and most pages, so nearly every page logs a 404), `/static/banner-bg.png`, and the payment logos under `/static/assets/logo/` (`visa.svg`, `mastercard.svg`, `upi.svg`, `netbanking.svg`);
   - the reels page plays sample videos from `commondatastorage.googleapis.com`, which the CSP's `media-src` refuses, so it shows nothing;
@@ -2147,6 +2147,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **What to build:** add the favicon and the missing images (or drop the references); give the reels page real event media or remove the demo videos; fix the two script errors and the chart options.
 - **Files touched:** `static/`, `templates/public/reels.html`, `static/js/pages/spoc__create_event*.js`, `static/js/pages/spoc__ai_report.js`, tests.
 - **Effort:** S · **Depends on:** UPG-25 · **Risk:** low.
+- **What was built (2026-10-10, owner's second run):**
+  - **Favicon:** `static/favicon.ico` (16/32/48 px, from `static/app-icon.png`), linked by `layouts/document.html`; the existing `/favicon.ico` route now finds it.
+  - **Missing images:** the events catalogue's banner used a `banner-bg.png` that never existed; it uses `static/img/hero-banner.webp`. The checkout's payment-method logos came from Razorpay's CDN, which refuses outside requests (403); they're text badges now (UPI, Cards, Netbanking).
+  - **Demo videos:** `/live/reels` and `/live/streams` played cartoon sample videos from `commondatastorage.googleapis.com`, which the CSP refuses; the external sources are gone and the event images show as posters (the streams page's channel buttons switch posters). Whether these demo pages should stay public is decision D-8.
+  - **Script errors:** `/spoc/create_event` declared `cr_step2_init` twice with `let`, a parse error that stopped **the whole create-event script** from running (`static/js/pages/spoc__create_event.js`); `/spoc/round_panel/<event>` bound a listener to the cut-off field even when no score exists yet (`templates/spoc/round_panel.html`).
+  - **Calendar and charts:** the calendar linked a FullCalendar CSS file that doesn't exist (FullCalendar 6 injects its own) and passed an unknown `mousemove` option; the SPOC dashboard's wayfinder SVGs had `height="auto"`, now a style.
+  - Every file under `static/js` parses (`node --check`).
+  - Checked [R] in Chromium over every page that answers 200 for some role (254 page loads): no page error, no 404 for a `/static/` file, no CSP violation; the only messages are the scanner HUD's "camera not supported" warnings in headless Chromium.
+- **To test later:** criterion 1 (headless check, no 404 or page error), plus the create-event wizard working end to end now that its script runs.
 - **Acceptance criteria:**
   1. Headless check: no page logs a 404 for a `/static/` file or a page error.
 
@@ -2192,6 +2201,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | D-4 | **UPG-42: which address should the privacy, terms and payment-failed pages give for help and privacy requests?** | UPG-42 | **Decided (owner, 2026-10-10):** the address comes from `SUPPORT_EMAIL`. The owner sets the real address in the deployment's `.env`/secret settings; `events@your-university-domain` is only the placeholder in `.env.example`, never a default in code. |
 | D-6 | **UPG-30 criterion 4: when is the Razorpay test-mode checkout run?** | UPG-30 criterion 4 | **Decided (owner, 2026-10-10):** deferred to UPG-32 (release check), run on a public test deployment together with the webhook (Razorpay must reach `<BASE_URL>/payment/webhook/razorpay`). UPG-30 stays IN PROGRESS until then. |
 | D-7 | **UPG-22: what is kept after an account is deleted?** Built: the account and the person's name, email, phone, USN and answers go; registration rows stay without them (attendance and payment totals for reports). Still holding the email: payment orders (finance records) and the audit log. Also: should API v1 registrations (the apps) require consent once the apps are updated? | UPG-22 (policy, not code) | Open (2026-10-10). Proposed: keep payment orders and the audit log for the finance and audit retention period (e.g. 8 years), then anonymise; require consent in API v1 after the next app release. |
+| D-8 | **Keep `/live/reels` and `/live/streams` public?** Both are demo pages: made-up like and viewer counts, a "Live" badge, and (until UPG-60) cartoon sample videos. UPG-60 replaced the videos with event images; the counts are still invented. | none (content, not code) | Open (2026-10-10). Proposed: hide both until there's real event media, as UPG-53 did for the home page's fake hackathon. |
 
 ---
 
@@ -2333,3 +2343,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-61: …" (parent `f9ebbeb`) | UPG-61 | **UPG-61 (new, found starting UPG-59) BUILT (untested).** Development start-up only added nullable columns, so a database made before UPG-11 lacked `events.activity_points`/`activity_hours` (NOT NULL) and every events query failed. `init_db` now adds NOT NULL columns that have a constant default with that default. Checked on such a database; adapter tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-59: …" (parent `3477667`) | UPG-59 | **UPG-59 BUILT (untested).** The five 500s fixed, none removed: a judge entry without a name on the AI match page; redirects to `public.event_details`/`public.index` (removed blueprint) on exams and hackathon pages; a division by zero on the XP leaderboard; a `None` sort key in the SPOC stats API. A crawl of every GET route as six roles answers no 500. ruff clean; app starts. |
 | 2026-10-10 | "UPG-50: …" (parent `0db8a4f`) | UPG-50 | **UPG-50 BUILT (untested).** Every value put into email HTML is escaped (`_e()` in `utils_email.py` and `tasks/scheduled_tasks.py`): all account, event, payment, refund, result, broadcast and room emails, email titles, and the briefing, 3-day and velocity emails. Subjects stay plain text. Certificate part deferred (owner, 2026-10-10): the certificate email is unchanged. Email tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-60: …" (parent `59f081f`) | UPG-60, D-8 | **UPG-60 BUILT (untested).** Favicon added; the catalogue banner and checkout payment logos no longer point at missing or refused files; the reels and streams pages show event images instead of blocked cartoon sample videos; the create-event script's duplicate `let` (which stopped the whole wizard script from running) and the round panel's missing-field listener fixed; the calendar's missing CSS link and unknown option removed; SVG height fixed. Chromium pass over 254 page loads: no page error, no static 404, no CSP violation. **New decision D-8** (keep the demo reels/streams pages public?). ruff clean; app starts. |

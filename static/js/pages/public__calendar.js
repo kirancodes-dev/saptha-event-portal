@@ -36,10 +36,8 @@ var cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
   eventDidMount: function(info) {
     info.el.style.cursor = 'pointer';
   },
-  mousemove: function(e) {
-    tooltip.style.left = (e.clientX + 14) + 'px';
-    tooltip.style.top = (e.clientY + 14) + 'px';
-  },
+  // (the tooltip follows the mouse through the document listener below; FullCalendar
+  // has no `mousemove` option, UPG-60)
 });
 cal.render();
 

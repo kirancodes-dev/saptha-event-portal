@@ -328,7 +328,9 @@ function switchMode(mode, btn) {
   document.getElementById('panel_cutoff').style.display  = (mode === 'cutoff') ? '' : 'none';
 }
 
-document.getElementById('cutoffInput').addEventListener('input', function() {
+// The advance panel is only there once something is scored (UPG-60)
+const cutoffInput = document.getElementById('cutoffInput');
+if (cutoffInput) cutoffInput.addEventListener('input', function() {
   const cut = parseFloat(this.value) || 0;
   const count = scores.filter(s => s >= cut).length;
   document.getElementById('cutoffPreview').textContent = count;

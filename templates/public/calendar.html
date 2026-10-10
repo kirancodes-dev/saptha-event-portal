@@ -5,7 +5,7 @@
 {% include "layouts/_bootstrap_css.html" %}
 <link href="/static/css/global.css" rel="stylesheet">
 {% include "layouts/_fontawesome.html" %}
-<link integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+{# FullCalendar 6 adds its own styles; the old CSS link pointed at a file that doesn't exist (UPG-60) #}
 <style>
 :root{--blue:#1a2557;--orange:#c9a45e;--navy:#0f172a;}
 body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1e293b;}

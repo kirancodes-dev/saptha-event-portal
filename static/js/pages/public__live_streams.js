@@ -104,9 +104,14 @@
             
             // update video source and load
             var video = document.getElementById('main-video');
-            video.src = videoUrl;
-            video.load();
-            video.play();
+            if (/\.(webp|png|jpe?g)$/.test(videoUrl)) {
+                // No stream source yet: show the channel's image (UPG-60)
+                video.removeAttribute('src'); video.poster = videoUrl; video.load();
+            } else {
+                video.src = videoUrl;
+                video.load();
+                video.play();
+            }
 
             // adjust view numbers simulation
             if (type === 'cultural') {

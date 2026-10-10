@@ -335,6 +335,12 @@ def analytics_export(kind):
                              o['refund_id'], o['refunded_at'] or '', o['failure_reason']])
         filename = 'payments.csv'
 
+    elif kind in ('activity', 'activity_points', 'department_activity'):
+        import services_export
+        dept = request.args.get('department')
+        buf.write(services_export.department_activity_csv(db, dept))
+        filename = f"activity_ledger_{dept or 'all'}.csv"
+
     else:  # revenue
         by_event = collections.defaultdict(lambda: {'count': 0, 'revenue': 0})
         for r in db.collection('registrations').stream():
@@ -360,6 +366,30 @@ def analytics_export(kind):
         buf.getvalue(),
         mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
+
+
+@admin_bp.route('/export/department_activity')
+@admin_bp.route('/export/activity_points')
+@login_required
+@role_required(SUPER_ROLES)
+def export_department_activity():
+    dept = request.args.get('department')
+    fmt = request.args.get('format', 'csv').lower()
+    from flask import Response
+    import services_export
+    if fmt == 'xlsx':
+        data = services_export.department_activity_xlsx(db, dept)
+        return Response(
+            data,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.xlsx"'}
+        )
+    data = services_export.department_activity_csv(db, dept)
+    return Response(
+        data,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.csv"'}
     )
 
 

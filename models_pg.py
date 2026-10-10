@@ -375,6 +375,8 @@ class Event(Base):
     ticket_tiers_json = Column("ticketTiersJson", Text, nullable=True)
     notification_rules_json = Column("notificationRulesJson", Text, nullable=True)
     certificate_config_json = Column("certificateConfigJson", Text, nullable=True)
+    activity_points = Column("activity_points", Float, nullable=False, default=0.0)
+    activity_hours  = Column("activity_hours", Float, nullable=False, default=0.0)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
     # Schemaless overflow: the full Firestore-style document, so fields without
@@ -413,6 +415,8 @@ class Event(Base):
             'poster_url': self.poster_url, 'rules': self.rules, 'prizes': self.prizes,
             'coordinator_id': self.coordinator_id,
             'registration_count': self.registration_count or 0,
+            'activity_points': float(self.activity_points or 0.0),
+            'activity_hours': float(self.activity_hours or 0.0),
             'workflow_config': json.loads(self.workflow_config_json) if self.workflow_config_json else {},
             'evaluation_config': json.loads(self.evaluation_config_json) if self.evaluation_config_json else {},
             'ticket_tiers': json.loads(self.ticket_tiers_json) if self.ticket_tiers_json else [],

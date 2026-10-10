@@ -257,7 +257,9 @@ def create_event():
             },
             'status': initial_status,
             'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'results_published': False
+            'results_published': False,
+            'activity_points': float(request.form.get('activity_points') or 0.0) if request.form.get('activity_points') else 0.0,
+            'activity_hours': float(request.form.get('activity_hours') or 0.0) if request.form.get('activity_hours') else 0.0,
         }
 
         if room_id:
@@ -423,6 +425,31 @@ def event_report(event_id):
     log_action(db, "EVENT_REPORT", f"{session.get('user_id')} downloaded the report for event {event_id}")
     return Response(services_export.event_report_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
                     headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Report.xlsx")}'})
+
+
+@spoc_bp.route('/export/department_activity')
+@spoc_bp.route('/export/activity_points')
+@login_required
+@role_required('ClubSPOC')
+def spoc_export_department_activity():
+    user_doc = db.collection('users').document(session.get('user_id', '')).get()
+    dept = request.args.get('department') or (user_doc.to_dict().get('department') if user_doc.exists else None)
+    fmt = request.args.get('format', 'csv').lower()
+    from flask import Response
+    import services_export
+    if fmt == 'xlsx':
+        data = services_export.department_activity_xlsx(db, dept)
+        return Response(
+            data,
+            mimetype=XLSX_MIMETYPE,
+            headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.xlsx"'}
+        )
+    data = services_export.department_activity_csv(db, dept)
+    return Response(
+        data,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.csv"'}
+    )
 
 
 # --- 4. RESULTS DASHBOARD ---
@@ -1187,6 +1214,13 @@ def edit_event(event_id):
         val = request.form.get(field, '').strip()
         if val:
             updates[field] = val
+    for num_field in ['activity_points', 'activity_hours']:
+        val = request.form.get(num_field, '').strip()
+        if val != '':
+            try:
+                updates[num_field] = float(val)
+            except ValueError:
+                pass
 
     if updates:
         # If room or time is changing, check for conflicts on confirmed bookings

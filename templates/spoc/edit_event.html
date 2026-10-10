@@ -148,6 +148,16 @@
           <input aria-label="Category / Type" type="text" name="event_type" class="form-control"
                  value="{{ event.get('event_type', '') }}" placeholder="e.g. Technical, Cultural">
         </div>
+        <div class="col-md-6">
+          <label class="form-label">Activity Points (AICTE points)</label>
+          <input aria-label="Activity Points" type="number" step="0.5" min="0" name="activity_points" class="form-control"
+                 value="{{ event.get('activity_points', 0) }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Activity Hours (NSS / NCC / FDP)</label>
+          <input aria-label="Activity Hours" type="number" step="0.5" min="0" name="activity_hours" class="form-control"
+                 value="{{ event.get('activity_hours', 0) }}">
+        </div>
       </div>
 
       <div class="row g-3 mb-4">

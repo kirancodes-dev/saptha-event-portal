@@ -486,8 +486,14 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. The login page shows the Google button when OAuth is configured. *(2026-10-10: moved to UPG-55, which links Google sign-in and 2FA before launch; UPG-10 adds the domain rule.)*
 
 #### UPG-11 — Participation ledger: activity points and NSS / NCC / FDP hours
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Evidence:** `models_pg.py:64-65`, `migrations/versions/0005_activity_points_hours.py`, `routes_spoc.py:127-128,266-267,1140-1141`, `templates/spoc/create_event.html:641-650`, `templates/spoc/edit_event.html:361-370`, `routes_ticket.py:181-188`, `services_export.py:210-307`, `routes_admin.py:338-341,372-389`, `routes_participant.py:321-360`, `templates/participant/ledger.html`, `utils_certificate.py:165,653-659`, `templates/participant/certificate.html:36-39`
+- **Last verified:** 2026-10-10, commit `UPG-11`
+- **To test later:**
+  1. Test: an event worth 2 hours / 5 points credits a Present attendee and not an Absent one.
+  2. Test: the ledger totals across 3 events are correct.
+  3. Test: the department export lists every student in the department with totals.
+  4. The certificate shows the hours when the event has them.
 - **Problem:** MISSING. No points or hours fields exist anywhere (searched routes, services and templates for activity points, AICTE, NSS/volunteer/credit hours). Mentors and NSS/NCC officers keep these registers in Excel or on paper.
 - **Who benefits:** every student (activity points), NSS/NCC units, faculty (FDP hours), IQAC.
 - **What to build:** per-event points and/or hours set by the organiser; credited on attendance; a per-student ledger page; department/unit export; hours printed on certificates.
@@ -2297,6 +2303,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-04: …" (parent `cffd2ae`) | UPG-04 | **UPG-04 BUILT (untested).** Implemented judging criteria normalizer `normalize_criteria` handling dicts and strings with `{name, max_score, key, slug}`; added max score and range validation (400 on out of bounds) in `submit_score` and `score_inline`; returned locked indicator when SPOC locks scoring; updated judge dashboard to query events in `in_progress` and `evaluation` states; updated `templates/judge/teams.html` to render per-criterion max score inputs and sliders. ruff clean; app starts. |
 | 2026-10-10 | "UPG-09: …" (parent `0630122`) | UPG-09 | **UPG-09 BUILT (untested).** Added room picker and conflict detection to event creation in `routes_spoc.py` and `templates/spoc/create_event.html` (returns 400 on conflict without creating event); creates tentative booking in `venue_bookings`; confirms tentative bookings on approval/publish transition in `services_workflow.py`; populates room name on calendar JSON feeds in `app.py`. ruff clean; app starts. |
 | 2026-10-10 | "UPG-10: …" (parent `a15e291`) | UPG-10 | **UPG-10 BUILT (untested).** Implemented SuperAdmin student roster CSV import (`/admin/users/import_csv` and `/admin/students/import_csv`) supporting `email`, `name`, `usn`, `department`, `year`, `section`; creates unverified student accounts or updates in place without duplicates; added CSV upload card to `templates/admin/users.html`; restricted Google sign-in to university domain (`UNIVERSITY_EMAIL_DOMAIN` / `GOOGLE_ALLOWED_DOMAIN`) in `auth_oauth.py` and `config.py`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-11: …" (parent `54df99c`) | UPG-11 | **UPG-11 BUILT (untested).** Added `activity_points` and `activity_hours` to `Event` model and migration `0005_activity_points_hours`; added inputs in SPOC create and edit event pages; credited points and hours on check-in in `routes_ticket.py`; created `/participant/ledger` student ledger view; added department activity points & hours export (`/admin/export/department_activity` CSV/XLSX) in `services_export.py` and admin routes; printed activity hours on certificate PDF and HTML view. ruff clean; app starts. |
 
 
 

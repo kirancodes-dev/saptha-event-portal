@@ -203,3 +203,106 @@ def event_report_xlsx(db, event_id):
          [[w['rank'], w['name'], w['team'], '' if w['score'] is None else w['score']] for w in report['winners']]),
         ('Registrations', COLUMNS, registration_rows(db, event_id)),
     ])
+
+
+# ── Department Activity & Hours Export (UPG-11) ───────────────────────────
+
+DEPARTMENT_ACTIVITY_COLUMNS = [
+    'Student Name', 'USN', 'Email', 'Department', 'Year',
+    'Events Attended', 'Total Activity Points', 'Total Activity Hours',
+]
+
+
+def department_activity_data(db, department=None):
+    """Return list of dicts with activity totals for every student in the department."""
+    students = []
+    for u in db.collection('users').stream():
+        udata = u.to_dict() or {}
+        role = str(udata.get('role', ''))
+        if role in ('Student', 'Participant'):
+            stud_dept = str(udata.get('department') or '').strip()
+            if department and stud_dept.lower() != str(department).strip().lower():
+                continue
+            students.append((u.id, udata))
+
+    # Pre-fetch events
+    events_map = {}
+    for e in db.collection('events').stream():
+        edata = e.to_dict() or {}
+        events_map[str(e.id)] = {
+            'points': float(edata.get('activity_points') or 0.0),
+            'hours': float(edata.get('activity_hours') or 0.0),
+        }
+
+    # Group registrations by email and usn
+    regs_by_student = defaultdict(list)
+    for r in db.collection('registrations').stream():
+        rdata = r.to_dict() or {}
+        email = str(rdata.get('lead_email') or '').strip().lower()
+        usn = str(rdata.get('lead_usn') or '').strip().upper()
+        if email:
+            regs_by_student[email].append(rdata)
+        if usn:
+            regs_by_student[usn].append(rdata)
+        for m in (rdata.get('members') or []):
+            m_email = str(m.get('email') or '').strip().lower()
+            m_usn = str(m.get('usn') or '').strip().upper()
+            if m_email and m_email != email:
+                regs_by_student[m_email].append(rdata)
+            if m_usn and m_usn != usn:
+                regs_by_student[m_usn].append(rdata)
+
+    results = []
+    for u_id, sdata in sorted(students, key=lambda x: (x[1].get('department', ''), x[1].get('name', ''))):
+        s_email = str(sdata.get('email') or u_id or '').strip()
+        s_usn = str(sdata.get('usn') or '').strip().upper()
+        # Collect distinct registrations
+        seen_reg_ids = set()
+        matched_regs = []
+        for r in regs_by_student.get(s_email.lower(), []) + (regs_by_student.get(s_usn, []) if s_usn else []):
+            rid = str(r.get('id') or r.get('reg_id') or id(r))
+            if rid not in seen_reg_ids:
+                seen_reg_ids.add(rid)
+                matched_regs.append(r)
+
+        attended_count = 0
+        total_points = 0.0
+        total_hours = 0.0
+        for r in matched_regs:
+            if str(r.get('attendance') or '').strip().lower() == 'present':
+                attended_count += 1
+                ev = events_map.get(str(r.get('event_id')), {'points': 0.0, 'hours': 0.0})
+                total_points += ev['points']
+                total_hours += ev['hours']
+
+        results.append({
+            'name': sdata.get('name', ''),
+            'usn': sdata.get('usn', ''),
+            'email': s_email,
+            'department': sdata.get('department', ''),
+            'year': sdata.get('year', ''),
+            'events_attended': attended_count,
+            'total_points': total_points,
+            'total_hours': total_hours,
+        })
+    return results
+
+
+def department_activity_rows(db, department=None):
+    """List every student in the department with totals as row tuples."""
+    data = department_activity_data(db, department)
+    return [
+        [
+            d['name'], d['usn'], d['email'], d['department'], d['year'],
+            d['events_attended'], d['total_points'], d['total_hours'],
+        ]
+        for d in data
+    ]
+
+
+def department_activity_csv(db, department=None):
+    return to_csv(department_activity_rows(db, department), columns=DEPARTMENT_ACTIVITY_COLUMNS)
+
+
+def department_activity_xlsx(db, department=None):
+    return to_xlsx([('Department Activity', DEPARTMENT_ACTIVITY_COLUMNS, department_activity_rows(db, department))])

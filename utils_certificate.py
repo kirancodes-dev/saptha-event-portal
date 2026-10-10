@@ -162,6 +162,7 @@ def generate_certificate_pdf(
     issued_by:     str   = 'Dean of Student Affairs',
     template_id:   int   = 1,
     certificate_id: str  = '',
+    activity_hours: float = 0.0,
 ) -> bytes:
     """
     Generates an official Sapthagiri NPS University certificate PDF in landscape A4.
@@ -481,7 +482,8 @@ def generate_certificate_pdf(
     c.setFillColor(PURPLE); c.setFont('Times-Bold', evt_fs)
     c.drawCentredString(CX - 10, NAME_Y - 46, evt_disp)
     c.setFillColor(NAVY); c.setFont('Times-Roman', 10.5)
-    c.drawCentredString(CX - 10, NAME_Y - 62, f'held on  {date_str}')
+    hours_note = f"  ({int(activity_hours) if activity_hours == int(activity_hours) else activity_hours} Hours)" if activity_hours else ""
+    c.drawCentredString(CX - 10, NAME_Y - 62, f'held on  {date_str}{hours_note}')
 
     # Score badge for winners
     if cert_type == 'winner' and score:
@@ -840,13 +842,15 @@ def issue_event_certificates(event_id: str, base_url: str = '', db=None, top_n: 
             verify_url = f"{base_url}/verify/{cert_id}"
 
             custom = template(f'winner_{rank}' if rank else 'participation')
+            ev_hours = float(event.get('activity_hours') or 0.0)
             if custom:
                 pdf = generate_from_image_template(custom, name, cert_id, base_url, x_pct, y_pct)
             else:
                 pdf = generate_certificate_pdf(
                     student_name=name, event_title=title, reg_id=reg_label, cert_type=cert_type,
                     rank=rank, score=score, event_date=str(event.get('date', '')), base_url=base_url,
-                    template_id=template_id, issued_by=issued_by, certificate_id=cert_id)
+                    template_id=template_id, issued_by=issued_by, certificate_id=cert_id,
+                    activity_hours=ev_hours)
 
             issued_at = datetime.now().isoformat()
             db.collection('verified_certificates').document(cert_id).set({
@@ -854,6 +858,7 @@ def issue_event_certificates(event_id: str, base_url: str = '', db=None, top_n: 
                 'student_name': name, 'event_title': title, 'cert_type': cert_type,
                 'rank': rank, 'score': score, 'issued_at': issued_at,
                 'college_name': 'Sapthagiri NPS University', 'status': 'Verified',
+                'activity_hours': ev_hours,
             })
             db.collection('registrations').document(doc_id).update({
                 'certificate_id': cert_id,

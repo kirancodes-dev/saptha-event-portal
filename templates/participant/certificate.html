@@ -162,6 +162,9 @@
             For their active and outstanding participation in the prestigious university event<br>
             <strong>{{ event.title }}</strong><br>
             held on {{ event.date }} at {{ event.venue }}.
+            {% if event.activity_hours and event.activity_hours > 0 %}
+            <br><span style="display:inline-block;margin-top:10px;font-size:16px;color:#1a2557;font-weight:600;">(Credited: {{ event.activity_hours }} Hours{% if event.activity_points and event.activity_points > 0 %} &middot; {{ event.activity_points }} Activity Points{% endif %})</span>
+            {% endif %}
         </div>
         
         <div class="footer-grid">

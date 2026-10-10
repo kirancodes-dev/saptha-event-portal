@@ -823,3 +823,96 @@ def my_events():
 def api_my_events():
     return my_events()
 
+
+# =========================================================
+# 11. PARTICIPATION LEDGER (ACTIVITY POINTS & HOURS - UPG-11)
+# =========================================================
+@participant_bp.route('/ledger')
+@participant_bp.route('/activity_points')
+@participant_bp.route('/api/ledger')
+@login_required
+def participation_ledger():
+    user_email = (session.get('user_id') or '').strip().lower()
+
+    # User's registrations
+    regs_stream = db.collection('registrations').where('lead_email', '==', user_email).stream()
+    registrations = [(r.id, r.to_dict() or {}) for r in regs_stream]
+
+    # Also check if participant is in team members of other registrations
+    all_regs = db.collection('registrations').stream()
+    found_ids = {r[0] for r in registrations}
+    for r in all_regs:
+        if r.id in found_ids:
+            continue
+        data = r.to_dict() or {}
+        members = data.get('members') or []
+        if any((m.get('email') or '').strip().lower() == user_email for m in members):
+            registrations.append((r.id, data))
+            found_ids.add(r.id)
+
+    events_map = {}
+    for e in db.collection('events').stream():
+        events_map[str(e.id)] = e.to_dict() or {}
+
+    entries = []
+    total_points = 0.0
+    total_hours = 0.0
+
+    for reg_id, reg in sorted(registrations, key=lambda x: str(x[1].get('registered_at') or ''), reverse=True):
+        event_id = str(reg.get('event_id') or '')
+        event = events_map.get(event_id, {})
+
+        attendance = str(reg.get('attendance') or '').strip()
+        is_present = attendance.lower() == 'present'
+
+        ev_points = float(event.get('activity_points') or 0.0)
+        ev_hours = float(event.get('activity_hours') or 0.0)
+
+        points_earned = ev_points if is_present else 0.0
+        hours_earned = ev_hours if is_present else 0.0
+
+        total_points += points_earned
+        total_hours += hours_earned
+
+        entries.append({
+            'reg_id': reg_id,
+            'event_id': event_id,
+            'event_title': event.get('title') or reg.get('event_title', 'Event'),
+            'category': event.get('category', 'General'),
+            'date': str(event.get('date') or reg.get('registered_at', '')),
+            'attendance': attendance or 'Pending',
+            'is_present': is_present,
+            'event_points': ev_points,
+            'event_hours': ev_hours,
+            'points_earned': points_earned,
+            'hours_earned': hours_earned,
+            'certificate_id': reg.get('certificate_id', ''),
+        })
+
+    is_json = (
+        request.path.endswith('/api/ledger') or
+        request.args.get('format') == 'json' or
+        request.headers.get('Accept') == 'application/json' or
+        request.is_json
+    )
+    if is_json:
+        return jsonify({
+            'user_email': user_email,
+            'total_points': total_points,
+            'total_hours': total_hours,
+            'entries': entries,
+        })
+
+    user_doc = db.collection('users').document(user_email).get()
+    user_data = (user_doc.to_dict() or {}) if user_doc.exists else {}
+
+    return render_template(
+        'participant/ledger.html',
+        user_email=user_email,
+        user_data=user_data,
+        total_points=total_points,
+        total_hours=total_hours,
+        entries=entries,
+        current_page='ledger',
+    )
+

@@ -178,10 +178,14 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
         return answer('unpaid', 'Payment pending — entry not allowed.', 402, **details)
 
     checkin_time = _now()
+    ev_points = float(event.get('activity_points') or 0.0)
+    ev_hours = float(event.get('activity_hours') or 0.0)
     db.collection('registrations').document(reg_id).update({
         'attendance':    'Present',
         'checkin_time':  checkin_time,
         'checked_in_by': user_email,
+        'activity_points_credited': ev_points,
+        'activity_hours_credited': ev_hours,
     })
     if reg.get('ticket_id'):
         try:

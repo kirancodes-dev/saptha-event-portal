@@ -45,6 +45,15 @@
             </table>
         </div>
 
+        {% if cancelled_events %}
+        <h2 style="font-size:17px;margin-top:24px;">Cancelled events with payments</h2>
+        <ul>
+            {% for ev in cancelled_events %}
+            <li><a href="/admin/events/{{ ev.id }}/refunds">{{ ev.title }}</a>: {{ ev.count }} payment{{ '' if ev.count == 1 else 's' }} to refund</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
         <h2 style="font-size:17px;margin-top:24px;">Paid registrations</h2>
         <p>Mark a registration refunded (the money was returned another way) or cancelled. Either way its ticket
            no longer checks in. Both are recorded in the audit log.</p>

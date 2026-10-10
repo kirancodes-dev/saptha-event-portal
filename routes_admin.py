@@ -508,8 +508,114 @@ def payments():
             for rid, r in regs if _is_paid(r)]
     from utils_pagination import paginate_items
     page = paginate_items(paid, search_fields=('lead_name', 'lead_email', 'usn', 'reg_id', 'event_title'))
+    # Cancelled events that still hold payments: refund them all (UPG-51)
+    statuses = {e.id: str((e.to_dict() or {}).get('status', '')).lower() for e in db.collection('events').stream()}
+    cancelled_paid = collections.Counter(str(r.get('event_id')) for r in paid
+                                         if statuses.get(str(r.get('event_id'))) == 'cancelled'
+                                         and str(r.get('payment_status') or '').lower() != 'refunded')
+    cancelled_events = [{'id': eid, 'title': titles.get(eid, eid), 'count': n} for eid, n in cancelled_paid.items()]
     return render_template('admin/payments.html', orders=orders, registrations=page.items, page=page,
-                           current_page='payments')
+                           cancelled_events=cancelled_events, current_page='payments')
+
+
+# =========================================================
+# REFUND A CANCELLED EVENT'S PAYMENTS (UPG-51)
+# =========================================================
+def _refund_event_or_abort(event_id):
+    """The event, for a Super Admin or whoever may edit it; 403 for anyone else."""
+    from flask import abort
+    from services_permission import can
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    if session.get('role') not in SUPER_ROLE_NAMES and not can(session, 'edit_event', event, db=db):
+        abort(403)
+    return event
+
+
+def _event_refund_rows(event_id):
+    """Every paid registration of the event with its Razorpay order, if any."""
+    from services_payments import get_order
+    rows = []
+    for doc in db.collection('registrations').where('event_id', '==', event_id).stream():
+        reg = doc.to_dict() or {}
+        if not _is_paid(reg):
+            continue
+        order = get_order(reg.get('razorpay_order_id') or '')
+        rows.append({'doc_id': doc.id, 'reg': reg, 'order': order,
+                     'amount': (order['amount_paise'] / 100) if order else reg.get('amount_paid') or 0,
+                     'state': (order['status'] if order else 'no_order')})
+    return rows
+
+
+@admin_bp.route('/events/<event_id>/refunds')
+@login_required
+def event_refunds(event_id):
+    event = _refund_event_or_abort(event_id)
+    rows = _event_refund_rows(event_id)
+    due = [r for r in rows if r['state'] == 'paid']
+    return render_template('admin/event_refunds.html', event=event, rows=rows,
+                           due_count=len(due), due_total=sum(float(r['amount'] or 0) for r in due),
+                           cancelled=str(event.get('status', '')).lower() == 'cancelled')
+
+
+@admin_bp.route('/events/<event_id>/refund_all', methods=['POST'])
+@login_required
+def refund_all(event_id):
+    """Refund every paid registration of a cancelled event through Razorpay:
+    once per payment (an atomic claim on its order), failures kept with their
+    reason for a retry, each refund audit-logged and emailed."""
+    from services_payments import finish_refund, refund_failed, start_registration_refund
+    event = _refund_event_or_abort(event_id)
+    back = f'/admin/events/{event_id}/refunds'
+    if str(event.get('status', '')).lower() != 'cancelled':
+        flash("Refunds for everyone are only for cancelled events.", "warning")
+        return redirect(back)
+    if request.form.get('confirm') != 'yes':
+        flash("Tick the box to confirm the refunds.", "warning")
+        return redirect(back)
+
+    import routes_payment
+    actor = session.get('user_id', '')
+    done = failed = 0
+    for row in _event_refund_rows(event_id):
+        if row['state'] != 'paid':
+            continue
+        order = start_registration_refund(row['order']['id'])
+        if order is None:
+            continue   # another request is refunding it, or it already was
+        try:
+            refund = routes_payment._rzp().payment.refund(order['payment_id'], {'amount': order['amount_paise']})
+        except Exception as exc:
+            refund_failed(order['id'], str(exc))
+            logger.warning("Refund failed for order %s: %s", order['id'], exc)
+            failed += 1
+            continue
+        refund_id = str((refund or {}).get('id', ''))
+        finish_refund(order['id'], refund_id, actor)
+        reg = row['reg']
+        db.collection('registrations').document(row['doc_id']).update({
+            'payment_status': 'Refunded', 'status': 'cancelled', 'refund_id': refund_id,
+            'refunded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'refunded_by': actor,
+            'cancel_reason': 'Event cancelled'})
+        log_action(db, "PAYMENT_REFUNDED",
+                   f"Event {event_id} cancelled: order {order['id']} (payment {order['payment_id']}, "
+                   f"₹{order['amount_paise'] / 100:g}) refunded by {actor}: refund {refund_id}")
+        try:
+            from utils_email import send_refund_email
+            send_refund_email(reg.get('lead_email', ''), reg.get('lead_name', ''), event.get('title', ''),
+                              order['amount_paise'] / 100, reg.get('reg_id') or row['doc_id'], refund_id)
+        except Exception:
+            logger.exception("Refund email failed for order %s", order['id'])
+        done += 1
+    if done:
+        flash(f"Refunded {done} payment{'s' if done != 1 else ''}.", "success")
+    if failed:
+        flash(f"{failed} refund{'s' if failed != 1 else ''} failed; see the reasons below and try again.", "danger")
+    if not done and not failed:
+        flash("Nothing left to refund.", "info")
+    return redirect(back)
 
 
 @admin_bp.route('/registrations/<reg_id>/mark', methods=['POST'])

@@ -1,0 +1,65 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Refunds — {{ event.title }}{% endblock %}
+{% block page_title %}Refunds{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <h2 style="font-size:19px;">{{ event.title }}</h2>
+        <p class="text-muted">Status: {{ event.status }}</p>
+
+        {% if not cancelled %}
+            <p>This event isn't cancelled, so its payments can't be refunded all at once. Single refunds and
+               cancellations are on the <a href="/admin/payments">payments page</a>.</p>
+        {% elif due_count %}
+            <form method="POST" action="/admin/events/{{ event.id }}/refund_all" class="mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <p>{{ due_count }} payment{{ '' if due_count == 1 else 's' }} to refund, ₹{{ '%g'|format(due_total) }} in all.
+                   Each one is refunded through Razorpay once, recorded in the audit log, and the student is emailed.</p>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="refund-confirm" name="confirm" value="yes" required>
+                    <label class="form-check-label" for="refund-confirm">
+                        Refund ₹{{ '%g'|format(due_total) }} to {{ due_count }} student{{ '' if due_count == 1 else 's' }}
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-danger">Refund all through Razorpay</button>
+            </form>
+        {% else %}
+            <p>Nothing left to refund through Razorpay.</p>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th scope="col">Registration</th><th scope="col">Name</th><th scope="col">Amount</th>
+                    <th scope="col">Payment</th><th scope="col">Refund</th></tr></thead>
+                <tbody>
+                {% for r in rows %}
+                    <tr>
+                        <td><code>{{ r.reg.reg_id or r.doc_id }}</code></td>
+                        <td>{{ r.reg.lead_name }}<br><small>{{ r.reg.lead_email }}</small></td>
+                        <td>₹{{ r.amount }}</td>
+                        <td><small>{{ r.order.payment_id if r.order else (r.reg.razorpay_payment_id or '—') }}</small></td>
+                        <td>
+                            {% if r.state == 'refunded' %}Refunded <small>({{ r.order.refund_id }})</small>
+                            {% elif r.state == 'refunding' %}In progress
+                            {% elif r.state == 'no_order' %}No Razorpay order on record: refund by hand, then mark it refunded on the payments page
+                            {% elif r.order and r.order.failure_reason %}<span class="text-danger">Failed: {{ r.order.failure_reason }}</span>
+                            {% else %}To refund{% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5">This event has no paid registrations.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -331,6 +331,10 @@ def transition_event(event_id):
             metadata={'source': 'spoc_ui'}
         )
         flash(f"Event advanced to '{target_state.replace('_', ' ').title()}'.", "success")
+        if target_state == 'cancelled' and any(
+                float((r.to_dict() or {}).get('amount_paid') or 0) > 0
+                for r in db.collection('registrations').where('event_id', '==', event_id).stream()):
+            flash(f"This event has paid registrations. Refund them at /admin/events/{event_id}/refunds.", "warning")
     except Exception as e:
         flash(str(e), "warning")
 

@@ -277,6 +277,30 @@ def start_refund(order_id: str) -> Optional[dict]:
     return get_order(order_id)
 
 
+def start_registration_refund(order_id: str) -> Optional[dict]:
+    """Move a paid order that HAS a registration to 'refunding', once (a
+    cancelled event's refunds, UPG-51); None if it isn't one."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        result = s.execute(update(PaymentOrder)
+                           .where(PaymentOrder.id == order_id, PaymentOrder.status == 'paid',
+                                  PaymentOrder.reg_id.is_not(None))
+                           .values(status='refunding', failure_reason=None))
+        if result.rowcount != 1:
+            return None
+    return get_order(order_id)
+
+
+def refund_failed(order_id: str, reason: str) -> None:
+    """Undo a refund claim and keep why it failed, so it can be retried."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        s.execute(update(PaymentOrder).where(PaymentOrder.id == order_id, PaymentOrder.status == 'refunding')
+                  .values(status='paid', failure_reason=str(reason)[:500]))
+
+
 def finish_refund(order_id: str, refund_id: str, by: str) -> None:
     from db_pg import get_session
     from models_pg import PaymentOrder

@@ -737,6 +737,21 @@ def send_payment_receipt_email(to_email: str, name: str, event_title: str, amoun
     return _send(to_email, f"🧾 Payment receipt — {event_title}", body, reg_id=reg_id)
 
 
+def send_refund_email(to_email: str, name: str, event_title: str, amount, reg_id: str,
+                      refund_id: str = '') -> bool:
+    """The event was cancelled and the payment refunded (UPG-51)."""
+    import html as _html
+    e = lambda v: _html.escape(str(v or ''))  # noqa: E731
+    body = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{e(name) or 'Participant'}</strong>,</p>
+        <p style="color:#475569;"><strong>{e(event_title)}</strong> was cancelled, so we have refunded
+           your payment of <strong>₹{e(amount)}</strong> (registration {e(reg_id)}).</p>
+        <p style="color:#475569;">Razorpay refund reference: <strong>{e(refund_id) or '—'}</strong>.
+           Refunds usually reach your account in 5–7 working days.</p>
+    """, "Refund")
+    return _send(to_email, f"Refund — {event_title} was cancelled", body, reg_id=reg_id)
+
+
 def send_appointment_email(to_email: str, name: str, role: str,
                            event_title: str) -> bool:
     base = _base_url()

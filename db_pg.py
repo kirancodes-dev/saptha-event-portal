@@ -211,17 +211,26 @@ def init_db():
                 Base.metadata.create_all(engine, tables=tables_to_create)
 
             # Reconcile columns added to the models after the table was created.
-            # Only nullable columns can be added to a populated table safely.
+            # Nullable columns are added as they are; a NOT NULL column only when
+            # it has a constant default to fill existing rows with (UPG-61).
             with engine.connect() as conn:
                 for table_name, table in Base.metadata.tables.items():
                     if table_name not in existing_tables:
                         continue
                     existing_cols = {col['name'] for col in inspector.get_columns(table_name)}
                     for col in table.columns:
-                        if col.name in existing_cols or not col.nullable:
+                        if col.name in existing_cols:
                             continue
                         col_type = col.type.compile(engine.dialect)
-                        conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}'))
+                        extra = ''
+                        if not col.nullable:
+                            default = getattr(col.default, 'arg', None)
+                            if default is None or callable(default) or not isinstance(default, (int, float, str, bool)):
+                                continue
+                            literal = (str(int(default)) if isinstance(default, bool) else repr(default)
+                                       if isinstance(default, str) else str(default))
+                            extra = f' NOT NULL DEFAULT {literal}'
+                        conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}{extra}'))
                         conn.commit()
         except Exception as exc:
             import logging

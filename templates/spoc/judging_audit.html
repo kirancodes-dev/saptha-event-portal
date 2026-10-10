@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23d. -#}
+{% block head %}
     <title>Score Normalization & Sentiment Audit | SapthaEvent SPOC</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -119,8 +117,8 @@
             margin-bottom: 12px;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
     <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-4">
         <div class="container d-flex justify-content-between align-items-center">
             <a href="/spoc/dashboard" class="text-white text-decoration-none d-flex align-items-center gap-2">
@@ -269,5 +267,4 @@
             myModal.show();
         }
     </script>
-</body>
-</html>
+{% endblock %}

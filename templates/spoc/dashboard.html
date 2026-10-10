@@ -1,9 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="csrf-token" content="{{ csrf_token() }}">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23d. -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
 <title>Club Dashboard | SapthaEvent</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="/static/css/global.css" rel="stylesheet">
@@ -1296,8 +1294,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 </style>
 <script src="/static/js/escape.js"></script>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
 <div class="super-admin-banner" style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
@@ -3538,5 +3536,4 @@ document.addEventListener('DOMContentLoaded', () => {
 <div class="toast-container" id="toast-container-holder"></div>
 
 <script src="/static/js/global.js"></script>
-</body>
-</html>
+{% endblock %}

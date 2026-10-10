@@ -114,6 +114,18 @@ def _send(to_phone: str, body: str) -> bool:
 # PUBLIC SEND FUNCTIONS — called from routes
 # ─────────────────────────────────────────────────────────────
 
+def whatsapp_configured() -> bool:
+    """Whether Twilio settings are present, so WhatsApp can be sent at all."""
+    return bool(os.environ.get('TWILIO_ACCOUNT_SID', '').strip()
+                and os.environ.get('TWILIO_AUTH_TOKEN', '').strip())
+
+
+def send_whatsapp_message(phone: str, body: str) -> bool:
+    """A plain WhatsApp message (services_automation's channel, UPG-49).
+    True when Twilio accepted it; never raises."""
+    return _send(phone, body)
+
+
 def send_ticket_whatsapp(phone: str, name: str, event_title: str,
                          reg_id: str, base_url: str = '',
                          event_date: str = '', venue: str = '') -> bool:

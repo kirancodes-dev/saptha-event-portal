@@ -217,15 +217,17 @@ class NotificationAutomationEngine:
 
         # 3. WhatsApp Dispatch
         if "whatsapp" in channels:
+            from utils_whatsapp import send_whatsapp_message, whatsapp_configured
             phone = context.get("phone") or context.get("whatsapp_number")
-            if phone and cls.check_user_preferences(db, clean_email, "whatsapp", notif_type):
-                try:
-                    from utils_whatsapp import send_whatsapp_message
-                    send_whatsapp_message(phone, message)
+            if not whatsapp_configured():
+                # No Twilio settings: the channel is off, not a fallback (UPG-49)
+                skipped_channels.append("whatsapp (not configured)")
+            elif phone and cls.check_user_preferences(db, clean_email, "whatsapp", notif_type):
+                if send_whatsapp_message(phone, message):
                     dispatched_channels.append("whatsapp")
-                except Exception as e:
-                    logger.info("WhatsApp simulated or logged: %s", e)
-                    dispatched_channels.append("whatsapp_fallback")
+                else:
+                    logger.warning("WhatsApp to %s failed for %s", clean_email, notif_type)
+                    skipped_channels.append("whatsapp (failed)")
             else:
                 skipped_channels.append("whatsapp (disabled or missing phone)")
 

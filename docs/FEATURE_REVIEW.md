@@ -1984,13 +1984,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet** (owner's call).
 
 #### UPG-49 — The automation's WhatsApp channel calls a function that doesn't exist
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-49: …" on `production-ready` (parent `86dcdee`)
 - **Problem:** Found while building UPG-31 [C]. `services_automation.dispatch_trigger` sends WhatsApp through `utils_whatsapp.send_whatsapp_message` (`services_automation.py:223`), which doesn't exist; the error is caught and recorded as `whatsapp_fallback`. The default rules for check-in and event reminders use that channel (`services_automation.py:51,75`), so those WhatsApp messages never go out.
 - **Who benefits:** participants who opt in to WhatsApp.
 - **What to build:** the channel sends through `utils_whatsapp._send`, and a failure is recorded as a failure, not a fallback.
 - **Files touched:** `services_automation.py` or `utils_whatsapp.py`, tests.
 - **Effort:** S · **Depends on:** none · **Risk:** low; nothing goes out without Twilio settings.
+- **What was built (2026-10-10, owner's second run):** `utils_whatsapp.send_whatsapp_message(phone, body)` exists now (it sends through `_send`, Twilio) together with `whatsapp_configured()`. The automation's WhatsApp channel (`services_automation.NotificationAutomationEngine.dispatch_trigger`) is off cleanly when Twilio isn't configured (recorded as skipped "whatsapp (not configured)", nothing attempted); when it is configured, it sends to a user who opted in and records a failed send as "whatsapp (failed)", no longer as a "fallback". Checked by hand [R] with Twilio mocked: configured and opted in → one Twilio call, channel dispatched; not configured → skipped, no call. Automation, notice and notification tests pass.
+- **To test later:** criterion 1, plus the unconfigured and failed cases.
 - **Acceptance criteria:**
   1. Test: a trigger with the WhatsApp channel, for a user who opted in, calls the Twilio client once (mocked).
 - **Not scheduled yet** (owner's call).
@@ -2369,3 +2371,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-46: …" (parent `29d859b`) | UPG-46 | **UPG-46 BUILT (untested).** The coordinators' briefing and the velocity alert link from `BASE_URL`, never `sapthaevent.in`. Checked by hand with a test `BASE_URL`; ruff clean; app starts. |
 | 2026-10-10 | "UPG-47: …" (parent `2aeef46`) | UPG-47 | **UPG-47 BUILT (untested).** Events created without times keep their start and end empty (no save time); pages show "Time to be announced"; a time-less booking still blocks its room on its date. Existing rows unchanged. Checked by hand; venue, calendar, adapter and cron tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-48: …" (parent `457e2b0`) | UPG-48 | **UPG-48 BUILT (untested).** Team members, not only the lead, get the confirmation (saying who added them), the day-before ticket, the 3-day reminder and the change and cancellation notices, once each per person (`services_recipients.registration_people`; per-person `*_sent_to` lists; per-email notice keys). Checked by hand with a team of three and repeated runs; notice, cron and team tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-49: …" (parent `86dcdee`) | UPG-49 | **UPG-49 BUILT (untested).** The automation's WhatsApp channel calls the new `utils_whatsapp.send_whatsapp_message` (Twilio), is skipped cleanly when Twilio isn't configured, and records failures as failures. Checked with Twilio mocked; automation and notice tests pass; ruff clean; app starts. **Part 1 of the owner's second run is built.** |

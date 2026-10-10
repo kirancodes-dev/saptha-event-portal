@@ -690,6 +690,12 @@ def _query_native_docs(collection_name, filters=None, limit=None, orders=None):
     return iter(results)
 
 
+# Enum columns that store an empty document value as their default member: an
+# empty or missing value must read back empty, not as that default (UPG-44:
+# payment_status '' read back 'unpaid', so reports counted it as unpaid).
+EMPTY_READS_BACK = {'payment_status'}
+
+
 def _load_shadow(record):
     raw = getattr(record, 'extra_json', None)
     if not raw:
@@ -1096,6 +1102,11 @@ class SQLDocumentReference:
                     d[key] = val
                 continue
             current = getattr(record, attr)
+            if val in (None, '') and attr in EMPTY_READS_BACK:
+                # The column could only hold its default for an empty value, so
+                # the document's empty value is the real one (UPG-44)
+                d[key] = val
+                continue
             if val in (None, '') and current not in (None, ''):
                 # An empty document value never hides a real column value
                 # (e.g. category None -> enum default Technical)

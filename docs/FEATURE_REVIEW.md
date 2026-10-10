@@ -1896,13 +1896,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet:** it fits Phase 2 next to UPG-29 (owner's call).
 
 #### UPG-44 — An empty payment status reads back as `unpaid` (postgres mode)
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-44: …" on `production-ready` (parent `737bd0c`)
 - **Problem:** Found while building UPG-02 [R]. A registration written with `payment_status: ''` reads back as `'unpaid'` on the SQL adapter: the enum column gets its default and the read returns it. Every live registration path sets a status (form, waitlist, walk-in, payment), so this affects old, seeded or imported rows. Reports then count them as unpaid. Before UPG-02's rule (a free event owes nothing), such an attendee would have been refused at the gate.
 - **Who benefits:** organisers reading payment figures.
 - **What to build:** an empty or missing payment status reads back as written, as other fields do since BLK-06b; an explicit `unpaid` still reads `unpaid`.
 - **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
+- **What was built (2026-10-10, owner's second run):** when the SQL layer overlays the stored document on the columns, an empty or missing `payment_status` now reads back as written instead of the enum column's default `unpaid` (`EMPTY_READS_BACK`, `db_adapter.py:693`, used in `_merge_shadow`). An explicit `unpaid` still reads `unpaid`, and the `payment_status == 'unpaid'` filter finds only it (the filter compares the document value). Checked by hand [R] on SQLite and PostgreSQL 16: `''` → `''`, missing → missing, `'unpaid'` → `'unpaid'`, `'Paid'` → `'Paid'`; the filter returns only the explicit one; updating the empty one to `unpaid` reads `unpaid`. Adapter, filter, payment, export and check-in tests pass.
+- **To test later:** criterion 1 (SQLite and PostgreSQL). Touches `db_adapter.py` (a shared file); rule 8 is off for this run.
 - **Acceptance criteria:**
   1. Test (SQLite and PostgreSQL): `''` and a missing `payment_status` read back as `''` and missing; `'unpaid'` reads back `'unpaid'`; filters on `payment_status == 'unpaid'` find only the explicit one.
 
@@ -2347,3 +2349,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-50: …" (parent `0db8a4f`) | UPG-50 | **UPG-50 BUILT (untested).** Every value put into email HTML is escaped (`_e()` in `utils_email.py` and `tasks/scheduled_tasks.py`): all account, event, payment, refund, result, broadcast and room emails, email titles, and the briefing, 3-day and velocity emails. Subjects stay plain text. Certificate part deferred (owner, 2026-10-10): the certificate email is unchanged. Email tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-60: …" (parent `59f081f`) | UPG-60, D-8 | **UPG-60 BUILT (untested).** Favicon added; the catalogue banner and checkout payment logos no longer point at missing or refused files; the reels and streams pages show event images instead of blocked cartoon sample videos; the create-event script's duplicate `let` (which stopped the whole wizard script from running) and the round panel's missing-field listener fixed; the calendar's missing CSS link and unknown option removed; SVG height fixed. Chromium pass over 254 page loads: no page error, no static 404, no CSP violation. **New decision D-8** (keep the demo reels/streams pages public?). ruff clean; app starts. |
 | 2026-10-10 | "UPG-42: …" (parent `e82943b`) | UPG-42 | **UPG-42 BUILT (untested).** The privacy, terms and payment-failed pages take their contact address from `SUPPORT_EMAIL` and show none when it's unset; the old Gmail address is gone from the repository; `.env.example` has the placeholder (D-4). Checked both cases by hand; ruff clean; app starts. |
+| 2026-10-10 | "UPG-44: …" (parent `737bd0c`) | UPG-44 | **UPG-44 BUILT (untested).** An empty or missing payment status reads back as written, not as the column default `unpaid`; an explicit `unpaid` and the `== unpaid` filter are unchanged. Checked on SQLite and PostgreSQL 16; adapter and payment tests pass; ruff clean; app starts. |

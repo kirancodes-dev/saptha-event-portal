@@ -6,10 +6,9 @@
 <title>SapthaEvent | Sapthagiri NPS University</title>
 <meta name="description" content="Discover and register for hackathons, cultural fests, sports meets, and workshops at Sapthagiri NPS University.">
 {% include 'includes/pwa_head.html' %}
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
 <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 :root {
   --bg-dark: #040715;
@@ -31,7 +30,7 @@ body {
   margin: 0;
   overflow-x: hidden;
 }
-h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-primary); }
+h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-primary); }
 
 /* ── TECH GRID BACKGROUND ────────────────────────── */
 .grid-bg {
@@ -126,7 +125,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 .snav .navbar-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-.brand-n { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 18px; color: var(--text-primary); line-height: 1.1; display: block; }
+.brand-n { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 18px; color: var(--text-primary); line-height: 1.1; display: block; }
 .brand-s { font-size: 8.5px; color: rgba(255, 255, 255, 0.4); letter-spacing: 2px; text-transform: uppercase; display: block; font-weight: 600; }
 .snav .nav-link { color: rgba(255, 255, 255, 0.7) !important; font-size: 13.5px; font-weight: 500; padding: 8px 14px !important; border-radius: 8px; transition: all 0.2s ease; }
 .snav .nav-link:hover, .snav .nav-link.active { color: #fff !important; background: rgba(255, 255, 255, 0.05); }
@@ -155,7 +154,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 .hero-title {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Outfit', sans-serif;
   font-weight: 900;
   font-size: clamp(2.5rem, 5.5vw, 3.8rem);
   color: #fff;
@@ -213,7 +212,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
   border-color: rgba(255, 255, 255, 0.12);
   transform: translateY(-4px);
 }
-.hstat-n { font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 800; color: #fff; line-height: 1; }
+.hstat-n { font-family: 'Outfit', sans-serif; font-size: 30px; font-weight: 800; color: #fff; line-height: 1; }
 .hstat-l { font-size: 10.5px; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 6px; font-weight: 600; }
 
 /* ── CATEGORY PILLS ─────────────────────────────────── */
@@ -346,13 +345,13 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 /* Countdown in banner */
 .ev-countdown { position: absolute; bottom: 12px; left: 14px; display: flex; gap: 6px; }
 .cd-unit { background: rgba(4, 7, 21, 0.75); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(6px); border-radius: 8px; padding: 4px 8px; text-align: center; min-width: 42px; }
-.cd-num { font-family: 'Poppins', sans-serif; font-size: 13.5px; font-weight: 700; color: #fff; line-height: 1; }
+.cd-num { font-family: 'Outfit', sans-serif; font-size: 13.5px; font-weight: 700; color: #fff; line-height: 1; }
 .cd-lbl { font-size: 8px; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
 .ev-past .ev-countdown { display: none; }
 .ev-today .ev-countdown .cd-unit { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
 
 .ev-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
-.ev-title { font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 10px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ev-title { font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 10px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ev-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .ev-meta-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: rgba(255,255,255,0.6); }
 .ev-meta-item i { color: rgba(255,255,255,0.4); font-size: 12px; width: 12px; }
@@ -365,7 +364,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 .cap-fill.high { background: linear-gradient(90deg, var(--orange-glow), #ef4444); }
 
 .ev-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
-.ev-fee { font-family: 'Poppins', sans-serif; font-size: 15.5px; font-weight: 700; color: #fff; }
+.ev-fee { font-family: 'Outfit', sans-serif; font-size: 15.5px; font-weight: 700; color: #fff; }
 .ev-fee .free { color: #10b981; display: flex; align-items: center; gap: 4px; }
 
 .btn-ev {
@@ -419,13 +418,13 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 /* Empty state */
 .empty-state { background: rgba(255, 255, 255, 0.02); border-radius: 20px; padding: 60px 24px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.06); backdrop-filter: blur(20px); }
 .empty-state i { font-size: 48px; color: rgba(255,255,255,0.15); display: block; margin-bottom: 16px; }
-.empty-state h5 { color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700; }
+.empty-state h5 { color: #fff; font-family: 'Outfit', sans-serif; font-weight: 700; }
 .empty-state p { color: rgba(255,255,255,0.4); font-size: 13px; }
 
 /* ── CALENDAR SIDEBAR ───────────────────────────────── */
 .cal-card { background: rgba(255, 255, 255, 0.02); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.06); overflow: hidden; position: sticky; top: 130px; backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25); }
 .cal-header { background: rgba(255, 255, 255, 0.02); padding: 16px 20px; color: #fff; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.cal-header h6 { font-family: 'Poppins', sans-serif; font-weight: 700; margin: 0; font-size: 14px; }
+.cal-header h6 { font-family: 'Outfit', sans-serif; font-weight: 700; margin: 0; font-size: 14px; }
 .cal-body { padding: 16px; }
 .fc-toolbar-title { font-size: 0.95rem!important; font-weight: 700!important; color: #fff!important; }
 .fc-button { background: rgba(255,255,255,0.03)!important; border: 1px solid rgba(255,255,255,0.06)!important; color:#fff!important; font-size: 11px!important; padding: 4px 8px!important; border-radius: 6px!important; }
@@ -441,7 +440,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 .cal-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12.5px; }
 .cal-stat-row:last-child { border: none; }
 .cal-stat-label { color: rgba(255,255,255,0.4); display: flex; align-items: center; }
-.cal-stat-val { font-family: 'Poppins', sans-serif; font-weight: 700; color: #fff; }
+.cal-stat-val { font-family: 'Outfit', sans-serif; font-weight: 700; color: #fff; }
 
 /* ── SPONSOR STRIP ──────────────────────────────────── */
 .sponsor-strip { background: rgba(255,255,255,0.01); border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 50px 0; display: none; }
@@ -831,7 +830,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 <div class="container">
   <div class="text-center mb-5">
     <small style="text-transform:uppercase;letter-spacing:3px;color:rgba(255,255,255,0.4);font-weight:700;">Proudly Supported By</small>
-    <h3 style="color:#fff;font-family:'Poppins',sans-serif;font-weight:800;margin-top:8px;">Our Sponsors &amp; Partners</h3>
+    <h3 style="color:#fff;font-family:'Outfit',sans-serif;font-weight:800;margin-top:8px;">Our Sponsors &amp; Partners</h3>
   </div>
   <div id="sponsorRow" class="d-flex flex-wrap justify-content-center align-items-center" style="gap:40px;"></div>
 </div>
@@ -860,7 +859,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 rounded-4 shadow-lg">
       <div class="modal-header border-0" style="padding:20px 24px;">
-        <h5 class="modal-title fw-bold" id="detailModalTitle" style="font-family:'Poppins',sans-serif;font-size:18.5px;color:#fff;"></h5>
+        <h5 class="modal-title fw-bold" id="detailModalTitle" style="font-family:'Outfit',sans-serif;font-size:18.5px;color:#fff;"></h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-4" id="detailModalBody" style="max-height:65vh;overflow-y:auto;color:var(--text-secondary);"></div>
@@ -875,8 +874,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 </div>
 
 <!-- ══ SCRIPTS ═══════════════════════════════════════════ -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+{% include "layouts/_bootstrap_js.html" %}
+<script integrity="sha384-5JIwZN3kuxX2zKsavvNmbZ3zhZZMUtu/eQiK3BbXukpSXp0Cd2ZP4OAYKx7mrPgI" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 <script type="application/json" id="eventsDataJson">
 [{% for event in events %}{"id":{{ event.id|tojson }},"title":{{ (event.title or '')|tojson }},"description":{{ (event.description or '')|tojson }},"rules":{{ (event.rules or '')|tojson }},"prizes":{{ (event.prizes or {})|tojson }},"prize_pool":{{ (event.prize_pool or '')|tojson }},"date":{{ (event.date or 'TBA')|tojson }},"time":{{ (event.time or '')|tojson }},"venue":{{ (event.venue or '')|tojson }},"fee":{{ ((event.fees or {}).get('regular',0))|tojson }},"participation_type":{{ (event.participation_type or 'Individual')|tojson }},"reg_deadline":{{ (event.reg_deadline or '')|tojson }},"banner_url":{{ (event.banner_url or '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]
 </script>
@@ -904,15 +903,15 @@ function showDetails(eventId) {
   html += `<div class="col-6 col-sm-4"><div class="ev-det-box"><i class="fas fa-tag text-success"></i><div class="ev-det-label">Entry Fee</div><div class="ev-det-val">${ev.fee > 0 ? '₹' + ev.fee : 'Free'}</div></div></div>`;
   html += `</div>`;
   if (ev.description) {
-    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-info-circle me-2 text-warning"></i>About</h6><p style="color:var(--text-secondary);font-size:14px;line-height:1.8;">${ev.description}</p></div>`;
+    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Outfit',sans-serif;"><i class="fas fa-info-circle me-2 text-warning"></i>About</h6><p style="color:var(--text-secondary);font-size:14px;line-height:1.8;">${ev.description}</p></div>`;
   }
   if (ev.rules) {
-    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-list-ul me-2 text-warning"></i>Rules &amp; Guidelines</h6><div style="color:var(--text-secondary);font-size:14px;line-height:1.9;white-space:pre-line;">${ev.rules}</div></div>`;
+    html += `<div class="mb-4"><h6 class="fw-bold mb-2" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Outfit',sans-serif;"><i class="fas fa-list-ul me-2 text-warning"></i>Rules &amp; Guidelines</h6><div style="color:var(--text-secondary);font-size:14px;line-height:1.9;white-space:pre-line;">${ev.rules}</div></div>`;
   }
   const prizes = ev.prizes || {};
   const hasPrizes = prizes['1st'] || prizes['2nd'] || prizes['3rd'] || ev.prize_pool;
   if (hasPrizes) {
-    html += `<div class="mb-2"><h6 class="fw-bold mb-3" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Poppins',sans-serif;"><i class="fas fa-trophy me-2" style="color:var(--orange-glow)"></i>Prizes`;
+    html += `<div class="mb-2"><h6 class="fw-bold mb-3" style="color:#fff;border-left:3px solid rgba(255,255,255,0.25);padding-left:10px;font-family:'Outfit',sans-serif;"><i class="fas fa-trophy me-2" style="color:var(--orange-glow)"></i>Prizes`;
     if (ev.prize_pool) html += ` <span style="font-size:12px;font-weight:500;color:var(--orange-glow);">(${ev.prize_pool})</span>`;
     html += `</h6><div class="d-flex gap-3 flex-wrap">`;
     if (prizes['1st']) html += `<div class="prize-box"><span class="prize-medal">🥇</span><div class="prize-rank">1st Place</div><div class="prize-val">${prizes['1st']}</div></div>`;

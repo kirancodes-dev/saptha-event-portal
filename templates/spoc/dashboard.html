@@ -3,10 +3,9 @@
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
 {% block head %}
 <title>Club Dashboard | SapthaEvent</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
 <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 html {
   overflow-x: hidden;
@@ -1486,7 +1485,7 @@ h1, h2, h3, h4, h5, h6 {
               <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
                 <canvas id="attChart"></canvas>
                 <div id="attCenter" style="position:absolute;text-align:center;pointer-events:none;">
-                  <div style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">{{ stats.present_count | default(0) }}</div>
+                  <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">{{ stats.present_count | default(0) }}</div>
                   <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Present</div>
                 </div>
               </div>
@@ -2242,7 +2241,7 @@ h1, h2, h3, h4, h5, h6 {
   <div class="spoc-modal-box" style="max-width:750px;width:95%;padding:0;">
     <!-- Header -->
     <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;">
+      <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;color:#fff;">
         <i class="fas fa-flag-checkered me-2"></i>End Event &amp; Configure Certificates
       </span>
       <button type="button" onclick="closeModal('endEventModal')" style="background:transparent;border:none;color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>
@@ -2253,12 +2252,12 @@ h1, h2, h3, h4, h5, h6 {
       <!-- Left side: Form options -->
       <div style="display:flex;flex-direction:column;gap:18px;text-align:left;">
         <div>
-          <h5 style="font-family:'Poppins',sans-serif;font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
+          <h5 style="font-family:'Outfit',sans-serif;font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
           <div style="font-weight:600;font-size:16px;color:#1e293b;" id="modalEventTitle">Event Title</div>
         </div>
         
         <div>
-          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
+          <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
           <select id="certTemplateSelect" onchange="updateCertPreview()" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
             <option value="1">Classic Navy (Default SNPSU)</option>
             <option value="2">Tech Blue (Hackathons)</option>
@@ -2270,7 +2269,7 @@ h1, h2, h3, h4, h5, h6 {
         </div>
         
         <div>
-          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
+          <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
           <input type="text" id="certSignatoryInput" oninput="updateCertPreview()" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
         </div>
         
@@ -2282,7 +2281,7 @@ h1, h2, h3, h4, h5, h6 {
       
       <!-- Right side: Visual Live Preview -->
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-        <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
+        <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
         
         <!-- CSS Cert Preview Card -->
         <div id="certPreviewCard" style="width:100%;max-width:380px;aspect-ratio:1.414/1;border:8px solid #0d2d62;background:#ffffff;border-radius:8px;padding:16px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-sizing:border-box;">
@@ -2299,11 +2298,11 @@ h1, h2, h3, h4, h5, h6 {
           
           <!-- Content -->
           <div style="text-align:center;margin:6px 0;display:flex;flex-direction:column;gap:3px;">
-            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family:'Poppins',sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
+            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family:'Outfit',sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
             <div style="font-size:6px;color:#64748b;font-style:italic;">This is to certify that</div>
             <div style="font-size:11px;font-weight:700;color:#1e293b;border-bottom:1px solid #cbd5e1;width:fit-content;margin:0 auto;padding-bottom:1px;min-width:110px;line-height:1.2;">John Doe</div>
             <div style="font-size:6px;color:#64748b;">has successfully participated in</div>
-            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family:'Poppins',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
+            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family:'Outfit',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
           </div>
           
           <!-- Footer -->
@@ -2341,7 +2340,7 @@ h1, h2, h3, h4, h5, h6 {
     <!-- Header -->
     <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
       <div>
-        <span style="font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+        <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:#fff;">
           <i class="fas fa-paper-plane me-2"></i>Email All Registrants
         </span>
         <div id="blastEventName" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;"></div>
@@ -2409,7 +2408,7 @@ h1, h2, h3, h4, h5, h6 {
 <div id="blastPreviewModal" class="spoc-modal" style="display:none; z-index: 2000;">
   <div class="spoc-modal-box" style="max-width:680px; width:95%; height:80vh; padding:0; display:flex; flex-direction:column;">
     <div class="spoc-modal-hdr" style="background:var(--snpsu-blue); display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+      <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:#fff;">
         <i class="fas fa-eye me-2"></i>Email Broadcast Live Preview
       </span>
       <button onclick="closeModal('blastPreviewModal')" class="spoc-modal-close">×</button>
@@ -2437,8 +2436,8 @@ h1, h2, h3, h4, h5, h6 {
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% include "layouts/_bootstrap_js.html" %}
+<script integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script id="spoc-chart-data" type="application/json">{"labels":{{ chart_labels | tojson }},"regs":{{ chart_regs | tojson }},"present":{{ stats.present_count | default(0) }},"totalRegs":{{ stats.total_regs | default(0) }},"hasEvents":{{ 'true' if events else 'false' }}}</script>
 
 <script>

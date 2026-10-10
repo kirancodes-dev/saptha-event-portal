@@ -3,9 +3,9 @@
 {% set site_footer_fixed = true %}
 {% block head %}
 <title>Verification Failed | SapthaEvent</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 body{background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
 .card{max-width:420px;width:100%;border:none;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.08);}

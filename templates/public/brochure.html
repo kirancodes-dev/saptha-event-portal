@@ -7,10 +7,9 @@
 <meta property="og:title"       content="{{ event.title }}">
 <meta property="og:description" content="{{ event.description }}">
 <meta property="og:image"       content="{{ event.banner_url or '' }}">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 :root{--blue:#1a2557;--orange:#c9a45e;--gold:#f59e0b;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -24,7 +23,7 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
 .event-category-badge{display:inline-block;background:var(--orange);color:#fff;
   font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
   padding:4px 14px;border-radius:20px;margin-bottom:14px;}
-.hero-title{font-family:'Poppins',sans-serif;font-size:clamp(2rem,5vw,3.2rem);
+.hero-title{font-family:'Outfit',sans-serif;font-size:clamp(2rem,5vw,3.2rem);
   font-weight:900;color:#fff;line-height:1.1;margin-bottom:16px;
   text-shadow:0 2px 20px rgba(0,0,0,.3);}
 .hero-meta{display:flex;flex-wrap:wrap;gap:16px;}
@@ -34,12 +33,12 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
 /* COUNTDOWN */
 .countdown-bar{background:var(--blue);padding:18px 0;}
 .countdown-box{text-align:center;color:#fff;}
-.countdown-num{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:800;color:var(--orange);line-height:1;}
+.countdown-num{font-family:'Outfit',sans-serif;font-size:2rem;font-weight:800;color:var(--orange);line-height:1;}
 .countdown-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-top:4px;}
 .countdown-sep{font-size:2rem;color:rgba(255,255,255,.3);font-weight:300;align-self:flex-start;padding-top:4px;}
 
 /* CONTENT */
-.section-title{font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:700;
+.section-title{font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:700;
   color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
 .section-title::after{content:'';flex:1;height:2px;background:linear-gradient(to right,var(--orange),transparent);}
 .info-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.05);margin-bottom:24px;}
@@ -50,8 +49,8 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
 .prize-2{background:linear-gradient(135deg,#f1f5f9,#e2e8f0);border:2px solid #94a3b8;}
 .prize-3{background:linear-gradient(135deg,#fef4ee,#fed7aa);border:2px solid #f97316;}
 .prize-icon{font-size:2.5rem;display:block;margin-bottom:8px;}
-.prize-rank{font-family:'Poppins',sans-serif;font-size:.85rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:.7;}
-.prize-amount{font-family:'Poppins',sans-serif;font-size:1.6rem;font-weight:900;margin-top:4px;}
+.prize-rank{font-family:'Outfit',sans-serif;font-size:.85rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:.7;}
+.prize-amount{font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:900;margin-top:4px;}
 
 /* CRITERIA */
 .criteria-pill{display:inline-flex;align-items:center;gap:6px;background:#e8f0fe;
@@ -65,7 +64,7 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
 
 /* REGISTER CTA */
 .cta-section{background:linear-gradient(135deg,var(--blue),#1a4fa0);padding:48px 0;}
-.cta-title{font-family:'Poppins',sans-serif;font-size:clamp(1.4rem,4vw,2rem);font-weight:800;color:#fff;}
+.cta-title{font-family:'Outfit',sans-serif;font-size:clamp(1.4rem,4vw,2rem);font-weight:800;color:#fff;}
 .btn-register{background:var(--orange);color:#fff;font-weight:800;font-size:1rem;
   padding:14px 40px;border-radius:50px;border:none;transition:.2s;text-decoration:none;
   display:inline-block;}

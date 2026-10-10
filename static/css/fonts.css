@@ -1,0 +1,8 @@
+/* The one font set (UPG-24): self-hosted, so pages make no third-party font requests.
+   Variable fonts: every weight from one file each. */
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900;
+             src: url('/static/fonts/Inter-latin-wght-normal.woff2') format('woff2-variations'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-display: swap; font-weight: 200 800;
+             src: url('/static/fonts/PlusJakartaSans-latin-wght-normal.woff2') format('woff2-variations'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-display: swap; font-weight: 100 900;
+             src: url('/static/fonts/Outfit-latin-wght-normal.woff2') format('woff2-variations'); }

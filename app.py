@@ -201,10 +201,9 @@ else:
 _csp = {
     'default-src': ["'self'"],
     'img-src':     ["'self'", 'data:', 'https:'],
-    'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
-                    'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-    'font-src':    ["'self'", 'https://cdnjs.cloudflare.com',
-                    'https://fonts.gstatic.com', 'data:'],
+    # Fonts are self-hosted (static/fonts, UPG-24); Font Awesome's come from cdnjs
+    'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net'],
+    'font-src':    ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
     'script-src':  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
                     'https://cdn.jsdelivr.net', 'https://www.gstatic.com',
                     'https://checkout.razorpay.com'],

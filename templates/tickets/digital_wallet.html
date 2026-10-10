@@ -3,9 +3,6 @@
 {% set site_footer_fixed = true %}
 {% block head %}
     <title>{{ ticket.ticket_type or 'General' }} Pass — {{ event.title or 'Event Pass' }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: {{ theme.primary or '#3b82f6' }};
@@ -126,7 +123,7 @@
             image-rendering: pixelated;
         }
         .ticket-code {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, Menlo, monospace;
             font-size: 1rem;
             font-weight: 700;
             letter-spacing: 0.15em;
@@ -197,7 +194,7 @@
             transform: translateY(-1px);
         }
         .security-hash {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, Menlo, monospace;
             font-size: 0.65rem;
             color: #475569;
             text-align: center;

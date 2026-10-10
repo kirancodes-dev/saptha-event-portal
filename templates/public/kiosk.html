@@ -4,11 +4,10 @@
 {% block head %}
     <title>SapthaEvent Gate Kiosk</title>
     <!-- Outfit Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include "layouts/_fontawesome.html" %}
     <!-- Bootstrap CSS (Optional Grid, but we use custom styles mostly) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    {% include "layouts/_bootstrap_css.html" %}
 
     <style>
         :root {

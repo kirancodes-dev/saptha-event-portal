@@ -3,8 +3,8 @@
 {% set site_footer_fixed = true %}
 {% block head %}
 <title>Self Check-in | {{ event.title }}</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
+{% include "layouts/_fontawesome.html" %}
 <style>
 :root{--blue:#1a2557;--orange:#c9a45e;}
 body{background:linear-gradient(135deg,var(--blue),#1a4fa0);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Segoe UI',sans-serif;}

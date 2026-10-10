@@ -36,11 +36,10 @@
 {% include 'includes/pwa_head.html' %}
 
 <!-- ═══ Stylesheets ═══ -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
 <link href="/static/css/global.css?v=1.0.2" rel="stylesheet">
 <link href="/static/css/mobile.css?v=1.0.2" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
    HOME PAGE — PREMIUM DARK AURORA VOID THEME
@@ -1384,25 +1383,25 @@ body {
     <!-- Credibility Stats -->
     <div class="row g-4 mt-3 justify-content-center">
       <div class="col-6 col-md-3 text-center scroll-animator">
-        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="2 thousand 400 plus students registered">
+        <div style="font-family:'Outfit';font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="2 thousand 400 plus students registered">
           <span class="stat-counter" data-count="2400">2400</span><span style="font-size:20px;">+</span>
         </div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Students</div>
       </div>
       <div class="col-6 col-md-3 text-center scroll-animator stagger-1">
-        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="150 plus events scheduled for 2026">
+        <div style="font-family:'Outfit';font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="150 plus events scheduled for 2026">
           <span class="stat-counter" data-count="150">150</span><span style="font-size:20px;">+</span>
         </div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Events 2026</div>
       </div>
       <div class="col-6 col-md-3 text-center scroll-animator stagger-2">
-        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="98 percent user satisfaction rate">
+        <div style="font-family:'Outfit';font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="98 percent user satisfaction rate">
           <span class="stat-counter" data-count="98">98</span><span style="font-size:20px;">%</span>
         </div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Satisfaction</div>
       </div>
       <div class="col-6 col-md-3 text-center scroll-animator stagger-3">
-        <div style="font-family:Poppins;font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="8 thousand 500 plus successful event registrations">
+        <div style="font-family:'Outfit';font-size:32px;font-weight:900;color:var(--orange);text-shadow:0 2px 8px rgba(201,164,94,.3);" aria-label="8 thousand 500 plus successful event registrations">
           <span class="stat-counter" data-count="8500">8500</span><span style="font-size:20px;">+</span>
         </div>
         <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Registrations</div>
@@ -1518,7 +1517,7 @@ body {
 </div>
 
 <!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "layouts/_bootstrap_js.html" %}
 <script>
 // ── SKELETON LOADER & INITIALIZATION ────
 document.addEventListener('DOMContentLoaded',function(){

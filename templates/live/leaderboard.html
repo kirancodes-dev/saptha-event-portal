@@ -2,8 +2,7 @@
 {#- On the shared document since UPG-23a (full-screen: no footer). -#}
 {% block head %}
 <title>Live Leaderboard | {{ event.title }}</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 /* ── PROJECTOR-OPTIMISED DARK THEME ────────────────────────────── */
 :root{
@@ -32,8 +31,8 @@ body{
 }
 .hdr-left{display:flex;align-items:center;gap:14px;}
 .hdr-logo{height:40px;width:auto;object-fit:contain;opacity:.9;}
-.hdr-brand{font-family:'Poppins',sans-serif;font-weight:800;font-size:15px;color:var(--accent);}
-.hdr-event{font-size:22px;font-weight:800;font-family:'Poppins',sans-serif;color:#fff;
+.hdr-brand{font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;color:var(--accent);}
+.hdr-event{font-size:22px;font-weight:800;font-family:'Outfit',sans-serif;color:#fff;
            letter-spacing:-.3px;text-align:center;line-height:1.1;}
 .hdr-event small{font-size:12px;font-weight:500;color:var(--sub);display:block;
                   text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
@@ -54,7 +53,7 @@ body{
 .round-pill{
   background:rgba(201,164,94,.15);border:1px solid rgba(201,164,94,.35);
   color:var(--accent);font-size:13px;font-weight:700;
-  padding:5px 16px;border-radius:100px;font-family:'Poppins',sans-serif;
+  padding:5px 16px;border-radius:100px;font-family:'Outfit',sans-serif;
 }
 .fullscreen-btn{
   background:rgba(255,255,255,.06);border:1px solid var(--border);
@@ -92,17 +91,17 @@ body{
 }
 .podium-medal{font-size:40px;margin-bottom:6px;line-height:1;}
 .podium-rank{
-  font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;
+  font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;
   text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;
 }
 .rank-1 .podium-rank{color:var(--gold);}
 .rank-2 .podium-rank{color:var(--silver);}
 .rank-3 .podium-rank{color:var(--bronze);}
-.podium-team{font-family:'Poppins',sans-serif;font-size:17px;font-weight:800;
+.podium-team{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;
              color:#fff;line-height:1.2;margin-bottom:4px;}
 .podium-lead{font-size:12px;color:var(--sub);margin-bottom:12px;}
 .podium-score{
-  font-family:'Poppins',sans-serif;font-size:28px;font-weight:900;line-height:1;
+  font-family:'Outfit',sans-serif;font-size:28px;font-weight:900;line-height:1;
 }
 .rank-1 .podium-score{color:var(--gold);}
 .rank-2 .podium-score{color:var(--silver);}
@@ -128,14 +127,14 @@ body{
 .board-row td{padding:10px 12px;vertical-align:middle;}
 .td-rank{width:48px;text-align:center;}
 .rank-num{
-  font-family:'Poppins',sans-serif;font-size:16px;font-weight:800;
+  font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;
   color:rgba(255,255,255,.4);
 }
 .td-team{font-weight:700;font-size:14.5px;color:#e2e8f0;}
 .td-lead{font-size:12px;color:var(--sub);}
 .td-score{width:130px;text-align:right;}
 .score-val{
-  font-family:'Poppins',sans-serif;font-size:17px;font-weight:800;
+  font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;
   color:var(--accent);
 }
 .score-pending{font-size:12px;color:rgba(255,255,255,.25);font-style:italic;}

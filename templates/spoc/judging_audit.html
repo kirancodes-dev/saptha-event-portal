@@ -2,9 +2,8 @@
 {#- On the shared document since UPG-23d. -#}
 {% block head %}
     <title>Score Normalization & Sentiment Audit | SapthaEvent SPOC</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    {% include "layouts/_fontawesome.html" %}
+    {% include "layouts/_bootstrap_css.html" %}
     
     <style>
         :root {
@@ -48,7 +47,7 @@
         .metric-val {
             font-size: 32px;
             font-weight: 800;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Outfit', sans-serif;
         }
 
         .badge-strictness {
@@ -260,7 +259,7 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    {% include "layouts/_bootstrap_js.html" %}
     <script>
         function applyNormalization() {
             var myModal = new bootstrap.Modal(document.getElementById('normModal'));

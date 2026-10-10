@@ -3,9 +3,6 @@
 {% block head %}
     <title>Certificate | {{ student_name }}</title>
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
         body { 
@@ -15,7 +12,7 @@
             align-items: center; 
             min-height: 100vh; 
             margin: 0; 
-            font-family: 'Montserrat', sans-serif; 
+            font-family: 'Inter', sans-serif; 
         }
         
         .cert-container { 
@@ -40,7 +37,7 @@
         }
 
         .univ-name { 
-            font-family: 'Cinzel', serif; 
+            font-family: Georgia, serif; 
             font-size: 36px; 
             color: #1a2557; 
             font-weight: 800; 
@@ -55,7 +52,7 @@
         }
         
         .cert-title { 
-            font-family: 'Cinzel', serif; 
+            font-family: Georgia, serif; 
             font-size: 52px; 
             color: #1e293b; 
             margin-bottom: 30px; 
@@ -70,7 +67,7 @@
         }
         
         .student-name { 
-            font-family: 'Cinzel', serif; 
+            font-family: Georgia, serif; 
             font-size: 48px; 
             color: #c9a45e; 
             border-bottom: 2px solid #cbd5e1; 
@@ -105,7 +102,7 @@
             padding-top: 10px; 
             font-weight: 600; 
             color: #1a2557; 
-            font-family: 'Cinzel', serif;
+            font-family: Georgia, serif;
             font-size: 18px;
         }
 
@@ -124,7 +121,7 @@
             border: none; 
             box-shadow: 0 8px 20px rgba(26, 37, 87, 0.4); 
             transition: 0.3s;
-            font-family: 'Montserrat', sans-serif;
+            font-family: 'Inter', sans-serif;
         }
         .print-btn:hover {
             transform: translateY(-5px);
@@ -169,7 +166,7 @@
 
     <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
     {% if certificate_id %}
-    <p class="no-print" style="text-align:center;margin-top:12px;font-family:Montserrat,sans-serif;font-size:14px;">
+    <p class="no-print" style="text-align:center;margin-top:12px;font-family:'Inter',sans-serif;font-size:14px;">
       <a href="/verify/{{ certificate_id }}/download">Download the official certificate (PDF)</a>
       · <a href="/verify/{{ certificate_id }}">Verification page</a>
     </p>

@@ -4,7 +4,7 @@
    Replaces: global.css, style.css, design_system.css
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+/* Fonts: self-hosted, static/css/fonts.css (UPG-24) */
 
 /* --------------------------------------------------------------------------
    1. DESIGN TOKENS (v8.0 Modernized)

@@ -2,10 +2,9 @@
 {#- On the shared document since UPG-23a. -#}
 {% block head %}
     <title>Campus Wayfinder | SapthaEvent</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    {% include "layouts/_fontawesome.html" %}
+    {% include "layouts/_bootstrap_css.html" %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     
     <style>
         :root {
@@ -43,7 +42,7 @@
         }
 
         .page-header h1 {
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Outfit', sans-serif;
             font-weight: 800;
             background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
             -webkit-background-clip: text;
@@ -331,7 +330,7 @@
     </div>
 
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         // Setup coordinates inside L.CRS.Simple (Custom Coordinate Space)
         var map = L.map('map', {
@@ -362,28 +361,28 @@
             <!-- Campus Gardens & Outer Spaces -->
             <rect x="50" y="50" width="700" height="500" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.15" rx="20"/>
             <rect x="550" y="350" width="160" height="160" fill="#10b981" fill-opacity="0.05" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,4" rx="10"/>
-            <text x="630" y="440" fill="#10b981" fill-opacity="0.6" font-family="Poppins" font-size="12" text-anchor="middle">Green Zone Lawn</text>
+            <text x="630" y="440" fill="#10b981" fill-opacity="0.6" font-family='Outfit' font-size="12" text-anchor="middle">Green Zone Lawn</text>
 
             <!-- Buildings -->
             <!-- Main Block -->
             <rect x="300" y="70" width="200" height="100" fill="#1e293b" fill-opacity="0.8" stroke="#3b82f6" stroke-width="2" rx="8"/>
-            <text x="400" y="125" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Administration Block</text>
+            <text x="400" y="125" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Administration Block</text>
 
             <!-- CS & IT Building -->
             <rect x="100" y="240" width="180" height="110" fill="#1e293b" fill-opacity="0.8" stroke="#06b6d4" stroke-width="2" rx="8"/>
-            <text x="190" y="300" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Computer Science Labs</text>
+            <text x="190" y="300" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Computer Science Labs</text>
 
             <!-- Seminar and Lecture Halls -->
             <rect x="500" y="220" width="200" height="100" fill="#1e293b" fill-opacity="0.8" stroke="#f59e0b" stroke-width="2" rx="8"/>
-            <text x="600" y="275" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Seminar Hall Block</text>
+            <text x="600" y="275" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Seminar Hall Block</text>
 
             <!-- Sports Stadium Arena -->
             <rect x="100" y="420" width="240" height="120" fill="#1e293b" fill-opacity="0.8" stroke="#10b981" stroke-width="2" rx="8"/>
-            <text x="220" y="485" fill="#f8fafc" font-family="Poppins" font-size="14" font-weight="bold" text-anchor="middle">Sports Stadium Complex</text>
+            <text x="220" y="485" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Sports Stadium Complex</text>
 
             <!-- Main Canteen / Food Court -->
             <rect x="520" y="400" width="100" height="80" fill="#1e293b" fill-opacity="0.8" stroke="#ec4899" stroke-width="2" rx="8"/>
-            <text x="570" y="445" fill="#f8fafc" font-family="Poppins" font-size="11" font-weight="bold" text-anchor="middle">Food Court</text>
+            <text x="570" y="445" fill="#f8fafc" font-family='Outfit' font-size="11" font-weight="bold" text-anchor="middle">Food Court</text>
 
             <!-- Pathways / Roads (Main corridors) -->
             <path d="M 400,170 L 400,280 L 190,280 M 400,280 L 600,280 L 600,220 M 400,280 L 400,440 L 220,440 M 400,440 L 570,440 L 570,400 M 400,170 L 400,50" 

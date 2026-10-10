@@ -2,7 +2,10 @@
     base_classic.html (the app layout with the role-aware sidebar),
     layouts/standalone.html (pages with their own header and design) and
     layouts/fullscreen.html (kiosk, scanners, printable pages: no footer).
-    Blocks: html_attrs, csrf_meta, head, body_attrs, body, site_footer, body_end. -#}
+    Blocks: html_attrs, csrf_meta, head, body_attrs, body, site_footer, body_end.
+    The one font set is self-hosted (static/css/fonts.css); Bootstrap 5.3.3 and
+    Font Awesome come from layouts/_bootstrap_css.html, _bootstrap_js.html and
+    _fontawesome.html, which a page includes where it needs them (UPG-24). -#}
 <!DOCTYPE html>
 <html {% block html_attrs %}lang="en"{% endblock %}>
 <head>
@@ -10,6 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_meta_token() }}">{% endblock %}
     {% include 'includes/csrf_fetch.html' %}
+    <link rel="stylesheet" href="/static/css/fonts.css">
     <style>
         /* Shared footer (includes/site_footer.html): takes the page's own text colour */
         .site-footer { text-align: center; font-size: 0.85rem; padding: 1rem; color: inherit; opacity: 0.8; }

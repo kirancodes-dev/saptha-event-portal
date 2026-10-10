@@ -1644,7 +1644,7 @@ h1, h2, h3, h4, h5, h6 {
               </div>
               <h3 class="fw-extrabold mb-1" style="color:var(--ink-900); font-family:'Plus Jakarta Sans'; font-size:24px;">{{ event.title }}</h3>
               <div class="small text-muted">
-                <i class="fas fa-calendar-alt me-1"></i>{{ event.date }} &nbsp;·&nbsp; <i class="fas fa-clock me-1"></i>{{ event.time | default('TBA') }}
+                <i class="fas fa-calendar-alt me-1"></i>{{ event.date }} &nbsp;·&nbsp; <i class="fas fa-clock me-1"></i>{{ event.time or "Time to be announced" }}
               </div>
             </div>
             

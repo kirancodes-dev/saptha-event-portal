@@ -136,6 +136,10 @@ def check_room_conflict(
 
             b_start = parse_to_utc(b_start_raw)
             b_end = parse_to_utc(b_end_raw)
+            if b_end <= b_start:
+                # A booking for an event saved without times holds its date like
+                # the request does (2 hours from its start), so it still clashes (UPG-47)
+                b_end = b_start + timedelta(hours=2)
 
             if slots_overlap(start_utc, end_utc, b_start, b_end):
                 # Retrieve room and clashing event title

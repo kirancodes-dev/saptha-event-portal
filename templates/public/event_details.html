@@ -496,7 +496,7 @@
             <h1 class="hero-title">{{ event.title }}</h1>
             <div class="hero-meta">
                 <div class="hero-meta-item"><i class="fas fa-calendar-alt"></i> {{ event.date }}</div>
-                {% if event.time %}<div class="hero-meta-item"><i class="fas fa-clock"></i> {{ event.time }}</div>{% endif %}
+                <div class="hero-meta-item"><i class="fas fa-clock"></i> {{ event.time or "Time to be announced" }}</div>
                 {% if event.venue %}<div class="hero-meta-item"><i class="fas fa-map-marker-alt"></i> {{ event.venue }}</div>{% endif %}
             </div>
         </div>
@@ -628,7 +628,7 @@
                 <div>
                     <div class="tl-label">Event Date</div>
                     <div class="tl-val">{{ event.date }}</div>
-                    {% if event.time %}<div class="tl-sub"><i class="fas fa-clock me-1" style="color:var(--orange);font-size:10px;"></i>{{ event.time }}</div>{% endif %}
+                    <div class="tl-sub"><i class="fas fa-clock me-1" style="color:var(--orange);font-size:10px;"></i>{{ event.time or "Time to be announced" }}</div>
                 </div>
             </div>
             {% if event.venue %}

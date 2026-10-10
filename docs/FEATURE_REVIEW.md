@@ -1941,8 +1941,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet** (owner's call; it fits next to UPG-31).
 
 #### UPG-47 — Events saved without times get the save time as their start and end (postgres mode)
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-47: …" on `production-ready` (parent `2aeef46`)
 - **Problem:** Found while building UPG-07 [R]. The SQL adapter stores an event's `start_datetime` and `end_datetime` through `parse_datetime`, which returns *now* for an empty value (`db_adapter.py:1126-1127,1938-1940`). The SPOC's create form sends neither, so every such event reads back with its save time as start and end, not its `date`. Readers trust them [C]:
   - room-conflict checks (`services_venue.py:377,408,463`, `services_workflow.py:204`) compare the wrong times;
   - the calendar feeds read `start_datetime` before `date` (`app.py:1069-1070,1106-1111`), so they place each event at its save time;
@@ -1951,6 +1951,12 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **What to build:** an empty start or end reads back empty (or derived from `date` and `time`), not the save time; readers fall back to `date`.
 - **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** existing rows already hold save times; decide whether to clear them (a one-off script) or leave them.
+- **What was built (2026-10-10, owner's second run):**
+  - **Times stay empty.** Creating an event on the SQL layer no longer stores the save time when no start or end is given: `start_datetime` and `end_datetime` stay empty (`db_adapter.py`, the events branch of `_dict_to_new_record`). Updates already kept empty times empty. Existing rows aren't changed (the item's open question: they keep their save times; a one-off clean-up would need the owner's go-ahead).
+  - **"Time to be announced"** shows where the event's time is empty: the public event page (hero and timeline), the coordinator's scanner list and the SPOC dashboard's event panel. The calendar feeds and calendar links already fall back to the date.
+  - **Room clashes still work without times.** A booking whose end isn't after its start (an event saved without times) now holds two hours from its start, like the requested slot already did, so two time-less events in one room on the same day clash and on different days don't (`services_venue.check_room_conflict`).
+  - Checked by hand [R]: an event saved without times reads back with no start or end and its page says "Time to be announced"; the same-day booking clashes, the next day's doesn't. Venue, calendar, adapter and cron tests pass.
+- **To test later:** criteria 1–2.
 - **Acceptance criteria:**
   1. Test (real DB): an event created through the SPOC form reads back with no `end_datetime` (or one on its `date`), never its save time.
   2. Test: a room conflict check for an event saved without times uses its date: a second event in the same room on that date and time clashes, one on another day doesn't.
@@ -2353,3 +2359,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-42: …" (parent `e82943b`) | UPG-42 | **UPG-42 BUILT (untested).** The privacy, terms and payment-failed pages take their contact address from `SUPPORT_EMAIL` and show none when it's unset; the old Gmail address is gone from the repository; `.env.example` has the placeholder (D-4). Checked both cases by hand; ruff clean; app starts. |
 | 2026-10-10 | "UPG-44: …" (parent `737bd0c`) | UPG-44 | **UPG-44 BUILT (untested).** An empty or missing payment status reads back as written, not as the column default `unpaid`; an explicit `unpaid` and the `== unpaid` filter are unchanged. Checked on SQLite and PostgreSQL 16; adapter and payment tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-46: …" (parent `29d859b`) | UPG-46 | **UPG-46 BUILT (untested).** The coordinators' briefing and the velocity alert link from `BASE_URL`, never `sapthaevent.in`. Checked by hand with a test `BASE_URL`; ruff clean; app starts. |
+| 2026-10-10 | "UPG-47: …" (parent `2aeef46`) | UPG-47 | **UPG-47 BUILT (untested).** Events created without times keep their start and end empty (no save time); pages show "Time to be announced"; a time-less booking still blocks its room on its date. Existing rows unchanged. Checked by hand; venue, calendar, adapter and cron tests pass; ruff clean; app starts. |

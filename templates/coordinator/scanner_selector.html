@@ -136,7 +136,7 @@
             </div>
             <p class="ev-title">{{ ev.title }}</p>
             <div class="ev-meta">
-                {% if ev.time %}<div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time }}</div>{% endif %}
+                <div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time or "Time to be announced" }}</div>
                 <div class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>{{ ev.venue }}</div>
                 <div class="ev-meta-item"><i class="fas fa-users"></i>{{ ev.reg_count }} registered</div>
             </div>
@@ -177,7 +177,7 @@
             </div>
             <p class="ev-title">{{ ev.title }}</p>
             <div class="ev-meta">
-                {% if ev.time %}<div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time }}</div>{% endif %}
+                <div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time or "Time to be announced" }}</div>
                 <div class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>{{ ev.venue }}</div>
                 <div class="ev-meta-item"><i class="fas fa-users"></i>{{ ev.reg_count }} registered</div>
             </div>
@@ -215,7 +215,7 @@
             </div>
             <p class="ev-title">{{ ev.title }}</p>
             <div class="ev-meta">
-                {% if ev.time %}<div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time }}</div>{% endif %}
+                <div class="ev-meta-item"><i class="fas fa-clock"></i>{{ ev.time or "Time to be announced" }}</div>
                 <div class="ev-meta-item"><i class="fas fa-map-marker-alt"></i>{{ ev.venue }}</div>
                 <div class="ev-meta-item"><i class="fas fa-users"></i>{{ ev.reg_count }} registered</div>
             </div>

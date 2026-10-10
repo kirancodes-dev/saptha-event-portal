@@ -1146,8 +1146,11 @@ class SQLDocumentReference:
             kwargs['timezone'] = safe_str(data.get('timezone') or 'Asia/Kolkata')
             kwargs['date'] = self._get_date(data.get('date'))
             kwargs['deadline'] = self._get_date(data.get('deadline')) if data.get('deadline') else None
-            kwargs['start_datetime'] = self._get_datetime(data.get('start_datetime') or data.get('startDatetime'))
-            kwargs['end_datetime'] = self._get_datetime(data.get('end_datetime') or data.get('endDatetime'))
+            # No time given: keep it empty ("time to be announced"), never the save time (UPG-47)
+            start_raw = data.get('start_datetime') or data.get('startDatetime')
+            end_raw = data.get('end_datetime') or data.get('endDatetime')
+            kwargs['start_datetime'] = self._get_datetime(start_raw) if start_raw else None
+            kwargs['end_datetime'] = self._get_datetime(end_raw) if end_raw else None
             kwargs['venue'] = safe_str(data.get('venue', 'Unknown Venue'))
             kwargs['status'] = self._get_enum_status(data.get('status', 'active'))
             kwargs['capacity'] = int(data.get('capacity') or data.get('max_participants') or 200)

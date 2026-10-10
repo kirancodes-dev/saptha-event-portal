@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
 <!-- ═══ SEO Meta Tags ═══ -->
 <meta name="description" content="Rate limit exceeded on SapthaEvent. Too many requests detected. Please wait a moment and try again.">
 <meta name="robots" content="noindex, nofollow">
@@ -30,8 +28,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800
 *:focus-visible{outline:3px solid var(--snpsu-gold);outline-offset:2px;}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 </style>
-</head>
-<body role="main" aria-label="429 Rate Limit Error">
+{% endblock %}
+{% block body_attrs %} role="main" aria-label="429 Rate Limit Error"{% endblock %}
+{% block body %}
 <div class="card" role="region" aria-live="polite" aria-label="Rate limit error message">
   <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:52px;width:auto;object-fit:contain;margin-bottom:12px;" aria-hidden="true">
   <div class="code" aria-label="Error code">429</div>
@@ -59,5 +58,4 @@ const iv = setInterval(() => {
   if (t <= 0) { clearInterval(iv); window.location.href = '/'; }
 }, 1000);
 </script>
-</body>
-</html>
+{% endblock %}

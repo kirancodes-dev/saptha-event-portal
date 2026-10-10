@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
 <!-- ═══ SEO Meta Tags ═══ -->
 <meta name="description" content="A server error occurred on SapthaEvent. Our team has been notified. Please try again later.">
 <meta name="robots" content="noindex, nofollow">
@@ -30,8 +28,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800
 *:focus-visible{outline:3px solid var(--snpsu-gold);outline-offset:2px;}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 </style>
-</head>
-<body role="main" aria-label="500 Server Error">
+{% endblock %}
+{% block body_attrs %} role="main" aria-label="500 Server Error"{% endblock %}
+{% block body %}
 <div class="card" role="region" aria-live="polite" aria-label="Server error message">
   <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:52px;width:auto;object-fit:contain;margin-bottom:12px;" aria-hidden="true">
   <div class="code" aria-label="Error code">500</div>
@@ -56,5 +55,4 @@ body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800
   <p class="ref">Error reference: {{ request.url if request else '' }}</p>
 </div>
 <script src="/static/js/global.js"></script>
-</body>
-</html>
+{% endblock %}

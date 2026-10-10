@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
 <title>Live Leaderboard — {{ event.get('title','Event') }}</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -40,8 +38,8 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;min-height:100vh;}
 .empty p{font-size:14px;color:#94a3b8;margin-top:10px;}
 </style>
     <link href="/static/css/global.css" rel="stylesheet">
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="header">
   <div class="logo">
@@ -155,5 +153,4 @@ setTimeout(() => window.location.reload(), 15000);
 document.getElementById('updated-ts').textContent =
   'Auto-refreshes every 15 seconds · ' + new Date().toLocaleTimeString();
 </script>
-</body>
-</html>
+{% endblock %}

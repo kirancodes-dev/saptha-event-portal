@@ -1,9 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
 <meta name="theme-color" content="#030712">
 <title>SapthaEvent | Sapthagiri NPS University</title>
 <meta name="description" content="Discover and register for hackathons, cultural fests, sports meets, and workshops at Sapthagiri NPS University.">
@@ -488,8 +486,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; color: var(--text-p
 @media(max-width: 576px) { .hero { padding: 60px 0 70px; } .hstat-n { font-size: 24px; } }
 .d-none-ev { display: none !important; }
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="grid-bg"></div>
 <div class="liquid-blob blob-1"></div>
@@ -1157,5 +1155,4 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="/static/js/global.js"></script>
-</body>
-</html>
+{% endblock %}

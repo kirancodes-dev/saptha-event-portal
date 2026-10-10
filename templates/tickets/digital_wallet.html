@@ -1,8 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% set site_footer_fixed = true %}
+{% block head %}
     <title>{{ ticket.ticket_type or 'General' }} Pass — {{ event.title or 'Event Pass' }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -208,8 +207,8 @@
             width: 100%;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="wallet-container">
     <div class="ticket-card">
@@ -269,5 +268,4 @@
     </div>
 </div>
 
-</body>
-</html>
+{% endblock %}

@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23a (full-screen: no footer). -#}
+{% block head %}
     <title>Certificate Preview | {{ student_name }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -106,8 +104,8 @@
             font-size: 1.4vw;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
     <div class="cert-container">
         <div>
             <div class="univ-name">SAPTHAGIRI NPS UNIVERSITY</div>
@@ -145,5 +143,4 @@
             <div class="signature">Division SPOC</div>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}

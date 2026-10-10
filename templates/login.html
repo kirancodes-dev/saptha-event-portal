@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
     <meta name="theme-color" content="#0d1b3e">
     <!-- ═══ SEO Meta Tags ═══ -->
     <meta name="description" content="Login to SapthaEvent: Official event management portal for Sapthagiri NPS University. Access your event registrations, manage tickets, and sign up for campus events.">
@@ -31,8 +29,9 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="/static/js/global.js?v=1.0.2" defer></script>
-</head>
-<body class="auth zero-scroll">
+{% endblock %}
+{% block body_attrs %} class="auth zero-scroll"{% endblock %}
+{% block body %}
     <!-- Aurora background elements -->
     <div class="aurora-bg">
         <div class="aurora-orb"></div>
@@ -378,5 +377,4 @@
         });
     </script>
 
-</body>
-</html>
+{% endblock %}

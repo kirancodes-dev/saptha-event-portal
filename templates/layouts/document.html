@@ -1,0 +1,28 @@
+{#- The one document every page is rendered in (UPG-23). Children:
+    base_classic.html (the app layout with the role-aware sidebar),
+    layouts/standalone.html (pages with their own header and design) and
+    layouts/fullscreen.html (kiosk, scanners, printable pages: no footer).
+    Blocks: html_attrs, csrf_meta, head, body_attrs, body, site_footer, body_end. -#}
+<!DOCTYPE html>
+<html {% block html_attrs %}lang="en"{% endblock %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_meta_token() }}">{% endblock %}
+    {% include 'includes/csrf_fetch.html' %}
+    <style>
+        /* Shared footer (includes/site_footer.html): takes the page's own text colour */
+        .site-footer { text-align: center; font-size: 0.85rem; padding: 1rem; color: inherit; opacity: 0.8; }
+        .site-footer a { color: inherit; text-decoration: underline; }
+        .site-footer--fixed { position: fixed; left: 0; right: 0; bottom: 0; padding: 0.35rem; font-size: 0.75rem;
+                              pointer-events: none; z-index: 1; }
+        .site-footer--fixed a { pointer-events: auto; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body{% block body_attrs %}{% endblock %}>
+{% block body %}{% endblock %}
+{% block site_footer %}{% include 'includes/site_footer.html' %}{% endblock %}
+{% block body_end %}{% endblock %}
+</body>
+</html>

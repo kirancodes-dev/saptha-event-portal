@@ -1,8 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% set site_footer_fixed = true %}
+{% block head %}
 <title>Checked In!</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
@@ -18,8 +17,8 @@ h2{font-size:22px;font-weight:700;color:var(--blue);margin-bottom:6px;}
 .btn-home{display:inline-block;margin-top:20px;background:var(--orange);color:#fff;padding:11px 28px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;transition:.2s;}
 .btn-home:hover{background:#b8903f;color:#fff;}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="card">
   <div class="check-icon">✅</div>
   <h2>You're In, {{ name }}!</h2>
@@ -28,5 +27,4 @@ h2{font-size:22px;font-weight:700;color:var(--blue);margin-bottom:6px;}
   <div class="info-row"><span class="info-label">Check-in Time</span><span class="info-val">{{ checkin_time }}</span></div>
   <a href="/" class="btn-home"><i class="fas fa-home me-2"></i>Portal Home</a>
 </div>
-</body>
-</html>
+{% endblock %}

@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23a (full-screen: no footer). -#}
+{% block head %}
 <title>Live Leaderboard | {{ event.title }}</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -184,8 +182,8 @@ body{
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
 </style>
 <script src="/static/js/escape.js"></script>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <!-- HEADER -->
 <div class="hdr">
@@ -369,5 +367,4 @@ function toggleFS() {
   else document.exitFullscreen();
 }
 </script>
-</body>
-</html>
+{% endblock %}

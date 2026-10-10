@@ -1,8 +1,7 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block html_attrs %}lang="en" data-theme="dark"{% endblock %}
+{% block head %}
     <meta name="description" content="SapthaEvent Design System v8.0 Reference and Interactive Component Showcase">
     <title>Design System v8.0 | SapthaEvent Portal</title>
     <!-- Fonts & Icons -->
@@ -133,8 +132,9 @@
             gap: 1.25rem;
         }
     </style>
-</head>
-<body style="padding-bottom: 4rem;">
+{% endblock %}
+{% block body_attrs %} style="padding-bottom: 4rem;"{% endblock %}
+{% block body %}
     <!-- Aurora background elements -->
     <div class="aurora-bg" aria-hidden="true">
         <div class="aurora-orb"></div>
@@ -485,5 +485,4 @@
             if (announcer) announcer.textContent = 'Form submitted successfully.';
         }
     </script>
-</body>
-</html>
+{% endblock %}

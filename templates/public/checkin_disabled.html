@@ -1,7 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% set site_footer_fixed = true %}
+{% block head %}
 <title>Check-in Disabled</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
@@ -11,8 +11,8 @@ body{background:linear-gradient(135deg,#1a2557,#1a4fa0);min-height:100vh;display
 h2{font-size:20px;font-weight:700;color:#1a2557;margin-bottom:8px;}
 p{font-size:13.5px;color:#64748b;line-height:1.6;}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="card">
   <div class="icon">🔒</div>
   <h2>Self Check-in Disabled</h2>
@@ -20,5 +20,4 @@ p{font-size:13.5px;color:#64748b;line-height:1.6;}
      Please show your QR ticket to the coordinator at the entry desk.</p>
   <a href="/" style="display:inline-block;margin-top:20px;background:#1a2557;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">Back to Portal</a>
 </div>
-</body>
-</html>
+{% endblock %}

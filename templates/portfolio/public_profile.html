@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
     <meta name="description" content="Public event portfolio for {{ student.get('name', 'Student') }} at Sapthagiri NPS University.">
     <meta name="robots" content="index, follow">
     <meta property="og:title" content="{{ student.get('name', 'Student') }} — SapthaEvent Portfolio">
@@ -200,8 +198,8 @@
             .section, .stat, .hero { box-shadow: none; }
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="page-wrap">
 
     <!-- Hero -->
@@ -322,5 +320,4 @@
     </div>
 
 </div>
-</body>
-</html>
+{% endblock %}

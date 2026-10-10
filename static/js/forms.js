@@ -33,9 +33,12 @@
       b.disabled = true;
       b.dataset.seGuarded = '1';
       if (b.tagName === 'BUTTON' && !b.hasAttribute('data-no-loader')) {
-        b.dataset.seLabel = b.innerHTML;
-        b.innerHTML = '<span class="se-spinner" aria-hidden="true"></span> ' +
-          (b.dataset.loadingText || 'Please wait…');
+        b.dataset.seLabel = b.textContent;
+        var spinner = document.createElement('span');
+        spinner.className = 'se-spinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        var textNode = document.createTextNode(' ' + (b.dataset.loadingText || 'Please wait…'));
+        b.replaceChildren(spinner, textNode);
       }
     });
   }
@@ -47,7 +50,10 @@
       if (!b.dataset.seGuarded) return;
       b.disabled = false;
       delete b.dataset.seGuarded;
-      if (b.dataset.seLabel !== undefined) { b.innerHTML = b.dataset.seLabel; delete b.dataset.seLabel; }
+      if (b.dataset.seLabel !== undefined) {
+        b.textContent = b.dataset.seLabel;
+        delete b.dataset.seLabel;
+      }
     });
   }
 

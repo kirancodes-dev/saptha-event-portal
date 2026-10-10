@@ -300,7 +300,6 @@ else:
 # BLUEPRINTS
 # =========================================================
 from routes_auth        import auth_bp        # noqa: E402
-from routes_api         import api_bp          # noqa: E402
 from routes_ai_matching import ai_bp           # noqa: E402
 from routes_admin       import admin_bp        # noqa: E402
 from routes_coordinator import coord_bp        # noqa: E402
@@ -326,7 +325,6 @@ from routes_referrals       import referrals_bp       # noqa: E402
 from routes_cron            import cron_bp            # noqa: E402
 
 app.register_blueprint(auth_bp)
-app.register_blueprint(api_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(coord_bp)

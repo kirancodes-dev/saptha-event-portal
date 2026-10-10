@@ -140,7 +140,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
 
               <div class="pt-3 border-top d-flex gap-2 flex-wrap">
                 {% if r.ticket_code %}
-                <a href="/participant/ticket/{{ r.ticket_code }}" class="btn btn-sm btn-outline-primary flex-fill">
+                <a href="/ticket/{{ r.id }}" class="btn btn-sm btn-outline-primary flex-fill">
                   <i class="fas fa-qrcode me-1"></i> View Ticket
                 </a>
                 {% elif r.id %}

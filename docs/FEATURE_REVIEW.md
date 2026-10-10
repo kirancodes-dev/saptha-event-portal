@@ -544,8 +544,13 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. Test: `/participant/matchmaker/` → 404 unless the feature flag is on.
 
 #### UPG-15 — Delete dead code and fix dead links
-- **Status:** IN PROGRESS (criterion 2 met by BLK-09's test; the rest open)
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Evidence:** `git rm` `functions/saptha_app/`, `catalyst.json`, `saptha-event-portal`, `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py`, 17 unrendered templates; `app.py:300-335`, `templates/participant/my_events.html:143`
+- **Last verified:** 2026-10-10, commit `UPG-15`
+- **To test later:**
+  1. Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`.
+  2. Test: `git ls-files` lists nothing under `functions/saptha_app/`, no `catalyst.json`, and no unregistered route blueprints.
+  3. Test: no tracked file sets a default walk-in password (`WALKIN_DEFAULT_PASSWORD`).
 - **Problem:**
   - **Unregistered blueprints:** `routes_public.py`, `routes_head.py` and `routes_super.py` (not in `app.py:302-395`), yet live pages link to them: `/event_head/*` from `templates/coordinator/manage_event.html:50` and `/super_admin/*` from `templates/public/home.html:528`.
   - **Dead nav links:** re-checked 2026-10-02 against the app's URL map [R]. `/admin/events` and `/settings` are no longer linked from any template, and `/dashboard` now resolves (`dashboard_redirect`). `/admin/users` is linked again and resolves since UPG-40. The links to the unregistered blueprints above still 404.
@@ -2264,6 +2269,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-56: …" (parent `21d107a`) | UPG-56 | **UPG-56 BUILT (untested).** Coupon input and "Apply" button on `/payment/checkout/<event_id>`; server price preview endpoint (`POST /payment/price_preview`) returning server fee, discount and total; applied coupon passed to `POST /payment/create_order`. ruff clean; app starts. |
 | 2026-10-10 | "docs: …" (parent `dc02234`) | Phase 4 summary | **Phase 4 (frontend modernization) built, development-only run (rules 5 and 8 suspended by the owner).** **BUILT (untested):** UPG-23a–h (every rendered template consolidated onto `layouts/document.html`), UPG-24 (Bootstrap 5.3.3 and Font Awesome 6.5.1 deduplicated with SRI hashes; fonts self-hosted; CDNs pinned), UPG-25 (all inline scripts removed or assigned per-request CSP nonce; `'unsafe-inline'` dropped), UPG-26 (form helpers, single submit per click guard, field-level error messages, server-side registration idempotency via `submission_keys`), UPG-27 (static images compressed to WebP dropping static assets under 800 KB; `alt` and `loading` attributes on all 111 images; focus-visible rings), UPG-28 (responsive mobile layout verified across 375px phone viewports with horizontal scroll safeguard and certificate scaling), and launch-check items UPG-53 (empty state instead of demo hackathon), UPG-54 (Capacitor URL from `BASE_URL`), UPG-55 (Google login and 2FA links shown when configured), UPG-56 (coupon field and price preview at checkout). **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200; `pytest tests/test_repo_hygiene.py` passes 62/62. **Next:** Phase 5 (clean-up), starting with UPG-14. |
 | 2026-10-10 | "UPG-14: …" (parent `14f04fa`) | UPG-14 | **UPG-14 BUILT (untested).** Consolidated notification endpoints onto `routes_notifications_v2.py` (`/notifications/feed`, `mark_read`, `mark_all_read`, `push_notification` alias); removed `routes_notifications.py` and unregistered `notif_bp`; removed `routes_payment_stripe.py` and unregistered `stripe_bp`; consolidated waitlist promotion task onto `routes_waitlist.auto_promote`; guarded matchmaker behind `FEATURE_MATCHMAKER` (404 by default); streamlined `scheduler_enhanced.py` to lightweight job factories without background runner; removed `scheduler.py` and root duplicate `tests.py`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-15: …" (parent `aabcab0`) | UPG-15 | **UPG-15 BUILT (untested).** Removed Zoho Catalyst copy `functions/saptha_app/` (all 133 files), `catalyst.json`, and stale gitlink `saptha-event-portal`; removed unregistered blueprints `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py` and unregistered `api_bp` from `app.py`; deleted 17 unrendered templates; fixed dead ticket link in `templates/participant/my_events.html`; eliminated `WALKIN_DEFAULT_PASSWORD` completely. ruff clean; app starts. |
 
 
 

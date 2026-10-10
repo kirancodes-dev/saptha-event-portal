@@ -310,7 +310,13 @@ def can(user, permission: str, target=None, db=None) -> bool:
         return True
 
     elif norm_session_role == 'Volunteer':
-        return permission == 'check_in'
+        if permission != 'check_in':
+            return False
+        if target_event_data:
+            # Only at events they're staff on (BLK-18)
+            return (user_id in target_event_data.get('coordinators', []) or
+                    any(s.get('email') == user_id for s in target_event_data.get('staff', [])))
+        return True
 
     return False
 

@@ -208,14 +208,24 @@
       if (r.payment === 'paid') payClass = 'text-success';
       if (r.payment === 'unpaid') payClass = 'text-danger';
 
-      var row = '<tr>' +
-                '<td>' + (r.name || 'Unknown') + '</td>' +
-                '<td>' + (r.event_title || 'Unknown') + '</td>' +
-                '<td>' + (r.date || 'Unknown') + '</td>' +
-                '<td><span class="badge ' + badgeClass + '">' + r.status + '</span></td>' +
-                '<td class="fw-bold ' + payClass + '">' + (r.payment || 'unpaid').toUpperCase() + '</td>' +
-                '</tr>';
-      tbody.innerHTML += row;
+      // Built as nodes: names and titles come from registrants (BLK-19)
+      var row = document.createElement('tr');
+      function cell(text, className) {
+        var td = document.createElement('td');
+        if (className) td.className = className;
+        td.textContent = text;
+        row.appendChild(td);
+        return td;
+      }
+      cell(r.name || 'Unknown');
+      cell(r.event_title || 'Unknown');
+      cell(r.date || 'Unknown');
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + badgeClass;
+      badge.textContent = r.status || '';
+      cell('').appendChild(badge);
+      cell((r.payment || 'unpaid').toUpperCase(), 'fw-bold ' + payClass);
+      tbody.appendChild(row);
     });
   }
 

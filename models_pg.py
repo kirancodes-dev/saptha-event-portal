@@ -375,6 +375,8 @@ class Event(Base):
     ticket_tiers_json = Column("ticketTiersJson", Text, nullable=True)
     notification_rules_json = Column("notificationRulesJson", Text, nullable=True)
     certificate_config_json = Column("certificateConfigJson", Text, nullable=True)
+    activity_points = Column("activity_points", Float, nullable=False, default=0.0)
+    activity_hours  = Column("activity_hours", Float, nullable=False, default=0.0)
     created_at     = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at     = Column("updatedAt", DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
     # Schemaless overflow: the full Firestore-style document, so fields without
@@ -413,6 +415,8 @@ class Event(Base):
             'poster_url': self.poster_url, 'rules': self.rules, 'prizes': self.prizes,
             'coordinator_id': self.coordinator_id,
             'registration_count': self.registration_count or 0,
+            'activity_points': float(self.activity_points or 0.0),
+            'activity_hours': float(self.activity_hours or 0.0),
             'workflow_config': json.loads(self.workflow_config_json) if self.workflow_config_json else {},
             'evaluation_config': json.loads(self.evaluation_config_json) if self.evaluation_config_json else {},
             'ticket_tiers': json.loads(self.ticket_tiers_json) if self.ticket_tiers_json else [],
@@ -613,11 +617,70 @@ class PaymentOrder(Base):
     amount_paise = Column("amountPaise", Integer, nullable=False)
     currency     = Column(String(8), nullable=False, default="INR")
     coupon_code  = Column("couponCode", String(64), nullable=True)
-    status       = Column(String(20), nullable=False, default="created")  # created | paid
+    status       = Column(String(20), nullable=False, default="created")  # created | paid | refunding | refunded
     payment_id   = Column("paymentId", String(128), nullable=True, unique=True)
     reg_id       = Column("regId", String(128), nullable=True)
     created_at   = Column("createdAt", DateTime(timezone=True), nullable=False, default=_utcnow)
     paid_at      = Column("paidAt", DateTime(timezone=True), nullable=True)
+    # UPG-30: the registration to complete (so the webhook can), why a paid
+    # order has no registration, and its refund
+    reg_data_json  = Column("regDataJson", Text, nullable=True)
+    failure_reason = Column("failureReason", Text, nullable=True)
+    refund_id      = Column("refundId", String(128), nullable=True)
+    refunded_at    = Column("refundedAt", DateTime(timezone=True), nullable=True)
+    refunded_by    = Column("refundedBy", String(255), nullable=True)
+
+
+class CouponUse(Base):
+    """How many uses of one event's coupon are taken: paid, or held by an
+    order that isn't paid yet (UPG-36). Taken with one conditional UPDATE,
+    so two checkouts can't both get the last use."""
+    __tablename__ = "coupon_uses"
+
+    key  = Column(String(300), primary_key=True)  # "<event_id>:<CODE>"
+    used = Column(Integer, nullable=False, default=0)
+
+
+class SubmissionKey(Base):
+    """One row per form a browser sent (its hidden submission_id), so sending
+    the same registration twice creates one registration (UPG-26)."""
+    __tablename__ = "submission_keys"
+
+    key        = Column(String(64), primary_key=True)
+    result     = Column(String(128), nullable=True)   # the registration ID, or 'waitlist' / 'pending_payment'
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+
+
+class NativeDocument(Base):
+    """Documents of collections with no table of their own, stored as JSON
+    (db_adapter's native document store). Built by migrations like every
+    other table (UPG-58)."""
+    __tablename__ = "native_document_store"
+
+    collection_name = Column(String(64), primary_key=True)
+    doc_id          = Column(String(128), primary_key=True)
+    data_json       = Column(Text, nullable=True)
+    updated_at      = Column(DateTime, nullable=True, default=_utcnow)
+
+
+class OutboxTask(Base):
+    """A background task that failed or timed out while running inline (no
+    broker), kept for the cron endpoint's `outbox` job to retry (UPG-18).
+    `key` is the idempotency key: one row per distinct send."""
+    __tablename__ = "outbox"
+
+    key             = Column(String(64), primary_key=True)
+    task_name       = Column(String(200), nullable=False)
+    args_json       = Column(Text, nullable=False, default="[]")
+    kwargs_json     = Column(Text, nullable=False, default="{}")
+    status          = Column(String(20), nullable=False, default="pending")  # pending / running / done / failed
+    attempts        = Column(Integer, nullable=False, default=0)
+    next_attempt_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    last_error      = Column(Text, nullable=True)
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at      = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    __table_args__ = (Index("idx_outbox_status_next", "status", "next_attempt_at"),)
 
 
 class Announcement(Base):

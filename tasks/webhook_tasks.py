@@ -97,6 +97,7 @@ def process_razorpay_payment(self, payload: dict):
                 event_title=event_title,
                 amount=str(amount),
                 reg_id=reg_id,
+                payment_id=payment_id,
             )
 
         # Audit log

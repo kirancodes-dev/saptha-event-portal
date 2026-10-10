@@ -1,8 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% set site_footer_fixed = true %}
+{% block head %}
   <meta name="theme-color" content="#1a2557">
   <title>Offline | SapthaEvent</title>
   <link href="/static/css/global.css" rel="stylesheet">
@@ -39,14 +38,14 @@
       font-size: .85rem; color: #64748b; margin-top: 1.25rem;
     }
   </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
   <div class="offline-card">
-    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
+    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
     <h1>You're offline</h1>
     <p>We couldn't reach the network. Your already-opened tickets and cached pages will still work.</p>
-    <a href="/" class="btn" onclick="location.reload();return false;">Retry</a>
+    <a href="/" class="btn" data-h-click="offline:1">Retry</a>
     <p class="hint">Tip: open your ticket while online once and it'll be available offline at the event gate.</p>
   </div>
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/offline.js"></script>{% endblock %}

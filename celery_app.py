@@ -23,15 +23,27 @@ Usage
 """
 
 import os
-from celery import Celery
+from celery import Celery, Task
 from celery.schedules import crontab
 
 # ── Broker / backend ──────────────────────────────────────
 BROKER_URL  = os.environ.get('CELERY_BROKER_URL',  'redis://localhost:6379/1')
 RESULT_URL  = os.environ.get('CELERY_RESULT_BACKEND', BROKER_URL)
 
+class OutboxTask(Task):
+    """With no broker, a queued task runs inline once under a timeout and,
+    if it fails or times out, is kept in the outbox for the cron endpoint
+    to retry (services_outbox, UPG-18). With a broker, nothing changes."""
+    def apply_async(self, args=None, kwargs=None, *a, **options):
+        if self.app.conf.task_always_eager and not options.pop('_outbox_bypass', False):
+            from services_outbox import run_inline
+            return run_inline(self, args or (), kwargs or {})
+        return super().apply_async(args, kwargs, *a, **options)
+
+
 celery = Celery(
     'sapthaevent',
+    task_cls=OutboxTask,
     broker=BROKER_URL,
     backend=RESULT_URL,
     include=[
@@ -52,9 +64,9 @@ _no_broker = not os.environ.get('CELERY_BROKER_URL', '').startswith('redis')
 
 celery.conf.update(
     # ── Eager mode — runs tasks inline when no Redis broker is available.
-    # This lets the full email/WhatsApp/notification workflow work on
-    # localhost without needing a running Redis + Celery worker.
-    # Set CELERY_BROKER_URL=redis://... in production to disable eager mode.
+    # Each task runs once under TASK_INLINE_TIMEOUT; failures and timeouts go
+    # to the outbox, retried by POST /internal/cron/outbox (UPG-18).
+    # Set CELERY_BROKER_URL=redis://... to queue tasks to a worker instead.
     task_always_eager        = _no_broker,
     task_eager_propagates    = False,  # email failures must NOT crash web requests
 
@@ -101,7 +113,7 @@ celery.conf.update(
             'task':     'tasks.scheduled_tasks.send_3day_reminders',
             'schedule': crontab(minute=30),          # 30 min past every hour
         },
-        # Event lifecycle (close regs, delete old events)
+        # Event lifecycle (close registration, complete past events)
         'event-lifecycle': {
             'task':     'tasks.scheduled_tasks.run_event_lifecycle',
             'schedule': crontab(minute=0, hour='*/6'),  # every 6 hours

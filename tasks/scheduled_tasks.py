@@ -2,14 +2,13 @@
 tasks/scheduled_tasks.py — Celery Beat scheduled jobs
 ======================================================
 These tasks replace APScheduler running inside the web workers.
-They run in the dedicated celery-beat container so the web fleet
-remains fully stateless.
-
-Beat schedule is defined in celery_app.py.
+Self-hosted, they run in the celery-beat container (schedule in
+celery_app.py). On a single web service (Cloud Run), an outside scheduler
+calls them through POST /internal/cron/<job> (routes_cron.py, UPG-07).
 
 Jobs:
   send_24h_reminders   — every hour: email + WhatsApp for tomorrow's events
-  run_event_lifecycle  — every 6h: close regs, delete stale events
+  run_event_lifecycle  — every 6h: close registration, complete past events
   log_backup_ping      — daily 01:30 IST: remind ops to verify GCS backup
 """
 
@@ -17,6 +16,9 @@ import logging
 import datetime
 from celery_app import celery
 from models import db
+# Statuses an event runs in (reminders, lifecycle) and takes registrations in;
+# `active` is the old single "running" status (UPG-43).
+from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_STATUSES as REGISTRATION_OPEN
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +47,7 @@ def send_24h_reminders(self):
 
         logger.info("send_24h_reminders: scanning for events on %s", tomorrow_str)
 
-        events_ref = db.collection('events').where('status', '==', 'active').stream()
+        events_ref = db.collection('events').where('status', 'in', list(RUNNING)).stream()
         events_tomorrow = [
             {**doc.to_dict(), 'id': doc.id}
             for doc in events_ref
@@ -68,7 +70,7 @@ def send_24h_reminders(self):
 
             for reg_doc in regs:
                 reg    = reg_doc.to_dict()
-                reg_id = reg_doc.id
+                reg_id = reg.get('reg_id') or reg_doc.id   # the ID on the ticket page
 
                 if reg.get('ticket_sent'):
                     skipped += 1
@@ -93,6 +95,7 @@ def send_24h_reminders(self):
                         reg_id=reg_id,
                         event_date=event_date,
                         venue=venue,
+                        with_qr=True,
                     )
                     queued_emails += 1
 
@@ -242,7 +245,7 @@ def send_3day_reminders(self):
 
         logger.info("send_3day_reminders: scanning for events on %s", target_str)
 
-        events_ref   = db.collection('events').where('status', '==', 'active').stream()
+        events_ref   = db.collection('events').where('status', 'in', list(RUNNING)).stream()
         target_events = [
             {**doc.to_dict(), 'id': doc.id}
             for doc in events_ref
@@ -375,7 +378,7 @@ def check_registration_velocity(self):
 
         logger.info("check_registration_velocity: scanning for deadlines on %s", target)
 
-        events = db.collection('events').where('status', '==', 'active').stream()
+        events = db.collection('events').where('status', 'in', list(REGISTRATION_OPEN)).stream()
         alerted = skipped = 0
 
         for doc in events:
@@ -517,6 +520,7 @@ def check_registration_velocity(self):
         raise self.retry(exc=exc)
 
 
+
 @celery.task(
     bind=True,
     queue='default',
@@ -527,12 +531,18 @@ def check_registration_velocity(self):
 )
 def run_event_lifecycle(self):
     """
-    1. Close registrations once reg_deadline has passed (status → registration_closed)
-    2. Delete registrations 30 days after event date
-    3. Delete event document 5 days after event date
+    Moves events forward; deletes nothing (how long data is kept is UPG-22).
+    1. Registration closes once reg_deadline has passed (registration_open,
+       or the old `active` → registration_closed).
+    2. An event whose last day has passed and is still published, open,
+       closed or in progress → completed. The last day is the later of
+       `date` and `end_datetime`: the SQL layer stores the save time as
+       end_datetime when an event has none (UPG-47), which must not end it.
+    Each change goes through WorkflowEngine.transition_event, so it's in the
+    audit trail. Running it again changes nothing.
     """
     try:
-
+        from services_workflow import WorkflowEngine
 
         ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         today = datetime.datetime.now(ist).date()
@@ -544,47 +554,32 @@ def run_event_lifecycle(self):
             except ValueError:
                 return None
 
-        events = list(db.collection('events').stream())
-        closed = deleted_events = deleted_regs = 0
+        def _move(e_id, target, reason):
+            WorkflowEngine.transition_event(db, event_id=e_id, target_state=target,
+                                            actor_id='system:lifecycle', reason=reason, force=True)
 
-        for doc in events:
+        closed = completed = 0
+        for doc in list(db.collection('events').stream()):
             e      = doc.to_dict() or {}
             e_id   = doc.id
             status = (e.get('status', '') or '').lower()
-            event_date = _parse_date(e.get('date'))
-            reg_dl     = _parse_date(e.get('reg_deadline'))
+            reg_dl = _parse_date(e.get('reg_deadline'))
+            days   = [d for d in (_parse_date(e.get('date')), _parse_date(e.get('end_datetime'))) if d]
+            ends   = max(days) if days else None
 
-            if reg_dl and today > reg_dl and status == 'active':
-                try:
-                    db.collection('events').document(e_id).update({
-                        'status': 'registration_closed',
-                        'registration_closed_at': datetime.datetime.now(ist).isoformat(),
-                    })
+            try:
+                if status in REGISTRATION_OPEN and reg_dl and today > reg_dl:
+                    _move(e_id, 'registration_closed', 'Registration deadline passed')
+                    status = 'registration_closed'
                     closed += 1
-                except Exception as exc:
-                    logger.warning("Could not close reg for %s: %s", e_id, exc)
+                if status in RUNNING and ends and today > ends:
+                    _move(e_id, 'completed', 'Event date passed')
+                    completed += 1
+            except Exception as exc:
+                logger.warning("Lifecycle: could not move %s: %s", e_id, exc)
 
-            if event_date and (today - event_date).days >= 30:
-                try:
-                    for r in db.collection('registrations').where('event_id', '==', e_id).stream():
-                        r.reference.delete()
-                        deleted_regs += 1
-                except Exception as exc:
-                    logger.warning("Reg cleanup failed %s: %s", e_id, exc)
-
-            if event_date and (today - event_date).days >= 5:
-                try:
-                    for r in db.collection('registrations').where('event_id', '==', e_id).stream():
-                        r.reference.delete()
-                        deleted_regs += 1
-                    db.collection('events').document(e_id).delete()
-                    deleted_events += 1
-                except Exception as exc:
-                    logger.warning("Event cleanup failed %s: %s", e_id, exc)
-
-        logger.info("run_event_lifecycle: closed=%d events_deleted=%d regs_deleted=%d",
-                    closed, deleted_events, deleted_regs)
-        return {'closed': closed, 'events_deleted': deleted_events, 'regs_deleted': deleted_regs}
+        logger.info("run_event_lifecycle: closed=%d completed=%d", closed, completed)
+        return {'closed': closed, 'completed': completed}
 
     except Exception as exc:
         logger.exception("run_event_lifecycle failed: %s", exc)

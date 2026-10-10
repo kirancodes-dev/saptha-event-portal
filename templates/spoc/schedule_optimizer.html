@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23d. -#}
+{% block head %}
     <title>AI Timetable Optimizer | SapthaEvent SPOC</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    {% include "layouts/_fontawesome.html" %}
+    {% include "layouts/_bootstrap_css.html" %}
     
     <style>
         :root {
@@ -44,7 +41,7 @@
         }
 
         .opt-header h2 {
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Outfit', sans-serif;
             font-weight: 800;
         }
 
@@ -58,7 +55,7 @@
         .kpi-val {
             font-size: 28px;
             font-weight: 800;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Outfit', sans-serif;
         }
 
         /* Timeline styles */
@@ -114,8 +111,8 @@
             background: rgba(255, 255, 255, 0.03);
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
     <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-4">
         <div class="container d-flex justify-content-between align-items-center">
             <a href="/spoc/dashboard" class="text-white text-decoration-none d-flex align-items-center gap-2">
@@ -137,7 +134,7 @@
                         <h2 class="fw-bold text-white mb-1"><i class="fas fa-shuffle text-primary me-2"></i>Schedule & Timetable Optimizer</h2>
                         <p class="text-muted mb-0">Event: <span class="text-white fw-semibold">{{ event.title }}</span> | Real-time participant clash intelligence optimization.</p>
                     </div>
-                    <button class="btn btn-success rounded-pill px-4" onclick="optimizeAgenda()">
+                    <button class="btn btn-success rounded-pill px-4" data-h-click="spoc/schedule_optimizer:1">
                         <i class="fas fa-wand-magic-sparkles me-2"></i>Recalculate Clash Optimizer
                     </button>
                 </div>
@@ -247,17 +244,7 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function optimizeAgenda() {
-            var myModal = new bootstrap.Modal(document.getElementById('optModal'));
-            myModal.show();
-            
-            // visually update stats to perfect clash-free state
-            document.getElementById('clash-counter').innerText = "0 Students";
-            document.getElementById('resolved-counter').innerText = "18 Students";
-            document.getElementById('ratio-counter').innerText = "100%";
-        }
-    </script>
-</body>
-</html>
+    {% include "layouts/_bootstrap_js.html" %}
+    <script src="/static/js/pages/spoc__schedule_optimizer.js"></script>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__schedule_optimizer.js"></script>{% endblock %}

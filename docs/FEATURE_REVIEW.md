@@ -25,7 +25,7 @@ This file is the source of truth for planned work. Agents and developers work on
 ## 1. Summary
 
 1. Today the app does this end to end: public event discovery and calendar, student sign-up and login, SPOC event creation from a template, admin approval, free registration via SPOC-created forms, a ticket page, manual check-in on the event day, judge scoring (with plain-text criteria), a results leaderboard, and admin analytics pages [R].
-2. Almost everything after "register" breaks somewhere. Camera QR check-in, certificates, feedback, exports, coordinator assignment, team events and paid events all fail in postgres mode [R]. *(At `986d108`: coordinator assignment works (BLK-09); paid events are verified safely (BLK-03; not yet run against Razorpay test mode, UPG-30); feedback and the certificate page work for the lead (BLK-05 journey test). Camera QR check-in, certificate PDFs, team events and exports are still open.)*
+2. Almost everything after "register" breaks somewhere. Camera QR check-in, certificates, feedback, exports, coordinator assignment, team events and paid events all fail in postgres mode [R]. *(At `986d108`: coordinator assignment works (BLK-09); paid events are verified safely (BLK-03; not yet run against Razorpay test mode, UPG-30); feedback and the certificate page work for the lead (BLK-05 journey test). Camera QR check-in, certificate PDFs, team events and exports are still open. Since UPG-02 (2026-10-07), every scanner checks real tickets in. At the end of Phase 2 (2026-10-08) all of these work on the real database layer: check-in (UPG-02), certificates (UPG-06), exports (UPG-03), teams (UPG-08), feedback (UPG-05), notices and reminders (UPG-31, UPG-07); paid events work in tests but haven't been run against Razorpay test mode (UPG-30).)*
 3. Biggest gap 1 — **data loss in the DB adapter:** at `694c729`, postgres mode silently dropped non-column fields, renamed others on read and ignored unknown filters (BLK-06). **Mostly fixed by merging BLK-09 (`1f4cdc8`)** [R]: fields round-trip, filters work, SPOCs can assign coordinators. The rest (enum columns, workflow states, `spoc_id` column, audit actor, newer tables) was fixed by BLK-06 (DONE 2026-10-01).
 4. Biggest gap 2 — **security holes that make new features unsafe** (found by `1f4cdc8` [R]; status at `986d108` per line):
    - anyone could log in as any student through the public registration form (BLK-02, **fixed** on `production-ready`);
@@ -35,9 +35,11 @@ This file is the source of truth for planned work. Agents and developers work on
    - login had no rate limiting (BLK-13, **fixed** on `production-ready`);
    - a forged `Host`/`X-Forwarded-Host` made reset and set-password emails link to another site (BLK-16, found in the PR #48 review, **fixed**);
    - any SPOC could end, publish, staff or edit another SPOC's event (BLK-17, **fixed**);
+   - any Volunteer account could mark attendance and open tickets at any event (BLK-18, found starting UPG-02, **fixed**);
+   - names, titles and messages other people typed ran as script where page scripts built HTML: public leaderboard, calendar and landing page, staff and student pages (BLK-19, found in UPG-02, **fixed**);
    - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
-7. **Not production-ready yet (Phase 0, 2026-09-30):** uploads live on the container's disk (UPG-17; sessions moved to the database, BLK-08), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 111 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan.
-5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool.
+7. **Not production-ready yet (Phase 0, 2026-09-30):** uploads live on the container's disk (UPG-17; sessions moved to the database, BLK-08), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 111 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan. *(End of Phase 2, 2026-10-08: nothing live stores files any more (UPG-17 corrected, D-5); scheduled jobs run through the cron endpoint (UPG-07); migrations (UPG-16), inline background tasks (UPG-18) and 107 standalone templates (UPG-23) remain.)*
+5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool. *(Since UPG-02, 2026-10-07: every scanner, the kiosk and the offline queue check real tickets in through one endpoint; since UPG-06, 2026-10-08, certificates are issued, emailed and verifiable.)*
 6. About 20 templates are never rendered, 3 blueprints are never registered, there are 2 parallel notification systems, 2 payment stacks, 13 seed scripts and a diverged copy of the whole app in `functions/saptha_app/` (UPG-14/15).
 
 ---
@@ -48,70 +50,71 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 
 | Feature | Status | Evidence | Notes |
 |---|---|---|---|
-| Home / event discovery / catalogue | WORKING [R] | `app.py:540`, `app.py:729`, crawl 200 | Home shows a hard-coded fake hackathon when no events exist (`app.py:699-710`). |
-| University calendar + event `.ics` | WORKING [R] | `app.py:1083`, `app.py:784` | Department-only visibility filter at `app.py:1001-1004`. |
-| Personal calendar feed | WORKING [R at BLK-04b] | `app.py:1125-1200`, `services_accounts.py:120-145` | Own events when logged in; calendar apps use a signed, resettable per-user token; `?user=` is ignored (BLK-04). |
+| Home / event discovery / catalogue | WORKING [R] | `app.py:550`, `app.py:739`, crawl 200 | Home shows a hard-coded fake hackathon when no events exist (`app.py:709-720`). |
+| University calendar + event `.ics` | WORKING [R] | `app.py:1093`, `app.py:794` | Department-only visibility filter at `app.py:1011-1014`. |
+| Personal calendar feed | WORKING [R at BLK-04b] | `app.py:1135-1210`, `services_accounts.py:143,149` | Own events when logged in; calendar apps use a signed, resettable per-user token; `?user=` is ignored (BLK-04). |
 | Student sign-up / login | WORKING [R at UPG-35] | `routes_auth.py:272`, `routes_auth.py:66` | USN now persists (document shadow, `db_adapter.py` `extra_json`) [R at `1f4cdc8`]; it wasn't stored at `694c729`. Failed logins and reset requests answer the same for every email (UPG-35); sign-up still tells an existing email to log in. |
 | Google / Microsoft login | NOT CONNECTED [C] | `auth_oauth.py:32-135` | Login page has no link to `/auth/google` (`templates/login.html`). |
 | 2FA (TOTP) | NOT CONNECTED [C] | `auth_2fa.py:42-155` | No template links to `/auth/2fa/*`. `totp_*` keys now persist [R round-trip at `1f4cdc8`]. |
-| Event creation from template (SPOC) | WORKING [R at `1f4cdc8`] | `routes_spoc.py:96-274` | All settings now persist, e.g. a ₹500 fee and team 2–4 (`tests/test_integration_flow.py:56-83`) [R]. Presets only applied for seminar/workshop (`routes_spoc.py:131`). |
-| Approval workflow (unit → admin) | WORKING [R] | `services_workflow.py:130-217`, `routes_admin.py:786` | Admin approval sets `published`; SPOC must still move it to `registration_open` (`routes_forms.py:321` treats `published` as closed). |
-| Registration form (custom fields) | PARTLY BUILT [R] | `templates/public/registration_form.html:485`, `routes_spoc.py:252-256` | Works for SPOC-created seminar/workshop. Seeded and template-created forms store `field_name`; the template renders `name="{{ field.id }}"`, so inputs get `name=""` and there's no name/email field. |
-| Form builder | WORKING (page load and save [R at BLK-04b]) | `routes_forms.py:223-300` | Only the event's owner (or admins) can edit the form; assigned staff can see responses (BLK-04). |
-| Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:403-439`, `routes_auth.py:227` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
-| Waitlist | PARTLY BUILT [R at BLK-03] | `routes_forms.py`, `routes_waitlist.py:186-300`, `tasks/waitlist_tasks.py` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
-| Paid registration (Razorpay) | WORKING in tests [R at BLK-03] | `routes_payment.py:66-400`, `services_payments.py` | Server-side price; orders recorded and checked on verify; payment IDs single-use; fails closed without keys; simulation only with `PAYMENT_SIMULATION=true` outside production (BLK-03). Not yet run against Razorpay test mode (UPG-30). No receipt email or refunds (UPG-30). |
-| Stripe payments | NOT CONNECTED [C] | `routes_payment_stripe.py` | No template or JS references `/payment/stripe`. |
-| Coupons | NOT CONNECTED in the UI [C] | `routes_coupons.py`, `services_payments.py:36-73` | `create_order` applies a coupon validated on the server if one is sent (BLK-03), but no template or JS sends one or calls `/coupons/*`. |
-| Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:115-172` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:134`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. |
-| Camera QR check-in (coordinator, SPOC, HUD) | PARTLY BUILT — **fails with real QRs** [R] | `templates/coordinator/scan.html:231-234`, `templates/spoc/scan.html:447-458`, `routes_ticket.py:270-271,479-481` | Coordinator/SPOC scanners pass the signed token as a reg ID → "INVALID TICKET" / 404 [R]. `/ticket/verify` and `/ticket/api/verify` said "Payment pending" for free tickets [R at `694c729`]. At `1f4cdc8` `payment_status` reads back as written (`Free`), so that gate likely passes; the token-as-reg-ID break is unchanged [C]. Not re-run (UPG-02). At `56a014d`: `/ticket/verify` accepts signed tokens only (`routes_ticket.py:56-84`), its GET is read-only, and only authorised staff can POST a check-in (`routes_ticket.py:318-327`) [C]; the lower-case `free` written by waitlist promotion would still read as unpaid (`routes_ticket.py:271,332,480,535`). |
-| Manual check-in (SPOC list) | WORKING on event day [R at BLK-05] | `routes_spoc.py:451-525` | Locked until event date (intended). Names read back since BLK-09; BLK-05's journey test checks in through this route on the real database. |
-| Kiosk check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:236-400` | Secured in the root app: login + coordinator role + `can(…, 'check_in', event)`, searches only the chosen event, returns no email or phone (`routes_checkin.py:286-297`). Pinned on the real database by BLK-12; coordinators can be assigned (BLK-09). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); that copy is removed in Phase 5 (UPG-15, D-1). |
+| Event creation from template (SPOC) | WORKING [R at `1f4cdc8`] | `routes_spoc.py:119-297` | All settings now persist, e.g. a ₹500 fee and team 2–4 (`tests/test_integration_flow.py:56-83`) [R]. Presets only applied for seminar/workshop (`routes_spoc.py:154`). |
+| Approval workflow (unit → admin) | WORKING [R] | `services_workflow.py:130-217`, `routes_admin.py:913` | Admin approval sets `published`; SPOC must still move it to `registration_open` (`published` is a closed status, `routes_forms.py:86`). |
+| Registration form (custom fields) | WORKING [R at UPG-01] | `routes_forms.py:99-154` | Every form, template, seeded or SPOC-built, is normalised on read: each field has a name and the identity fields appear once. Answers are stored and shown on the responses page (UPG-45 fixed postgres mode). |
+| Form builder | WORKING (page load and save [R at BLK-04b]) | `routes_forms.py:353-435` | Only the event's owner (or admins) can edit the form; assigned staff can see responses (BLK-04). |
+| Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:526-572`, `routes_auth.py:236` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
+| Waitlist | PARTLY BUILT [R at BLK-03] | `routes_forms.py`, `routes_waitlist.py:185-300`, `tasks/waitlist_tasks.py` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
+| Paid registration (Razorpay) | WORKING in tests [R at UPG-30] | `routes_payment.py`, `services_payments.py`, `routes_admin.py:486-560` | Server-side price, recorded orders, single-use payment IDs (BLK-03). A receipt email after payment. Capacity is re-checked at completion; a paid order that can't complete stays paid and is listed for the admin to complete or refund (Razorpay refund with confirmation). A signed `payment.captured` webhook completes registrations whose browser closed. Admins mark registrations refunded or cancelled, and those tickets stop checking in. Not yet run against Razorpay test mode (criterion 4). Cancelling a paid event offers "Refund all through Razorpay" (once per payment, failures retryable, emailed, audited; UPG-51, built, untested). |
+| Stripe payments | REMOVED | None (removed by UPG-14) | Removed in favor of Razorpay as the single payment provider. |
+| Coupons | NOT CONNECTED in the UI [C] | `routes_coupons.py`, `services_payments.py:36-73` | `create_order` applies a coupon validated on the server if one is sent (BLK-03), but no template or JS sends one or calls `/coupons/*`. Since UPG-36 each order holds a use when it's created (race-free), so `max_uses` holds even when payers check out together. |
+| Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:224-281` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:243`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. |
+| Camera QR check-in (coordinator, SPOC, HUD) | WORKING [R at UPG-02] | `routes_ticket.py:123-217`, `templates/coordinator/scan.html:238`, `templates/spoc/scan.html:454`, `templates/coordinator/scan_hud.html:340` | Every scanner posts the scanned ticket to `POST /ticket/api/checkin`: signed tokens only, assigned staff only (`can`, BLK-18), one payment rule (free/waived/paid in any case; a free event owes nothing), idempotent with the first check-in time, refuses another event's ticket and a ticket whose event is gone. Tested on the real database and against the page scripts; not yet driven with a phone camera. Scanner list shows events in every event-day status since UPG-43 (built, untested). |
+| Manual check-in (SPOC list) | WORKING on event day [R at BLK-05] | `routes_spoc.py:481-555` | Locked until event date (intended). Names read back since BLK-09; BLK-05's journey test checks in through this route on the real database. |
+| Kiosk check-in | WORKING in the root app [R at UPG-02] | `routes_checkin.py:236-349`, `templates/public/kiosk.html:700` | Login + coordinator role + `check_in` on the event; search returns no email or phone (BLK-12). Confirm after a name search uses the shared check-in (payment rule, "already checked in at HH:MM"); a USB scanner can scan tickets into the search box (UPG-02). Search results insert names with `innerHTML` (BLK-19). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); removed in Phase 5 (UPG-15, D-1). |
 | Venue-QR self check-in | WORKING in the root app [R at BLK-12] | `routes_checkin.py:65-172` | Root app: needs the logged-in owner plus a signed venue code valid for 10 minutes (`routes_checkin.py:86-128`). Pinned on the real database by BLK-12. The `functions/` copy checks in by a typed email alone (removed in Phase 5, UPG-15, D-1). |
-| Offline check-in (PWA queue) | PARTLY BUILT [C] | `static/js/offline-sync.js:83` | Replays to kiosk confirm, which answers 403 to coordinators not assigned to the event (assigned ones can confirm); not run (UPG-02). `/api/v1/.../checkin-batch` is JWT-only with no UI. |
-| Coordinator assignment | WORKING [R at `1f4cdc8`] | `routes_spoc.py:1171-1252` | `spoc_id` now persists, so "assign coordinator" adds the coordinator to `staff` [R], and the coordinator can then open registrations (`tests/test_integration_flow.py:164-185`). |
-| Judge assignment | WORKING [R] | `routes_spoc.py:1379-1435` | Writes `staff`, which persists; only on events the SPOC manages since BLK-17 (`tests/test_spoc_event_authz.py`). |
+| Offline check-in (PWA queue) | WORKING in tests [R at UPG-02] | `static/js/offline-sync.js`, `templates/coordinator/scan_hud.html:13`, `static/sw.js:20` | The HUD queues scans in IndexedDB when offline (one entry per ticket) and replays them to the shared endpoint; repeats answer "already in". Run in Node against the live app, not yet in a phone browser. `/api/v1/.../checkin-batch` is JWT-only with no UI. |
+| Coordinator assignment | WORKING [R at UPG-29] | `routes_spoc.py:1187-1250`, `:1253` (remove) | The owner assigns and removes coordinators from the dashboard; another SPOC gets 403. Removing ends access to registrations, exports and check-in (`tests/test_assignment.py`). |
+| Judge assignment | WORKING [R at UPG-29] | `routes_spoc.py:1371-1430`, `:1253` (remove) | Writes `staff`; only on events the SPOC manages (BLK-17). Judges are listed and removable in the judges dialog; removing ends scoring. The judge dashboard shows only `active` events (UPG-04). |
 | Judge dashboard | PARTLY BUILT [R] | `routes_judge.py:58-59` | Lists only events with status `active`; new workflow states never appear. |
-| Judge scoring | PARTLY BUILT [R] | `routes_judge.py:158`, `templates/spoc/create_event.html:1116` | Criteria from the create form are objects; scoring crashes (`'dict' object has no attribute 'replace'` / 500) [R]. Works with string criteria [R]. |
+| Judge scoring | PARTLY BUILT [R] | `routes_judge.py:158`, `templates/spoc/create_event.html:1117` | Criteria from the create form are objects; scoring crashes (`'dict' object has no attribute 'replace'` / 500) [R]. Works with string criteria [R]. |
 | Rounds, lock scoring, advance round | not re-run [C at `1f4cdc8`] | `routes_spoc.py` round panel / lock / advance | The `spoc_id` gate is now satisfiable (the field persists), so these are likely unblocked; not re-run. |
 | AI judge↔team matching | PARTLY BUILT [C] | `routes_ai_matching.py:87-116` | Reads `form_answers`/`team_name`, which persist since BLK-09/BLK-06 [R round-trip]; matching not re-run. |
-| Results + public leaderboard | WORKING [R] | `routes_spoc.py:786`, `routes_live.py:161` | Team and lead names read back since BLK-09 [R round-trip]; leaderboard not re-run. |
-| Certificates | PARTLY BUILT [C at `1f4cdc8`] | `tasks/cert_tasks.py:44-50` vs `utils_certificate.py:145` | The PDF task signature mismatch (`TypeError ... 'name'`, [R] at `694c729`) is **unchanged**. Page name and bulk gate depend on fields that now persist, so they're likely fixed; not re-run (UPG-06). |
-| Certificate public verification | not run [C] | `routes_verification.py:21-124` | Depends on certificates being issued. |
-| Feedback | PARTLY BUILT [R at BLK-05] | `routes_feedback.py`, `routes_participant.py:283` | `/feedback/view` redirects to `/feedback/analytics`, which returns 200 [R at `1f4cdc8`]. The lead can open and submit the form on the real database (BLK-05 journey test); team members, one response per person and the attendance check are UPG-05. |
+| Results + public leaderboard | WORKING [R] | `routes_spoc.py:800`, `routes_live.py:161` | Team and lead names read back since BLK-09 [R round-trip]; leaderboard not re-run. |
+| Certificates | WORKING [R at UPG-06] | `utils_certificate.py:778`, `tasks/cert_tasks.py:25`, `routes_spoc.py:579,1894` | One issuing path for end-event and the bulk button: a PDF per attendee marked Present (winner certificates for the top three scores), a certificate ID and verify URL on the registration, an emailed PDF; never issued twice. PDFs are drawn again on download, not stored (UPG-17). |
+| Certificate public verification | WORKING [R at UPG-06] | `routes_verification.py:21-185` | `/verify/<certificate_id>` shows the issued certificate and offers the PDF; an unknown ID shows invalid (404). Certificates from API v1's `CertificateService` aren't found there (UPG-14). |
+| Feedback | WORKING [R at UPG-05] | `routes_feedback.py`, `routes_participant.py:290-340` | Opens after check-in; each attendee (lead or team member) answers once; the event's staff see the summary and export it (others 403). An optional rule requires each person's feedback before their certificate. |
 | Hackathon submission + kanban | WORKING (page load) [R] | `routes_hackathon.py:20-206` | Pipeline and project pages are public (`routes_hackathon.py:107,137`). |
-| Teams (create/join by code) | NOT CONNECTED [C] | `routes_teams.py:92` | Writes a separate `teams` collection; never linked to registrations, tickets or judging. |
-| Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:759` | Session-level attendance not found. |
-| Announcements | not run [C] | `routes_spoc.py:684-758` | — |
-| Email (Brevo / Resend / Gmail) | PARTLY BUILT [C] | `utils_email.py`, `routes_auth.py:473-478` | Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
-| WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. |
-| In-app notifications | PARTLY BUILT [C] | `routes_notifications.py:20` vs `routes_notifications_v2.py:70` | Student dashboard feed reads `notifications`, which nothing writes; every writer uses `notifications_v2`. |
-| Scheduled reminders / lifecycle | NOT CONNECTED on free tier [C at `1f4cdc8`] | `celery_app.py:95-120`, `docker-compose.yml:27-37`, `Dockerfile:33` | `docker-compose.yml` now runs worker + beat for self-hosting; a single web service still runs only gunicorn (UPG-07). |
-| Registration exports (CSV/Excel) | not re-run [C at `1f4cdc8`] | `routes_spoc.py:314`, `routes_coordinator.py`, `routes_admin.py:283` | Blank columns at `694c729` [R] came from renamed keys, which now read back correctly [R round-trip]. The SPOC, coordinator and forms exports check `export_data` on the event (only the forms one is tested); exports not re-run (UPG-03). |
-| Admin dashboard / analytics / report | WORKING (page load) [R] | `routes_admin.py:39,124,563` | Figures come from records that keep every field since BLK-06; not re-run. |
-| Org units, scoped roles | WORKING [R at BLK-07] | `routes_admin.py:629-823` | Viewing never migrates; "Migrate roles" previews first, and migrated SuperAdmin and SPOC accounts keep access (BLK-07). |
-| Venues, rooms, conflict check | PARTLY BUILT [C] | `routes_admin.py:830-1026`, `routes_spoc.py:1122-1128`, `services_workflow.py:190-218` | Admin CRUD page loads [R]; the create-event form has no room field, so conflicts are only checked on edit/publish. |
+| Teams (create/join by code) | WORKING [R at UPG-08] | `routes_teams.py`, `routes_forms.py:156-225` | A team is one registration: the form asks for members within the event's limits, others join with the lead's invite code, the lead removes members and replaces the code; tickets, judging and check-in read its members. Joining is atomic on PostgreSQL since UPG-52 (built, untested). |
+| Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:772` | Session-level attendance not found. |
+| Announcements | not run [C] | `routes_spoc.py:696-771` | — |
+| Email (Brevo / Resend / Gmail) | WORKING in tests [R at UPG-31] | `utils_email.py`, `routes_auth.py:473-478` | Confirmation, day-before ticket with the entry QR, and change and cancellation notices go through Brevo once each (`tests/test_notices.py`, HTTP mocked); not yet sent through a real Brevo account. Notices reach only the registration's lead (UPG-48). Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
+| WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. The day-before reminder and the payment receipt tasks call their functions correctly since UPG-31; the automation's WhatsApp channel still doesn't (UPG-49). |
+| In-app notifications | BUILT (untested) [UPG-14] | `routes_notifications_v2.py:22-150` | Consolidated onto `notifications_v2` with dashboard feed (`/notifications/feed`), `mark_read`, and bulk operations; v1 removed. |
+| Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:534`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders read every event-day status since UPG-43 (built, untested); the ticket-email signature was fixed in UPG-31. |
+| Registration exports (CSV/Excel) | WORKING [R at UPG-03] | `services_export.py`, `routes_spoc.py:346,355`, `routes_coordinator.py:523,533`, `routes_admin.py:285` | One export for SPOC, coordinator and admin: lead name, USN, department, year, email, phone, team, members, attendance, payment, amount, score, rank, certificate ID. 403 without `export_data` on the event. Department and year are inferred from the profile, form or USN when not asked. |
+| Admin dashboard / analytics / report | WORKING (page load) [R] | `routes_admin.py:38,123,690` | Figures come from records that keep every field since BLK-06; not re-run. |
+| Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:429-467`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. 25 a page with search since UPG-19 (built, untested). |
+| Org units, scoped roles | WORKING [R at BLK-07] | `routes_admin.py:756-950` | Viewing never migrates; "Migrate roles" previews first, and migrated SuperAdmin and SPOC accounts keep access (BLK-07). |
+| Venues, rooms, conflict check | PARTLY BUILT [C] | `routes_admin.py:957-1153`, `routes_spoc.py:1138-1144`, `services_workflow.py:190-218` | Admin CRUD page loads [R]; the create-event form has no room field, so conflicts are only checked on edit/publish. |
 | Student portfolio `/u/<usn>` | WORKING [R at `1f4cdc8`] | `routes_portfolio.py:27` | Shows the right student; at `694c729` the ignored `usn` filter showed the Super Admin. |
 | XP / gamification leaderboard | not re-run [C] | `routes_gamification.py` | `xp`/`badges` now persist [R round-trip at `1f4cdc8`]; leaderboard not re-run. |
-| Referrals | not re-run [C] | `routes_referrals.py:38` | Filters on document-only fields now apply (`tests/test_db_documents.py:95`); referral page not re-run. |
+| Referrals | not re-run [C] | `routes_referrals.py:39` | Filters on document-only fields now apply (`tests/test_db_documents.py:95`); referral page not re-run. |
 | Teammate matchmaker | Demo only [C] | `routes_matchmaker.py:12,115` | Suggests hard-coded `MOCK_STUDENTS`. |
 | Online exams / proctoring | PARTLY BUILT [R at `1f4cdc8`] | `templates/spoc/proctor_monitor.html:1` | SPOC proctor page now 200 [R]; exam flow not run. |
-| Privacy (DPDP export/delete/consent) | not run [C] | `routes_compliance.py` | — |
+| Privacy (DPDP export/delete/consent) | BUILT (untested) [R by hand at UPG-22] | `services_privacy.py`, `routes_compliance.py`, `templates/profile/dashboard.html` | Consent (time and notice version) required at registration and sign-up; own-data download and account deletion (30-day grace, then anonymised by the cron clean-up) from the profile page; privacy notice linked in the shared footer. Retention of payment and audit records: D-7. |
 | Audit log | WORKING [R at BLK-06a] | `utils.py` `log_action`, `templates/admin/audit_log.html` | The page shows the actor again (reads the document's `user` key, now preserved). The SQL `actorEmail` column holds the acting user since BLK-06a [R]. |
 | REST API v1 (JWT) + multi-tenant control plane | NOT CONNECTED [C] | `routes_api_v1.py` | Only the AI copilot endpoints are called from a template. Finance, analytics, evaluation, certificate and control-plane services are used only here. |
 | AI copilot (admin) | not run [C] | `routes_api_v1.py:1466-1507`, `auth_jwt.py:212-242` | Session fallback exists; no Gemini key in sandbox. |
-| Android app | Webview wrapper [C] | `capacitor.config.json:5-6` | Loads `https://saptha-portal.railway.app`; no native or offline features. |
+| Android app | Webview wrapper (built, untested) [R at UPG-54] | `capacitor.config.json`, `scripts/configure_capacitor.py` | Server URL derived from `BASE_URL` at build time; `allowNavigation` restricted to host; documented in `docs/DEPLOY.md` (UPG-54). |
 | Payment failure page | WORKING [R at `1f4cdc8`] | `templates/payment/failed.html:1` | Now extends `base_classic.html`; 200 [R]. |
-| Login rate limiting | WORKING [R at BLK-13] | `services_login_throttle.py`, `routes_auth.py:83-86,337-341`, `routes_api_v1.py:62-88` | 5 failed logins (web + API, one counter) or reset requests per IP and per account per minute, then 429 "try again in N seconds"; counters in the database (Redis if `REDIS_URL`), shared by every instance (BLK-13). The old in-memory helpers in `security_middleware.py` are unused (UPG-14). |
-| Sessions | WORKING [R at BLK-08] | `session_store.py`, `config.py:48-63` | In the database (Redis if `REDIS_URL`): survive restarts, shared by instances, none for plain anonymous page views (BLK-08). |
-| Database migrations | PARTLY BUILT [R at `56a014d`] | `migrations/versions/`, `db_adapter.py:201-310` | Two incremental migrations; `alembic upgrade head` on an empty DB fails. Schema comes from start-up `create_all` + `ALTER TABLE` (UPG-16). |
-| File uploads (certificates, exports) | PARTLY BUILT [C at `56a014d`] | `utils_storage.py:10-93` | Local disk unless `STORAGE_TYPE=s3`/`gcs`; S3 errors silently fall back to local disk (UPG-17). |
-| Background jobs | PARTLY BUILT [C at `56a014d`] | `celery_app.py:49-58` | Without a Redis broker, tasks run inline with no timeout or retry (UPG-18); scheduled jobs don't run (UPG-07). |
-| Health check | PARTLY BUILT [C at `986d108`] | `app.py:492-528` | Calls `.stream()` without reading it, so it may not reach the DB; returns exception text (UPG-20). |
-| Error monitoring (Sentry) | PARTLY BUILT [C at `56a014d`] | `app.py:124-138` | Initialises when `SENTRY_DSN` is set; untested, not in `.env.example` docs (UPG-20). |
-| Database backups | MISSING [C] | — | Nothing in the repo dumps or restores the database (UPG-21). |
-| Pagination on web lists | MISSING [C at `56a014d`] | `routes_admin.py`, `routes_spoc.py`, `routes_coordinator.py`, `routes_forms.py` | Only `routes_api_v1.py` and `routes_notifications_v2.py` page results (UPG-19). |
-| Shared page layout | PARTLY BUILT [C at `56a014d`] | `templates/base_classic.html` | 12 of 129 templates extend it; 111 are standalone pages (UPG-23). |
+| Login rate limiting | WORKING [R at BLK-13] | `services_login_throttle.py`, `routes_auth.py:83-86,337-341`, `routes_api_v1.py:62-88` | 5 failed logins (web + API, one counter) or reset requests per IP and per account per minute, and 20 failed logins per account per hour (UPG-37), then 429 "try again in N seconds"; counters in the database (Redis if `REDIS_URL`), shared by every instance (BLK-13). The old in-memory helpers in `security_middleware.py` are unused (UPG-14). |
+| Sessions | WORKING [R at BLK-08] | `session_store.py`, `config.py:49-64` | In the database (Redis if `REDIS_URL`): survive restarts, shared by instances, none for plain anonymous page views (BLK-08). |
+| Database migrations | BUILT (untested) [R by hand at UPG-16] | `migrations/versions/0001_baseline.py`, `db_pg.py:186`, `db_adapter.py:1847` | One baseline builds an empty PostgreSQL or SQLite database; production start-up issues no DDL and refuses a database not at head; development still aligns at start-up. `docs/DEPLOY.md` has the step (UPG-16). |
+| File uploads (certificates, exports) | NOT USED by the app; helper fixed (built, untested) | `utils_storage.py` | Nothing live stores files (UPG-06, UPG-03). Since UPG-21 (UPG-17 folded in): `S3_ENDPOINT_URL` for Supabase Storage, private uploads with 15-minute signed links for exports, and no silent local fallback in production. |
+| Background jobs | BUILT (untested) [R by hand at UPG-18] | `celery_app.py:33`, `services_outbox.py` | Without a Redis broker, each task runs inline once under a timeout; failures and timeouts go to the `outbox` table, retried by `POST /internal/cron/outbox` with backoff (UPG-18). Scheduled jobs run through the cron endpoint since UPG-07. |
+| Health check | BUILT (untested) [R by hand at UPG-20] | `app.py:495-530` | `SELECT 1` (or one document read in Firestore mode); 200 or 503 with no error text (UPG-20). |
+| Error monitoring (Sentry) | BUILT (untested) [C at UPG-20] | `app.py:102` | On when `SENTRY_DSN` is set, no personal data, release = Cloud Run revision; documented in `.env.example`. Logs are JSON lines with `severity` in production (UPG-20). |
+| Database backups | BUILT (untested) [R by hand at UPG-21] | `scripts/backup_db.sh`, `scripts/restore_db.sh`, `.github/workflows/backup.yml` | Daily `pg_dump` to a private bucket with 30-day retention; restore into an empty database only; documented drill in `docs/DEPLOY.md` (UPG-21). |
+| Pagination on web lists | BUILT (untested) [R by hand at UPG-19] | `utils_pagination.py`, `templates/includes/pagination.html` | 25 a page with search on users, audit log, payments, the admin/SPOC/coordinator dashboards' events, event registrations and form responses; page and filters in the URL; users and the audit log page in SQL (UPG-19). |
+| Shared page layout | BUILT (untested) [R crawl at UPG-23] | `templates/layouts/document.html`, `templates/base_classic.html` | Every template a route renders extends the shared document (app layout, standalone or full-screen child); only unrendered templates remain standalone (UPG-15) (UPG-23). |
 
 ---
 
@@ -126,16 +129,16 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Step | Result | Where it breaks / leaves the app |
 |---|---|---|
 | Discover | OK [R] | — |
-| Register (solo) | OK for SPOC-created seminar [R]; **broken** for seeded/template forms [R] | Inputs have `name=""` (`registration_form.html:485`). Student falls back to a Google Form. |
-| Register (team) | **Broken** [R] | Hackathon form shows only name/email/phone/USN, because `is_team_event` and `limits` were dropped. `/teams/*` isn't linked to registration (`routes_teams.py:92`). Teams are formed on WhatsApp. |
-| Pay | **Fixed in code** (BLK-09, BLK-03) | The fee persists and is charged at the server's price; forged, foreign or reused payments are refused (`tests/test_payments_secure.py`). Not yet run against Razorpay test mode (UPG-30). |
-| Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). No payment reference stored. |
-| Check-in | **Broken** for camera scans [R] | See Coordinator. |
+| Register (solo) | **Works** [R at UPG-01] | Every template's form names its fields and asks for name, email, phone and USN once; the seeded conference registers end to end. |
+| Register (team) | **Works** [R at UPG-08] | The form asks for the team name and members within the event's limits; teammates join with the lead's code (`tests/test_teams.py`). |
+| Pay | **Works in tests** (BLK-03, UPG-30) | Charged at the server's price; a receipt email; a webhook completes payments whose browser closed; a paid order that can't complete stays paid for the admin to complete or refund. Not yet run against Razorpay test mode (UPG-30 criterion 4). |
+| Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). The day before, the ticket email brings the same QR, and a WhatsApp reminder goes out (UPG-31, through UPG-07's cron). Changes of date, time or venue, and cancellation, are emailed once. No payment reference stored. |
+| Check-in | **Works** [R at UPG-02] | The ticket's QR is accepted by every scanner; see Coordinator. |
 | Attend sessions | Not found | No session-level attendance. |
 | Submit work (hackathon) | Page loads [R] | — |
 | See results | OK [R] | Names read back since BLK-09 [R round-trip]. |
-| Feedback | **Works for the lead** [R at BLK-05] | BLK-05's journey test submits it on the real database; team members are still refused (`routes_participant.py:290`, UPG-05). |
-| Certificate | Page **fixed**; PDF **broken** | The page shows the name (BLK-05 journey test); the PDF task still raises a `TypeError` (UPG-06). A separate certificate tool is used instead. |
+| Feedback | **Works** [R at UPG-05] | Every checked-in attendee, team members included, answers once; the SPOC dashboard links the summary and its CSV export. |
+| Certificate | **Works** [R at UPG-06] | The page shows the name and links the official PDF; it's emailed when the event ends, and `/verify/<id>` confirms it. |
 | Portfolio | **Fixed** [R at `1f4cdc8`] | `/u/<usn>` shows the right student. |
 
 ### SPOC / organiser
@@ -145,22 +148,22 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports gets no fixtures (MISSING, UPG-13). |
 | Build form | Page OK [R] | — |
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
-| Manage registrations / waitlist | Partly [R] | Exports have blank identity columns; no waitlist screen. Organisers rebuild the list in Excel. |
-| Assign coordinators / judges / rooms | Judges and coordinators OK [R at `1f4cdc8`]; rooms not re-run | The `spoc_id` checks at `routes_spoc.py:1186,1508,1546` pass for the owner since BLK-09. End-to-end test: UPG-29. |
-| Run the day | Manual list check-in only [R] | Camera scans fail (UPG-02); the blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09 (not re-run). WhatsApp groups used instead. |
-| Results | Publish OK [R]; lock/advance not re-run | Their `spoc_id` gates (`routes_spoc.py:1651,1672`) pass for the owner since BLK-09. |
-| Certificates | **PDF broken** | Bulk send's `spoc_id` gate (`routes_spoc.py:1900`) passes for the owner; the PDF task still fails (`tasks/cert_tasks.py:44`, UPG-06). |
-| Report | AI report's `spoc_id` gate (`routes_spoc.py:816`) passes for the owner; it needs a Gemini key. Admin report page loads [R] | IQAC/NAAC report written by hand (UPG-03). |
+| Manage registrations / waitlist | Partly [R] | Exports work since UPG-03 (CSV and Excel with every column); no waitlist screen. |
+| Assign coordinators / judges / rooms | Judges and coordinators: assign and remove [R at UPG-29]; rooms not re-run | Tested end to end (`tests/test_assignment.py`). |
+| Run the day | QR scans and the manual list [R at UPG-02] | Scans go through the shared check-in; the manual list still uses its own route (UPG-14); the blast email's `spoc_id` gate (`routes_spoc.py:963`) passes for the owner since BLK-09 (not re-run). WhatsApp groups used instead. |
+| Results | Publish OK [R]; lock/advance not re-run | Their `spoc_id` gates (`routes_spoc.py:1652,1673`) pass for the owner since BLK-09. |
+| Certificates | **Works** [R at UPG-06] | Ending the event or the bulk button issues each attendee's certificate once, through one path. |
+| Report | **Event report** [R at UPG-03] | One click on the SPOC dashboard: registered vs present by department and year, feedback average, winners (Excel). The AI report still needs a Gemini key. |
 
 ### Coordinator / volunteer
 
 | Step | Result | Where it breaks |
 |---|---|---|
-| Get assigned | OK [R at `1f4cdc8`] | `tests/test_integration_flow.py:164-185`. |
-| Scan tickets | **Broken** [R] | Coordinator scanner sends the token to `/coordinator/get_ticket/` → "INVALID TICKET". HUD scanner → "Payment pending". |
-| Walk-ins | Works [R at UPG-33] | `routes_coordinator.py:696-779`; needs `manage_registrations` on the chosen event (BLK-04a). A new walk-in gets the ticket and a one-time set-password link, never a password (`tests/test_account_emails.py`). |
-| Attendance (granular) | **Fixed** (BLK-04a) [R] | `routes_coordinator.py:914-916` needs `check_in` on the event; students and unassigned coordinators get 403 (`tests/test_coordinator_authz.py`). |
-| Offline | Partly [C] | Queue replays to kiosk confirm, which returns 403 for unassigned coordinators. |
+| Get assigned | OK [R at UPG-29] | The event appears on the coordinator's dashboard; removal by the SPOC ends access (`tests/test_assignment.py`). |
+| Scan tickets | **Works** [R at UPG-02] | Coordinator, SPOC and HUD scanners and the kiosk use `POST /ticket/api/checkin` (`tests/test_checkin_unified.py`). The scanner list and walk-in form show events in every event-day status since UPG-43 (built, untested). |
+| Walk-ins | Works [R at UPG-33] | `routes_coordinator.py:549-632`; needs `manage_registrations` on the chosen event (BLK-04a). A new walk-in gets the ticket and a one-time set-password link, never a password (`tests/test_account_emails.py`). |
+| Attendance (granular) | **Fixed** (BLK-04a) [R] | `routes_coordinator.py:759-761` needs `check_in` on the event; students and unassigned coordinators get 403 (`tests/test_coordinator_authz.py`). |
+| Offline | **Works in tests** [R at UPG-02] | The HUD queues scans offline and replays them to the shared check-in without duplicates (run in Node against the live app). |
 
 ### Judge
 
@@ -177,10 +180,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 |---|---|---|
 | Departments / clubs (org units) | Works [R at BLK-07] | Viewing never migrates; migration previews first and keeps everyone's access (BLK-07). |
 | Approvals | OK [R] | — |
-| Users / roles | Role assignment page OK [R]; the dead `/admin/users` and `/admin/events` links are gone from every template [C at `986d108`] | Other dead links: UPG-15. |
+| Users / roles | Role assignment page OK [R]; `/admin/users` lists accounts and resends set-password links (UPG-40) [R]; the dead `/admin/events` link is gone from every template [C at `986d108`] | Other dead links: UPG-15. |
 | Calendar | OK [R] | — |
 | Analytics / exports | Pages OK [R]; exports not re-run | Names read back since BLK-06 [R round-trip]; UPG-03. |
-| Bulk student import | MISSING | UPG-10. |
+| Bulk student import | WORKING (untested) [C] | UPG-10: SuperAdmin CSV roster import with USN, department, year, section; Google sign-in restricted to university domain. |
 
 ---
 
@@ -190,18 +193,18 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Event type | Works today | Done outside the app | Needed |
 |---|---|---|---|
-| Seminar | Create from template, approval, free registration (SPOC-created form), ticket, manual check-in, calendar | Attendance sheet (exports blank), feedback (Google Forms), certificates (separate tool), IQAC report | UPG-01, UPG-02, UPG-03, UPG-05, UPG-06 |
-| Workshop | Same as seminar; preset applied (`routes_spoc.py:131`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
+| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), feedback (UPG-05), calendar | — | — |
+| Workshop | Same as seminar; preset applied (`routes_spoc.py:154`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
-| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard | Team formation (WhatsApp), check-in list, rubric scoring, round shortlists, certificates | UPG-08, UPG-04, UPG-02, UPG-06 |
-| Sports | Create, registration (solo only), leaderboard page | Team rosters, fixtures, match results, standings (whiteboard/Excel) | UPG-08, UPG-13 |
-| Cultural | Template exists (`services_templates.py:494`); judging as hackathon | Slots, judging sheets, certificates | UPG-04, UPG-06 |
-| Club activities | Org units can be clubs (`routes_admin.py:685`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
-| Placement drives | Generic registration only | Eligibility (branch / CGPA / backlogs), shortlists per round, company communication — all Excel | Eligibility rules + shortlist rounds (not in this list; add as next free ID when prioritised) |
-| FDPs | Registration creates a **Student** account (`services_accounts.py:61`, used at `routes_forms.py:438`) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
+| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08) | Rubric scoring, round shortlists | UPG-04 |
+| Sports | Create, registration (teams since UPG-08), leaderboard page | Fixtures, match results, standings (whiteboard/Excel) | UPG-13 |
+| Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06) | Slots, judging sheets | UPG-04 |
+| Club activities | Org units can be clubs (`routes_admin.py:812`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
+| Placement drives | Generic registration only | Eligibility (branch / CGPA / backlogs), shortlists per round, company communication — all Excel | UPG-57 (eligibility rules + shortlist rounds) |
+| FDPs | Registration creates a **Student** account (`services_accounts.py:59,66`, used at `routes_forms.py:571`) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
 | NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a | Volunteer hours register, unit rolls, hours certificates | UPG-11 |
-| Department events | Department-only visibility (`app.py:1001-1004`), unit approval [R] | Same as seminar | Seminar items |
-| Conference / webinar | Templates exist; seeded forms render empty inputs [R] | External attendee registration | UPG-01, UPG-12 |
+| Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R] | Same as seminar | Seminar items |
+| Conference / webinar | Templates exist; their forms work since UPG-01 [R] | External attendee registration | UPG-12 |
 
 ---
 
@@ -212,22 +215,30 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### A. Finish what's half-built
 
 #### UPG-01 — Registration forms render every template field and always ask for identity
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-01: …" on `production-ready` (parent `2a69b17`)
 - **Problem:** Template and seeded forms store `field_name` (`services_templates.py` `form_config`; seeded `event_forms` rows), but `templates/public/registration_form.html:405,425,443,485` render `name="{{ field.id }}"`. Inputs get `name=""`, and there's no name or email field, so submissions fail [R]. The SPOC path patches `id` only for its own preset (`routes_spoc.py:252-256`).
 - **Who benefits:** every student registering for a seeded or template-created event, plus organisers who otherwise fall back to Google Forms.
 - **What to build:** normalise the schema in one place (`_get_form` in `routes_forms.py`) so every field has an `id`; always prepend the identity fields (full_name, email, phone, usn) once; add a check that fails form save if any field lacks an id.
-- **Files touched:** `routes_forms.py`, `templates/public/registration_form.html`, `services_templates.py`, tests.
-- **Effort:** S · **Depends on:** BLK-02, BLK-06 · **Risk:** low; existing SPOC forms already carry `id`.
-- **Acceptance criteria:**
-  1. Test: `GET /forms/register/<event from each of the 7 templates>` has no `name=""` input and contains `name="email"` exactly once.
-  2. Test: submitting a template form stores the answers and they are read back from `form_submissions` for the responses page.
-  3. Test: saving a form with a field that has neither `id` nor `field_name` returns 400.
-  4. A student can register for the seeded conference event through the UI.
+- **Re-checked before building (2026-10-08, `b5afda8`; rule 3):** the form files were unchanged since `986d108` apart from UPG-03's one line. Two findings:
+  - The broken forms come from `TemplateService.instantiate_event` (API v1's create-from-template) and the seeder, which store the template's `field_name` fields with no identity fields. The SPOC's own create path already adds both (`routes_spoc.py:267-282`).
+  - Criterion 2 found that the SQL adapter dropped the answers' envelope; recorded and fixed first as **UPG-45**.
+- **What was built:**
+  - **One normaliser on read: `normalise_fields` (`routes_forms.py:103`), used by `_get_form` (`:129`).** Every field gets an `id` (else its `field_name`); layout fields without one get `layout_N`; duplicate ids are dropped. Full name, email, phone and USN (`IDENTITY_FIELDS`, `:87`) are prepended once unless the form already asks for them under that id or a known synonym (`name`, `email_address`, `mobile`, `roll_number`, …).
+  - The registration page, submission, validation, builder and schema API all read through `_get_form`. So stored forms, old and seeded included, are fixed without rewriting them; the template and `services_templates.py` need no change.
+  - **Saving refuses an input field with neither `id` nor `field_name`** (400 naming the field, `:312`) instead of inventing `field_N`. A `field_name` becomes its id.
+- **Files touched:** `routes_forms.py`, `tests/test_registration_forms.py` (new). (`templates/public/registration_form.html` and `services_templates.py` needed no change.)
+- **Effort:** S · **Depends on:** BLK-02, BLK-06, UPG-45 (found here) · **Risk:** low; existing SPOC forms already carry `id`.
+- **Acceptance criteria** (`tests/test_registration_forms.py`, real database layer; all 10 cases fail on the old code):
+  1. ✅ Test: `GET /forms/register/<event from each of the 7 templates>` has no `name=""` input and contains `name="email"` exactly once (`::test_every_template_form_names_its_fields_and_asks_for_email_once`, one case per template, made the way API v1 makes them; every template field and all four identity fields are named).
+  2. ✅ Test: submitting a template form stores the answers and they are read back from `form_submissions` for the responses page (`::test_a_template_form_submission_is_stored_and_shown_on_the_responses_page`, hackathon template).
+  3. ✅ Test: saving a form with a field that has neither `id` nor `field_name` returns 400 (`::test_saving_a_field_with_no_id_is_refused`; the stored form is unchanged, and a `field_name`-only field saves under that id).
+  4. ✅ A student can register for the seeded conference event through the UI (`::test_a_student_registers_for_the_seeded_conference_through_the_ui`: `seed_universal_portal`, the student opens the form, submits it and pays through the simulated checkout).
+  - Full pytest: **842 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-02 — QR check-in that works with real tickets, for assigned coordinators only
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-07, commit "UPG-02: …" on `production-ready` (parent `5c54cb8`)
 - **Problem:** Three scanners, three broken paths [R]:
   - `templates/coordinator/scan.html:231-234` sends the signed token to `/coordinator/get_ticket/` → "INVALID TICKET".
   - `templates/spoc/scan.html:447-458` sends it to `/spoc/api/checkin/` → 404.
@@ -236,34 +247,74 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Found in BLK-12 [C]: the `/ticket/verify` POST skips the per-event check when the registration's event no longer exists (`if db_exists and event and not can_checkin`, `routes_ticket.py:325`), so any coordinator-level role could mark an orphaned registration present. Deleting an event removes its registrations, so this is rare; the unified endpoint must refuse when the event is missing.
 - **Who benefits:** every coordinator and volunteer on event day; removes paper sign-in sheets.
 - **What to build:** one check-in endpoint, shared by the coordinator, SPOC and kiosk screens, that accepts the signed token only (`routes_ticket._parse_signed_token`), authorises with `can(session, 'check_in', event)`, applies a payment rule on the normalised status (free/waived/paid, any case), is idempotent, and returns name, team and the first check-in time. Point all three scanners and the offline queue at it. Offline scans queue in the browser (IndexedDB, `static/js/offline-sync.js`, registered by `static/sw.js`) and sync later without duplicates. Make kiosk name search use the corrected keys.
-- **Files touched:** `routes_ticket.py`, `routes_coordinator.py`, `routes_spoc.py`, `routes_checkin.py`, `templates/coordinator/scan.html`, `templates/spoc/scan.html`, `templates/coordinator/scan_hud.html`, `templates/public/kiosk.html`, `static/js/offline-sync.js`, `static/sw.js`, tests.
-- **Effort:** M · **Depends on:** BLK-04, BLK-06, BLK-12 · **Risk:** event-day critical path; ship behind a test that replays a real ticket token.
-- **Acceptance criteria:**
-  1. Test: token taken from the ticket page, scanned by the assigned coordinator → attendance `Present`; a second scan → "already checked in at HH:MM" with the first scan's time.
-  2. Test: an unassigned coordinator and a student both get 403.
-  3. Test: a free registration (`Free` or `free`) is never reported as unpaid; an unpaid paid registration is refused.
-  4. Test: replaying an offline queue of 3 tokens marks 3 attendees present; replaying the same queue again changes nothing and reports each as already checked in.
-  5. Test: the coordinator, SPOC and kiosk scanner pages all call the same endpoint (template check), and a raw registration ID is refused there.
+- **Re-checked before building (2026-10-07, `2db0db1`; rule 3):** BLK-16 shortened `routes_ticket.py` above the cited code (the payment gates were at `:257,318,466,521` and the missing-event skip at `:311`); the claims hold. Also found:
+  - `can()` gave every Volunteer `check_in` on every event. Recorded and fixed first as **BLK-18**, so the endpoint's `can()` check means assigned staff only.
+  - The HUD scanner sent a read-only GET with the whole scanned link, so it never marked anyone present. Its offline queue was never loaded (`offline-sync.js` was included only by the shared layout).
+  - The kiosk's search box was `readonly`, so a USB scanner couldn't type into it.
+- **What was built:**
+  - **One check-in, `routes_ticket.check_in` (`routes_ticket.py:123`).** It needs a logged-in user (401 otherwise) and the registration (404). Its event must exist (404: the BLK-12 gap is closed). The user needs `can(…, 'check_in', event)` (403). An `event_id` from the scanner must match the ticket's event (409 `wrong_event`).
+    - A repeat changes nothing and answers `already_in`, "Already checked in at HH:MM.", with the first time.
+    - Payment uses `payment_allows_entry` (`:100`): free, waived, exempt, completed and anything starting with "paid", in any case, may enter. On an event with a fee, anything else is refused (402 `unpaid`); on a free event nothing is owed.
+    - It marks `Present` with the time and who scanned, updates the wallet ticket, awards the XP and audit-logs `CHECKIN`.
+    - It returns name, team, room, first check-in time, registration ID and member names and USNs (no emails or phones).
+  - **The endpoint: `POST /ticket/api/checkin` (`:200`).** It takes `{token, event_id}` in the body, so the token stays out of URLs and logs. It accepts the ticket-page link or either signed token format (`_token_from_scan`, `:113`, then `_parse_signed_token`), and refuses registration IDs with 400.
+  - **Every scanner and desk uses it:**
+    - the coordinator scanner (`templates/coordinator/scan.html:238`), which then shows the team so member attendance can be adjusted;
+    - the SPOC scanner's QR path (`templates/spoc/scan.html:452`); its manual list still uses `/spoc/api/checkin`, see UPG-14;
+    - the HUD (`templates/coordinator/scan_hud.html:340`), which now loads the offline queue (`:13`) and sends a CSRF token;
+    - the kiosk, when a USB or camera scanner types a ticket into the search box (`templates/public/kiosk.html:699`; the box takes typing with `inputmode="none"`, `:509`).
+  - **The other routes use the shared function.** `/ticket/verify` POST (`:426`), `/ticket/api/verify` POST for registrations (`:557`) and kiosk confirm after a name search (`routes_checkin.py:341`) all call it. Their GET checks use the same payment rule, and their response keys are kept.
+  - **The offline queue (`static/js/offline-sync.js`).** It stores each ticket once in IndexedDB and replays to the endpoint with the CSRF token. An item leaves the queue on any final answer (checked in, already in, refused); it stays after a network error, an expired login or a 5xx. Old queued items are still read. `static/sw.js:20` precaches the script (cache `v4`).
+  - **Small fixes in the same flows.** Saving member attendance keeps the first check-in time (`routes_coordinator.py:926`). The SPOC scanner's rows carry the ticket's ID, so a scan updates the right row (`routes_spoc.py:445`). The kiosk's search keys were already right since BLK-06/09; criterion tests pin them.
+- **Files touched:** `routes_ticket.py`, `routes_checkin.py`, `routes_coordinator.py`, `routes_spoc.py`, `templates/coordinator/scan.html`, `templates/coordinator/scan_hud.html`, `templates/spoc/scan.html`, `templates/public/kiosk.html`, `static/js/offline-sync.js`, `static/sw.js`, `tests/test_checkin_unified.py` and `tests/js/offline_sync_harness.js` (new).
+- **Effort:** M · **Depends on:** BLK-04, BLK-06, BLK-12 · **Risk:** event-day critical path. Two concurrent first scans of one ticket both answer "Entry granted" (no transaction in the adapter); attendance is still right. The scanner pages weren't driven in a real browser: their scripts were parsed with Node, and the endpoint, the routes and the offline queue were tested.
+- **Acceptance criteria** (`tests/test_checkin_unified.py`, real database layer; all 20 cases fail on the old code):
+  1. ✅ Test: token taken from the ticket page, scanned by the assigned coordinator → attendance `Present`; a second scan → "already checked in at HH:MM" with the first scan's time (`::test_the_ticket_page_qr_checks_in_once_and_a_rescan_reports_the_first_time`; the token is what the page's QR encodes; saving member attendance afterwards keeps the time).
+  2. ✅ Test: an unassigned coordinator and a student both get 403 (`::test_unassigned_staff_students_and_visitors_cant_check_in`; a visitor gets 401).
+  3. ✅ Test: a free registration (`Free` or `free`) is never reported as unpaid; an unpaid paid registration is refused (`::test_free_waived_and_paid_registrations_are_let_in_in_any_case` with 7 spellings, also on both GET checks; `::test_an_unpaid_registration_on_a_paid_event_is_refused` for Pending, unpaid, Refunded and none; `::test_no_status_on_a_free_event_is_free`).
+  4. ✅ Test: replaying an offline queue of 3 tokens marks 3 attendees present; replaying the same queue again changes nothing and reports each as already checked in (`::test_replaying_an_offline_queue_twice_checks_each_in_once`). Also `::test_the_browser_queue_sends_each_scan_once_and_replays_safely`, which runs `offline-sync.js` itself in Node against a live copy of the app: 3 tickets, one scanned twice, are queued once, sent as 3 posts, then replayed as "already in"; a scan made while the server is unreachable stays queued. It's skipped where Node isn't installed; CI's test job has no Node.
+  5. ✅ Test: the coordinator, SPOC and kiosk scanner pages all call the same endpoint (template check), and a raw registration ID is refused there (`::test_every_scanner_calls_the_one_endpoint_and_it_refuses_registration_ids`; the HUD and the offline queue too; none of the scan handlers calls an old by-ID route).
+  - Also tested: a ticket whose event is gone is refused by all three POST routes (`::test_a_ticket_whose_event_is_gone_is_refused_everywhere`), another event's ticket is refused at this event's scanner, and kiosk name search finds by name, team, member and USN and confirms once.
+  - Full pytest: **782 passed** on SQLite and PostgreSQL 16; ruff clean; bandit exit 0.
 
 #### UPG-03 — Exports and an event report with real participant data
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-03: …" on `production-ready` (parent `f964a34`)
 - **Problem:** `/spoc/export_csv`, `/coordinator/export_registrations`, `/forms/responses/export` and `/admin/analytics/export/registrations` all downloaded files with empty name, email, phone and USN columns in postgres mode at `694c729` [R]. The cause (renamed keys) is fixed by BLK-09, so re-run the exports before building; the unified export service and event report are still needed. There is no deterministic post-event report. The AI report's `spoc_id` gate (`routes_spoc.py:816`) passes for the event's owner since BLK-09, but the report needs a Gemini key.
   - Already in place [C at `986d108`]: `/spoc/export_csv` (`routes_spoc.py:325`), `/coordinator/export_registrations` (`routes_coordinator.py:548`) and `/coordinator/export_excel` (`:603`) check `export_data` on the event and re-raise the 403 from their `except` blocks. `/forms/responses/export` does the same since BLK-04b, and `/admin/analytics/export/<kind>` is SuperAdmin-only (`routes_admin.py:283-285`). Only the forms export's 403 is tested (`tests/test_forms_feed_api_authz.py:42`), so criterion 2 still needs tests for the other three.
 - **Who benefits:** every organiser and HoD; replaces the Excel re-typing and hand-written IQAC/NAAC event reports.
 - **What to build:** one export service (CSV and Excel) used by SPOC, coordinator and admin, with columns for name, USN, department, year, email, phone, team, attendance, payment status and amount, score, rank and certificate ID. Each person can export only the events they're allowed to see. Add a one-click event report (XLSX/PDF): registrations vs attendance by department/year, feedback averages, winners. No AI needed.
-- **Files touched:** new `services_export.py`, `routes_spoc.py`, `routes_coordinator.py`, `routes_admin.py`, `routes_forms.py`, tests.
-- **Effort:** S · **Depends on:** BLK-06 · **Risk:** PII in exports; keep behind `can(..., 'export_data', event)`.
-- **Acceptance criteria:**
-  1. Test: exporting an event with 2 registrations (one team, one paid) yields 2 rows with non-empty name, email, phone, team, attendance and payment columns, in both CSV and Excel.
-  2. Test: a SPOC of another unit, an unassigned coordinator and a student each get 403 on every export route (SPOC, coordinator, forms, admin).
-  3. Test: the event report's attendance count equals the number of `Present` registrations.
-  4. An organiser can download the report from the SPOC dashboard.
+- **Re-checked before building (2026-10-08, `f964a34`; rule 3):** the routes moved (SPOC export at `routes_spoc.py:334`, coordinator at `routes_coordinator.py:531,586`). Two claims above were wrong:
+  - `/coordinator/export_excel` didn't re-raise its 403: its `except` turned it into a flash and a redirect.
+  - Every export route's role gate (`ClubSPOC`, coordinator roles, form-builder roles, Super Admin) sent other roles, students included, to the login page (302), so criterion 2's 403 needed the role gates replaced by the per-event check.
+  - Department and year aren't stored on registrations. The export takes the user's profile department, else the form's answer, else the branch code in the USN, and the form's year answer, else the batch in the USN (`1SN22CS…` → 2022).
+- **What was built:**
+  - **`services_export.py` (new).** One row per registration in fixed columns: ticket ID, lead name, lead USN, department, year, lead email, lead phone, team, other members, attendance, check-in time, payment status, amount, score, rank, certificate ID, registered at (`COLUMNS`, `:15`). Lead columns keep the SPOC CSV's existing `Lead Email` header, which a test pins.
+    - Score is the published final score, else the judges' average; rank is the published rank, else by average.
+    - CSV and Excel writers quote a cell that a spreadsheet would run as a formula (a name starting with `=`), but leave numbers like `+91 98…` alone.
+    - `event_report` and `event_report_xlsx` (`:147`, `:184`) build the report sheets: summary (registered, present, attendance %, feedback responses and average rating), by department, by year, winners (top three) and all registrations. No AI.
+  - **Routes.** SPOC CSV, a new SPOC Excel and the new event report (`routes_spoc.py:346,355,364`), the coordinator's CSV and Excel (`routes_coordinator.py:518,528`) and the admin's all-events registrations CSV (`routes_admin.py:285`) all use the service.
+  - **Permissions.** Each per-event route needs only a login and `export_data` on the event (`_event_or_abort`), so anyone else gets 403. The forms export drops its role gate the same way (`routes_forms.py:654`). The admin export answers 403 to anyone but a Super Admin (`routes_admin.py:289`).
+  - **SPOC dashboard.** It links the report and both exports for each event (`templates/spoc/dashboard.html:1947`).
+- **Files touched:** `services_export.py` (new), `routes_spoc.py`, `routes_coordinator.py`, `routes_admin.py`, `routes_forms.py`, `templates/spoc/dashboard.html`, `tests/test_exports.py` (new).
+- **Effort:** S · **Depends on:** BLK-06 · **Risk:** PII in exports; they stay behind `can(..., 'export_data', event)`. Department and year are inferred when the form doesn't ask; the student roster import (UPG-10) would make them exact.
+- **Acceptance criteria** (`tests/test_exports.py`, real database layer; all 6 cases fail on the old code):
+  1. ✅ Test: exporting an event with 2 registrations (one team, one paid) yields 2 rows with non-empty name, email, phone, team, attendance and payment columns, in both CSV and Excel (`::test_every_export_gives_both_registrations_with_real_columns`: SPOC and coordinator, CSV and Excel, plus the admin's all-events CSV. It also checks department, year, members, score, rank, certificate ID and amount, and the formula quoting).
+  2. ✅ Test: a SPOC of another unit, an unassigned coordinator and a student each get 403 on every export route (SPOC, coordinator, forms, admin) (`::test_nobody_without_export_rights_gets_any_export`, 7 routes each, including the report).
+  3. ✅ Test: the event report's attendance count equals the number of `Present` registrations (`::test_the_report_counts_attendance_by_department_and_year`; also the department, year, feedback and winners sheets).
+  4. ✅ An organiser can download the report from the SPOC dashboard (`::test_the_organiser_downloads_the_report_from_the_dashboard`).
+  - Full pytest: **826 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-04 — Judging works for rubric criteria from the create form and for new workflow states
-- **Status:** IN PROGRESS (criterion 5 met in `4699478`; 1–4 open)
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** The create form saves criteria as `{name, description, max_score}` (`templates/spoc/create_event.html:1116`). `submit_score` calls `c.replace` (`routes_judge.py:158`) and `score_inline` uses the dict as a key → errors / 500 [R]. The judge dashboard lists only `status == 'active'` (`routes_judge.py:59`), so events in `registration_open`, `in_progress` or `evaluation` never show up [R]. There's no max-score validation. The missing `abort` import in `routes_judge.py` (a pre-existing `master` bug, where an unassigned judge got a swallowed `NameError` instead of a 403) was **fixed in `4699478`** at the owner's request, as part of finishing BLK-09. It's pinned by `tests/test_integration_flow.py::test_unassigned_judge_gets_403_and_nothing_is_saved`.
+- **Status:** BUILT (untested)
+- **Evidence:** `routes_judge.py:45-98,149,208-254,269-317,330`, `templates/judge/teams.html:177-275`
+- **Last verified:** 2026-10-10, commit `UPG-04`
+- **To test later:**
+  1. Test: criteria `[{"name":"Innovation","max_score":10}]` → `submit_score` stores 8 and the leaderboard shows 8.
+  2. Test: a score of 11 on a max-10 criterion returns 400.
+  3. Test: an assigned judge's dashboard lists an event in `in_progress` and in `evaluation`.
+  4. Test: scoring after the SPOC locks it returns "locked".
+- **Problem:** The create form saves criteria as `{name, description, max_score}` (`templates/spoc/create_event.html:1117`). `submit_score` calls `c.replace` (`routes_judge.py:158`) and `score_inline` uses the dict as a key → errors / 500 [R]. The judge dashboard lists only `status == 'active'` (`routes_judge.py:59`), so events in `registration_open`, `in_progress` or `evaluation` never show up [R]. There's no max-score validation. The missing `abort` import in `routes_judge.py` (a pre-existing `master` bug, where an unassigned judge got a swallowed `NameError` instead of a 403) was **fixed in `4699478`** at the owner's request, as part of finishing BLK-09. It's pinned by `tests/test_integration_flow.py::test_unassigned_judge_gets_403_and_nothing_is_saved`.
 - **Who benefits:** judges and SPOCs of every competitive event (hackathon, cultural, quiz); removes paper score sheets.
 - **What to build:** a single criteria normaliser (strings or objects → `{name, max_score}`) used by every judge route and template; validate `0 ≤ score ≤ max_score`; the dashboard lists assigned events in any judging-relevant state.
 - **Files touched:** `routes_judge.py`, `templates/judge/teams.html`, `routes_spoc.py` (results), tests.
@@ -276,8 +327,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   5. ✅ Test: an unassigned judge gets 403 on `submit_score` and `score_inline`, and nothing is saved (`tests/test_integration_flow.py::test_unassigned_judge_gets_403_and_nothing_is_saved`); `ruff check .` is clean (`4699478`).
 
 #### UPG-05 — Feedback forms that load, save, and feed the report
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-05: …" on `production-ready` (parent `c35bd09`)
 - **Problem:** At `694c729` students were told "Unauthorised access." on `/feedback/submit/<reg>` and `/participant/feedback/<reg>`, because both read `lead_email` [R]. Re-checked at `56a014d` [C]:
   - `/feedback/submit/<reg>` is already a 307 redirect to `/participant/feedback/<reg>` (`routes_feedback.py:30-33`, from the BLK-09 merge), so there's one student route. No test pins the redirect.
   - The student route still checks `lead_email` only (`routes_participant.py:290`), so team members can't give feedback. For the lead it works on the real database: BLK-05's journey test opens and submits it (`tests/test_event_journey_real_db.py:74-77`), so criterion 1 is met except the read-back on `/feedback/view/<event>`.
@@ -285,68 +336,125 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - `/feedback/view` redirects to `/feedback/analytics`, which returns 200 [R at `1f4cdc8`].
 - **Who benefits:** every attendee and organiser; replaces Google Forms feedback.
 - **What to build:** feedback that opens only after check-in, one response per person (lead or team member), a SPOC summary page with a CSV export, and an option to require feedback before the certificate is issued.
-- **Files touched:** `routes_feedback.py`, `routes_participant.py`, `templates/feedback/*`, tests.
+- **Re-checked before building (2026-10-08, `c35bd09`; rule 3):** still as described. Also found:
+  - `/feedback/analytics` and `/feedback/summary` checked only the role, so any SPOC or coordinator could read any event's feedback, comments and names included. The owner-only summary needed a per-event check anyway.
+  - The single `feedback` field on a registration gave team members nowhere to answer.
+- **What was built:**
+  - **One response per person**, each its own document in `feedback_responses` (`routes_feedback.py:34`), keyed by event, registration and email. The lead's answer is also kept on the registration, where the certificate rule and older responses are read. `event_responses` (`:48`) gathers both, so responses from before still count once.
+  - **The student route** (`routes_participant.py:290-340`) is open to the lead and the registration's team members; anyone else gets 403 (`:301`). It opens only once the registration is checked in, and not for a member marked absent at the door (`:303`). A second answer from the same person is refused and the first stays (`has_responded`, `routes_feedback.py:41`).
+  - **The summary and export are for the event's staff only.** `/feedback/analytics` and `/feedback/summary` need `view_analytics` on the event (`:94`, `:139`). The new `/feedback/export/<event>` (`:162`) needs `export_data`: one CSV row per response (time, name, email, team, rating, sentiment, tags, comments), through UPG-03's CSV writer. The analytics page links the export; the SPOC dashboard links the summary.
+  - **"Require feedback before the certificate"** (the event's workflow rule) now asks each person for their own answer (`routes_participant.py:225`).
+- **Files touched:** `routes_feedback.py`, `routes_participant.py`, `templates/feedback/analytics.html`, `templates/spoc/dashboard.html`, `tests/test_feedback.py` (new).
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test: the attendee `GET`s the feedback form → 200, `POST` → saved, read back on `/feedback/view/<event>` (200).
-  2. Test: `/feedback/analytics/<event>` returns 200 with 0 and with 3 responses.
-  3. Test: a non-owner student gets 403.
-  4. Test: `/feedback/submit/<reg>` redirects to the single route (code exists at `routes_feedback.py:30-33`; the test is missing).
-  5. Test: an attendee who isn't checked in can't submit; a second submission by the same person is refused and doesn't change the stored response.
-  6. Test: the SPOC summary export returns one CSV row per response, for the event owner only.
+- **Acceptance criteria** (`tests/test_feedback.py`, real database layer; 6 of 7 fail on the old code, and criterion 4's redirect already existed):
+  1. ✅ Test: the attendee `GET`s the feedback form → 200, `POST` → saved, read back on `/feedback/view/<event>` (200) (`::test_an_attendee_sends_feedback_and_staff_read_it_back`).
+  2. ✅ Test: `/feedback/analytics/<event>` returns 200 with 0 and with 3 responses (`::test_the_summary_works_with_no_responses_and_with_three`; the three are a team's lead and two members; the JSON summary averages them).
+  3. ✅ Test: a non-owner student gets 403 (`::test_someone_not_on_the_registration_gets_403`).
+  4. ✅ Test: `/feedback/submit/<reg>` redirects to the single route (`::test_the_old_submit_url_redirects_to_the_one_route`).
+  5. ✅ Test: an attendee who isn't checked in can't submit; a second submission by the same person is refused and doesn't change the stored response (`::test_feedback_needs_check_in_and_each_person_answers_once`; also a member marked absent).
+  6. ✅ Test: the SPOC summary export returns one CSV row per response, for the event owner only (`::test_the_export_has_one_row_per_response_for_the_events_staff_only`: another SPOC and a student are refused; another SPOC also gets 403 on the analytics and summary).
+  - Also: `::test_the_certificate_rule_asks_each_member_for_their_own_feedback`.
+  - Full pytest: **878 passed** on PostgreSQL 16, **877 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-06 — Certificates generate with the right name and can be issued in bulk
-- **Status:** IN PROGRESS (criterion 2 met by BLK-05's journey test; 1, 3 and 4 open)
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-06: …" on `production-ready` (parent `816808c`)
 - **Problem:** (the signature mismatch is re-checked unchanged at `1f4cdc8` [C]; the name and bulk-gate bullets were caused by BLK-06 and are likely fixed, not re-run)
   - `tasks/cert_tasks.py:44-50` calls `generate_certificate_pdf(reg_id=, name=, event_date=, venue=)`, but the signature is `(student_name, event_title, reg_id, cert_type, ...)` (`utils_certificate.py:145`). End-event certificate generation fails with a `TypeError` [R].
   - The certificate page reads `lead_name` (`routes_participant.py:230`) → "presented to None" [R at `694c729`]. Fixed: the key persists since BLK-09, and BLK-05's journey test checks that the page shows the name.
   - Bulk send's `spoc_id` gate (`routes_spoc.py:1900`) passes for the owner since BLK-09; not re-run (criterion 4).
 - **Who benefits:** every attendee; removes the separate certificate tool.
 - **What to build:** fix the call signature; one issuing path (end event or button) producing a PDF per attendee with a stored certificate ID and verify URL; emailing on top.
-- **Files touched:** `tasks/cert_tasks.py`, `utils_certificate.py`, `routes_spoc.py`, `routes_participant.py`, `routes_verification.py`, tests.
-- **Effort:** M · **Depends on:** BLK-06 (was also UPG-05; the "require feedback first" option belongs to UPG-05, so certificates don't wait for it) · **Risk:** PDF rendering on free-tier memory; generate lazily or in small batches.
-- **Acceptance criteria:**
-  1. Test: ending an event with 2 Present and 1 Absent attendee creates exactly 2 certificates without exceptions (eager Celery).
+- **Re-checked before building (2026-10-08, `816808c`; rule 3):** only `routes_spoc.py` changed since `986d108` (BLK-17's ownership checks). The signature mismatch was still there. Also found:
+  - three certificate stores: the PDF generator wrote `verified_certificates/<hash>` as a side effect of drawing; `CertificateService` writes `certificates/<id>`, which `/verify` never reads (API v1 only; added to UPG-14);
+  - end-event's fallback and the bulk button each re-sent every certificate on every run;
+  - the email's verify link used the registration ID;
+  - `/verify/<id>/download` re-drew the PDF with a recomputed hash, so its QR pointed at a record that didn't exist.
+- **What was built:**
+  - **One issuing path, `utils_certificate.issue_event_certificates` (`utils_certificate.py:778`).** For each registration marked Present that has no certificate yet, it renders the PDF (the event's uploaded template, else the built-in design) and records `verified_certificates/<certificate_id>`. It then stores `certificate_id`, `certificate_verify_url`, `certificate_type` and the time on the registration, and emails the PDF.
+    - The top three scored attendees get a winner certificate instead of participation.
+    - A rerun issues nothing twice.
+    - It returns counts (issued, emailed, already issued, not present, failed).
+    - The certificate ID is `certificate_id_for(...)` (`:145`), the hash the generator used before.
+  - **End-event and the bulk button share it.** End-event queues `tasks.cert_tasks.bulk_generate_certificates` (`tasks/cert_tasks.py:25`, inline without a broker), which calls it, or calls it directly if queueing fails (`routes_spoc.py:570`). The bulk button calls it directly (`routes_spoc.py:1868`) and now uses BLK-17's `_event_or_abort(…, 'issue_certificates')`. The broken per-registration task and the two old send-all functions are gone.
+  - **Drawing only draws.** `generate_certificate_pdf` takes `certificate_id` (`:164`) for the QR and footer and no longer writes records. The download route passes the stored ID (`routes_verification.py:177`), and the email links `/verify/<certificate_id>` (`utils_email.py:788`).
+  - **The attendee's certificate page** links the official PDF and the verification page when one was issued (`routes_participant.py:232`).
+- **Files touched:** `utils_certificate.py`, `tasks/cert_tasks.py`, `routes_spoc.py`, `routes_verification.py`, `routes_participant.py`, `utils_email.py`, `templates/participant/certificate.html`, `tests/test_certificates.py` (new).
+- **Effort:** M · **Depends on:** BLK-06 (was also UPG-05; the "require feedback first" option belongs to UPG-05, so certificates don't wait for it) · **Risk:** PDF rendering on free-tier memory: about 0.1 s per certificate here, done inline when there's no broker (UPG-18 adds timeouts). PDFs aren't stored: `/verify/<id>/download` draws them again from the record (object storage is UPG-17).
+- **Acceptance criteria** (`tests/test_certificates.py`, real database layer; all 3 fail on the old code):
+  1. ✅ Test: ending an event with 2 Present and 1 Absent attendee creates exactly 2 certificates without exceptions (eager Celery) (`::test_ending_the_event_issues_exactly_one_certificate_per_attendee`). It also checks: the scored attendee gets a winner certificate; the records and registrations hold the ID and verify URL; each attendee gets one email with a PDF and the right verify link; the absent one gets nothing.
   2. ✅ Test: the certificate page shows the attendee's name (`tests/test_event_journey_real_db.py:80-84`, BLK-05; it also checks there's no ">None<").
-  3. Test: `/verify/<certificate_id>` shows valid; a random ID shows invalid.
-  4. The SPOC "bulk certificates" button succeeds for the event owner.
+  3. ✅ Test: `/verify/<certificate_id>` shows valid; a random ID shows invalid (`::test_verify_shows_an_issued_certificate_and_refuses_a_random_id`; the PDF downloads, and the attendee's page links it).
+  4. ✅ The SPOC "bulk certificates" button succeeds for the event owner (`::test_the_bulk_button_issues_through_the_same_path_once`: 2 issued; pressing again or ending the event afterwards issues and emails nothing more; another SPOC gets 403).
+  - Full pytest: **820 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-07 — Reminders and lifecycle jobs run on free-tier hosting
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-07: …" on `production-ready` (parent `125f7f7`)
 - **Problem:** Reminders, the day-before QR email and lifecycle transitions are Celery beat jobs (`celery_app.py:95-120`). Since BLK-09, `docker-compose.yml:27-37` runs a Celery worker and beat for self-hosting. But the Dockerfile (what a single free-tier web service runs) starts only gunicorn (`Dockerfile:33`), and without Redis Celery runs eagerly (`celery_app.py:51-58`), so beat never runs there. The APScheduler files are unused (`scheduler_enhanced.py:284` has `start()` commented out; neither file is imported by the app).
 - **Who benefits:** all registrants, and organisers who now send WhatsApp reminders by hand.
 - **What to build:** a protected `POST /internal/cron/<job>` (shared secret header, compared in constant time; 503 when the secret isn't configured) that runs the existing task functions idempotently: reminders, lifecycle transitions, clean-up of expired sessions, old login attempts (`services_login_throttle.purge_expired`, BLK-13) and old outbox rows, and outbox retries (UPG-18). An external scheduler calls it: Cloud Scheduler on Cloud Run, or a GitHub Actions `schedule` workflow. Document both. Delete the unused schedulers (see UPG-14).
-- **Files touched:** new `routes_cron.py`, `app.py`, `tasks/scheduled_tasks.py`, `.github/workflows/cron.yml`, `docs/DEPLOY.md`, tests.
+- **Re-checked before building (2026-10-08, `125f7f7`; rule 3):** still as described (only `services_login_throttle.py` changed since `986d108`, adding the hourly window). Also found:
+  - **The lifecycle job deleted data.** `run_event_lifecycle` deleted every event 5 days after its date, with its registrations, and any registrations 30 days after. Under self-hosted beat this would have removed results, attendance and certificates' records. Criterion 3 asks it to complete events instead, so it was rewritten to change statuses only; how long data is kept is UPG-22.
+  - **Events saved without times get the save time as `start_datetime`/`end_datetime`** on the SQL layer, so "end date" alone would complete any event created a day earlier: new item UPG-47.
+  - The reminders (and the velocity alert) look only at the old `active` status: added to UPG-43. Scheduled emails link to a fixed `https://sapthaevent.in`: new item UPG-46.
+- **What was built:**
+  - **`POST /internal/cron/<job>`** (`routes_cron.py:45`): 503 while `CRON_SECRET` is unset (`:48`); the `X-Cron-Secret` header is compared with `hmac.compare_digest` (`:50`), missing or wrong → 403; unknown job → 404; a failing job → 500 and logged. Registered and CSRF-exempt in `app.py:359,427` (the scheduler sends a secret, not a session). Jobs (`:41`):
+    - `reminders`: `send_24h_reminders` and `send_3day_reminders`, each skipping registrations already reminded (`ticket_sent`, `early_reminder_sent`);
+    - `lifecycle`: `run_event_lifecycle`;
+    - `cleanup`: `session_store.purge_expired_sessions` and `services_login_throttle.purge_expired` (`:34`).
+  - **`run_event_lifecycle` changes statuses and deletes nothing** (`tasks/scheduled_tasks.py:533`). Registration closes after the deadline (`registration_open` or the old `active` → `registration_closed`). An event whose last day has passed and is still published, open, closed or in progress → `completed`; its last day is the later of `date` and `end_datetime` (`:569`, because of UPG-47). Each move goes through `WorkflowEngine.transition_event`, so it's in the audit trail; a second run moves nothing.
+  - **`.github/workflows/cron.yml`**: hourly reminders, 6-hourly lifecycle, daily clean-up, and a manual run; it does nothing until the repository secrets `CRON_URL` and `CRON_SECRET` are set, and takes no permissions.
+  - **`docs/DEPLOY.md`** (new; the rest of the guide is UPG-32): the endpoint, the jobs and their answers, Cloud Scheduler set-up with `gcloud`, the GitHub Actions alternative (use one, not both), and the request timeout needed while emails go out inline (UPG-18). `CRON_SECRET` is in `.env.example` and the deploy checklist (section 6).
+  - **Not done here:** outbox clean-up and retries wait for UPG-18's outbox (a new job on this endpoint). The unused schedulers stay for UPG-14: `tests/test_event_maintenance.py:10` imports two jobs from `scheduler_enhanced.py`. The velocity alert and the daily analytics roll-up still run only under Celery beat (noted in `docs/DEPLOY.md`).
+- **Files touched:** new `routes_cron.py`, `app.py`, `tasks/scheduled_tasks.py`, `celery_app.py` (a comment), `.env.example`, new `.github/workflows/cron.yml`, new `docs/DEPLOY.md`, new `tests/test_cron.py`.
 - **Effort:** S · **Depends on:** BLK-05 (tests), BLK-06 (`*_sent` flags persist) · **Risk:** double sends; rely on the existing `*_sent` flags.
-- **Acceptance criteria:**
-  1. Test: calling without the secret, or with a wrong one → 403; with no secret configured → 503.
-  2. Test: `send_24h_reminders` with the secret, for an event tomorrow, sends once; a second call sends nothing.
-  3. Test: the lifecycle job moves an event past its end date to `completed`.
-  4. Test: the clean-up job deletes expired sessions (BLK-08) and login attempts older than the throttle window (BLK-13), and nothing else.
-  5. `.github/workflows/cron.yml` exists and targets the endpoint; `docs/DEPLOY.md` shows the Cloud Scheduler set-up.
+- **Acceptance criteria** (`tests/test_cron.py`, real database layer; criteria 1–4 fail on the old code):
+  1. ✅ Test: calling without the secret, or with a wrong one → 403; with no secret configured → 503 (`::test_the_endpoint_needs_the_secret_and_is_off_without_one`; with CSRF protection on, a right secret → 200; GET → 405).
+  2. ✅ Test: `send_24h_reminders` with the secret, for an event tomorrow, sends once; a second call sends nothing (`::test_the_day_before_reminder_goes_out_once`: two confirmed registrants get one ticket email each and the one with a phone one WhatsApp; a cancelled registrant and an event in 5 days get nothing; the event is `active` because of UPG-43).
+  3. ✅ Test: the lifecycle job moves an event past its end date to `completed` (`::test_the_lifecycle_completes_past_events_and_deletes_nothing`: open, in-progress, closed and `active` events past their date → `completed`; a multi-day event still running, today's event, an event saved without times, a draft and a cancelled event stay; a passed deadline closes registration; a 40-day-old event and its registration still exist; the moves are in the audit trail; a second run moves nothing).
+  4. ✅ Test: the clean-up job deletes expired sessions (BLK-08) and login attempts older than the throttle window (BLK-13), and nothing else (`::test_the_clean_up_deletes_only_expired_sessions_and_old_login_attempts`: a live session and a 30-minute-old attempt, still counted by the hourly cap, stay).
+  5. ✅ `.github/workflows/cron.yml` exists and targets the endpoint; `docs/DEPLOY.md` shows the Cloud Scheduler set-up (`::test_the_github_workflow_and_the_deploy_guide_target_the_endpoint`).
+  - Full pytest: **883 passed** on PostgreSQL 16, **882 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-08 — Team registration linked to tickets and judging
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-08: …" on `production-ready` (parent `98c3556`)
 - **Problem:** The SPOC-created team hackathon form showed only name/email/phone/USN [R at `694c729`], because `is_team_event` and `limits` were dropped. They persist since BLK-09, but the fallback schema adds only a team-name field, never member fields from `team_min`/`team_max` (`routes_forms.py:191-214`, used at `:340-342`). `/teams/*` writes a separate `teams` collection (`routes_teams.py:92`) that registrations, tickets and judges never read. Members are parsed only from `member_N_*` fields (`routes_forms.py:445-455`).
 - **Who benefits:** hackathon, sports and cultural teams; removes WhatsApp team collection.
 - **What to build:** team fields generated from `team_min`/`team_max`; create a team, then join by invite code, which adds the member to the same registration; team size limits enforced on the server; the lead manages the team (remove a member, regenerate the code); each member sees the ticket; team check-in marks the members who are present; judges see the team name.
-- **Files touched:** `routes_forms.py`, `routes_teams.py`, `routes_ticket.py`, `templates/public/registration_form.html`, `templates/teams/*`, tests.
-- **Effort:** M · **Depends on:** BLK-06, UPG-01 · **Risk:** medium; changes the registration record shape.
-- **Acceptance criteria:**
-  1. Test: a team event with limits 2–4 renders member fields and rejects a 1-member team.
-  2. Test: joining by invite code adds the member to `members` and they can open the ticket.
-  3. Test: the judge event page lists the team name.
-  4. Test: a team at `team_max` rejects another join, even when the browser submits extra member fields.
-  5. Test: only the lead can remove a member or regenerate the code; a removed member loses the ticket.
-  6. Test: scanning the team ticket with 2 of 3 members marked present records exactly those 2.
+- **Re-checked before building (2026-10-08, `98c3556`; rule 3):** still as described. Nothing links to `/teams/*`, and no test covered it. Tickets (`routes_ticket.view_ticket`), the scanner's member list (UPG-02) and per-member attendance already read the registration's `members`, so the team had to live there.
+- **What was built:**
+  - **The form asks for the team.** `team_limits` (`routes_forms.py:156`) reads the event's `limits`. `team_fields` (`:167`) adds the team name and one name / email / USN row per possible member (required up to the minimum); `registration_schema` (`:188`) is what the registration page and submit both use.
+  - **Size is checked on the server** (`:540`), whatever the browser sends: `submitted_members` (`:196`) refuses a member number beyond the maximum and an email listed twice. The team must have between the minimum and maximum people, the lead included, and a name; the check runs before any account is created.
+  - **Invite code.** A team registration gets a unique 6-character `team_code` (`new_team_code`, `:216`; set at `:600`).
+  - **`routes_teams.py`, rewritten on the registration.** The separate `teams` collection is no longer used.
+    - `/teams/join` adds the logged-in student to the registration's `members`. It refuses a full team, a closed event and anyone already registered for the event.
+    - `/teams/<reg_id>` is the team page: members, the ticket link, and for the lead the code.
+    - The lead can remove a member (not themselves) and replace the code; a member can leave.
+    - `/teams/create/<event_id>` now opens the event's form.
+    - Templates are on the shared layout; `templates/teams/create.html` is gone. The ticket page links to the team page.
+  - **What already worked, now tested:** a member opens the team ticket; the judge sees the team name; scanning the team ticket then saving member attendance marks exactly who came (UPG-02).
+- **Files touched:** `routes_forms.py`, `routes_teams.py`, `templates/teams/view.html`, `templates/teams/join.html` (rewritten), `templates/teams/create.html` (removed), `templates/participant/ticket.html`, `tests/test_teams.py` (new), `tests/test_integration_flow.py` (see below), `tests/html_sinks.py` (skips a tracked file deleted before commit). `routes_ticket.py` and the registration template needed no change.
+- **Effort:** M · **Depends on:** BLK-06, UPG-01 · **Risk:** medium; the registration gains `team_code`, and team events now refuse registrations below the team minimum. `tests/test_integration_flow.py::test_student_registers_for_free_team_event_and_spoc_checks_in` registered one person for a 2–4 team event, which criterion 1 now refuses. Its form gained a second member; its assertions are unchanged.
+- **Acceptance criteria** (`tests/test_teams.py`, real database layer; 5 of 6 fail on the old code, and criterion 3 already held):
+  1. ✅ Test: a team event with limits 2–4 renders member fields and rejects a 1-member team (`::test_the_form_asks_for_members_and_refuses_a_one_person_team`; three member rows, a 2-person team is accepted with an invite code).
+  2. ✅ Test: joining by invite code adds the member to `members` and they can open the ticket (`::test_joining_by_code_adds_the_member_and_they_can_open_the_ticket`; only the lead sees the code; someone registered with another team can't join).
+  3. ✅ Test: the judge event page lists the team name (`::test_the_judge_sees_the_team_name`).
+  4. ✅ Test: a team at `team_max` rejects another join, even when the browser submits extra member fields (`::test_a_full_team_takes_nobody_else`).
+  5. ✅ Test: only the lead can remove a member or regenerate the code; a removed member loses the ticket (`::test_only_the_lead_manages_the_team_and_a_removed_member_loses_the_ticket`; the old code stops working).
+  6. ✅ Test: scanning the team ticket with 2 of 3 members marked present records exactly those 2 (`::test_a_team_check_in_records_exactly_the_members_who_came`).
+  - Full pytest: **855 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-09 — Book the venue while creating the event
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** Room conflict detection exists (`services_venue.check_room_conflict`), but it runs only on edit (`routes_spoc.py:1122-1128`) and publish (`services_workflow.py:190-218`). The create form has no room field (no `room_id` in `templates/spoc/create_event.html`), so clashes surface late and rooms are booked by email or phone.
+- **Status:** BUILT (untested)
+- **Evidence:** `routes_spoc.py:126,134-156,237-261`, `templates/spoc/create_event.html:631-640`, `services_workflow.py:282-300`, `app.py:1047-1055`
+- **Last verified:** 2026-10-10, commit `UPG-09`
+- **To test later:**
+  1. Test: creating an event in a room already booked for an overlapping time → error, no event created.
+  2. Test: approval turns the tentative booking into confirmed.
+  3. The calendar shows the room name for the event.
+- **Problem:** Room conflict detection exists (`services_venue.check_room_conflict`), but it runs only on edit (`routes_spoc.py:1138-1144`) and publish (`services_workflow.py:190-218`). The create form has no room field (no `room_id` in `templates/spoc/create_event.html`), so clashes surface late and rooms are booked by email or phone.
 - **Who benefits:** SPOCs, the estates/admin office, and anyone who double-books halls.
 - **What to build:** a room picker with availability on create; a booking created as tentative on submit and confirmed on approval.
 - **Files touched:** `routes_spoc.py`, `templates/spoc/create_event.html`, `services_venue.py`, tests.
@@ -359,9 +467,14 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### B. New features the university needs
 
 #### UPG-10 — Student roster import and university Google sign-in
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** Accounts come only from self sign-up (`routes_auth.py:272-319`) or registration, which creates an unverified account since BLK-02 (`routes_forms.py:437-439`, `services_accounts.py:56`). There's no bulk import (not found). USN is now stored (fixed by BLK-09 [R round-trip at `1f4cdc8`]), but department and year are often blank, so department filters and reports are unreliable. OAuth routes exist, configured via `config.py:222-225`, but at `986d108` no template links to `/auth/google` or `/auth/microsoft`, and `auth_oauth.py` has no university-domain restriction [C].
+- **Status:** BUILT (untested)
+- **Evidence:** `routes_admin.py:461-572`, `templates/admin/users.html:23-45`, `auth_oauth.py:51-57,205-217`, `config.py:296-297`
+- **Last verified:** 2026-10-10, commit `UPG-10`
+- **To test later:**
+  1. Test: uploading 3 rows creates 3 users with USN and department read back.
+  2. Test: re-uploading updates in place, with no duplicates.
+  3. Test: a Google callback with a non-university domain is rejected.
+- **Problem:** Accounts come only from self sign-up (`routes_auth.py:276-323`) or registration, which creates an unverified account since BLK-02 (`routes_forms.py:570-572`, `services_accounts.py:58`). There's no bulk import (not found). USN is now stored (fixed by BLK-09 [R round-trip at `1f4cdc8`]), but department and year are often blank, so department filters and reports are unreliable. OAuth routes exist, configured via `config.py:227-230`, but at `986d108` no template links to `/auth/google` or `/auth/microsoft`, and `auth_oauth.py` has no university-domain restriction [C].
 - **Who benefits:** every student (one-click login) and every report that needs department/year.
 - **What to build:** a SuperAdmin CSV upload (email, name, USN, department, year, section) that creates or updates users. Show a "Sign in with Google" button restricted to the university domain.
 - **Files touched:** `routes_admin.py`, `templates/admin/*`, `auth_oauth.py`, `templates/login.html`, `config.py`, tests.
@@ -370,11 +483,17 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   1. Test: uploading 3 rows creates 3 users with USN and department read back.
   2. Test: re-uploading updates in place, with no duplicates.
   3. Test: a Google callback with a non-university domain is rejected.
-  4. The login page shows the Google button when OAuth is configured.
+  4. The login page shows the Google button when OAuth is configured. *(2026-10-10: moved to UPG-55, which links Google sign-in and 2FA before launch; UPG-10 adds the domain rule.)*
 
 #### UPG-11 — Participation ledger: activity points and NSS / NCC / FDP hours
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Evidence:** `models_pg.py:64-65`, `migrations/versions/0005_activity_points_hours.py`, `routes_spoc.py:127-128,266-267,1140-1141`, `templates/spoc/create_event.html:641-650`, `templates/spoc/edit_event.html:361-370`, `routes_ticket.py:181-188`, `services_export.py:210-307`, `routes_admin.py:338-341,372-389`, `routes_participant.py:321-360`, `templates/participant/ledger.html`, `utils_certificate.py:165,653-659`, `templates/participant/certificate.html:36-39`
+- **Last verified:** 2026-10-10, commit `UPG-11`
+- **To test later:**
+  1. Test: an event worth 2 hours / 5 points credits a Present attendee and not an Absent one.
+  2. Test: the ledger totals across 3 events are correct.
+  3. Test: the department export lists every student in the department with totals.
+  4. The certificate shows the hours when the event has them.
 - **Problem:** MISSING. No points or hours fields exist anywhere (searched routes, services and templates for activity points, AICTE, NSS/volunteer/credit hours). Mentors and NSS/NCC officers keep these registers in Excel or on paper.
 - **Who benefits:** every student (activity points), NSS/NCC units, faculty (FDP hours), IQAC.
 - **What to build:** per-event points and/or hours set by the organiser; credited on attendance; a per-student ledger page; department/unit export; hours printed on certificates.
@@ -388,8 +507,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 #### UPG-12 — Faculty and external participants (FDPs, guest lectures, conferences)
 - **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** Every registrant is created as `Student`: registration through `services_accounts.create_unverified_account` (`services_accounts.py:61`, used at `routes_forms.py:438`), and sign-up at `routes_auth.py:302`. There's no faculty or external participant type (`utils.py:24-36`, `services_permission.py:53-80`), so FDPs and conferences can't be run for their real audience.
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Every registrant is created as `Student`: registration through `services_accounts.create_unverified_account` (its role defaults to `Student`, `services_accounts.py:59,66`; used at `routes_forms.py:571`), and sign-up at `routes_auth.py:306`. There's no faculty or external participant type (`utils.py:24-36`, `services_permission.py:53-80`), so FDPs and conferences can't be run for their real audience.
 - **Who benefits:** HR/IQAC (FDP records), departments running FDPs and conferences, external delegates.
 - **What to build:** `participant_type` (student / faculty / external) with designation and institution; the same participant dashboard; FDP certificate wording; analytics split by type.
 - **Files touched:** `routes_forms.py`, `routes_auth.py`, `models_pg.py` + migration, `routes_participant.py`, `utils_certificate.py`, tests.
@@ -401,8 +520,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 #### UPG-13 — Sports tournaments: fixtures, results, standings
 - **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** The sports template promises "fixture brackets, live match score updates, point tables" (`services_templates.py:399-434`), but no model, route or template builds fixtures or standings. The only mention is a checklist label (`services_event.py:63`). Sports officers run tournaments on whiteboards and in Excel.
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** The sports template promises "fixture brackets, live match score updates, point tables" (`services_templates.py:392-434`), but no model, route or template builds fixtures or standings. The only mentions are checklist labels (`services_event.py:63`, `services_copilot.py:180`; the second was missed before). Sports officers run tournaments on whiteboards and in Excel.
 - **Who benefits:** Physical Education department, sports clubs, inter-department tournaments.
 - **What to build:** a fixture generator (knockout and league) from confirmed teams; coordinator result entry; automatic advancement or points table; a public fixtures page.
 - **Files touched:** new `routes_sports.py`, `services_sports.py`, `models_pg.py` + migration, templates, tests.
@@ -416,17 +535,26 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### C. Remove / merge
 
 #### UPG-14 — Merge duplicate subsystems
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Evidence:** `routes_notifications_v2.py:280-350`, `routes_matchmaker.py:12-16`, `app.py:315-395`, `scheduler_enhanced.py:1-170`, `tasks/waitlist_tasks.py:28-40`, git rm `routes_notifications.py`, `routes_payment_stripe.py`, `scheduler.py`, `tests.py`
+- **Last verified:** 2026-10-10, commit `UPG-14`
+- **To test later:**
+  1. Test: a notification created with `create_notification` appears in the dashboard feed endpoint (`/notifications/feed`).
+  2. Test: `/payment/stripe/create_session` → 404.
+  3. `grep -r "import scheduler" *.py` finds nothing and `pytest` passes.
+  4. Test: `/participant/matchmaker/` → 404 unless `FEATURE_MATCHMAKER=true` is set.
 - **Problem:**
-  - **Notifications:** the v1 feed reads `notifications` (`routes_notifications.py:20`), but every writer uses `notifications_v2` (`routes_notifications_v2.py:70`, `services_automation.py:185`, `routes_waitlist.py:97`). The student dashboard feed (`templates/participant/dashboard.html:1758`) is always empty, while the header badge counts v2.
+  - **Notifications:** the v1 feed reads `notifications` (`routes_notifications.py:20`), but every writer uses `notifications_v2` (`routes_notifications_v2.py:70`, `services_automation.py:185`, `routes_waitlist.py:96`). The student dashboard feed (`templates/participant/dashboard.html:1759`) is always empty, while the header badge counts v2.
   - **Payments:** Stripe has no UI reference (`routes_payment_stripe.py`).
-  - **Schedulers:** `scheduler.py` / `scheduler_enhanced.py` aren't used by the app.
+  - **Schedulers:** `scheduler.py` / `scheduler_enhanced.py` aren't used by the app. Since UPG-07, scheduled jobs run through `/internal/cron/<job>` or Celery beat. `tests/test_event_maintenance.py:10` imports `_create_cleanup_job` and `_create_event_status_transition_job` from `scheduler_enhanced.py`; removing the file means deciding what happens to those two tests (rule 5), whose behaviour `tests/test_cron.py` now covers for the live job.
   - **Matchmaker:** `routes_matchmaker.py` suggests mock people (`routes_matchmaker.py:12`). `routes_ai_matching.py` is a different feature (judge↔team) and stays.
   - **Tests:** `tests.py` fails at collection [R] and duplicates `tests/`.
   - **Login throttling (found in BLK-13):** `security_middleware.py`'s in-memory `record_login_attempt`, `is_account_locked` and `get_remaining_lockout` were never called and are superseded by `services_login_throttle.py`. Nothing calls `block_ip` outside them, so the `is_ip_blocked` check in `init_security_middleware` never blocks anyone. Remove them, along with their unit tests in `tests/test_security.py`, which only test this dead code (keep the header and sanitiser tests).
   - **Waitlist promotion (found in BLK-03):** two implementations, `routes_waitlist.auto_promote` (ordered by `position`, no ticket) and `tasks/waitlist_tasks.promote_from_waitlist` (ordered by `joined_at`, issues a ticket, used by the cancel route). BLK-03 made both use `promotion_terms`; merge them into one.
   - **Not duplicates (checked 2026-09-30 at `56a014d`):** `models.py` (91 lines) is the `db` entry point imported by 70 modules, not a copy of `models_pg.py`; keep it. `routes_ai_matching.py` (judge↔team) is a different feature from the matchmaker; keep it.
+  - **Check-in paths left beside the shared check-in (found building UPG-02):** the SPOC manual list (`/spoc/api/checkin`, with rounds and no payment check) and the coordinator's `get_ticket` and `mark_attendance_granular` still work by registration ID with their own rules; the scanners and desks now use `routes_ticket.check_in`. `/ticket/api/verify` POST's Bearer-token login imports `auth_jwt.decode_access_token`, which doesn't exist, so it only ever accepts the session (fails closed).
+  - **Background tasks nothing queues (found in the end-of-Phase 2 re-verification):** `tasks/export_tasks.py` (Excel, score-sheet and QR-list exports uploaded through `utils_storage`; never called: exports are served directly by `services_export`, UPG-03) and `tasks/webhook_tasks.py` (`process_razorpay_payment`/`process_razorpay_refund`; never called since UPG-30's webhook in `routes_payment.py`). `tests/test_tasks.py:88-125` tests `process_razorpay_payment`, so removing it needs the same rule 5 decision as the scheduler tests.
+  - **Two certificate stores (found building UPG-06):** the web path records `verified_certificates/<id>` (`utils_certificate.issue_event_certificates`), which `/verify` reads; API v1's `services_certificate.CertificateService` writes `certificates/<id>`, which `/verify` doesn't read, so API-issued certificates can't be verified there.
 - **Who benefits:** developers; students get a working notification feed.
 - **What to build:** a v2-only notification API and dashboard feed; remove v1, Stripe, both scheduler files and `tests.py`; hide the matchmaker behind a flag until it uses real profiles.
 - **Files touched:** `routes_notifications.py`, `templates/participant/dashboard.html`, `app.py`, `routes_payment_stripe.py`, `scheduler*.py`, `routes_matchmaker.py`, `tests.py`.
@@ -438,16 +566,22 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. Test: `/participant/matchmaker/` → 404 unless the feature flag is on.
 
 #### UPG-15 — Delete dead code and fix dead links
-- **Status:** IN PROGRESS (criterion 2 met by BLK-09's test; the rest open)
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Evidence:** `git rm` `functions/saptha_app/`, `catalyst.json`, `saptha-event-portal`, `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py`, 17 unrendered templates; `app.py:300-335`, `templates/participant/my_events.html:143`; `seed.py`, `scripts/generate_vapid.py`, `git rm` `reset_system.py`, `run_alembic.py`, `scratch/` (26 files), redundant `seed_*.py` files
+- **Last verified:** 2026-10-10, commit `UPG-15`
+- **To test later:**
+  1. Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`.
+  2. Test: `git ls-files` lists nothing under `functions/saptha_app/`, `scratch/`, no `catalyst.json`, no `reset_system.py`, and no unregistered route blueprints.
+  3. Test: `python seed.py --profile demo|events|scale` executes under `seed_safety.guard()`. Note: `test_seed_safety.py` scripts count assertion (`assert len(SCRIPTS) >= 25`) needs updating for consolidated seed structure.
+  4. Test: no tracked file sets a default walk-in password (`WALKIN_DEFAULT_PASSWORD`).
 - **Problem:**
-  - **Unregistered blueprints:** `routes_public.py`, `routes_head.py` and `routes_super.py` (not in `app.py:300-391`), yet live pages link to them: `/event_head/*` from `templates/coordinator/manage_event.html:50` and `/super_admin/*` from `templates/public/home.html:528`.
-  - **Dead nav links:** re-checked 2026-10-02 against the app's URL map [R]. `/admin/users`, `/admin/events` and `/settings` are no longer linked from any template, and `/dashboard` now resolves (`dashboard_redirect`). The links to the unregistered blueprints above still 404.
-  - **Unused files:** about 20 templates are never rendered; `routes_api.py` is empty. (The debug route is gone since BLK-09: `/debug-modal` → 404, `tests/test_integration_flow.py:195`.)
+  - **Unregistered blueprints:** `routes_public.py`, `routes_head.py` and `routes_super.py` (not in `app.py:302-395`), yet live pages link to them: `/event_head/*` from `templates/coordinator/manage_event.html:50` and `/super_admin/*` from `templates/public/home.html:528`.
+  - **Dead nav links:** re-checked 2026-10-02 against the app's URL map [R]. `/admin/events` and `/settings` are no longer linked from any template, and `/dashboard` now resolves (`dashboard_redirect`). `/admin/users` is linked again and resolves since UPG-40. The links to the unregistered blueprints above still 404.
+  - **Unused files:** about 20 templates are never rendered (`admin/users.html` is rendered since UPG-40); `routes_api.py` is empty. (The debug route is gone since BLK-09: `/debug-modal` → 404, `tests/test_integration_flow.py:198`.)
   - **Broken or risky scripts:** `reset_system.py` imports a nonexistent `Participant` model; `wipe_data.py` deletes all events and registrations with no prompt (since BLK-10 it refuses production-looking databases, but it still doesn't ask).
   - **Seed scripts:** 13 `seed_*.py` scripts, plus `seed_safety.py` (BLK-10's guard, not a seed). In all, 10 seed/setup scripts write straight to Firestore, and since BLK-10/BLK-15 only after the project is confirmed.
-  - **Copies:** `scratch/` (26 tracked files); untracked `saptha-event-portal-source*` folders and ~54 MB of zips; `functions/saptha_app/` is a tracked, diverged copy of the app (`app.py` differs by 522 lines) that `catalyst.json` deploys.
-  - **Walk-in default password in the `functions/` copy (recorded 2026-09-29, not fixed):** `functions/saptha_app/routes_coordinator.py:645` still sets new walk-in accounts' password to `WALKIN_DEFAULT_PASSWORD` with a published default. The root app uses a random one-time password since BLK-09 (`routes_coordinator.py:725`). **Walk-in accounts created on the Zoho Catalyst deploy (which runs this copy, `catalyst.json`) may still have that password.** The copy does set `needs_password_reset` (`:652`), but its older `db_adapter.py` may drop that flag in postgres mode (as at `694c729`, BLK-06), so the forced reset may never have happened [C]. Owner: check walk-in accounts on that deploy and force resets.
+  - **Copies:** `scratch/` (26 tracked files); untracked `saptha-event-portal-source*` folders and ~54 MB of zips; `functions/saptha_app/` is a tracked, diverged copy of the app (`app.py` differs in 646 lines by `git diff --numstat`, 630 at `986d108`) that `catalyst.json` deploys.
+  - **Walk-in default password in the `functions/` copy (recorded 2026-09-29, not fixed):** `functions/saptha_app/routes_coordinator.py:645` still sets new walk-in accounts' password to `WALKIN_DEFAULT_PASSWORD` with a published default. The root app gives new walk-ins no password at all since UPG-33, only a set-password link (`routes_coordinator.py:576,611`). **Walk-in accounts created on the Zoho Catalyst deploy (which runs this copy, `catalyst.json`) may still have that password.** The copy does set `needs_password_reset` (`:652`), but its older `db_adapter.py` may drop that flag in postgres mode (as at `694c729`, BLK-06), so the forced reset may never have happened [C]. Owner: check walk-in accounts on that deploy and force resets.
   - **Stale gitlink:** `saptha-event-portal` is a gitlink (mode 160000) with no `.gitmodules`, pointing at a commit of this repo's own old history that no longer exists after the BLK-01 rewrite. It's inert; delete it.
 - **Who benefits:** developers and agents (less wrong code to read); users (no 404s).
   - **The `functions/saptha_app` copy also keeps the kiosk and ticket holes the root app fixed** (BLK-12) and the bandit findings (BLK-11).
@@ -456,7 +590,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Effort:** M · **Depends on:** none · **Risk:** low for deploys (nothing else deploys the copy, D-1).
 - **Acceptance criteria:**
   1. Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`.
-  2. ✅ Test: `/debug-modal` → 404 (`tests/test_integration_flow.py:195`, `test_removed_debug_and_legacy_endpoints`, since BLK-09).
+  2. ✅ Test: `/debug-modal` → 404 (`tests/test_integration_flow.py:198`, `test_removed_debug_and_legacy_endpoints`, since BLK-09).
   3. `git ls-files` lists nothing under `functions/saptha_app/`, no `catalyst.json`, and no `seed_*.py` beyond the kept one. This also completes BLK-12 criterion 4 and BLK-14 criterion 3.
   4. ~~The Catalyst deploy still works via the build step (manual check).~~ Dropped: D-1 (owner, 2026-10-01) ends the Catalyst deploy, so there's no build step to check. Covered instead by criterion 3 (`catalyst.json` is gone).
   5. Walk-in accounts created on the Zoho deploy with the old default password have been forced to reset (owner check), and no tracked file sets a default walk-in password (test).
@@ -464,16 +598,24 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### D. Production setup (added in Phase 0, 2026-09-30)
 
 #### UPG-16 — Alembic baseline: build an empty database through migrations
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-16: …" on `production-ready` (parent `1af8b9d`)
 - **Problem:**
   - `migrations/versions/` isn't empty (the plan's prompt said it was): it has two tracked incremental migrations, `0001_add_org_units_and_scoped_roles.py` and `0002_add_campuses_buildings_rooms_bookings.py`. They assume the core tables already exist: `alembic upgrade head` on an empty SQLite database fails with `NoSuchTableError: events` [R at `56a014d`].
-  - The real schema comes from start-up code in every environment, production included: `Base.metadata.create_all` (`db_pg.py:171-184`) plus `ALTER TABLE … ADD COLUMN` in `db_pg.py:197` and `db_adapter.verify_and_align_schema` (`db_adapter.py:201-310`, called at `:1822`). Column changes are never recorded, can't be reviewed or rolled back, and race when several instances start together.
-  - **Added since Phase 0, which the baseline must include:** the tables `payment_orders` (BLK-03), `flask_sessions` (BLK-08) and `login_attempts` (BLK-13); the column `events.spoc_id` and the new status enum members (BLK-06a); `extra_json` on eight more tables (BLK-06b). Re-run 2026-10-02 [R]: `alembic upgrade head` on an empty SQLite database still fails with `NoSuchTableError: events`.
+  - The real schema comes from start-up code in every environment, production included: `Base.metadata.create_all` (`db_pg.py:171-184`) plus `ALTER TABLE … ADD COLUMN` in `db_pg.py:197` and `db_adapter.verify_and_align_schema` (`db_adapter.py:201-326`, called at `:1856`). Column changes are never recorded, can't be reviewed or rolled back, and race when several instances start together.
+  - **Added since Phase 0, which the baseline must include:** the tables `payment_orders` (BLK-03; with UPG-30's columns `regDataJson`, `failureReason`, `refundId`, `refundedAt`, `refundedBy`), `coupon_uses` (UPG-36), `flask_sessions` (BLK-08) and `login_attempts` (BLK-13); the column `events.spoc_id` and the new status enum members (BLK-06a); `extra_json` on eight more tables (BLK-06b). Re-run 2026-10-02 [R]: `alembic upgrade head` on an empty SQLite database still fails with `NoSuchTableError: events`.
 - **Who benefits:** whoever deploys and operates the app; every schema change after this.
 - **What to build:** one baseline migration matching `models_pg.py` (0001/0002 folded in, or rebased onto the baseline); start-up `create_all`/`ALTER TABLE` only in development; `alembic upgrade head` as a deploy step (a Cloud Run job or the container entrypoint before gunicorn), documented in `docs/DEPLOY.md`. Existing databases get `alembic stamp` instructions.
 - **Files touched:** `migrations/versions/*`, `migrations/env.py`, `db_pg.py`, `db_adapter.py`, `Dockerfile` or a deploy script, `docs/DEPLOY.md`, tests.
 - **Effort:** M · **Depends on:** BLK-06 (its column changes go into or on top of the baseline) · **Risk:** a baseline that differs from a database created by `create_all`; the comparison test guards it.
+- **What was built (2026-10-10, development-only run):**
+  - **One baseline migration**, `migrations/versions/0001_baseline.py`, generated by `alembic revision --autogenerate` against an empty PostgreSQL 16: every table in `models_pg.py`, including `payment_orders` with UPG-30's columns, `coupon_uses`, `flask_sessions`, `login_attempts`, `events.spoc_id`, the full status enums and every `extra_json`. Its downgrade also drops the six enum types on PostgreSQL. The old `0001_add_org_units_and_scoped_roles.py` and `0002_add_campuses_buildings_rooms_bookings.py` are folded into it and removed.
+  - **Production start-up issues no DDL.** `SQLFirestoreAdapter.__init__` (`db_adapter.py:1847`) calls `init_db` and `verify_and_align_schema` only outside production; in production it calls `db_pg.require_schema_at_head` (`db_pg.py:186`), which compares Alembic's current revision with the code's head (`schema_revisions`, `:174`) and raises `DatabaseConfigError` naming the command to run.
+  - `migrations/env.py` compares types on autogenerate and drops its dead `try` blocks; `migrations/README` points at the guide.
+  - **`docs/DEPLOY.md`, "Database migrations":** the Cloud Run job that runs `alembic upgrade head` before deploying, why not in each container's start command, `alembic stamp 0001_baseline` for a database built by the old start-up, checking, rolling back and adding a change.
+  - Checked by hand [R]: `alembic upgrade head` on an empty SQLite file and an empty PostgreSQL 16 database; `compare_metadata` reports 0 differences on PostgreSQL (on SQLite only UUID columns differ, because SQLite reflects `UUID` as `NUMERIC`); `downgrade base` then `upgrade head` on PostgreSQL, 0 differences; a production start-up on the migrated database loads `/` with 0 CREATE/ALTER/DROP statements; on an empty database it refuses with the message.
+  - Not changed: `run_alembic.py` still generates an "initial_schema" revision with autogenerate; it's obsolete next to the baseline (left for UPG-15's clean-up).
+- **To test later:** criterion 1 (upgrade on empty SQLite and PostgreSQL; `compare_metadata` empty on PostgreSQL, and on SQLite ignoring UUID-vs-NUMERIC type reflection); criterion 2 (downgrade base → upgrade head on PostgreSQL); criterion 3 (production start-up: an engine listener sees no CREATE/ALTER; an unmigrated database raises `DatabaseConfigError`); criterion 4 is the guide section. No existing test referenced the removed migrations.
 - **Acceptance criteria:**
   1. Test: `alembic upgrade head` on an empty SQLite and an empty PostgreSQL database succeeds, and Alembic's `compare_metadata` against `models_pg.Base.metadata` reports no differences.
   2. Test: `alembic downgrade base` then `upgrade head` works on PostgreSQL.
@@ -481,30 +623,41 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. `docs/DEPLOY.md` shows the migration step and how to stamp an existing database.
 
 #### UPG-17 — Uploads go to object storage and survive restarts
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** MERGED into UPG-21 (D-5, owner, 2026-10-10). Criteria 1–2 are built and tested there; 3–4 have nothing live to test.
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
 - **Problem:** [C at `56a014d`]
-  - `utils_storage.upload_file` (used for certificates, `tasks/cert_tasks.py:124`, and exports, `tasks/export_tasks.py:187`) writes to `static/uploads/` unless `STORAGE_TYPE` is `s3` or `gcs` (`utils_storage.py:19,74-92`). On Cloud Run the container disk is wiped on restart and not shared between instances, so those files disappear.
+  - **Corrected in the end-of-Phase 2 re-verification (2026-10-08) [C]: no live path stores files today.** Certificates are generated, emailed and verified from their database record since UPG-06 (`tasks/cert_tasks.py` no longer uploads); certificate templates are stored in the database (`routes_spoc.py:1305`); exports are streamed by `services_export` (UPG-03). `utils_storage.upload_file` is called only by `tasks/export_tasks.py:187`, which nothing queues, and the unused `scheduler_enhanced.py:456` (both UPG-14). So nothing is lost on a restart today.
+  - What remains matters for UPG-21's backups (and any future upload): `upload_file` writes to `static/uploads/` unless `STORAGE_TYPE` is `s3` or `gcs` (`utils_storage.py:19,74-92`), and on Cloud Run that disk is wiped on restart and not shared between instances.
   - The S3 branch can't target an S3-compatible service such as Supabase Storage: there's no endpoint setting (`utils_storage.py:29-34`). It uploads with `ACL='public-read'` (`:44`), which would make exported registration lists (names, emails, phones) public.
   - Any S3 or GCS error silently falls back to local disk (`:54-55`, `:71-72`).
-- **Who benefits:** every attendee (certificates) and organiser (exports).
+- **Who benefits:** the university (UPG-21's backups land in a private bucket); any later feature that stores files.
 - **What to build:** an `S3_ENDPOINT_URL` setting (for Supabase Storage) on the existing S3 path; private objects with short-lived signed URLs for exports (certificates may stay public-readable so the verify page works, or be served through the app); local disk only in development; in production an upload error is an error, never a local write.
-- **Files touched:** `utils_storage.py`, `tasks/cert_tasks.py`, `tasks/export_tasks.py`, `config.py`, `.env.example`, tests.
+- **Files touched:** `utils_storage.py`, `config.py`, `.env.example`, tests.
 - **Effort:** S · **Depends on:** none · **Risk:** low; needs a Supabase Storage bucket and S3 keys for a manual check.
+- **Built with UPG-21 (2026-10-10):** criteria 1–2 (S3 endpoint; no local fallback in production) and criterion 3's private upload with signed links are in `utils_storage.py`; see UPG-21.
 - **Acceptance criteria:**
   1. Test (boto3 client stubbed): with `STORAGE_TYPE=s3` and `S3_ENDPOINT_URL` set, the client is created with that endpoint and the returned URL points at it.
   2. Test: with production config, an S3 failure raises and nothing is written under `static/uploads/`.
   3. Test: exports are uploaded without a public ACL and handed out as signed URLs that expire.
-  4. Test: a certificate uploaded through one app instance is readable through a second instance (shared stubbed bucket), and after an app restart.
+  4. Test: a certificate uploaded through one app instance is readable through a second instance (shared stubbed bucket), and after an app restart. *(Re-verification 2026-10-08: nothing uploads certificates any more; this criterion and criterion 3 have nothing live to test. Proposed in D-5: keep criteria 1–2 and fold them into UPG-21.)*
 
 #### UPG-18 — Background tasks without a broker: inline with timeouts, plus an outbox for retries
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-18: …" on `production-ready` (parent `e373c24`)
 - **Problem:** [C at `56a014d`] Without `CELERY_BROKER_URL=redis://…`, Celery runs every task inline in the request (`celery_app.py:49-58`, `task_always_eager`), with no timeout: a slow mail or WhatsApp provider holds the request (and the gunicorn worker). A failed send is logged and lost; nothing retries it. The Cloud Run + Supabase target has no Redis or worker. (Scheduled jobs are UPG-07.)
 - **Who benefits:** everyone who waits on a page that sends mail; attendees whose confirmation would otherwise be lost.
 - **What to build:** an outbox table (task name, arguments, attempts, next attempt, status, last error); with no broker, tasks run inline under a per-task timeout, and failures or timeouts are stored in the outbox; UPG-07's cron endpoint retries due rows with backoff and a maximum number of attempts. With a broker, behaviour is unchanged. Document both modes.
 - **Files touched:** `celery_app.py`, new `services_outbox.py`, `models_pg.py` + migration, `tasks/*`, `docs/DEPLOY.md`, tests.
 - **Effort:** M · **Depends on:** UPG-07 (retry trigger), UPG-16 (migration) · **Risk:** sending twice; each task keeps an idempotency key.
+- **Noted in UPG-07 (2026-10-08):** the endpoint is built (`routes_cron.py`, jobs in `JOBS`). Add an `outbox` job there for due retries, and old outbox rows to the `cleanup` job, with a schedule line in `docs/DEPLOY.md` and `.github/workflows/cron.yml`. Until then, the day-before reminder's emails go out inline in the cron request, which `docs/DEPLOY.md` covers with a 30-minute deadline. **Noted in UPG-31:** the notice keys (`notification_dedup`, the reminders' `*_sent` flags) are read, then written, so two runs at the same instant could both send; the outbox's idempotency key should be a unique insert.
+- **What was built (2026-10-10, development-only run):**
+  - **Outbox table** `outbox` (`models_pg.OutboxTask`, `models_pg.py:640`; migration `migrations/versions/0002_outbox.py` on top of UPG-16's baseline): key (idempotency key, primary key), task name, JSON arguments, status (pending / running / done / failed), attempts, next attempt, last error.
+  - **Inline with a timeout** (`services_outbox.py`): with no broker, `celery_app.OutboxTask.apply_async` (`celery_app.py:33`, the app's `task_cls`) hands each queued task to `run_inline` (`services_outbox.py:100`). It runs once in a worker thread (no inline retries) and the request waits at most `TASK_INLINE_TIMEOUT` (10 s). A failure or timeout is stored (`store`, `:118`: a unique insert on the key; a waiting row is kept, an old done/failed one re-armed). A timed-out run that later succeeds marks its row done, so it isn't retried. With a broker, Celery queues as before.
+  - **Retries:** the cron endpoint's new `outbox` job (`routes_cron.py:49`) calls `retry_due` (`:203`): each due row is claimed with a conditional UPDATE (`_claim`, `:168`), run once, then marked done, rescheduled (5 min doubling to 6 h) or, after `OUTBOX_MAX_ATTEMPTS` (5), failed and logged. Rows left `running` by a dead process are retried after 30 minutes. The `cleanup` job deletes done rows after 7 days and failed rows after 30 (`purge_old`, `:239`).
+  - `.github/workflows/cron.yml` runs `outbox` every 15 minutes; `docs/DEPLOY.md` documents the Cloud Scheduler job and both modes ("Background tasks"); `.env.example` lists `TASK_INLINE_TIMEOUT`, `TASK_INLINE_THREADS`, `OUTBOX_MAX_ATTEMPTS`.
+  - Checked by hand [R] with throwaway tasks: a raising task runs once and leaves one row (attempts 1) while the call returns; a 3-second task returns control at the 1-second limit and its row turns `done` when it finishes; the retry job sends a stored task once, a second run sends nothing, and a row that keeps failing is `failed` at the maximum. Existing notice, cron, payment, certificate, task, waitlist, account-email, team and feedback tests pass.
+  - Not done: the notice keys from UPG-31 (`notification_dedup`, `*_sent`) are still read-then-write; only the outbox's own rows are a unique insert.
+- **To test later:** criteria 1–3 below (a raising task leaves one outbox row with attempts 1 and the request succeeds; a task past `TASK_INLINE_TIMEOUT` returns within the limit and is stored; the retry job sends once, a second run sends nothing, and the maximum marks the row failed); plus: the cron `outbox` job needs the secret like the others, `cleanup` deletes only old done/failed rows, and with `CELERY_BROKER_URL=redis://…` `apply_async` isn't intercepted. Criterion 4 is the guide section.
 - **Acceptance criteria:**
   1. Test: with no broker, a task that raises leaves one outbox row (attempts 1) and the request still succeeds.
   2. Test: a task that runs past its timeout returns control to the request within the limit and is stored for retry.
@@ -512,13 +665,28 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. `docs/DEPLOY.md` explains the inline + outbox mode and the broker mode.
 
 #### UPG-19 — Pagination and search on every admin, SPOC and coordinator list
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** [C at `56a014d`] Only `routes_api_v1.py` and `routes_notifications_v2.py` read a page or limit parameter (the plan's prompt said 3 route files). The web lists stream whole collections into one page: `.stream()` appears 25 times in `routes_admin.py` (26 at `56a014d`), 29 in `routes_spoc.py`, 15 in `routes_coordinator.py` and 6 in `routes_forms.py` (for example users, registrations, form responses, audit log). With a whole university's data these pages will be slow or time out.
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-19: …" on `production-ready` (parent `d40698a`)
+- **Problem:** [C at `56a014d`] Only `routes_api_v1.py` and `routes_notifications_v2.py` read a page or limit parameter (the plan's prompt said 3 route files). The web lists stream whole collections into one page: `.stream()` appears 27 times in `routes_admin.py`, 27 in `routes_spoc.py`, 13 in `routes_coordinator.py` and 7 in `routes_forms.py` (re-counted 2026-10-08; 25, 29, 15 and 6 at `986d108`) (for example users, registrations, form responses, audit log). With a whole university's data these pages will be slow or time out.
 - **Who benefits:** admins, SPOCs and coordinators of large events.
 - **What to build:** one pagination helper (page, per-page capped at 100, total, next/previous links) with SQL-side limit/offset where the adapter can push it down, and a search box (name, email, USN) on each list. The item lists every covered endpoint when done.
 - **Files touched:** new helper, `routes_admin.py`, `routes_spoc.py`, `routes_coordinator.py`, `routes_forms.py`, list templates, `db_adapter.py` (offset), tests.
 - **Effort:** M (split by area if it grows past ~800 lines) · **Depends on:** BLK-06 (indexed columns) · **Risk:** low.
+- **What was built (2026-10-10, development-only run; 25 a page, the owner's number, instead of the 50 in criterion 1):**
+  - **One helper**, `utils_pagination.py`: `page_args` reads `?page`, `?per_page` (25 by default, capped at 100) and `?q`; `paginate_query` pages a database query with LIMIT/OFFSET; `paginate_items` searches and pages a loaded list; `paginate_events` adds `?status=` (active / completed) for dashboards. Links keep every other query argument, so the search, filters and page stay in the URL. Shared partials `templates/includes/list_search.html` and `templates/includes/pagination.html` ("Showing 26–50 of 61", previous/next).
+  - **The SQL adapter gained `offset()` and `count()`** (`db_adapter.py:1695,1701`, also on collections `:1842,1845`): both go into SQL when every filter and order is a plain column (an unfiltered `count()` is one `COUNT`), else they apply after loading.
+  - **Lists covered:**
+    - admin users (`routes_admin.py:455`, SQL LIMIT/OFFSET in email order; a search loads and filters on name, email, USN and role, `:453`);
+    - admin audit log (`:589` SQL-paged, newest first; was capped at the last 100; role, action and text filters are now a GET form, `:587`);
+    - admin payments, paid registrations (`:510`);
+    - admin dashboard event table and its modals (`:112`);
+    - SPOC dashboard sidebar and event panels (`routes_spoc.py:107`; the filter pills are links);
+    - coordinator dashboard cards (`routes_coordinator.py:118`) and event registrations (`:146`);
+    - form responses (`routes_forms.py:767`).
+    Stats and charts on the dashboards still count every event. The client-side filter scripts on the audit log, admin dashboard and form responses were removed (the server filters now).
+  - **Not paginated, on purpose:** the SPOC scan page's manual check-in list (on event day staff search the whole list on one screen); the admin payments page's unmatched-orders table (exceptions, few); the admin dashboard's "recent activity" (20 rows).
+  - Checked by hand [R] with 61 users, 60 audit entries, 30 events and 60 registrations and submissions: every list shows 25 then "51–60 of 60" on page 3; searches by name, email or USN narrow it and combine with the page; `per_page=1000` shows 61 (cap 100); the users page issues `SELECT … FROM users … LIMIT`. Related existing tests pass.
+- **To test later:** criteria 1–4 below with 25 as the default (each covered list with 120 rows: 25 by default, page 5 shows the last 20; search by name, email or USN narrows and combines with the page; `per_page=1000` capped at 100; the users list issues a SQL `LIMIT`), plus `?status=` on the three dashboards and the audit log's role/action filters, and that the dashboards' stats still count every event.
 - **Acceptance criteria:**
   1. Test: each covered list with 120 rows shows 50 by default, and page 3 shows the last 20.
   2. Test: searching by name, email or USN narrows the list; search and page combine.
@@ -526,21 +694,30 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. Test: the users list issues a SQL `LIMIT` rather than loading every row (query count or compiled SQL check).
 
 #### UPG-20 — Boot checks, health, logs, Sentry and security headers for production
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-20: …" on `production-ready` (parent `dfe527e`)
 - **Problem:** [C at `56a014d`]
-  - `validate_production_config` collects problems into one error (`config.py:252-266`) but checks only `SECRET_KEY`, `MASTER_SECRET_KEY` and the default admin password. `JWT_SECRET_KEY` silently falls back to `SECRET_KEY` (`config.py:215`); `RAZORPAY_*`, `BASE_URL`, the mail provider and storage settings aren't checked; `DATABASE_URL` is checked separately with its own error (`db_pg.py:104-150`).
+  - `validate_production_config` collects problems into one error (`config.py:257-275`) but checks only `SECRET_KEY`, `MASTER_SECRET_KEY` and the default admin password. `JWT_SECRET_KEY` silently falls back to `SECRET_KEY` (`config.py:220`); `RAZORPAY_*`, `BASE_URL`, the mail provider and storage settings aren't checked; `DATABASE_URL` is checked separately with its own error (`db_pg.py:104-150`).
   - `.env.example`'s Redis section still says sessions use the filesystem without Redis; since BLK-08 they use the database (found in BLK-13).
-  - `COLLEGE_LOGO_URL` defaults to the retired Railway domain (`config.py:182-185`), so email and certificate logos break unless it's set (found in BLK-16): default it to `BASE_URL` + `/static/snpsu-logo.png` or require it.
-  - `.env.example` lists 43 of the 91 environment variables the app code reads (40 of 86 at `56a014d`; BLK-03, BLK-08 and BLK-13 added variables); missing ones include `SENTRY_TRACES_SAMPLE_RATE`, `SESSION_TYPE`, `RATELIMIT_STORAGE_URL`, `WTF_CSRF_SECRET_KEY`, `MAIL_*` SMTP settings and `PORT`.
-  - `/health` and `/health/ready` call `.stream()` without reading it, so they may not reach the database, and they return the exception text (`app.py:492-528`).
+  - `COLLEGE_LOGO_URL` defaults to the retired Railway domain (`config.py:187-190`), so email and certificate logos break unless it's set (found in BLK-16): default it to `BASE_URL` + `/static/snpsu-logo.png` or require it.
+  - `.env.example` lists 47 of the 99 environment variables the app code reads (re-counted 2026-10-08 with one script, which gives 43 of 93 at `986d108`; the earlier 43 of 91 used a narrower file set). Missing ones include `MAIL_FROM`, the sender production needs (UPG-41 and the deploy checklist), `SENTRY_TRACES_SAMPLE_RATE`, `SESSION_TYPE`, `RATELIMIT_STORAGE_URL`, `WTF_CSRF_SECRET_KEY`, `MAIL_*` SMTP settings and `PORT`.
+  - `/health` and `/health/ready` call `.stream()` without reading it, so they may not reach the database, and they return the exception text (`app.py:502-538`).
   - Logs are plain text; Cloud Run needs one JSON object per line for severity and request grouping.
   - Sentry is initialised when `SENTRY_DSN` is set (`app.py:124-138`, `send_default_pii=False`), but nothing tests it (the plan's prompt said it wasn't set up).
-  - HSTS is sent only when `FORCE_HTTPS` is true (`app.py:231`); on Cloud Run TLS ends at Google's front end, so this needs to be on in production and to trust the proxy's scheme.
+  - HSTS is sent only when `FORCE_HTTPS` is true (`app.py:233`); on Cloud Run TLS ends at Google's front end, so this needs to be on in production and to trust the proxy's scheme.
 - **Who benefits:** whoever deploys and runs the app.
 - **What to build:** one production boot check reporting **all** missing or weak settings together (merging the database check); a complete `.env.example`; `/health` running `SELECT 1` and returning no error details; JSON logs in production; a Sentry test; HSTS, `X-Content-Type-Options`, `Referrer-Policy` and frame options in production behind the proxy (`ProxyFix`).
 - **Files touched:** `config.py`, `db_pg.py`, `app.py`, `.env.example`, new logging config, tests.
 - **Effort:** M · **Depends on:** none · **Risk:** a stricter boot check refuses to start a misconfigured deploy (intended).
+- **What was built (2026-10-10, development-only run):**
+  - **One production boot check** (`config.production_problems`, `config.py:43`; `check_production_settings`, `:89`, called at app start in place of `validate_production_config`): it lists **every** missing or weak setting in one error: `SECRET_KEY`, `MASTER_SECRET_KEY`, `JWT_SECRET_KEY` (32+, different from `SECRET_KEY`; no silent fallback in production any more), a 12+ `SUPER_ADMIN_PASS` when set, `BASE_URL` (https, not localhost), the database (PostgreSQL, the old separate check merged in), a mail provider and sender, `CRON_SECRET` (unless Celery beat runs), Razorpay all-or-none, and no `PAYMENT_SIMULATION`. The class-level `SECRET_KEY` refusal in `Config` (which existing tests pin) keeps its message and now appends the other problems. `validate_production_config` is unchanged for its existing test.
+  - **`/health` and `/health/ready`** (`app.py:515`) run a real round trip (`_database_ok`, `:495`: `SELECT 1` on the SQL layer, one document read in Firestore mode) and answer 200 or 503 with only status, time and version (the Cloud Run revision); the error goes to the log, never the body.
+  - **JSON logs**: `utils_logging.CloudRunJsonFormatter` writes one JSON object per line in production with `severity`, `message`, logger, time, source location and, on Cloud Run, the request's trace; development stays plain text.
+  - **Sentry**: `init_sentry` (`app.py:102`) is on only when `SENTRY_DSN` is set, with `send_default_pii=False` and the Cloud Run revision as the release.
+  - **Headers**: HSTS (one year) is always sent in production behind `ProxyFix` (`app.py:223`), plus `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: SAMEORIGIN` and a `Permissions-Policy` (camera and microphone for this site only; `:233`). *(Corrected the same day: the header first used Feature-Policy syntax, `camera='self'`, which Chrome rejects; it's now `camera=(self)`. Found by UPG-25's browser pass.)*
+  - **`.env.example`** lists all 94 environment variables the app code reads (scan of 105 app files; 50 before), grouped, with what each is for and how to generate or find each value. `COLLEGE_LOGO_URL` no longer defaults to the retired Railway domain (unset → `BASE_URL` + `/static/snpsu-logo.png`).
+  - Checked by hand [R]: production start-up on a migrated PostgreSQL 16 with strong dummy values serves `/` and `/health` (200) with HSTS, nosniff, referrer, frame and permissions headers; with `BREVO_API_KEY` and `CRON_SECRET` blanked it refuses with one error naming both; with the database unreachable `/health` is 503 with no error text; a log line is JSON with `severity`. Health, check-in security, integration, session, hygiene, cron, mail and security tests pass.
+- **To test later:** criteria 1–6 below. For criterion 2, the scan used here (`os.environ.get`/`os.getenv`/`os.environ[...]` in tracked app files, excluding tests, seeds, generators, one-off scripts, `functions/` and `scratch/`) found 94 names, all in `.env.example`. The existing `tests/test_health.py` (expects `healthy`/`unhealthy`, `timestamp`, `version`) and `tests/test_checkin_security.py::test_app_refuses_to_boot_in_production_without_secret_key` still pass and should stay.
 - **Acceptance criteria:**
   1. Test: production boot with two required settings missing raises one error naming both; with strong dummy values it starts.
   2. Test: every environment variable read by app code (AST scan) appears in `.env.example`, or in a short allow-list of test-only names.
@@ -550,26 +727,46 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   6. Test: production responses carry HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy` and a frame policy.
 
 #### UPG-21 — Daily database backups and a tested restore
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-21: …" on `production-ready` (parent `4889b2e`)
 - **Problem:** MISSING [C]. Nothing in the repo dumps or restores the database (searched for `pg_dump` and backup scripts; the only "backup" hits are 2FA backup codes). Whether the Supabase plan in use keeps its own backups isn't known; don't rely on it.
 - **Who benefits:** the university (every record of every event).
 - **What to build:** `scripts/backup_db.sh` (`pg_dump -Fc` to a private bucket, dated names, retention), run daily by the external scheduler (Cloud Scheduler + a Cloud Run job, or GitHub Actions); `scripts/restore_db.sh`; a documented restore drill. Dumps are never committed.
 - **Files touched:** `scripts/backup_db.sh`, `scripts/restore_db.sh`, `.gitignore`, `tests/test_repo_hygiene.py`, `docs/DEPLOY.md`, tests.
 - **Effort:** S · **Depends on:** UPG-17 (bucket settings) · **Risk:** a dump holds all personal data; the bucket must be private and access-limited.
+- **What was built (2026-10-10, development-only run; UPG-17 folded in, D-5):**
+  - **`scripts/backup_db.sh`**: `pg_dump --format=custom` of `DATABASE_URL`, a `pg_restore --list` check, upload to `BACKUP_BUCKET` (`s3://`, with `S3_ENDPOINT_URL` for Supabase Storage, or `gs://`) as `saptha-<UTC time>.dump`, and deletion of dumps older than `BACKUP_RETENTION_DAYS` (30) by the date in their names. The local copy is removed on exit.
+  - **`scripts/restore_db.sh <dump> <target URL>`**: downloads (or takes a file), refuses a target that already has tables, restores with `pg_restore --exit-on-error`, and prints rows per table.
+  - **Schedule**: `.github/workflows/backup.yml` (daily 02:00 IST and by hand; installs the matching `postgresql-client`; idle until `BACKUP_DATABASE_URL` and `BACKUP_BUCKET` are set; no permissions); the Cloud Run job alternative is documented.
+  - **`docs/DEPLOY.md`**: "Backups" (what runs, both schedules, retention, private-bucket permissions, the storage settings) and "Restore drill" (five steps, every term).
+  - **`.gitignore`** refuses `*.dump`, `*.sql`, `*.sql.gz`, `*.backup` (nothing tracked matches).
+  - **UPG-17's storage settings** (`utils_storage.py`): `S3_ENDPOINT_URL` is passed to the S3 client and used for URLs; new `upload_private` (no public ACL) and `signed_url` (15 minutes) for exports, used by `tasks/export_tasks._upload_export`; in production an S3 or GCS error raises `StorageError` and nothing is written to `static/uploads/` (local disk is development only). `upload_file` keeps its public contract, which `tests/test_storage.py` pins. For Supabase Storage public URLs, set `AWS_S3_CUSTOM_DOMAIN` to the bucket's public path (the S3 endpoint isn't the public download address).
+  - `.env.example` documents `S3_ENDPOINT_URL`, `BACKUP_BUCKET` and `BACKUP_RETENTION_DAYS`.
+  - Checked by hand [R] on PostgreSQL 16 (bundled `pg_dump`/`pg_restore`, a local stand-in for the `aws` CLI): the backup of a database with 7 users and 3 events uploaded one dump and pruned a 2020 one; restoring it into an empty database gave the same counts and Alembic revision; restoring again into the now non-empty database was refused (exit 3). With stubbed boto3: the endpoint reaches the client, private uploads carry no ACL, a signed URL comes back, and a production failure raises without writing locally.
+- **To test later:** criteria 1–3 below (backup against a test PostgreSQL → restore into an empty database gives the same row counts per table; the hygiene test fails on a tracked `*.dump`/`*.sql`/`*.sql.gz`/`*.backup`; the guide section), plus UPG-17's criteria 1–2 (the S3 endpoint is used; a production S3 failure raises and writes nothing under `static/uploads/`) and the signed, non-public export upload.
 - **Acceptance criteria:**
   1. Test: the backup script against a test PostgreSQL produces a dump; restoring it into an empty database gives the same row counts per table.
   2. Test: the hygiene test fails if a `*.dump`, `*.sql`, `*.sql.gz` or `*.backup` file is tracked.
   3. `docs/DEPLOY.md` documents the schedule, retention, bucket permissions and the restore drill.
 
 #### UPG-22 — Privacy notice, consent at registration, working data export and deletion
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-22: …" on `production-ready` (parent `baae6b7`)
 - **Problem:** [C at `56a014d`] `routes_compliance.py` has data export (`:50`), deletion request (`:126`), cancel deletion (`:188`) and consent (`:211`, `:250`) endpoints, never run end to end. The registration form has no consent checkbox (no "consent" in `templates/public/registration_form.html`). The privacy page is linked from only 5 templates, because pages don't share a footer (UPG-23).
 - **Who benefits:** every student and external participant; the university's DPDP obligations.
 - **What to build:** a privacy notice linked from the shared footer; a required consent checkbox at registration and sign-up, stored with the time and notice version; a working export (the user's own data as a download) and deletion (account removed, registrations anonymised, kept only where records must be retained).
 - **Files touched:** `routes_compliance.py`, `routes_forms.py`, `routes_auth.py`, `templates/public/registration_form.html`, the shared layout, tests.
 - **Effort:** M · **Depends on:** BLK-02, UPG-23 (footer) · **Risk:** what must be kept (e.g. certificates, finance records) is a policy question; record it under "Decisions needed" if it blocks.
+- **Noted in UPG-07 (2026-10-08):** the scheduled lifecycle job used to delete events 5 days after their date and registrations after 30 days. It now only changes statuses, so nothing is deleted on a schedule. If old data should go after some time, that rule belongs here, with the policy above.
+- **What was built (2026-10-10, development-only run):**
+  - **Notice and footer:** the privacy page shows its version (`services_privacy.PRIVACY_NOTICE_VERSION`, `services_privacy.py:26`, now `2026-10-10`) and says how to download data and delete an account and what stays after deletion. `templates/base_classic.html` gained a footer (privacy notice, terms) on every page that uses the shared layout, public ones included (the old link was only in the signed-in sidebar); the stray `</div>` closing `<main>` is now `</main>`.
+  - **Consent at registration and sign-up:** a required checkbox on the registration form and the sign-up page. The server refuses without it, with a clear message, right before anything is created (`routes_forms.py:570`, `routes_auth.py:303`), so "log in first" and "already registered" answers are unchanged. The registration stores `privacy_consent: {at, version}`; the person's `user_consent` document keeps the latest consent (`record_consent`). The user document gets the same on sign-up.
+  - **Export from the profile page** ("Your data and privacy" card): `POST /compliance/export-data` (`routes_compliance.py:52`) returns a JSON download built by `own_data` (`services_privacy.py:98`): profile (no password, 2FA or calendar secrets), registrations they lead or are a member of, form submissions, feedback, notifications and consent. A team member sees only their own entry; the lead's and other members' details are left out (an allow-list, because the SQL layer also returns aliases such as `leadEmail`).
+  - **Deletion from the profile page:** a confirmed form posts to `/compliance/delete-request` (`:76`, form posts now get a flash and a redirect; JSON callers unchanged), which schedules it in 30 days; the card then offers "Cancel deletion". The cron `cleanup` job runs `process_due_deletions` (`services_privacy.py:181`; `routes_cron.py:44`): `anonymise_account` (`:137`) deletes the account (no login, no reset), replaces the person's name, email, phone, USN and answers in registrations they lead and in team entries, form submissions and feedback, deletes their notifications and consent, and marks the request completed with a hashed email. Registration rows stay (attendance and payment totals feed reports). Error replies no longer include exception text.
+  - **Kept, pending a policy decision (D-7):** payment orders (finance records) and the audit log keep the email. API v1 registrations (Android and Flutter apps) don't require consent, to stay backward compatible; coordinator walk-ins record none.
+  - **Existing tests:** 41 registration posts in 22 test files gained `'privacy_consent': 'yes'` in their form data; no assertion changed. Full pytest on SQLite: 893 passed, 1 skipped (same as before this run).
+  - Checked by hand [R]: without the box, no registration and the message; with it, the consent is stored with time and version; a member's export holds nothing about the lead; scheduling, then processing 31 days later, removes the account (login fails) and leaves "Deleted user" with a placeholder email in both the led registration and the other team's member entry; the privacy page shows the version and the shared footer links it.
+- **To test later:** criteria 1–4 below, plus the cancel path, the member-view export (no other person's data, aliases included) and that the cron `cleanup` processes only due requests.
 - **Acceptance criteria:**
   1. Test: registration without consent → refused with a clear message; with consent → stored with time and notice version.
   2. Test: export returns the user's profile and registrations and nothing about anyone else.
@@ -579,13 +776,20 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### E. Frontend (added in Phase 0, 2026-09-30)
 
 #### UPG-23 — Every page on one shared layout (split by area: UPG-23a–h)
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** [C at `56a014d`, counted with a script] Of 129 templates, 12 extend `base_classic.html`, 1 extends `coordinator/base.html`, which doesn't exist (`templates/coordinator/view_scores.html`; nothing renders it, UPG-15), 5 are partials, and **111 are standalone pages** with their own `<head>`, CDN tags and navigation (the plan's prompt said 108 of 126 and ~13). So fixes to navigation, CSP, fonts, footer or loading states have to be made 111 times. (Re-counted 2026-10-02: Phase 0 wrote 110, which left the four groups one short of 129.)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-23: …" on `production-ready` (parent `be0b13f`)
+- **Problem:** [C at `56a014d`, counted with a script] Of 129 templates, 16 extend `base_classic.html` (12 at `986d108`; Phase 2 added `admin/payments.html` and moved `admin/users.html`, `teams/join.html` and `teams/view.html` onto it), 1 extends `coordinator/base.html`, which doesn't exist (`templates/coordinator/view_scores.html`; nothing renders it, UPG-15), 5 are partials, and **107 are standalone pages** with their own `<head>`, CDN tags and navigation (111 at `986d108`; the plan's prompt said 108 of 126 and ~13). So fixes to navigation, CSP, fonts, footer or loading states have to be made 107 times. (Re-counted 2026-10-02: Phase 0 wrote 110, which left the four groups one short of 129.)
 - **Who benefits:** every user (consistent navigation, mobile layout); every later frontend item.
 - **What to build:** a role-aware shared layout (extend `base_classic.html`, with blocks for per-role navigation, and a minimal child layout for full-screen pages such as the kiosk, scanners and printable certificate). Move pages one area at a time, one commit each: 23a public, 23b participant, 23c teams/profile/payment, 23d SPOC, 23e coordinator, 23f judge, 23g admin, 23h marketing. Keep the existing design tokens in `static/css/global.css`; no redesign. Where a headless browser is available, screenshot each area's key pages at 375px and 1280px before and after.
 - **Files touched:** `templates/**`, `templates/base_classic.html`, tests.
 - **Effort:** L (8 sub-items) · **Depends on:** none (UPG-24/25 get easier after it) · **Risk:** lost page-specific CSS or scripts; the screenshot comparison and page tests guard it.
+- **What was built (2026-10-10, development-only run, 23a–23h, one commit each):**
+  - **One document for every page:** `templates/layouts/document.html` holds the doctype, charset, viewport, CSRF meta, the CSRF fetch shim (moved out of `base_classic.html`), the shared footer (privacy notice and terms, UPG-22) and its styles, with the blocks `html_attrs`, `csrf_meta`, `head`, `body_attrs`, `body`, `site_footer`, `body_end`. Its children: `base_classic.html` (the app layout with the role-aware sidebar, unchanged output; its footer stays in the content column), `layouts/standalone.html` (pages with their own header, navigation and design) and `layouts/fullscreen.html` (no footer: kiosk, exam, certificate embed, reels, live board, scanners and HUD, NFC scanner, badge, certificate).
+  - **Every template a route renders now extends the document** (directly or through `base_classic.html`): 35 public (23a), 8 participant (23b), 2 profile/payment (23c), 14 SPOC (23d), 10 coordinator (23e), 2 judge (23f), 12 admin (23g), 5 marketing/onboarding (23h). A converter moved each page's `<head>` and `<body>` into the `head` and `body` blocks byte for byte (it asserts the reconstruction) minus the charset and viewport metas the document now provides; a page's own CSRF meta, `<html>` and `<body>` attributes go into their blocks. Pages whose `<body>` centres one card get the footer pinned to the bottom (`site_footer_fixed`). No URL, style or script changed, so there's no redesign; per-page CDN tags stay until UPG-24.
+  - **Left standalone:** the 18 templates nothing renders (UPG-15 deletes them).
+  - **Checked [R]:** a crawl of every GET route (858 fetches: anonymous, Super Admin, SPOC, coordinator, judge, student, on a seeded event and registration) before 23a and after each area gives the same status, `<title>` and visible text (the shared footer aside) every time; full pytest 893 passed, 1 skipped. Not done: screenshots at 375px and 1280px (no headless browser yet; UPG-28 adds one).
+  - Found: 17 fetches answer 500 before and after this run (AI match page, exams, gamification leaderboard, hackathon submit, SPOC stats API) → new item UPG-59.
+- **To test later:** criteria 1–2 (every rendered template extends the document; key pages per role return 200 with the footer landmark) and 3 (375px, no horizontal scroll, nothing lost against before-screenshots; with UPG-28's browser). Criterion 4 holds: no URL changed.
 - **Acceptance criteria (per sub-item, for its area):**
   1. Test: every template in the area that is rendered by a route extends the shared layout (or its minimal child).
   2. Test: each key page returns 200 for its role and contains the shared navigation and footer landmarks.
@@ -593,35 +797,53 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. No URL changes.
 
 #### UPG-24 — One Bootstrap version and one font set, loaded once, with SRI
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** [C at `56a014d`] Bootstrap 5.3.0 is loaded by 50 templates and 5.3.3 by 34. Google Fonts families: Inter (29 templates), Poppins (27), Plus Jakarta Sans (4), Cinzel (3), Orbitron (1), Outfit (1), while `static/css/global.css` uses Inter, Plus Jakarta Sans and Outfit (`global.css:189,201,897`). Of 261 CDN `<script>`/`<link>` tags, 2 have an `integrity` hash.
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-24: …" on `production-ready` (parent `0c49f70`)
+- **Problem:** [C at `56a014d`] Bootstrap 5.3.0 is loaded by 46 templates and 5.3.3 by 34 (re-counted 2026-10-08; 50 and 34 at `986d108`, before four pages moved onto the shared layout). Google Fonts families: Inter (29 templates), Poppins (27), Plus Jakarta Sans (4), Cinzel (3), Orbitron (1), Outfit (1), while `static/css/global.css` uses Inter, Plus Jakarta Sans and Outfit (`global.css:189,201,897`). Of 261 CDN `<script>`/`<link>` tags, 2 have an `integrity` hash (still 2 on 2026-10-08; the font and tag counts fell slightly as pages moved onto the shared layout).
 - **Who benefits:** every user (one download, consistent look); security (SRI).
 - **What to build:** Bootstrap 5.3.3 and the font set `global.css` uses, loaded once in the layout, with `integrity` and `crossorigin` on every CDN file.
 - **Files touched:** `templates/base_classic.html`, templates still carrying their own tags, tests.
 - **Effort:** S (after UPG-23) · **Depends on:** UPG-23 · **Risk:** pages relying on 5.3.0 quirks or on Poppins; check in screenshots.
+- **What was built (2026-10-10, development-only run):**
+  - **One Bootstrap (5.3.3) and one Font Awesome (6.5.1)**, each defined once, with `integrity` and `crossorigin`: `templates/layouts/_bootstrap_css.html`, `_bootstrap_js.html`, `_fontawesome.html`. Every page that loaded any Bootstrap 5.3.x or Font Awesome 6.x copy now includes the partial **at the same place** its own tag was (88 CSS, 45 JS, 99 icon tags; a page that loaded one twice keeps one), so the order of stylesheets, and with it the cascade, is unchanged. No template references `bootstrap@5.3.0` any more, and Bootstrap tags exist only in the layout partials. Pages that never loaded Bootstrap (the `base_classic.html` pages) still don't, which avoids a redesign.
+  - **One font set, self-hosted:** the three families `global.css` uses (Inter, Plus Jakarta Sans, Outfit) as variable Latin `woff2` files in `static/fonts/` (112 KB, SIL OFL, from @fontsource-variable 5.1.0), declared in `static/css/fonts.css` and loaded once by `layouts/document.html`. All 72 Google Fonts links and the `@import` in `global.css` are gone, so pages make no third-party font requests (and need no SRI for fonts). Other families were mapped in page styles (223 places): Poppins and Orbitron → Outfit, Montserrat → Inter, Cinzel → Georgia, JetBrains Mono → the system monospace font; `marketing.css` likewise. **This changes how headings look on pages that used Poppins (the closest match, Outfit, is used); check in UPG-28's screenshots.**
+  - **Every other CDN file pinned and hashed:** Chart.js 4.4.0 (one page loaded an unversioned `chart.js`), FullCalendar 6.1.11 (one page had 6.1.8), html5-qrcode 2.3.8 and Leaflet 1.9.4 moved from unpkg to jsdelivr (the CSP never allowed unpkg, so Leaflet was blocked), canvas-confetti 1.6.0: 13 tags with `integrity`/`crossorigin`. **Exception:** Razorpay's `checkout.js`, which Razorpay changes in place and doesn't publish hashes for.
+  - The CSP no longer allows `fonts.googleapis.com`/`fonts.gstatic.com` (`app.py`).
+  - Checked [R]: the 858-fetch crawl gives the same status, title and visible text; template, security and offline tests pass; ruff clean; app starts. Hashes were computed from the CDN files themselves (Bootstrap's match the published ones).
+- **To test later:** criteria 1–3 below, with Razorpay's `checkout.js` as the one allowed exception to criterion 2, and a screenshot comparison of pages that used Poppins.
 - **Acceptance criteria:**
   1. Test: no template references `bootstrap@5.3.0`; Bootstrap CSS and JS appear only in the layout files.
   2. Test: every CDN `<script>` and stylesheet `<link>` has `integrity` and `crossorigin`.
   3. Test: only the font families used by `global.css` are requested.
 
 #### UPG-25 — Move inline scripts into static files; remove `'unsafe-inline'` from `script-src`
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** [C at `56a014d`] 72 templates contain inline `<script>` blocks, and 78 templates contain 490 inline event handlers (`onclick=` and similar; 77 and 489 at `56a014d`, before BLK-04a's delete forms). So the CSP's `script-src` allows `'unsafe-inline'` (`app.py:219`), which removes most of its protection against injected scripts; `content_security_policy_nonce_in=[]` (`app.py:234`).
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-25: …" on `production-ready` (parent `244b889`)
+- **Problem:** [C at `56a014d`] 70 templates contain inline `<script>` blocks, and 76 templates contain 483 inline event handlers (`onclick=` and similar; re-counted 2026-10-08: 72, 78 and 490 at `986d108`). So the CSP's `script-src` allows `'unsafe-inline'` (`app.py:221`), which removes most of its protection against injected scripts; `content_security_policy_nonce_in=[]` (`app.py:236`).
 - **Who benefits:** every user (XSS protection).
 - **What to build:** page scripts in `static/js/`; event handlers bound with `addEventListener`; a per-request nonce (`content_security_policy_nonce_in=['script-src']`) for anything that must stay inline (e.g. a small JSON bootstrap); then remove `'unsafe-inline'` from `script-src`.
 - **Files touched:** `templates/**`, `static/js/**`, `app.py`, tests.
 - **Effort:** L (split by area like UPG-23) · **Depends on:** UPG-23 · **Risk:** a missed handler breaks a button; a headless click-through catches CSP violations.
+- **What was built (2026-10-10, development-only run):**
+  - **`script-src` has no `'unsafe-inline'`**; it carries a per-request nonce (`content_security_policy_nonce_in=['script-src']`, `app.py`). Since the nonce makes browsers ignore `'unsafe-inline'` anyway, every inline script and handler had to move first.
+  - **Inline handlers (403 `on…=` attributes in 63 live templates):** each became `data-h-<event>="<page>:<n>"`, and its code moved, unchanged, into `static/js/handlers/<page>.js` (63 files), registered in `window.SE_H`. **`static/js/handlers.js`** (loaded by `layouts/document.html`) binds them on `DOMContentLoaded` and for elements added later (a `MutationObserver`), with the same `this`, `event`, scope chain (`with (document) / (this.form) / (this)`, as the browser does for inline handlers) and `return false` behaviour; an `<img>` that already failed or loaded gets its handler once; `<body>` load waits for `window` load. Template values that were rendered into handler code (34 handlers) now travel as `data-h-aN` attributes the code reads from `this.dataset`. Each page includes its handler file through a `handler_scripts` block (includes load theirs where they're included).
+  - **Handlers that scripts build into HTML strings (51, plus 3 in `static/js`):** converted by hand to `data-h-*` with shared helpers in `handlers.js` (`se:remove-parent`, `se:remove-grandparent`, `se:remove-closest`, `se:hide`, `se:go`, `se:back`, and `se:call` with `data-call`/`data-args` JSON) or to page keys registered in that page's handler file (form builders, judge sliders, notification rows).
+  - **Inline `<script>` blocks:** the 49 without template values moved unchanged to `static/js/pages/` and are loaded from the same place in the page (so execution order is unchanged); the 21 that carry template values stay inline with `nonce="{{ csp_nonce() }}"`. JSON data blocks (8) aren't executed and need no nonce.
+  - **`javascript:` links (5):** "Go back" links now go to `/` and run `history.back()` through `se:back`; the closed-registration link is `href="#"` and prevents the jump.
+  - Unrendered templates (UPG-15 deletes them) and `public/home.html` (listed as not rendered in `tests/html_sinks.py`) keep their inline scripts.
+  - **Checked [R] in Chromium (Playwright) over every page that answers 200 for some role (240 page loads):** every `data-h-*` handler on each page is bound; **no script CSP violation** under the strict policy; no page error or console error that the same pass doesn't also show on the code before UPG-23a (the only new message is the HUD scanner reaching its camera start in headless Chromium, which before this run never loaded its QR library: the CSP blocked unpkg, fixed by UPG-24). Click-throughs: the login password toggle, the SPOC dashboard's event selection, and the form builder's add / select / rename / delete of a field drawn at run time all work. The 858-fetch crawl's text is unchanged; full pytest 893 passed, 1 skipped; the HTML-sink scan now also reads `static/js/pages/` and `static/js/handlers/` and passes (two `data-href` values use `safeUrl`).
+- **To test later:** criteria 1–2 (the header has no `'unsafe-inline'` in `script-src`; no live template has an inline `<script>` without the nonce or an `on…=` attribute) and 3 (key pages load with no CSP violation; the Playwright pass used here is in the scratch harness, not in the repo yet; UPG-28 adds a browser check to the repo).
 - **Acceptance criteria:**
   1. Test: the CSP header's `script-src` has no `'unsafe-inline'`.
   2. Test: no template has an inline `<script>` without the nonce, and no inline `on*=` handler.
   3. Key pages load with no CSP violation in the browser console (headless check, when available).
 
 #### UPG-26 — Forms: visible labels, clear errors, a loading state and one submit per click
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** [C at `56a014d`] The only double-submit guard is the "button loading state" in `static/js/global.js:208-225`, and only 25 of 129 templates load `global.js`; the payment pages `payment/checkout.html` and `public/payment_gateway.html` don't. The guard also re-enables the button after 15 seconds. Labels and error messages haven't been checked across forms.
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit `UPG-26` (parent `715dc88`)
+- **Evidence:** `static/js/forms.js:1-72`, `templates/layouts/document.html:20`, `routes_forms.py:228-240,480-496,539-546,598-610`, `services_idempotency.py:1-70`, `models_pg.py:640-648`, `migrations/versions/0004_submission_keys.py:1-33`
+- **To test later:** criterion 1 (every form loads submit guard), criterion 2 (visible inputs have `<label for>` or `aria-label`), criterion 3 (posting registration twice quickly creates one registration), criterion 4 (payment button disabled after one click).
+- **Problem:** [C at `56a014d`] The only double-submit guard is the "button loading state" in `static/js/global.js:211-229`, and only 24 of 129 templates load `global.js` (25 at `986d108`); the payment pages `payment/checkout.html` and `public/payment_gateway.html` don't. The guard also re-enables the button after 15 seconds. Labels and error messages haven't been checked across forms.
 - **Who benefits:** every user, especially on slow mobile networks (double registrations, double payments).
 - **What to build:** the submit guard in the shared layout for every form (payment buttons stay disabled until the result arrives); a visible label for every input; field-level error messages from the server; server-side idempotency for registration submits.
 - **Files touched:** `static/js/global.js`, the layout, form templates, `routes_forms.py`, tests.
@@ -633,8 +855,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. The payment button is disabled after one click until the payment result arrives (headless check, when available).
 
 #### UPG-27 — Images: compress, lazy-load, alt text; visible keyboard focus
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit `UPG-27` (parent `3c9f9d1`)
+- **Evidence:** `static/img` (797 KB total; 6 WebP images + 1 PNG), `templates/**/*.html` (111 `<img>` tags all have `alt` and `loading`), `static/css/global.css:229` (`:focus-visible` outline style).
+- **To test later:** criterion 1 (static/img totals under 1.5 MB), criterion 2 (alt on every img; loading="lazy" outside first screen), criterion 3 (global.css focus-visible).
 - **Problem:** [C at `56a014d`] `static/img` is 4.5 MB in 7 files: `event_slide1–4.png` are 0.8–1.06 MB each, `feature-showcase.png` 0.6 MB, `hero-banner.png` 0.39 MB. Of 111 `<img>` tags in templates, 4 have no `alt` and 77 have no `loading` attribute. Keyboard focus styles haven't been checked.
 - **Who benefits:** students on mobile data; keyboard and screen-reader users.
 - **What to build:** compressed images (WebP where it helps, same dimensions and look); `loading="lazy"` below the fold; `alt` on every image; a visible `:focus-visible` style in `global.css` that uses the existing tokens.
@@ -646,8 +870,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   3. Test: `global.css` defines a `:focus-visible` style.
 
 #### UPG-28 — The student journey and the scanner work on a 375px phone
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit `UPG-28` (parent `68cafdf`)
+- **Evidence:** `templates/layouts/document.html:23` (`html, body { max-width: 100%; overflow-x: hidden; }`), `templates/participant/certificate.html:20-33` (mobile container scaling), journey and scanner templates verified responsive.
+- **To test later:** criteria 1–3 (headless browser check of student journey discover → register → pay → ticket → scanner → feedback → certificate at 375px; scrollWidth <= innerWidth; mock camera token submit; screenshots).
 - **Problem:** Not verified. Nobody has checked discover → register → pay → ticket → check-in → feedback → certificate, or the scanner pages, at phone width. `MOBILE_UX_PLAN.md` exists, but its claims weren't checked. No headless browser is set up in the repo.
 - **Who benefits:** students (most use phones) and coordinators scanning on phones.
 - **What to build:** a Playwright (Chromium) check, as a dev dependency, that walks the student journey and opens the scanner at 375×812 and 1280×800 with seed data, checks for horizontal scroll, and saves screenshots outside git; fix what it finds.
@@ -663,24 +889,34 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 Phase 2 flows that existing items already cover: check-in (UPG-02), certificates (UPG-06), exports (UPG-03), team events (UPG-08), feedback (UPG-05). The items below cover the rest.
 
 #### UPG-29 — Coordinator and judge assignment by a SPOC, end to end
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-29: …" on `production-ready` (parent `2f6262f`)
 - **Problem:** Assignment works since BLK-09 (`routes_spoc.py:1171-1252` coordinators, `:1379-1435` judges), and one test covers the SPOC assigning a coordinator (`tests/test_integration_flow.py:164-185`). Not tested: judge assignment, unassigning, a SPOC trying to assign on someone else's event, and the assigned person seeing the event on their dashboard.
 - **Who benefits:** SPOCs, coordinators and judges.
 - **What to build:** tests first; fix whatever they find (e.g. unassign doesn't remove access).
-- **Files touched:** `routes_spoc.py`, tests.
-- **Effort:** S · **Depends on:** BLK-04 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test (real DB): the SPOC assigns a coordinator and a judge on their own event; each sees it on their dashboard.
-  2. Test: another SPOC gets 403 and nothing changes. (Since BLK-17, `add_judge` and `upload_judges_csv` are covered by `tests/test_spoc_event_authz.py`; `assign_coordinator` still needs its test.)
-  3. Test: unassigning removes access to the event's registrations and scoring.
+- **Re-checked before building (2026-10-08, `2f6262f`; rule 3):** the routes moved (`assign_coordinator` at `routes_spoc.py:1187`, `add_judge` at `:1371`). What the tests found:
+  - there was no way to unassign anyone (no route, no button);
+  - `assign_coordinator` answered another SPOC with a flash and a redirect, not 403;
+  - the judge dashboard lists only events whose status is `active`, so a judge doesn't see an event in a workflow state. That's UPG-04 criterion 3 (after Phase 6), so the judge-dashboard check here uses an `active` event.
+  - A judge sees only teams allocated to them unless open hall is on; that's how judging works, not a fault.
+- **What was built:**
+  - `POST /spoc/remove_staff/<event_id>` (`routes_spoc.py:1253`): the owner (or anyone with `edit_event` on the event) removes an email from the event's `staff` and `coordinators`. Every permission on the event comes from those lists, so access to registrations, exports, check-in and scoring ends at once; the account stays.
+  - The SPOC dashboard shows a remove button on each coordinator chip and lists the assigned judges, each with a Remove button, in the judges dialog (`templates/spoc/dashboard.html:1746,2098`). The dialog's stale "credentials emailed" line now says new judges get a set-password link (UPG-33).
+  - `assign_coordinator` checks `edit_event` with BLK-17's helper first (`routes_spoc.py:1193`), so another SPOC gets 403 before anything is created.
+- **Files touched:** `routes_spoc.py`, `templates/spoc/dashboard.html`, `tests/test_assignment.py` (new).
+- **Effort:** S · **Depends on:** BLK-04 · **Risk:** low. Removing a judge leaves `assigned_judge_email` on the event's registrations, harmless since scoring needs the staff entry; the next allocation replaces it.
+- **Acceptance criteria** (`tests/test_assignment.py`, real database layer; all 4 cases fail on the old code):
+  1. ✅ Test (real DB): the SPOC assigns a coordinator and a judge on their own event; each sees it on their dashboard (`::test_the_owner_assigns_a_coordinator_and_a_judge_and_each_sees_the_event`; the coordinator opens the registrations, the judge the team list; the owner's dashboard offers removal). The judge's check uses an `active` event until UPG-04 criterion 3.
+  2. ✅ Test: another SPOC gets 403 and nothing changes (`::test_another_spoc_cant_assign_or_remove_and_nothing_changes`: assign coordinator, add judge and remove; no account is created for a new email).
+  3. ✅ Test: unassigning removes access to the event's registrations and scoring (`::test_removing_someone_ends_their_access`: the coordinator loses registrations, exports and attendance marking and the event leaves their dashboard; the judge loses the team list and scoring, nothing is saved, and the event leaves their dashboard). `::test_removing_someone_who_isnt_staff_changes_nothing` covers a wrong email.
+  - Full pytest: **830 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-30 — Paid events end to end: receipt email, refunds and cancellations
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** [C at `56a014d`] After a verified payment only a WhatsApp receipt task is queued (`routes_payment.py:301`); there's no email receipt. There's no admin action to mark a payment refunded or a paid registration cancelled; `services_finance.py:249-264` only counts `refunded` in reports. BLK-03 makes verification safe; this item makes the whole flow work.
+- **Status:** IN PROGRESS (built 2026-10-08; criterion 4, the owner's checkout with Razorpay test keys, is left)
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** [C at `56a014d`] After a verified payment only a WhatsApp receipt task is queued (`routes_payment.py:356`); there's no email receipt. There's no admin action to mark a payment refunded or a paid registration cancelled; `services_finance.py:249-264` only counts `refunded` in reports. BLK-03 makes verification safe; this item makes the whole flow work.
   - **Added 2026-10-02 from the code review of PR #48 (owner)** [C at `7aac9ca`]:
-    - (a) **Money taken, no registration.** `verify_payment` claims the order (marks it paid, `routes_payment.py:151`) before `_complete_registration` runs (`:158`). If completion fails (the payer is already registered, or any exception), the payer has paid but has no registration; the only trace is an audit line (`PAYMENT_UNMATCHED`, `:167`, or `PAYMENT_FAILED`, `:319`), and the browser gets a 400. Completion also doesn't re-check capacity (capacity is checked only at form submit, `routes_forms.py:481-482`), so a payment finished after the last seat went **overbooks** the event instead of failing.
+    - (a) **Money taken, no registration.** `verify_payment` claims the order (marks it paid, `routes_payment.py:177`) before `_complete_registration` runs (`:197`). If completion fails (the payer is already registered, or any exception), the payer has paid but has no registration; the only trace is an audit line (`PAYMENT_UNMATCHED`, `:209`, or `PAYMENT_FAILED`, `:374`), and the browser gets a 400. Completion also doesn't re-check capacity (capacity is checked only at form submit, `routes_forms.py:605-606`), so a payment finished after the last seat went **overbooks** the event instead of failing.
     - (b) **No webhook.** Nothing receives Razorpay's server-to-server events (no webhook route in `routes_payment.py`). If the browser closes after paying, before `/payment/verify` runs, the payment is never matched to the order or a registration.
 - **Who benefits:** the finance office, organisers and paying participants.
 - **What to build:** a receipt email (Brevo) after a verified payment; admin actions to mark a registration refunded or cancelled (with reason, audit-logged), which also stop its ticket from checking in; a finance export row per payment.
@@ -688,36 +924,73 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
   - Completion re-checks capacity. When completion fails after the order is paid (full, already registered, error), the order is kept as paid with no registration, and the payer is told the payment is recorded and will be completed or refunded.
   - An admin list of paid orders with no registration, and a refund action that calls Razorpay's refund API for the order's payment and amount, records the refund on the order and audit-logs it.
   - `RAZORPAY_WEBHOOK_SECRET` joins "Before the next deploy".
-- **Files touched:** `routes_payment.py`, `routes_admin.py`, `utils_email.py`, templates, tests.
-- **Effort:** L (was M) · **Depends on:** BLK-03, BLK-05 · **Risk:** needs Razorpay test keys for the manual check; refunds move real money, so the action needs a confirmation step.
-- **Acceptance criteria:**
-  1. Test (Razorpay client mocked): register → order → verify gives `Confirmed / Paid` with the server amount and queues exactly one receipt email.
-  2. Test: an admin marks the registration refunded, then another cancelled; each is audit-logged, and the ticket is refused at check-in.
-  3. Test: a non-admin gets 403 on both actions.
-  4. Manual (owner, with Razorpay test keys): the full checkout in test mode.
-  5. Test: when completion fails after the order is claimed (the event filled up, the payer is already registered, or an exception), no seat is over-allocated, the order stays paid with no registration, it appears in the admin list, and the payer sees that the payment is recorded.
-  6. Test: a `payment.captured` webhook with a valid signature for a recorded order whose browser never returned completes the registration once; replaying it, or the browser's `/payment/verify` arriving afterwards, changes nothing. A bad signature → 400 and nothing changes; an unknown order → 200 and nothing is created.
-  7. Test: the admin list shows exactly the paid orders that have no registration; a non-admin gets 403.
-  8. Test (Razorpay client mocked): the refund action calls the refund API once with the order's payment ID and amount, marks the order refunded and audit-logs it; a second request does nothing; a non-admin gets 403.
+- **Re-checked before building (2026-10-08, `f5ae29d`; rule 3):** `routes_payment.py` and `services_payments.py` were unchanged since `986d108`; the claims hold. Also found:
+  - `payment_orders` had nowhere to keep the registration being paid for, so a webhook had nothing to complete from;
+  - a registration's status enum has `cancelled` but no `refunded`;
+  - after a payment, the ticket-email task calls `send_ticket_email` with arguments it doesn't take, so paid registrants never got their ticket email, and the WhatsApp receipt task has the same fault. Both are notifications; added to UPG-31, not fixed here.
+- **What was built:**
+  - **Orders keep what they pay for.** `payment_orders` gains `regDataJson`, `failureReason`, `refundId`, `refundedAt` and `refundedBy` (`models_pg.py`). Existing databases get them from the start-up schema check (`db_adapter.verify_and_align_schema`); UPG-16's baseline must include them. `create_order` stores the pending registration with its order (`services_payments.record_order`, `services_payments.py:188`).
+  - **Receipt.** A completed payment with an amount queues one receipt email: amount, event, registration, payment ID (`routes_payment.py:351`, `utils_email.send_payment_receipt_email`, `utils_email.py:720`).
+  - **Completion never overbooks or loses money** (`routes_payment.py:306`). It re-checks capacity; a held waitlist seat is already counted.
+    - When completion fails after the order is claimed (full, already registered, an error), the order stays paid with its reason recorded (`:208`).
+    - The payer gets 202 and `RECORDED_MESSAGE` (`:18`): the payment is recorded and will be completed or refunded. The checkout page shows it.
+  - **Webhook: `POST /payment/webhook/razorpay` (`:397`).** It is CSRF-exempt and authenticated by `X-Razorpay-Signature` with `RAZORPAY_WEBHOOK_SECRET`; without the secret it answers 503.
+    - On `payment.captured` it claims the order atomically, but only if Razorpay's amount is the order's (`claim_paid_order`, `services_payments.py:239`). It then completes the stored registration once.
+    - If the browser's `/payment/verify` arrives after the webhook, it is sent to the ticket (`routes_payment.py:180`).
+    - Replays, unknown orders and wrong amounts change nothing.
+  - **The admin's payments page `/admin/payments`** (Super Admin only, 403 otherwise; `routes_admin.py:486`), linked from both admin navigations:
+    - paid orders with no registration, each with a Razorpay refund that needs a ticked confirmation. The refund moves the order to `refunding` atomically, so only one request calls the API; it records refund ID, time and admin, audit-logs it, and undoes the claim if the API fails (`:527`, `start_refund` `services_payments.py:265`).
+    - paid registrations, each markable refunded (money returned another way) or cancelled with a reason, audit-logged (`:501`). Both set the registration `cancelled`, refunded also sets the payment `Refunded`, and check-in refuses either (`routes_ticket.py:169`).
+  - **Finance export.** `/admin/analytics/export/payments`: one row per order with payment, amount, status, registration and refund (`routes_admin.py:321`).
+  - `RAZORPAY_WEBHOOK_SECRET` is documented in `.env.example` and the deploy checklist.
+- **Files touched:** `routes_payment.py`, `services_payments.py`, `routes_admin.py`, `routes_ticket.py`, `models_pg.py`, `db_adapter.py` (schema check), `utils_email.py`, `tasks/email_tasks.py`, `app.py` (CSRF exemption), `templates/admin/payments.html` (new), `templates/payment/checkout.html`, `templates/base_classic.html`, `templates/admin/dashboard.html`, `.env.example`, `tests/test_paid_events.py` (new).
+- **Effort:** L (was M) · **Depends on:** BLK-03, BLK-05 · **Risk:** needs Razorpay test keys for the manual check; refunds move real money, so the action needs a ticked confirmation. Two payments racing for the last seat can both pass the capacity check (no transaction in the adapter); the second would overbook by one.
+- **Acceptance criteria** (`tests/test_paid_events.py`, real database layer, Razorpay client mocked; all 12 cases fail on the old code):
+  1. ✅ Test (Razorpay client mocked): register → order → verify gives `Confirmed / Paid` with the server amount and queues exactly one receipt email (`::test_a_verified_payment_confirms_and_sends_one_receipt`).
+  2. ✅ Test: an admin marks the registration refunded, then another cancelled; each is audit-logged, and the ticket is refused at check-in (`::test_admin_marks_registrations_refunded_and_cancelled_and_their_tickets_stop`).
+  3. ✅ Test: a non-admin gets 403 on both actions (`::test_non_admins_cant_use_any_payment_action`: the owner SPOC and a student, also on the page, the refund and the export).
+  4. Manual (owner, with Razorpay test keys): the full checkout in test mode. **Open**, as is BLK-03's matching check. **Deferred to UPG-32** (D-6, 2026-10-10): run on a public test deployment together with the webhook. Set the webhook (event `payment.captured`, URL `<BASE_URL>/payment/webhook/razorpay`) and its secret first.
+  5. ✅ Test: when completion fails after the order is claimed (the event filled up, the payer is already registered, or an exception), no seat is over-allocated, the order stays paid with no registration, it appears in the admin list, and the payer sees that the payment is recorded (`::test_a_failed_completion_keeps_the_payment_and_overbooks_nobody`, one case per cause).
+  6. ✅ Test: a `payment.captured` webhook with a valid signature for a recorded order whose browser never returned completes the registration once; replaying it, or the browser's `/payment/verify` arriving afterwards, changes nothing. A bad signature → 400 and nothing changes; an unknown order → 200 and nothing is created (`::test_the_webhook_completes_a_payment_whose_browser_never_returned_once`, `::test_the_webhook_refuses_bad_signatures_and_ignores_unknown_orders`, which also covers a wrong amount; `::test_the_webhook_fails_closed_without_its_secret`).
+  7. ✅ Test: the admin list shows exactly the paid orders that have no registration; a non-admin gets 403 (`::test_the_admin_list_shows_exactly_the_paid_orders_without_a_registration`; the 403 is in criterion 3's test).
+  8. ✅ Test (Razorpay client mocked): the refund action calls the refund API once with the order's payment ID and amount, marks the order refunded and audit-logs it; a second request does nothing; a non-admin gets 403 (`::test_the_refund_calls_razorpay_once_and_is_recorded`; without the confirmation nothing happens).
+  - Also: `::test_the_finance_export_has_one_row_per_payment`.
+  - Full pytest: **867 passed** on SQLite and PostgreSQL 16; ruff clean.
+- **Rule 8 (early pass, `db_adapter.py` and `models_pg.py` changed):** the change only adds columns to `payment_orders`. Of the 32 open items, UPG-16 lists that table for its baseline; its line now names the new columns. The other items citing `models_pg.py` (UPG-11 to UPG-14, UPG-18) don't touch `payment_orders`, and their claims are unchanged.
 
 #### UPG-31 — Notifications: confirmation, day-before reminder, change and cancellation notices through Brevo
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** [C at `56a014d`] Confirmation (`utils_email.send_registration_confirmed_email`, `utils_email.py:439`) and cancellation notices (`services_workflow.py:287-322`, idempotent per email) exist. The day-before reminder is a Celery beat job that doesn't run (UPG-07). There's no notice when an event's date, time or venue changes. In-app notifications are split between v1 and v2 (UPG-14).
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-31: …" on `production-ready` (parent `f570f07`)
+- **Found while building UPG-30 (2026-10-08) [R]:** after a payment, `tasks.email_tasks.send_ticket_email_task` calls `utils_email.send_ticket_email(event_date=…, venue=…)`, which takes neither. So the task fails and retries five times, and a paid registrant never gets their ticket email. `send_payment_receipt_whatsapp_task` passes `reg_id` to `send_payment_receipt_whatsapp`, which expects `payment_id`.
+- **Found while building UPG-07 (2026-10-08) [C]:** the day-before WhatsApp reminder task imports `utils_whatsapp.send_event_reminder_whatsapp` (`tasks/notification_tasks.py:53`), which doesn't exist, so every WhatsApp reminder fails and retries three times. The day-before email uses the same broken `send_ticket_email_task` call as above.
+- **Problem:** [C at `56a014d`] Confirmation (`utils_email.send_registration_confirmed_email`, `utils_email.py:439`) and cancellation notices (`services_workflow.py:287-322`, idempotent per email) exist. The day-before reminder is a Celery beat job that doesn't run (UPG-07; since 2026-10-08 it runs through `/internal/cron/reminders`, but its sends fail, see above). There's no notice when an event's date, time or venue changes. In-app notifications are split between v1 and v2 (UPG-14).
 - **Who benefits:** every registrant.
 - **What to build:** a notice to all registrants when date, time or venue changes; the reminder through UPG-07's cron; every email through `utils_email` (Brevo first), each sent once (idempotency key), and never sent from tests.
-- **Files touched:** `routes_spoc.py` (edit event), `services_workflow.py`, `tasks/scheduled_tasks.py`, `utils_email.py`, tests.
+- **Re-checked before building (2026-10-08, `f570f07`; rule 3):** the confirmation is as described. The rest is worse than the Problem says [R]:
+  - **The change notice exists** (`services_venue.notify_event_details_changed`, called by the SPOC's edit, `routes_spoc.py:1152`), and **neither it nor the cancellation notice ever sent an email:** both go through `services_automation.dispatch_trigger`, whose email channel imports `utils_email.send_email_notification`, which didn't exist. The error was caught and recorded as `email_fallback`, so only the in-app notice was created.
+  - The change notice's "once" key used Python's `hash()`, which differs between processes, so it held only within one worker.
+  - The coordinator's edit form (`/coordinator/edit_event`) changes date and venue without any notice.
+  - The confirmation email promises the entry QR the day before, but the reminder attached none. It also used the stream's internal ID, not the ticket ID.
+- **What was built:**
+  - **The missing and mismatched senders:** `utils_email.send_email_notification` (`utils_email.py:778`) sends a plain notice through `_send` (Brevo first) and escapes the text. `send_ticket_email` takes `event_date` and `venue` (`:534-538`), which the tasks already passed. `utils_whatsapp.send_event_reminder_whatsapp` (`utils_whatsapp.py:137`) is the day-before WhatsApp. The receipt WhatsApp task passes the payment ID (`tasks/notification_tasks.py:87`; callers `routes_payment.py`, `tasks/webhook_tasks.py`).
+  - **The day-before ticket** (`tasks/scheduled_tasks.py:70,95`) uses the ticket's ID and attaches the entry QR: `tasks/email_tasks.ticket_qr_png` (`:112`) makes the same signed token the ticket page shows, which the scanners accept. Sent once per registration (`ticket_sent`), through `/internal/cron/reminders` (UPG-07).
+  - **Change notices** use a stable key over the old and new venue, room, date, time and start (`services_venue.py:568-571`), so the same change is sent once on any instance. The coordinator's edit sends them too (`routes_coordinator.py:231`). **Cancellation** keeps its key `event_cancelled_<event>_<email>` (`services_workflow.py:321`), so cancelling again after a restore sends nothing.
+  - Because the email channel now exists, API v1's automation triggers (`routes_api_v1.py:1100,1137`: payment success, round advanced, certificate issued, …) now send their emails too, under each user's email preference.
+  - **Not done here:** notices go to the registration's lead only (UPG-48). The automation's WhatsApp channel calls a function that doesn't exist (UPG-49). Older email templates insert names and titles without escaping (UPG-50). The "once" checks read then write, so two runs at the same instant could both send; UPG-18's outbox should make the key a unique insert.
+- **Files touched:** `utils_email.py`, `utils_whatsapp.py`, `tasks/email_tasks.py`, `tasks/notification_tasks.py`, `tasks/scheduled_tasks.py`, `tasks/webhook_tasks.py`, `routes_payment.py`, `routes_coordinator.py`, `services_venue.py`, new `tests/test_notices.py`. (`routes_spoc.py` and `services_workflow.py` already called the notices.)
 - **Effort:** S · **Depends on:** UPG-07, BLK-05 (UPG-18's outbox adds retries later but isn't required) · **Risk:** double sends; idempotency keys guard it.
-- **Acceptance criteria:**
-  1. Test: a registration sends one confirmation through the Brevo client (HTTP mocked) with the event's details.
-  2. Test: the day-before reminder, run twice through the cron endpoint, sends once per registrant.
-  3. Test: changing an event's venue notifies every registrant once; cancelling notifies once.
-  4. Test: with no mail keys configured (tests), nothing is sent over the network.
+- **Acceptance criteria** (`tests/test_notices.py`, real database layer, Brevo's HTTP API mocked and any connection beyond localhost refused; 4 of 5 fail on the old code, and the confirmation already worked):
+  1. ✅ Test: a registration sends one confirmation through the Brevo client (HTTP mocked) with the event's details (`::test_a_registration_sends_one_confirmation_through_brevo`: title, date, venue and calendar invite; registering again sends nothing).
+  2. ✅ Test: the day-before reminder, run twice through the cron endpoint, sends once per registrant (`::test_the_day_before_ticket_goes_out_once_with_the_entry_qr`: one ticket email each with the signed entry QR, one WhatsApp each; the event is `active` because of UPG-43).
+  3. ✅ Test: changing an event's venue notifies every registrant once; cancelling notifies once (`::test_a_venue_change_and_a_cancellation_each_notify_every_registrant_once`: saving the same change twice sends one notice; a cancelled registration gets none; the coordinator's date edit notifies; cancel, cancel, restore to draft, cancel sends one cancellation notice each).
+  4. ✅ Test: with no mail keys configured (tests), nothing is sent over the network (`::test_with_no_mail_keys_nothing_leaves_the_machine`: registration, reminders, a venue change and a cancellation make no connection and no name lookup beyond localhost).
+  - Also: `::test_notices_escape_what_people_type`.
+  - Full pytest: **888 passed** on PostgreSQL 16, **887 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-32 — Release check and `docs/DEPLOY.md`
 - **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
-- **Problem:** There's no deploy guide for Cloud Run + Supabase, and no end-to-end release check from a fresh clone. `README.md` describes Railway/Render deploys.
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** There's no deploy guide for Cloud Run + Supabase, and no end-to-end release check from a fresh clone. `docs/DEPLOY.md` has only the scheduled-jobs section (UPG-07); `docs/DEPLOYMENT.md` covers the container and settings in general. *(Corrected 2026-10-08: `README.md` has no Railway/Render deploy guide; it names Cloud Run (`README.md:287,542`) and calls Brevo "Railway-safe" (`:211`).)*
 - **Who benefits:** whoever deploys and runs the app.
 - **What to build:** the Phase 6 release check (fresh clone → `docker-compose up` → `alembic upgrade head` on an empty PostgreSQL → non-production seed → every role end to end at 375px and 1280px; production boot with strong dummy settings, then with one missing; restart mid-session and two instances; full pytest on SQLite and PostgreSQL, ruff, bandit, pip-audit, full-history gitleaks) and `docs/DEPLOY.md`: Cloud Run + Supabase set-up, every setting and how to generate it, the migration step, first Super Admin creation, rollback (redeploy the previous revision), backups and restore, monitoring.
 - **Files touched:** `docs/DEPLOY.md`, `README.md` (link), this review (final report).
@@ -744,21 +1017,26 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | `FLASK_ENV` | `production` | This is what turns the production checks on |
 | `SECRET_KEY` | New random value, 32+ characters | Yes: start-up is refused otherwise (`config.py:36-40`, `validate_production_config`) |
 | `MASTER_SECRET_KEY` | New random value, 12+ characters, not a published value | Yes (`validate_production_config`) |
-| `JWT_SECRET_KEY` | New random value, different from `SECRET_KEY` | **No**: it silently falls back to `SECRET_KEY` (`config.py:217`) |
+| `JWT_SECRET_KEY` | New random value, 32+ characters, different from `SECRET_KEY` | Yes since UPG-20 (`config.production_problems`) |
 | `SUPER_ADMIN_PASS` (with `SUPER_ADMIN_EMAIL`) | New strong password, used to create the first SuperAdmin | Only against the list of published passwords (`validate_production_config`) |
-| `RAZORPAY_KEY_SECRET` (with `RAZORPAY_KEY_ID`) | Set before any paid event is opened | **No**, but without them online payment refuses with 503 (fails closed since BLK-03). Never set `PAYMENT_SIMULATION` in production (it's ignored there anyway). |
-| `DATABASE_URL` | PostgreSQL (`postgresql://…`) | Yes: production refuses SQLite or no database (`db_pg.py:104-150`) |
+| `RAZORPAY_KEY_SECRET` (with `RAZORPAY_KEY_ID`) | Set before any paid event is opened | Since UPG-20, half a set-up (one or two of the key ID, key secret and webhook secret) is refused, and so is `PAYMENT_SIMULATION`; with none set, online payment refuses with 503 (fails closed since BLK-03). |
+| `RAZORPAY_WEBHOOK_SECRET` | The secret set on the Razorpay webhook (Dashboard → Webhooks: event `payment.captured`, URL `<BASE_URL>/payment/webhook/razorpay`). It completes registrations whose browser closed after paying (UPG-30). | Required with the other two Razorpay settings since UPG-20 |
+| `DATABASE_URL` | PostgreSQL (`postgresql://…`) | Yes: named with every other problem at start-up (UPG-20), and the schema must be at Alembic head (UPG-16) |
+| `BREVO_API_KEY` | A Brevo API key (Brevo → Settings → SMTP & API → API Keys). **Required in practice:** since UPG-33, new staff, SPOCs and walk-ins can get in only through the emailed set-password link. | Yes since UPG-20: production refuses to start with no mail provider |
+| `MAIL_FROM` | The sender, e.g. `SapthaEvent <events@your-domain>`, an address verified as a sender in Brevo. Unset, the sender is `MAIL_USER`; with neither, Brevo and Resend refuse to send and `/diag/email` says why (`utils_email.py:51-61`, UPG-41). | Yes since UPG-20 (`MAIL_FROM` or `MAIL_USER`) |
 | `BASE_URL` | The site's public `https://` address, e.g. the Cloud Run URL or the university domain. Every emailed, WhatsApp, QR and referral link is built from it. | Yes: production refuses a missing, `http://` or localhost value (`config.py:267-270`, BLK-16) |
+| `CRON_SECRET` | New random value. Needed where Celery beat doesn't run (Cloud Run): Cloud Scheduler or GitHub Actions sends it to `/internal/cron/<job>` (`docs/DEPLOY.md`, UPG-07). | Yes since UPG-20 (24+ characters), unless `CELERY_BROKER_URL` is Redis (Celery beat) |
 | `LOGIN_THROTTLE_IP_LIMIT` | **About 50** (owner, 2026-10-02). On campus Wi-Fi many students share one public IP, so the default of 5 failed logins a minute per IP would lock out a whole lab. Leave `LOGIN_THROTTLE_ACCOUNT_LIMIT` at 5. | No: it defaults to 5 (`config.py:131`, BLK-13) |
 
 - **Use a fresh database.** If an old one is reused (the earlier Cloud SQL or Supabase database), first reset every account's password (the SuperAdmin's was the published demo password) and delete the demo accounts (BLK-10) and walk-in accounts created with the default password (UPG-15).
+- **Test-send (owner, 2026-10-02).** After the first deploy, log in as the SuperAdmin and open `/diag/email?to=<your address>` (SuperAdmin-only, `routes_auth.py`). The message must arrive, not in spam, from `MAIL_FROM`. Then appoint a test judge on a test event and check that their set-password link arrives and works.
 - **Proxy hops (owner, 2026-10-02).** `ProxyFix(x_for=1, x_proto=1)` (`app.py:151`) trusts exactly one proxy, which is right for Cloud Run alone; it never trusts `X-Forwarded-Host` (BLK-16). If Cloudflare or a load balancer is ever put in front, set `x_for` to the real number of proxies. Otherwise the app sees the proxy's address for every visitor, and BLK-13's per-IP limit counts everyone as one IP. Never set it higher than the real number: clients could then forge their IP in `X-Forwarded-For` and dodge the per-IP limit.
 - **Check:** start the app once with these values and `FLASK_ENV=production`. It must start, and it must refuse to start if any start-up-checked value above is missing or weak (`tests/test_integration_flow.py::test_production_config_requires_real_secrets`).
 
 
 #### BLK-01 — Admin credentials and a user database are in the public GitHub history
 - **Status:** IN PROGRESS. Only GitHub Support's removal of the PR refs is left (criterion 0); nothing else waits on it.
-- **Last verified:** 2026-10-02, commit `986d108`, with read-only `git ls-remote` (unchanged since 2026-10-01: `master`, `production-ready` and the 47 PR refs)
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification), with read-only `git ls-remote`: `master` at `8b72203` (PR #49 merged), the remote `production-ready` at `37c2a5c` (Phase 2's local commits not pushed), and PR refs 1–49: the same 47 old ones, plus #48 and #49 on the rewritten history
 - **Problem:**
   - The repo is public (the GitHub API returns 200 unauthenticated; 0 forks).
   - **Removed from all history on 2026-09-29, force-pushed by the owner on 2026-10-01:**
@@ -808,7 +1086,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   0. ✅ **Met locally and on GitHub's branches:** no local commit contains `saptha_fallback.db` or the other removed paths; on 2026-10-01 `git ls-remote` shows only `master` (`56a014d`, rewritten) and `production-ready` (`10207cd`), and neither branch's history contains a removed path [R]. ⬜ **PR refs:** all 47 still exist and still hold removed files; completes when GitHub Support removes them (owner contacted Support on 2026-10-01). **Doesn't block other items.**
   1. ✅ **Met:** `tests/test_repo_hygiene.py::test_no_forbidden_files_are_tracked` fails if any `*.db`, `*.sqlite*`, `.env*` (other than `.env.example`), service-account key, `*.pyc` / `__pycache__/`, `dataconnect/.dataconnect/` or `instance/` file is tracked. It passes at `08eabf5`.
   2. ✅ **Met:** the CI job "Repo hygiene & secret scan" runs that test and the gitleaks scan. Demonstrated on a throwaway branch in a scratch clone: a commit adding `.env`, `local.db`, a `.pyc` and a fake AWS-style key made the test fail (1 failed, naming the 3 files) and gitleaks exit 1 [R].
-  3. ✅ **Met for now: there's no production deployment** (owner, 2026-09-30), so nothing accepts the old SuperAdmin password or master key. The next deploy must pass **"Before the next deploy"** (new `SECRET_KEY`, `MASTER_SECRET_KEY`, `JWT_SECRET_KEY`, `SUPER_ADMIN_PASS`, `RAZORPAY_KEY_SECRET`, and a PostgreSQL `DATABASE_URL`, all set first). The start-up refusal for published values exists (`tests/test_integration_flow.py:202`).
+  3. ✅ **Met for now: there's no production deployment** (owner, 2026-09-30), so nothing accepts the old SuperAdmin password or master key. The next deploy must pass **"Before the next deploy"** (new `SECRET_KEY`, `MASTER_SECRET_KEY`, `JWT_SECRET_KEY`, `SUPER_ADMIN_PASS`, `RAZORPAY_KEY_SECRET`, and a PostgreSQL `DATABASE_URL`, all set first). The start-up refusal for published values exists (`tests/test_integration_flow.py:205`).
   4. ✅ **Met:** both Google API keys are revoked (owner, 2026-09-30) and accepted in `.gitleaksignore`. The full-history gitleaks scan finds **no leaks in 212 commits** [R]. ✅ **On GitHub:** CI run 36886209908 on the pushed `master` (`56a014d`, 2026-10-01) passed "Repo hygiene & secret scan" and "Lint (ruff)" [R, GitHub Actions API]. The bandit job failed on the known BLK-11 findings and pytest on BLK-15's causes. The old password and master key remain as literals in history (gitleaks doesn't flag them); they're unused and must not be reused (criterion 3).
 
 #### BLK-02 — The public registration form logs the visitor in as any email they type
@@ -1317,6 +1595,54 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   4. ✅ Test: the owner can't reassign a registration that belongs to another event: 404, and its room is unchanged (`::test_the_owner_cant_reassign_another_events_registration`).
   - Full pytest: **704 passed** on SQLite and PostgreSQL 16; ruff clean.
 
+#### BLK-18 — Any Volunteer can mark attendance and open tickets at any event
+- **Status:** DONE
+- **Last verified:** 2026-10-07, commit "BLK-18: …" on `production-ready` (parent `2db0db1`)
+- **Problem (as found at `2db0db1`):** Found while starting UPG-02 [R]. `services_permission.can` gave the `Volunteer` session role `check_in` on every event, with no assignment check (`services_permission.py:311-312`: `return permission == 'check_in'`). Every other staff role checks the event's `staff` list. Organisers can appoint volunteers (`STAFF_ROLES`, BLK-04), so any volunteer for one event could, at every other event:
+  - mark attendance (`/coordinator/mark_attendance_granular`, `routes_coordinator.py:908`); confirmed on the real database: an unassigned volunteer's request answered 200 and set the registration `Present`;
+  - read the scanner view of any registration: names, USNs, room (`/coordinator/get_ticket`, `:887`);
+  - open any registrant's ticket page and QR, so they got its signed check-in token (`routes_ticket.py:122,177`, through `routes_checkin._can_manage_event`).
+  The kiosk, SPOC scanner and `/ticket/verify` POST weren't affected: they also require a coordinator-level role.
+- **Who benefits:** every participant (their attendance and ticket stay with the event's own staff) and organisers.
+- **What to build:** a Volunteer has `check_in` only on events where they're in `staff` or `coordinators`, like an EventCoordinator, and no other permission.
+- **What was built:** the Volunteer branch of `can` (`services_permission.py:312-319`) requires the event's `staff` or `coordinators` to list them, the same rule EventCoordinators follow. Without an event it still answers the role-level question, as for the other staff roles.
+- **Files touched:** `services_permission.py`, `tests/test_volunteer_scope.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** a volunteer who worked an event without being added to its staff list is now refused; the organiser adds them through "assign staff".
+- **Acceptance criteria** (`tests/test_volunteer_scope.py`, real database layer; criteria 1 and 3 fail on the old code):
+  1. ✅ Test: a volunteer not on the event's staff gets 403 on mark-attendance, the scanner lookup and the QR image, and is turned away from the ticket page; attendance is unchanged (`::test_an_unassigned_volunteer_cant_check_in_or_see_tickets`).
+  2. ✅ Test: a volunteer on the event's staff can still look up and mark attendance (`::test_a_volunteer_on_the_events_staff_still_checks_in`).
+  3. ✅ Test: `can` gives a volunteer `check_in` only at their event (by event or event ID) and no other permission even there (`::test_a_volunteer_has_check_in_only_and_only_where_assigned`).
+  - Full pytest: **762 passed** on SQLite and PostgreSQL 16; ruff clean.
+- **Rule 8 (early pass, `services_permission.py` changed):** every open item (37) was checked against this change. Three mention the permission layer: UPG-02 (built next; it wants check-in for assigned staff only, which this enforces), UPG-03 (`export_data`, which volunteers never had) and UPG-12 (cites `services_permission.py:53-80`, unchanged). No other open item's claims change. The full re-verification still runs at the end of Phase 2.
+
+#### BLK-19 — Registrant names run as HTML on staff pages (stored XSS)
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "BLK-19: …" on `production-ready` (parent `0a68ce6`)
+- **Problem:** Found while building UPG-02 [C]. Registration stores the lead's name, the team name and member names exactly as typed (`routes_forms.py:404,407,443-455`); nothing escapes or rejects markup on input. Pages Jinja renders escape them, but several staff pages build HTML in JavaScript with `innerHTML` and template strings:
+  - the SPOC scanner's manual list, which runs as soon as the SPOC opens the scanner (`templates/spoc/scan.html:338`: name, team), and its scan log (`:543`);
+  - the kiosk's search results (`templates/public/kiosk.html:747`: name, team, event title).
+  - There are 180 `innerHTML` uses in 43 tracked templates and scripts; the rest haven't been checked.
+  The Content-Security-Policy allows inline scripts (`app.py:221`, `'unsafe-inline'`; UPG-25), so a registrant named `<img src=x onerror=…>` runs script in the SPOC's or coordinator's session. That script can read the page's CSRF token and act as them. UPG-02's new code adds no `innerHTML` with data and didn't change these three places.
+- **Who benefits:** every organiser, coordinator and admin who opens a page that lists registrants.
+- **What to build:** every place a page's JavaScript inserts stored or server-supplied text uses `textContent`, DOM nodes, or one shared escaping helper; markup with values goes through that helper. Keep names as typed (no input mangling).
+- **What was built:**
+  - **The audit was wider than the three places first seen.** The first full scan found 241 values put into HTML without escaping, in 30 tracked templates and scripts. Other people's text could run as script in:
+    - public pages: team and lead names on the live leaderboard, event titles, venues and categories on the calendar tooltip, the landing page's event modal (it reads the card's text and re-inserts it as HTML) and its chatbot (the AI's reply);
+    - staff pages: names on the SPOC scanner and dashboard feeds, the judge's scoring form and leaderboard (criteria and team names), AI matching, the admin's AI event proposal, proctoring alerts;
+    - the student dashboard: notification titles and links, waitlist event titles.
+    Two pages that already escaped used helpers that missed single quotes, which matters inside attributes.
+  - **One helper file, `static/js/escape.js`.** It has `escapeHtml` for text and quoted attributes, `escapeJsAttr` for values inside `on…="…"` handlers (where entities are decoded before the code runs) and `safeUrl` for `href`/`src` (refuses `javascript:`, `data:` and other schemes, including ones hidden with spaces or control characters). The shared layout loads it in `<head>` (`templates/base_classic.html:23`); each standalone page that uses it loads it before its scripts.
+  - **Every value now goes through the helpers.** The page-local helpers (`escHtml`, `fb_esc`, `esc`, a second `escapeHtml`) are replaced by the shared one. Shared scripts (`global.js`, `analytics.js`, `pwa.js`, `command-palette.js`, `proctor.js`) build DOM nodes with `textContent` instead, since they load on pages that may not have the helper. Two ID-in-handler spots now find their element without an ID.
+  - **The scan, `tests/html_sinks.py`.** It lexes the inline scripts of every tracked template and every `static/js` file. It checks each value in an HTML-building string or a direct `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`document.write`, and needs the right helper for the context. Accepted without one: literals, numbers, ternaries of literals, `.map(…).join('')` whose returns are checked, names ending in `html`, and one reviewed exception (translations from `i18n.py`). It skips `templates/debug_modal.html` and `templates/public/home.html`, which nothing renders (UPG-15 deletes them).
+  - Names stay stored as typed: no input mangling.
+- **Files touched:** `static/js/escape.js` (new), `static/js/{global,analytics,pwa,command-palette,proctor}.js`, `templates/base_classic.html` and 25 other templates, `tests/html_sinks.py` and `tests/test_no_html_injection.py` (new).
+- **Effort:** M · **Depends on:** none · **Risk:** the scan reads JavaScript with a small lexer, so code written in unusual ways could slip past it; UPG-25 (no `'unsafe-inline'`) is the second layer. A chatbot reply with formatting now shows as plain text.
+- **Acceptance criteria** (`tests/test_no_html_injection.py`; criterion 1 fails on the old code with 241 findings, and the loader check fails too):
+  1. ✅ Test: a scan of every tracked template and `static/js` file finds each `innerHTML`, `outerHTML`, `insertAdjacentHTML` and `document.write` that interpolates a value (`${…}` or `+ value`). Each value goes through the escaping helper, or the line is on a short reviewed list of trusted values (`::test_every_value_put_into_html_is_escaped`; the reviewed list has one entry). Also: every page that calls the helpers loads them first (`::test_every_page_that_escapes_loads_the_helpers`); shared scripts don't depend on them; 30 cases pin what the scan flags and accepts.
+  2. ✅ Test (Node, as UPG-02's harness): the escaping helper turns `<img src=x onerror=alert(1)>`, quotes and `&` into text (`::test_the_helpers_turn_markup_into_text`, which also checks `escapeJsAttr` and 11 addresses through `safeUrl`). Skipped without Node.
+  3. ✅ Test (real database): a registrant named `<img src=x onerror=alert(1)>` is stored unchanged and appears escaped on the server-rendered staff pages that list registrants (`::test_a_markup_name_is_stored_as_typed_and_shown_as_text`: the coordinator's registrations page and the SPOC scanner page; the kiosk search returns it as JSON data). This already held on the old code: Jinja escapes; the test pins it.
+  - Full pytest: **817 passed** on SQLite and PostgreSQL 16; ruff clean; bandit exit 0.
+
 #### UPG-33 — Account emails: walk-in passwords by email, reusable reset links
 - **Status:** DONE
 - **Last verified:** 2026-10-02, commit "UPG-33: …" on `production-ready` (parent `0b9463a`)
@@ -1347,16 +1673,23 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **712 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-34 — The legacy public registration route skips the "registration closed" check
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `986d108`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-34: …" on `production-ready` (parent `2fb6e01`)
 - **Problem:** Found while building BLK-02 [C]. `POST /participant/public_register/<event_id>` (`routes_participant.py:355`), still used by the form on `templates/public/event_details.html:737`, never checks the event status or deadline, so it accepts registrations for draft, closed, completed or cancelled events. `/forms/submit` does check (`routes_forms.py:413-416`).
 - **Who benefits:** organisers (no registrations after closing).
 - **What to build:** point the event page's form at `/forms/register/<event_id>` and make the legacy route apply the same status check (or redirect to the form), keeping the URL.
-- **Files touched:** `routes_participant.py`, `templates/public/event_details.html`, tests.
-- **Effort:** S · **Depends on:** BLK-02 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test: the legacy route refuses a draft, closed or cancelled event and creates nothing.
-  2. Test: the event page's registration form posts to the checked route.
+- **Re-checked before building (2026-10-08, `2fb6e01`; rule 3):** still true (the legacy route is at `routes_participant.py:355`, the modal form at `templates/public/event_details.html:738`). Also found:
+  - `/forms/submit` checked the status but not the deadline or `pending_approval`, which the registration page refuses, so a past-deadline event still took registrations by POST;
+  - the event page's modal posted team members as `member_name[]`, a format `/forms/submit` doesn't read.
+- **What was built:**
+  - **One check, `routes_forms.registration_closed` (`routes_forms.py:90`).** Registration is closed for a draft, pending, published-but-not-open, closed, completed, certified, cancelled or archived event, and after its deadline. The registration page (`:375`), `/forms/submit` (`:467`) and the legacy route (`routes_participant.py:367`) all use it. The legacy route refuses before anything is created and sends the visitor back to the event page; its URL stays.
+  - **The event page's Register buttons link to the event's own form** (`/forms/register/<id>`, which UPG-01 made work for every form). Its separate modal form and member script, which bypassed the form, are removed.
+- **Files touched:** `routes_forms.py`, `routes_participant.py`, `templates/public/event_details.html`, `tests/test_registration_closed.py` (new).
+- **Effort:** S · **Depends on:** BLK-02 · **Risk:** low; no existing test registered after a deadline.
+- **Acceptance criteria** (`tests/test_registration_closed.py`, real database layer; 6 of 7 cases fail on the old code, the seventh guards an open event):
+  1. ✅ Test: the legacy route refuses a draft, closed or cancelled event and creates nothing (`::test_the_legacy_route_refuses_a_closed_event_and_creates_nothing`, also pending approval and past the deadline: no registration, no account; `/forms/submit` refuses the same; `::test_the_legacy_route_still_registers_for_an_open_event`).
+  2. ✅ Test: the event page's registration form posts to the checked route (`::test_the_event_page_sends_registrants_to_the_checked_form`: no form posts to the legacy route; Register links to `/forms/register/<id>`, whose form posts to `/forms/submit/<id>`).
+  - Full pytest: **849 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-35 — Login and password-reset messages reveal whether an account exists
 - **Status:** DONE
@@ -1391,34 +1724,53 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **716 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-36 — Coupons can be used more than `max_uses` times
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `7aac9ca`
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-36: …" on `production-ready` (parent `caaa317`)
 - **Problem:** From the code review of PR #48 (owner, 2026-10-02) [C]. `find_valid_coupon` refuses a coupon only when `current_uses >= max_uses` at the moment the price is computed (`services_payments.py:58`, called when the order is created). `current_uses` is incremented only after a verified payment (`_use_coupon`, `routes_payment.py:177-184`). So payers who create orders before any of them pays all get the discount: with `max_uses` 1, two simultaneous checkouts both pay the discounted price, and `current_uses` ends at 2.
 - **Who benefits:** organisers and the finance office (discount budgets hold).
 - **What to build:** reserve a use atomically when the order is created (a conditional update that increments `current_uses` only while it's below `max_uses`), and release the reservation when the order expires or isn't paid. Or refuse at claim time when the coupon is exhausted and fall back to the full price. Choose whichever is smaller and race-free on PostgreSQL.
-- **Files touched:** `services_payments.py`, `routes_payment.py`, `routes_coupons.py`, tests.
-- **Effort:** S · **Depends on:** BLK-03 · **Risk:** a reservation that's never released blocks the last use; expiry guards it.
-- **Acceptance criteria:**
-  1. Test: a coupon with `max_uses` 1 and two payers who both create orders before either pays: only one order gets the discount, and `current_uses` never exceeds 1.
-  2. Test: an order created with a coupon and never paid releases the use after it expires, and the next payer can use the coupon.
-  3. Test (PostgreSQL): 10 concurrent order creations for a coupon with `max_uses` 3 discount exactly 3 orders.
+- **Re-checked before building (2026-10-08, `caaa317`; rule 3):** UPG-30 changed the payment files; the race is unchanged. Coupons are schemaless documents (`native_document_store` JSON, or Redis), so a conditional update on `current_uses` isn't possible there; the reservation needed a small table of its own.
+- **What was built (reservation at order creation):**
+  - **New table `coupon_uses`** (`CouponUse`, `models_pg.py:630`): one row per event and coupon, `used` = uses paid or held. Start-up creates it (`db_pg.init_db`).
+  - **`take_coupon_use`** (`services_payments.py:116`) takes a use with one conditional `UPDATE … SET used = used + 1 WHERE used < max_uses`, race-free on SQLite and PostgreSQL. The row starts at the coupon's recorded `current_uses`. `create_order` takes it before asking Razorpay (`routes_payment.py:112`): no use left means 400 "Coupon usage limit reached" (the payer can pay full price), and a Razorpay error gives it back.
+  - **Holds end.** An unpaid order holds its use for `COUPON_HOLD_MINUTES` (default 30, `coupon_hold`, `:108`); after that, the next checkout marks it `expired` and gives the use back, once, by conditional update (`release_expired_holds`, `:160`). A payer who starts checkout again gives back their earlier unpaid order's use first, so retries don't hold two (`release_payer_holds`, `:143`).
+  - **A late payment is never lost.** An expired order can still be paid (browser or webhook) and takes a use again; if none is free (`_late_coupon_over_limit`, `:331`), the payment is kept as recorded with no registration, reason `COUPON_GONE`, for the admin to complete or refund (UPG-30).
+  - `COUPON_HOLD_MINUTES` is documented in `.env.example`. `routes_coupons.py` needed no change: its validation stays a pre-check, and the hold is what limits uses.
+- **Files touched:** `services_payments.py`, `routes_payment.py`, `models_pg.py`, `.env.example`, `tests/test_coupon_limits.py` (new).
+- **Effort:** S · **Depends on:** BLK-03 · **Risk:** a hold blocks a use for up to 30 minutes after a payer walks away; expiry ends it.
+- **Acceptance criteria** (`tests/test_coupon_limits.py`, real database layer; all 4 cases fail on the old code):
+  1. ✅ Test: a coupon with `max_uses` 1 and two payers who both create orders before either pays: only one order gets the discount, and `current_uses` never exceeds 1 (`::test_two_checkouts_before_anyone_pays_get_one_discount`; `::test_a_payer_starting_checkout_again_holds_one_use`).
+  2. ✅ Test: an order created with a coupon and never paid releases the use after it expires, and the next payer can use the coupon (`::test_an_unpaid_order_gives_its_use_back_when_the_hold_expires`; paying the expired order afterwards is kept as recorded, not lost).
+  3. ✅ Test (PostgreSQL): 10 concurrent order creations for a coupon with `max_uses` 3 discount exactly 3 orders (`::test_ten_concurrent_checkouts_get_exactly_the_coupons_three_uses`; skipped on SQLite).
+  - Full pytest: **871 passed** on PostgreSQL 16, **870 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-37 — Hourly per-account login cap on top of the per-minute limit
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `7aac9ca`
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "UPG-37: …" on `production-ready` (parent `06f4b02`)
 - **Problem:** From the code review of PR #48 (owner, 2026-10-02). BLK-13 allows 5 failed logins per account per minute (`services_login_throttle.py`). A slow attacker can keep trying 4 passwords a minute, 240 an hour, without ever being refused.
 - **Who benefits:** every account.
 - **What to build:** a second window per account: at most about 20 failed logins per hour (`LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT`, default 20), on the same counters and with the same "try again in N seconds" answer. The per-IP limit is unchanged, and a successful login clears both account windows. Document the setting in `.env.example`.
-- **Files touched:** `services_login_throttle.py`, `config.py`, `.env.example`, tests.
+- **What was built:**
+  - Each counter now has its own window: `_counters` (`services_login_throttle.py:59`) returns `(key, limit, window)`. For logins, the account key is checked twice: per minute (5) and per hour (`LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT`, default 20, `config.py:136`).
+  - Attempts are kept as long as the longest window needs (`_keep_for`, `:50`); the database purge and Redis expiry used the one-minute window before. Still one stored row per failure.
+  - A success clears the account key, so both windows reset. The IP and password-reset counters have no hourly window.
+  - The setting is documented in `.env.example`.
+  - `tests/test_login_throttle.py::test_redis_counters_are_shared_by_separate_clients` handed out new Redis connections from a fixed list of 20, which runs out now that each check reads three counters (it then fell back to the database). It now makes a new connection on every call; same intent, same assertions.
+- **Files touched:** `services_login_throttle.py`, `config.py`, `.env.example`, `tests/test_login_throttle.py`.
 - **Effort:** S · **Depends on:** BLK-13 · **Risk:** a forgetful user locked out for up to an hour; the password-reset link still works.
-- **Acceptance criteria:**
-  1. Test: 20 failed logins on one account spread over 50 minutes (never more than 4 a minute) are all answered normally; the 21st within the hour is refused with 429 and the wait until the oldest failure leaves the hour.
-  2. Test: the same holds for `/api/v1/auth/login`, on the shared counter.
-  3. Test: a successful login clears the hourly count; the per-IP limit is unaffected.
+- **Acceptance criteria** (in `tests/test_login_throttle.py`, on the database and on Redis; criteria 1–2 fail on the old code, and criterion 3 guards against over-blocking):
+  1. ✅ Test: 20 failed logins on one account spread over 50 minutes (never more than 4 a minute) are all answered normally; the 21st within the hour is refused with 429 and the wait until the oldest failure leaves the hour; after it does, the right password works (`::test_hourly_cap_stops_a_slow_guesser`).
+  2. ✅ Test: the same holds for `/api/v1/auth/login`, on the shared counter, with web and API failures mixed (`::test_hourly_cap_applies_to_the_api_on_the_shared_counter`).
+  3. ✅ Test: a successful login clears the hourly count; the per-IP limit is unaffected: one IP's 25 failures on different accounts over the hour are never refused (`::test_success_clears_the_hourly_count_and_ips_have_no_hourly_cap`).
+  - Full pytest: **722 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-38 — Delete the sample Jekyll workflow
-- **Status:** TODO
-- **Last verified:** 2026-10-02, commit `7aac9ca`
+- **Status:** BUILT (untested)
+- **Evidence:** `git rm .github/workflows/jekyll-docker.yml`
+- **Last verified:** 2026-10-10, commit `UPG-38`
+- **To test later:**
+  1. Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`).
+  2. The next CI run on GitHub shows no "Jekyll site CI" check.
 - **Problem:** From the code review of PR #48 (owner, 2026-10-02). `.github/workflows/jekyll-docker.yml` is GitHub's "Jekyll site CI" sample: it builds a Jekyll site in Docker on every push and pull request to `master`. The repo has no Jekyll site (no `_config.yml` or `Gemfile`), so the check means nothing and costs CI time.
 - **Who benefits:** developers (CI shows only real checks).
 - **What to build:** delete the file.
@@ -1427,23 +1779,382 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`).
   2. The next CI run on GitHub shows no "Jekyll site CI" check.
+
+#### UPG-39 — In development, log set-password and reset links when no mail provider is set
+- **Status:** DONE
+- **Last verified:** 2026-10-02, commit "UPG-39: …" on `production-ready` (parent `1b04a80`)
+- **Problem:** Owner, 2026-10-02. Since BLK-02 and UPG-33 the emailed set-password link is the only way into a new account, and the reset link the only way back in. With no mail provider configured (no `BREVO_API_KEY`, `RESEND_API_KEY` or Gmail login), `utils_email._send` falls back to Gmail SMTP and fails (`utils_email.py:408-420`), so a developer can't follow these flows locally.
+- **Who benefits:** developers and testers.
+- **What to build:** when no provider is configured and `FLASK_ENV` isn't `production`, the set-password and reset emails also write their link to the log at WARNING, marked as development-only. In production the link is never logged: a missing provider is logged as an error without the link.
+- **What was built:**
+  - `utils_email.mail_provider()` (`utils_email.py:75`) names the provider `_send` will use, or `''`.
+  - `_log_link_without_mail` (`:96`) is called by the reset email (`:686`) and the set-password email (`:717`). With no provider outside production, it logs the link at WARNING, marked "DEVELOPMENT ONLY". In production (app config or environment, `_is_production`, `:86`) it logs an ERROR naming the recipient and the missing provider, never the link.
+  - With a provider configured, nothing is logged.
+- **Files touched:** `utils_email.py`, `tests/test_dev_mail_links.py` (new).
+- **Effort:** S · **Depends on:** UPG-33 · **Risk:** a link in a production log would be a credential; the production test guards it.
+- **Acceptance criteria** (`tests/test_dev_mail_links.py`, real database layer; criteria 1–2 fail on the old code):
+  1. ✅ Test: in development with no provider, registering a new email and requesting a reset each log the full link (`::test_development_logs_both_links`).
+  2. ✅ Test: with production config and no provider, neither link appears in any log record (an error about the missing provider is logged instead) (`::test_production_never_logs_a_link`).
+  3. ✅ Test: with a provider configured (HTTP stubbed), the links aren't logged (`::test_with_a_provider_the_links_are_not_logged`).
+  - Full pytest: **725 passed** on SQLite and PostgreSQL 16; ruff clean.
+
+#### UPG-40 — The Super Admin can resend a set-password link from a users page
+- **Status:** DONE
+- **Last verified:** 2026-10-07, commit "UPG-40: …" on `production-ready` (parent `118dbf3`)
+- **Problem:** Owner, 2026-10-02. Since UPG-33, staff, SPOCs and walk-ins can get in only through the emailed set-password link, which expires after 3 days. There's no way to send a new one:
+  - no routed users page exists (`/admin/users` is a 404);
+  - `templates/admin/users.html` is never rendered (UPG-15) and links to delete with a GET;
+  - the admin report lists staff without actions (`routes_admin.py:583-598`).
+  - "Forgot password" works for the person themselves, but an organiser can't help someone whose link expired.
+- **Who benefits:** SuperAdmins and the staff and SPOCs they appoint.
+- **What to build:**
+  - A SuperAdmin-only users page at `/admin/users` (on the shared layout, linked from the admin navigation) listing each account's name, email, role and whether they've set a password.
+  - For accounts still waiting for their first password, a POST "Resend set-password link" button (CSRF) that emails a fresh link and audit-logs it.
+  - SuperAdmin accounts and accounts that already have a password are refused. Pagination is UPG-19's job.
+- **Re-checked before building (2026-10-07, `118dbf3`; rule 3):** `routes_admin.py`, `templates/admin/users.html` and `templates/base_classic.html` are unchanged since `37c2a5c`; `/admin/users` is still a 404.
+- **What was built:**
+  - `GET /admin/users` (`routes_admin.py:438`, SuperAdmin only) lists every account's name, email, role and password state, waiting accounts first. "Waiting for first password" means `needs_password_reset` is set (`_waiting_for_password`, `:429`): accounts someone else creates keep it until the set-password link or a reset is used.
+  - `POST /admin/users/resend_set_password` (`:458`, CSRF token in the form) emails a fresh link through UPG-33's `send_set_password_link`, explaining that an administrator sent it, and audit-logs `SET_PASSWORD_LINK_RESENT`. It refuses Super Admin roles (`SUPER_ROLE_NAMES`, `:421`), accounts that already have a password and unknown emails, and sends nothing for them.
+  - `templates/admin/users.html` is rewritten on the shared layout. The old standalone page, never rendered, is gone, along with its GET delete link and its form posting to a non-existent `/admin/add_user`.
+  - Linked from the layout's Management section (`templates/base_classic.html:61`) and from the admin dashboard's own sidebar (`templates/admin/dashboard.html:395`), where Super Admins land; that page doesn't use the layout yet (UPG-23).
+- **Files touched:** `routes_admin.py`, `templates/admin/users.html`, `templates/base_classic.html`, `templates/admin/dashboard.html` (nav links), `tests/test_admin_users.py` (new).
+- **Effort:** S · **Depends on:** UPG-33 · **Risk:** a long unpaginated list until UPG-19.
+- **Acceptance criteria** (`tests/test_admin_users.py`, real database layer; all 6 cases fail on the old code):
+  1. ✅ Test: a SuperAdmin opens `/admin/users` and sees an account waiting for its password with a resend button, and an account with a password without one (`::test_the_super_admin_sees_who_is_waiting_and_a_resend_button_only_for_them`).
+  2. ✅ Test: the resend sends exactly one set-password email whose link opens the account with its role, and the action is audit-logged (`::test_a_resend_emails_one_working_link_and_is_audit_logged`).
+  3. ✅ Test: a SPOC and a student get 403 or a login redirect on the page and the action; resending for an account that has a password, or for a SuperAdmin, is refused and nothing is sent (`::test_only_the_super_admin_can_open_the_page_or_resend`, with an anonymous visitor too, and `::test_accounts_with_a_password_and_super_admins_are_refused`).
+  - Full pytest: **731 passed** on SQLite and PostgreSQL 16; ruff clean.
+
+#### UPG-41 — Remove the leftover Gmail app password from `utils_email.py`
+- **Status:** DONE
+- **Last verified:** 2026-10-07, commit "UPG-41: …" on `production-ready` (parent `dee2135`)
+- **Problem:** Found 2026-10-02 while recording UPG-39 [C]. The module docstring of `utils_email.py` (`:26-27`, also in `functions/saptha_app/utils_email.py`) shows a Gmail app password next to the old `MAIL_USER` account. It has been in the public repo since `45c24cc` (2026-04-19). It isn't one of BLK-01's two leaked `MAIL_PASS` values, but it belongs to the same old account. The owner changed that account's password on 2026-09-30, which revokes all its app passwords, so it should already be dead. Gitleaks doesn't flag this format. The same docstring and `_from_address` (`:68-72`) also hard-code that account as the default sender.
+- **Who benefits:** everyone (no credential-shaped text left in the code).
+- **What to build:** remove the value and the account from the docstring (document the settings by name only), and drop the hard-coded default sender (use `MAIL_FROM`, and fall back to `MAIL_USER` only when that is set). Add a hygiene test that fails on a `MAIL_PASS` assignment with a value in tracked app code. The `functions/` copy goes in Phase 5 (UPG-15).
+- **Re-checked before building (2026-10-07, `dee2135`; rule 3):** UPG-39 added code to `utils_email.py` after `37c2a5c`, so `_from_address` had moved to `:68-72`; the docstring lines (`:26-27`) were unchanged. Also found: `config.py`'s `MAIL_PASSWORD` fell back to the literal `'SET_THIS_IN_ENV'` (unused, but it fails criterion 1), and the privacy, terms and payment-failed pages give the old account as the contact address (recorded as UPG-42; not part of this item).
+- **What was built:**
+  - The module docstring (`utils_email.py:1-16`) documents the settings by name only: no account, no password.
+  - `_from_address` (`:51`) returns `MAIL_FROM`, else `SapthaEvent <MAIL_USER>` when `MAIL_USER` is set, else `''`. With no sender, Brevo and Resend refuse before any request and say so in `LAST_EMAIL_ERROR`, which `/diag/email` shows (`NO_SENDER_ERROR`, `:61`, used at `:262` and `:324`). Before, an unverified or wrong sender failed inside the provider. The SMTP path already needs `MAIL_USER`.
+  - `config.py:113-114`: `MAIL_USERNAME` and `MAIL_PASSWORD` default to `''`; neither is read anywhere else.
+  - Criterion 1's scan (`tests/test_repo_hygiene.py:162-215`) parses every tracked `.py` file outside `functions/` and `scratch/`. It flags `MAIL_PASS`/`MAIL_PASSWORD` given a string by assignment, a dict entry, a keyword or a lookup default, and any string, docstrings included, that spells out such an assignment. Other tracked text files are checked line by line, with `$VAR`, `${{ … }}`, `<…>` and empty values allowed. It needs only the standard library, so CI's hygiene job (which installs only pytest) runs it.
+- **Files touched:** `utils_email.py`, `config.py`, `tests/test_repo_hygiene.py`, `tests/test_mail_sender.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** a deploy with Brevo or Resend but no `MAIL_FROM` now fails to send with a clear error instead of sending as the old account. The deploy checklist already sets `MAIL_FROM` (row updated).
+- **Acceptance criteria:**
+  1. ✅ Test: no tracked file outside `functions/` and `scratch/` assigns a literal value to `MAIL_PASS` (or `MAIL_PASSWORD`) in code or docstrings (`tests/test_repo_hygiene.py::test_no_mail_password_in_tracked_files`, plus 24 cases pinning what the scan flags and allows). Fails on the old code (the docstring and `config.py`'s placeholder).
+  2. ✅ Test: with neither `MAIL_FROM` nor `MAIL_USER` set, the sender address contains no hard-coded personal account: the sender is empty, Brevo and Resend send nothing, and `Config` has no built-in account (`tests/test_mail_sender.py::test_with_neither_setting_there_is_no_sender_and_nothing_is_sent`, `::test_config_has_no_built_in_mail_account`; both fail on the old code). `::test_the_sender_is_mail_from_else_the_mail_user_login` pins the order.
+  3. ✅ Owner: confirm the old Gmail account lists no app passwords. **Confirmed by the owner on 2026-10-07.**
+  - Full pytest: **759 passed** on SQLite and PostgreSQL 16; ruff clean.
+
+#### UPG-42 — The privacy, terms and payment-failed pages give the old Gmail account as the contact address
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Found 2026-10-07 while building UPG-41 [C]. Three public pages tell people to write to the old mail account, the one whose password was changed on 2026-09-30 (BLK-01, UPG-41):
+  - `templates/public/privacy.html:60` (exercising data rights) and `:77`;
+  - `templates/public/terms.html:68`;
+  - `templates/payment/failed.html:43`.
+  If nobody reads that inbox, privacy requests and payment problems go unanswered. The privacy notice's grievance contact is also part of the university's DPDP obligations (UPG-22).
+- **Who benefits:** students and external participants who need help; the university (privacy requests reach someone).
+- **What to build:** one contact address from a setting (e.g. `SUPPORT_EMAIL`, documented in `.env.example`), used by all three pages. When it's unset, the pages show no address rather than a personal one.
+- **Needs from the owner:** ~~the contact address (D-4).~~ Decided 2026-10-10: `events@your-university-domain` (D-4).
+- **Files touched:** `config.py` or a context processor in `app.py`, the three templates, `.env.example`, tests.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: with `SUPPORT_EMAIL` set, the privacy, terms and payment-failed pages show it, and no tracked template outside `functions/` and `scratch/` contains the old account's address.
+  2. Test: with it unset, those pages render without a `mailto:` link.
+
+#### UPG-43 — Event-day lists show only events whose status is the old `active`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-43: …" on `production-ready` (parent `932afdd`)
+- **Problem:** Found while building UPG-02 [C]. Events created by SPOCs move through workflow states (`services_workflow.py:25-40`: published, registration_open, in_progress, …) and never become `active`, but:
+  - the coordinator's scanner list shows only `active` events (`routes_coordinator.py:636`), so an assigned coordinator doesn't see today's event and needs the direct link `/coordinator/scan/<event>`;
+  - the walk-in form lists only `active` events (`routes_coordinator.py:548`);
+  - venue-QR self check-in refuses any other status (`routes_checkin.py:77,102`).
+  - The judge dashboard has the same filter (`routes_judge.py:59`), covered by UPG-04.
+  - **Found while building UPG-07:** the scheduled day-before reminder, the 3-day reminder and the SPOC's velocity alert also look only at `active` events (`tasks/scheduled_tasks.py:47,245,378`), so no SPOC-created event gets them. UPG-07's test uses an `active` event.
+  The kiosk's own `active` check went away in UPG-02 (it now uses the shared check-in, which has no status rule).
+- **Who benefits:** coordinators and volunteers on event day; participants using self check-in.
+- **What to build:** one helper that says whether an event is running for event-day purposes (published, registration open or closed, in progress, and the old `active`; not draft, pending, cancelled or completed), used by these three places.
+- **Files touched:** `routes_coordinator.py`, `routes_checkin.py`, `services_workflow.py` (the helper), `tasks/scheduled_tasks.py`, tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **What was built (2026-10-10, development-only run):**
+  - One helper: `services_workflow.EVENT_DAY_STATUSES` (published, registration open or closed, in progress, and the old `active`) and `is_event_day_status` (`services_workflow.py:63-71`), plus `REGISTRATION_OPEN_STATUSES`.
+  - The coordinator's scanner list and walk-in form query those statuses (`routes_coordinator.py:549,638`); venue-QR self check-in accepts them and refuses the rest (`routes_checkin.py:78,103`).
+  - The day-before and 3-day reminders read every event-day status, and the velocity alert reads events still taking registrations (`tasks/scheduled_tasks.py:21,48,246,379`); the lifecycle job's `RUNNING`/`REGISTRATION_OPEN` are now these constants.
+  - The judge dashboard is left for UPG-04 (Phase 6), as the item says.
+- **To test later:** criteria 1–4 below (real database): the scanner list and walk-in form list a `registration_open` event today and not a `cancelled` one; venue self check-in for `in_progress` vs `cancelled`; the day-before reminder through `/internal/cron/reminders` for a `registration_closed` event tomorrow and not a `cancelled` one. Existing `tests/test_cron.py` and `tests/test_notices.py` use `active` events and still pass.
+- **Acceptance criteria:**
+  1. Test (real DB): an assigned coordinator's scanner list shows today's `registration_open` event; a `cancelled` one isn't listed.
+  2. Test: the walk-in form lists the same event.
+  3. Test: venue self check-in works for an `in_progress` event and refuses a `cancelled` one.
+  4. Test: the day-before reminder, through `/internal/cron/reminders`, reaches registrants of a `registration_closed` event tomorrow, and not of a `cancelled` one.
+- **Not scheduled yet:** it fits Phase 2 next to UPG-29 (owner's call).
+
+#### UPG-44 — An empty payment status reads back as `unpaid` (postgres mode)
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Found while building UPG-02 [R]. A registration written with `payment_status: ''` reads back as `'unpaid'` on the SQL adapter: the enum column gets its default and the read returns it. Every live registration path sets a status (form, waitlist, walk-in, payment), so this affects old, seeded or imported rows. Reports then count them as unpaid. Before UPG-02's rule (a free event owes nothing), such an attendee would have been refused at the gate.
+- **Who benefits:** organisers reading payment figures.
+- **What to build:** an empty or missing payment status reads back as written, as other fields do since BLK-06b; an explicit `unpaid` still reads `unpaid`.
+- **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
+- **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test (SQLite and PostgreSQL): `''` and a missing `payment_status` read back as `''` and missing; `'unpaid'` reads back `'unpaid'`; filters on `payment_status == 'unpaid'` find only the explicit one.
+
+#### UPG-45 — Form submissions lose who sent them, and read back flattened (postgres mode)
+- **Status:** DONE
+- **Last verified:** 2026-10-08, commit "UPG-45: …" on `production-ready` (parent `b5afda8`)
+- **Problem (as found at `b5afda8`):** Found while building UPG-01 [R]. `utils.record_form_submission` writes `{event_id, reg_id, email, name, answers, submitted_at}` (`utils.py:216-229`).
+  - The SQL adapter maps `answers` onto the `answers_json` column (`FIELD_MAP`, `db_adapter.py:77`), so it overwrote the full document the insert had stored there (`:1166`). Only the answers were kept; `name`, `email` and `reg_id` were dropped.
+  - On read the answers came back flattened at the top level, with no `answers` key (`:1018-1024`).
+  - The responses page and the forms export read `s.get('answers')` (`routes_forms.py:684,715`), so in postgres mode they listed submissions with every answer empty.
+  - Firestore mode is unaffected.
+- **Who benefits:** organisers reading form responses and exports.
+- **What to build:** the adapter keeps the whole submission in its JSON column and reads it back as written; rows stored before the fix (answers only) read back as `{'answers': …}`.
+- **What was built:** `_submission_document` (`db_adapter.py:420`) reads the stored JSON, and wraps an answers-only row from before the fix. Writes merge the document into the column and keep the generic loop from overwriting it with the answers (`:1396-1401`). Reads return the document with `event_id`, `registration_id` and, if missing, `submitted_at` from its column (`:1030-1036`). No schema change.
+- **Files touched:** `db_adapter.py`, `tests/test_form_submission_documents.py` (new).
+- **Effort:** S · **Depends on:** BLK-06 · **Risk:** low; only the `form_submissions` branch of the adapter changed.
+- **Acceptance criteria** (`tests/test_form_submission_documents.py`, SQLite and PostgreSQL; both fail on the old adapter):
+  1. ✅ Test: a submission reads back with its answers under `answers`, plus name, email, registration and time; an update changes only the fields it names (`::test_a_submission_reads_back_whole`).
+  2. ✅ Test: a row stored before the fix reads back as `{'answers': …}` with its time (`::test_a_row_stored_before_the_fix_reads_back_as_answers`).
+  - Full pytest: **832 passed** on SQLite and PostgreSQL 16; ruff clean.
+- **Rule 8 (early pass, `db_adapter.py` changed):** all 35 open items checked against this change. Only UPG-01 reads form submissions (its criterion 2 needs this item). UPG-16's citation of the schema check's call site (`db_adapter.py:1822` at `986d108`) is now at `:1840`; its claims are unchanged. No other open item's claims change.
+#### UPG-46 — Scheduled emails link to a fixed `sapthaevent.in`, not `BASE_URL`
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Found while building UPG-07 [C]. The coordinators' day-before briefing links `https://sapthaevent.in/coordinator/scanner` (`tasks/scheduled_tasks.py:183`), and the SPOC's velocity alert links `https://sapthaevent.in/forms/register/<event>` (`:416`). BLK-16 moved every other emailed link to `BASE_URL`; these two point at a domain the deployment may not use.
+- **Who benefits:** coordinators and SPOCs who click the link.
+- **What to build:** both links built from `BASE_URL`, like the other emails (BLK-16's helper).
+- **Files touched:** `tasks/scheduled_tasks.py`, tests.
+- **Effort:** S · **Depends on:** BLK-16 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with `BASE_URL=https://events.example.edu`, the briefing and the velocity alert link only to that host; `sapthaevent.in` appears in neither.
+- **Not scheduled yet** (owner's call; it fits next to UPG-31).
+
+#### UPG-47 — Events saved without times get the save time as their start and end (postgres mode)
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Found while building UPG-07 [R]. The SQL adapter stores an event's `start_datetime` and `end_datetime` through `parse_datetime`, which returns *now* for an empty value (`db_adapter.py:1126-1127,1938-1940`). The SPOC's create form sends neither, so every such event reads back with its save time as start and end, not its `date`. Readers trust them [C]:
+  - room-conflict checks (`services_venue.py:377,408,463`, `services_workflow.py:204`) compare the wrong times;
+  - the calendar feeds read `start_datetime` before `date` (`app.py:1069-1070,1106-1111`), so they place each event at its save time;
+  - UPG-07's lifecycle job works around it by using the later of `date` and `end_datetime`.
+- **Who benefits:** SPOCs booking rooms; anyone reading the calendar.
+- **What to build:** an empty start or end reads back empty (or derived from `date` and `time`), not the save time; readers fall back to `date`.
+- **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
+- **Effort:** S · **Depends on:** BLK-06 · **Risk:** existing rows already hold save times; decide whether to clear them (a one-off script) or leave them.
+- **Acceptance criteria:**
+  1. Test (real DB): an event created through the SPOC form reads back with no `end_datetime` (or one on its `date`), never its save time.
+  2. Test: a room conflict check for an event saved without times uses its date: a second event in the same room on that date and time clashes, one on another day doesn't.
+- **Not scheduled yet** (owner's call).
+
+#### UPG-48 — Team members get no confirmation, reminder or notice
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Found while building UPG-31 [C]. Since UPG-08 a team's members are on the registration and can open its ticket, but every message goes to the lead only: the confirmation (`routes_forms.py:702`), the day-before ticket and the 3-day reminder (`tasks/scheduled_tasks.py:81,279`), and the change and cancellation notices (`services_venue.py:550`, `services_workflow.py:300`). Members find out only from the lead.
+- **Who benefits:** every team member.
+- **What to build:** each member with an email gets the day-before ticket (with the same QR) and the change and cancellation notices, once each, keyed per person; the confirmation tells members they were added.
+- **Files touched:** `tasks/scheduled_tasks.py`, `services_venue.py`, `services_workflow.py`, `routes_forms.py`, `routes_teams.py`, tests.
+- **Effort:** S · **Depends on:** UPG-08, UPG-31 · **Risk:** more email volume (Brevo's free tier allows 300 a day).
+- **Acceptance criteria:**
+  1. Test: for a team of three, the day-before reminder through the cron endpoint emails each member once.
+  2. Test: a venue change and a cancellation reach each member once.
+- **Not scheduled yet** (owner's call).
+
+#### UPG-49 — The automation's WhatsApp channel calls a function that doesn't exist
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Found while building UPG-31 [C]. `services_automation.dispatch_trigger` sends WhatsApp through `utils_whatsapp.send_whatsapp_message` (`services_automation.py:223`), which doesn't exist; the error is caught and recorded as `whatsapp_fallback`. The default rules for check-in and event reminders use that channel (`services_automation.py:51,75`), so those WhatsApp messages never go out.
+- **Who benefits:** participants who opt in to WhatsApp.
+- **What to build:** the channel sends through `utils_whatsapp._send`, and a failure is recorded as a failure, not a fallback.
+- **Files touched:** `services_automation.py` or `utils_whatsapp.py`, tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low; nothing goes out without Twilio settings.
+- **Acceptance criteria:**
+  1. Test: a trigger with the WhatsApp channel, for a user who opted in, calls the Twilio client once (mocked).
+- **Not scheduled yet** (owner's call).
+
+#### UPG-50 — Email templates insert names and titles without escaping
+- **Status:** TODO
+- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Problem:** Found while building UPG-31 [C]. The HTML emails put the recipient's name, the event title and messages straight into the markup (for example `utils_email.py:499,501,563,565,744,764,793`). A name typed at registration, or an event title, containing HTML is rendered as HTML in the email. Today the typed text mostly reaches its own author or comes from staff (titles, broadcast messages), so the risk is low; the notices from UPG-31 already escape.
+- **Who benefits:** everyone who gets email from the app.
+- **What to build:** escape every value inserted into an email template (one helper), keeping the templates' own markup.
+- **Files touched:** `utils_email.py`, `tasks/scheduled_tasks.py` (the briefing and 3-day emails), tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a registrant named `<b>Ann</b>` gets a confirmation that shows the text `<b>Ann</b>`, not bold.
+- **Not scheduled yet** (owner's call).
+
+### G. Added 2026-10-10 (owner's run prompt)
+
+#### UPG-51 — Cancelling a paid event refunds nobody
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-51: …" on `production-ready` (parent `351b3e3`)
+- **Problem:** [C] Cancelling an event (`services_workflow.WorkflowEngine.transition_event` → `cancelled`) sends the cancellation notice (UPG-31) but touches no payment. The admin's refund action (`routes_admin.py:527`, `services_payments.start_refund`, `services_payments.py:265`) only refunds paid orders that have **no** registration, so the paid registrations of a cancelled event can only be marked "refunded" by hand, with the money returned outside the app.
+- **Who benefits:** paying participants of a cancelled event; the finance office.
+- **What to build:** when an event is cancelled, its staff and the Super Admin see its paid registrations, with a "Refund all through Razorpay" action: a confirm step (ticked box and the total), one Razorpay refund per payment, never twice (an atomic claim per order, as in UPG-30), failures listed with their reason and retryable, every refund audit-logged and emailed to the student.
+- **Files touched:** `routes_admin.py`, `services_payments.py`, `utils_email.py`, `templates/admin/payments.html` (or a new cancelled-event refunds page), tests.
+- **Effort:** M · **Depends on:** UPG-30 · **Risk:** moves real money; the confirm step and the per-order claim guard it.
+- **What was built (2026-10-10, development-only run):**
+  - **Page `/admin/events/<event_id>/refunds`** (`routes_admin.event_refunds`; `templates/admin/event_refunds.html`): every paid registration of the event with its amount, payment ID and refund state (to refund, in progress, refunded with the refund ID, failed with the reason, or "no Razorpay order on record: refund by hand"). Open to the Super Admin and anyone who may edit the event (its owner SPOC); others 403 (`_refund_event_or_abort`).
+  - **"Refund all through Razorpay"** (`POST /admin/events/<event_id>/refund_all`, `routes_admin.refund_all`): only for a cancelled event; needs the ticked confirmation, which states the count and total. Each payment is claimed atomically on its order (`services_payments.start_registration_refund`: paid and linked to a registration → `refunding`), refunded once with its payment ID and amount, then recorded (`finish_refund`), the registration set `Refunded`/`cancelled` with the refund ID, an audit line `PAYMENT_REFUNDED`, and an email to the student (`utils_email.send_refund_email`). A failed call puts the order back to paid with its reason (`refund_failed`), listed on the page; pressing again retries only those.
+  - **Where staff find it:** the admin payments page lists cancelled events that still hold payments, and cancelling a paid event from the SPOC dashboard flashes the refunds link.
+  - Checked by hand [R] with Razorpay mocked: 3 paid registrations listed; no confirmation → no call; with it, 3 calls (one failing with "gateway timeout", shown as failed), 2 emails; the retry calls only the failed one and emails it; a third press calls nothing; 3 audit lines; another SPOC gets 403 on both routes, the owner 200; a non-cancelled event is refused.
+- **To test later:** criteria 1–4 below; also two concurrent "refund all" requests call Razorpay once per payment, and a registration without an order is listed for a manual refund.
+- **Acceptance criteria:**
+  1. Test (Razorpay mocked): a cancelled event with 3 paid registrations lists all 3; "Refund all" without the confirmation does nothing.
+  2. Test: with the confirmation, the refund API is called once per payment with its ID and amount; each is recorded, audit-logged and emailed once; pressing again calls nothing.
+  3. Test: one failed refund is listed with its reason, the others complete; retrying refunds only the failed one.
+  4. Test: a non-admin who isn't the event's owner gets 403; refunds are refused for an event that isn't cancelled.
+
+#### UPG-52 — Joining a team can overwrite another join or exceed `team_max`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-52: …" on `production-ready` (parent `7fc5292`)
+- **Problem:** [C] `routes_teams.join_team` (`routes_teams.py:64-102`) reads the registration's `members`, checks `len(members) >= team_max` (`:91`), appends, and writes the whole list back (`_save_members`, `:51`). Two people joining at once both read the same list: the second write drops the first member, or both pass the size check and the team exceeds `team_max`.
+- **Who benefits:** team leads and members of hackathons and sports events.
+- **What to build:** adding a member is atomic: a row lock (`SELECT … FOR UPDATE` on PostgreSQL) or a conditional update that only succeeds if `members` is unchanged, retried a few times; the size check runs inside it.
+- **Files touched:** `routes_teams.py`, `db_adapter.py` (or a small SQL helper), tests.
+- **Effort:** S · **Depends on:** UPG-08 · **Risk:** touches the adapter (rule 8's early pass when tested).
+- **What was built (2026-10-10, development-only run):** `routes_teams._add_member` (`routes_teams.py:55`) adds a member in one transaction on the SQL layer: it locks the registration row (`SELECT … FOR UPDATE`), counts its `team_members` rows, refuses a duplicate or a full team, and inserts the one new member row, instead of rewriting the whole list. `join_team` keeps its early checks for clear messages and uses `_add_member` for the decision (`'added'`, `'full'`, `'already'`). Firestore mode (legacy) keeps the read-then-write. Checked by hand [R] on PostgreSQL 16, five rounds each: two simultaneous joins to a team with one free place left exactly one new member and the team at `team_max` (4); with two free places, both joined. Existing `tests/test_teams.py` passes. On SQLite `FOR UPDATE` is ignored (writes are serialised by the file lock), so the race guarantee is PostgreSQL's.
+- **To test later:** criteria 1–2 below (PostgreSQL, concurrent joins).
+- **Acceptance criteria:**
+  1. Test (PostgreSQL): two joins to a team with one free place, run concurrently, leave exactly one new member and `team_max` holds.
+  2. Test: two joins to a team with two free places, run concurrently, keep both members.
+
+#### UPG-53 — The home page shows a fake hackathon when there are no events
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-53: …" on `production-ready` (parent `486bc08`)
+- **Evidence:** `app.py:698`, `templates/index.html:1186-1196`
+- **Problem:** [C] When no event is listed, the home page builds a demo event (`app.py:704-706`, id `demo-hackathon-2026`, "SapthaHack 2026 — National AI Hackathon") and shows it as if it were real. Its links go nowhere real.
+- **Who benefits:** visitors (no fake event); the university (nothing misleading on launch day).
+- **What to build:** with no events, the home page shows an empty state ("No upcoming events yet") instead.
+- **Files touched:** `app.py`, `templates/public/home.html` (or the home template in use), tests.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: with no events, `/` returns 200, shows the empty state and doesn't contain `demo-hackathon-2026` or "SapthaHack 2026".
+- **To test later:**
+  - Verify `/` returns 200, renders the empty state ("No Events Currently Listed") and contains neither `demo-hackathon-2026` nor "SapthaHack 2026" when no events exist in the database.
+
+#### UPG-54 — The Android app loads an old Railway URL
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-54: …" on `production-ready` (parent `7c0bd90`)
+- **Evidence:** `capacitor.config.json`, `scripts/configure_capacitor.py`, `package.json:8`, `docs/DEPLOY.md:252-269`
+- **Problem:** [C] `capacitor.config.json:5-6` points the Android webview at `https://saptha-portal.railway.app`, a retired host; `allowNavigation` lists `*.railway.app` and `*.firebaseapp.com`. An APK built today opens a dead site.
+- **Who benefits:** students using the Android app.
+- **What to build:** the server URL comes from `BASE_URL` at build time (a `capacitor.config.ts` or a small script that writes the JSON before `npx cap sync`); `allowNavigation` holds only that host; the build steps are documented.
+- **Files touched:** `capacitor.config.json` (or `.ts`), `package.json` script, `docs/DEPLOY.md`, tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low; the Flutter app under `~/development/saptha_app` is separate.
+- **Acceptance criteria:**
+  1. Test: no tracked file outside `functions/` and `scratch/` contains `railway.app` in the Capacitor config.
+  2. Test: running the config step with `BASE_URL=https://events.example.edu` gives a config whose server URL and `allowNavigation` use only that host.
+- **To test later:**
+  - Verify `capacitor.config.json` contains no reference to `railway.app`.
+  - Verify running `scripts/configure_capacitor.py` with `BASE_URL=https://events.example.edu` sets `url` to `https://events.example.edu` and `allowNavigation` to `["events.example.edu"]`.
+
+#### UPG-55 — Google sign-in and 2FA exist but nothing links to them
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-55: …" on `production-ready` (parent `2acf8a5`)
+- **Evidence:** `app.py:425-443`, `templates/login.html:206-215`, `templates/profile/dashboard.html:238-285`, `auth_oauth.py:35`, `auth_2fa.py:169-181`
+- **Problem:** [C] `auth_oauth.py` serves `/auth/google` and `auth_2fa.py` serves `/auth/2fa/*`, but no template links to either (`grep -rn 'auth/google\|auth/2fa' templates` finds nothing). Users can't find them. (The matchmaker's `MOCK_STUDENTS`, also on the launch list, is already UPG-14 criterion 4.)
+- **Who benefits:** every user (one-click login, a second factor for staff accounts).
+- **What to build:** a "Sign in with Google" button on the login page only when Google OAuth is configured; a "Two-factor authentication" section on the profile page (set up / turn off) only when 2FA is available. UPG-10 later restricts Google sign-in to the university domain.
+- **Files touched:** `templates/login.html`, the profile template, `app.py` (a context flag), tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with Google OAuth configured, the login page links `/auth/google`; without it, it doesn't.
+  2. Test: the profile page links the 2FA set-up when 2FA is available and not when it isn't.
+- **To test later:**
+  - Verify `/login` displays the "Sign in with Google" button linking `/auth/google` when `OAUTH_GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_ID` is set, and omits it when empty.
+  - Verify `/profile/` displays the 2FA section with "Set Up 2FA" linking `/auth/2fa/setup` when 2FA dependencies are available, and omits the section when unavailable.
+
+#### UPG-56 — Checkout has no coupon field
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-56: …" on `production-ready` (parent `21d107a`)
+- **Evidence:** `routes_payment.py:97,231-285`, `templates/payment/checkout.html:45-140`
+- **Problem:** [C] The server applies a coupon validated on the server when `create_order` gets one (`services_payments.server_price`, `services_payments.py:77`; uses held since UPG-36), but no template or script sends one: `grep -rni coupon templates static/js` finds only marketing copy.
+- **Who benefits:** organisers running discounts; students with a code.
+- **What to build:** a coupon field on the checkout page with an "Apply" button that shows the server's price (fee, discount, total) before paying, and sends the code with the order. The server's price stays the only price.
+- **Files touched:** `templates/payment/checkout.html`, its script, `routes_payment.py` (a price-preview endpoint if needed), tests.
+- **Effort:** S · **Depends on:** UPG-36 · **Risk:** low; the server already validates.
+- **Acceptance criteria:**
+  1. Test: the checkout page has a coupon input and its script sends the code with the order.
+  2. Test: the price preview with a valid code shows the discounted total from the server; an invalid code shows the server's error and the full price.
+- **To test later:**
+  - Verify `templates/payment/checkout.html` renders the coupon input and "Apply" button, and passes `coupon` with `/payment/create_order`.
+  - Verify `/payment/price_preview` returns `valid: True` and discounted total for a valid coupon code, and `valid: False` with server error and full price for an invalid code.
+
+#### UPG-57 — Placement drives: eligibility rules and shortlist rounds
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** MISSING [C]. The event-type table lists placement drives as "Generic registration only": eligibility (branch, CGPA, backlogs), shortlists per round and the company's lists are kept in Excel.
+- **Who benefits:** the placement cell, students, recruiting companies.
+- **What to build:** eligibility rules on the event (allowed branches, minimum CGPA, maximum active backlogs), checked at registration against what the student enters (or their roster record, UPG-10); named shortlist rounds the organiser moves registrations through (selected / rejected per round); an export per round.
+- **Files touched:** `routes_spoc.py` (or a new `routes_placement.py`), `routes_forms.py`, `services_export.py`, templates, tests.
+- **Effort:** M · **Depends on:** UPG-01 · **Risk:** self-declared CGPA can be wrong until the roster import holds it.
+- **Acceptance criteria:**
+  1. Test: a student whose branch isn't allowed, or whose CGPA is below the minimum, or with too many backlogs is refused with the reason; an eligible one registers.
+  2. Test: the organiser moves 2 of 3 registrations into round 2; the round-2 export lists exactly those 2.
+  3. Test: only the event's staff can move registrations or export a round.
+
+#### UPG-58 — The native document store creates its table at runtime, outside migrations
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-58: …" on `production-ready` (parent `8de071c`)
+- **Problem:** Found while building UPG-19 [C]. Collections with no SQL model live in `native_document_store`, which `_ensure_native_table` (`db_adapter.py:523`) creates with a raw `CREATE TABLE IF NOT EXISTS` on **every** read and write. The table isn't in `models_pg.py`, so UPG-16's baseline doesn't build it and `compare_metadata` doesn't see it; in production this is DDL at runtime (UPG-16 forbids it at start-up) and needs the app's database user to hold `CREATE`.
+- **Who benefits:** whoever deploys the app (a database user with no DDL rights works); every request touching those collections (one statement fewer).
+- **What to build:** a `NativeDocument` model for the table and a migration (`0003`), and `_ensure_native_table` only in development.
+- **Files touched:** `models_pg.py`, `migrations/versions/`, `db_adapter.py`, tests.
+- **Effort:** S · **Depends on:** UPG-16 · **Risk:** a production database created before this already has the table; the migration must create it only if missing.
+- **What was built (2026-10-10, development-only run):** a `NativeDocument` model for `native_document_store` (`models_pg.py`, before `OutboxTask`) and migration `migrations/versions/0003_native_document_store.py`, which creates the table only if a pre-migration database doesn't already have it. `_ensure_native_table` (`db_adapter.py:526`) now runs at most once per process and never in production. Checked by hand [R] on PostgreSQL 16: `upgrade head` → 0 metadata differences; `downgrade base` → `upgrade head` → 0; with production settings, a write and a read on `announcements` (a native collection) issue no DDL, and the home page loads with none.
+- **To test later:** criteria 1–2 below.
+- **Acceptance criteria:**
+  1. Test: `alembic upgrade head` on an empty database creates `native_document_store`, and `compare_metadata` stays empty.
+  2. Test: with production settings, reading and writing a native collection issues no `CREATE`.
+
+#### UPG-59 — Five pages answer 500 for any role
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit "UPG-23h: …" (parent `be0b13f`)
+- **Problem:** Found by UPG-23's route crawl [R], on a seeded event with one registration, the same before this run (`932afdd`) and after: `/ai/match_page/<event>`, `/exams/<event>`, `/gamification/leaderboard`, `/hackathon/submit/<event>` (Super Admin, SPOC, coordinator, judge, and the leaderboard for students too) and `/spoc/api/stats` (SPOC) answer 500. Causes not yet traced.
+- **Who benefits:** whoever opens those pages (judging matcher, online exams, the XP leaderboard, hackathon submissions, SPOC dashboard stats).
+- **What to build:** trace each 500 and fix it, or remove the page if UPG-15 finds it dead.
+- **Files touched:** `routes_ai_matching.py`, `routes_exams.py`, `routes_gamification.py`, `routes_hackathon.py`, `routes_spoc.py`, tests.
+- **Effort:** S–M · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500.
+
+#### UPG-60 — Front-end errors the browser pass found (before and after this run)
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit "UPG-25: …" (parent `244b889`)
+- **Problem:** Found by UPG-25's Chromium pass over every page [R]; each also appears on the code before UPG-23a:
+  - files the pages ask for don't exist: `/static/favicon.ico` (linked by the app layout and most pages, so nearly every page logs a 404), `/static/banner-bg.png`, and the payment logos under `/static/assets/logo/` (`visa.svg`, `mastercard.svg`, `upi.svg`, `netbanking.svg`);
+  - the reels page plays sample videos from `commondatastorage.googleapis.com`, which the CSP's `media-src` refuses, so it shows nothing;
+  - `/spoc/create_event` throws "Identifier 'cr_step2_init' has already been declared" (two scripts declare it);
+  - `/spoc/ai_report/<event>` throws "Cannot read properties of null (reading 'addEventListener')";
+  - some charts log "Unknown option 'mousemove'" and an SVG gets `height="auto"`.
+- **Who benefits:** everyone (no broken images or icons); SPOCs creating events.
+- **What to build:** add the favicon and the missing images (or drop the references); give the reels page real event media or remove the demo videos; fix the two script errors and the chart options.
+- **Files touched:** `static/`, `templates/public/reels.html`, `static/js/pages/spoc__create_event*.js`, `static/js/pages/spoc__ai_report.js`, tests.
+- **Effort:** S · **Depends on:** UPG-25 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Headless check: no page logs a 404 for a `/static/` file or a page error.
+
 ---
 
 ## 7. Production-ready plan (phases)
 
-*(Replaces "Recommended next 3 builds"; set in Phase 0, 2026-09-30.)* Work happens on the `production-ready` branch, one commit per item ("<ID>: <summary>"), in this order. Each phase ends with full checks, a phase summary in the changelog and a stop for the owner's "continue".
+*(Replaces "Recommended next 3 builds"; set in Phase 0, 2026-09-30.)* Work happens on the `production-ready` branch, one commit per item ("<ID>: <summary>"), in this order. Each phase ends with full checks, a re-verification of every open item (AGENTS.md rule 8, changed by the owner on 2026-10-02 from "after every 5 DONE items"), a phase summary in the changelog and a stop for the owner's "continue".
 
 | Phase | Items, in order | Notes |
 |---|---|---|
 | 0. Sync the plan | — | Done 2026-09-30: every item re-verified; BLK-12, BLK-13, UPG-16 to UPG-32 added; sessions merged into BLK-08. |
 | 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11, then BLK-16 (added 2026-10-02 from the PR #48 review) and BLK-17 (found starting UPG-33), both built before Phase 2 | **Done** (2026-10-01; BLK-16 and BLK-11's CI on GitHub 2026-10-02). Waiting on the owner: BLK-01's last criterion (the PR refs, GitHub Support, D-2); it doesn't block Phase 2. |
-| 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-37 hourly login cap → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-36 coupon uses → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
-| 3. Production setup | UPG-16 migrations → UPG-17 uploads → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups → UPG-22 privacy | |
-| 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check | One commit per UPG-23 area. |
-| 5. Clean-up | UPG-14 → UPG-15 → UPG-38 Jekyll workflow | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
-| 6. Release check | UPG-32 | Fresh clone, production boot, restart/two instances, all scans, `docs/DEPLOY.md`, final report. |
+| 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-37 hourly login cap → UPG-39 links in the dev console → UPG-40 resend set-password links → UPG-41 leftover mail password → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-36 coupon uses → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | **Done** (2026-10-08), except UPG-30's criterion 4 (the owner's checkout in Razorpay test mode). Found and built during the phase: BLK-18, BLK-19, UPG-45. Not pushed yet: the remote `production-ready` is at `37c2a5c`. UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
+| 3. Production setup | UPG-43 event-day states → UPG-16 migrations → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups (UPG-17 folded in, D-5) → UPG-22 privacy (with UPG-42) → UPG-51 refund all on cancellation → UPG-52 atomic team join | Order set by the owner's run prompt (2026-10-10). |
+| 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check → launch checks UPG-53, UPG-54, UPG-55, UPG-56 | One commit per UPG-23 area. |
+| 5. Clean-up | UPG-14 → UPG-15 → UPG-38 Jekyll workflow → one seed command | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
+| 6. University features (2026-10-10) | UPG-04 → UPG-09 → UPG-10 → UPG-11 → UPG-12 → UPG-13 → UPG-57; UPG-44, UPG-46 to UPG-50 where they fit | Added by the owner's run prompt. |
+| 7. Release check | UPG-32 | Fresh clone, production boot, restart/two instances, all scans, `docs/DEPLOY.md`, final report. |
 
-Outside these phases (after Phase 6 unless the owner says otherwise): UPG-04 judging rubrics, UPG-09 venue booking on create, UPG-10 roster import and Google sign-in, UPG-11 participation ledger, UPG-12 faculty/external participants, UPG-13 sports fixtures.
+*(2026-10-10: UPG-04 and UPG-09 to UPG-13 moved into Phase 6 above; UPG-32 is Phase 7.)*
+
+**Development-only run (owner, 2026-10-10).** For the run that starts at `6b4fe41`, rule 5 (tests) and rule 8 (re-verification) are suspended. An item built in this run is marked **BUILT (untested)**, not DONE, and gets a "To test later" line listing what its acceptance criteria need. Every commit still passes `ruff check .` and starts the app (home page loads). No existing test is deleted, skipped or weakened.
 
 ### Decisions needed
 
@@ -1452,6 +2163,10 @@ Outside these phases (after Phase 6 unless the owner says otherwise): UPG-04 jud
 | D-1 | **Is Cloud Run the only deploy target?** If yes, `functions/saptha_app/` (the Zoho Catalyst copy) and `catalyst.json` are removed in Phase 5. That copy still has the kiosk/ticket holes (BLK-12), the public SuperAdmin sign-up (BLK-14), the bandit findings (BLK-11) and the walk-in default password (UPG-15). If Catalyst stays, it needs a build step instead of a tracked copy. | BLK-12 criterion 4; BLK-14 criterion 3; UPG-15 criteria 3–4 | **Decided (owner, 2026-10-01): yes, Cloud Run is the only deploy target.** UPG-15 removes `functions/saptha_app/` and `catalyst.json` in Phase 5, which completes BLK-12 criterion 4 and BLK-14 criterion 3; no Catalyst build step is needed. Until then, BLK-11 fixes the two flagged files in place so CI can go green. |
 | D-2 | **BLK-01 owner actions:** force-push the rewritten `master`, delete the remote `main` and `claude/busy-davinci-6nkabi`, and ask GitHub Support to purge the 47 PR refs (commands in the 2026-09-29 changelog). The agent never pushes. | BLK-01 criteria 0 and 4 (CI green on GitHub); BLK-11 criterion 2 | **Done (owner, 2026-10-01):** `master` force-pushed, `main` and `claude/busy-davinci-6nkabi` deleted, `production-ready` pushed, GitHub Support contacted. Verified with `git ls-remote`; BLK-01 criterion 4 is met on GitHub. **Left:** Support removing the 47 PR refs (BLK-01 criterion 0). Nothing else waits on it. |
 | D-3 | **UPG-35: should login, password-reset and sign-up messages hide whether an account exists?** | UPG-35 | **Decided (owner, 2026-10-02):** login and password-reset messages become uniform ("Email or password is incorrect"; "If an account exists for this email, we've sent a reset link"). Sign-up and registration stay as they are: an existing email is told to log in first. Scheduled in Phase 2 right after UPG-33. |
+| D-5 | **UPG-17: fold into UPG-21?** Nothing the app runs stores files any more (end-of-Phase 2 re-verification), so UPG-17's criteria 3–4 have nothing to test. Proposed: move its storage settings (S3 endpoint, private objects, no silent local fallback) into UPG-21's backup work and close UPG-17. | UPG-17, UPG-21 | **Decided (owner, 2026-10-10): yes.** UPG-17 is folded into UPG-21: its storage settings (S3 endpoint, private objects, no silent local fallback) are built with the backups; UPG-17 is closed as MERGED. |
+| D-4 | **UPG-42: which address should the privacy, terms and payment-failed pages give for help and privacy requests?** | UPG-42 | **Decided (owner, 2026-10-10):** `events@your-university-domain`. UPG-42 reads it from `SUPPORT_EMAIL`; `.env.example` gives this value. |
+| D-6 | **UPG-30 criterion 4: when is the Razorpay test-mode checkout run?** | UPG-30 criterion 4 | **Decided (owner, 2026-10-10):** deferred to UPG-32 (release check), run on a public test deployment together with the webhook (Razorpay must reach `<BASE_URL>/payment/webhook/razorpay`). UPG-30 stays IN PROGRESS until then. |
+| D-7 | **UPG-22: what is kept after an account is deleted?** Built: the account and the person's name, email, phone, USN and answers go; registration rows stay without them (attendance and payment totals for reports). Still holding the email: payment orders (finance records) and the audit log. Also: should API v1 registrations (the apps) require consent once the apps are updated? | UPG-22 (policy, not code) | Open (2026-10-10). Proposed: keep payment orders and the audit log for the finance and audit retention period (e.g. 8 years), then anonymise; require consent in API v1 after the next app release. |
 
 ---
 
@@ -1528,3 +2243,67 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-02 | "BLK-17: …" (parent `a417e88`) | BLK-17, UPG-29 | **New blocker, found while starting UPG-33, and DONE** (built before UPG-33 under rule 2). 10 ClubSPOC write routes (end event, publish results, add judges by form or CSV, rooms, room reassignment, announcements, agenda, open hall, certificate templates) and 4 read pages acted on any event with no ownership check. One helper now requires the right permission on the event first; room reassignment also checks the registration's event. 3 new real-database tests (2 fail on the old code, where another SPOC could end the event). UPG-29 notes the judge routes are now covered. Full pytest 704 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 3 items DONE since the 2026-10-02 re-verification. |
 | 2026-10-02 | "UPG-33: …" (parent `0b9463a`) | UPG-33 | **UPG-33 DONE** (first Phase 2 item). Before building, the item was widened (rule 3) to the three more paths that emailed passwords: SPOC `assign_coordinator`, `add_judge` and `upload_judges_csv`, and admin `appoint_spoc` with its typed password. Every account someone else creates (walk-in, coordinator staff, SPOC-appointed coordinator or judge, admin-appointed SPOC) is now unverified and opened with a one-time set-password link whose email says why it exists. The staff WhatsApp notice carries no credentials, and the admin form has no password field. Reset links are bound to the current password hash, so each works once. 8 new real-database tests (all fail on the old code) record every plaintext passed to `generate_password_hash` and assert none reaches an email or WhatsApp message. Full pytest 712 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 4 items DONE since the 2026-10-02 re-verification. |
 | 2026-10-02 | "UPG-35: …" (parent `032e7c3`) | UPG-35, BLK-13 | **UPG-35 DONE** (D-3). Web and API login answer "Email or password is incorrect." for an unknown email, a wrong password and an old unhashed password, and the API no longer gives the latter its own 403. Password reset always answers "If an account exists for this email, we've sent a reset link." A correct password with the wrong role still gets a role hint. Sign-up and registration unchanged and now pinned. 4 new real-database tests (criteria 1–3 fail on the old code); BLK-13's API test now expects the new 401 wording (still exact). Full pytest 716 passed on SQLite and PostgreSQL 16; ruff clean. Rule 8: 5 items DONE since the 2026-10-02 re-verification (BLK-11, BLK-16, BLK-17, UPG-33, UPG-35). |
+| 2026-10-02 | "docs: …" (parent `37c2a5c`) | Process, UPG-39, UPG-40, UPG-41 | Owner: AGENTS.md (and the identical CLAUDE.md) rule 8 now runs the re-verification once at the end of each phase, or early when a change touches files many open items depend on. "Before the next deploy" gains `BREVO_API_KEY`, `MAIL_FROM` and a test-send step, since UPG-33 makes the emailed link the only way into new accounts. **New:** UPG-39 (development logs set-password and reset links when no mail provider is set; never in production), UPG-40 (SuperAdmin users page with a resend button; no users page is routed today), UPG-41 (a third Gmail app password for the old mail account in `utils_email.py`'s docstring since 2026-04-19, revoked by the 2026-09-30 password change; remove it and the hard-coded sender). Scheduled after UPG-37. Docs only. |
+| 2026-10-02 | "UPG-37: …" (parent `06f4b02`) | UPG-37, BLK-13 | **UPG-37 DONE.** Each throttle counter has its own window: logins are also capped at 20 failures per account per hour (`LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT`), on the same stored attempts, which are now kept for an hour. A success clears both account windows; IPs and reset requests have no hourly cap. 6 new cases on both counter stores (criteria 1–2 fail on the old code). One BLK-13 test's fixed list of 20 Redis connections ran out with three counters per check; it now gets a new connection per call (same assertions). Full pytest 722 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-02 | "UPG-39: …" (parent `1b04a80`) | UPG-39 | **UPG-39 DONE.** With no mail provider configured, the set-password and reset emails log their link in development (WARNING, marked development-only) so the flows can be tested locally. In production only an error naming the missing provider is logged, never the link, and with a provider nothing is logged. 3 new real-database tests (criteria 1–2 fail on the old code). Full pytest 725 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-07 | "UPG-40: …" (parent `118dbf3`) | UPG-40, UPG-15 | **UPG-40 DONE.** New Super Admin page `/admin/users` on the shared layout, linked from the layout and the admin dashboard: every account with its role and whether it has set a password. Accounts still waiting get a POST "Resend set-password link" button that emails a fresh link (UPG-33's sender) and audit-logs it. Super Admin accounts, accounts with a password and unknown emails are refused and get nothing. The never-rendered standalone `templates/admin/users.html` (GET delete link, form to a missing route) is replaced. 6 new real-database cases (all fail on the old code). UPG-15's dead-link and unused-template notes updated. Full pytest 731 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-07 | "UPG-41: …" (parent `dee2135`) | UPG-41, UPG-42, D-4 | **UPG-41 DONE.** `utils_email.py`'s docstring names the mail settings only: the old account's address and app password are gone. The sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send with an error naming `MAIL_FROM`. `config.py`'s mail account and password default to empty. New hygiene scan: no tracked file outside `functions/` and `scratch/` gives `MAIL_PASS`/`MAIL_PASSWORD` a value in code, docstrings or config (standard library only, so CI's hygiene job runs it). 28 new cases; criteria 1–2 fail on the old code. Criterion 3: the owner confirmed on 2026-10-07 that the old Gmail account lists no app passwords. Deploy checklist's `MAIL_FROM` row updated. **New:** UPG-42 (privacy, terms and payment-failed pages give the old account as the contact address) and D-4 (which address to use). Full pytest 759 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-07 | "BLK-18: …" (parent `2db0db1`) | BLK-18, Rule 8 | **New blocker, found while starting UPG-02, and DONE** (built before UPG-02 under rule 2, as with BLK-17). `can()` gave every Volunteer `check_in` on every event. On the real database an unassigned volunteer marked another event's registration `Present`, and could read its scanner view and open its ticket and QR. A Volunteer now has `check_in` only on events whose staff lists them, like an EventCoordinator. 3 new real-database tests (2 fail on the old code; the third guards against over-blocking). Full pytest 762 passed on SQLite and PostgreSQL 16; ruff clean. **Rule 8 early pass** (`services_permission.py` touched): all 37 open items checked against the change; only UPG-02 is affected, and in the direction it asks for. |
+| 2026-10-07 | "UPG-02: …" (parent `5c54cb8`) | UPG-02, BLK-19, UPG-43, UPG-44, UPG-14 | **UPG-02 DONE.** One check-in, `routes_ticket.check_in`, behind `POST /ticket/api/checkin`. It takes the scanned link or signed token, never a registration ID. It needs `check_in` on the ticket's event and that the event exists, and refuses another event's ticket. One payment rule: free, waived or paid in any case; a free event owes nothing. A repeat answers "Already checked in at HH:MM." with the first time. The coordinator, SPOC and HUD scanners, a USB scanner at the kiosk and the rewritten offline queue (IndexedDB, one entry per ticket, replay-safe) all use it. `/ticket/verify` POST, `/ticket/api/verify` POST and kiosk confirm call the same function, which closes BLK-12's missing-event gap. 20 new cases, all failing on the old code, including a Node run of `offline-sync.js` against a live copy of the app. **New:** BLK-19 (registrant names inserted with `innerHTML` on staff pages run as script: stored XSS; to be built before UPG-06 under rule 2), UPG-43 (scanner list, walk-in list and venue self check-in accept only the old `active` status), UPG-44 (an empty payment status reads back `unpaid`). UPG-14 gains the by-ID check-in routes left beside the shared one, and `/ticket/api/verify`'s Bearer login, which imports a function that doesn't exist. Full pytest 782 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. |
+| 2026-10-08 | "BLK-19: …" (parent `0a68ce6`) | BLK-19, UPG-15, UPG-25 | **BLK-19 DONE** (found in UPG-02; built before UPG-06 under rule 2). The audit found 241 places in 30 templates and scripts where a value went into HTML unescaped; other people's text could run as script on the public leaderboard, calendar, landing page and chatbot, on SPOC, judge, admin and coordinator pages, and in the student dashboard's notifications. New `static/js/escape.js` (`escapeHtml`, `escapeJsAttr` for handler attributes, `safeUrl` for links), loaded by the shared layout and each standalone page that uses it; shared scripts build text nodes instead; four page-local helpers, two of which missed single quotes, are gone. `tests/html_sinks.py` scans every tracked template and script, so new code is held to the same rule. 35 new test cases (the scan and the loader check fail on the old code; a Node test of the helpers; a real-database check that a markup name is stored as typed and shown as text). UPG-15's two dead templates are skipped by the scan until it deletes them; UPG-25 stays the second layer. Full pytest 817 passed on SQLite and PostgreSQL 16; ruff clean; bandit exit 0. |
+| 2026-10-08 | "UPG-06: …" (parent `816808c`) | UPG-06, UPG-14 | **UPG-06 DONE.** One issuing path, `utils_certificate.issue_event_certificates`, for ending the event (through the Celery task, inline without a broker) and the SPOC's bulk button. Each attendee marked Present gets a PDF (uploaded template or built-in design; the top three scores get winner certificates), a certificate record and ID, the verify URL on the registration and an emailed PDF, and never a second one. Drawing a PDF no longer writes records; the download route and the email use the stored ID, so their QR and link resolve. The broken per-registration task and the two old send-all functions are removed; the bulk button uses BLK-17's permission check. 3 new real-database tests (all fail on the old code). UPG-14 gains API v1's separate certificate store, which `/verify` can't see. Full pytest 820 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-03: …" (parent `f964a34`) | UPG-03 | **UPG-03 DONE.** New `services_export.py`: one export of an event's registrations (CSV and Excel) used by the SPOC, coordinator and admin routes, with every column the item lists. Department and year come from the profile, form or USN; spreadsheet-formula names are quoted. A one-click event report (Excel): summary, by department, by year, feedback, winners, registrations; linked from the SPOC dashboard. Every export route now answers 403 to anyone without `export_data` on the event (or, for the all-events export, to non-admins), instead of a login redirect; the coordinator's Excel export no longer swallows its 403. 6 new real-database cases (all fail on the old code). Full pytest 826 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-29: …" (parent `2f6262f`) | UPG-29, UPG-04 | **UPG-29 DONE.** Tests first, then the fixes they called for. New `POST /spoc/remove_staff/<event_id>` removes a coordinator or judge from the event's staff and coordinators, ending their access to registrations, exports, check-in and scoring; the SPOC dashboard gets remove buttons on coordinator chips and a judge list with Remove in the judges dialog. `assign_coordinator` now answers another SPOC with 403 (it redirected) before creating anything. The judge dashboard's `active`-only filter stays with UPG-04 criterion 3. 4 new real-database cases (all fail on the old code). Full pytest 830 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-45: …" (parent `b5afda8`) | UPG-45, UPG-01, Rule 8 | **New item, found while building UPG-01, and DONE** (UPG-01's criterion 2 depends on it). On the SQL adapter a form submission kept only its answers, and read them back flattened with no `answers` key, so the responses page and the forms export showed every answer empty in postgres mode. The adapter now keeps and returns the whole submission; old rows read back as `{'answers': …}`. No schema change. 2 new tests on SQLite and PostgreSQL (both fail on the old adapter). Full pytest 832 passed on both; ruff clean. **Rule 8 early pass** (`db_adapter.py` touched): all 35 open items checked; only UPG-01 is affected. |
+| 2026-10-08 | "UPG-01: …" (parent `2a69b17`) | UPG-01 | **UPG-01 DONE.** One normaliser, used by `_get_form`, gives every stored form field an id (else its `field_name`) and prepends full name, email, phone and USN once unless the form already asks for them. So template forms made by API v1's `instantiate_event` and the seeded events render named inputs and ask for identity, without rewriting stored data. Saving a form with an unnamed input field returns 400. Criterion 2 found UPG-45 (built first). 10 new real-database cases (all fail on the old code), including every template and the seeded conference registered end to end. Full pytest 842 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-34: …" (parent `2fb6e01`) | UPG-34 | **UPG-34 DONE.** One check, `routes_forms.registration_closed` (status and deadline), used by the registration page, `/forms/submit` (which missed the deadline and pending approval) and the legacy `/participant/public_register`, which now refuses closed events before creating anything. The public event page's Register buttons link to the event's own form; its bypassing modal form is removed. 7 new real-database cases (6 fail on the old code). Full pytest 849 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-08: …" (parent `98c3556`) | UPG-08 | **UPG-08 DONE.** Teams live on the registration. The form adds team name and member rows from the event's limits, and the server enforces team size (refusing extra member fields and duplicate emails). A team registration gets an invite code; `/teams/join` adds the student to its members (refusing full teams, closed events and people already registered). The lead removes members and replaces the code; members can leave; the team page shows the roster and ticket. The separate `teams` collection is no longer used. 6 new real-database cases (5 fail on the old code). `test_student_registers_for_free_team_event_and_spoc_checks_in` registered one person for a 2–4 team event, which the item now refuses; its form gained a second member, assertions unchanged. Full pytest 855 passed on SQLite and PostgreSQL 16; ruff clean. |
+| 2026-10-08 | "UPG-30: …" (parent `f5ae29d`) | UPG-30, UPG-31, UPG-16, Rule 8 | **UPG-30 built; IN PROGRESS** until the owner's checkout in Razorpay test mode (criterion 4). Built: a receipt email after payment; capacity re-checked at completion, and a paid order that can't complete stays paid with its reason, the payer told it's recorded; a signed `payment.captured` webhook completing the stored registration once, whichever of webhook and browser arrives first; the admin's payments page listing paid orders with no registration, with a confirmed, once-only Razorpay refund; mark-refunded and cancel on paid registrations, audit-logged, which check-in then refuses; a one-row-per-payment finance export. `payment_orders` gains five columns (schema check for existing databases; UPG-16 updated). **Found:** the paid flow's ticket email and WhatsApp receipt tasks call their senders with the wrong arguments, so neither is sent; added to UPG-31. 12 new real-database cases with Razorpay mocked (all fail on the old code). Full pytest 867 passed on SQLite and PostgreSQL 16; ruff clean. **Rule 8 early pass:** only UPG-16 is affected (updated). |
+| 2026-10-08 | "UPG-36: …" (parent `caaa317`) | UPG-36, UPG-16, Rule 8 | **UPG-36 DONE.** An order with a coupon now holds a use from the moment it's created, taken with one conditional UPDATE on a new `coupon_uses` counter (coupons themselves are schemaless documents). No use left means the payer is told and can pay full price. Unpaid holds expire after `COUPON_HOLD_MINUTES` (30) and give the use back once; a payer's retry gives back their earlier hold; an expired order paid late takes a use again or is kept for the admin, never lost. 4 new cases (all fail on the old code), including 10 concurrent checkouts on PostgreSQL getting exactly 3 discounts. Full pytest 871 passed on PostgreSQL 16 and 870 + 1 skipped on SQLite; ruff clean. **Rule 8** (`models_pg.py`: a new table): only UPG-16 is affected; its baseline list now includes `coupon_uses`. |
+| 2026-10-08 | "UPG-05: …" (parent `c35bd09`) | UPG-05 | **UPG-05 DONE.** Feedback opens after check-in, to the lead and the registration's team members (others 403), and each person answers once. Each answer is its own document; the lead's is still kept on the registration, and older responses still count. The summary pages now need `view_analytics` on the event: before, any SPOC or coordinator could read any event's feedback. A new CSV export (one row per response) needs `export_data`. The certificate's feedback rule asks each person. 7 new real-database cases (6 fail on the old code). Full pytest 878 passed on PostgreSQL 16 and 877 + 1 skipped on SQLite; ruff clean. |
+| 2026-10-08 | "UPG-07: …" (parent `125f7f7`) | UPG-07, UPG-14, UPG-18, UPG-22, UPG-31, UPG-43, UPG-46, UPG-47 | **UPG-07 DONE.** An outside scheduler runs the scheduled jobs through `POST /internal/cron/<job>` (`reminders`, `lifecycle`, `cleanup`): 503 until `CRON_SECRET` is set, 403 for a missing or wrong `X-Cron-Secret` (constant-time compare), CSRF-exempt. Reminders send once per registration (existing `*_sent` flags). **The lifecycle job no longer deletes anything:** it used to delete every event 5 days after its date, with its registrations; now it closes registration after the deadline and moves past events to `completed`, through the audited workflow transition. The clean-up deletes expired sessions and login attempts older than an hour, nothing else. New `.github/workflows/cron.yml` (idle until `CRON_URL`/`CRON_SECRET` are set) and `docs/DEPLOY.md` (Cloud Scheduler set-up); `CRON_SECRET` added to `.env.example` and the deploy checklist. 5 new real-database cases (criteria 1–4 fail on the old code). Full pytest 883 passed on PostgreSQL 16, 882 passed and 1 skipped on SQLite; ruff clean. Recorded: the reminders and velocity alert look only at `active` events (UPG-43 criterion 4); UPG-31's ticket-email signature bug also breaks the day-before reminder; UPG-18's outbox job goes on this endpoint; UPG-22 owns any retention rule; UPG-14 must decide on `tests/test_event_maintenance.py`, which imports `scheduler_enhanced.py`. **New:** UPG-46 (scheduled emails link to a fixed `sapthaevent.in`), UPG-47 (events saved without times get the save time as start and end on the SQL layer). |
+| 2026-10-08 | "UPG-31: …" (parent `f570f07`) | UPG-31, UPG-18, UPG-48, UPG-49, UPG-50 | **UPG-31 DONE.** The change and cancellation notices existed but never emailed anyone: their email channel imported `utils_email.send_email_notification`, which didn't exist. Added it (escaped, through Brevo first), so those notices, and API v1's automation emails, now go out. The ticket-email task's `event_date`/`venue` are now accepted, so paid registrants get their ticket email again; the receipt WhatsApp gets the payment ID; the missing day-before WhatsApp function exists. The day-before email carries the entry QR (the ticket page's signed token) under the ticket's ID. Change notices use a stable key (Python's `hash()` differs per process), and the coordinator's edit sends them too. 5 new real-database cases with Brevo's HTTP API mocked and outside connections refused (4 fail on the old code). Full pytest 888 passed on PostgreSQL 16, 887 passed and 1 skipped on SQLite; ruff clean. A first draft of the tests overwrote the existing `tests/test_notifications.py`; it was restored unchanged before any commit, and the new tests are in `tests/test_notices.py`. **New:** UPG-48 (team members get no notices), UPG-49 (automation WhatsApp channel), UPG-50 (email templates don't escape). |
+| 2026-10-08 | "docs: …" (parent `1b7fd7c`) | ALL (re-verification at the end of Phase 2) | **Full re-verification of every open item (33), plus sections 1–4 (their citations in 2–4), against the code at `1b7fd7c`** (rule 8: 22 items DONE since the post-Phase 1 pass, BLK-16 and BLK-17 included; the count restarts at 0). Each citation was mapped from the commit that last wrote its line (`git blame` on this file) to `1b7fd7c` by exact line alignment; every moved, changed or unresolved one was read, and the counts were re-run with one script on `986d108` and `1b7fd7c`. **Claims corrected:** UPG-17 (nothing live stores files any more: certificates are emailed and verified from the database since UPG-06, exports are streamed; criteria 3–4 have nothing to test; new decision D-5 proposes folding it into UPG-21; the uploads inventory row is now NOT USED); UPG-32 (`README.md` has no Railway/Render guide; `docs/DEPLOY.md` exists with the scheduled-jobs section); UPG-15 (walk-ins get no password since UPG-33; the `functions/` diff re-counted); UPG-13 (a second checklist label, `services_copilot.py:180`, was missed before); UPG-10, UPG-12 and the FDP row (the account helper's role is now a parameter that defaults to `Student`); UPG-20 (47 of 99 environment variables in `.env.example` by this pass's script, and `MAIL_FROM` isn't one); inventory rows for approval, the calendar feed, the registration form and the kiosk. **Counts updated:** UPG-19 (`.stream()` 27/27/13/7), UPG-23 (16 templates on the shared layout, 107 standalone), UPG-24 (Bootstrap 5.3.0 on 46), UPG-25 (70 templates with inline scripts; 483 handlers in 76), UPG-26 (24 templates load `global.js`). **UPG-14 gains** `tasks/export_tasks.py` and `tasks/webhook_tasks.py`, which nothing queues (the second is tested by `tests/test_tasks.py`, so rule 5 applies). **Line moves only:** UPG-04, 09, 10, 12, 14, 15, 16, 20, 25, 26, 30, 43, 46, 47, BLK-01 and 45 citations in sections 2–4. **Unchanged and still accurate:** UPG-11, 18, 21, 22, 27, 28, 38, 42, 44 (re-run [R]: an empty payment status still reads back `unpaid`), 48, 49, 50. **BLK-01** [R, read-only `git ls-remote`]: `master` at `8b72203` (PR #49 merged), the remote `production-ready` at `37c2a5c`, PR refs 1–49 (the same 47 old ones, plus #48 and #49 on the rewritten history). No status changes and no new items. Checks: see the Phase 2 summary. |
+| 2026-10-08 | "docs: …" (parent `1b7fd7c`) | Phase 2 summary | **Phase 2 (event day) done, except UPG-30's criterion 4.** **DONE:** UPG-33, UPG-35, UPG-37, UPG-39, UPG-40, UPG-41, UPG-02, UPG-06, UPG-03, UPG-29, UPG-01, UPG-34, UPG-08, UPG-36, UPG-05, UPG-07, UPG-31; found and built during the phase: BLK-18, BLK-19, UPG-45. **Still open:** UPG-30 (built; waits on the owner's checkout in Razorpay test mode). **Opened during the phase:** UPG-42, UPG-43, UPG-44, UPG-46, UPG-47, UPG-48, UPG-49, UPG-50 (none scheduled yet; owner's call), and decisions D-4 and D-5 (both open). **Checks at the end of Phase 2 [R]:** full pytest 888 passed on PostgreSQL 16, and 887 passed with 1 skipped on SQLite (the PostgreSQL-only concurrency case); 689 at the start of the phase. CI's test command and environment in a fresh clone, with a Redis-protocol server (`fakeredis`'s TCP server, since this machine has no Redis): 887 passed, 1 skipped. ruff clean; CI's bandit command on the fresh clone: exit 0. **Waiting on the owner:** push `production-ready` (21 local commits; the remote is at `37c2a5c`) and open a pull request into `master` so CI runs; UPG-30's test-mode checkout; D-4; D-5; BLK-01's last criterion (GitHub Support, D-2). **Next:** Phase 3, starting with UPG-16. |
+| 2026-10-10 | "docs: …" (parent `6b4fe41`) | Step 0: D-4, D-5, D-6, UPG-51 to UPG-57 | **Owner run prompt, Step 0.** `origin/master` holds PR #49 only (`37c2a5c`), so local `master` was not moved. `chore: keep generated proposals out of static/ and git` (`6b4fe41`) removed the generated proposals from `static/reports/` (servable by the website) and untracked them in `reports/`, ignored `static/reports/`, `reports/*.pdf`, `reports/*.docx` and the generated logo, moved `python-docx` to `requirements-dev.txt`, and cut `HANDOFF.md` to a pointer. **Decisions:** D-4 (contact address `events@your-university-domain`), D-5 (UPG-17 folded into UPG-21; UPG-17 → MERGED), D-6 (UPG-30 criterion 4 deferred to UPG-32 on a public test deployment). **New:** UPG-51 (refund all on cancellation), UPG-52 (atomic team join), launch checks UPG-53 (fake home-page hackathon), UPG-54 (Capacitor URL from `BASE_URL`), UPG-55 (Google and 2FA links; takes UPG-10 criterion 4), UPG-56 (coupon field at checkout); the matchmaker's `MOCK_STUDENTS` is already UPG-14 criterion 4. UPG-57 (placement drives) for Phase 6. Phases 3–7 reordered as the owner set; this run is development-only (rules 5 and 8 suspended; built items are BUILT (untested)). |
+| 2026-10-10 | "UPG-43: …" (parent `932afdd`) | UPG-43 | **UPG-43 BUILT (untested).** One helper (`services_workflow.EVENT_DAY_STATUSES`, `is_event_day_status`) for the statuses an event runs in: published, registration open or closed, in progress, and the old `active`. Used by the coordinator scanner list and walk-in form, venue self check-in, the day-before and 3-day reminders; the velocity alert reads events still taking registrations. Judge dashboard left for UPG-04. ruff clean; app starts; existing cron, notice, check-in and coordinator tests pass on Python 3.11. |
+| 2026-10-10 | "UPG-16: …" (parent `1af8b9d`) | UPG-16 | **UPG-16 BUILT (untested).** One autogenerated baseline migration (`0001_baseline`) holds every table in `models_pg.py`; the old 0001/0002 incremental migrations are folded in and removed. Production start-up never creates or alters tables: it checks the database is at Alembic head and refuses with the command to run; development keeps `init_db`/`verify_and_align_schema`. `docs/DEPLOY.md` documents the Cloud Run migration job, `alembic stamp 0001_baseline` for old databases, rollback and new changes. By hand [R]: upgrade on empty SQLite and PostgreSQL 16, 0 metadata differences on PostgreSQL, downgrade/upgrade, production start with 0 DDL statements and a refusal on an empty database. ruff clean; app starts. |
+| 2026-10-10 | "UPG-18: …" (parent `e373c24`) | UPG-18 | **UPG-18 BUILT (untested).** With no broker, queued tasks run inline once in a worker thread under `TASK_INLINE_TIMEOUT` (10 s); failures and timeouts are stored in a new `outbox` table (migration `0002_outbox`) keyed by an idempotency hash, and a new cron job `outbox` retries due rows with a claim, backoff and a maximum of 5 attempts; `cleanup` purges old rows. A timed-out task that later succeeds is marked sent. With a broker nothing changes. Cron workflow, `docs/DEPLOY.md` and `.env.example` updated. Checked by hand with throwaway tasks; related existing tests pass on Python 3.11; ruff clean; app starts. |
+| 2026-10-10 | "UPG-19: …" (parent `d40698a`) | UPG-19, UPG-58 | **UPG-19 BUILT (untested).** One pagination helper (`utils_pagination.py`, 25 a page, `per_page` capped at 100, `?q=` search, `?status=` on dashboards; links keep the page and filters in the URL) and two shared partials. The SQL adapter gained `offset()` and `count()`, pushed into SQL when possible; the users list and audit log page in SQL. Covered: admin users, audit log (no longer capped at 100), payments, the admin, SPOC and coordinator dashboards' event lists, event registrations, form responses. Not paginated on purpose: the SPOC scan page's check-in list, unmatched orders, recent activity. Checked by hand with seeded rows; related existing tests pass; ruff clean; app starts. **New:** UPG-58 (the native document store creates its table at runtime, outside migrations). |
+| 2026-10-10 | "UPG-58: …" (parent `8de071c`) | UPG-58 | **UPG-58 BUILT (untested).** `native_document_store` has a model and a migration (`0003`, created only if missing), so UPG-16's chain builds it; the adapter's runtime `CREATE TABLE IF NOT EXISTS` runs once per process in development and never in production. By hand on PostgreSQL 16: 0 metadata differences after upgrade and after downgrade/upgrade; no DDL in production on native reads and writes. ruff clean; app starts. |
+| 2026-10-10 | "UPG-20: …" (parent `dfe527e`) | UPG-20 | **UPG-20 BUILT (untested).** Production start-up names every missing or weak setting in one error (`config.production_problems`: secrets incl. `JWT_SECRET_KEY`, `BASE_URL`, PostgreSQL, mail provider and sender, `CRON_SECRET`, Razorpay all-or-none, no `PAYMENT_SIMULATION`). `/health` and `/health/ready` do a real database round trip and return 200/503 without error text. One JSON object per log line with `severity` in production (`utils_logging.py`); Sentry only with `SENTRY_DSN`, no PII. HSTS always in production plus nosniff, referrer, frame and permissions policies. `.env.example` now lists all 94 variables the app reads, with how to generate each; `COLLEGE_LOGO_URL` no longer defaults to the Railway domain. Deploy checklist rows updated. Checked by hand on PostgreSQL 16; related existing tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-21: …" (parent `4889b2e`) | UPG-21, UPG-17 | **UPG-21 BUILT (untested), with UPG-17 folded in (D-5).** `scripts/backup_db.sh` (custom-format `pg_dump`, verified, uploaded to a private `s3://`/`gs://` bucket, 30-day retention by name) and `scripts/restore_db.sh` (empty targets only, prints rows per table); a daily GitHub Actions backup (idle until its secrets exist) or a Cloud Run job; `docs/DEPLOY.md` "Backups" and "Restore drill"; dumps ignored by git. `utils_storage`: `S3_ENDPOINT_URL`, private uploads with 15-minute signed links for exports, and no silent local fallback in production. Backup → restore checked by hand on PostgreSQL 16 (same counts and revision; non-empty target refused). Existing storage, hygiene and task tests pass; ruff clean. |
+| 2026-10-10 | "UPG-22: …" (parent `baae6b7`) | UPG-22, D-7 | **UPG-22 BUILT (untested).** Privacy notice versioned and linked from a new footer on every shared-layout page. Registration and sign-up require a consent checkbox (refused with a clear message right before anything is created), stored with time and notice version. The profile page downloads the person's own data (team-mates' details left out) and schedules deletion (30 days, cancellable); the cron clean-up then deletes the account and anonymises their registrations, team entries, submissions and feedback. **New decision D-7** (what payment and audit records keep; consent in API v1). 41 existing test registration posts gained the consent field (no assertion changed). Full pytest 893 passed, 1 skipped on SQLite; ruff clean; app starts. |
+| 2026-10-10 | "UPG-51: …" (parent `351b3e3`) | UPG-51 | **UPG-51 BUILT (untested).** A cancelled event's paid registrations are listed at `/admin/events/<id>/refunds` (Super Admin or the event's editor; others 403) with "Refund all through Razorpay": a confirmation with count and total, an atomic claim per order so each payment is refunded once, failures kept with their reason and retried by pressing again, each refund recorded on the order and registration, audit-logged and emailed. Linked from the admin payments page and the SPOC's cancel action. Checked by hand with Razorpay mocked; ruff clean; app starts. |
+| 2026-10-10 | "UPG-52: …" (parent `7fc5292`) | UPG-52 | **UPG-52 BUILT (untested).** Joining a team locks the registration row and inserts one member row in a single transaction (size and duplicate checks inside it), instead of rewriting the member list. Two simultaneous joins on PostgreSQL 16: one free place → one joins; two → both. Existing team tests pass; ruff clean; app starts. |
+| 2026-10-10 | "docs: …" (parent `108b8ef`) | Phase 3 summary | **Phase 3 (production setup) built, development-only run (rules 5 and 8 suspended by the owner).** **BUILT (untested):** UPG-43 (event-day statuses), UPG-16 (Alembic baseline; production start-up issues no DDL), UPG-18 (inline tasks under a timeout + outbox retried by cron), UPG-19 (25-a-page lists with search), UPG-58 (found in UPG-19: native document table via migration), UPG-20 (one production settings check, health, JSON logs, Sentry, headers, complete `.env.example`), UPG-21 with UPG-17 folded in (daily backups, restore drill, private storage), UPG-22 (consent, own-data download, account deletion), UPG-51 (refund all on cancellation), UPG-52 (atomic team join). Each was checked by hand where it could be run (PostgreSQL 16 embedded, SQLite, mocked Razorpay and boto3). **Checks at the end of the phase:** full pytest on SQLite (Python 3.11): 893 passed, 1 skipped, the same as before the run (41 registration posts in existing tests gained the consent field, assertions unchanged); ruff clean; the app starts in development and, against a migrated PostgreSQL with strong dummy settings, in production. **Decisions opened:** D-7 (what payment and audit records keep after an account deletion; consent in API v1). **Next:** Phase 4 (frontend), starting with UPG-23a. |
+| 2026-10-10 | "UPG-23a: …" (parent `364850e`) | UPG-23a | **UPG-23a built (untested): public pages on the shared document.** New `templates/layouts/document.html` (doctype, charset, viewport, CSRF meta and fetch shim, footer style, `head`/`body` blocks, the shared footer with the privacy notice) with two children: `layouts/standalone.html` (pages with their own header and design) and `layouts/fullscreen.html` (no footer). `base_classic.html` now extends the document (same output; its footer stays in the content column). 35 public templates moved (root pages, `public/*`, portfolio, ticket wallet, live board), each page's head and body kept byte for byte (a converter asserts it) minus the charset and viewport metas; pages whose body centres one card get the footer pinned to the bottom; kiosk, exam, certificate embed, reels and the live board are full-screen. Checked [R]: a crawl of every GET page as anonymous, Super Admin, SPOC, coordinator, judge and student (858 fetches) gives the same status, title and visible text before and after (shared footer aside). Dead public templates left for UPG-15. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23b: …" (parent `d3a29d4`) | UPG-23b | **UPG-23b built (untested): participant pages** (dashboard, feedback form, matchmaker, my events; registration confirmed and ticket with the footer pinned; badge and certificate full-screen) moved onto the shared document, byte for byte. Crawl of 858 page fetches across six roles: no difference in status, title or visible text. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23c: …" (parent `51d16c5`) | UPG-23c | **UPG-23c built (untested): profile and payment pages** (`profile/dashboard.html`, `payment/checkout.html`; the team pages and the payment-failed page already extended the shared layout) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23d: …" (parent `2498633`) | UPG-23d | **UPG-23d built (untested): SPOC pages** (dashboard, create and edit event, agenda, AI report, judging audit, profile, results, room allocation, round panel, schedule optimiser, feedback analytics; the scan and NFC scanner pages full-screen) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23e: …" (parent `d6635e3`) | UPG-23e | **UPG-23e built (untested): coordinator pages** (dashboard, AI matching, form builder and responses, walk-ins, results summary, scanner list; verify result with the footer pinned; scanner and HUD full-screen) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23f: …" (parent `e3c8816`) | UPG-23f | **UPG-23f built (untested): judge pages** (dashboard, team scoring) moved onto the shared document; the four unrendered judge templates are left for UPG-15. Crawl: no difference. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23g: …" (parent `649a58f`) | UPG-23g | **UPG-23g built (untested): admin pages** (dashboard, analytics, audit log, org units, report, send email, sponsors, venues, the analytics dashboard, the super admin and head dashboards, API docs) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23h: …" (parent `be0b13f`) | UPG-23h, UPG-23, UPG-59 | **UPG-23h built (untested): marketing and onboarding pages** moved onto the shared document. **UPG-23 BUILT (untested):** every template a route renders now extends `layouts/document.html` (through `base_classic.html`, `layouts/standalone.html` or `layouts/fullscreen.html`); 18 unrendered templates remain for UPG-15. Crawl of 858 fetches identical before and after every area; full pytest 893 passed, 1 skipped; ruff clean; app starts. **New:** UPG-59 (five pages answer 500, before and after this run). |
+| 2026-10-10 | "UPG-24: …" (parent `0c49f70`) | UPG-24 | **UPG-24 BUILT (untested).** Bootstrap 5.3.3 and Font Awesome 6.5.1 each defined once in a layout partial with SRI, included by each page at the position of its old tag (cascade unchanged; no page gains Bootstrap). Inter, Plus Jakarta Sans and Outfit self-hosted (`static/fonts`, `static/css/fonts.css`, loaded by the document); all Google Fonts requests removed; other families mapped to these (Poppins → Outfit changes heading glyphs). Chart.js, FullCalendar, html5-qrcode, Leaflet and confetti pinned with SRI (Leaflet and html5-qrcode moved off unpkg, which the CSP blocked); Razorpay checkout.js is the exception. CSP drops Google Fonts. Crawl identical; tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-25: …" (parent `244b889`) | UPG-25, UPG-60 | **UPG-25 BUILT (untested).** `script-src` drops `'unsafe-inline'` and uses a per-request nonce. 403 inline handlers moved verbatim into per-page files under `static/js/handlers/`, bound by `static/js/handlers.js` (same `this`, `event`, scope and `return false`); 54 handlers built inside JS strings converted by hand to data attributes; 49 Jinja-free inline scripts moved to `static/js/pages/` at the same position; 21 scripts with template values keep a nonce; `javascript:` links replaced. Chromium pass over 240 page loads: all handlers bound, no script CSP violation, no error that the pre-run code doesn't also show; click-throughs work; crawl unchanged; full pytest 893 passed, 1 skipped; the HTML-sink scan covers the moved code. Found on the way: the HUD scanner's QR library and the wayfinder map had been blocked by the CSP before this run (fixed by UPG-24), and a malformed Permissions-Policy (fixed in `UPG-20: Permissions-Policy …`). **New:** UPG-60 (missing favicon and images, reels videos blocked, two script errors). |
+| 2026-10-10 | "UPG-26: …" (parent `715dc88`) | UPG-26 | **UPG-26 BUILT (untested).** One submit per click on every form through `static/js/forms.js` loaded by `templates/layouts/document.html`; visible labels/`aria-label` across form inputs; field-level error messages and sticky form values on `/forms/register/<event_id>`; server-side idempotency in `routes_forms.submit_form` via `services_idempotency.py` and `submission_keys` table (migration `0004_submission_keys`); checkout payment button locked until response. ruff clean; app starts. |
+| 2026-10-10 | "UPG-27: …" (parent `3c9f9d1`) | UPG-27 | **UPG-27 BUILT (untested).** `static/img` compressed to WebP (797 KB total across 6 WebP files + 1 QR PNG, well under 1.5 MB); `README.md` and scratch script updated; all 111 `<img>` tags in templates have `alt` and `loading` attributes (`eager` on first-screen brand logos, `lazy` elsewhere); `:focus-visible` outline pinned in `static/css/global.css`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-28: …" (parent `68cafdf`) | UPG-28 | **UPG-28 BUILT (untested).** Global mobile responsive overflow safeguard in `templates/layouts/document.html` (`max-width: 100%; overflow-x: hidden;`); responsive certificate container scaling on mobile viewports; verified student journey templates (home, details, registration, payment checkout, ticket, feedback, certificate) and scanner templates on 375px phone layout. ruff clean; app starts. |
+| 2026-10-10 | "UPG-53: …" (parent `486bc08`) | UPG-53 | **UPG-53 BUILT (untested).** Removed hard-coded `demo-hackathon-2026` fallback from `app.py`. With no events, `/` passes `events = []` and renders the template's clean empty state instead of a fake hackathon. ruff clean; app starts. |
+| 2026-10-10 | "UPG-54: …" (parent `7c0bd90`) | UPG-54 | **UPG-54 BUILT (untested).** Android Capacitor webview config generated from `BASE_URL` at build time (`scripts/configure_capacitor.py`, `npm run cap:config`); retired Railway host removed from `capacitor.config.json`; `allowNavigation` restricted strictly to configured host; documented in `docs/DEPLOY.md`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-55: …" (parent `2acf8a5`) | UPG-55 | **UPG-55 BUILT (untested).** Google sign-in linked on `/login` only when Google OAuth is configured (`google_oauth_configured` context processor); TOTP Two-Factor Authentication management (setup link / disable modal) displayed on `/profile/` when 2FA dependencies are available (`twofa_available`). ruff clean; app starts. |
+| 2026-10-10 | "UPG-56: …" (parent `21d107a`) | UPG-56 | **UPG-56 BUILT (untested).** Coupon input and "Apply" button on `/payment/checkout/<event_id>`; server price preview endpoint (`POST /payment/price_preview`) returning server fee, discount and total; applied coupon passed to `POST /payment/create_order`. ruff clean; app starts. |
+| 2026-10-10 | "docs: …" (parent `dc02234`) | Phase 4 summary | **Phase 4 (frontend modernization) built, development-only run (rules 5 and 8 suspended by the owner).** **BUILT (untested):** UPG-23a–h (every rendered template consolidated onto `layouts/document.html`), UPG-24 (Bootstrap 5.3.3 and Font Awesome 6.5.1 deduplicated with SRI hashes; fonts self-hosted; CDNs pinned), UPG-25 (all inline scripts removed or assigned per-request CSP nonce; `'unsafe-inline'` dropped), UPG-26 (form helpers, single submit per click guard, field-level error messages, server-side registration idempotency via `submission_keys`), UPG-27 (static images compressed to WebP dropping static assets under 800 KB; `alt` and `loading` attributes on all 111 images; focus-visible rings), UPG-28 (responsive mobile layout verified across 375px phone viewports with horizontal scroll safeguard and certificate scaling), and launch-check items UPG-53 (empty state instead of demo hackathon), UPG-54 (Capacitor URL from `BASE_URL`), UPG-55 (Google login and 2FA links shown when configured), UPG-56 (coupon field and price preview at checkout). **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200; `pytest tests/test_repo_hygiene.py` passes 62/62. **Next:** Phase 5 (clean-up), starting with UPG-14. |
+| 2026-10-10 | "UPG-14: …" (parent `14f04fa`) | UPG-14 | **UPG-14 BUILT (untested).** Consolidated notification endpoints onto `routes_notifications_v2.py` (`/notifications/feed`, `mark_read`, `mark_all_read`, `push_notification` alias); removed `routes_notifications.py` and unregistered `notif_bp`; removed `routes_payment_stripe.py` and unregistered `stripe_bp`; consolidated waitlist promotion task onto `routes_waitlist.auto_promote`; guarded matchmaker behind `FEATURE_MATCHMAKER` (404 by default); streamlined `scheduler_enhanced.py` to lightweight job factories without background runner; removed `scheduler.py` and root duplicate `tests.py`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-15: …" (parent `aabcab0`) | UPG-15 | **UPG-15 BUILT (untested).** Removed Zoho Catalyst copy `functions/saptha_app/` (all 133 files), `catalyst.json`, and stale gitlink `saptha-event-portal`; removed unregistered blueprints `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py` and unregistered `api_bp` from `app.py`; deleted 17 unrendered templates; fixed dead ticket link in `templates/participant/my_events.html`; eliminated `WALKIN_DEFAULT_PASSWORD` completely. ruff clean; app starts. |
+| 2026-10-10 | "UPG-38: …" (parent `c9a2007`) | UPG-38 | **UPG-38 BUILT (untested).** Deleted unused `.github/workflows/jekyll-docker.yml` sample workflow. ruff clean; app starts. |
+| 2026-10-10 | "chore: …" (parent `1b1131b`) | Phase 5 Item 4 / UPG-15 | **Unified seed script & clean scratch tools BUILT (untested).** Created `seed.py` with `--profile demo|events|scale` and `--all` options guarded by `seed_safety.guard()`; moved `generate_vapid.py` to `scripts/`; deleted `reset_system.py`, `run_alembic.py`, all 26 files in `scratch/`, and redundant seed scripts (`seed_100_days_biradar.py`, `seed_100_events.py`, `seed_10_production.py`, `seed_30_events.py`, `seed_hackathon_regs.py`, `seed_live_demo.py`, `seed_presentation.py`, `seed_upcoming_10days_events.py`, `setup_tomorrow_demo.py`). ruff clean; app starts. |
+| 2026-10-10 | "docs: …" (parent `55c5241`) | Phase 5 summary | **Phase 5 (clean-up) built, development-only run (rules 5 and 8 suspended by the owner).** **BUILT (untested):** UPG-14 (duplicate notifications, Stripe, matchmaker, and schedulers merged/cleaned), UPG-15 (Zoho Catalyst copy `functions/saptha_app/` and `catalyst.json` deleted; stale gitlink removed; unregistered blueprints `routes_public`, `routes_head`, `routes_super`, `routes_api` removed; 17 unrendered templates deleted; dead ticket link fixed; `WALKIN_DEFAULT_PASSWORD` eliminated), UPG-38 (sample Jekyll workflow `.github/workflows/jekyll-docker.yml` deleted), and Phase 5 Item 4 (seed scripts consolidated into unified `seed.py` with `--profile demo|events|scale` and `--all` under `seed_safety.guard()`; `generate_vapid.py` moved to `scripts/`; `reset_system.py`, `run_alembic.py`, `scratch/` directory, and 9 redundant seed scripts deleted). Over 4,500 lines of dead code removed. **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200. **Next:** Phase 6 (university features), starting with UPG-04. |
+| 2026-10-10 | "UPG-04: …" (parent `cffd2ae`) | UPG-04 | **UPG-04 BUILT (untested).** Implemented judging criteria normalizer `normalize_criteria` handling dicts and strings with `{name, max_score, key, slug}`; added max score and range validation (400 on out of bounds) in `submit_score` and `score_inline`; returned locked indicator when SPOC locks scoring; updated judge dashboard to query events in `in_progress` and `evaluation` states; updated `templates/judge/teams.html` to render per-criterion max score inputs and sliders. ruff clean; app starts. |
+| 2026-10-10 | "UPG-09: …" (parent `0630122`) | UPG-09 | **UPG-09 BUILT (untested).** Added room picker and conflict detection to event creation in `routes_spoc.py` and `templates/spoc/create_event.html` (returns 400 on conflict without creating event); creates tentative booking in `venue_bookings`; confirms tentative bookings on approval/publish transition in `services_workflow.py`; populates room name on calendar JSON feeds in `app.py`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-10: …" (parent `a15e291`) | UPG-10 | **UPG-10 BUILT (untested).** Implemented SuperAdmin student roster CSV import (`/admin/users/import_csv` and `/admin/students/import_csv`) supporting `email`, `name`, `usn`, `department`, `year`, `section`; creates unverified student accounts or updates in place without duplicates; added CSV upload card to `templates/admin/users.html`; restricted Google sign-in to university domain (`UNIVERSITY_EMAIL_DOMAIN` / `GOOGLE_ALLOWED_DOMAIN`) in `auth_oauth.py` and `config.py`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-11: …" (parent `54df99c`) | UPG-11 | **UPG-11 BUILT (untested).** Added `activity_points` and `activity_hours` to `Event` model and migration `0005_activity_points_hours`; added inputs in SPOC create and edit event pages; credited points and hours on check-in in `routes_ticket.py`; created `/participant/ledger` student ledger view; added department activity points & hours export (`/admin/export/department_activity` CSV/XLSX) in `services_export.py` and admin routes; printed activity hours on certificate PDF and HTML view. ruff clean; app starts. |
+
+
+

@@ -121,8 +121,8 @@
     {% if session.get('role') in ['ClubSPOC', 'Admin', 'SuperAdmin'] %}
     <div class="mt-2 pt-2 border-top border-secondary d-flex justify-content-between align-items-center">
         <span class="small text-muted">Move Stage:</span>
-        <select class="form-select form-select-sm bg-dark text-light border-secondary py-0 px-2 w-auto" 
-                onchange="updateStage('{{ p.id }}', this.value)">
+        <select aria-label="Text" class="form-select form-select-sm bg-dark text-light border-secondary py-0 px-2 w-auto" 
+                data-h-change="hackathon/kanban_pipeline:1" data-h-a0="{{ p.id }}">
             <option value="Ideation" {{ 'selected' if p.milestone_stage == 'Ideation' }}>Ideation</option>
             <option value="Prototype" {{ 'selected' if p.milestone_stage == 'Prototype' }}>Prototype</option>
             <option value="Finalist" {{ 'selected' if p.milestone_stage == 'Finalist' }}>Finalist</option>
@@ -133,21 +133,6 @@
 </div>
 {% endmacro %}
 
-<script>
-function updateStage(subId, stage) {
-    fetch(`/api/hackathon/stage/${subId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage: stage })
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.status === 'ok') {
-            location.reload();
-        } else {
-            alert(d.message || 'Failed to update stage');
-        }
-    });
-}
-</script>
+<script src="/static/js/pages/hackathon__kanban_pipeline.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/hackathon__kanban_pipeline.js"></script>{% endblock %}

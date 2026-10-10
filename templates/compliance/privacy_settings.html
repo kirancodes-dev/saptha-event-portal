@@ -53,7 +53,7 @@
                                 </div>
 
                                 <div class="mt-4 pt-2">
-                                    <button type="button" class="btn btn-warning text-dark font-weight-bold w-100" onclick="saveConsent()">
+                                    <button type="button" class="btn btn-warning text-dark font-weight-bold w-100" data-h-click="compliance/privacy_settings:1">
                                         <i class="fas fa-save me-1"></i> Save Consent Settings
                                     </button>
                                 </div>
@@ -76,7 +76,7 @@
                             <div class="mb-4">
                                 <h6 class="text-white font-weight-bold mb-1"><i class="fas fa-file-download text-success me-2"></i>Data Portability (GDPR Art. 20)</h6>
                                 <p class="small text-secondary mb-3">Export a machine-readable JSON copy of your profile, event registrations, certificates, and activity logs.</p>
-                                <button class="btn btn-outline-success font-weight-bold w-100" onclick="exportData()">
+                                <button class="btn btn-outline-success font-weight-bold w-100" data-h-click="compliance/privacy_settings:2">
                                     <i class="fas fa-download me-1"></i> Export My Personal Data
                                 </button>
                             </div>
@@ -89,7 +89,7 @@
                                 <p class="small text-secondary mb-3">Request permanent erasure of your account. Requests include a 30-day grace period during which erasure can be cancelled.</p>
                                 
                                 <div id="deletionStatusBox" class="mb-3">
-                                    <button class="btn btn-outline-danger font-weight-bold w-100" onclick="requestDeletion()">
+                                    <button class="btn btn-outline-danger font-weight-bold w-100" data-h-click="compliance/privacy_settings:3">
                                         <i class="fas fa-trash-alt me-1"></i> Request Account Deletion
                                     </button>
                                 </div>
@@ -105,7 +105,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 document.addEventListener('DOMContentLoaded', loadConsent);
 
 function loadConsent() {
@@ -122,7 +122,7 @@ function loadConsent() {
                     <div class="alert alert-warning border-warning text-dark mb-2 py-2 px-3 small">
                         <strong><i class="fas fa-clock me-1"></i> Deletion Scheduled:</strong> Your account erasure is pending.
                     </div>
-                    <button class="btn btn-outline-warning w-100 font-weight-bold" onclick="cancelDeletion()">
+                    <button class="btn btn-outline-warning w-100 font-weight-bold" data-h-click="se:call" data-call="cancelDeletion">
                         <i class="fas fa-undo me-1"></i> Cancel Pending Deletion
                     </button>
                 `;
@@ -210,3 +210,4 @@ function cancelDeletion() {
 }
 </script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/compliance__privacy_settings.js"></script>{% endblock %}

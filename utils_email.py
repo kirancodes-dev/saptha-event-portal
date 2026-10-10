@@ -1,35 +1,18 @@
 """
-utils_email.py — SapthaEvent Email (Auto-switching)
+utils_email.py — SapthaEvent email, sent through the first provider configured.
 
-Railway blocks outbound SMTP (ports 465/587) at the platform level.
-Use an HTTP-based provider instead — Brevo is free and works everywhere.
+Settings are environment variables; their values never belong in code (UPG-41):
+  1. BREVO_API_KEY          → Brevo HTTP API (recommended: free tier, sends to
+                              anyone, works where outbound SMTP is blocked)
+  2. RESEND_API_KEY         → Resend HTTP API (free tier sends to verified
+                              addresses only)
+  3. MAIL_USER + MAIL_PASS  → SMTP login (MAIL_SERVER, default Gmail; for Gmail,
+                              MAIL_PASS is an app password)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- RECOMMENDED (free, works on Railway):  BREVO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 1. Sign up free at https://brevo.com
- 2. Settings → SMTP & API → API Keys → Generate
- 3. In Railway Variables add:
-      BREVO_API_KEY = xkeysib-xxxxxxxxxxxxxxxxxxxx
-      MAIL_FROM     = SapthaEvent <sapthhack@gmail.com>
-
- Free tier: 300 emails/day, sends to ANYONE. No domain verification needed.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- FALLBACK: RESEND (free but only to verified emails)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      RESEND_API_KEY = re_xxxxxxxxxxxx
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- LAST RESORT: Gmail SMTP (blocked by Railway SMTP firewall)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      MAIL_USER = sapthhack@gmail.com
-      MAIL_PASS = yqfktmdnvxofqvxj
-
-PRIORITY ORDER (auto-detected at runtime):
-  1. BREVO_API_KEY set     → Brevo HTTP API  ✅ Railway-safe, free, anyone
-  2. RESEND_API_KEY set    → Resend HTTP API  ⚠️  verified emails only (free)
-  3. Neither               → Gmail SMTP       ❌ blocked on Railway
+MAIL_FROM is the sender, e.g. "SapthaEvent <events@your-domain>", verified with
+the provider. Without it the sender is MAIL_USER; with neither, Brevo and Resend
+refuse to send. With no provider at all, development logs the set-password and
+reset links instead (UPG-39).
 """
 
 from __future__ import annotations
@@ -66,10 +49,49 @@ def _base_url() -> str:
 
 
 def _from_address() -> str:
-    return os.environ.get(
-        'MAIL_FROM',
-        f"SapthaEvent <{os.environ.get('MAIL_USER', 'sapthhack@gmail.com')}>"
-    )
+    """MAIL_FROM, else the MAIL_USER login; '' when neither is set. There's no
+    built-in sender account (UPG-41)."""
+    mail_from = os.environ.get('MAIL_FROM', '').strip()
+    if mail_from:
+        return mail_from
+    mail_user = os.environ.get('MAIL_USER', '').strip()
+    return f"SapthaEvent <{mail_user}>" if mail_user else ''
+
+
+NO_SENDER_ERROR = "MAIL_FROM isn't set: set it to a sender address verified with the mail provider."
+
+
+def mail_provider() -> str:
+    """The provider _send will use: 'brevo', 'resend', 'smtp', or '' for none."""
+    if os.environ.get('BREVO_API_KEY'):
+        return 'brevo'
+    if os.environ.get('RESEND_API_KEY'):
+        return 'resend'
+    if os.environ.get('MAIL_USER') and os.environ.get('MAIL_PASS'):
+        return 'smtp'
+    return ''
+
+
+def _is_production() -> bool:
+    try:
+        from flask import current_app
+        if current_app.config.get('FLASK_ENV') == 'production':
+            return True
+    except RuntimeError:  # outside an app context
+        pass
+    return os.environ.get('FLASK_ENV') == 'production'
+
+
+def _log_link_without_mail(kind: str, to_email: str, url: str) -> None:
+    """No mail provider configured: in development, write the link to the log
+    so the flow can be followed locally (UPG-39). Never in production, where
+    the link is a credential: there, report the missing provider instead."""
+    if mail_provider():
+        return
+    if _is_production():
+        logger.error("No mail provider is configured: the %s email to %s can't be sent", kind, to_email)
+        return
+    logger.warning("DEVELOPMENT ONLY, no mail provider: %s link for %s: %s", kind, to_email, url)
 
 
 def _update_delivery_status(to_email: str, status: str, reg_id: str | None = None):
@@ -236,6 +258,10 @@ def _send_via_brevo(to_email, subject: str, html: str,
 
         api_key  = os.environ.get('BREVO_API_KEY', '')
         from_raw = _from_address()
+        if not from_raw:
+            LAST_EMAIL_ERROR = f"Brevo: {NO_SENDER_ERROR}"
+            logger.error(LAST_EMAIL_ERROR)
+            return False
 
         # Parse "Name <email>" or plain email
         if '<' in from_raw and '>' in from_raw:
@@ -294,6 +320,10 @@ def _send_via_resend(to_email, subject: str, html: str,
                      attachments: list | None = None) -> bool:
     global LAST_EMAIL_ERROR
     try:
+        if not _from_address():
+            LAST_EMAIL_ERROR = f"Resend: {NO_SENDER_ERROR}"
+            logger.error(LAST_EMAIL_ERROR)
+            return False
         import resend
         resend.api_key = os.environ.get('RESEND_API_KEY', '')
         to_list = [to_email] if isinstance(to_email, str) else to_email
@@ -504,7 +534,11 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
 def send_ticket_email(to_email: str, name: str, event_title: str,
                       reg_id: str, qr_bytes: bytes | None = None,
                       is_new_user: bool = False,
-                      raw_password: str | None = None) -> bool:
+                      raw_password: str | None = None,
+                      event_date: str = '', venue: str = '') -> bool:
+    """The ticket: after payment, at the desk, and the day before the event
+    (with the QR, tasks/scheduled_tasks.send_24h_reminders). Date and venue
+    come from the caller, else from the registration's event."""
     base = _base_url()
     credentials_block = ""
     if is_new_user and raw_password:
@@ -559,12 +593,10 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
             'data':     qr_bytes,
         })
 
-    # Attempt to fetch event_date and venue from database using reg_id for calendar invite
-    event_date = ''
-    venue = ''
+    # Date and venue for the calendar invite, from the event if not given
     try:
         from models import db
-        if db is not None:
+        if db is not None and not (event_date or venue):
             reg_doc = db.collection('registrations').document(reg_id).get()
             if reg_doc.exists:
                 reg_dict = reg_doc.to_dict()
@@ -650,6 +682,7 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
           password will remain unchanged.
         </p>
     """, "Password Reset Request")
+    _log_link_without_mail('password reset', to_email, reset_url)
     return _send(to_email, "🔐 Reset your SapthaEvent password", html)
 
 
@@ -680,7 +713,43 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
           the account without this link.
         </p>
     """, "Set Your Password")
+    _log_link_without_mail('set-password', to_email, set_password_url)
     return _send(to_email, "🔐 Set your SapthaEvent password", html)
+
+
+def send_payment_receipt_email(to_email: str, name: str, event_title: str, amount,
+                               reg_id: str, payment_id: str = '', paid_on: str = '') -> bool:
+    """The receipt after a verified payment (UPG-30)."""
+    import html as _html
+    e = lambda v: _html.escape(str(v or ''))  # noqa: E731
+    rows = [('Event', event_title), ('Amount paid', f"₹{amount}"), ('Registration', reg_id),
+            ('Payment ID', payment_id), ('Paid on', paid_on or __import__('datetime').date.today().isoformat())]
+    table = ''.join(
+        f'<tr><td style="padding:6px 0;color:#64748b;">{e(label)}</td>'
+        f'<td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;">{e(value)}</td></tr>'
+        for label, value in rows if value)
+    body = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{e(name) or 'Participant'}</strong>,</p>
+        <p style="color:#475569;">We received your payment. Keep this email as your receipt.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:16px 0;">{table}</table>
+        <p style="color:#64748b;font-size:12px;">Your ticket: {e(_base_url())}/ticket/{e(reg_id)}</p>
+    """, "Payment Receipt")
+    return _send(to_email, f"🧾 Payment receipt — {event_title}", body, reg_id=reg_id)
+
+
+def send_refund_email(to_email: str, name: str, event_title: str, amount, reg_id: str,
+                      refund_id: str = '') -> bool:
+    """The event was cancelled and the payment refunded (UPG-51)."""
+    import html as _html
+    e = lambda v: _html.escape(str(v or ''))  # noqa: E731
+    body = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{e(name) or 'Participant'}</strong>,</p>
+        <p style="color:#475569;"><strong>{e(event_title)}</strong> was cancelled, so we have refunded
+           your payment of <strong>₹{e(amount)}</strong> (registration {e(reg_id)}).</p>
+        <p style="color:#475569;">Razorpay refund reference: <strong>{e(refund_id) or '—'}</strong>.
+           Refunds usually reach your account in 5–7 working days.</p>
+    """, "Refund")
+    return _send(to_email, f"Refund — {event_title} was cancelled", body, reg_id=reg_id)
 
 
 def send_appointment_email(to_email: str, name: str, role: str,
@@ -721,6 +790,17 @@ def send_result_email(to_email: str, name: str, event_title: str,
     return _send(to_email, f"🏆 Results — {event_title}", html)
 
 
+def send_email_notification(to_email: str, subject: str, message: str,
+                            event_name: str = 'SapthaEvent') -> bool:
+    """A plain notice (event changed or cancelled, services_automation's email
+    channel). The message is text: it's escaped, never read as HTML."""
+    import html as _html
+    body = _html_wrapper(f"""
+        <div style="color:#475569;font-size:14px;line-height:1.8;white-space:pre-line;">{_html.escape(message)}</div>
+    """, _html.escape(subject or event_name))
+    return _send(to_email, subject, body)
+
+
 def send_broadcast_email(to_list: list, subject: str,
                          message: str, event_title: str = '') -> bool:
     html = _html_wrapper(f"""
@@ -739,7 +819,8 @@ def send_broadcast_email(to_list: list, subject: str,
 def _send_cert_email(to_email: str, student_name: str,
                      event_title: str, cert_type: str,
                      rank: int, score: float,
-                     pdf_bytes: bytes, reg_id: str | None = None) -> bool:
+                     pdf_bytes: bytes, reg_id: str | None = None,
+                     certificate_id: str | None = None) -> bool:
     rank_labels = {1: '🥇 1st Place Winner', 2: '🥈 2nd Place Winner', 3: '🥉 3rd Place Winner'}
     if cert_type == 'winner':
         subject  = f"🏆 Your Achievement Certificate — {event_title}"
@@ -751,7 +832,9 @@ def _send_cert_email(to_email: str, student_name: str,
         cert_color = "#1d4ed8"  # blue
 
     base = _base_url().rstrip('/')
-    verify_url = f"{base}/verify/{reg_id}" if reg_id else "#"
+    # The certificate's own ID when it has one (UPG-06), else the registration's
+    verify_id = certificate_id or reg_id
+    verify_url = f"{base}/verify/{verify_id}" if verify_id else "#"
 
     verified_block = ""
     if reg_id:

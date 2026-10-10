@@ -11,6 +11,7 @@ Fixes in this version
     so judge can score without page reload
 """
 import datetime
+import json
 
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session
 try:
@@ -43,6 +44,56 @@ def _ff(f, op, v):
     return FieldFilter(f, op, v)
 
 
+def normalize_criteria(raw_criteria):
+    """
+    Normalizes judging criteria into a consistent list of dictionaries:
+    [{'name': str, 'max_score': int, 'key': str, 'slug': str, 'weight': int}]
+    Handles list of strings, list of dicts, comma-separated strings, or JSON strings.
+    """
+    if not raw_criteria:
+        raw_criteria = ['Overall Score']
+    if isinstance(raw_criteria, str):
+        try:
+            raw_criteria = json.loads(raw_criteria)
+        except Exception:
+            raw_criteria = [c.strip() for c in raw_criteria.split(',') if c.strip()]
+    if not isinstance(raw_criteria, list):
+        raw_criteria = [raw_criteria]
+
+    normalized = []
+    for item in raw_criteria:
+        if isinstance(item, dict):
+            name = str(item.get('name') or item.get('criterion') or 'Overall Score').strip()
+            max_score = safe_int(item.get('max_score'), default=100)
+            if max_score <= 0:
+                max_score = 100
+            weight = safe_int(item.get('weight'), default=1)
+        elif isinstance(item, str):
+            name = item.strip()
+            max_score = 100
+            weight = 1
+        else:
+            name = str(item).strip()
+            max_score = 100
+            weight = 1
+        slug = name.replace(' ', '_').lower()
+        key = f"score_{slug}"
+        normalized.append({
+            'name': name,
+            'max_score': max_score,
+            'weight': weight,
+            'slug': slug,
+            'key': key,
+        })
+    return normalized or [{
+        'name': 'Overall Score',
+        'max_score': 100,
+        'weight': 1,
+        'slug': 'overall_score',
+        'key': 'score_overall_score',
+    }]
+
+
 # =========================================================
 # 1. JUDGE DASHBOARD
 # =========================================================
@@ -55,12 +106,15 @@ def dashboard():
     user_role = session.get('role')
     my_events = []
 
-    for e in (db.collection('events')
-                .where(filter=_ff('status', '==', 'active'))
-                .stream()):
-        data  = e.to_dict()
+    JUDGING_STATUSES = {
+        'active', 'in_progress', 'evaluation', 'registration_open', 'registration_closed', 'published'
+    }
+
+    for e in db.collection('events').stream():
+        data  = e.to_dict() or {}
         data['id'] = e.id
-        if can(session, 'score', data, db=db):
+        status = str(data.get('status') or '').lower()
+        if status in JUDGING_STATUSES and can(session, 'score', data, db=db):
             # Count scored / total teams for progress bar
             regs       = list(db.collection('registrations')
                                .where(filter=_ff('event_id', '==', e.id))
@@ -95,6 +149,7 @@ def event_teams(event_id):
     event['id'] = event_id
     if not can(session, 'score', event, db=db):
         abort(403)
+    event['judging_criteria_normalized'] = normalize_criteria(event.get('judging_criteria'))
     judge_email = session.get('user_id')
     open_hall   = event.get('open_hall_mode', False)
     cur_round   = event.get('active_round', 1)
@@ -149,20 +204,45 @@ def submit_score(reg_id):
             abort(403)
         if event_doc.get('scoring_locked'):
             flash("Scoring is locked by the SPOC for this round.", "danger")
-            return redirect(f'/judge/event/{event_id}')
-        criteria  = event_doc.get('judging_criteria', ['Overall Score'])
+            if request.is_json or 'json' in request.headers.get('Accept', ''):
+                return jsonify({'status': 'locked', 'message': 'Scoring is locked by the SPOC for this round.'}), 403
+            return "locked", 403
+
+        norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
 
         score_details = {}
         total_score   = 0
-        for c in criteria:
-            key = f"score_{c.replace(' ', '_').lower()}"
-            val = safe_int(request.form.get(key, 0))
-            score_details[c] = val
-            total_score      += val
 
-        avg_score   = round(total_score / len(criteria), 1)
+        json_data = request.get_json(silent=True) or {}
+        json_scores = json_data.get('scores') or {}
+
+        for c in norm_criteria:
+            c_name = c['name']
+            c_key = c['key']
+            c_slug = c['slug']
+            c_max = c['max_score']
+
+            val_raw = None
+            if json_scores:
+                val_raw = json_scores.get(c_name, json_scores.get(c_key, json_scores.get(c_slug)))
+            if val_raw is None:
+                val_raw = request.form.get(c_key, request.form.get(c_name, request.form.get(c_slug, 0)))
+
+            val = safe_int(val_raw, default=0)
+
+            if val < 0 or val > c_max:
+                if request.is_json or 'json' in request.headers.get('Accept', ''):
+                    return jsonify({'status': 'error', 'message': f"Score for {c_name} must be between 0 and {c_max}"}), 400
+                flash(f"Score for {c_name} must be between 0 and {c_max}.", "danger")
+                return redirect(f'/judge/event/{event_id}'), 400
+
+            score_details[c_name] = val
+            total_score += val
+
+        avg_score = round(total_score / len(norm_criteria), 1) if norm_criteria else total_score
+        avg_score = int(avg_score) if avg_score == int(avg_score) else avg_score
         judge_email = session.get('user_id')
-        remarks     = request.form.get('remarks', '').strip()
+        remarks     = (json_data.get('remarks') if json_data else request.form.get('remarks', '')).strip()
 
         reg_ref.set({
             'scores': {
@@ -179,12 +259,18 @@ def submit_score(reg_id):
 
         log_action(db, "SCORE_SUBMITTED",
                    f"Judge {judge_email} scored {reg_id} — avg {avg_score}")
+
+        if request.is_json or 'json' in request.headers.get('Accept', ''):
+            return jsonify({'status': 'ok', 'avg': avg_score, 'total': avg_score, 'scores': score_details, 'message': f"Score saved! Average: {avg_score}"}), 200
+
         flash(f"Score saved! Average: {avg_score}", "success")
         return redirect(f'/judge/event/{event_id}')
 
     except Exception as exc:
         if getattr(exc, 'code', None) == 403:
             abort(403)
+        if getattr(exc, 'code', None) == 400:
+            abort(400)
         flash(f"Error submitting score: {exc}", "danger")
         return redirect('/judge/dashboard')
 
@@ -215,16 +301,37 @@ def score_inline(reg_id):
         if event_doc.get('scoring_locked'):
             return jsonify({'status': 'locked',
                             'message': 'Scoring is locked by the SPOC for this round.'}), 403
-        criteria  = event_doc.get('judging_criteria', ['Overall Score'])
 
-        total = sum(safe_int(scores.get(c, 0)) for c in criteria)
-        avg   = round(total / len(criteria), 1)
+        norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
+
+        score_details = {}
+        total = 0
+        for c in norm_criteria:
+            c_name = c['name']
+            c_key = c['key']
+            c_slug = c['slug']
+            c_max = c['max_score']
+
+            val_raw = scores.get(c_name, scores.get(c_key, scores.get(c_slug, 0)))
+            val = safe_int(val_raw, default=0)
+
+            if val < 0 or val > c_max:
+                return jsonify({
+                    'status': 'error',
+                    'message': f"Score for {c_name} must be between 0 and {c_max}"
+                }), 400
+
+            score_details[c_name] = val
+            total += val
+
+        avg = round(total / len(norm_criteria), 1) if norm_criteria else total
+        avg = int(avg) if avg == int(avg) else avg
 
         judge_email = session.get('user_id')
         reg_ref.set({
             'scores': {
                 judge_email: {
-                    'details':      scores,
+                    'details':      score_details,
                     'total':        avg,
                     'raw_total':    total,
                     'remarks':      remarks,
@@ -239,6 +346,8 @@ def score_inline(reg_id):
         return jsonify({'status': 'ok', 'avg': avg, 'message': f'Score saved — avg {avg}'})
 
     except Exception as exc:
+        if getattr(exc, 'code', None) == 403:
+            return jsonify({'status': 'error', 'message': 'Forbidden'}), 403
         return jsonify({'status': 'error', 'message': str(exc)}), 500
 
 
@@ -263,8 +372,9 @@ def leaderboard(event_id):
         if not scores:
             continue
         avg = round(
-            sum(safe_int(s.get('total', 0)) for s in scores.values()) / len(scores), 1
+            sum(float(s.get('total', 0)) for s in scores.values()) / len(scores), 1
         )
+        avg = int(avg) if avg == int(avg) else avg
         board.append({
             'team_name': d.get('team_name', '—'),
             'lead_name': d.get('lead_name', ''),

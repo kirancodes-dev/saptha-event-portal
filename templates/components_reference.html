@@ -1,15 +1,11 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block html_attrs %}lang="en" data-theme="dark"{% endblock %}
+{% block head %}
     <meta name="description" content="SapthaEvent Design System v8.0 Reference and Interactive Component Showcase">
     <title>Design System v8.0 | SapthaEvent Portal</title>
     <!-- Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    {% include "layouts/_fontawesome.html" %}
     <!-- Global Design System -->
     <link href="/static/css/global.css" rel="stylesheet">
 
@@ -133,8 +129,9 @@
             gap: 1.25rem;
         }
     </style>
-</head>
-<body style="padding-bottom: 4rem;">
+{% endblock %}
+{% block body_attrs %} style="padding-bottom: 4rem;"{% endblock %}
+{% block body %}
     <!-- Aurora background elements -->
     <div class="aurora-bg" aria-hidden="true">
         <div class="aurora-orb"></div>
@@ -153,7 +150,7 @@
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                        <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 36px; width: auto;">
+                        <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 36px; width: auto;">
                         <span class="pill-badge-v8 pill-cultural">Design System v8.0</span>
                         <span class="pill-badge-v8 pill-technical">WCAG 2.1 AA</span>
                     </div>
@@ -164,7 +161,7 @@
                     <a href="/dashboard" class="btn-v8-glass" aria-label="Return to Dashboard">
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Return to App
                     </a>
-                    <button class="btn-v8-gold" onclick="toggleTheme()" aria-label="Toggle dark or light theme">
+                    <button class="btn-v8-gold" data-h-click="components_reference:1" aria-label="Toggle dark or light theme">
                         <span id="theme-toggle-icon"><i class="fas fa-sun" aria-hidden="true"></i></span>
                         <span id="theme-toggle-text">Toggle Theme</span>
                     </button>
@@ -194,42 +191,42 @@
                     <span class="doc-section-badge">Brand & Surface</span>
                 </div>
                 <div class="swatch-grid">
-                    <div class="swatch-card" onclick="copyHex('#0f1c4d')">
+                    <div class="swatch-card" data-h-click="components_reference:2">
                         <div class="swatch-color" style="background: #0f1c4d;"></div>
                         <div class="swatch-info">
                             <div class="swatch-name">SNPSU Blue</div>
                             <div class="swatch-hex">--snpsu-blue (#0f1c4d)</div>
                         </div>
                     </div>
-                    <div class="swatch-card" onclick="copyHex('#c9a45e')">
+                    <div class="swatch-card" data-h-click="components_reference:3">
                         <div class="swatch-color" style="background: #c9a45e;"></div>
                         <div class="swatch-info">
                             <div class="swatch-name">SNPSU Gold</div>
                             <div class="swatch-hex">--snpsu-gold (#c9a45e)</div>
                         </div>
                     </div>
-                    <div class="swatch-card" onclick="copyHex('#6366f1')">
+                    <div class="swatch-card" data-h-click="components_reference:4">
                         <div class="swatch-color" style="background: #6366f1;"></div>
                         <div class="swatch-info">
                             <div class="swatch-name">Technical Indigo</div>
                             <div class="swatch-hex">--cat-technical (#6366f1)</div>
                         </div>
                     </div>
-                    <div class="swatch-card" onclick="copyHex('#10b981')">
+                    <div class="swatch-card" data-h-click="components_reference:5">
                         <div class="swatch-color" style="background: #10b981;"></div>
                         <div class="swatch-info">
                             <div class="swatch-name">Success Green</div>
                             <div class="swatch-hex">--success (#10b981)</div>
                         </div>
                     </div>
-                    <div class="swatch-card" onclick="copyHex('#ef4444')">
+                    <div class="swatch-card" data-h-click="components_reference:6">
                         <div class="swatch-color" style="background: #ef4444;"></div>
                         <div class="swatch-info">
                             <div class="swatch-name">Danger / Live Red</div>
                             <div class="swatch-hex">--danger (#ef4444)</div>
                         </div>
                     </div>
-                    <div class="swatch-card" onclick="copyHex('#f59e0b')">
+                    <div class="swatch-card" data-h-click="components_reference:7">
                         <div class="swatch-color" style="background: #f59e0b;"></div>
                         <div class="swatch-info">
                             <div class="swatch-name">Amber Warning</div>
@@ -323,7 +320,7 @@
                 <div class="demo-grid-3">
                     <div class="event-card-v8 card-interactive-glow">
                         <div class="event-media-wrap">
-                            <img src="/static/campus.jpg" alt="SapthaTech Hackathon" class="event-media-img">
+                            <img loading="lazy" src="/static/campus.jpg" alt="SapthaTech Hackathon" class="event-media-img">
                             <span class="event-category-badge" style="background: rgba(99, 102, 241, 0.85);">Technical</span>
                             <span class="event-date-chip"><i class="fas fa-clock" aria-hidden="true"></i> Tomorrow, 9:00 AM</span>
                         </div>
@@ -341,7 +338,7 @@
 
                     <div class="event-card-v8 card-interactive-glow">
                         <div class="event-media-wrap">
-                            <img src="/static/campus.jpg" alt="Sapthagiri Fest" class="event-media-img">
+                            <img loading="lazy" src="/static/campus.jpg" alt="Sapthagiri Fest" class="event-media-img">
                             <span class="event-category-badge" style="background: rgba(201, 164, 94, 0.9);">Cultural</span>
                             <span class="event-date-chip"><i class="fas fa-calendar" aria-hidden="true"></i> Sep 15, 2026</span>
                         </div>
@@ -359,7 +356,7 @@
 
                     <div class="event-card-v8 card-interactive-glow">
                         <div class="event-media-wrap">
-                            <img src="/static/campus.jpg" alt="Badminton Championship" class="event-media-img">
+                            <img loading="lazy" src="/static/campus.jpg" alt="Badminton Championship" class="event-media-img">
                             <span class="event-category-badge" style="background: rgba(16, 185, 129, 0.9);">Sports</span>
                             <span class="event-date-chip"><i class="fas fa-circle" style="color: #ef4444;" aria-hidden="true"></i> Live Right Now</span>
                         </div>
@@ -384,7 +381,7 @@
                     <span class="doc-section-badge">ARIA Supported</span>
                 </div>
                 <div class="glass-card-v8" style="padding: 2rem;">
-                    <form onsubmit="event.preventDefault(); triggerDemoToast();">
+                    <form data-h-submit="components_reference:8">
                         <div class="demo-grid-2">
                             <div class="form-group-v8">
                                 <label for="demo-name" class="form-label-v8">Full Name <span style="color: var(--danger);" aria-hidden="true">*</span></label>
@@ -449,15 +446,15 @@
                         <h3 style="font-size: 1.1rem; margin-bottom: 1.25rem;">Interactive Toast Notifications</h3>
                         <p style="font-size: 0.9rem; color: var(--ink-600); margin-bottom: 1.25rem;">Trigger glassmorphic feedback banners with dynamic screen reader support.</p>
                         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn-v8-glass" style="justify-content: space-between;" onclick="showToast('Event successfully registered!', 'success')" type="button">
+                            <button class="btn-v8-glass" style="justify-content: space-between;" data-h-click="components_reference:9" type="button">
                                 <span><i class="fas fa-circle-check" style="color: var(--success); margin-right: 6px;" aria-hidden="true"></i> Trigger Success Toast</span>
                                 <i class="fas fa-chevron-right" aria-hidden="true"></i>
                             </button>
-                            <button class="btn-v8-glass" style="justify-content: space-between;" onclick="showToast('Registration deadline closing in 2 hours', 'warning')" type="button">
+                            <button class="btn-v8-glass" style="justify-content: space-between;" data-h-click="components_reference:10" type="button">
                                 <span><i class="fas fa-triangle-exclamation" style="color: var(--warning); margin-right: 6px;" aria-hidden="true"></i> Trigger Warning Toast</span>
                                 <i class="fas fa-chevron-right" aria-hidden="true"></i>
                             </button>
-                            <button class="btn-v8-glass" style="justify-content: space-between;" onclick="showToast('Payment gateway temporarily unreachable', 'danger')" type="button">
+                            <button class="btn-v8-glass" style="justify-content: space-between;" data-h-click="components_reference:11" type="button">
                                 <span><i class="fas fa-circle-xmark" style="color: var(--danger); margin-right: 6px;" aria-hidden="true"></i> Trigger Error Toast</span>
                                 <i class="fas fa-chevron-right" aria-hidden="true"></i>
                             </button>
@@ -472,18 +469,6 @@
     <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px;"></div>
 
     <script src="/static/js/global.js"></script>
-    <script>
-        function copyHex(hex) {
-            navigator.clipboard.writeText(hex).then(() => {
-                showToast(`Copied ${hex} to clipboard!`, 'info', 2000);
-            });
-        }
-
-        function triggerDemoToast() {
-            showToast('Form validated and submitted successfully!', 'success', 3000);
-            const announcer = document.getElementById('a11y-announcer');
-            if (announcer) announcer.textContent = 'Form submitted successfully.';
-        }
-    </script>
-</body>
-</html>
+    <script src="/static/js/pages/components_reference.js"></script>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/components_reference.js"></script>{% endblock %}

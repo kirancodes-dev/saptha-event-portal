@@ -130,8 +130,11 @@ def verify_certificate_download(cert_hash):
     try:
         # 1. Fetch info
         doc = db_conn.collection('verified_certificates').document(cert_hash).get()
+        certificate_id, reg_label = '', cert_hash
         if doc.exists:
             cert_data = doc.to_dict()
+            # Re-draw this certificate: its own ID in the QR and footer (UPG-06)
+            certificate_id, reg_label = cert_hash, cert_data.get('reg_id') or cert_hash
             student_name = cert_data.get('student_name', 'Participant')
             event_title = cert_data.get('event_title', 'Event')
             cert_type = cert_data.get('cert_type', 'participation')
@@ -164,13 +167,14 @@ def verify_certificate_download(cert_hash):
         pdf_bytes = generate_certificate_pdf(
             student_name=student_name,
             event_title=event_title,
-            reg_id=cert_hash,
+            reg_id=reg_label,
             cert_type=cert_type,
             rank=rank,
             score=score,
             event_date=event_date,
             base_url=_base_url(),
-            college_name=college_name
+            college_name=college_name,
+            certificate_id=certificate_id,
         )
 
         return send_file(

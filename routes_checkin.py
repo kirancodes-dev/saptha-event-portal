@@ -19,6 +19,7 @@ except ImportError:
     FieldFilter = None
 
 from models import db
+from services_workflow import is_event_day_status
 from utils import login_required, role_required
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ def self_checkin_page(event_id):
     if not event.get('allow_self_checkin'):
         return render_template('public/checkin_disabled.html', event=event)
 
-    if event.get('status') != 'active':
+    if not is_event_day_status(event):
         return render_template('public/checkin_closed.html', event=event)
 
     code = request.args.get('code', '').strip()
@@ -99,8 +100,8 @@ def submit_self_checkin(event_id):
     event = event_doc.to_dict()
     if not event.get('allow_self_checkin'):
         return jsonify({'error': 'Self check-in is not enabled for this event'}), 403
-    if event.get('status') != 'active':
-        return jsonify({'error': 'Event is not active'}), 400
+    if not is_event_day_status(event):
+        return jsonify({'error': 'This event is not running'}), 400
 
     # Validate short-lived venue code
     code = (request.form.get('code') or request.args.get('code') or '').strip()
@@ -339,63 +340,11 @@ def kiosk_search():
 @login_required
 @role_required(COORD_ROLES)
 def kiosk_confirm(reg_id):
-    user_email = session.get('user_id')
-    user_role  = session.get('role', '')
-    user_cat   = session.get('category', 'General')
-
-    try:
-        reg_doc = _db().collection('registrations').document(reg_id).get()
-        if not reg_doc.exists:
-            return jsonify({'success': False, 'error': 'Registration not found.'}), 404
-
-        reg = reg_doc.to_dict() or {}
-        event_id = reg.get('event_id')
-        if not event_id:
-            return jsonify({'success': False, 'error': 'Registration has no associated event.'}), 400
-
-        event_doc = _db().collection('events').document(str(event_id)).get()
-        if not event_doc.exists:
-            return jsonify({'success': False, 'error': 'Event not found.'}), 404
-
-        evt = event_doc.to_dict() or {}
-        if not _can_manage_event(user_email, user_role, evt, user_cat):
-            return jsonify({'success': False, 'error': 'Forbidden: You cannot manage this event.'}), 403
-
-        event_title = evt.get('title', 'Event')
-        if evt.get('status') != 'active':
-            return jsonify({'success': False, 'error': f"Event '{event_title}' is not active."}), 400
-
-        if reg.get('attendance') == 'Present':
-            return jsonify({
-                'success': True,
-                'already_present': True,
-                'message': f"{reg.get('lead_name')} is already checked in.",
-                'lead_name': reg.get('lead_name'),
-                'team_name': reg.get('team_name', ''),
-                'event_title': event_title
-            })
-
-        checkin_time = datetime.datetime.now().strftime("%H:%M:%S")
-        _db().collection('registrations').document(reg_id).update({
-            'attendance': 'Present',
-            'checkin_time': checkin_time,
-            'kiosk_checkin': True
-        })
-
-        try:
-            from routes_gamification import award_xp
-            award_xp(reg.get('lead_email', ''), 150)
-        except Exception:
-            pass
-
-        return jsonify({
-            'success': True,
-            'message': f"Successfully checked in {reg.get('lead_name')}!",
-            'lead_name': reg.get('lead_name'),
-            'team_name': reg.get('team_name', ''),
-            'checkin_time': checkin_time,
-            'event_title': event_title
-        })
-    except Exception as exc:
-        logger.error("Error in kiosk confirm: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)}), 500
+    """Check in the registration staff picked after a name search, through the
+    same check-in as every scanner (UPG-02): the event must exist, the user
+    needs check_in on it, payment must allow entry, and a repeat changes nothing."""
+    from routes_ticket import check_in
+    body, http = check_in(reg_id, session, source='kiosk search')
+    if not body['success']:
+        body['error'] = body['message']
+    return jsonify(body), http

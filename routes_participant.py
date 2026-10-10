@@ -222,13 +222,16 @@ def view_certificate(reg_id):
         return redirect('/participant/dashboard')
 
     rules = (event_data.get('workflow_config') or {}).get('rules', {})
-    if rules.get('require_feedback_for_certificate') and not reg_data.get('feedback'):
+    from routes_feedback import has_responded
+    if rules.get('require_feedback_for_certificate') and not has_responded(
+            reg_data.get('event_id', ''), reg_id, user_email or '', reg_data):
         flash("Please provide your feedback to receive your certificate.", "info")
         return redirect(f'/participant/feedback/{reg_id}')
 
     return render_template('participant/certificate.html',
                             student_name=reg_data.get('lead_name'),
-                            event=event_data)
+                            event=event_data,
+                            certificate_id=reg_data.get('certificate_id'))  # issued by UPG-06's path
 
 
 # =========================================================
@@ -284,14 +287,27 @@ def leaderboard(event_id):
 @login_required
 @role_required('Student')
 def submit_feedback(reg_id):
+    from flask import abort
+    from routes_feedback import RESPONSES, has_responded, response_id
     reg_ref = db.collection('registrations').document(reg_id)
     reg     = reg_ref.get()
+    me      = (session.get('user_id') or '').lower()
+    if not reg.exists:
+        abort(404)
+    reg_data = reg.to_dict() or {}
+    is_lead  = (reg_data.get('lead_email') or '').lower() == me
+    member   = next((m for m in reg_data.get('members') or [] if (m.get('email') or '').lower() == me), None)
+    if not (is_lead or member):
+        abort(403)  # the lead or a team member, nobody else (UPG-05)
 
-    if not reg.exists or reg.to_dict().get('lead_email') != session.get('user_id'):
-        flash("Unauthorised access.", "danger")
+    # Feedback opens once the attendee checked in, and each person answers once
+    if reg_data.get('attendance') != 'Present' or (member and member.get('attendance') == 'Absent'):
+        flash("Feedback opens once you've been checked in at the event.", "info")
         return redirect('/participant/dashboard')
-
-    reg_data = reg.to_dict()
+    event_id = str(reg_data.get('event_id', ''))
+    if has_responded(event_id, reg_id, me, reg_data):
+        flash("You've already sent your feedback for this event. Thank you!", "info")
+        return redirect('/participant/dashboard')
 
     if request.method == 'POST':
         rating   = request.form.get('rating', '0')
@@ -332,15 +348,14 @@ def submit_feedback(reg_id):
             except Exception as e:
                 pass
 
-        reg_ref.update({
-            'feedback': {
-                'rating':    int(rating),
-                'comments':  comments,
-                'tags':      tags,
-                'timestamp': datetime.datetime.now(datetime.timezone.utc),
-                'sentiment': sentiment,
-            }
-        })
+        now = datetime.datetime.now(datetime.timezone.utc)
+        response = {'rating': int(rating), 'comments': comments, 'tags': tags, 'sentiment': sentiment}
+        name = reg_data.get('lead_name', '') if is_lead else (member or {}).get('name', '')
+        db.collection(RESPONSES).document(response_id(event_id, reg_id, me)).set(dict(
+            response, event_id=event_id, reg_id=reg_id, email=me, name=name,
+            team=reg_data.get('team_name', ''), submitted_at=now.isoformat()))
+        if is_lead:  # where the certificate rule and older reports look for it
+            reg_ref.update({'feedback': dict(response, timestamp=now)})
         flash("Thank you for your feedback!", "success")
         return redirect('/participant/dashboard')
 
@@ -361,6 +376,12 @@ def public_register(event_id):
             return redirect('/')
 
         event_data = event_doc.to_dict()
+        # The same check as the registration form (UPG-34)
+        from routes_forms import registration_closed
+        if registration_closed(event_data):
+            flash("Registration is closed for this event.", "warning")
+            return redirect(f'/event/{event_id}')
+
         email      = request.form.get('email', '').lower().strip()
         full_name  = request.form.get('full_name', '').strip()
         usn        = request.form.get('usn', '').upper().strip()
@@ -801,4 +822,97 @@ def my_events():
 @login_required
 def api_my_events():
     return my_events()
+
+
+# =========================================================
+# 11. PARTICIPATION LEDGER (ACTIVITY POINTS & HOURS - UPG-11)
+# =========================================================
+@participant_bp.route('/ledger')
+@participant_bp.route('/activity_points')
+@participant_bp.route('/api/ledger')
+@login_required
+def participation_ledger():
+    user_email = (session.get('user_id') or '').strip().lower()
+
+    # User's registrations
+    regs_stream = db.collection('registrations').where('lead_email', '==', user_email).stream()
+    registrations = [(r.id, r.to_dict() or {}) for r in regs_stream]
+
+    # Also check if participant is in team members of other registrations
+    all_regs = db.collection('registrations').stream()
+    found_ids = {r[0] for r in registrations}
+    for r in all_regs:
+        if r.id in found_ids:
+            continue
+        data = r.to_dict() or {}
+        members = data.get('members') or []
+        if any((m.get('email') or '').strip().lower() == user_email for m in members):
+            registrations.append((r.id, data))
+            found_ids.add(r.id)
+
+    events_map = {}
+    for e in db.collection('events').stream():
+        events_map[str(e.id)] = e.to_dict() or {}
+
+    entries = []
+    total_points = 0.0
+    total_hours = 0.0
+
+    for reg_id, reg in sorted(registrations, key=lambda x: str(x[1].get('registered_at') or ''), reverse=True):
+        event_id = str(reg.get('event_id') or '')
+        event = events_map.get(event_id, {})
+
+        attendance = str(reg.get('attendance') or '').strip()
+        is_present = attendance.lower() == 'present'
+
+        ev_points = float(event.get('activity_points') or 0.0)
+        ev_hours = float(event.get('activity_hours') or 0.0)
+
+        points_earned = ev_points if is_present else 0.0
+        hours_earned = ev_hours if is_present else 0.0
+
+        total_points += points_earned
+        total_hours += hours_earned
+
+        entries.append({
+            'reg_id': reg_id,
+            'event_id': event_id,
+            'event_title': event.get('title') or reg.get('event_title', 'Event'),
+            'category': event.get('category', 'General'),
+            'date': str(event.get('date') or reg.get('registered_at', '')),
+            'attendance': attendance or 'Pending',
+            'is_present': is_present,
+            'event_points': ev_points,
+            'event_hours': ev_hours,
+            'points_earned': points_earned,
+            'hours_earned': hours_earned,
+            'certificate_id': reg.get('certificate_id', ''),
+        })
+
+    is_json = (
+        request.path.endswith('/api/ledger') or
+        request.args.get('format') == 'json' or
+        request.headers.get('Accept') == 'application/json' or
+        request.is_json
+    )
+    if is_json:
+        return jsonify({
+            'user_email': user_email,
+            'total_points': total_points,
+            'total_hours': total_hours,
+            'entries': entries,
+        })
+
+    user_doc = db.collection('users').document(user_email).get()
+    user_data = (user_doc.to_dict() or {}) if user_doc.exists else {}
+
+    return render_template(
+        'participant/ledger.html',
+        user_email=user_email,
+        user_data=user_data,
+        total_points=total_points,
+        total_hours=total_hours,
+        entries=entries,
+        current_page='ledger',
+    )
 

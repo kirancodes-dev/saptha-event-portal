@@ -46,7 +46,17 @@ def view_profile():
         if ranks:
             stats['top_rank'] = min(ranks)
 
-    return render_template('profile/dashboard.html', user=user, teams=my_teams, stats=stats)
+    # A pending account deletion, shown with a cancel button (UPG-22)
+    deletion_due = ''
+    try:
+        for req in (db.collection('deletion_requests').where('email', '==', session['user_id'])
+                      .where('status', '==', 'pending').limit(1).stream()):
+            deletion_due = str((req.to_dict() or {}).get('scheduled_deletion_at', ''))[:10]
+    except Exception:
+        pass
+
+    return render_template('profile/dashboard.html', user=user, teams=my_teams, stats=stats,
+                           deletion_due=deletion_due)
 
 
 @profile_bp.route('/update', methods=['POST'])

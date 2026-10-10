@@ -134,6 +134,24 @@ def send_ticket_whatsapp(phone: str, name: str, event_title: str,
     return _send(phone, body)
 
 
+def send_event_reminder_whatsapp(phone: str, name: str, event_title: str,
+                                 event_date: str = '', venue: str = '', reg_id: str = '') -> bool:
+    """The day-before reminder (tasks/scheduled_tasks.send_24h_reminders)."""
+    base = _public_base_url()
+    date_line = f"📅 *Date:* {event_date}\n" if event_date else ""
+    venue_line = f"📍 *Venue:* {venue}\n" if venue else ""
+    body = (
+        f"⏰ *Tomorrow: {event_title}*\n\n"
+        f"Hi {name},\n"
+        f"{date_line}"
+        f"{venue_line}"
+        f"📌 *Ticket ID:* `{reg_id}`\n\n"
+        f"Your entry QR is in your email and on your ticket.\n"
+        f"👉 Ticket: {base}/ticket/{reg_id}"
+    )
+    return _send(phone, body)
+
+
 def send_payment_receipt_whatsapp(phone: str, name: str, event_title: str,
                                   amount: float, payment_id: str) -> bool:
     """

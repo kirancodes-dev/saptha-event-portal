@@ -1,0 +1,94 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Payments{% endblock %}
+{% block page_title %}Payments{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <p><a href="/admin/analytics/export/payments">Download every payment (CSV)</a> for the finance office.</p>
+
+        <h2 style="font-size:17px;margin-top:16px;">Paid, but not registered</h2>
+        <p>The payment went through but the registration couldn't be completed (the event filled up, the payer was
+           already registered, or an error). Register them by hand, or refund them.</p>
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th scope="col">Event</th><th scope="col">Payer</th><th scope="col">Amount</th>
+                    <th scope="col">Payment</th><th scope="col">Why</th><th scope="col"><span class="visually-hidden">Refund</span></th></tr></thead>
+                <tbody>
+                {% for o in orders %}
+                    <tr>
+                        <td>{{ o.event_title }}</td>
+                        <td>{{ o.email }}</td>
+                        <td>₹{{ '%g' % o.amount }}</td>
+                        <td><code>{{ o.payment_id }}</code><br><small>{{ o.paid_at }}</small></td>
+                        <td>{{ o.failure_reason or '—' }}</td>
+                        <td>
+                            <form method="POST" action="/admin/payments/{{ o.id }}/refund">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <label style="font-size:12px;"><input type="checkbox" name="confirm" value="yes" required>
+                                    Refund ₹{{ '%g' % o.amount }} to {{ o.email }}</label>
+                                <button type="submit" class="btn btn-sm btn-danger">Refund through Razorpay</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6">None: every paid order has its registration.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if cancelled_events %}
+        <h2 style="font-size:17px;margin-top:24px;">Cancelled events with payments</h2>
+        <ul>
+            {% for ev in cancelled_events %}
+            <li><a href="/admin/events/{{ ev.id }}/refunds">{{ ev.title }}</a>: {{ ev.count }} payment{{ '' if ev.count == 1 else 's' }} to refund</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <h2 style="font-size:17px;margin-top:24px;">Paid registrations</h2>
+        <p>Mark a registration refunded (the money was returned another way) or cancelled. Either way its ticket
+           no longer checks in. Both are recorded in the audit log.</p>
+        {% set search_label = 'Search by name, email, USN, registration or event' %}
+        {% include "includes/list_search.html" %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th scope="col">Registration</th><th scope="col">Event</th><th scope="col">Name</th>
+                    <th scope="col">Payment</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+                <tbody>
+                {% for r in registrations %}
+                    <tr>
+                        <td><code>{{ r.reg_id or r.doc_id }}</code></td>
+                        <td>{{ r.event_title }}</td>
+                        <td>{{ r.lead_name }}<br><small>{{ r.lead_email }}</small></td>
+                        <td>{{ r.payment_status }} · ₹{{ r.amount_paid or 0 }}</td>
+                        <td>{{ r.status }}</td>
+                        <td>
+                            {% if (r.status or '')|lower != 'cancelled' %}
+                            <form method="POST" action="/admin/registrations/{{ r.doc_id }}/mark">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="text" name="reason" placeholder="Reason" required aria-label="Reason">
+                                <button type="submit" name="action" value="refunded" class="btn btn-sm btn-outline-secondary">Mark refunded</button>
+                                <button type="submit" name="action" value="cancelled" class="btn btn-sm btn-outline-danger">Cancel</button>
+                            </form>
+                            {% else %}{{ r.cancel_reason or '' }}{% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6">{% if page.q %}No paid registrations match.{% else %}No paid registrations yet.{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "includes/pagination.html" %}
+    </div>
+</div>
+{% endblock %}

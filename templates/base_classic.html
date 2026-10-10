@@ -1,9 +1,8 @@
-<!-- Base Template - Use as foundation for all pages -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{#- The app layout: role-aware sidebar, top header, content and footer, on the
+    shared document (layouts/document.html, UPG-23). Pages extend this and fill
+    title, page_title, content, extra_css and extra_js. -#}
+{% extends "layouts/document.html" %}
+{% block head %}
     <meta name="theme-color" content="#1a2557">
     <!-- ═══ SEO Meta Tags ═══ -->
     <meta name="description" content="{% block meta_description %}SapthaEvent: Official event management portal for Sapthagiri NPS University. Manage events, register participants, and track event attendance.{% endblock %}">
@@ -11,18 +10,17 @@
     <meta name="author" content="Sapthagiri NPS University">
     <meta name="robots" content="noindex, follow">
     <meta name="language" content="English">
-    <!-- CSRF token for fetch()/XHR (HTML forms use a hidden input instead) -->
-    <meta name="csrf-token" content="{{ csrf_meta_token() }}">
     <!-- ═══ Canonical URL ═══ -->
     <link rel="canonical" href="https://events.snpsu.edu.in">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     {% include 'includes/pwa_head.html' %}
     <title>{% block title %}Page Title{% endblock %} | SapthaEvent Dashboard</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    {% include "layouts/_fontawesome.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
+    <script src="/static/js/escape.js"></script>
     {% block extra_css %}{% endblock %}
-</head>
-<body>
+{% endblock %}
+{% block body %}
     <a href="#main-content" class="skip-link">Skip to Main Content</a>
     <!-- Accessibility Live Region for Dynamic Screen Reader Announcements -->
     <div id="a11y-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -32,7 +30,7 @@
         <div class="sidebar-overlay" aria-hidden="true"></div>
         <aside class="sidebar" role="complementary" aria-label="Navigation sidebar">
             <div class="sidebar-brand">
-                <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 32px; width: auto; object-fit: contain; margin-right: 8px;">
+                <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height: 32px; width: auto; object-fit: contain; margin-right: 8px;">
                 <div class="brand-text" aria-label="SapthaEvent Dashboard">Saptha<span>Event</span></div>
             </div>
 
@@ -57,6 +55,14 @@
                         <a href="/admin/dashboard" class="nav-link">
                             <i class="fas fa-cog" aria-hidden="true"></i>
                             <span>Admin Dashboard</span>
+                        </a>
+                        <a href="/admin/users" class="nav-link {% if current_page == 'users' %}active{% endif %}" aria-current="{% if current_page == 'users' %}page{% else %}false{% endif %}">
+                            <i class="fas fa-users" aria-hidden="true"></i>
+                            <span>Users</span>
+                        </a>
+                        <a href="/admin/payments" class="nav-link {% if current_page == 'payments' %}active{% endif %}" aria-current="{% if current_page == 'payments' %}page{% else %}false{% endif %}">
+                            <i class="fas fa-receipt" aria-hidden="true"></i>
+                            <span>Payments</span>
                         </a>
                         <a href="/admin/audit_log" class="nav-link">
                             <i class="fas fa-clipboard-list" aria-hidden="true"></i>
@@ -108,7 +114,7 @@
                     </a>
                     
                     <!-- Theme Toggle -->
-                    <button class="btn-icon-link me-3" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
+                    <button class="btn-icon-link me-3" data-h-click="base_classic:1" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; color: var(--ink-700); font-size: 1.15rem; padding: 0.5rem; transition: color var(--t-fast);">
                         <span id="theme-toggle-icon"><i class="fas fa-moon" aria-hidden="true"></i></span>
                     </button>
 
@@ -131,69 +137,21 @@
                     </div>
                 </div>
             {% endblock %}
-        </div>
+        </main>
+        <footer class="site-footer text-center small py-3" role="contentinfo">
+            © 2026 Sapthagiri NPS University ·
+            <a href="/privacy">Privacy notice</a> ·
+            <a href="/terms">Terms</a>
+        </footer>
     </div>
 
-    <script>
-        // Mobile sidebar toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const menuToggle = document.querySelector('.menu-toggle');
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.sidebar-overlay');
-
-            if (menuToggle) {
-                menuToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('active');
-                    overlay.classList.toggle('active');
-                });
-            }
-
-            if (overlay) {
-                overlay.addEventListener('click', function() {
-                    sidebar.classList.remove('active');
-                    overlay.classList.remove('active');
-                });
-            }
-
-            // Clean up mobile sidebar classes on window resize
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 991) {
-                    if (sidebar) sidebar.classList.remove('active');
-                    if (overlay) overlay.classList.remove('active');
-                }
-            });
-        });
-    </script>
-    <script>
-        // Auto-attach CSRF token to same-origin mutating fetch() requests.
-        (function () {
-            var meta = document.querySelector('meta[name="csrf-token"]');
-            var token = meta ? meta.getAttribute('content') : '';
-            if (!token || !window.fetch) return;
-            var origFetch = window.fetch.bind(window);
-            window.fetch = function (input, init) {
-                init = init || {};
-                var method = (init.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
-                if (['POST', 'PUT', 'DELETE', 'PATCH'].indexOf(method) === -1) {
-                    return origFetch(input, init);
-                }
-                var url = typeof input === 'string' ? input : (input && input.url) || '';
-                try {
-                    var u = new URL(url, window.location.origin);
-                    if (u.origin !== window.location.origin) return origFetch(input, init);
-                } catch (_) {}
-                var headers = new Headers(init.headers || {});
-                if (!headers.has('X-CSRFToken')) headers.set('X-CSRFToken', token);
-                init.headers = headers;
-                if (!init.credentials) init.credentials = 'same-origin';
-                return origFetch(input, init);
-            };
-        })();
-    </script>
+    <script src="/static/js/pages/base_classic.js"></script>
     <script src="/static/js/global.js"></script>
     <script src="/static/js/command-palette.js" defer></script>
     <script src="/static/js/offline-sync.js" defer></script>
     {% include 'components/mobile_nav.html' %}
     {% block extra_js %}{% endblock %}
-</body>
-</html>
+{% endblock %}
+{# This layout's footer sits inside the content column, beside the sidebar #}
+{% block site_footer %}{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/base_classic.js"></script>{% endblock %}

@@ -53,7 +53,7 @@ try:
 except ImportError:
     def load_dotenv(*args, **kwargs): pass
 
-from config import Config, validate_production_config
+from config import Config, check_production_settings
 from utils import ROLE_REDIRECTS  # single source of truth
 
 # =========================================================
@@ -87,62 +87,49 @@ if not getattr(_wsec, '_is_patched', False):
 
 
 # =========================================================
-# LOGGING CONFIGURATION — structured JSON in production
+# LOGGING — one JSON object per line in production (Cloud Run), UPG-20
 # =========================================================
-def _configure_logging():
-    log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
-    root = logging.getLogger()
-    root.setLevel(log_level)
-    # Clear pre-existing handlers so reloaders don't double-log
-    for h in list(root.handlers):
-        root.removeHandler(h)
-    handler = logging.StreamHandler()
-    if os.environ.get('FLASK_ENV') == 'production':
-        try:
-            from pythonjsonlogger import jsonlogger
-            fmt = jsonlogger.JsonFormatter(
-                '%(asctime)s %(levelname)s %(name)s %(message)s %(pathname)s %(lineno)d'
-            )
-            handler.setFormatter(fmt)
-        except Exception:
-            handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
-    else:
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
-    root.addHandler(handler)
+from utils_logging import configure_logging  # noqa: E402
 
-_configure_logging()
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # =========================================================
-# SENTRY — initialized before app creation so errors during
-# boot are captured too
+# SENTRY — on when SENTRY_DSN is set; initialized before app
+# creation so errors during boot are captured too. Never sends
+# personal data (send_default_pii=False). UPG-20.
 # =========================================================
-_SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
-if _SENTRY_DSN:
+def init_sentry(env=None):
+    env = os.environ if env is None else env
+    dsn = (env.get('SENTRY_DSN') or '').strip()
+    if not dsn:
+        return False
     try:
         import sentry_sdk
         from sentry_sdk.integrations.flask import FlaskIntegration
         sentry_sdk.init(
-            dsn=_SENTRY_DSN,
+            dsn=dsn,
             integrations=[FlaskIntegration()],
-            environment=os.environ.get('FLASK_ENV', 'development'),
-            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+            environment=env.get('FLASK_ENV', 'development'),
+            release=env.get('K_REVISION') or None,   # the Cloud Run revision
+            traces_sample_rate=float(env.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
             send_default_pii=False,
         )
         logger.info("Sentry: initialized")
+        return True
     except Exception as exc:
         logger.warning("Sentry: failed to initialize: %s", exc)
+        return False
+
+
+init_sentry()
 
 # =========================================================
 # APP FACTORY
 # =========================================================
 app = Flask(__name__)
 app.config.from_object(Config)
-validate_production_config(app.config)
+check_production_settings()   # production: one error naming every missing or weak setting (UPG-20)
 
 # One proxy hop (Cloud Run's front end): trust its client IP (login throttle)
 # and scheme (so Talisman's force_https doesn't loop). Never X-Forwarded-Host
@@ -214,11 +201,12 @@ else:
 _csp = {
     'default-src': ["'self'"],
     'img-src':     ["'self'", 'data:', 'https:'],
-    'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
-                    'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-    'font-src':    ["'self'", 'https://cdnjs.cloudflare.com',
-                    'https://fonts.gstatic.com', 'data:'],
-    'script-src':  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
+    # Fonts are self-hosted (static/fonts, UPG-24); Font Awesome's come from cdnjs
+    'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net'],
+    'font-src':    ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
+    # No 'unsafe-inline': page scripts live in static/js, and the few inline
+    # scripts that carry template values have a per-request nonce (UPG-25)
+    'script-src':  ["'self'", 'https://cdnjs.cloudflare.com',
                     'https://cdn.jsdelivr.net', 'https://www.gstatic.com',
                     'https://checkout.razorpay.com'],
     'connect-src': ["'self'", 'https://api.razorpay.com',
@@ -227,17 +215,24 @@ _csp = {
     'frame-src':   ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
     'frame-ancestors': ["'self'"],
 }
+_is_production = os.environ.get('FLASK_ENV') == 'production'
 Talisman(
     app,
     force_https=app.config.get('FORCE_HTTPS', False),
-    strict_transport_security=app.config.get('FORCE_HTTPS', False),
+    # Always in production: TLS ends at Cloud Run's front end, and ProxyFix
+    # above trusts its X-Forwarded-Proto, so requests are seen as https (UPG-20).
+    strict_transport_security=app.config.get('FORCE_HTTPS', False) or _is_production,
+    strict_transport_security_include_subdomains=False,
     strict_transport_security_max_age=31536000,
     content_security_policy=_csp,
-    content_security_policy_nonce_in=[],
+    content_security_policy_nonce_in=['script-src'],
     session_cookie_secure=app.config.get('SESSION_COOKIE_SECURE', False),
     referrer_policy='strict-origin-when-cross-origin',
     frame_options='SAMEORIGIN',
     x_content_type_options=True,
+    # Scanners use the camera, judges' dictation the microphone; nothing else.
+    # Structured-header syntax: camera=(self), geolocation=() — not Feature-Policy's 'self'
+    permissions_policy={'camera': '(self)', 'microphone': '(self)', 'geolocation': '()', 'payment': '(self)'},
 )
 
 # ── Rate limiter ─────────────────────────────────────────
@@ -305,7 +300,6 @@ else:
 # BLUEPRINTS
 # =========================================================
 from routes_auth        import auth_bp        # noqa: E402
-from routes_api         import api_bp          # noqa: E402
 from routes_ai_matching import ai_bp           # noqa: E402
 from routes_admin       import admin_bp        # noqa: E402
 from routes_coordinator import coord_bp        # noqa: E402
@@ -320,7 +314,6 @@ from routes_forms       import forms_bp        # noqa: E402
 from routes_portfolio   import portfolio_bp    # noqa: E402
 from routes_sponsors    import sponsors_bp     # noqa: E402
 from routes_teams          import teams_bp           # noqa: E402
-from routes_notifications  import notif_bp          # noqa: E402
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
 from routes_spoc           import spoc_bp           # noqa: E402
@@ -329,9 +322,9 @@ from routes_verification   import verification_bp   # noqa: E402
 from routes_matchmaker     import matchmaker_bp     # noqa: E402
 from routes_dynamic_pricing import dynamic_pricing_bp # noqa: E402
 from routes_referrals       import referrals_bp       # noqa: E402
+from routes_cron            import cron_bp            # noqa: E402
 
 app.register_blueprint(auth_bp)
-app.register_blueprint(api_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(coord_bp)
@@ -346,7 +339,6 @@ app.register_blueprint(forms_bp)
 app.register_blueprint(portfolio_bp)
 app.register_blueprint(sponsors_bp)
 app.register_blueprint(teams_bp)
-app.register_blueprint(notif_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
@@ -355,6 +347,7 @@ app.register_blueprint(verification_bp)
 app.register_blueprint(matchmaker_bp)
 app.register_blueprint(dynamic_pricing_bp)
 app.register_blueprint(referrals_bp)
+app.register_blueprint(cron_bp)
 
 # ── Phase 1–4 Industrial Upgrade blueprints ──────────────
 from routes_api_v1          import api_v1_bp          # noqa: E402
@@ -371,7 +364,6 @@ from routes_i18n            import i18n_bp             # noqa: E402
 from i18n                   import init_i18n           # noqa: E402
 from routes_developer       import developer_bp        # noqa: E402
 from routes_analytics       import analytics_bp        # noqa: E402
-from routes_payment_stripe  import stripe_bp           # noqa: E402
 from routes_ai_features     import ai_features_bp      # noqa: E402
 from routes_onboarding      import onboarding_bp       # noqa: E402
 from routes_gamification    import gamification_bp     # noqa: E402
@@ -390,7 +382,6 @@ app.register_blueprint(marketing_bp)
 app.register_blueprint(i18n_bp)
 app.register_blueprint(developer_bp)
 app.register_blueprint(analytics_bp)
-app.register_blueprint(stripe_bp)
 app.register_blueprint(ai_features_bp)
 app.register_blueprint(onboarding_bp)
 app.register_blueprint(gamification_bp)
@@ -417,6 +408,34 @@ for _bearer_bp in (api_v1_bp,):
         csrf.exempt(_bearer_bp)
     except Exception as exc:
         logger.warning("CSRF exempt failed for %s: %s", _bearer_bp.name, exc)
+
+# Razorpay calls its webhook server to server; its signature authenticates it (UPG-30)
+from routes_payment import price_preview, razorpay_webhook  # noqa: E402
+csrf.exempt(price_preview)
+csrf.exempt(razorpay_webhook)
+# The scheduler calls the cron endpoint with a shared secret, not a session (UPG-07)
+csrf.exempt(cron_bp)
+
+
+@app.context_processor
+def inject_auth_features():
+    google_configured = bool(
+        app.config.get('OAUTH_GOOGLE_CLIENT_ID')
+        or app.config.get('GOOGLE_CLIENT_ID')
+    )
+    twofa_available = bool(app.config.get('TWO_FA_AVAILABLE', True))
+    try:
+        import pyotp
+        import qrcode
+        if pyotp is None or qrcode is None:
+            twofa_available = False
+    except Exception:
+        twofa_available = False
+
+    return {
+        'google_oauth_configured': google_configured,
+        'twofa_available': twofa_available,
+    }
 
 
 
@@ -482,7 +501,8 @@ def well_known_suppress(subpath):
 # =========================================================
 @app.route('/privacy')
 def privacy_policy():
-    return render_template('public/privacy.html')
+    from services_privacy import PRIVACY_NOTICE_VERSION
+    return render_template('public/privacy.html', privacy_notice_version=PRIVACY_NOTICE_VERSION)
 
 @app.route('/terms')
 def terms_of_service():
@@ -491,43 +511,43 @@ def terms_of_service():
 # =========================================================
 # HEALTH CHECK — For load balancers & monitoring
 # =========================================================
+def _database_ok():
+    """One real round trip to the database: SELECT 1 on the SQL layer, or one
+    document read in Firestore mode. Never raises."""
+    try:
+        from db_adapter import SQLFirestoreAdapter
+        if isinstance(db, SQLFirestoreAdapter):
+            from sqlalchemy import text
+            from db_pg import get_engine
+            with get_engine().connect() as conn:
+                conn.execute(text('SELECT 1')).scalar()
+        else:
+            next(iter(db.collection('users').limit(1).stream()), None)
+        return True
+    except Exception:
+        logger.exception("Health check: the database is unreachable")
+        return False
+
+
 @app.route('/health', methods=['GET'])
 @limiter.exempt
 def health_check():
-    """
-    Health check endpoint for Railway, Render, and load balancers.
-    Returns 200 OK if app and Firebase are healthy.
-    """
-    try:
-        # Quick Firebase connection test
-        db.collection('users').limit(1).stream()
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.datetime.now().isoformat(),
-            'version': '1.0.0',
-            'environment': app.config.get('FLASK_ENV', 'unknown')
-        }), 200
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.datetime.now().isoformat()
-        }), 503
+    """Liveness and database check for Cloud Run and load balancers: 200 or
+    503, never error details (they're in the log). UPG-20."""
+    ok = _database_ok()
+    return jsonify({
+        'status': 'healthy' if ok else 'unhealthy',
+        'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'version': os.environ.get('K_REVISION', '1.0.0'),
+    }), 200 if ok else 503
+
 
 @app.route('/health/ready', methods=['GET'])
 @limiter.exempt
 def ready_check():
-    """
-    Readiness endpoint - checks if app is ready to handle traffic.
-    """
-    try:
-        # Check Firebase
-        db.collection('users').limit(1).stream()
-        return jsonify({'ready': True}), 200
-    except Exception as e:
-        logger.error(f"Readiness check failed: {e}")
-        return jsonify({'ready': False, 'error': str(e)}), 503
+    """Readiness: the database answers. No error details."""
+    ok = _database_ok()
+    return jsonify({'ready': ok}), 200 if ok else 503
 
 # =========================================================
 # HOME
@@ -690,19 +710,6 @@ def home():
             'reg_count': reg_count,
             'event_id': d.get('id', ''),
         })
-
-    if not events and not (q or filter_dept or filter_type or filter_mode or filter_fee):
-        events = [{
-            'id': 'demo-hackathon-2026',
-            'title': 'SapthaHack 2026 — National AI Hackathon',
-            'description': 'Flagship 36-hour hackathon organized by Sapthagiri NPS University.',
-            'category': 'Technical',
-            'date': '2026-08-15',
-            'venue': 'APJ Abdul Kalam Auditorium, SNPSU Campus',
-            'entry_fee': 0,
-            'registration_count': 124,
-            'is_closed': False
-        }]
 
     _ctx = {
         'events': events,
@@ -1036,6 +1043,15 @@ def _filter_calendar_events(events_stream, args, session_dict, db_client):
                 continue
             if filter_fee == 'paid' and is_free:
                 continue
+
+        if (ev.get('room_id') or ev.get('roomId')) and not ev.get('room_name') and db_client:
+            try:
+                r_id = ev.get('room_id') or ev.get('roomId')
+                rdoc = db_client.collection('rooms').document(str(r_id)).get()
+                if rdoc.exists:
+                    ev['room_name'] = rdoc.to_dict().get('name')
+            except Exception:
+                pass
 
         ev['google_calendar_url'] = get_google_calendar_url(ev)
         ev['ics_url'] = f"/events/{ev.get('slug') or ev_id}/calendar.ics"

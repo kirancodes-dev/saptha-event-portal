@@ -57,6 +57,20 @@ PARTICIPANT_STATE_TRANSITIONS: Dict[str, List[str]] = {
 }
 
 
+# Statuses in which an event can run on its day (scanners, walk-ins, self
+# check-in, reminders): every published state up to `in_progress`, plus the old
+# single `active` status. Not draft, pending approval, cancelled or completed.
+EVENT_DAY_STATUSES = ('published', 'registration_open', 'registration_closed', 'in_progress', 'active')
+
+# Statuses in which an event is still taking registrations.
+REGISTRATION_OPEN_STATUSES = ('registration_open', 'active')
+
+
+def is_event_day_status(event: Optional[Dict[str, Any]]) -> bool:
+    """True when the event's status lets it run on its day."""
+    return str((event or {}).get('status') or '').lower() in EVENT_DAY_STATUSES
+
+
 class WorkflowError(Exception):
     """Raised when an illegal or guarded workflow transition is attempted."""
     pass
@@ -264,6 +278,24 @@ class WorkflowEngine:
 
         doc_ref.set(updates, merge=True)
         event_data.update(updates)
+
+        # Confirm tentative room bookings on approval or publish (UPG-09)
+        if t_state in ("approved", "published"):
+            bookings = list(db.collection("venue_bookings").where("event_id", "==", str(event_id)).stream())
+            for b in bookings:
+                bd = b.to_dict()
+                if (bd.get("status") or "").strip().lower() == "tentative":
+                    db.collection("venue_bookings").document(b.id).set({
+                        "status": "confirmed",
+                        "updated_at": now_str,
+                    }, merge=True)
+        elif t_state == "cancelled":
+            bookings = list(db.collection("venue_bookings").where("event_id", "==", str(event_id)).stream())
+            for b in bookings:
+                db.collection("venue_bookings").document(b.id).set({
+                    "status": "cancelled",
+                    "updated_at": now_str,
+                }, merge=True)
 
         # Record immutable audit log
         cls._record_audit_entry(

@@ -1,14 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23e (full-screen: no footer). -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
     <title>Scanner | {{ event_title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    {% include "layouts/_fontawesome.html" %}
+    <script integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         body { background-color: #1a2557; color: white; font-family: sans-serif; }
         #reader { width: 100%; min-height: 320px; border-radius: 15px; overflow: hidden; border: 4px solid #c9a45e; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
@@ -20,8 +18,9 @@
         .member-row { background: white; color: #1e293b; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #10b981;}
         .form-check-input { width: 25px; height: 25px; cursor: pointer; accent-color: #10b981; border: 2px solid #cbd5e1; }
     </style>
-</head>
-<body class="d-flex flex-column align-items-center justify-content-center min-vh-100 p-3">
+{% endblock %}
+{% block body_attrs %} class="d-flex flex-column align-items-center justify-content-center min-vh-100 p-3"{% endblock %}
+{% block body %}
 
     <div class="text-center mb-4">
         <h2 class="fw-bold text-warning"><i class="fas fa-qrcode me-2"></i>Entry Scanner</h2>
@@ -48,17 +47,17 @@
             <div id="cam-placeholder">
                 <i class="fas fa-camera fa-2x mb-3"></i>
                 <p class="mb-3 fw-bold">Tap below to start the camera</p>
-                <button class="btn-cam-start" onclick="startCamera()">
+                <button class="btn-cam-start" data-h-click="coordinator/scan:1">
                     <i class="fas fa-video me-2"></i>Start Camera
                 </button>
             </div>
         </div>
         <div id="cam-error"></div>
         <div class="mt-4 text-center">
-            <p>Or manually enter Ticket ID:</p>
+            <p>Or paste the ticket link or code:</p>
             <div class="input-group">
-                <input type="text" id="manual_id" class="form-control form-control-lg" placeholder="REG-123456789">
-                <button class="btn btn-warning fw-bold px-4" onclick="fetchTicket(document.getElementById('manual_id').value)">Fetch</button>
+                <input aria-label="Ticket link or code" type="text" id="manual_id" class="form-control form-control-lg" placeholder="Ticket link or code">
+                <button class="btn btn-warning fw-bold px-4" data-h-click="coordinator/scan:2">Fetch</button>
             </div>
             <a href="/coordinator/scanner" class="btn btn-outline-light mt-4"><i class="fas fa-arrow-left me-2"></i>Back to Scanner Menu</a>
         </div>
@@ -66,6 +65,7 @@
     <div id="attendance-view" class="w-100 d-none" style="max-width: 600px;">
         <div class="bg-white text-dark p-4 rounded-4 shadow-lg">
             <h4 class="fw-bold mb-1 text-primary" id="t_team">Team Name</h4>
+            <p class="fw-bold mb-1" id="t_status"></p>
             <p class="text-muted border-bottom pb-3 mb-3">Ticket ID: <span id="t_id" class="fw-bold"></span></p>
 
             <!-- Room assignment banner -->
@@ -83,15 +83,15 @@
                 <div id="members-list"></div>
                 
                 <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                    <button type="button" class="btn btn-outline-danger px-4 fw-bold" onclick="resetScanner()">Cancel</button>
-                    <button type="button" class="btn btn-success px-5 fw-bold fs-5 shadow" onclick="submitGranularAttendance()">Confirm Entry <i class="fas fa-check-circle ms-2"></i></button>
+                    <button type="button" class="btn btn-outline-light text-dark border px-4 fw-bold" data-h-click="coordinator/scan:3">Next scan</button>
+                    <button type="button" id="save-members" class="btn btn-success px-5 fw-bold fs-5 shadow" data-h-click="coordinator/scan:4">Save member attendance <i class="fas fa-check-circle ms-2"></i></button>
                 </div>
             </form>
         </div>
     </div>
     {% endif %}{# end scanning_open #}
 
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         let html5Qr = null;
         let camRunning = false;
         let audioCtx = null;
@@ -226,26 +226,41 @@
             startCamera();
         });
 
+        const EVENT_ID = {{ event_id|tojson }};
+
+        // Every scan goes through the shared check-in (UPG-02): it marks the
+        // registration present, or says when it was first checked in.
         async function fetchTicket(rawInput) {
             if(!rawInput) return;
-            // Extract reg_id from a full verify URL (e.g. http://host/ticket/verify/REG-xxx)
-            const match = rawInput.match(/\/ticket\/verify\/([^/?#\s]+)/);
-            const regId = match ? match[1] : rawInput.trim();
-            const response = await fetch(`/coordinator/get_ticket/${regId}`);
-            const data = await response.json();
-            
-            if(data.status === 'success') {
-                playScanSound('success');
-                const reg = data.data;
+            let data;
+            try {
+                const response = await fetch('/ticket/api/checkin', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ token: rawInput.trim(), event_id: EVENT_ID, source: 'coordinator scanner' })
+                });
+                data = await response.json();
+            } catch (err) {
+                playScanSound('error');
+                alert("❌ Network error. Try again.");
+                resumeCamera();
+                return;
+            }
+
+            if (data.status === 'success' || data.status === 'already_in') {
+                playScanSound(data.status);
                 document.getElementById('scanner-view').classList.add('d-none');
                 document.getElementById('attendance-view').classList.remove('d-none');
-                
-                document.getElementById('t_team').innerText = (reg.team_name && reg.team_name !== 'Individual') ? reg.team_name : reg.lead_name;
-                document.getElementById('t_id').innerText = reg.reg_id;
-                document.getElementById('submit_reg_id').value = reg.reg_id;
+
+                document.getElementById('t_team').innerText = (data.team && data.team !== 'Individual') ? data.team : data.name;
+                document.getElementById('t_status').innerText = data.status === 'success'
+                    ? '✅ Checked in at ' + (data.checkin_time || '').slice(0, 5)
+                    : '⚠️ ' + data.message;
+                document.getElementById('t_id').innerText = data.reg_id;
+                document.getElementById('submit_reg_id').value = data.reg_id;
 
                 // Show assigned room if available
-                const room = reg.assigned_room || reg.allocated_room || '';
+                const room = data.room || '';
                 const roomBanner = document.getElementById('room-banner');
                 if (room) {
                     document.getElementById('room-name').innerText = room;
@@ -253,25 +268,32 @@
                 } else {
                     roomBanner.style.display = 'none';
                 }
-                
-                let html = '';
-                // Leader
-                html += `<label class="member-row shadow-sm">
-                            <div><strong class="d-block">${reg.lead_name} (Team Lead)</strong><small class="text-muted">${reg.lead_usn}</small></div>
-                            <input type="checkbox" class="form-check-input" name="present_usn" value="${reg.lead_usn}" checked>
-                         </label>`;
-                // Members
-                if(reg.members) {
-                    reg.members.forEach(m => {
-                        if(m.usn && m.usn !== reg.lead_usn) {
-                            html += `<label class="member-row shadow-sm">
-                                        <div><strong class="d-block">${m.name}</strong><small class="text-muted">${m.usn}</small></div>
-                                        <input type="checkbox" class="form-check-input" name="present_usn" value="${m.usn}" checked>
-                                     </label>`;
-                        }
-                    });
-                }
-                document.getElementById('members-list').innerHTML = html;
+
+                // Team members: untick anyone who isn't here, then save
+                const list = document.getElementById('members-list');
+                list.replaceChildren();
+                const members = (data.members || []).filter(m => m.usn);
+                members.forEach(m => {
+                    const label = document.createElement('label');
+                    label.className = 'member-row shadow-sm';
+                    const info = document.createElement('div');
+                    const strong = document.createElement('strong');
+                    strong.className = 'd-block';
+                    strong.textContent = m.name;
+                    const small = document.createElement('small');
+                    small.className = 'text-muted';
+                    small.textContent = m.usn;
+                    info.append(strong, small);
+                    const box = document.createElement('input');
+                    box.type = 'checkbox';
+                    box.className = 'form-check-input';
+                    box.name = 'present_usn';
+                    box.value = m.usn;
+                    box.checked = m.attendance !== 'Absent';
+                    label.append(info, box);
+                    list.appendChild(label);
+                });
+                document.getElementById('save-members').classList.toggle('d-none', members.length === 0);
             } else {
                 playScanSound('error');
                 alert("❌ " + data.message);
@@ -307,14 +329,6 @@
             resumeCamera();
         }
     </script>
-<script>
-(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
-if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
-var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
-if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
-var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
-var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
-if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
-</script>
-</body>
-</html>
+<script src="/static/js/pages/coordinator__scan.js"></script>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__scan.js"></script>{% endblock %}

@@ -1,37 +1,34 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23c. -#}
+{% block head %}
     <title>My Profile | SapthaEvent</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    {% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    {% include "layouts/_fontawesome.html" %}
     <style>
         :root { --blue: #1a2557; --orange: #c9a45e; }
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; min-height: 100vh; }
-        h1,h2,h3,h4,h5,h6 { font-family: 'Poppins', sans-serif; }
+        h1,h2,h3,h4,h5,h6 { font-family: 'Outfit', sans-serif; }
 
         /* NAV */
         .topnav { background: var(--blue); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
         .logo-sq { width: 34px; height: 34px; background: var(--orange); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: #fff; }
-        .brand { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 15px; color: #fff; }
+        .brand { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; color: #fff; }
         .nav-links { display: flex; align-items: center; gap: 6px; }
         .nav-link-item { color: rgba(255,255,255,.7); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: 7px; transition: .15s; }
         .nav-link-item:hover { color: #fff; background: rgba(255,255,255,.1); }
 
         /* HERO */
         .hero-band { background: var(--blue); padding: 24px 24px 32px; }
-        .avatar-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 24px; color: #fff; flex-shrink: 0; }
-        .hero-name { font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 800; color: #fff; margin: 0; }
+        .avatar-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 24px; color: #fff; flex-shrink: 0; }
+        .hero-name { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: #fff; margin: 0; }
         .hero-sub { font-size: 13px; color: rgba(255,255,255,.6); margin: 3px 0 0; }
 
         /* STAT PILLS */
         .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
         .stat-pill { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 100px; padding: 7px 18px; display: flex; align-items: center; gap: 8px; }
-        .stat-pill-n { font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 800; color: #fff; }
+        .stat-pill-n { font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 800; color: #fff; }
         .stat-pill-l { font-size: 11.5px; color: rgba(255,255,255,.6); }
 
         /* ACHIEVEMENT BADGES */
@@ -43,12 +40,12 @@
 
         /* CONTENT */
         .content { padding: 20px 24px; }
-        .section-title { font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: var(--blue); margin-bottom: 14px; }
+        .section-title { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--blue); margin-bottom: 14px; }
 
         /* CARDS */
         .pcard { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; }
         .pcard-header { background: var(--blue); padding: 14px 20px; display: flex; align-items: center; gap: 10px; }
-        .pcard-header-title { font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: #fff; margin: 0; }
+        .pcard-header-title { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: #fff; margin: 0; }
         .pcard-body { padding: 20px; }
 
         /* FORM */
@@ -58,9 +55,9 @@
         .form-control:disabled { background: #f8fafc; color: #94a3b8; }
 
         /* BUTTONS */
-        .btn-save { background: var(--blue); color: #fff; border: none; border-radius: 9px; padding: 9px 22px; font-size: 13px; font-weight: 700; font-family: 'Poppins', sans-serif; cursor: pointer; transition: .15s; }
+        .btn-save { background: var(--blue); color: #fff; border: none; border-radius: 9px; padding: 9px 22px; font-size: 13px; font-weight: 700; font-family: 'Outfit', sans-serif; cursor: pointer; transition: .15s; }
         .btn-save:hover { background: #232f6b; }
-        .btn-pw { background: var(--orange); color: #fff; border: none; border-radius: 9px; padding: 9px 22px; font-size: 13px; font-weight: 700; font-family: 'Poppins', sans-serif; cursor: pointer; transition: .15s; }
+        .btn-pw { background: var(--orange); color: #fff; border: none; border-radius: 9px; padding: 9px 22px; font-size: 13px; font-weight: 700; font-family: 'Outfit', sans-serif; cursor: pointer; transition: .15s; }
         .btn-pw:hover { background: #b8903f; }
 
         /* REGISTRATIONS TABLE */
@@ -77,13 +74,13 @@
             .stat-pills { gap: 7px; }
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <!-- NAV -->
 <nav class="topnav">
     <div class="d-flex align-items-center gap-2">
-        <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
+        <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
         <span class="brand">SapthaEvent</span>
     </div>
     <div class="nav-links">
@@ -187,20 +184,20 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Email (Cannot Change)</label>
-                            <input type="text" class="form-control" value="{{ user.email }}" disabled>
+                            <input aria-label="Email (Cannot Change)" type="text" class="form-control" value="{{ user.email }}" disabled>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Full Name</label>
-                            <input type="text" name="name" class="form-control" value="{{ user.name }}" required>
+                            <input aria-label="Full Name" type="text" name="name" class="form-control" value="{{ user.name }}" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Phone Number</label>
-                            <input type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
+                            <input aria-label="Phone Number" type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
                         </div>
                         {% if user.role == 'Student' %}
                         <div class="mb-3">
                             <label class="form-label">USN / Roll No</label>
-                            <input type="text" name="usn" class="form-control" value="{{ user.usn or '' }}">
+                            <input aria-label="USN / Roll No" type="text" name="usn" class="form-control" value="{{ user.usn or '' }}">
                         </div>
                         {% endif %}
                         <div class="text-end">
@@ -223,20 +220,114 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Current Password</label>
-                            <input type="password" name="current_password" class="form-control" required>
+                            <input aria-label="Current Password" type="password" name="current_password" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">New Password</label>
-                            <input type="password" name="new_password" class="form-control" required>
+                            <input aria-label="New Password" type="password" name="new_password" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Confirm New Password</label>
-                            <input type="password" name="confirm_password" class="form-control" required>
+                            <input aria-label="Confirm New Password" type="password" name="confirm_password" class="form-control" required>
                         </div>
                         <div class="text-end">
                             <button type="submit" class="btn-pw">Update Password</button>
                         </div>
                     </form>
+
+                    {% if twofa_available %}
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="mb-1 fw-bold"><i class="fas fa-shield-alt text-primary me-2"></i>Two-Factor Authentication</h6>
+                                <p class="small text-muted mb-0">Protect your account with TOTP authenticator app.</p>
+                            </div>
+                            <div>
+                                {% if user.get('totp_enabled') %}
+                                <span class="badge bg-success me-2">Enabled</span>
+                                <a href="#disable2faModal" data-bs-toggle="modal" class="btn btn-sm btn-outline-danger">Disable</a>
+                                {% else %}
+                                <a href="/auth/2fa/setup" class="btn btn-sm btn-outline-primary">Set Up 2FA</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if twofa_available and user.get('totp_enabled') %}
+        <div class="modal fade" id="disable2faModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Disable Two-Factor Authentication</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="/auth/2fa/disable" method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <p class="small text-muted mb-3">To disable 2FA, please enter your account password to confirm.</p>
+                            <div class="mb-3">
+                                <label class="form-label" for="disable2faPassword">Account Password</label>
+                                <input type="password" id="disable2faPassword" name="password" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger btn-sm">Confirm Disable</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Your data and privacy (UPG-22) -->
+        <div class="col-12">
+            <div class="pcard">
+                <div class="pcard-header">
+                    <i class="fas fa-shield-alt" style="color:var(--orange);font-size:15px;"></i>
+                    <h5 class="pcard-header-title">Your data and privacy</h5>
+                </div>
+                <div class="pcard-body">
+                    <p class="mb-3">Read how your details are used in the <a href="/privacy">privacy notice</a>.
+                       Notification choices are in <a href="/compliance/settings">privacy settings</a>.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <form action="/compliance/export-data" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="mb-2">Download everything SapthaEvent holds about you (profile, registrations,
+                                   form answers, feedback, notifications) as a file.</p>
+                                <button type="submit" class="btn btn-outline-primary">Download my data</button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            {% if deletion_due %}
+                            <form action="/compliance/cancel-deletion" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="mb-2"><strong>Your account will be deleted on {{ deletion_due }}.</strong>
+                                   Until then you can change your mind.</p>
+                                <button type="submit" class="btn btn-outline-secondary">Cancel deletion</button>
+                            </form>
+                            {% else %}
+                            <form action="/compliance/delete-request" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="mb-2">Delete your account. After 30 days your login is removed and your name,
+                                   email, phone and answers are erased from every registration; attendance and
+                                   payment totals stay, without your details.</p>
+                                <label for="delete-reason" class="form-label">Reason (optional)</label>
+                                <input type="text" id="delete-reason" name="reason" class="form-control mb-2" maxlength="500">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="delete-confirm" name="confirm" value="yes" required>
+                                    <label class="form-check-label" for="delete-confirm">I want my account deleted</label>
+                                </div>
+                                <button type="submit" class="btn btn-outline-danger">Delete my account</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -297,6 +388,5 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% include "layouts/_bootstrap_js.html" %}
+{% endblock %}

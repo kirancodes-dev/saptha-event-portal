@@ -34,7 +34,7 @@ def test_register_checkin_score_feedback_certificate(real_app):
 
     # Register
     student_client = _login(flask_app, student, 'Student')
-    assert student_client.post(f'/forms/submit/{event_id}', data={
+    assert student_client.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': student, 'phone': '9876543210', 'usn': '1SN20CS100',
     }).status_code == 302
     regs = list(db.collection('registrations').where('event_id', '==', event_id).stream())

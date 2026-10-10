@@ -1,14 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23e. -#}
+{% block head %}
     <title>Helpdesk POS | Sapthagiri NPS</title>
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    {% include "layouts/_fontawesome.html" %}
     
     <style>
         :root { --snpsu-blue: #1a2557; --snpsu-orange: #c9a45e; --bg-light: #f4f7f6; }
@@ -25,8 +22,8 @@
         .btn-checkout { background-color: var(--snpsu-orange); color: white; font-weight: bold; border-radius: 8px; transition: 0.3s; }
         .btn-checkout:hover { background-color: #d95e1a; color: white; transform: translateY(-2px); }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
     <div class="container py-5 d-flex justify-content-center">
         <div class="w-100" style="max-width: 700px;">
@@ -46,7 +43,7 @@
                     
                     <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">1. Select Event</h5>
                     <div class="mb-4">
-                        <select name="event_id" class="form-select form-select-lg fw-bold" required>
+                        <select aria-label="Event id" name="event_id" class="form-select form-select-lg fw-bold" required>
                             <option value="" disabled selected>-- Choose Event --</option>
                             {% for event in events %}
                                 <option value="{{ event.id }}">{{ event.title }}</option>
@@ -56,10 +53,10 @@
 
                     <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">2. Student Details</h5>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-6"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" placeholder="Enter Name" required></div>
-                        <div class="col-md-6"><label class="form-label">College USN / ID</label><input type="text" name="usn" class="form-control" placeholder="Ex: 1XY23CS001" required></div>
-                        <div class="col-md-6"><label class="form-label">Email Address (For Ticket)</label><input type="email" name="email" class="form-control" placeholder="student@college.edu" required></div>
-                        <div class="col-md-6"><label class="form-label">Phone Number</label><input type="tel" name="phone" class="form-control" placeholder="10-digit number" required></div>
+                        <div class="col-md-6"><label class="form-label">Full Name</label><input aria-label="Full Name" type="text" name="name" class="form-control" placeholder="Enter Name" required></div>
+                        <div class="col-md-6"><label class="form-label">College USN / ID</label><input aria-label="College USN / ID" type="text" name="usn" class="form-control" placeholder="Ex: 1XY23CS001" required></div>
+                        <div class="col-md-6"><label class="form-label">Email Address (For Ticket)</label><input aria-label="Email Address (For Ticket)" type="email" name="email" class="form-control" placeholder="student@college.edu" required></div>
+                        <div class="col-md-6"><label class="form-label">Phone Number</label><input aria-label="Phone Number" type="tel" name="phone" class="form-control" placeholder="10-digit number" required></div>
                     </div>
 
                     <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">3. Payment Collection</h5>
@@ -80,5 +77,4 @@
         </div>
     </div>
 
-</body>
-</html>
+{% endblock %}

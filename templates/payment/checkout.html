@@ -1,13 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23c. -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
     <title>Secure Checkout | SapthaEvent</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    {% include "layouts/_fontawesome.html" %}
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
         body { background: #f8fafc; font-family: 'Segoe UI', sans-serif; }
@@ -20,13 +18,14 @@
         .rzp-btn:disabled { opacity: .6; cursor: not-allowed; }
         .sim-note { background: #fef9c3; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #78350f; }
     </style>
-</head>
-<body>
+<script src="/static/js/escape.js"></script>
+{% endblock %}
+{% block body %}
 
 <div class="checkout-card row g-0">
     <div class="col-md-5 left-panel d-flex flex-column justify-content-between">
         <div>
-            <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;margin-bottom:24px;">
+            <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;margin-bottom:24px;">
             <h4 class="fw-bold mb-4"><i class="fas fa-shopping-cart me-2"></i> Order Summary</h4>
             <div class="mb-3">
                 <p class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Event</p>
@@ -43,9 +42,31 @@
             </div>
         </div>
         <div class="mt-4 pt-4 border-top border-secondary">
-            <div class="d-flex justify-content-between align-items-center">
+            <!-- Coupon Code Section -->
+            <div class="mb-3">
+                <label for="coupon-input" class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Coupon Code</label>
+                <div class="input-group">
+                    <input type="text" id="coupon-input" class="form-control form-control-sm text-uppercase" placeholder="Have a coupon code?" aria-label="Coupon code" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff;">
+                    <button class="btn btn-sm btn-outline-warning" type="button" id="apply-coupon-btn" style="border-radius: 0 6px 6px 0;">Apply</button>
+                </div>
+                <div id="coupon-feedback" class="small mt-1 d-none"></div>
+            </div>
+
+            <!-- Price Breakdown -->
+            <div id="price-breakdown">
+                <div class="d-flex justify-content-between align-items-center mb-1 text-light small opacity-75">
+                    <span>Base Fee</span>
+                    <span id="base-fee-display">₹{{ amount }}</span>
+                </div>
+                <div id="discount-row" class="d-flex justify-content-between align-items-center mb-1 text-success small d-none">
+                    <span>Discount</span>
+                    <span id="discount-display">-₹0</span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary">
                 <span>Total Amount</span>
-                <span class="fs-3 fw-bold" style="color:#c9a45e;">₹{{ amount }}</span>
+                <span class="fs-3 fw-bold" id="total-amount-display" style="color:#c9a45e;">₹{{ amount }}</span>
             </div>
         </div>
     </div>
@@ -59,13 +80,13 @@
         <div id="rzp-section">
             <p class="text-muted mb-4">Click below to open the secure Razorpay payment window. You can pay via UPI, Card, Net Banking, or Wallet.</p>
             <div class="d-flex gap-3 mb-4 flex-wrap">
-                <img src="https://cdn.razorpay.com/static/assets/logo/upi.svg" alt="UPI" height="28">
-                <img src="https://cdn.razorpay.com/static/assets/logo/visa.svg" alt="Visa" height="28">
-                <img src="https://cdn.razorpay.com/static/assets/logo/mastercard.svg" alt="Mastercard" height="28">
-                <img src="https://cdn.razorpay.com/static/assets/logo/netbanking.svg" alt="Netbanking" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/upi.svg" alt="UPI" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/visa.svg" alt="Visa" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/mastercard.svg" alt="Mastercard" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/netbanking.svg" alt="Netbanking" height="28">
             </div>
             <button id="pay-btn" class="rzp-btn mb-3">
-                <i class="fas fa-shield-alt me-2"></i> Pay ₹{{ amount }} Securely
+                <i class="fas fa-shield-alt me-2"></i> <span id="pay-btn-text">Pay ₹{{ amount }} Securely</span>
             </button>
             <div id="sim-note" class="sim-note d-none">
                 <i class="fas fa-info-circle me-2"></i>
@@ -77,7 +98,7 @@
         <form id="sim-form" action="/payment/process" method="POST" class="d-none">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="event_id" value="{{ event_id }}">
-            <input type="hidden" name="amount" value="{{ amount }}">
+            <input type="hidden" name="amount" id="sim-amount" value="{{ amount }}">
         </form>
 
         <div class="text-center mt-3">
@@ -88,24 +109,98 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
-    var btn     = document.getElementById('pay-btn');
-    var simNote = document.getElementById('sim-note');
-    var simForm = document.getElementById('sim-form');
-    var csrf    = document.querySelector('meta[name="csrf-token"]').content;
-    var eventId = "{{ event_id }}";
-    var amountInr = {{ amount }};
+    var btn        = document.getElementById('pay-btn');
+    var payBtnText = document.getElementById('pay-btn-text');
+    var simNote    = document.getElementById('sim-note');
+    var simForm    = document.getElementById('sim-form');
+    var simAmount  = document.getElementById('sim-amount');
+    var csrf       = document.querySelector('meta[name="csrf-token"]').content;
+    var eventId    = "{{ event_id }}";
+    var baseAmount = {{ amount }};
+    var currentTotal = baseAmount;
+    var appliedCoupon = '';
+
+    var couponInput        = document.getElementById('coupon-input');
+    var applyCouponBtn     = document.getElementById('apply-coupon-btn');
+    var couponFeedback    = document.getElementById('coupon-feedback');
+    var discountRow        = document.getElementById('discount-row');
+    var discountDisplay    = document.getElementById('discount-display');
+    var totalAmountDisplay = document.getElementById('total-amount-display');
+
+    if (applyCouponBtn && couponInput) {
+        applyCouponBtn.addEventListener('click', function () {
+            var code = couponInput.value.trim().toUpperCase();
+            if (!code) {
+                couponFeedback.className = 'small mt-1 text-danger';
+                couponFeedback.textContent = 'Please enter a coupon code.';
+                couponFeedback.classList.remove('d-none');
+                return;
+            }
+            applyCouponBtn.disabled = true;
+            applyCouponBtn.textContent = 'Checking…';
+
+            fetch('/payment/price_preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                credentials: 'same-origin',
+                body: JSON.stringify({ event_id: eventId, coupon: code })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                applyCouponBtn.disabled = false;
+                applyCouponBtn.textContent = 'Apply';
+                couponFeedback.classList.remove('d-none');
+                if (data.valid) {
+                    appliedCoupon = data.coupon_code || code;
+                    currentTotal = data.total;
+                    couponFeedback.className = 'small mt-1 text-success';
+                    couponFeedback.textContent = '✓ Coupon applied: ₹' + escapeHtml(data.discount) + ' off';
+                    discountRow.classList.remove('d-none');
+                    discountDisplay.textContent = '-₹' + escapeHtml(data.discount);
+                    totalAmountDisplay.textContent = '₹' + escapeHtml(data.total);
+                    if (simAmount) { simAmount.value = data.total; }
+                    if (payBtnText) {
+                        payBtnText.textContent = 'Pay ₹' + escapeHtml(data.total) + ' Securely';
+                    }
+                } else {
+                    appliedCoupon = '';
+                    currentTotal = data.total || baseAmount;
+                    couponFeedback.className = 'small mt-1 text-danger';
+                    couponFeedback.textContent = '✗ ' + (data.error || 'Invalid coupon code');
+                    discountRow.classList.add('d-none');
+                    totalAmountDisplay.textContent = '₹' + escapeHtml(currentTotal);
+                    if (simAmount) { simAmount.value = currentTotal; }
+                    if (payBtnText) {
+                        payBtnText.textContent = 'Pay ₹' + escapeHtml(currentTotal) + ' Securely';
+                    }
+                }
+            })
+            .catch(function () {
+                applyCouponBtn.disabled = false;
+                applyCouponBtn.textContent = 'Apply';
+                couponFeedback.className = 'small mt-1 text-danger';
+                couponFeedback.textContent = 'Could not validate coupon. Try again.';
+                couponFeedback.classList.remove('d-none');
+            });
+        });
+    }
 
     btn.addEventListener('click', function () {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Opening payment…';
 
+        var payload = { event_id: eventId };
+        if (appliedCoupon) {
+            payload.coupon = appliedCoupon;
+        }
+
         fetch('/payment/create_order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
             credentials: 'same-origin',
-            body: JSON.stringify({ event_id: eventId }),
+            body: JSON.stringify(payload),
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
@@ -142,7 +237,12 @@
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
                         if (res.redirect) { window.location.href = res.redirect; }
-                        else { alert(res.error || 'Verification failed'); resetBtn(); }
+                        else { alert(res.message || res.error || 'Verification failed'); resetBtn(); }
+                    })
+                    .catch(function () {
+                        btn.innerHTML = '<i class="fas fa-hourglass-half me-2"></i> Payment received, confirming…';
+                        alert('Your payment went through, but we could not confirm it just now. ' +
+                              'Check your dashboard in a minute; do not pay again.');
                     });
                 },
                 modal: { ondismiss: resetBtn },
@@ -154,9 +254,8 @@
 
     function resetBtn() {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-shield-alt me-2"></i> Pay ₹' + amountInr + ' Securely';
+        btn.innerHTML = '<i class="fas fa-shield-alt me-2"></i> <span id="pay-btn-text">Pay ₹' + escapeHtml(currentTotal) + ' Securely</span>';
     }
 })();
 </script>
-</body>
-</html>
+{% endblock %}

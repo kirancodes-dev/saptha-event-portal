@@ -1,14 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="csrf-token" content="{{ csrf_token() }}">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23d. -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
 <title>Club Dashboard | SapthaEvent</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
 <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 html {
   overflow-x: hidden;
@@ -1295,8 +1292,9 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 1px 0 rgba(0,0,0,0.1);
   }
 </style>
-</head>
-<body>
+<script src="/static/js/escape.js"></script>
+{% endblock %}
+{% block body %}
 
 {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
 <div class="super-admin-banner" style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
@@ -1304,7 +1302,7 @@ h1, h2, h3, h4, h5, h6 {
     <i class="fas fa-crown" style="color: #c9a45e;"></i>
     Logged in as <strong style="color: #c9a45e;">Super Admin</strong> (Wildcard Mode)
   </span>
-  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(201, 164, 94, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" data-h-mouseover="spoc/dashboard:1" data-h-mouseout="spoc/dashboard:2">
     Return to Admin HQ <i class="fas fa-arrow-right"></i>
   </a>
 </div>
@@ -1313,11 +1311,11 @@ h1, h2, h3, h4, h5, h6 {
 <!-- TOPNAV -->
 <div class="topnav">
   <div class="d-flex align-items-center gap-2">
-    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="topnav-logo" style="height:38px;width:auto;object-fit:contain;">
+    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="topnav-logo" style="height:38px;width:auto;object-fit:contain;">
     <span class="brand d-none d-sm-inline">Club Dashboard</span>
   </div>
   <div class="nav-links">
-    <button class="nav-link-item" onclick="openCommandPalette()" title="Command Palette (Cmd+K)" style="background:none; border:none; cursor:pointer; color:rgba(255,255,255,.75); display:inline-flex; align-items:center; gap:4px;">
+    <button class="nav-link-item" data-h-click="spoc/dashboard:3" title="Command Palette (Cmd+K)" style="background:none; border:none; cursor:pointer; color:rgba(255,255,255,.75); display:inline-flex; align-items:center; gap:4px;">
       <i class="fas fa-terminal"></i><span class="d-none d-lg-inline ms-1" style="font-size:11px; opacity:0.6; background:rgba(255,255,255,0.15); padding:1px 5px; border-radius:4px; font-weight:bold;">⌘K</span>
     </button>
     <a href="/" class="nav-link-item" title="Portal"><i class="fas fa-home"></i><span class="d-none d-sm-inline ms-1">Portal</span></a>
@@ -1327,11 +1325,11 @@ h1, h2, h3, h4, h5, h6 {
       <i class="fas fa-crown"></i><span class="d-none d-sm-inline ms-1">Admin</span>
     </a>
     {% endif %}
-    <button class="nav-link-item btn-help-tour" onclick="startTour()" style="background: none; border: 1.5px solid var(--snpsu-gold); border-radius: var(--radius-sm); color: var(--snpsu-gold); font-weight: 700; cursor: pointer; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;">
+    <button class="nav-link-item btn-help-tour" data-h-click="spoc/dashboard:4" style="background: none; border: 1.5px solid var(--snpsu-gold); border-radius: var(--radius-sm); color: var(--snpsu-gold); font-weight: 700; cursor: pointer; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;">
       <i class="fas fa-question-circle"></i><span class="d-none d-md-inline ms-1">Tour Guide</span>
     </button>
     <a href="/spoc/create_event" class="nav-link-item btn-orange" title="Create Event"><i class="fas fa-plus"></i><span class="d-none d-sm-inline ms-1">Create</span></a>
-    <button class="nav-link-item" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; padding: 5px 10px; color: rgba(255,255,255,.75); display: inline-flex; align-items: center; justify-content: center;">
+    <button class="nav-link-item" data-h-click="spoc/dashboard:5" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; padding: 5px 10px; color: rgba(255,255,255,.75); display: inline-flex; align-items: center; justify-content: center;">
       <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
     </button>
     <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
@@ -1346,21 +1344,25 @@ h1, h2, h3, h4, h5, h6 {
     <!-- LEFT COLUMN: SIDEBAR -->
     <div class="sidebar-column" id="tour-sidebar">
       <div class="event-search-wrapper" id="tour-search">
-        <div class="search-box-container">
-          <i class="fas fa-search search-icon-inside"></i>
-          <input type="text" id="event-search" class="form-control search-input-field" placeholder="Search events title, venue..." oninput="applySearchAndFilter()">
-        </div>
+        <form method="get" action="/spoc/dashboard" class="search-box-container" role="search">
+          {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+          <i class="fas fa-search search-icon-inside" aria-hidden="true"></i>
+          <label for="event-search" class="visually-hidden">Search events by title, venue or category</label>
+          <input type="search" id="event-search" name="q" value="{{ page.q }}" class="form-control search-input-field" placeholder="Search events title, venue...">
+        </form>
       </div>
-      
+
+      {# Filters and search run on the server and stay in the URL (UPG-19) #}
       <div class="filter-pills-row">
-        <button class="filter-pill-btn active" data-filter="all" onclick="setFilter(this)">All</button>
-        <button class="filter-pill-btn" data-filter="active" onclick="setFilter(this)">Active</button>
-        <button class="filter-pill-btn" data-filter="completed" onclick="setFilter(this)">Ended</button>
+        {% for value, label in [('', 'All'), ('active', 'Active'), ('completed', 'Ended')] %}
+        <a class="filter-pill-btn {% if status_filter == value %}active{% endif %}" style="text-decoration:none;"
+           href="/spoc/dashboard?status={{ value|urlencode }}{% if page.q %}&q={{ page.q|urlencode }}{% endif %}">{{ label }}</a>
+        {% endfor %}
       </div>
       
       <div class="sidebar-events-list">
         <!-- Persistent Global Dashboard toggle card -->
-        <div class="global-control-card active" id="tour-global-btn" onclick="selectGlobalOverview()">
+        <div class="global-control-card active" id="tour-global-btn" data-h-click="spoc/dashboard:6">
           <i class="fas fa-chart-line global-card-icon"></i>
           <div style="flex:1;">
             <div style="font-weight:700; font-size:13px; line-height:1.2;">Global Overview</div>
@@ -1369,12 +1371,12 @@ h1, h2, h3, h4, h5, h6 {
           <i class="fas fa-chevron-right fa-xs"></i>
         </div>
         
-        {% if events %}
-          {% for event in events %}
+        {% if page.items %}
+          {% for event in page.items %}
           {% set max_p = (event.limits or {}).get('max_participants', 0) %}
           {% set rc = event.registration_count | default(0) %}
           {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}
-          <div class="sidebar-event-card" id="card-{{ event.id }}" data-title="{{ event.title | e }}" data-category="{{ event.category | e }}" data-venue="{{ event.venue | e }}" data-status="{{ event.status }}" onclick="selectEvent('{{ event.id }}')">
+          <div class="sidebar-event-card" id="card-{{ event.id }}" data-title="{{ event.title | e }}" data-category="{{ event.category | e }}" data-venue="{{ event.venue | e }}" data-status="{{ event.status }}" data-h-click="spoc/dashboard:7" data-h-a0="{{ event.id }}">
             <div class="sidebar-event-title">{{ event.title }}</div>
             <div class="sidebar-event-meta">
               <span><i class="fas fa-tag" style="color:var(--snpsu-gold);"></i>{{ event.category }}</span>
@@ -1392,8 +1394,9 @@ h1, h2, h3, h4, h5, h6 {
             </div>
           </div>
           {% endfor %}
+          {% include "includes/pagination.html" %}
         {% else %}
-          <div class="text-center py-4 text-muted small">No events created yet.</div>
+          <div class="text-center py-4 text-muted small">{% if page.q or status_filter %}No events match.{% else %}No events created yet.{% endif %}</div>
         {% endif %}
       </div>
     </div>
@@ -1482,7 +1485,7 @@ h1, h2, h3, h4, h5, h6 {
               <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
                 <canvas id="attChart"></canvas>
                 <div id="attCenter" style="position:absolute;text-align:center;pointer-events:none;">
-                  <div style="font-family:'Poppins',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">{{ stats.present_count | default(0) }}</div>
+                  <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">{{ stats.present_count | default(0) }}</div>
                   <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Present</div>
                 </div>
               </div>
@@ -1506,7 +1509,7 @@ h1, h2, h3, h4, h5, h6 {
         
         <!-- Live Room Capacity & Wayfinder (Unified Blueprint Map) -->
         <div class="wayfinder-toggle-container mb-4">
-          <button class="wayfinder-toggle-btn" onclick="toggleWayfinderMap(this, 'global-wayfinder-content')" data-show-text="Show Campus Venue Wayfinder Map" data-hide-text="Hide Campus Venue Wayfinder Map">
+          <button class="wayfinder-toggle-btn" data-h-click="spoc/dashboard:8" data-show-text="Show Campus Venue Wayfinder Map" data-hide-text="Hide Campus Venue Wayfinder Map">
             <span><i class="fas fa-map-location-dot me-2"></i><span class="toggle-text">Show Campus Venue Wayfinder Map</span></span>
             <i class="fas fa-chevron-down toggle-icon ms-2"></i>
           </button>
@@ -1528,21 +1531,21 @@ h1, h2, h3, h4, h5, h6 {
                     <rect x="10" y="10" width="580" height="280" rx="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
                     
                     <!-- Main Auditorium -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Main Auditorium', 310, 400, this)" data-room-name="Main Auditorium">
+                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:9" data-room-name="Main Auditorium">
                       <rect x="30" y="30" width="220" height="150" rx="10" class="wayfinder-room-rect" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" />
                       <text x="140" y="100" class="wayfinder-label" font-size="14" text-anchor="middle">Main Auditorium</text>
                       <text x="140" y="125" class="wayfinder-sublabel text-success" fill="#10b981" font-size="11" text-anchor="middle">310 / 400 (77%)</text>
                     </g>
 
                     <!-- CS Lab -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('CS Lab', 48, 50, this)" data-room-name="CS Lab">
+                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:10" data-room-name="CS Lab">
                       <rect x="270" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" />
                       <text x="340" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">CS Lab (Zone C)</text>
                       <text x="340" y="100" class="wayfinder-sublabel text-danger" fill="#ef4444" font-size="10" text-anchor="middle">48 / 50 (96% FULL)</text>
                     </g>
 
                     <!-- Seminar Hall -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Seminar Hall', 120, 150, this)" data-room-name="Seminar Hall">
+                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:11" data-room-name="Seminar Hall">
                       <rect x="430" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(245, 158, 11, 0.1)" stroke="#f59e0b" stroke-dasharray="4" />
                       <text x="500" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">Seminar Hall</text>
                       <text x="500" y="100" class="wayfinder-sublabel text-warning" fill="#f59e0b" font-size="10" text-anchor="middle">120 / 150 (80%)</text>
@@ -1552,7 +1555,7 @@ h1, h2, h3, h4, h5, h6 {
                     <text x="300" y="245" fill="rgba(255,255,255,0.25)" font-size="10" text-anchor="middle" font-family="monospace">MAIN LOGISTICS PASSAGEWAY</text>
 
                     <!-- Sports Arena -->
-                    <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Sports Arena', 85, 200, this)" data-room-name="Sports Arena">
+                    <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:12" data-room-name="Sports Arena">
                       <rect x="270" y="160" width="300" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6" />
                       <text x="420" y="210" class="wayfinder-label" font-size="14" text-anchor="middle">Sports Arena (Zone D)</text>
                       <text x="420" y="230" class="wayfinder-sublabel text-info" fill="#3b82f6" font-size="11" text-anchor="middle">85 / 200 (42%)</text>
@@ -1585,8 +1588,8 @@ h1, h2, h3, h4, h5, h6 {
               <div class="d-flex gap-2 flex-wrap align-items-end">
                 <div style="flex: 0 1 250px;">
                   <label class="form-label" style="margin-bottom:6px; display:block;">Select Event</label>
-                  <select name="event_id" id="ann-event-select" class="form-select" style="font-size:13.5px;"
-                          onchange="document.getElementById('ann-form').action='/spoc/announce/'+this.value">
+                  <select aria-label="Select Event" name="event_id" id="ann-event-select" class="form-select" style="font-size:13.5px;"
+                          data-h-change="spoc/dashboard:13">
                     {% for event in events %}
                     <option value="{{ event.id }}">{{ event.title[:30] }}</option>
                     {% endfor %}
@@ -1594,12 +1597,12 @@ h1, h2, h3, h4, h5, h6 {
                 </div>
                 <div style="flex: 1; min-width: 200px;">
                   <label class="form-label" style="margin-bottom:6px; display:block;">Announcement Message</label>
-                  <input type="text" name="message" placeholder="Type your announcement…"
+                  <input aria-label="Announcement Message" type="text" name="message" placeholder="Type your announcement…"
                          class="form-control" style="font-size:13.5px;" required>
                 </div>
                 <div style="flex: 0 1 140px;">
                   <label class="form-label" style="margin-bottom:6px; display:block;">Priority</label>
-                  <select name="priority" class="form-select" style="font-size:13.5px;">
+                  <select aria-label="Priority" name="priority" class="form-select" style="font-size:13.5px;">
                     <option value="info">Info</option>
                     <option value="warning">Warning</option>
                     <option value="success">Success</option>
@@ -1616,8 +1619,8 @@ h1, h2, h3, h4, h5, h6 {
       </div>
 
       <!-- Panel 2: Single Event Detailed Panel Command Center Loop -->
-      {% if events %}
-        {% for event in events %}
+      {% if page.items %}
+        {% for event in page.items %}
         {% set max_p = (event.limits or {}).get('max_participants', 0) %}
         {% set rc = event.registration_count | default(0) %}
         {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}
@@ -1628,7 +1631,7 @@ h1, h2, h3, h4, h5, h6 {
         <div id="detail-panel-{{ event.id }}" class="event-detail-panel event-detail-panel-container" style="display:none;">
           
           <!-- MOBILE BACK BUTTON -->
-          <button class="btn btn-outline-secondary btn-sm mb-3 d-lg-none" onclick="showMasterList()">
+          <button class="btn btn-outline-secondary btn-sm mb-3 d-lg-none" data-h-click="spoc/dashboard:14">
             <i class="fas fa-arrow-left"></i> Back to Events List
           </button>
           
@@ -1668,19 +1671,19 @@ h1, h2, h3, h4, h5, h6 {
           
           <!-- Event Segmented Tab Controls -->
           <div class="tabs-navigation" id="tour-tabs-nav">
-            <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview', this)">
+            <button class="tab-btn active" data-tab="overview" data-h-click="spoc/dashboard:15">
               <i class="fas fa-home"></i> Overview
             </button>
-            <button class="tab-btn" data-tab="logistics" onclick="switchTab('logistics', this)">
+            <button class="tab-btn" data-tab="logistics" data-h-click="spoc/dashboard:16">
               <i class="fas fa-qrcode"></i> Logistics &amp; QR
             </button>
-            <button class="tab-btn" data-tab="comms" onclick="switchTab('comms', this)">
+            <button class="tab-btn" data-tab="comms" data-h-click="spoc/dashboard:17">
               <i class="fas fa-paper-plane"></i> Blast &amp; Alert
             </button>
-            <button class="tab-btn" data-tab="certs" onclick="switchTab('certs', this)">
+            <button class="tab-btn" data-tab="certs" data-h-click="spoc/dashboard:18">
               <i class="fas fa-gavel"></i> Judges &amp; Certs
             </button>
-            <button class="tab-btn text-danger" data-tab="settings" onclick="switchTab('settings', this)">
+            <button class="tab-btn text-danger" data-tab="settings" data-h-click="spoc/dashboard:19">
               <i class="fas fa-cog"></i> Settings
             </button>
           </div>
@@ -1742,6 +1745,12 @@ h1, h2, h3, h4, h5, h6 {
                   {% for coord_email in coords %}
                   <span class="coord-chip">
                     <i class="fas fa-user-check"></i>{{ coord_email }}
+                    <form method="POST" action="/spoc/remove_staff/{{ event.id }}" style="display:inline;">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <input type="hidden" name="email" value="{{ coord_email }}">
+                      <button type="submit" title="Remove {{ coord_email }}" aria-label="Remove {{ coord_email }}"
+                              style="background:none;border:none;color:#ef4444;padding:0 0 0 4px;cursor:pointer;">&times;</button>
+                    </form>
                   </span>
                   {% endfor %}
                 {% else %}
@@ -1749,13 +1758,13 @@ h1, h2, h3, h4, h5, h6 {
                     <i class="fas fa-info-circle me-1"></i>No coordinators assigned yet.
                   </span>
                 {% endif %}
-                <button class="action-btn btn-blue-outline ms-auto" onclick="openModal('assignCoordModal-{{ event.id }}')">
+                <button class="action-btn btn-blue-outline ms-auto" data-h-click="spoc/dashboard:20" data-h-a1="{{ event.id }}">
                   <i class="fas fa-user-plus"></i> Assign Coordinator
                 </button>
               </div>
                         <!-- SVG Room Allocation Wayfinder map focusing on event venue -->
             <div class="wayfinder-toggle-container">
-              <button class="wayfinder-toggle-btn" onclick="toggleWayfinderMap(this, 'event-wayfinder-content-{{ event.id }}')" data-show-text="Show Venue Wayfinder Map" data-hide-text="Hide Venue Wayfinder Map">
+              <button class="wayfinder-toggle-btn" data-h-click="spoc/dashboard:21" data-h-a2="{{ event.id }}" data-show-text="Show Venue Wayfinder Map" data-hide-text="Hide Venue Wayfinder Map">
                 <span><i class="fas fa-location-crosshairs me-2"></i><span class="toggle-text">Show Venue Wayfinder Map</span></span>
                 <i class="fas fa-chevron-down toggle-icon ms-2"></i>
               </button>
@@ -1772,21 +1781,21 @@ h1, h2, h3, h4, h5, h6 {
                         <rect x="10" y="10" width="580" height="280" rx="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
                         
                         <!-- Main Auditorium -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Main Auditorium', 310, 400, this)" data-room-name="Main Auditorium">
+                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:22" data-room-name="Main Auditorium">
                           <rect x="30" y="30" width="220" height="150" rx="10" class="wayfinder-room-rect" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" />
                           <text x="140" y="100" class="wayfinder-label" font-size="14" text-anchor="middle">Main Auditorium</text>
                           <text x="140" y="125" class="wayfinder-sublabel text-success" fill="#10b981" font-size="11" text-anchor="middle">310 / 400 (77%)</text>
                         </g>
 
                         <!-- CS Lab -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('CS Lab', 48, 50, this)" data-room-name="CS Lab">
+                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:23" data-room-name="CS Lab">
                           <rect x="270" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" />
                           <text x="340" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">CS Lab (Zone C)</text>
                           <text x="340" y="100" class="wayfinder-sublabel text-danger" fill="#ef4444" font-size="10" text-anchor="middle">48 / 50 (96% FULL)</text>
                         </g>
 
                         <!-- Seminar Hall -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Seminar Hall', 120, 150, this)" data-room-name="Seminar Hall">
+                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:24" data-room-name="Seminar Hall">
                           <rect x="430" y="30" width="140" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(245, 158, 11, 0.1)" stroke="#f59e0b" stroke-dasharray="4" />
                           <text x="500" y="80" class="wayfinder-label" font-size="12" text-anchor="middle">Seminar Hall</text>
                           <text x="500" y="100" class="wayfinder-sublabel text-warning" fill="#f59e0b" font-size="10" text-anchor="middle">120 / 150 (80%)</text>
@@ -1795,7 +1804,7 @@ h1, h2, h3, h4, h5, h6 {
                         <path d="M 30 220 L 570 220" stroke="rgba(255,255,255,0.12)" stroke-width="4" stroke-dasharray="8 4" />
 
                         <!-- Sports Arena -->
-                        <g class="wayfinder-room-g" style="cursor:pointer;" onclick="selectRoom('Sports Arena', 85, 200, this)" data-room-name="Sports Arena">
+                        <g class="wayfinder-room-g" style="cursor:pointer;" data-h-click="spoc/dashboard:25" data-room-name="Sports Arena">
                           <rect x="270" y="160" width="300" height="110" rx="10" class="wayfinder-room-rect" fill="rgba(59, 130, 246, 0.1)" stroke="#3b82f6" />
                           <text x="420" y="210" class="wayfinder-label" font-size="14" text-anchor="middle">Sports Arena (Zone D)</text>
                           <text x="420" y="230" class="wayfinder-sublabel text-info" fill="#3b82f6" font-size="11" text-anchor="middle">85 / 200 (42%)</text>
@@ -1850,7 +1859,7 @@ h1, h2, h3, h4, h5, h6 {
                 <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
                   <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Venues &amp; Optimization</div>
                   <div class="d-flex flex-column gap-2">
-                    <button class="action-btn btn-outline justify-content-start" onclick="openModal('roomModal-{{ event.id }}')">
+                    <button class="action-btn btn-outline justify-content-start" data-h-click="spoc/dashboard:26" data-h-a3="{{ event.id }}">
                       <i class="fas fa-door-open"></i> Rooms &amp; Capacities Configuration
                     </button>
                     <a href="/spoc/room_allocation/{{ event.id }}" class="action-btn btn-outline justify-content-start">
@@ -1883,10 +1892,10 @@ h1, h2, h3, h4, h5, h6 {
                   <form method="POST" action="/spoc/announce/{{ event.id }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-2">
-                      <input type="text" name="message" placeholder="Type notification broadcast message…" class="form-control" style="font-size:13px;" required>
+                      <input aria-label="Type notification broadcast message" type="text" name="message" placeholder="Type notification broadcast message…" class="form-control" style="font-size:13px;" required>
                     </div>
                     <div class="d-flex gap-2 align-items-center">
-                      <select name="priority" class="form-select py-1" style="font-size:12px; height: 34px;">
+                      <select aria-label="Priority" name="priority" class="form-select py-1" style="font-size:12px; height: 34px;">
                         <option value="info">Info Priority</option>
                         <option value="warning">Warning Priority</option>
                         <option value="success">Success Priority</option>
@@ -1904,7 +1913,7 @@ h1, h2, h3, h4, h5, h6 {
                 <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
                   <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Form Builder &amp; Email Broadcasts</div>
                   <div class="d-flex flex-column gap-2">
-                    <button class="action-btn btn-emerald justify-content-start" onclick="openBlastModal('{{ event.id }}', '{{ event.title | e }}')">
+                    <button class="action-btn btn-emerald justify-content-start" data-h-click="spoc/dashboard:27" data-h-a4="{{ event.id }}" data-h-a5="{{ event.title | e }}">
                       <i class="fas fa-paper-plane"></i> Bulk Email Broadcast (AI Assist)
                     </button>
                     <a href="/forms/builder/{{ event.id }}" class="action-btn btn-forms-builder justify-content-start">
@@ -1928,7 +1937,7 @@ h1, h2, h3, h4, h5, h6 {
                 <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
                   <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Judge Evaluations</div>
                   <div class="d-flex flex-column gap-2">
-                    <button class="action-btn btn-sky-outline justify-content-start" onclick="openModal('judgeModal-{{ event.id }}')">
+                    <button class="action-btn btn-sky-outline justify-content-start" data-h-click="spoc/dashboard:28" data-h-a6="{{ event.id }}">
                       <i class="fas fa-users-cog"></i> Add / Manage Judges &amp; CSV Rosters
                     </button>
                     
@@ -1943,6 +1952,18 @@ h1, h2, h3, h4, h5, h6 {
                     <a href="/spoc/results/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-trophy"></i> Live Leaderboard &amp; Judging Scores
                     </a>
+                    <a href="/spoc/event_report/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-file-excel"></i> Download Event Report (Excel)
+                    </a>
+                    <a href="/feedback/analytics/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-comments"></i> Feedback Summary
+                    </a>
+                    <a href="/spoc/export_excel/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-table"></i> Export Registrations (Excel)
+                    </a>
+                    <a href="/spoc/export_csv/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-file-csv"></i> Export Registrations (CSV)
+                    </a>
                     <a href="/spoc/judging/audit/{{ event.id }}" class="action-btn btn-purple-outline justify-content-start">
                       <i class="fas fa-scale-balanced"></i> Run Judging Strictness Audit
                     </a>
@@ -1954,12 +1975,12 @@ h1, h2, h3, h4, h5, h6 {
                 <div class="p-3 border rounded h-100" style="background: var(--bg-soft);">
                   <div style="font-weight:700; font-size:13px; color:var(--ink-900); margin-bottom:8px;">Certificate Setup</div>
                   <div class="d-flex flex-column gap-2">
-                    <button class="action-btn btn-purple-outline justify-content-start" onclick="openModal('certModal-{{ event.id }}')">
+                    <button class="action-btn btn-purple-outline justify-content-start" data-h-click="spoc/dashboard:29" data-h-a7="{{ event.id }}">
                       <i class="fas fa-certificate"></i> Configure Visual Cert Templates
                     </button>
                     
                     <form method="POST" action="/spoc/bulk_certs/{{ event.id }}" style="display:contents;"
-                          onsubmit="return confirm('Send participation certificates to all checked-in attendees of \'{{ event.title | e }}\'?')">
+                          data-h-submit="spoc/dashboard:30" data-h-a8="{{ event.title | e }}">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="action-btn btn-purple-outline justify-content-start">
                         <i class="fas fa-certificate"></i> Bulk Send Certs to Checked-in Users
@@ -1980,7 +2001,7 @@ h1, h2, h3, h4, h5, h6 {
                 <i class="fas fa-edit"></i> Edit Event Details
               </a>
               <form method="POST" action="/spoc/clone_event/{{ event.id }}" style="display:contents;"
-                    onsubmit="return confirm('Clone \'{{ event.title | e }}\'? You can edit the date and details after.')">
+                    data-h-submit="spoc/dashboard:31" data-h-a9="{{ event.title | e }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="action-btn btn-outline">
                   <i class="fas fa-copy"></i> Clone Event
@@ -1989,7 +2010,7 @@ h1, h2, h3, h4, h5, h6 {
               <form method="POST" action="/spoc/toggle_status/{{ event.id }}" style="display:contents;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="action-btn {{ 'btn-amber' if event.status == 'active' else 'btn-outline' }}"
-                        onclick="return confirm(this.dataset.msg)"
+                        data-h-click="spoc/dashboard:32"
                         data-msg="Mark '{{ event.title | e }}' as {{ 'Completed' if event.status == 'active' else 'Active' }}?">
                   <i class="fas fa-{{ 'flag-checkered' if event.status == 'active' else 'redo' }}"></i>
                   Mark Event {{ 'Completed' if event.status == 'active' else 'Re-open' }}
@@ -2004,12 +2025,12 @@ h1, h2, h3, h4, h5, h6 {
               
               <div class="d-flex flex-wrap gap-3 align-items-center">
                 {% if event.status == 'active' %}
-                <button class="action-btn btn-red" onclick="confirmEndEvent('{{ event.id }}', '{{ event.title | e }}')">
+                <button class="action-btn btn-red" data-h-click="spoc/dashboard:33" data-h-a10="{{ event.id }}" data-h-a11="{{ event.title | e }}">
                   <i class="fas fa-flag-checkered"></i> End Event &amp; Bulk Dispatch Certs
                 </button>
                 {% endif %}
                 <form method="POST" action="/spoc/delete_event/{{ event.id }}" class="m-0"
-                      onsubmit="return confirm('Delete \'{{ event.title | e }}\' and all its data? This cannot be undone.')">
+                      data-h-submit="spoc/dashboard:34" data-h-a12="{{ event.title | e }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="action-btn btn-delete-event">
                     <i class="fas fa-trash"></i> Delete Event Permanently
@@ -2026,7 +2047,7 @@ h1, h2, h3, h4, h5, h6 {
           <div class="spoc-modal-box" style="max-width:480px;">
             <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
               <span><i class="fas fa-user-plus me-2"></i>Assign Coordinator — {{ event.title }}</span>
-              <button onclick="closeModal('assignCoordModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+              <button data-h-click="spoc/dashboard:35" data-h-a13="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
             <div style="padding:24px;">
               <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">
@@ -2038,23 +2059,23 @@ h1, h2, h3, h4, h5, h6 {
                   <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">
                     Coordinator Name <span style="color:var(--ink-400);font-weight:400;">(for new accounts)</span>
                   </label>
-                  <input type="text" name="coordinator_name" id="coordName-{{ event.id }}" class="form-control"
+                  <input aria-label="Coordinator Name (for new accounts)" type="text" name="coordinator_name" id="coordName-{{ event.id }}" class="form-control"
                          placeholder="Full name">
                 </div>
                 <div style="margin-bottom:16px;">
                   <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">
                     Coordinator Email
                   </label>
-                  <input type="email" name="coordinator_email" id="coordEmail-{{ event.id }}" class="form-control" required
+                  <input aria-label="Coordinator Email" type="email" name="coordinator_email" id="coordEmail-{{ event.id }}" class="form-control" required
                          placeholder="coordinator@example.com"
                          list="coordSuggestions"
                          autocomplete="off"
-                         oninput="autoFillCoordName(this.value, 'coordName-{{ event.id }}')">
+                         data-h-input="spoc/dashboard:36" data-h-a14="{{ event.id }}">
                   <div class="modal-btn-row" style="display:flex;gap:10px;margin-top:16px;">
                     <button type="submit" class="modal-btn-primary flex-fill">
                       <i class="fas fa-user-plus me-1"></i> Assign
                     </button>
-                    <button type="button" onclick="closeModal('assignCoordModal-{{ event.id }}')" class="modal-btn-secondary flex-fill">
+                    <button type="button" data-h-click="spoc/dashboard:37" data-h-a15="{{ event.id }}" class="modal-btn-secondary flex-fill">
                       Cancel
                     </button>
                   </div>
@@ -2069,14 +2090,30 @@ h1, h2, h3, h4, h5, h6 {
           <div class="spoc-modal-box" style="max-width:520px;">
             <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
               <span><i class="fas fa-users-cog me-2"></i>Manage Judges — {{ event.title }}</span>
-              <button onclick="closeModal('judgeModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+              <button data-h-click="spoc/dashboard:38" data-h-a16="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
             <div style="padding:24px;">
-              <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">Upload a CSV with columns: <code>name,email,expertise</code>. Each judge gets login credentials emailed.</p>
+              {% set judges = event.get('staff', []) | selectattr('role', 'equalto', 'Judge') | list %}
+              {% if judges %}
+              <h6 style="font-size:12px;font-weight:700;color:var(--ink-500);text-transform:uppercase;margin-bottom:10px;">Assigned Judges</h6>
+              <ul style="list-style:none;padding:0;margin:0 0 16px;">
+                {% for judge in judges %}
+                <li style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-subtle,#e2e8f0);font-size:13px;">
+                  <span>{{ judge.name or judge.email }} <span style="color:var(--ink-400);">{{ judge.email }}</span></span>
+                  <form method="POST" action="/spoc/remove_staff/{{ event.id }}" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="email" value="{{ judge.email }}">
+                    <button type="submit" class="action-btn btn-outline" style="padding:2px 10px;font-size:12px;">Remove</button>
+                  </form>
+                </li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+              <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">Upload a CSV with columns: <code>name,email,expertise</code>. New judges get an email with a link to set their password.</p>
               <form method="POST" action="/spoc/upload_judges_csv/{{ event.id }}" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label style="font-size:12px;font-weight:700;color:var(--snpsu-blue);display:block;margin-bottom:6px;">CSV File</label>
-                <input type="file" name="judges_csv" accept=".csv" required class="form-control mb-3">
+                <input aria-label="CSV File" type="file" name="judges_csv" accept=".csv" required class="form-control mb-3">
                 <button type="submit" class="modal-btn-primary w-100">
                   <i class="fas fa-upload me-1"></i> Upload &amp; Create Judge Logins
                 </button>
@@ -2086,10 +2123,10 @@ h1, h2, h3, h4, h5, h6 {
               <form method="POST" action="/spoc/add_judge/{{ event.id }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-row-grid" style="margin-bottom:10px;">
-                  <input type="text" name="judge_name" placeholder="Full Name" class="form-control">
-                  <input type="email" name="judge_email" placeholder="Email" class="form-control">
+                  <input aria-label="Full Name" type="text" name="judge_name" placeholder="Full Name" class="form-control">
+                  <input aria-label="Email" type="email" name="judge_email" placeholder="Email" class="form-control">
                 </div>
-                <input type="text" name="expertise" placeholder="Expertise (e.g. AI, Robotics)" class="form-control mb-3">
+                <input aria-label="Expertise (e.g. AI, Robotics)" type="text" name="expertise" placeholder="Expertise (e.g. AI, Robotics)" class="form-control mb-3">
                 <button type="submit" class="modal-btn-primary w-100" style="background:var(--snpsu-blue-dark) !important;">
                   Add Judge &amp; Send Login
                 </button>
@@ -2103,7 +2140,7 @@ h1, h2, h3, h4, h5, h6 {
           <div class="spoc-modal-box" style="max-width:540px;">
             <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
               <span><i class="fas fa-door-open me-2"></i>Room Setup — {{ event.title }}</span>
-              <button onclick="closeModal('roomModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+              <button data-h-click="spoc/dashboard:39" data-h-a17="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
             <div style="padding:24px;">
               <p style="font-size:13px;color:var(--ink-600);margin-bottom:4px;">Define rooms and their capacity. The system auto-allocates registered participants evenly.</p>
@@ -2112,9 +2149,9 @@ h1, h2, h3, h4, h5, h6 {
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="roomRows-{{ event.id }}">
                   <div class="room-row" style="display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;">
-                    <input type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">
-                    <input type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">
-                    <button type="button" onclick="addRoomRow('{{ event.id }}')"
+                    <input aria-label="Room / Hall name" type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">
+                    <input aria-label="Capacity" type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">
+                    <button type="button" data-h-click="spoc/dashboard:40" data-h-a18="{{ event.id }}"
                             style="background:var(--success);color:#fff;border:none;border-radius:7px;font-size:16px;cursor:pointer;">+</button>
                   </div>
                 </div>
@@ -2136,7 +2173,7 @@ h1, h2, h3, h4, h5, h6 {
           <div class="spoc-modal-box" style="max-width:560px;">
             <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
               <span><i class="fas fa-certificate me-2"></i>Certificate Templates — {{ event.title }}</span>
-              <button onclick="closeModal('certModal-{{ event.id }}')" class="spoc-modal-close">×</button>
+              <button data-h-click="spoc/dashboard:41" data-h-a19="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
             <div style="padding:24px;">
               <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">
@@ -2159,7 +2196,7 @@ h1, h2, h3, h4, h5, h6 {
                     <span style="font-size:10px;background:rgba(16, 185, 129, 0.15);color:var(--success);padding:2px 7px;border-radius:100px;font-weight:600;">Uploaded</span>
                     {% endif %}
                   </label>
-                  <input type="file" name="{{ ckey }}" accept="image/png,image/jpeg"
+                  <input aria-label="File" type="file" name="{{ ckey }}" accept="image/png,image/jpeg"
                          class="ct-{{ ccls }}-border form-control">
                 </div>
                 {% endfor %}
@@ -2168,11 +2205,11 @@ h1, h2, h3, h4, h5, h6 {
                   <div class="modal-row-grid">
                     <div>
                       <label style="font-size:11px;color:var(--ink-500);">Horizontal % (50 = centre)</label>
-                      <input type="number" name="name_x_pct" value="{{ event.get('cert_name_pos',{}).get('x',50) }}" min="10" max="90" class="form-control">
+                      <input aria-label="Horizontal % (50 = centre)" type="number" name="name_x_pct" value="{{ event.get('cert_name_pos',{}).get('x',50) }}" min="10" max="90" class="form-control">
                     </div>
                     <div>
                       <label style="font-size:11px;color:var(--ink-500);">Vertical % (42 = middle-ish)</label>
-                      <input type="number" name="name_y_pct" value="{{ event.get('cert_name_pos',{}).get('y',42) }}" min="10" max="90" class="form-control">
+                      <input aria-label="Vertical % (42 = middle-ish)" type="number" name="name_y_pct" value="{{ event.get('cert_name_pos',{}).get('y',42) }}" min="10" max="90" class="form-control">
                     </div>
                   </div>
                 </div>
@@ -2204,10 +2241,10 @@ h1, h2, h3, h4, h5, h6 {
   <div class="spoc-modal-box" style="max-width:750px;width:95%;padding:0;">
     <!-- Header -->
     <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:#fff;">
+      <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;color:#fff;">
         <i class="fas fa-flag-checkered me-2"></i>End Event &amp; Configure Certificates
       </span>
-      <button type="button" onclick="closeModal('endEventModal')" style="background:transparent;border:none;color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>
+      <button type="button" data-h-click="spoc/dashboard:42" style="background:transparent;border:none;color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>
     </div>
     
     <!-- Body -->
@@ -2215,13 +2252,13 @@ h1, h2, h3, h4, h5, h6 {
       <!-- Left side: Form options -->
       <div style="display:flex;flex-direction:column;gap:18px;text-align:left;">
         <div>
-          <h5 style="font-family:'Poppins',sans-serif;font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
+          <h5 style="font-family:'Outfit',sans-serif;font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
           <div style="font-weight:600;font-size:16px;color:#1e293b;" id="modalEventTitle">Event Title</div>
         </div>
         
         <div>
-          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
-          <select id="certTemplateSelect" onchange="updateCertPreview()" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+          <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
+          <select aria-label="Certificate Template Style" id="certTemplateSelect" data-h-change="spoc/dashboard:43" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
             <option value="1">Classic Navy (Default SNPSU)</option>
             <option value="2">Tech Blue (Hackathons)</option>
             <option value="3">Cultural Gold (Arts &amp; Fests)</option>
@@ -2232,8 +2269,8 @@ h1, h2, h3, h4, h5, h6 {
         </div>
         
         <div>
-          <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
-          <input type="text" id="certSignatoryInput" oninput="updateCertPreview()" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
+          <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
+          <input aria-label="Authorized Signatory Name" type="text" id="certSignatoryInput" data-h-input="spoc/dashboard:44" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
         </div>
         
         <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2e8f0;font-size:12px;color:#64748b;line-height:1.5;">
@@ -2244,7 +2281,7 @@ h1, h2, h3, h4, h5, h6 {
       
       <!-- Right side: Visual Live Preview -->
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-        <label style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
+        <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
         
         <!-- CSS Cert Preview Card -->
         <div id="certPreviewCard" style="width:100%;max-width:380px;aspect-ratio:1.414/1;border:8px solid #0d2d62;background:#ffffff;border-radius:8px;padding:16px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-sizing:border-box;">
@@ -2261,11 +2298,11 @@ h1, h2, h3, h4, h5, h6 {
           
           <!-- Content -->
           <div style="text-align:center;margin:6px 0;display:flex;flex-direction:column;gap:3px;">
-            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family:'Poppins',sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
+            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family:'Outfit',sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
             <div style="font-size:6px;color:#64748b;font-style:italic;">This is to certify that</div>
             <div style="font-size:11px;font-weight:700;color:#1e293b;border-bottom:1px solid #cbd5e1;width:fit-content;margin:0 auto;padding-bottom:1px;min-width:110px;line-height:1.2;">John Doe</div>
             <div style="font-size:6px;color:#64748b;">has successfully participated in</div>
-            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family:'Poppins',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
+            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family:'Outfit',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
           </div>
           
           <!-- Footer -->
@@ -2286,8 +2323,8 @@ h1, h2, h3, h4, h5, h6 {
     
     <!-- Footer -->
     <div class="spoc-modal-ftr modal-btn-row" style="border-top:1px solid #e2e8f0;padding:12px 20px;display:flex;justify-content:flex-end;gap:10px;background:#f8fafc;border-radius:0 0 12px 12px;">
-      <button type="button" class="action-btn" onclick="closeModal('endEventModal')" style="padding:10px 18px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;">Cancel</button>
-      <button type="button" class="action-btn" id="btnConfirmEndEvent" onclick="submitEndEvent()" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+      <button type="button" class="action-btn" data-h-click="spoc/dashboard:45" style="padding:10px 18px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;">Cancel</button>
+      <button type="button" class="action-btn" id="btnConfirmEndEvent" data-h-click="spoc/dashboard:46" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
         <i class="fas fa-flag-checkered"></i> Confirm &amp; End Event
       </button>
     </div>
@@ -2303,12 +2340,12 @@ h1, h2, h3, h4, h5, h6 {
     <!-- Header -->
     <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
       <div>
-        <span style="font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+        <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:#fff;">
           <i class="fas fa-paper-plane me-2"></i>Email All Registrants
         </span>
         <div id="blastEventName" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;"></div>
       </div>
-      <button onclick="closeBlastModal()" class="spoc-modal-close">×</button>
+      <button data-h-click="spoc/dashboard:47" class="spoc-modal-close">×</button>
     </div>
     <!-- Body -->
     <form id="blastForm" method="POST" style="padding:24px;">
@@ -2330,20 +2367,20 @@ h1, h2, h3, h4, h5, h6 {
           <i class="fas fa-wand-magic-sparkles me-1"></i>AI Copywriter Assistant
         </label>
         <div style="display:flex;gap:6px;">
-          <input type="text" id="ai-copy-prompt" placeholder="e.g. Friendly reminder to complete profiles..." class="form-control form-control-sm" style="font-size:12px; height:32px;">
-          <button type="button" class="btn btn-primary btn-sm px-3" style="border-radius:20px; font-size:12px; height:32px; background:#3b82f6; border:none;" onclick="generateAICopy()">Generate</button>
+          <input aria-label="AI Copywriter Assistant" type="text" id="ai-copy-prompt" placeholder="e.g. Friendly reminder to complete profiles..." class="form-control form-control-sm" style="font-size:12px; height:32px;">
+          <button type="button" class="btn btn-primary btn-sm px-3" style="border-radius:20px; font-size:12px; height:32px; background:#3b82f6; border:none;" data-h-click="spoc/dashboard:48">Generate</button>
         </div>
       </div>
 
       <div style="margin-bottom:16px;">
         <label class="form-label" style="display:block;margin-bottom:6px;">Subject</label>
-        <input type="text" name="subject" id="blast-subject-input" required maxlength="150"
+        <input aria-label="Subject" type="text" name="subject" id="blast-subject-input" required maxlength="150"
                placeholder="e.g. Important update about the event"
                class="form-control">
       </div>
       <div style="margin-bottom:20px;">
         <label class="form-label" style="display:block;margin-bottom:6px;">Message</label>
-        <textarea name="body" id="blast-body-input" required rows="6" maxlength="5000"
+        <textarea aria-label="Message" name="body" id="blast-body-input" required rows="6" maxlength="5000"
                   placeholder="Write your message here…"
                   class="form-control" style="resize:vertical;"></textarea>
         <div style="font-size:11px;color:var(--ink-400);margin-top:4px;">
@@ -2351,7 +2388,7 @@ h1, h2, h3, h4, h5, h6 {
         </div>
       </div>
       <div class="modal-btn-row" style="display:flex;gap:10px;margin-bottom:12px;">
-        <button type="button" onclick="previewBlastEmail()" class="modal-btn-primary flex-1" style="background:#0284c7 !important;">
+        <button type="button" data-h-click="spoc/dashboard:49" class="modal-btn-primary flex-1" style="background:#0284c7 !important;">
           <i class="fas fa-eye me-2"></i>Preview
         </button>
         <button type="submit" class="modal-btn-primary flex-1">
@@ -2359,7 +2396,7 @@ h1, h2, h3, h4, h5, h6 {
         </button>
       </div>
       <div class="modal-btn-row" style="display:flex;gap:10px;">
-        <button type="button" onclick="closeBlastModal()" class="modal-btn-secondary w-100">
+        <button type="button" data-h-click="spoc/dashboard:50" class="modal-btn-secondary w-100">
           Cancel
         </button>
       </div>
@@ -2371,1114 +2408,76 @@ h1, h2, h3, h4, h5, h6 {
 <div id="blastPreviewModal" class="spoc-modal" style="display:none; z-index: 2000;">
   <div class="spoc-modal-box" style="max-width:680px; width:95%; height:80vh; padding:0; display:flex; flex-direction:column;">
     <div class="spoc-modal-hdr" style="background:var(--snpsu-blue); display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+      <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:#fff;">
         <i class="fas fa-eye me-2"></i>Email Broadcast Live Preview
       </span>
-      <button onclick="closeModal('blastPreviewModal')" class="spoc-modal-close">×</button>
+      <button data-h-click="spoc/dashboard:51" class="spoc-modal-close">×</button>
     </div>
     <div style="flex:1; padding:16px; background:#f1f5f9; display:flex; flex-direction:column; overflow:hidden;">
       <iframe id="blastPreviewIframe" style="width:100%; flex:1; border:1px solid #cbd5e1; border-radius:8px; background:#fff;"></iframe>
     </div>
     <div class="spoc-modal-ftr" style="border-top:1px solid #e2e8f0; padding:12px 20px; display:flex; justify-content:flex-end; background:#f8fafc;">
-      <button type="button" onclick="closeModal('blastPreviewModal')" class="modal-btn-secondary">Close Preview</button>
+      <button type="button" data-h-click="spoc/dashboard:52" class="modal-btn-secondary">Close Preview</button>
     </div>
   </div>
 </div>
 
 <!-- ── GUIDED ONBOARDING TOUR OVERLAYS ── -->
-<div id="tour-overlay" onclick="exitTour()"></div>
+<div id="tour-overlay" data-h-click="spoc/dashboard:53"></div>
 <div id="tour-tooltip" role="dialog" aria-labelledby="tour-title" aria-describedby="tour-content">
   <h6 id="tour-title" style="margin-top:0; font-weight:700;">Guided Step</h6>
   <p id="tour-content" style="margin-bottom:12px; font-size:12.5px;"></p>
   <div class="tour-tooltip-actions">
-    <button type="button" class="tour-tooltip-btn secondary" id="tour-btn-prev" onclick="prevTourStep()">Back</button>
+    <button type="button" class="tour-tooltip-btn secondary" id="tour-btn-prev" data-h-click="spoc/dashboard:54">Back</button>
     <div style="display:flex; gap:6px;">
-      <button type="button" class="tour-tooltip-btn secondary" onclick="exitTour()">Skip</button>
-      <button type="button" class="tour-tooltip-btn primary" id="tour-btn-next" onclick="nextTourStep()">Next</button>
+      <button type="button" class="tour-tooltip-btn secondary" data-h-click="spoc/dashboard:55">Skip</button>
+      <button type="button" class="tour-tooltip-btn primary" id="tour-btn-next" data-h-click="spoc/dashboard:56">Next</button>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% include "layouts/_bootstrap_js.html" %}
+<script integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script id="spoc-chart-data" type="application/json">{"labels":{{ chart_labels | tojson }},"regs":{{ chart_regs | tojson }},"present":{{ stats.present_count | default(0) }},"totalRegs":{{ stats.total_regs | default(0) }},"hasEvents":{{ 'true' if events else 'false' }}}</script>
 
-<script>
-// CSRF configuration for ajax requests
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+<script src="/static/js/pages/spoc__dashboard.js"></script>
 
-// Load initial chart data
-var _cd = JSON.parse(document.getElementById('spoc-chart-data').textContent);
+<script src="/static/js/pages/spoc__dashboard__2.js"></script>
 
-if (_cd.hasEvents) {
-  // ── REGISTRATION BAR CHART ──
-  var regCtx = document.getElementById('regChart');
-  if (regCtx) {
-    const ctx = regCtx.getContext('2d');
-    // Create blue gradient
-    const gradientBlue = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientBlue.addColorStop(0, 'rgba(59, 130, 246, 0.9)');
-    gradientBlue.addColorStop(1, 'rgba(26, 37, 87, 0.7)');
-    
-    // Create gold gradient
-    const gradientGold = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientGold.addColorStop(0, 'rgba(245, 158, 11, 0.9)');
-    gradientGold.addColorStop(1, 'rgba(201, 164, 94, 0.7)');
+<script src="/static/js/pages/spoc__dashboard__3.js"></script>
 
-    new Chart(regCtx, {
-      type: 'bar',
-      data: {
-        labels: _cd.labels,
-        datasets: [{
-          label: 'Registrations',
-          data: _cd.regs,
-          backgroundColor: _cd.labels.map(function(_, i) {
-            return i % 2 === 0 ? gradientBlue : gradientGold;
-          }),
-          borderRadius: 8,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: 'rgba(226, 232, 240, 0.4)' }, ticks: { stepSize: 1, font: { size: 11 } }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  // ── ATTENDANCE DONUT ──
-  var present = _cd.present;
-  var pending  = Math.max(0, _cd.totalRegs - present);
-  var attCtx   = document.getElementById('attChart');
-  if (attCtx) {
-    const ctx = attCtx.getContext('2d');
-    // Create green gradient
-    const gradientGreen = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientGreen.addColorStop(0, 'rgba(16, 185, 129, 0.95)');
-    gradientGreen.addColorStop(1, 'rgba(4, 120, 87, 0.8)');
-
-    // Create grey gradient
-    const gradientGrey = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientGrey.addColorStop(0, 'rgba(226, 232, 240, 0.9)');
-    gradientGrey.addColorStop(1, 'rgba(203, 213, 225, 0.8)');
-
-    new Chart(attCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Present', 'Pending'],
-        datasets: [{
-          data: [present, pending],
-          backgroundColor: [gradientGreen, gradientGrey],
-          borderWidth: 0,
-          hoverOffset: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        cutout: '72%',
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, boxWidth: 12 } } }
-      }
-    });
-  }
-}
-
-// ── MASTER-DETAIL & TAB LOGIC ──
-let activeEventId = null;
-
-function selectEvent(eventId) {
-  activeEventId = eventId;
-  
-  // Hide global panel
-  document.getElementById('global-panel').style.display = 'none';
-  document.getElementById('tour-global-btn').classList.remove('active');
-  
-  // Hide all details panels
-  document.querySelectorAll('.event-detail-panel').forEach(pane => {
-    pane.style.display = 'none';
-  });
-  
-  // Show target panel
-  const panel = document.getElementById('detail-panel-' + eventId);
-  if (panel) {
-    panel.style.display = 'block';
-    
-    // Highlight venue on map automatically
-    const venueTextEl = panel.querySelector('.event-venue-text');
-    if (venueTextEl) {
-      highlightEventVenue(venueTextEl.textContent, panel);
-    }
-  }
-  
-  // Highlight card in list
-  document.querySelectorAll('.sidebar-event-card').forEach(card => {
-    card.classList.remove('active');
-  });
-  const card = document.getElementById('card-' + eventId);
-  if (card) {
-    card.classList.add('active');
-  }
-  
-  // Update URL hash
-  window.location.hash = 'event-' + eventId;
-  
-  // Toggle detail view in CSS via class
-  const layout = document.querySelector('.dashboard-layout');
-  if (layout) layout.classList.add('show-detail');
-}
-
-function selectGlobalOverview() {
-  activeEventId = null;
-  
-  // Hide all panels
-  document.querySelectorAll('.event-detail-panel').forEach(pane => {
-    pane.style.display = 'none';
-  });
-  
-  // Show global panel
-  document.getElementById('global-panel').style.display = 'block';
-  
-  // Update active card selections
-  document.getElementById('tour-global-btn').classList.add('active');
-  document.querySelectorAll('.sidebar-event-card').forEach(card => {
-    card.classList.remove('active');
-  });
-  
-  // Update URL hash
-  window.location.hash = 'overview';
-  
-  // Toggle detail view in CSS via class
-  const layout = document.querySelector('.dashboard-layout');
-  if (layout) layout.classList.add('show-detail');
-}
-
-function showMasterList() {
-  const layout = document.querySelector('.dashboard-layout');
-  if (layout) layout.classList.remove('show-detail');
-}
-
-function switchTab(tabName, btnElement) {
-  const container = btnElement.closest('.event-detail-panel');
-  if (!container) return;
-  
-  // Reset tab buttons
-  container.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  btnElement.classList.add('active');
-  
-  // Reset tab panes
-  container.querySelectorAll('.tab-pane').forEach(pane => {
-    pane.classList.remove('active');
-  });
-  const pane = container.querySelector(`.tab-pane[data-tab-pane="${tabName}"]`);
-  if (pane) {
-    pane.classList.add('active');
-  }
-}
-
-// ── SEARCH & FILTER LOGIC ──
-let activeFilter = 'all';
-
-function setFilter(btn) {
-  document.querySelectorAll('.filter-pill-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeFilter = btn.dataset.filter;
-  applySearchAndFilter();
-}
-
-function applySearchAndFilter() {
-  const query = document.getElementById('event-search').value.toLowerCase().trim();
-  
-  document.querySelectorAll('.sidebar-event-card').forEach(card => {
-    const title = card.dataset.title.toLowerCase();
-    const category = card.dataset.category.toLowerCase();
-    const venue = card.dataset.venue.toLowerCase();
-    const status = card.dataset.status; // 'active', 'completed'
-    
-    const matchesSearch = title.includes(query) || category.includes(query) || venue.includes(query);
-    const matchesFilter = activeFilter === 'all' || status === activeFilter;
-    
-    if (matchesSearch && matchesFilter) {
-      card.style.setProperty('display', 'flex', 'important');
-    } else {
-      card.style.setProperty('display', 'none', 'important');
-    }
-  });
-}
-
-// ── WAYFINDER CAPACITY MAP LOGIC ──
-function selectRoom(name, cap, max, element) {
-  const pct = Math.round((cap / max) * 100);
-  let statusClass = "text-success";
-  let statusMsg = "Optimized Capacity. No action needed.";
-  if (pct >= 95) {
-    statusClass = "text-danger fw-bold";
-    statusMsg = "Critical Level. Shift overflowing participants to Seminar Hall.";
-  } else if (pct >= 80) {
-    statusClass = "text-warning";
-    statusMsg = "Warning: Approaching max capacity bounds soon.";
-  }
-  
-  const container = element.closest('.wayfinder-card-wrapper');
-  if (container) {
-    const detailsContent = container.querySelector('.room-details-content');
-    if (detailsContent) {
-      detailsContent.innerHTML = `
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Zone ID:</strong> ${name}</div>
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Live Capacity:</strong> ${cap} / ${max} (${pct}%)</div>
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Status:</strong> <span class="${statusClass}">${pct}% Filled</span></div>
-        <div class="mb-2"><strong class="text-white" style="color:var(--ink-900)!important;">Recommendation:</strong><br>${statusMsg}</div>
-      `;
-    }
-    
-    container.querySelectorAll('.wayfinder-room-g').forEach(g => {
-      g.classList.remove('active');
-    });
-    element.classList.add('active');
-  }
-}
-
-function highlightEventVenue(venueName, panel) {
-  if (!venueName) return;
-  const name = venueName.toLowerCase();
-  let roomName = '';
-  let cap = 0;
-  let max = 0;
-  
-  if (name.includes('auditorium')) {
-    roomName = 'Main Auditorium'; cap = 310; max = 400;
-  } else if (name.includes('lab') || name.includes('cs')) {
-    roomName = 'CS Lab'; cap = 48; max = 50;
-  } else if (name.includes('seminar') || name.includes('hall')) {
-    roomName = 'Seminar Hall'; cap = 120; max = 150;
-  } else if (name.includes('sports') || name.includes('arena')) {
-    roomName = 'Sports Arena'; cap = 85; max = 200;
-  }
-  
-  if (roomName) {
-    const roomG = panel.querySelector(`.wayfinder-room-g[data-room-name="${roomName}"]`);
-    if (roomG) {
-      selectRoom(roomName, cap, max, roomG);
-    }
-  }
-}
-
-function toggleWayfinderMap(btn, contentId) {
-  const content = document.getElementById(contentId);
-  if (!content) return;
-  const isExpanded = content.classList.contains('show');
-  
-  if (isExpanded) {
-    content.classList.remove('show');
-    btn.querySelector('.toggle-text').textContent = btn.getAttribute('data-show-text');
-    btn.querySelector('.toggle-icon').className = 'fas fa-chevron-down toggle-icon ms-2';
-  } else {
-    content.classList.add('show');
-    btn.querySelector('.toggle-text').textContent = btn.getAttribute('data-hide-text');
-    btn.querySelector('.toggle-icon').className = 'fas fa-chevron-up toggle-icon ms-2';
-  }
-}
-
-// Initialize layout on load
-window.addEventListener('DOMContentLoaded', () => {
-  const hash = window.location.hash;
-  if (hash && hash.startsWith('#event-')) {
-    const eventId = hash.replace('#event-', '');
-    selectEvent(eventId);
-  } else {
-    if (window.innerWidth <= 992) {
-      showMasterList();
-    } else {
-      selectGlobalOverview();
-    }
-  }
-});
-</script>
-
-<script>
-// ── END EVENT & CERT SELECTOR MODAL CONFIG ──
-const CERT_TEMPLATES = {
-  1: { name: 'Classic Navy', desc: 'Navy & orange themed standard design.', primary: '#0d2d62', accent: '#f37021' },
-  2: { name: 'Tech Blue', desc: 'Dark slate & cyan themed tech design.', primary: '#0f172a', accent: '#06b6d4' },
-  3: { name: 'Cultural Gold', desc: 'Maroon & amber gold themed cultural design.', primary: '#7f1d1d', accent: '#d97706' },
-  4: { name: 'Sports Green', desc: 'Forest & emerald green sports design.', primary: '#14532d', accent: '#16a34a' },
-  5: { name: 'Management Purple', desc: 'Deep purple & violet business design.', primary: '#3b0764', accent: '#7c3aed' }
-};
-
-let currentTargetEventId = null;
-
-function confirmEndEvent(eventId, eventTitle) {
-  currentTargetEventId = eventId;
-  document.getElementById('modalEventTitle').textContent = eventTitle;
-  document.getElementById('previewEventTitle').textContent = eventTitle;
-  document.getElementById('certSignatoryInput').value = "Dean of Student Affairs";
-  document.getElementById('certTemplateSelect').value = "1";
-  updateCertPreview();
-  openModal('endEventModal');
-}
-
-function updateCertPreview() {
-  const tId = document.getElementById('certTemplateSelect').value;
-  const signatory = document.getElementById('certSignatoryInput').value.trim() || 'Dean of Student Affairs';
-  const theme = CERT_TEMPLATES[tId] || CERT_TEMPLATES[1];
-  
-  document.getElementById('certTemplateDesc').textContent = theme.desc;
-  document.getElementById('previewIssuedBy').textContent = signatory;
-  
-  const card = document.getElementById('certPreviewCard');
-  card.style.borderColor = theme.primary;
-  
-  const cornerTL = document.getElementById('certCornerTL');
-  cornerTL.style.background = `linear-gradient(135deg, ${theme.primary} 50%, transparent 50%)`;
-  
-  const cornerBR = document.getElementById('certCornerBR');
-  cornerBR.style.background = `linear-gradient(-45deg, ${theme.primary} 50%, transparent 50%)`;
-  
-  document.getElementById('previewCertType').style.color = theme.primary;
-  document.getElementById('previewEventTitle').style.color = theme.primary;
-}
-
-function submitEndEvent() {
-  if (!currentTargetEventId) return;
-  const tId = document.getElementById('certTemplateSelect').value;
-  const signatory = document.getElementById('certSignatoryInput').value.trim() || 'Dean of Student Affairs';
-  
-  document.getElementById('end-event-template-id').value = tId;
-  document.getElementById('end-event-issued-by').value = signatory;
-  
-  const form = document.getElementById('end-event-form');
-  form.action = '/spoc/end_event/' + currentTargetEventId;
-  
-  closeModal('endEventModal');
-  form.submit();
-}
-
-// Modal helper controls
-function openModal(id) {
-  var m = document.getElementById(id);
-  if (m) { m.classList.add('open'); m.style.display = 'flex'; }
-}
-function closeModal(id) {
-  var m = document.getElementById(id);
-  if (m) { m.classList.remove('open'); m.style.display = 'none'; }
-}
-document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('spoc-modal')) closeModal(e.target.id);
-});
-
-// Dynamic room row adder
-function addRoomRow(eventId) {
-  var container = document.getElementById('roomRows-' + eventId);
-  var row = document.createElement('div');
-  row.className = 'room-row';
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:8px;';
-  row.innerHTML = '<input type="text" name="room_name[]" placeholder="Room / Hall name" required class="form-control">'
-    + '<input type="number" name="capacity[]" placeholder="Capacity" required min="1" class="form-control">'
-    + '<button type="button" onclick="this.closest(\'.room-row\').remove()" style="background:#dc2626;color:#fff;border:none;border-radius:7px;font-size:14px;cursor:pointer;">&times;</button>';
-  container.appendChild(row);
-}
-</script>
-
-<script>
-// ── EMAIL BROADCAST (BLAST) CONTROLS ──
-function openBlastModal(eventId, eventTitle) {
-  document.getElementById('blastForm').action = '/spoc/blast_email/' + eventId;
-  document.getElementById('blastEventName').textContent = eventTitle;
-  openModal('blastModal');
-}
-function closeBlastModal() {
-  closeModal('blastModal');
-  document.getElementById('blastForm').reset();
-}
-function previewBlastEmail() {
-  const form = document.getElementById('blastForm');
-  const actionParts = form.action.split('/');
-  const eventId = actionParts[actionParts.length - 1];
-  const subject = form.querySelector('input[name="subject"]').value.trim();
-  const body = form.querySelector('textarea[name="body"]').value.trim();
-  
-  if (!subject || !body) {
-    showToast("Subject and Message body are required for preview.", "error");
-    return;
-  }
-  
-  fetch('/spoc/blast_preview/' + eventId, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': CSRF_TOKEN || ''
-    },
-    body: JSON.stringify({ subject: subject, body: body })
-  })
-  .then(resp => resp.json())
-  .then(data => {
-    if (data.html) {
-      const iframe = document.getElementById('blastPreviewIframe');
-      iframe.srcdoc = data.html;
-      openModal('blastPreviewModal');
-    } else {
-      showToast("Error generating preview: " + (data.error || "unknown error"), "error");
-    }
-  })
-  .catch(err => {
-    showToast("Network error. Could not load preview.", "error");
-  });
-}
-
-function generateAICopy() {
-  const promptInput = document.getElementById('ai-copy-prompt');
-  const prompt = promptInput.value.trim();
-  const form = document.getElementById('blastForm');
-  const actionParts = form.action.split('/');
-  const eventId = actionParts[actionParts.length - 1];
-
-  if (!prompt) {
-    showToast("Please enter a copywriting prompt description.", "error");
-    return;
-  }
-
-  const btn = document.querySelector('button[onclick="generateAICopy()"]');
-  const oldText = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-  fetch('/spoc/marketing/copywriter', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': CSRF_TOKEN || ''
-    },
-    body: JSON.stringify({ prompt: prompt, event_id: eventId })
-  })
-  .then(resp => resp.json())
-  .then(data => {
-    if (data.subject && data.body) {
-      document.getElementById('blast-subject-input').value = data.subject;
-      document.getElementById('blast-body-input').value = data.body;
-      promptInput.value = '';
-      showToast("AI copy generated successfully!", "success");
-    } else {
-      showToast("Error: " + (data.error || "failed to generate"), "error");
-    }
-  })
-  .catch(err => {
-    showToast("Network error.", "error");
-  })
-  .finally(() => {
-    btn.disabled = false;
-    btn.innerHTML = oldText;
-  });
-}
-</script>
-
-<script>
-// ── COORDINATOR AUTOCOMPLETE ──
-var _coordCache = [];
-(function loadCoordinators() {
-  fetch('/spoc/api/coordinators')
-    .then(function(r) { return r.ok ? r.json() : []; })
-    .then(function(list) {
-      _coordCache = list;
-      var dl = document.getElementById('coordSuggestions');
-      if (!dl) return;
-      dl.innerHTML = '';
-      list.forEach(function(c) {
-        var opt = document.createElement('option');
-        opt.value = c.email;
-        opt.label = c.name ? c.name + ' (' + c.email + ')' : c.email;
-        dl.appendChild(opt);
-      });
-    })
-    .catch(function() {});
-})();
-
-function autoFillCoordName(email, nameFieldId) {
-  var match = _coordCache.find(function(c) { return c.email === email; });
-  if (match && match.name) {
-    var f = document.getElementById(nameFieldId);
-    if (f && !f.value) f.value = match.name;
-  }
-}
-
-// ── TOAST NOTIFICATION UTILITY ──
-function showToast(message, type = 'success', duration = 3500) {
-  var container = document.getElementById('toast-container-holder');
-  if (!container) return;
-  
-  var toast = document.createElement('div');
-  toast.className = `custom-toast toast-${type}`;
-  
-  var icon = 'fa-check-circle';
-  if (type === 'error') icon = 'fa-exclamation-circle';
-  if (type === 'info') icon = 'fa-info-circle';
-  
-  toast.innerHTML = `
-    <div class="toast-icon">
-      <i class="fas ${icon}"></i>
-    </div>
-    <div class="toast-content">${message}</div>
-  `;
-  
-  container.appendChild(toast);
-  
-  // Trigger animation next frame
-  requestAnimationFrame(function() {
-    toast.classList.add('show');
-  });
-  
-  // Autoclose
-  setTimeout(function() {
-    toast.classList.remove('show');
-    setTimeout(function() {
-      toast.remove();
-    }, 400);
-  }, duration);
-}
-
-// ── FLOATING SPEED DIAL INTERACTION ──
-function toggleSpeedDial() {
-  var sd = document.getElementById('dashboard-speed-dial');
-  var icon = document.getElementById('speed-dial-trigger-icon');
-  if (!sd) return;
-  
-  var isOpen = sd.classList.contains('open');
-  if (isOpen) {
-    sd.classList.remove('open');
-    if (icon) icon.className = 'fas fa-bolt';
-  } else {
-    sd.classList.add('open');
-    if (icon) icon.className = 'fas fa-times';
-  }
-}
-
-// Close speed dial when clicking outside
-document.addEventListener('click', function(e) {
-  var sd = document.getElementById('dashboard-speed-dial');
-  if (sd && sd.classList.contains('open') && !sd.contains(e.target)) {
-    toggleSpeedDial();
-  }
-});
-
-// ── LIVE STATS AUTO-REFRESH ──
-var _syncIcon = document.getElementById('stats-sync-icon');
-function refreshStats() {
-  if (_syncIcon) _syncIcon.style.animation = 'spin 1s linear infinite';
-  fetch('/spoc/api/stats')
-    .then(function(r) { return r.ok ? r.json() : null; })
-    .then(function(data) {
-      if (!data) return;
-      var te = document.getElementById('stat-total-events');
-      var tr = document.getElementById('stat-total-regs');
-      var pr = document.getElementById('stat-present');
-      if (te) te.textContent = data.total_events;
-      if (tr) tr.textContent = data.total_regs;
-      if (pr) pr.textContent = data.present_count;
-      
-      // Update Live Activity Feed
-      var feedContainer = document.getElementById('live-activity-feed');
-      if (feedContainer && data.recent_activity) {
-        if (data.recent_activity.length === 0) {
-          feedContainer.innerHTML = '<div class="text-center py-3 text-muted small"><i class="fas fa-info-circle me-1"></i>No recent activity logged.</div>';
-          return;
-        }
-        
-        feedContainer.innerHTML = '';
-        data.recent_activity.forEach(function(act) {
-          var item = document.createElement('div');
-          item.className = 'activity-item';
-          
-          var badgeClass = act.type === 'checkin' ? 'activity-icon-checkin' : 'activity-icon-reg';
-          var iconClass = act.type === 'checkin' ? 'fa-user-check' : 'fa-user-plus';
-          
-          item.innerHTML = `
-            <div class="activity-icon-badge ${badgeClass}">
-              <i class="fas ${iconClass}"></i>
-            </div>
-            <div class="activity-details">
-              <div class="fw-bold text-white" style="color: var(--ink-900) !important;">${act.name}</div>
-              <div class="text-muted small">${act.details} in <span class="fw-semibold text-primary" style="color: var(--snpsu-blue-lighter) !important;">${act.event}</span></div>
-            </div>
-            <div class="activity-time">${act.time}</div>
-          `;
-          feedContainer.appendChild(item);
-        });
-      }
-    })
-    .catch(function() {})
-    .finally(function() {
-      if (_syncIcon) _syncIcon.style.animation = '';
-    });
-}
-setInterval(refreshStats, 30000);
-window.addEventListener('DOMContentLoaded', refreshStats);
-
-// ── INTERACTIVE COMMAND PALETTE (SPOTLIGHT) JS ──
-let paletteOpen = false;
-let paletteItems = [];
-let highlightedIndex = 0;
-
-function openCommandPalette() {
-  paletteOpen = true;
-  var backdrop = document.getElementById('cmd-palette');
-  backdrop.classList.add('open');
-  var input = document.getElementById('cmd-palette-input');
-  input.value = '';
-  input.focus();
-  
-  buildPaletteCommands();
-  filterPaletteCommands();
-}
-
-function closeCommandPalette() {
-  paletteOpen = false;
-  var backdrop = document.getElementById('cmd-palette');
-  backdrop.classList.remove('open');
-}
-
-function handlePaletteBackdropClick(e) {
-  if (e.target.id === 'cmd-palette') {
-    closeCommandPalette();
-  }
-}
-
-// Build list of all commands dynamically
-function buildPaletteCommands() {
-  paletteItems = [];
-  
-  // 1. Navigation items (Events)
-  document.querySelectorAll('.sidebar-event-card').forEach(function(card) {
-    var id = card.id.replace('card-', '');
-    var title = card.dataset.title;
-    var category = card.dataset.category;
-    paletteItems.push({
-      type: 'event',
-      title: 'Switch to: ' + title,
-      category: category,
-      icon: 'fa-calendar-alt',
-      action: function() { selectEvent(id); }
-    });
-  });
-  
-  // 2. Event context-specific actions (only if an event is currently active)
-  if (activeEventId) {
-    var activeCard = document.getElementById('card-' + activeEventId);
-    var activeTitle = activeCard ? activeCard.dataset.title : 'Selected Event';
-    
-    paletteItems.push({
-      type: 'context',
-      title: `[${activeTitle}] Export Registrations (CSV)`,
-      icon: 'fa-file-csv',
-      action: function() { window.location.href = '/spoc/export_csv/' + activeEventId; }
-    });
-    paletteItems.push({
-      type: 'context',
-      title: `[${activeTitle}] Launch Live Leaderboard`,
-      icon: 'fa-tv',
-      action: function() { window.open('/live/' + activeEventId, '_blank'); }
-    });
-    paletteItems.push({
-      type: 'context',
-      title: `[${activeTitle}] Open Check-in Scanner`,
-      icon: 'fa-qrcode',
-      action: function() { window.location.href = '/spoc/scan/' + activeEventId; }
-    });
-    paletteItems.push({
-      type: 'context',
-      title: `[${activeTitle}] Broadcast Alert Email`,
-      icon: 'fa-paper-plane',
-      action: function() { openBlastModal(activeEventId, activeTitle); }
-    });
-    paletteItems.push({
-      type: 'context',
-      title: `[${activeTitle}] Manage Judges & Round Scoring`,
-      icon: 'fa-gavel',
-      action: function() {
-        var pane = document.getElementById('detail-panel-' + activeEventId);
-        if (pane) {
-          var btn = pane.querySelector('.tab-btn[data-tab="certs"]');
-          if (btn) switchTab('certs', btn);
-        }
-      }
-    });
-    paletteItems.push({
-      type: 'context',
-      title: `[${activeTitle}] Manage Rooms & Wayfinder`,
-      icon: 'fa-building',
-      action: function() {
-        var pane = document.getElementById('detail-panel-' + activeEventId);
-        if (pane) {
-          var btn = pane.querySelector('.tab-btn[data-tab="logistics"]');
-          if (btn) switchTab('logistics', btn);
-        }
-      }
-    });
-    paletteItems.push({
-      type: 'context',
-      title: `[${activeTitle}] Show Event Settings`,
-      icon: 'fa-cog',
-      action: function() {
-        var pane = document.getElementById('detail-panel-' + activeEventId);
-        if (pane) {
-          var btn = pane.querySelector('.tab-btn[data-tab="settings"]');
-          if (btn) switchTab('settings', btn);
-        }
-      }
-    });
-  }
-  
-  // 3. Global settings and utilities
-  paletteItems.push({
-    type: 'global',
-    title: 'Show Global Overview Hub',
-    icon: 'fa-chart-line',
-    action: function() { selectGlobalOverview(); }
-  });
-  paletteItems.push({
-    type: 'global',
-    title: 'Create New Event',
-    icon: 'fa-plus',
-    action: function() { window.location.href = '/spoc/create_event'; }
-  });
-  paletteItems.push({
-    type: 'global',
-    title: 'Toggle Dark / Light Mode',
-    icon: 'fa-circle-half-stroke',
-    action: function() { toggleTheme(); }
-  });
-  paletteItems.push({
-    type: 'global',
-    title: 'Launch Onboarding Tour Guide',
-    icon: 'fa-flag',
-    action: function() { startTour(); }
-  });
-  paletteItems.push({
-    type: 'global',
-    title: 'Sync Live Console Stats',
-    icon: 'fa-sync-alt',
-    action: function() { refreshStats(); showToast('Statistics sync completed!', 'success'); }
-  });
-  paletteItems.push({
-    type: 'global',
-    title: 'System Log Out',
-    icon: 'fa-sign-out-alt',
-    action: function() { window.location.href = '/logout'; }
-  });
-}
-
-function filterPaletteCommands() {
-  var query = document.getElementById('cmd-palette-input').value.toLowerCase().trim();
-  var container = document.getElementById('cmd-palette-results');
-  if (!container) return;
-  
-  var filtered = paletteItems.filter(function(item) {
-    return item.title.toLowerCase().includes(query) || (item.category && item.category.toLowerCase().includes(query));
-  });
-  
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="text-center py-4 text-muted small"><i class="fas fa-info-circle me-1"></i>No commands match your query.</div>';
-    highlightedIndex = 0;
-    return;
-  }
-  
-  container.innerHTML = '';
-  
-  // Group by type for visual headers
-  var lastType = '';
-  var itemIndex = 0;
-  
-  filtered.forEach(function(item) {
-    var typeTitle = '';
-    if (item.type !== lastType) {
-      if (item.type === 'event') typeTitle = 'Events Directory';
-      if (item.type === 'context') typeTitle = 'Selected Event Actions';
-      if (item.type === 'global') typeTitle = 'System Commands';
-      
-      var header = document.createElement('div');
-      header.className = 'cmd-section-header';
-      header.textContent = typeTitle;
-      container.appendChild(header);
-      lastType = item.type;
-    }
-    
-    var el = document.createElement('button');
-    el.className = 'cmd-item';
-    el.dataset.index = itemIndex;
-    if (itemIndex === highlightedIndex) el.classList.add('active');
-    
-    el.innerHTML = `
-      <div class="cmd-item-left">
-        <i class="fas ${item.icon} cmd-item-icon"></i>
-        <span class="cmd-item-title">${item.title}</span>
-      </div>
-      <div>
-        ${item.category ? `<span class="cmd-item-badge">${item.category}</span>` : ''}
-        ${itemIndex === 0 ? '<span class="cmd-item-shortcut">Enter</span>' : ''}
-      </div>
-    `;
-    
-    var curIdx = itemIndex;
-    el.onclick = function() {
-      item.action();
-      closeCommandPalette();
-    };
-    
-    container.appendChild(el);
-    itemIndex++;
-  });
-  
-  // Keep index within bounds
-  if (highlightedIndex >= itemIndex) {
-    highlightedIndex = 0;
-    var firstEl = container.querySelector('.cmd-item');
-    if (firstEl) firstEl.classList.add('active');
-  }
-}
-
-// Keyboard shortcuts and navigation listeners
-document.addEventListener('keydown', function(e) {
-  // 1. Toggle Palette: Cmd+K / Ctrl+K
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault();
-    if (paletteOpen) {
-      closeCommandPalette();
-    } else {
-      openCommandPalette();
-    }
-    return;
-  }
-  
-  if (!paletteOpen) return;
-  
-  // 2. Navigation keys inside open palette
-  var results = document.getElementById('cmd-palette-results');
-  if (!results) return;
-  var items = results.querySelectorAll('.cmd-item');
-  if (items.length === 0) return;
-  
-  if (e.key === 'Escape') {
-    e.preventDefault();
-    closeCommandPalette();
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    items[highlightedIndex].classList.remove('active');
-    highlightedIndex = (highlightedIndex + 1) % items.length;
-    items[highlightedIndex].classList.add('active');
-    items[highlightedIndex].scrollIntoView({ block: 'nearest' });
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    items[highlightedIndex].classList.remove('active');
-    highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
-    items[highlightedIndex].classList.add('active');
-    items[highlightedIndex].scrollIntoView({ block: 'nearest' });
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    items[highlightedIndex].click();
-  }
-});
-</script>
+<script src="/static/js/pages/spoc__dashboard__4.js"></script>
 <style>
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <!-- ── GUIDED ONBOARDING TOUR JAVASCRIPT ── -->
-<script>
-const tourSteps = [
-  {
-    element: '#tour-global-btn',
-    title: 'Global Overview Hub 🌐',
-    content: 'Click this button to see the cumulative statistics across all your events, active room allocations, and visual charts.'
-  },
-  {
-    element: '#event-search',
-    title: 'Instant Search 🔍',
-    content: 'Type any title, category, or venue to search and filter your events list in real-time as you type.'
-  },
-  {
-    element: '.filter-pill-btn[data-filter="active"]',
-    title: 'Event Filters 📊',
-    content: 'Quickly narrow down your events to view only Active or Completed configurations.'
-  },
-  {
-    element: '.sidebar-event-card',
-    title: 'Master Event Cards 📇',
-    content: 'Select an event from the list to load its dedicated Event Command Center details.'
-  },
-  {
-    element: '#tour-stats-row',
-    title: 'Live Statistics Gauge 📈',
-    content: 'Monitor real-time registrations, present attendees count, revenue, and staff assigned specifically to this event.',
-    requiresEvent: true
-  },
-  {
-    element: '#tour-tabs-nav',
-    title: 'Event Management Tabs 🛠️',
-    content: 'Switch tabs to access QR scanning, logistical maps, communication tools, judge configurations, and settings.',
-    requiresEvent: true
-  },
-  {
-    element: '.tab-btn[data-tab="logistics"]',
-    title: 'Logistics & QR Scanning 🎫',
-    content: 'Manage real-time ticket scanning, venue codes, round qualifications, NFC simulations, and room setups here.',
-    requiresEvent: true
-  },
-  {
-    element: '.tab-btn[data-tab="certs"]',
-    title: 'Judges & Certifications 🎓',
-    content: 'Manage judge rosters, open-hall grading modes, visual certificate templates, and bulk certificate delivery.',
-    requiresEvent: true
-  },
-  {
-    element: '#theme-toggle',
-    title: 'Adaptive Themes 🌓',
-    content: 'Toggle between dark and light modes. The dashboard is optimized to remain clear and high-contrast in either setting.'
-  }
-];
-
-let currentTourStep = 0;
-
-function startTour() {
-  currentTourStep = 0;
-  document.getElementById('tour-overlay').style.display = 'block';
-  document.getElementById('tour-tooltip').style.display = 'block';
-  setTimeout(() => {
-    document.getElementById('tour-overlay').style.opacity = '1';
-    document.getElementById('tour-tooltip').style.opacity = '1';
-  }, 50);
-  showTourStep();
-}
-
-function exitTour() {
-  document.getElementById('tour-overlay').style.opacity = '0';
-  document.getElementById('tour-tooltip').style.opacity = '0';
-  document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
-  setTimeout(() => {
-    document.getElementById('tour-overlay').style.display = 'none';
-    document.getElementById('tour-tooltip').style.display = 'none';
-  }, 300);
-  localStorage.setItem('spoc-dashboard-tour-completed', 'true');
-}
-
-function showTourStep() {
-  const step = tourSteps[currentTourStep];
-  if (!step) {
-    exitTour();
-    return;
-  }
-  
-  // If step requires active event, make sure one is selected
-  if (step.requiresEvent && !activeEventId) {
-    const firstCard = document.querySelector('.sidebar-event-card');
-    if (firstCard) {
-      const firstEventId = firstCard.id.replace('card-', '');
-      selectEvent(firstEventId);
-    } else {
-      currentTourStep++;
-      showTourStep();
-      return;
-    }
-  }
-  
-  // Handle tab switching for specific steps
-  if (step.element === '.tab-btn[data-tab="logistics"]') {
-    const tabEl = document.querySelector(`#detail-panel-${activeEventId} .tab-btn[data-tab="logistics"]`);
-    if (tabEl) switchTab('logistics', tabEl);
-  } else if (step.element === '.tab-btn[data-tab="certs"]') {
-    const tabEl = document.querySelector(`#detail-panel-${activeEventId} .tab-btn[data-tab="certs"]`);
-    if (tabEl) switchTab('certs', tabEl);
-  }
-  
-  const el = document.querySelector(step.element);
-  if (!el || el.offsetParent === null) {
-    currentTourStep++;
-    showTourStep();
-    return;
-  }
-  
-  document.querySelectorAll('.tour-highlight').forEach(x => x.classList.remove('tour-highlight'));
-  el.classList.add('tour-highlight');
-  
-  document.getElementById('tour-title').textContent = step.title;
-  document.getElementById('tour-content').textContent = step.content;
-  
-  document.getElementById('tour-btn-prev').style.visibility = currentTourStep === 0 ? 'hidden' : 'visible';
-  document.getElementById('tour-btn-next').textContent = currentTourStep === tourSteps.length - 1 ? 'Finish' : 'Next';
-  
-  // Position tooltip
-  const rect = el.getBoundingClientRect();
-  const tooltip = document.getElementById('tour-tooltip');
-  
-  let top = rect.bottom + window.scrollY + 12;
-  let left = rect.left + window.scrollX;
-  
-  if (left + 320 > window.innerWidth) {
-    left = window.innerWidth - 340;
-  }
-  if (left < 10) left = 10;
-  
-  if (rect.bottom + 180 > window.innerHeight) {
-    top = rect.top + window.scrollY - tooltip.offsetHeight - 12;
-  }
-  
-  tooltip.style.top = top + 'px';
-  tooltip.style.left = left + 'px';
-  
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function nextTourStep() {
-  if (currentTourStep < tourSteps.length - 1) {
-    currentTourStep++;
-    showTourStep();
-  } else {
-    exitTour();
-    if (window.showToast) {
-      showToast('Tour completed! Let us know if you need anything else.', 'success', 3000);
-    }
-  }
-}
-
-function prevTourStep() {
-  if (currentTourStep > 0) {
-    currentTourStep--;
-    showTourStep();
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  if (!localStorage.getItem('spoc-dashboard-tour-completed')) {
-    setTimeout(startTour, 1500);
-  }
-});
-</script>
+<script src="/static/js/pages/spoc__dashboard__5.js"></script>
 
 <!-- FLOATING SPEED DIAL QUICK ACTIONS -->
 <div class="speed-dial" id="dashboard-speed-dial">
-  <button class="speed-dial-trigger" onclick="toggleSpeedDial()" title="Quick Actions">
+  <button class="speed-dial-trigger" data-h-click="spoc/dashboard:57" title="Quick Actions">
     <i class="fas fa-bolt" id="speed-dial-trigger-icon"></i>
   </button>
   <div class="speed-dial-menu">
     <a href="/spoc/create_event" class="speed-dial-item text-white" style="background:#3b82f6;" title="Create Event">
       <i class="fas fa-plus"></i> <span>Create Event</span>
     </a>
-    <button onclick="startTour()" class="speed-dial-item text-white" style="background:#f59e0b;" title="Guided Onboarding">
+    <button data-h-click="spoc/dashboard:58" class="speed-dial-item text-white" style="background:#f59e0b;" title="Guided Onboarding">
       <i class="fas fa-flag"></i> <span>Onboarding Tour</span>
     </button>
-    <button onclick="refreshStats()" class="speed-dial-item text-white" style="background:#10b981;" title="Sync Live Stats">
+    <button data-h-click="spoc/dashboard:59" class="speed-dial-item text-white" style="background:#10b981;" title="Sync Live Stats">
       <i class="fas fa-sync-alt"></i> <span>Sync Live Stats</span>
     </button>
   </div>
 </div>
 
 <!-- COMMAND PALETTE (SPOTLIGHT OVERLAY) -->
-<div class="cmd-palette-backdrop" id="cmd-palette" onclick="handlePaletteBackdropClick(event)">
+<div class="cmd-palette-backdrop" id="cmd-palette" data-h-click="spoc/dashboard:60">
   <div class="cmd-palette-box">
     <div class="cmd-palette-search-wrapper">
       <i class="fas fa-search cmd-palette-search-icon"></i>
-      <input type="text" id="cmd-palette-input" class="cmd-palette-input" placeholder="Type a command or event title..." oninput="filterPaletteCommands()" autocomplete="off">
+      <input aria-label="Type a command or event title" type="text" id="cmd-palette-input" class="cmd-palette-input" placeholder="Type a command or event title..." data-h-input="spoc/dashboard:61" autocomplete="off">
     </div>
     <div class="cmd-palette-results" id="cmd-palette-results">
       <!-- Generated dynamically by JS -->
@@ -3498,5 +2497,5 @@ document.addEventListener('DOMContentLoaded', () => {
 <div class="toast-container" id="toast-container-holder"></div>
 
 <script src="/static/js/global.js"></script>
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__dashboard.js"></script>{% endblock %}

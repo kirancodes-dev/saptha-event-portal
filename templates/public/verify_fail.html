@@ -1,18 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% set site_footer_fixed = true %}
+{% block head %}
 <title>Verification Failed | SapthaEvent</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 body{background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
 .card{max-width:420px;width:100%;border:none;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.08);}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 <div class="card">
   <div style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:32px;text-align:center;">
     <div style="width:72px;height:72px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
@@ -50,5 +49,4 @@ body{background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh
     </div>
   </div>
 </div>
-</body>
-</html>
+{% endblock %}

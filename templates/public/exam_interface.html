@@ -1,12 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23a (full-screen: no footer). -#}
+{% block head %}
     <title>{{ event.title }} — Online Assessment | SapthaEvent</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    {% include "layouts/_fontawesome.html" %}
     <style>
         body {
             background-color: #0d1117;
@@ -65,8 +63,8 @@
             font-size: 0.85rem;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
     <!-- EXAM HEADER BANNER -->
     <header class="exam-header d-flex justify-content-between align-items-center">
@@ -110,7 +108,7 @@
                             </label>
                             {% endfor %}
                         {% else %}
-                            <textarea name="ans_{{ q.id }}" class="form-control bg-dark text-light border-secondary" rows="4" placeholder="Type your answer here..."></textarea>
+                            <textarea aria-label="Type your answer here" name="ans_{{ q.id }}" class="form-control bg-dark text-light border-secondary" rows="4" placeholder="Type your answer here..."></textarea>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -148,7 +146,7 @@
 
     <!-- PROCTORING SCRIPT -->
     <script src="/static/js/proctor.js"></script>
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         document.addEventListener('DOMContentLoaded', () => {
             // Initialize Anti-cheat Proctoring
             ProctorGuard.init({
@@ -179,5 +177,4 @@
             }, 1000);
         });
     </script>
-</body>
-</html>
+{% endblock %}

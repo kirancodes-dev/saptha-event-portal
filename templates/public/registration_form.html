@@ -1,14 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
 <meta name="theme-color" content="#1a2557">
 <title>Register — {{ event.title }}</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 :root {
   --bg-void: #030712;
@@ -297,9 +294,11 @@ body{
   .form-control,.form-select{font-size:16px;} /* prevent iOS zoom */
   .btn-submit{font-size:14px;padding:13px;}
 }
+.field-error { color: #dc2626; font-size: 13px; margin-top: 4px; font-weight: 500; }
+[aria-invalid="true"] { border-color: #dc2626 !important; }
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
   <!-- Aurora background -->
   <div class="aurora-bg">
     <div class="aurora-orb"></div>
@@ -381,6 +380,7 @@ body{
     <form method="POST" action="/forms/submit/{{ event.id }}"
           id="reg-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="submission_id" value="{{ submission_id }}">
 
       {% for field in schema.fields %}
 
@@ -403,13 +403,14 @@ body{
           {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
           <div class="select-wrap">
             <select class="form-select" id="{{ field.id }}" name="{{ field.id }}"
-                    {% if field.required %}required{% endif %}>
+                    {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
               <option value="">{{ field.placeholder or 'Select an option…' }}</option>
               {% for opt in field.options %}
-              <option value="{{ opt }}">{{ opt }}</option>
+              <option value="{{ opt }}" {% if values.get(field.id) == opt %}selected{% endif %}>{{ opt }}</option>
               {% endfor %}
             </select>
           </div>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Multiple choice (radio) ── #}
@@ -423,11 +424,12 @@ body{
             {% for opt in field.options %}
             <label class="choice-item">
               <input type="radio" name="{{ field.id }}" value="{{ opt }}"
-                     {% if field.required %}required{% endif %}>
+                     {% if field.required %}required{% endif %} {% if values.get(field.id) == opt %}checked{% endif %}>
               <span>{{ opt }}</span>
             </label>
             {% endfor %}
           </div>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Checkbox group ── #}
@@ -440,11 +442,12 @@ body{
           <div class="choice-list mt-1">
             {% for opt in field.options %}
             <label class="choice-item">
-              <input type="checkbox" name="{{ field.id }}" value="{{ opt }}">
+              <input type="checkbox" name="{{ field.id }}" value="{{ opt }}" {% if opt in (values.get(field.id) or []) %}checked{% endif %}>
               <span>{{ opt }}</span>
             </label>
             {% endfor %}
           </div>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Single checkbox ── #}
@@ -452,12 +455,13 @@ body{
         <div class="form-group">
           <label class="single-check">
             <input type="checkbox" name="{{ field.id }}" value="yes"
-                   {% if field.required %}required{% endif %}>
+                   {% if field.required %}required{% endif %} {% if values.get(field.id) == 'yes' %}checked{% endif %}>
             <span>
               {{ field.label }}{% if field.required %}<span class="req">*</span>{% endif %}
             </span>
           </label>
           {% if field.help_text %}<div class="help-text mt-1">{{ field.help_text }}</div>{% endif %}
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── Textarea ── #}
@@ -469,7 +473,8 @@ body{
           {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
           <textarea class="form-control" id="{{ field.id }}" name="{{ field.id }}"
                     placeholder="{{ field.placeholder }}"
-                    {% if field.required %}required{% endif %}></textarea>
+                    {% if field.required %}required{% endif %} {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>{{ values.get(field.id, '') }}</textarea>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
 
         {# ── All other inputs (text, email, tel, number, date, url) ── #}
@@ -488,11 +493,24 @@ body{
                  {% if field.max is defined and field.max != '' %}max="{{ field.max }}"{% endif %}
                  {% if field.required %}required{% endif %}
                  autocomplete="{{ 'email' if field.type == 'email' else 'tel' if field.type == 'tel' else 'off' }}"
-                 inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}">
+                 inputmode="{{ 'email' if field.type == 'email' else 'numeric' if field.type in ('number','tel') else 'text' }}"
+                 value="{{ values.get(field.id, '') if values.get(field.id) is string else '' }}" {% if field_errors.get(field.id) %}aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
+          {% if field_errors.get(field.id) %}<div class="field-error" id="{{ field.id }}-error" role="alert">{{ field_errors[field.id] }}</div>{% endif %}
         </div>
         {% endif %}
 
       {% endfor %}
+
+      <!-- Privacy notice consent (UPG-22) -->
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="privacy_consent" name="privacy_consent" value="yes" required
+               {% if field_errors.get('privacy_consent') %}aria-invalid="true" aria-describedby="privacy_consent-error"{% endif %}>
+        <label class="form-check-label" for="privacy_consent">
+          I have read the <a href="/privacy" target="_blank" rel="noopener">privacy notice</a> and agree that
+          SapthaEvent uses my details to run this event.
+        </label>
+        {% if field_errors.get('privacy_consent') %}<div class="field-error" id="privacy_consent-error" role="alert">{{ field_errors['privacy_consent'] }}</div>{% endif %}
+      </div>
 
       <!-- Submit -->
       <button type="submit" class="btn-submit" id="submit-btn" data-no-loader>
@@ -521,41 +539,5 @@ body{
 </div><!-- /page-wrap -->
 
 <script src="/static/js/global.js"></script>
-<script>
-document.getElementById('reg-form') &&
-document.getElementById('reg-form').addEventListener('submit', function(e) {
-  // Client-side: mark required radio groups
-  let ok = true;
-  this.querySelectorAll('[data-required-radio]').forEach(function(grp) {
-    const name = grp.dataset.requiredRadio;
-    if (!document.querySelector('[name="'+name+'"]:checked')) {
-      grp.style.borderColor = '#ef4444';
-      ok = false;
-    }
-  });
-  if (!ok) {
-    e.preventDefault();
-    if (typeof showToast === 'function') showToast('Please answer all required questions.', 'warning', 4000);
-    return;
-  }
-  const btn = document.getElementById('submit-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="sp-spinner"></span> Submitting…';
-  }
-});
-
-// Highlight selected radio/checkbox visually
-document.querySelectorAll('.choice-item input').forEach(function(inp) {
-  inp.addEventListener('change', function() {
-    if (this.type === 'radio') {
-      document.querySelectorAll('[name="'+this.name+'"]').forEach(function(r) {
-        r.closest('.choice-item').style.borderColor = '';
-      });
-    }
-    this.closest('.choice-item').style.borderColor = 'var(--orange)';
-  });
-});
-</script>
-</body>
-</html>
+<script src="/static/js/pages/public__registration_form.js"></script>
+{% endblock %}

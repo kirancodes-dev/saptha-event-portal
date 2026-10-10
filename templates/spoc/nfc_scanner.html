@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23d (full-screen: no footer). -#}
+{% block head %}
     <title>NFC RFID Simulator checkin | SapthaEvent SPOC</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    {% include "layouts/_fontawesome.html" %}
+    {% include "layouts/_bootstrap_css.html" %}
     
     <style>
         :root {
@@ -144,8 +141,9 @@
             border-bottom: none;
         }
     </style>
-</head>
-<body>
+<script src="/static/js/escape.js"></script>
+{% endblock %}
+{% block body %}
     <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-4">
         <div class="container d-flex justify-content-between align-items-center">
             <a href="/spoc/dashboard" class="text-white text-decoration-none d-flex align-items-center gap-2">
@@ -185,7 +183,7 @@
                         <label class="form-label text-muted small fw-bold">SIMULATE ACTIVE WRISTBAND PAYLOAD</label>
                         <div class="input-group">
                             <span class="input-group-text bg-dark border-secondary border-opacity-25 text-emerald"><i class="fas fa-address-card"></i></span>
-                            <select id="student-payload" class="form-select border-opacity-25 bg-dark text-white">
+                            <select aria-label="SIMULATE ACTIVE WRISTBAND PAYLOAD" id="student-payload" class="form-select border-opacity-25 bg-dark text-white">
                                 {% for r in registrations %}
                                     {% if r.attendance != 'Present' %}
                                     <option value="{{ r.id }}">{{ r.name }} ({{ r.email }})</option>
@@ -194,11 +192,11 @@
                             </select>
                         </div>
                         
-                        <button class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3 wristband-nfc-hotspot" onclick="simulateNFCDetection()">
+                        <button class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3 wristband-nfc-hotspot" data-h-click="spoc/nfc_scanner:1">
                             <i class="fas fa-rss me-2 text-white"></i> Tap Mock Wristband (Check-in)
                         </button>
 
-                        <button class="btn btn-outline-info w-100 py-2 rounded-pill fw-bold mt-2" onclick="startWebNFC()">
+                        <button class="btn btn-outline-info w-100 py-2 rounded-pill fw-bold mt-2" data-h-click="spoc/nfc_scanner:2">
                             <i class="fas fa-mobile-screen-button me-2"></i> Start WebNFC Hardware Scan
                         </button>
                     </div>
@@ -229,7 +227,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         function getCsrfToken() {
             var meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? meta.getAttribute('content') : '';
@@ -262,7 +260,7 @@
 
                         // Update viewfinder visual UI
                         viewfinder.style.color = "var(--emerald)";
-                        statusBox.innerHTML = `<i class="fas fa-circle-check text-success"></i> Checked In: ${studentName}`;
+                        statusBox.innerHTML = `<i class="fas fa-circle-check text-success"></i> Checked In: ${escapeHtml(studentName)}`;
                         
                         // Update status list badges
                         var badge = document.getElementById(`status-badge-${regId}`);
@@ -279,7 +277,7 @@
                         setTimeout(resetViewfinder, 3000);
                     } else {
                         viewfinder.style.color = "var(--danger)";
-                        statusBox.innerHTML = `<i class="fas fa-circle-xmark text-danger"></i> ${data.message || 'Read Error!'}`;
+                        statusBox.innerHTML = `<i class="fas fa-circle-xmark text-danger"></i> ${escapeHtml(data.message || 'Read Error!')}`;
                         setTimeout(resetViewfinder, 3000);
                     }
                 })
@@ -361,5 +359,5 @@
             }
         }
     </script>
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__nfc_scanner.js"></script>{% endblock %}

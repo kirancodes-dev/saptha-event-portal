@@ -1,12 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% set site_footer_fixed = true %}
+{% block head %}
     <title>{{ ticket.ticket_type or 'General' }} Pass — {{ event.title or 'Event Pass' }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: {{ theme.primary or '#3b82f6' }};
@@ -127,7 +123,7 @@
             image-rendering: pixelated;
         }
         .ticket-code {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, Menlo, monospace;
             font-size: 1rem;
             font-weight: 700;
             letter-spacing: 0.15em;
@@ -198,7 +194,7 @@
             transform: translateY(-1px);
         }
         .security-hash {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: ui-monospace, Menlo, monospace;
             font-size: 0.65rem;
             color: #475569;
             text-align: center;
@@ -208,8 +204,8 @@
             width: 100%;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="wallet-container">
     <div class="ticket-card">
@@ -232,7 +228,7 @@
         <!-- Body & QR -->
         <div class="card-body">
             <div class="qr-wrapper">
-                <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Ticket" id="qr-image">
+                <img loading="lazy" src="data:image/png;base64,{{ qr_b64 }}" alt="QR Ticket" id="qr-image">
             </div>
 
             <div class="ticket-code">{{ ticket.ticket_code }}</div>
@@ -259,7 +255,7 @@
 
         <!-- Footer -->
         <div class="card-footer">
-            <button class="btn-action btn-primary" onclick="window.print()">
+            <button class="btn-action btn-primary" data-h-click="tickets/digital_wallet:1">
                 <span>🖨️ Save or Print Pass</span>
             </button>
             <div class="security-hash" title="HMAC Signature Verification Hash">
@@ -269,5 +265,5 @@
     </div>
 </div>
 
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/tickets__digital_wallet.js"></script>{% endblock %}

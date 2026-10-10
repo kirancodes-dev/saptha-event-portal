@@ -1,14 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23e. -#}
+{% block head %}
     <title>SPOC HQ | Sapthagiri NPS University</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+    {% include "layouts/_fontawesome.html" %}
 
     <style>
         body { background-color: var(--bg-app); color: var(--ink-800); font-family: 'Inter', sans-serif; min-height: 100vh; }
@@ -110,8 +107,8 @@
         .alert-info { background-color: var(--info-soft) !important; border-color: var(--info) !important; color: var(--ink-900) !important; }
         .alert-danger { background-color: var(--danger-soft) !important; border-color: var(--danger) !important; color: var(--ink-900) !important; }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
 <div class="super-admin-banner" style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
@@ -119,7 +116,7 @@
     <i class="fas fa-crown" style="color: #c9a45e;"></i>
     Logged in as <strong style="color: #c9a45e;">Super Admin</strong> (Wildcard Mode)
   </span>
-  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(201, 164, 94, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" data-h-mouseover="coordinator/dashboard:1" data-h-mouseout="coordinator/dashboard:2">
     Return to Admin HQ <i class="fas fa-arrow-right"></i>
   </a>
 </div>
@@ -128,9 +125,9 @@
 <!-- ── TOPNAV ──────────────────────────────────────────── -->
 <div class="topnav">
     <div class="d-flex align-items-center gap-2">
-        <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University"
+        <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University"
              style="height:36px;width:auto;object-fit:contain;"
-             onerror="this.style.display='none'">
+             data-h-error="coordinator/dashboard:3">
         <span class="brand">Club SPOC HQ</span>
     </div>
     <div class="nav-links">
@@ -143,7 +140,7 @@
             <i class="fas fa-plus me-1"></i>Create Event
         </button>
         <!-- Theme Toggle -->
-        <button class="nav-link-item" onclick="toggleTheme()" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; position: relative; padding: 5px 10px;">
+        <button class="nav-link-item" data-h-click="coordinator/dashboard:4" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; position: relative; padding: 5px 10px;">
           <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
         </button>
         <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.6);"><i class="fas fa-sign-out-alt"></i></a>
@@ -198,17 +195,19 @@
     <h4 class="fw-bold mb-4" style="color:var(--snpsu-blue);">
         <i class="fas fa-tasks me-2 text-warning"></i> Event Control Center
     </h4>
+    {% set search_label = 'Search events by title, venue or category' %}
+    {% include "includes/list_search.html" %}
 
     <!-- ── EVENT CARDS ──────────────────────────────────── -->
     <div class="row g-4">
-        {% for event in events %}
+        {% for event in page.items %}
         <div class="col-lg-4 col-md-6">
             <div class="ev-card d-flex flex-column h-100">
 
                 <!-- Card Banner (matches Home Page UI) -->
                 <div class="ev-banner" aria-hidden="true" style="height: 160px; position: relative;">
                     {% if event.get('banner_url') %}
-                        <img src="{{ event.banner_url }}" alt="" loading="lazy" onerror="this.style.display='none'">
+                        <img src="{{ event.banner_url }}" alt="" loading="lazy" data-h-error="coordinator/dashboard:5">
                         <div class="ev-overlay"></div>
                     {% endif %}
                     {% set cat = event.get('category','General') %}
@@ -347,7 +346,7 @@
                                     <i class="fas fa-network-wired"></i> Allocate
                                 </button>
                                 <form method="POST" action="/coordinator/trigger_reminders/{{ event.id }}" class="w-50 m-0"
-                                      onsubmit="return confirm('This will email all allocated teams their room and judge details. Proceed?');">
+                                      data-h-submit="coordinator/dashboard:6">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-info fw-bold text-dark w-100">
                                         <i class="fas fa-paper-plane"></i> Remind
@@ -396,7 +395,7 @@
                         {% endif %}
 
                         <form method="POST" action="/coordinator/delete_event/{{ event.id }}" class="text-center mt-2 m-0"
-                              onsubmit="return confirm('Delete this event and all its registrations?');">
+                              data-h-submit="coordinator/dashboard:7">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-link text-danger small fw-bold text-decoration-none p-0">
                                 <i class="fas fa-trash me-1"></i> Delete Event
@@ -432,14 +431,14 @@
                             </div>
                             <div class="mb-3 mt-4">
                                 <label class="form-label text-danger">Cut-off Score</label>
-                                <input type="number" step="0.1" name="cutoff_score"
+                                <input aria-label="Cut-off Score" type="number" step="0.1" name="cutoff_score"
                                        class="form-control border-danger form-control-lg text-center fw-bold fs-3"
                                        placeholder="e.g. 75" required>
                             </div>
                         </div>
                         <div class="modal-footer bg-light">
                             <button type="submit" class="btn btn-danger px-4 fw-bold w-100 fs-5"
-                                    onclick="return confirm('WARNING: This will permanently eliminate teams below the cut-off. Proceed?');">
+                                    data-h-click="coordinator/dashboard:8">
                                 Execute Elimination <i class="fas fa-skull-crossbones ms-2"></i>
                             </button>
                         </div>
@@ -467,15 +466,15 @@
                                 <div class="row g-2 mb-3 align-items-end room-row">
                                     <div class="col-md-7">
                                         <label class="form-label">Room / Venue Name</label>
-                                        <input type="text" name="room_name[]" class="form-control border-dark" placeholder="e.g. Room 101" required>
+                                        <input aria-label="Room / Venue Name" type="text" name="room_name[]" class="form-control border-dark" placeholder="e.g. Room 101" required>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Capacity (Teams)</label>
-                                        <input type="number" name="capacity[]" class="form-control border-dark" placeholder="e.g. 25" required>
+                                        <input aria-label="Capacity (Teams)" type="number" name="capacity[]" class="form-control border-dark" placeholder="e.g. 25" required>
                                     </div>
                                     <div class="col-md-1 pb-1">
                                         <button type="button" class="btn btn-primary w-100"
-                                                onclick="addRoomField('roomContainer{{ event.id }}')">
+                                                data-h-click="coordinator/dashboard:9" data-h-a0="{{ event.id }}">
                                             <i class="fas fa-plus"></i>
                                         </button>
                                     </div>
@@ -506,25 +505,25 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-md-8">
                                     <label class="form-label">Event Title</label>
-                                    <input type="text" name="title" class="form-control" value="{{ event.title }}" required>
+                                    <input aria-label="Event Title" type="text" name="title" class="form-control" value="{{ event.title }}" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Entry Fee (₹)</label>
-                                    <input type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee }}">
+                                    <input aria-label="Entry Fee (₹)" type="number" name="entry_fee" class="form-control" value="{{ event.entry_fee }}">
                                 </div>
                             </div>
                             <div class="row g-3 mb-3">
                                 <div class="col-md-4">
                                     <label class="form-label">Event Date &amp; Time</label>
-                                    <input type="text" name="date" class="form-control" value="{{ event.date }}" required>
+                                    <input aria-label="Event Date &amp; Time" type="text" name="date" class="form-control" value="{{ event.date }}" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label text-danger">Reg Deadline</label>
-                                    <input type="text" name="deadline" class="form-control border-danger" value="{{ event.deadline }}">
+                                    <input aria-label="Reg Deadline" type="text" name="deadline" class="form-control border-danger" value="{{ event.deadline }}">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Venue</label>
-                                    <input type="text" name="venue" class="form-control" value="{{ event.venue }}" required>
+                                    <input aria-label="Venue" type="text" name="venue" class="form-control" value="{{ event.venue }}" required>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -535,15 +534,15 @@
                                     {% if event.media_urls %}
                                         {% for url in event.media_urls %}
                                         <div class="input-group mb-2">
-                                            <input type="url" name="media_urls[]" class="form-control" value="{{ url }}">
+                                            <input aria-label="Event Media Gallery" type="url" name="media_urls[]" class="form-control" value="{{ url }}">
                                             {% if loop.index == 1 %}
                                             <button class="btn btn-outline-success px-4" type="button"
-                                                    onclick="addMediaField('editMediaContainer{{ event.id }}')">
+                                                    data-h-click="coordinator/dashboard:10" data-h-a1="{{ event.id }}">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                             {% else %}
                                             <button class="btn btn-outline-danger px-4" type="button"
-                                                    onclick="this.parentElement.remove()">
+                                                    data-h-click="coordinator/dashboard:11">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                             {% endif %}
@@ -551,10 +550,10 @@
                                         {% endfor %}
                                     {% else %}
                                         <div class="input-group mb-2">
-                                            <input type="url" name="media_urls[]" class="form-control"
+                                            <input aria-label="Primary Image URL" type="url" name="media_urls[]" class="form-control"
                                                    value="{{ event.banner_url }}" placeholder="Primary Image URL">
                                             <button class="btn btn-outline-success px-4" type="button"
-                                                    onclick="addMediaField('editMediaContainer{{ event.id }}')">
+                                                    data-h-click="coordinator/dashboard:12" data-h-a2="{{ event.id }}">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                         </div>
@@ -565,23 +564,23 @@
                                 <label class="form-label text-success">
                                     <i class="fas fa-balance-scale me-2"></i>Judging Criteria (Comma Separated)
                                 </label>
-                                <input type="text" name="criteria" class="form-control border-success"
+                                <input aria-label="Judging Criteria (Comma Separated)" type="text" name="criteria" class="form-control border-success"
                                        value="{{ event.judging_criteria | default([]) | join(', ') }}" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-primary">Overview</label>
-                                <textarea name="overview" class="form-control" rows="3" required>{{ event.overview }}</textarea>
+                                <textarea aria-label="Overview" name="overview" class="form-control" rows="3" required>{{ event.overview }}</textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-danger">Rules</label>
-                                <textarea name="rules" class="form-control" rows="3">{{ event.rules }}</textarea>
+                                <textarea aria-label="Rules" name="rules" class="form-control" rows="3">{{ event.rules }}</textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-warning">Prizes</label>
-                                <textarea name="prizes" class="form-control" rows="2">{{ event.prizes }}</textarea>
+                                <textarea aria-label="Prizes" name="prizes" class="form-control" rows="2">{{ event.prizes }}</textarea>
                             </div>
                             <div class="form-check form-switch mt-3">
-                                <input class="form-check-input" type="checkbox" name="is_team"
+                                <input aria-label="Is team" class="form-check-input" type="checkbox" name="is_team"
                                        {% if event.is_team_event %}checked{% endif %}>
                                 <label class="form-check-label fw-bold text-dark">Team Event</label>
                             </div>
@@ -607,18 +606,18 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label">Role</label>
-                                <select name="role" class="form-select">
+                                <select aria-label="Role" name="role" class="form-select">
                                     <option value="EventCoordinator">Event Coordinator (Scanner)</option>
                                     <option value="Judge">Event Judge</option>
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Name</label>
-                                <input type="text" name="name" class="form-control" required>
+                                <input aria-label="Name" type="text" name="name" class="form-control" required>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label">Email</label>
-                                <input type="email" name="email" class="form-control" required>
+                                <input aria-label="Email" type="email" name="email" class="form-control" required>
                             </div>
                             <button type="submit" class="btn btn-snpsu-blue w-100 py-2">
                                 Appoint &amp; Send Login
@@ -644,12 +643,12 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-3">
                                 <label class="form-label text-danger">Subject</label>
-                                <input type="text" name="subject" class="form-control"
+                                <input aria-label="Subject" type="text" name="subject" class="form-control"
                                        placeholder="URGENT: Venue Change" required>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label text-danger">Message</label>
-                                <textarea name="message" class="form-control" rows="4" required></textarea>
+                                <textarea aria-label="Message" name="message" class="form-control" rows="4" required></textarea>
                             </div>
                             <button type="submit" class="btn btn-danger w-100 fw-bold py-2">
                                 <i class="fas fa-paper-plane me-2"></i>Send to All Participants
@@ -690,9 +689,10 @@
         </div>
 
         {% else %}
-        <p class="text-muted text-center w-100 py-5">No events found. Start building one!</p>
+        <p class="text-muted text-center w-100 py-5">{% if page.q %}No events match “{{ page.q }}”.{% else %}No events found. Start building one!{% endif %}</p>
         {% endfor %}
     </div><!-- /row -->
+    {% include "includes/pagination.html" %}
 
 
     <!-- ══════════════════════════════════════════════════
@@ -723,29 +723,29 @@
                             <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Basic Information</h5>
                             <div class="mb-3">
                                 <label class="form-label">Event Title</label>
-                                <input type="text" name="title" class="form-control"
+                                <input aria-label="Event Title" type="text" name="title" class="form-control"
                                        placeholder="Hackathon 2026" required>
                             </div>
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Event Date &amp; Time</label>
-                                    <input type="text" name="date" class="form-control"
+                                    <input aria-label="Event Date &amp; Time" type="text" name="date" class="form-control"
                                            placeholder="Oct 15, 10:00 AM" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-danger">Registration Deadline</label>
-                                    <input type="text" name="deadline" class="form-control border-danger"
+                                    <input aria-label="Registration Deadline" type="text" name="deadline" class="form-control border-danger"
                                            placeholder="Oct 12, 11:59 PM" required>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Venue</label>
-                                    <input type="text" name="venue" class="form-control"
+                                    <input aria-label="Venue" type="text" name="venue" class="form-control"
                                            placeholder="Main Auditorium" required>
                                 </div>
                             </div>
                             <div class="text-end mt-4">
                                 <button type="button" class="btn btn-snpsu-blue px-4"
-                                        onclick="nextStep(1)">
+                                        data-h-click="coordinator/dashboard:13">
                                     Next Step <i class="fas fa-arrow-right ms-2"></i>
                                 </button>
                             </div>
@@ -756,28 +756,28 @@
                             <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Brochure Content</h5>
                             <div class="mb-3">
                                 <label class="form-label text-primary">Overview / Description</label>
-                                <textarea name="overview" class="form-control" rows="3" required></textarea>
+                                <textarea aria-label="Overview / Description" name="overview" class="form-control" rows="3" required></textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-danger">Rules &amp; Guidelines</label>
-                                <textarea name="rules" class="form-control" rows="3"
+                                <textarea aria-label="Rules &amp; Guidelines" name="rules" class="form-control" rows="3"
                                           placeholder="- Rule 1&#10;- Rule 2"></textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label text-warning">Prizes</label>
-                                <textarea name="prizes" class="form-control" rows="2"></textarea>
+                                <textarea aria-label="Prizes" name="prizes" class="form-control" rows="2"></textarea>
                             </div>
                             <div class="mb-3 p-3 bg-light border border-success rounded">
                                 <label class="form-label text-success">
                                     <i class="fas fa-balance-scale me-2"></i>
                                     Judging Criteria (Comma Separated)
                                 </label>
-                                <input type="text" name="criteria" class="form-control border-success"
+                                <input aria-label="Judging Criteria (Comma Separated)" type="text" name="criteria" class="form-control border-success"
                                        placeholder="Innovation, Code Quality, Presentation" required>
                             </div>
                             <div class="d-flex justify-content-between mt-4">
-                                <button type="button" class="btn btn-outline-secondary" onclick="prevStep(2)">Back</button>
-                                <button type="button" class="btn btn-snpsu-blue px-4" onclick="nextStep(2)">
+                                <button type="button" class="btn btn-outline-secondary" data-h-click="coordinator/dashboard:14">Back</button>
+                                <button type="button" class="btn btn-snpsu-blue px-4" data-h-click="coordinator/dashboard:15">
                                     Next Step <i class="fas fa-arrow-right ms-2"></i>
                                 </button>
                             </div>
@@ -788,7 +788,7 @@
                             <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Registration Settings</h5>
                             <div class="mb-3">
                                 <label class="form-label">Entry Fee (₹)</label>
-                                <input type="number" name="entry_fee" class="form-control" value="0" required>
+                                <input aria-label="Entry Fee (₹)" type="number" name="entry_fee" class="form-control" value="0" required>
                             </div>
                             <div class="col-12 mb-4">
                                 <label class="form-label text-primary">
@@ -796,10 +796,10 @@
                                 </label>
                                 <div id="createMediaContainer">
                                     <div class="input-group mb-2">
-                                        <input type="url" name="media_urls[]" class="form-control border-primary"
+                                        <input aria-label="Event Media Gallery" type="url" name="media_urls[]" class="form-control border-primary"
                                                placeholder="Image or Video URL (.mp4)" required>
                                         <button class="btn btn-primary px-4" type="button"
-                                                onclick="addMediaField('createMediaContainer')">
+                                                data-h-click="coordinator/dashboard:16">
                                             <i class="fas fa-plus"></i>
                                         </button>
                                     </div>
@@ -819,8 +819,8 @@
                                 </div>
                             </div>
                             <div class="d-flex justify-content-between mt-4">
-                                <button type="button" class="btn btn-outline-secondary" onclick="prevStep(3)">Back</button>
-                                <button type="button" class="btn btn-snpsu-blue px-4" onclick="nextStep(3)">
+                                <button type="button" class="btn btn-outline-secondary" data-h-click="coordinator/dashboard:17">Back</button>
+                                <button type="button" class="btn btn-snpsu-blue px-4" data-h-click="coordinator/dashboard:18">
                                     Next Step <i class="fas fa-arrow-right ms-2"></i>
                                 </button>
                             </div>
@@ -843,7 +843,7 @@
                                 <!-- Simple -->
                                 <div class="col-md-6">
                                     <div class="reg-type-card selected" id="card-simple"
-                                         onclick="selectFormType('simple')">
+                                         data-h-click="coordinator/dashboard:19">
                                         <span class="big-icon">📋</span>
                                         <h6>Simple Registration</h6>
                                         <p>Pre-built form: Name, Email, Phone, USN, Team Name. Ready instantly.</p>
@@ -859,7 +859,7 @@
                                 <!-- Custom -->
                                 <div class="col-md-6">
                                     <div class="reg-type-card" id="card-custom"
-                                         onclick="selectFormType('custom')">
+                                         data-h-click="coordinator/dashboard:20">
                                         <span class="big-icon">🎨</span>
                                         <h6>Custom Form Builder</h6>
                                         <p>Design your own form with dropdowns, checkboxes, file uploads, and more.</p>
@@ -891,7 +891,7 @@
                             </div>
 
                             <div class="d-flex justify-content-between mt-3">
-                                <button type="button" class="btn btn-outline-secondary" onclick="prevStep(4)">Back</button>
+                                <button type="button" class="btn btn-outline-secondary" data-h-click="coordinator/dashboard:21">Back</button>
                                 <button type="submit" class="btn btn-snpsu-orange px-5 fw-bold fs-5">
                                     Publish Event <i class="fas fa-rocket ms-2"></i>
                                 </button>
@@ -906,69 +906,8 @@
 
 </div><!-- /container -->
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-// ── WIZARD NAV ───────────────────────────────────────────
-function nextStep(current) {
-    document.getElementById('step' + current).classList.remove('active');
-    document.getElementById('step' + (current + 1)).classList.add('active');
-    document.getElementById('dot' + current).classList.replace('active', 'completed');
-    document.getElementById('dot' + (current + 1)).classList.add('active');
-}
-function prevStep(current) {
-    document.getElementById('step' + current).classList.remove('active');
-    document.getElementById('step' + (current - 1)).classList.add('active');
-    document.getElementById('dot' + current).classList.remove('active');
-    document.getElementById('dot' + (current - 1)).classList.replace('completed', 'active');
-}
-
-// ── FORM TYPE SELECTION (Step 4) ─────────────────────────
-function selectFormType(type) {
-    document.getElementById('form_type_input').value = type;
-    document.getElementById('card-simple').classList.toggle('selected', type === 'simple');
-    document.getElementById('card-custom').classList.toggle('selected', type === 'custom');
-    document.getElementById('type-info-simple').style.display = type === 'simple' ? '' : 'none';
-    document.getElementById('type-info-custom').style.display = type === 'custom' ? '' : 'none';
-}
-
-// ── MEDIA GALLERY ────────────────────────────────────────
-function addMediaField(containerId) {
-    const container = document.getElementById(containerId);
-    const div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = `
-        <input type="url" name="media_urls[]" class="form-control"
-               placeholder="Image or Video URL (.mp4)" required>
-        <button class="btn btn-outline-danger px-4" type="button"
-                onclick="this.parentElement.remove()">
-            <i class="fas fa-trash"></i>
-        </button>`;
-    container.appendChild(div);
-}
-
-// ── ROOM ALLOCATION ──────────────────────────────────────
-function addRoomField(containerId) {
-    const container = document.getElementById(containerId);
-    const div = document.createElement('div');
-    div.className = 'row g-2 mb-3 align-items-end room-row';
-    div.innerHTML = `
-        <div class="col-md-7">
-            <input type="text" name="room_name[]" class="form-control border-dark"
-                   placeholder="e.g. Room 102" required>
-        </div>
-        <div class="col-md-4">
-            <input type="number" name="capacity[]" class="form-control border-dark"
-                   placeholder="e.g. 25" required>
-        </div>
-        <div class="col-md-1 pb-1">
-            <button type="button" class="btn btn-outline-danger w-100"
-                    onclick="this.parentElement.parentElement.remove()">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>`;
-    container.appendChild(div);
-}
-</script>
+{% include "layouts/_bootstrap_js.html" %}
+<script src="/static/js/pages/coordinator__dashboard.js"></script>
 <script src="/static/js/global.js"></script>
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__dashboard.js"></script>{% endblock %}

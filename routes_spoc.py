@@ -2,11 +2,14 @@ from flask import Blueprint, render_template, request, redirect, session, flash,
 from models import FirebaseWrapper
 import datetime
 import csv
+import re
 import io
 import json
 from utils import login_required, role_required, log_action
 from utils_email import _base_url as _public_base_url
 from services_accounts import create_unverified_account, send_set_password_link
+
+XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -97,9 +100,12 @@ def dashboard():
         chart_labels.append(data.get('title', doc.id)[:20])
         chart_regs.append(reg_count)
 
+    from utils_pagination import paginate_events
     return render_template(
         'spoc/dashboard.html',
         events=events,
+        page=paginate_events(events),   # sidebar and event panels: 25 a page; stats use every event (UPG-19)
+        status_filter=(request.args.get('status') or '').strip().lower(),
         stats={
             'total_events':  len(events),
             'total_regs':    total_regs,
@@ -118,13 +124,37 @@ def dashboard():
 @role_required('ClubSPOC')
 def create_event():
     if request.method == 'GET':
-        return render_template('spoc/create_event.html')
+        rooms = [dict(r.to_dict() or {}, id=r.id) for r in db.collection('rooms').stream()] if db else []
+        return render_template('spoc/create_event.html', rooms=rooms)
 
     try:
         def get_bool(key): return True if request.form.get(key) == 'on' else False
         def get_int(key, default=0):
             try: return int(request.form.get(key, default))
             except: return default
+
+        # 0. Room conflict check on create (UPG-09)
+        room_id = (request.form.get('room_id') or request.form.get('roomId') or '').strip()
+        date_val = (request.form.get('date') or '').strip()
+        time_val = (request.form.get('time') or '').strip()
+        start_time_val = f"{date_val} {time_val}".strip() if time_val else date_val
+        end_time_val = (request.form.get('end_time') or request.form.get('end_datetime') or start_time_val).strip()
+
+        if room_id and start_time_val:
+            from services_venue import check_room_conflict
+            has_clash, clash_info = check_room_conflict(
+                db,
+                room_id=room_id,
+                start_time=start_time_val,
+                end_time=end_time_val,
+            )
+            if has_clash:
+                msg = (clash_info or {}).get("message", "Room is already booked for an overlapping time.")
+                if request.is_json or 'json' in request.headers.get('Accept', ''):
+                    return jsonify({'status': 'error', 'message': msg}), 400
+                flash(f"Error: {msg}", "danger")
+                rooms = [dict(r.to_dict() or {}, id=r.id) for r in db.collection('rooms').stream()] if db else []
+                return render_template('spoc/create_event.html', rooms=rooms), 400
 
         # 1. Capture Multiple Coordinators (Comma separated string -> List)
         coord_string = request.form.get('coordinators', '')
@@ -227,8 +257,19 @@ def create_event():
             },
             'status': initial_status,
             'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'results_published': False
+            'results_published': False,
+            'activity_points': float(request.form.get('activity_points') or 0.0) if request.form.get('activity_points') else 0.0,
+            'activity_hours': float(request.form.get('activity_hours') or 0.0) if request.form.get('activity_hours') else 0.0,
         }
+
+        if room_id:
+            event_data['room_id'] = room_id
+            rdoc = db.collection('rooms').document(room_id).get()
+            if rdoc.exists:
+                r_name = rdoc.to_dict().get('name')
+                event_data['room_name'] = r_name
+                if not event_data.get('venue'):
+                    event_data['venue'] = r_name
 
         if preset:
             event_data['workflow_config'] = preset.get('workflow_config', {})
@@ -241,6 +282,21 @@ def create_event():
         # we can attach an auto-generated form schema if one was provided.
         _, new_event_ref = db.collection('events').add(event_data)
         new_event_id = new_event_ref.id
+
+        if room_id and start_time_val:
+            from services_venue import create_or_update_venue_booking
+            try:
+                create_or_update_venue_booking(
+                    db,
+                    room_id=room_id,
+                    start_time=start_time_val,
+                    end_time=end_time_val,
+                    event_id=new_event_id,
+                    status="tentative",
+                    notes=f"Tentative booking for event '{event_data['title']}'",
+                )
+            except Exception as b_exc:
+                print(f"Warning: failed to create tentative room booking: {b_exc}")
 
         auto_form_raw = request.form.get('auto_form_json', '').strip()
         if auto_form_raw:
@@ -325,41 +381,76 @@ def transition_event(event_id):
             metadata={'source': 'spoc_ui'}
         )
         flash(f"Event advanced to '{target_state.replace('_', ' ').title()}'.", "success")
+        if target_state == 'cancelled' and any(
+                float((r.to_dict() or {}).get('amount_paid') or 0) > 0
+                for r in db.collection('registrations').where('event_id', '==', event_id).stream()):
+            flash(f"This event has paid registrations. Refund them at /admin/events/{event_id}/refunds.", "warning")
     except Exception as e:
         flash(str(e), "warning")
 
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
-# --- 3. EXPORT CSV ---
+# --- 3. EXPORTS AND THE EVENT REPORT (one service, UPG-03) ---
+# Anyone with export_data on the event: its owner, unit admins, assigned
+# coordinators; everyone else gets 403.
+def _export_name(event, suffix):
+    title = re.sub(r'[^A-Za-z0-9_-]+', '_', str(event.get('title', 'Event'))).strip('_') or 'Event'
+    return f"{title}_{suffix}"
+
+
 @spoc_bp.route('/export_csv/<event_id>')
 @login_required
-@role_required('ClubSPOC')
 def export_csv(event_id):
-    from services_permission import can
-    try:
-        event_doc = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            return redirect('/spoc/dashboard')
-        ev_data = event_doc.to_dict() or {}
-        ev_data['id'] = event_id
-        if not can(session, 'export_data', ev_data, db=db):
-            abort(403)
-        title = ev_data.get('title', 'Event')
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Team/Name', 'Lead Email', 'Members', 'Status', 'Attendance', 'Score', 'Date'])
-        regs = db.collection('registrations').where('event_id', '==', event_id).stream()
-        for doc in regs:
-            r = doc.to_dict()
-            member_count = len(r.get('members', []))
-            scores = r.get('scores', {})
-            final_score = max([v['total'] for v in scores.values()]) if scores else 0
-            writer.writerow([r.get('team_name', 'Individual'), r.get('lead_email'), f"{member_count} Members", r.get('status'), r.get('attendance'), final_score, r.get('registered_at')])
-        return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": f"attachment; filename={title}_report.csv"})
-    except Exception as e:
-        if getattr(e, 'code', None) == 403:
-            abort(403)
-        return redirect('/spoc/dashboard')
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Registrations.csv")}'})
+
+
+@spoc_bp.route('/export_excel/<event_id>')
+@login_required
+def export_excel(event_id):
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.registrations_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Registrations.xlsx")}'})
+
+
+@spoc_bp.route('/event_report/<event_id>')
+@login_required
+def event_report(event_id):
+    """Registrations against attendance by department and year, feedback and winners."""
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    log_action(db, "EVENT_REPORT", f"{session.get('user_id')} downloaded the report for event {event_id}")
+    return Response(services_export.event_report_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Report.xlsx")}'})
+
+
+@spoc_bp.route('/export/department_activity')
+@spoc_bp.route('/export/activity_points')
+@login_required
+@role_required('ClubSPOC')
+def spoc_export_department_activity():
+    user_doc = db.collection('users').document(session.get('user_id', '')).get()
+    dept = request.args.get('department') or (user_doc.to_dict().get('department') if user_doc.exists else None)
+    fmt = request.args.get('format', 'csv').lower()
+    from flask import Response
+    import services_export
+    if fmt == 'xlsx':
+        data = services_export.department_activity_xlsx(db, dept)
+        return Response(
+            data,
+            mimetype=XLSX_MIMETYPE,
+            headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.xlsx"'}
+        )
+    data = services_export.department_activity_csv(db, dept)
+    return Response(
+        data,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.csv"'}
+    )
+
 
 # --- 4. RESULTS DASHBOARD ---
 @spoc_bp.route('/results/<event_id>')
@@ -442,6 +533,7 @@ def scan_page(event_id):
         d = r.to_dict()
         registrations.append({
             'id': r.id,
+            'reg_id': d.get('reg_id') or r.id,  # the ID in the ticket, which a scan reports (UPG-02)
             'lead_name': d.get('lead_name', ''),
             'lead_email': d.get('lead_email', ''),
             'team_name': d.get('team_name', ''),
@@ -562,33 +654,15 @@ def end_event(event_id):
             'cert_template_id': template_id,
             'cert_issued_by': issued_by,
         })
-        # Use template-aware cert task if available; fall back to Celery task
+        # Certificates go out through the one issuing path (UPG-06); the task
+        # runs inline without a broker, and directly if it can't be queued
+        from tasks.cert_tasks import bulk_generate_certificates
         try:
-            from tasks.cert_tasks import bulk_generate_certificates
-            bulk_generate_certificates.delay(event_id,
-                                             triggered_by=session.get('email', 'spoc'))
-        except Exception:
-            # Inline sync fallback (no Celery / custom templates)
-            from utils_certificate import generate_and_send_all_certificates_with_templates
-            ev   = db.collection('events').document(event_id).get().to_dict() or {}
-            regs = [r.to_dict() | {'id': r.id}
-                    for r in db.collection('registrations')
-                              .where('event_id', '==', event_id).stream()]
-            lb   = sorted(
-                [r for r in regs if r.get('scores')],
-                key=lambda x: -sum(s.get('total', 0)
-                                   for s in x.get('scores', {}).values())
-                               / max(len(x.get('scores', {})), 1)
-            )
-            generate_and_send_all_certificates_with_templates(
-                leaderboard=lb,
-                registrations=regs,
-                event_title=ev.get('title', 'Event'),
-                event_id=event_id,
-                event_date=str(ev.get('date', '')),
-                base_url=_public_base_url(),
-                template_id=template_id,
-            )
+            bulk_generate_certificates.delay(event_id, triggered_by=session.get('user_id', 'spoc'))
+        except Exception as exc:
+            current_app.logger.warning("Certificate task for %s not queued (%s); issuing inline", event_id, exc)
+            from utils_certificate import issue_event_certificates
+            issue_event_certificates(event_id, base_url=_public_base_url())
         _award_achievements(event_id)
         flash("Event ended. Certificates sent, achievements awarded!", "success")
     except Exception as e:
@@ -1140,6 +1214,13 @@ def edit_event(event_id):
         val = request.form.get(field, '').strip()
         if val:
             updates[field] = val
+    for num_field in ['activity_points', 'activity_hours']:
+        val = request.form.get(num_field, '').strip()
+        if val != '':
+            try:
+                updates[num_field] = float(val)
+            except ValueError:
+                pass
 
     if updates:
         # If room or time is changing, check for conflicts on confirmed bookings
@@ -1198,15 +1279,7 @@ def delete_event(event_id):
 def assign_coordinator(event_id):
     from utils_email import send_appointment_email
 
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-
-    data = doc.to_dict() or {}
-    if data.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised to modify this event.", "danger")
-        return redirect('/spoc/dashboard')
+    data = _event_or_abort(event_id, 'edit_event')  # 404 / 403 for someone else's event (UPG-29)
 
     email = request.form.get('coordinator_email', '').strip().lower()
     name  = request.form.get('coordinator_name', '').strip() or email.split('@')[0].title()
@@ -1257,6 +1330,31 @@ def assign_coordinator(event_id):
     })
     log_action(db, "COORDINATOR_ASSIGNED", f"SPOC {session.get('user_id')} assigned {email} to event {event_id}")
     flash(f"✅ {email} assigned as coordinator. {account_msg}", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 18b. REMOVE STAFF — undo a coordinator or judge assignment (UPG-29)
+# =========================================================
+@spoc_bp.route('/remove_staff/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def remove_staff(event_id):
+    """Every permission on an event comes from its staff and coordinators
+    lists (services_permission.can), so leaving both ends the person's access
+    to its registrations, check-in and scoring. Their account stays."""
+    event = _event_or_abort(event_id, 'edit_event')
+    email = request.form.get('email', '').strip().lower()
+    staff = event.get('staff') or []
+    coords = event.get('coordinators') or []
+    kept_staff = [s for s in staff if (s.get('email') or '').lower() != email]
+    kept_coords = [c for c in coords if (c or '').lower() != email]
+    if not email or (len(kept_staff) == len(staff) and len(kept_coords) == len(coords)):
+        flash(f"{email or 'That person'} isn't on this event's staff.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+    db.collection('events').document(event_id).update({'staff': kept_staff, 'coordinators': kept_coords})
+    log_action(db, "STAFF_REMOVED", f"SPOC {session.get('user_id')} removed {email} from event {event_id}")
+    flash(f"{email} removed from this event's staff.", "success")
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
 
@@ -1883,37 +1981,24 @@ def api_coordinators():
 @login_required
 @role_required('ClubSPOC')
 def bulk_certs(event_id):
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-
-    event = doc.to_dict() or {}
-    if event.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised.", "danger")
-        return redirect('/spoc/dashboard')
-
-    regs     = list(db.collection('registrations').where('event_id', '==', event_id).stream())
-    all_regs = [r.to_dict() | {'id': r.id} for r in regs]
-    attended = [r for r in all_regs if r.get('attendance') == 'Present']
-
+    _event_or_abort(event_id, 'issue_certificates')
+    attended = [r for r in db.collection('registrations').where('event_id', '==', event_id).stream()
+                if (r.to_dict() or {}).get('attendance') == 'Present']
     if not attended:
         flash("No checked-in attendees found. Mark attendance via QR Scanner first.", "warning")
         return redirect(f'/spoc/dashboard#event-{event_id}')
 
     try:
-        from utils_certificate import generate_and_send_all_certificates_with_templates
-        generate_and_send_all_certificates_with_templates(
-            leaderboard=[],
-            registrations=all_regs,
-            event_title=event.get('title', 'Event'),
-            event_id=event_id,
-            event_date=str(event.get('date', '')),
-            base_url=_public_base_url(),
-        )
+        # The same issuing path as ending the event (UPG-06); repeats issue nothing twice
+        from utils_certificate import issue_event_certificates
+        result = issue_event_certificates(event_id, base_url=_public_base_url())
         log_action(db, "BULK_CERTS",
-                   f"SPOC {session.get('user_id')} bulk-issued certs for event {event_id}")
-        flash(f"✅ Participation certificates sent to {len(attended)} attendee(s).", "success")
+                   f"SPOC {session.get('user_id')} issued certificates for event {event_id}: {result}")
+        if result['failed']:
+            flash(f"{result['issued']} certificate(s) issued; {result['failed']} failed. Try again to retry those.", "warning")
+        else:
+            flash(f"✅ {result['issued']} certificate(s) issued and {result['emailed']} emailed; "
+                  f"{result['already_issued']} attendee(s) already had one.", "success")
     except Exception as e:
         flash(f"Error sending certificates: {e}", "danger")
 

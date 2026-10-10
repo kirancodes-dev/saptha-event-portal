@@ -1,13 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23d. -#}
+{% block head %}
 <title>Feedback Analytics | {{ event.get('title','Event') }}</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
 <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% include "layouts/_fontawesome.html" %}
+<script integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{--blue:#1a2557;--orange:#c9a45e;}
 body{background:#f1f5f9;font-family:'Inter',sans-serif;color:#1e293b;}
@@ -16,10 +14,10 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;color:#1e293b;}
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
 @media(max-width:768px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
 .stat-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px;text-align:center;}
-.stat-val{font-family:'Poppins',sans-serif;font-size:32px;font-weight:800;color:var(--blue);line-height:1;}
+.stat-val{font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;color:var(--blue);line-height:1;}
 .stat-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:600;margin-top:5px;}
 .chart-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px 24px;}
-.chart-title{font-family:'Poppins',sans-serif;font-size:13.5px;font-weight:700;color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:7px;}
+.chart-title{font-family:'Outfit',sans-serif;font-size:13.5px;font-weight:700;color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:7px;}
 .tag-pill{display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1e40af;font-size:12px;font-weight:600;padding:4px 12px;border-radius:100px;margin:3px;}
 .word-pill{display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;color:#166534;font-size:12px;font-weight:600;padding:4px 12px;border-radius:100px;margin:3px;}
 .review-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px 18px;margin-bottom:10px;}
@@ -29,13 +27,14 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;color:#1e293b;}
 .nps-neu{background:#e2e8f0;}
 .nps-det{background:#ef4444;}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="topnav">
-  <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;">
+  <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;">
   <span class="brand">Feedback Analytics — {{ event.get('title','Event') }}</span>
-  <a href="/spoc/dashboard" class="ms-auto" style="color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+  <a href="/feedback/export/{{ event_id }}" class="ms-auto me-3" style="color:#fff;font-size:12px;text-decoration:none;"><i class="fas fa-file-csv me-1"></i>Export responses (CSV)</a>
+  <a href="/spoc/dashboard" style="color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
 </div>
 
 <div class="container-fluid px-4 py-4" style="max-width:1100px;">
@@ -147,27 +146,5 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;color:#1e293b;}
 </div>
 
 <script id="dist-data" type="application/json">{{ dist | tojson }}</script>
-<script>
-var dist = JSON.parse(document.getElementById('dist-data').textContent);
-new Chart(document.getElementById('distChart'), {
-  type: 'bar',
-  data: {
-    labels: ['1 ★','2 ★','3 ★','4 ★','5 ★'],
-    datasets:[{
-      data: dist,
-      backgroundColor:['#ef4444','#f97316','#eab308','#84cc16','#22c55e'],
-      borderRadius: 8, borderSkipped: false,
-    }]
-  },
-  options:{
-    responsive:true,
-    plugins:{legend:{display:false}},
-    scales:{
-      x:{grid:{display:false}},
-      y:{grid:{color:'#f1f5f9'},ticks:{stepSize:1},beginAtZero:true}
-    }
-  }
-});
-</script>
-</body>
-</html>
+<script src="/static/js/pages/feedback__analytics.js"></script>
+{% endblock %}

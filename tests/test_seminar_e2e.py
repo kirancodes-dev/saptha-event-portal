@@ -122,7 +122,7 @@ def test_seminar_full_lifecycle_and_certificate_guards(client, mock_db):
     with client.session_transaction() as sess:
         sess.clear()
 
-    reg_attempt = client.post(f"/forms/submit/{event_id}", data={
+    reg_attempt = client.post(f"/forms/submit/{event_id}", data={'privacy_consent': 'yes',
         "full_name": "Alice Cooper",
         "email": "alice@saptha.edu",
         "phone": "9999999999",
@@ -144,7 +144,7 @@ def test_seminar_full_lifecycle_and_certificate_guards(client, mock_db):
     with client.session_transaction() as sess:
         sess.clear()
 
-    reg_attempt = client.post(f"/forms/submit/{event_id}", data={
+    reg_attempt = client.post(f"/forms/submit/{event_id}", data={'privacy_consent': 'yes',
         "full_name": "Alice Cooper",
         "email": "alice@saptha.edu",
         "phone": "9999999999",
@@ -164,7 +164,7 @@ def test_seminar_full_lifecycle_and_certificate_guards(client, mock_db):
 
     # 5. Alice registers (Attendee)
     _as_student(client, "alice@saptha.edu", "Alice Cooper")
-    alice_reg_resp = client.post(f"/forms/submit/{event_id}", data={
+    alice_reg_resp = client.post(f"/forms/submit/{event_id}", data={'privacy_consent': 'yes',
         "full_name": "Alice Cooper",
         "email": "alice@saptha.edu",
         "phone": "9999999999",
@@ -193,7 +193,7 @@ def test_seminar_full_lifecycle_and_certificate_guards(client, mock_db):
 
     # 6. Charlie registers (No-show participant)
     _as_student(client, "charlie@saptha.edu", "Charlie Chaplin")
-    charlie_reg_resp = client.post(f"/forms/submit/{event_id}", data={
+    charlie_reg_resp = client.post(f"/forms/submit/{event_id}", data={'privacy_consent': 'yes',
         "full_name": "Charlie Chaplin",
         "email": "charlie@saptha.edu",
         "phone": "8888888888",
@@ -338,7 +338,7 @@ def test_capacity_waitlist_and_promotion_guard(client, mock_db):
 
     # Alice registers -> Confirmed
     _as_student(client, "alice@saptha.edu", "Alice Cooper")
-    client.post(f"/forms/submit/{event_id}", data={
+    client.post(f"/forms/submit/{event_id}", data={'privacy_consent': 'yes',
         "full_name": "Alice Cooper",
         "email": "alice@saptha.edu",
         "phone": "9999999999",
@@ -355,7 +355,7 @@ def test_capacity_waitlist_and_promotion_guard(client, mock_db):
 
     # Bob registers -> Capacity is 1 and registration_count is 1 -> Bob goes to waitlist
     _as_student(client, "bob@saptha.edu", "Bob Marley")
-    bob_resp = client.post(f"/forms/submit/{event_id}", data={
+    bob_resp = client.post(f"/forms/submit/{event_id}", data={'privacy_consent': 'yes',
         "full_name": "Bob Marley",
         "email": "bob@saptha.edu",
         "phone": "7777777777",

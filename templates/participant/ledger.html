@@ -1,0 +1,141 @@
+{% extends "layouts/standalone.html" %}
+{% block head %}
+<title>Participation Ledger | SapthaEvent</title>
+{% include "layouts/_bootstrap_css.html" %}
+<link href="/static/css/global.css" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
+<style>
+:root { --blue: #1a2557; --gold: #c9a45e; --navy: #0f172a; }
+body { background: #f8fafc; font-family: 'Inter', sans-serif; min-height: 100vh; color: #1e293b; }
+.topnav { background: var(--blue); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; }
+.brand { font-weight: 700; font-size: 15px; color: #fff; }
+.nav-link-item { color: rgba(255,255,255,.75); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: 7px; transition: .15s; }
+.nav-link-item:hover, .nav-link-item.active { color: #fff; background: rgba(255,255,255,.1); }
+.stat-card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+.table-card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden; }
+</style>
+{% endblock %}
+
+{% block body %}
+<nav class="topnav">
+    <a href="/" class="brand text-decoration-none">
+        <i class="fas fa-graduation-cap me-2 text-warning"></i>SapthaEvent
+    </a>
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-home me-1"></i> Dashboard</a>
+        <a href="/participant/my_events" class="nav-link-item"><i class="fas fa-calendar-check me-1"></i> My Events</a>
+        <a href="/participant/ledger" class="nav-link-item active"><i class="fas fa-award me-1"></i> Ledger</a>
+        <a href="/profile/" class="nav-link-item"><i class="fas fa-user me-1"></i> Profile</a>
+        <a href="/logout" class="nav-link-item text-danger"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Student Participation Ledger</h1>
+            <p class="text-muted mb-0">
+                Official activity credit records for <strong>{{ user_data.name or user_email }}</strong>
+                {% if user_data.usn %}&middot; USN: <code>{{ user_data.usn }}</code>{% endif %}
+                {% if user_data.department %}&middot; Dept: {{ user_data.department }}{% endif %}
+            </p>
+        </div>
+        <div>
+            <a href="/participant/ledger?format=json" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-code me-1"></i> Export JSON
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Total Activity Points</div>
+                <div class="display-6 fw-bold text-primary mt-1">{{ total_points }}</div>
+                <small class="text-muted">AICTE / University Activity Points</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Total Activity Hours</div>
+                <div class="display-6 fw-bold text-success mt-1">{{ total_hours }}</div>
+                <small class="text-muted">NSS / NCC / FDP / Volunteer Hours</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Events Attended</div>
+                <div class="display-6 fw-bold text-dark mt-1">
+                    {{ entries | selectattr('is_present') | list | length }} / {{ entries | length }}
+                </div>
+                <small class="text-muted">Verified Attendances</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ledger Details Table -->
+    <div class="table-card">
+        <div class="p-3 border-bottom d-flex align-items-center justify-content-between bg-light">
+            <h2 class="h6 mb-0 fw-bold"><i class="fas fa-list-check me-2 text-primary"></i>Event Credit History</h2>
+            <span class="badge bg-secondary">{{ entries | length }} Records</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Event</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Attendance</th>
+                        <th scope="col" class="text-end">Points Credited</th>
+                        <th scope="col" class="text-end">Hours Credited</th>
+                        <th scope="col" class="text-center">Certificate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td>
+                            <strong>{{ entry.event_title }}</strong>
+                            <div class="small text-muted">ID: {{ entry.reg_id }}</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ entry.category }}</span></td>
+                        <td><small>{{ entry.date[:10] }}</small></td>
+                        <td>
+                            {% if entry.is_present %}
+                                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Present</span>
+                            {% else %}
+                                <span class="badge bg-secondary"><i class="fas fa-clock me-1"></i>{{ entry.attendance }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold {% if entry.points_earned > 0 %}text-primary{% else %}text-muted{% endif %}">
+                            +{{ entry.points_earned }}
+                        </td>
+                        <td class="text-end fw-bold {% if entry.hours_earned > 0 %}text-success{% else %}text-muted{% endif %}">
+                            +{{ entry.hours_earned }} hrs
+                        </td>
+                        <td class="text-center">
+                            {% if entry.certificate_id %}
+                                <a href="/participant/certificate/{{ entry.reg_id }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;">
+                                    <i class="fas fa-award me-1"></i> View
+                                </a>
+                            {% else %}
+                                <span class="text-muted small">&mdash;</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fas fa-folder-open fa-2x mb-2 text-muted opacity-50 d-block"></i>
+                            No event participation records found yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

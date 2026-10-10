@@ -32,7 +32,7 @@ GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 @oauth_bp.route("/google")
 def google_login():
     """Redirect to Google OAuth consent screen."""
-    client_id = current_app.config.get("OAUTH_GOOGLE_CLIENT_ID")
+    client_id = current_app.config.get("OAUTH_GOOGLE_CLIENT_ID") or current_app.config.get("GOOGLE_CLIENT_ID")
     if not client_id:
         flash("Google login is not configured for this instance.", "warning")
         return redirect("/login")
@@ -48,6 +48,14 @@ def google_login():
         "state": state,
         "prompt": "select_account",
     }
+    allowed_domain_cfg = (
+        current_app.config.get("UNIVERSITY_EMAIL_DOMAIN")
+        or current_app.config.get("GOOGLE_ALLOWED_DOMAIN")
+        or ""
+    ).strip()
+    if allowed_domain_cfg:
+        primary_domain = [d.strip().lower().lstrip("@") for d in allowed_domain_cfg.split(",") if d.strip()][0]
+        params["hd"] = primary_domain
     return redirect(f"{GOOGLE_AUTH_URL}?{urlencode(params)}")
 
 
@@ -193,6 +201,20 @@ def _complete_oauth_login(email: str, name: str, provider: str, avatar_url: str 
         return redirect("/login")
 
     email = email.lower().strip()
+
+    # University domain restriction (UPG-10)
+    allowed_domain_cfg = (
+        current_app.config.get("UNIVERSITY_EMAIL_DOMAIN")
+        or current_app.config.get("GOOGLE_ALLOWED_DOMAIN")
+        or ""
+    ).strip()
+    if provider == "google" and allowed_domain_cfg:
+        allowed_domains = [d.strip().lower().lstrip("@") for d in allowed_domain_cfg.split(",") if d.strip()]
+        email_domain = email.split("@")[1] if "@" in email else ""
+        if email_domain not in allowed_domains:
+            flash(f"Google sign-in is restricted to university accounts (@{allowed_domains[0]}).", "danger")
+            return redirect("/login")
+
     user_doc = db.collection("users").document(email).get()
 
     if user_doc.exists:

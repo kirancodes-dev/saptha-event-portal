@@ -1,6 +1,9 @@
 import collections
+import csv
 import datetime
+import io
 import json
+import logging
 import re
 import uuid
 
@@ -29,6 +32,7 @@ from utils import login_required, role_required, log_action
 from services_accounts import create_unverified_account, send_set_password_link
 
 admin_bp    = Blueprint('admin', __name__, url_prefix='/admin')
+logger      = logging.getLogger(__name__)
 SUPER_ROLES = ['SuperAdmin', 'Super Admin', 'UniversityAdmin']
 
 
@@ -103,9 +107,12 @@ def dashboard():
         events, total_regs, total_revenue = [], 0, 0
         unique_staff_emails, user_stats, audit_log, cat_counts = set(), {}, [], {}
 
+    from utils_pagination import paginate_events
     return render_template(
         'admin/dashboard.html',
         events=events,
+        page=paginate_events(events),   # the table shows 25 a page; stats and charts use every event (UPG-19)
+        status_filter=(request.args.get('status') or '').strip().lower(),
         total_regs=total_regs,
         total_revenue=total_revenue,
         total_staff=len(unique_staff_emails),
@@ -281,13 +288,14 @@ def analytics():
 # =========================================================
 @admin_bp.route('/analytics/export/<kind>')
 @login_required
-@role_required(SUPER_ROLES)
 def analytics_export(kind):
     import csv
     import io
-    from flask import Response
+    from flask import Response, abort
 
-    if kind not in ('registrations', 'events', 'revenue'):
+    if session.get('role') not in SUPER_ROLE_NAMES:
+        abort(403)  # every registration of every event: Super Admins only (UPG-03)
+    if kind not in ('registrations', 'events', 'revenue', 'payments'):
         flash("Unknown export type.", "warning")
         return redirect('/admin/analytics')
 
@@ -301,29 +309,9 @@ def analytics_export(kind):
     writer = csv.writer(buf)
 
     if kind == 'registrations':
-        writer.writerow([
-            'reg_id', 'event_title', 'lead_name', 'lead_email', 'lead_usn',
-            'team_name', 'member_count', 'status', 'payment_status',
-            'amount_paid', 'attendance', 'final_rank', 'final_score', 'registered_at'
-        ])
-        for r in db.collection('registrations').stream():
-            d = r.to_dict() or {}
-            writer.writerow([
-                d.get('reg_id', r.id),
-                d.get('event_title', events_map.get(d.get('event_id', ''), {}).get('title', '')),
-                d.get('lead_name', ''),
-                d.get('lead_email', ''),
-                d.get('lead_usn', ''),
-                d.get('team_name', ''),
-                d.get('member_count', 1),
-                d.get('status', ''),
-                d.get('payment_status', ''),
-                d.get('amount_paid', 0),
-                d.get('attendance', ''),
-                d.get('final_rank', ''),
-                d.get('final_score', ''),
-                d.get('registered_at', ''),
-            ])
+        import services_export
+        buf.write(services_export.to_csv(services_export.all_registration_rows(db),
+                                         ['Event'] + services_export.COLUMNS))
         filename = 'registrations.csv'
 
     elif kind == 'events':
@@ -336,6 +324,22 @@ def analytics_export(kind):
                 e.get('entry_fee', 0), e.get('registration_count', 0),
             ])
         filename = 'events.csv'
+
+    elif kind == 'payments':  # one row per Razorpay order, for the finance office (UPG-30)
+        from services_payments import all_orders
+        writer.writerow(['order_id', 'payment_id', 'event_id', 'event_title', 'email', 'amount_inr', 'status',
+                         'reg_id', 'paid_at', 'refund_id', 'refunded_at', 'note'])
+        for o in all_orders():
+            writer.writerow([o['id'], o['payment_id'], o['event_id'], events_map.get(o['event_id'], {}).get('title', ''),
+                             o['email'], o['amount_paise'] / 100, o['status'], o['reg_id'], o['paid_at'] or '',
+                             o['refund_id'], o['refunded_at'] or '', o['failure_reason']])
+        filename = 'payments.csv'
+
+    elif kind in ('activity', 'activity_points', 'department_activity'):
+        import services_export
+        dept = request.args.get('department')
+        buf.write(services_export.department_activity_csv(db, dept))
+        filename = f"activity_ledger_{dept or 'all'}.csv"
 
     else:  # revenue
         by_event = collections.defaultdict(lambda: {'count': 0, 'revenue': 0})
@@ -362,6 +366,30 @@ def analytics_export(kind):
         buf.getvalue(),
         mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
+
+
+@admin_bp.route('/export/department_activity')
+@admin_bp.route('/export/activity_points')
+@login_required
+@role_required(SUPER_ROLES)
+def export_department_activity():
+    dept = request.args.get('department')
+    fmt = request.args.get('format', 'csv').lower()
+    from flask import Response
+    import services_export
+    if fmt == 'xlsx':
+        data = services_export.department_activity_xlsx(db, dept)
+        return Response(
+            data,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.xlsx"'}
+        )
+    data = services_export.department_activity_csv(db, dept)
+    return Response(
+        data,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.csv"'}
     )
 
 
@@ -416,21 +444,409 @@ def delete_user(email):
 
 
 # =========================================================
+# 4b. USERS — who still has to set a password; resend their link (UPG-40)
+# =========================================================
+SUPER_ROLE_NAMES = {'SuperAdmin', 'Super Admin', 'UniversityAdmin', 'Admin'}
+
+
+def _role_name(user: dict) -> str:
+    role = user.get('role') or ''
+    return str(getattr(role, 'value', role))
+
+
+def _waiting_for_password(user: dict) -> bool:
+    # Accounts someone else creates stay locked until the set-password link
+    # is used (UPG-33); using it, or a reset, clears the flag.
+    return bool(user.get('needs_password_reset'))
+
+
+@admin_bp.route('/users')
+@login_required
+@role_required(SUPER_ROLES)
+def users():
+    from utils_pagination import page_args, paginate_items, paginate_query
+
+    def account(doc):
+        u = doc.to_dict() or {}
+        role = _role_name(u)
+        waiting = _waiting_for_password(u)
+        return {
+            'email':      doc.id,
+            'name':       u.get('name', ''),
+            'usn':        u.get('usn', ''),
+            'department': u.get('department', ''),
+            'year':       u.get('year', ''),
+            'section':    u.get('section', ''),
+            'role':       role,
+            'waiting':    waiting,
+            'can_resend': waiting and role not in SUPER_ROLE_NAMES,
+        }
+
+    # 25 a page in email order, paged in SQL; a search loads and filters (UPG-19).
+    if page_args()[2]:
+        accounts = sorted((account(d) for d in db.collection('users').stream()), key=lambda a: a['email'])
+        page = paginate_items(accounts, search_fields=('name', 'email', 'usn', 'department', 'role'))
+    else:
+        page = paginate_query(db.collection('users').order_by('email'), transform=account)
+    return render_template('admin/users.html', accounts=page.items, page=page, current_page='users')
+
+
+@admin_bp.route('/users/import_csv', methods=['POST'])
+@admin_bp.route('/students/import_csv', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def import_student_roster():
+    file = request.files.get('file') or request.files.get('csv_file')
+    csv_text = ''
+    if file and file.filename:
+        raw = file.read()
+        try:
+            csv_text = raw.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            csv_text = raw.decode('latin-1')
+    else:
+        csv_text = request.form.get('csv_data', '')
+
+    if not csv_text.strip():
+        flash("Please select a valid CSV file to upload.", "warning")
+        return redirect('/admin/users')
+
+    reader = csv.DictReader(io.StringIO(csv_text))
+    if not reader.fieldnames:
+        flash("CSV file is empty or missing a header row.", "danger")
+        return redirect('/admin/users')
+
+    created_count = 0
+    updated_count = 0
+
+    for row in reader:
+        norm = {
+            k.strip().lower().replace(' ', '_'): (v or '').strip()
+            for k, v in row.items() if k
+        }
+        email = (
+            norm.get('email')
+            or norm.get('email_id')
+            or norm.get('student_email')
+            or norm.get('mail')
+            or ''
+        ).lower()
+        if not email or '@' not in email:
+            continue
+
+        name = (
+            norm.get('name')
+            or norm.get('student_name')
+            or norm.get('full_name')
+            or ''
+        )
+        usn = (
+            norm.get('usn')
+            or norm.get('roll_no')
+            or norm.get('roll_number')
+            or norm.get('rollno')
+            or norm.get('reg_no')
+            or norm.get('registration_no')
+            or ''
+        )
+        department = (
+            norm.get('department')
+            or norm.get('dept')
+            or norm.get('branch')
+            or ''
+        )
+        year = (
+            norm.get('year')
+            or norm.get('class_year')
+            or norm.get('batch')
+            or ''
+        )
+        section = (
+            norm.get('section')
+            or norm.get('sec')
+            or ''
+        )
+
+        doc_ref = db.collection('users').document(email)
+        user_doc = doc_ref.get()
+
+        if user_doc.exists:
+            update_data = {}
+            if name:
+                update_data['name'] = name
+            if usn:
+                update_data['usn'] = usn
+            if department:
+                update_data['department'] = department
+            if year:
+                update_data['year'] = year
+            if section:
+                update_data['section'] = section
+            if update_data:
+                doc_ref.set(update_data, merge=True)
+            updated_count += 1
+        else:
+            create_unverified_account(
+                db,
+                email=email,
+                name=name or email.split('@')[0],
+                role='Student',
+                usn=usn,
+                department=department,
+                year=year,
+                section=section,
+            )
+            created_count += 1
+
+    log_action(db, "STUDENT_ROSTER_IMPORTED",
+               f"Roster imported: {created_count} created, {updated_count} updated by {session.get('user_id')}")
+    flash(f"✅ Student roster imported: {created_count} created, {updated_count} updated.", "success")
+    return redirect('/admin/users')
+
+
+@admin_bp.route('/users/resend_set_password', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def resend_set_password():
+    email = request.form.get('email', '').strip().lower()
+    doc = db.collection('users').document(email).get() if email else None
+    user = (doc.to_dict() or {}) if doc is not None and doc.exists else None
+
+    if user is None:
+        flash("No account with that email.", "warning")
+    elif _role_name(user) in SUPER_ROLE_NAMES:
+        flash("Set-password links can't be sent for Super Admin accounts.", "danger")
+    elif not _waiting_for_password(user):
+        flash(f"{email} has already set a password. If they've lost it, they can use \"Forgot password\".", "warning")
+    elif send_set_password_link(db, email, user.get('name', ''),
+                                reason="earlier, and an administrator has sent you a new link"):
+        log_action(db, "SET_PASSWORD_LINK_RESENT",
+                   f"Set-password link resent to {email} by {session.get('user_id')}")
+        flash(f"✅ A new set-password link was emailed to {email}.", "success")
+    else:
+        flash(f"The email to {email} couldn't be sent. Check the mail settings and try again.", "danger")
+    return redirect('/admin/users')
+
+
+# =========================================================
+# 4c. PAYMENTS — refunds, cancellations, payments with no registration (UPG-30)
+# =========================================================
+def _super_only():
+    from flask import abort
+    if session.get('role') not in SUPER_ROLE_NAMES:
+        abort(403)
+
+
+def _is_paid(reg):
+    return (float(reg.get('amount_paid') or 0) > 0
+            or str(reg.get('payment_status') or '').lower().startswith(('paid', 'refunded')))
+
+
+@admin_bp.route('/payments')
+@login_required
+def payments():
+    _super_only()
+    from services_payments import unmatched_orders
+    titles = {e.id: (e.to_dict() or {}).get('title', '') for e in db.collection('events').stream()}
+    orders = [dict(o, event_title=titles.get(o['event_id'], o['event_id']), amount=o['amount_paise'] / 100)
+              for o in unmatched_orders()]
+    regs = sorted(([d.id, d.to_dict() or {}] for d in db.collection('registrations').stream()),
+                  key=lambda r: str(r[1].get('registered_at') or ''), reverse=True)
+    paid = [dict(r, doc_id=rid, event_title=titles.get(str(r.get('event_id')), r.get('event_title', '')))
+            for rid, r in regs if _is_paid(r)]
+    from utils_pagination import paginate_items
+    page = paginate_items(paid, search_fields=('lead_name', 'lead_email', 'usn', 'reg_id', 'event_title'))
+    # Cancelled events that still hold payments: refund them all (UPG-51)
+    statuses = {e.id: str((e.to_dict() or {}).get('status', '')).lower() for e in db.collection('events').stream()}
+    cancelled_paid = collections.Counter(str(r.get('event_id')) for r in paid
+                                         if statuses.get(str(r.get('event_id'))) == 'cancelled'
+                                         and str(r.get('payment_status') or '').lower() != 'refunded')
+    cancelled_events = [{'id': eid, 'title': titles.get(eid, eid), 'count': n} for eid, n in cancelled_paid.items()]
+    return render_template('admin/payments.html', orders=orders, registrations=page.items, page=page,
+                           cancelled_events=cancelled_events, current_page='payments')
+
+
+# =========================================================
+# REFUND A CANCELLED EVENT'S PAYMENTS (UPG-51)
+# =========================================================
+def _refund_event_or_abort(event_id):
+    """The event, for a Super Admin or whoever may edit it; 403 for anyone else."""
+    from flask import abort
+    from services_permission import can
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    event = dict(doc.to_dict() or {}, id=event_id)
+    if session.get('role') not in SUPER_ROLE_NAMES and not can(session, 'edit_event', event, db=db):
+        abort(403)
+    return event
+
+
+def _event_refund_rows(event_id):
+    """Every paid registration of the event with its Razorpay order, if any."""
+    from services_payments import get_order
+    rows = []
+    for doc in db.collection('registrations').where('event_id', '==', event_id).stream():
+        reg = doc.to_dict() or {}
+        if not _is_paid(reg):
+            continue
+        order = get_order(reg.get('razorpay_order_id') or '')
+        rows.append({'doc_id': doc.id, 'reg': reg, 'order': order,
+                     'amount': (order['amount_paise'] / 100) if order else reg.get('amount_paid') or 0,
+                     'state': (order['status'] if order else 'no_order')})
+    return rows
+
+
+@admin_bp.route('/events/<event_id>/refunds')
+@login_required
+def event_refunds(event_id):
+    event = _refund_event_or_abort(event_id)
+    rows = _event_refund_rows(event_id)
+    due = [r for r in rows if r['state'] == 'paid']
+    return render_template('admin/event_refunds.html', event=event, rows=rows,
+                           due_count=len(due), due_total=sum(float(r['amount'] or 0) for r in due),
+                           cancelled=str(event.get('status', '')).lower() == 'cancelled')
+
+
+@admin_bp.route('/events/<event_id>/refund_all', methods=['POST'])
+@login_required
+def refund_all(event_id):
+    """Refund every paid registration of a cancelled event through Razorpay:
+    once per payment (an atomic claim on its order), failures kept with their
+    reason for a retry, each refund audit-logged and emailed."""
+    from services_payments import finish_refund, refund_failed, start_registration_refund
+    event = _refund_event_or_abort(event_id)
+    back = f'/admin/events/{event_id}/refunds'
+    if str(event.get('status', '')).lower() != 'cancelled':
+        flash("Refunds for everyone are only for cancelled events.", "warning")
+        return redirect(back)
+    if request.form.get('confirm') != 'yes':
+        flash("Tick the box to confirm the refunds.", "warning")
+        return redirect(back)
+
+    import routes_payment
+    actor = session.get('user_id', '')
+    done = failed = 0
+    for row in _event_refund_rows(event_id):
+        if row['state'] != 'paid':
+            continue
+        order = start_registration_refund(row['order']['id'])
+        if order is None:
+            continue   # another request is refunding it, or it already was
+        try:
+            refund = routes_payment._rzp().payment.refund(order['payment_id'], {'amount': order['amount_paise']})
+        except Exception as exc:
+            refund_failed(order['id'], str(exc))
+            logger.warning("Refund failed for order %s: %s", order['id'], exc)
+            failed += 1
+            continue
+        refund_id = str((refund or {}).get('id', ''))
+        finish_refund(order['id'], refund_id, actor)
+        reg = row['reg']
+        db.collection('registrations').document(row['doc_id']).update({
+            'payment_status': 'Refunded', 'status': 'cancelled', 'refund_id': refund_id,
+            'refunded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'refunded_by': actor,
+            'cancel_reason': 'Event cancelled'})
+        log_action(db, "PAYMENT_REFUNDED",
+                   f"Event {event_id} cancelled: order {order['id']} (payment {order['payment_id']}, "
+                   f"₹{order['amount_paise'] / 100:g}) refunded by {actor}: refund {refund_id}")
+        try:
+            from utils_email import send_refund_email
+            send_refund_email(reg.get('lead_email', ''), reg.get('lead_name', ''), event.get('title', ''),
+                              order['amount_paise'] / 100, reg.get('reg_id') or row['doc_id'], refund_id)
+        except Exception:
+            logger.exception("Refund email failed for order %s", order['id'])
+        done += 1
+    if done:
+        flash(f"Refunded {done} payment{'s' if done != 1 else ''}.", "success")
+    if failed:
+        flash(f"{failed} refund{'s' if failed != 1 else ''} failed; see the reasons below and try again.", "danger")
+    if not done and not failed:
+        flash("Nothing left to refund.", "info")
+    return redirect(back)
+
+
+@admin_bp.route('/registrations/<reg_id>/mark', methods=['POST'])
+@login_required
+def mark_registration(reg_id):
+    """Record that a registration was refunded (money returned some other
+    way) or cancelled. Either way it no longer checks in."""
+    _super_only()
+    action = request.form.get('action', '')
+    reason = request.form.get('reason', '').strip()
+    if action not in ('refunded', 'cancelled') or not reason:
+        flash("Choose refunded or cancelled and give a reason.", "warning")
+        return redirect('/admin/payments')
+    ref = db.collection('registrations').document(reg_id)
+    if not ref.get().exists:
+        flash("Registration not found.", "warning")
+        return redirect('/admin/payments')
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    updates = {'status': 'cancelled', 'cancel_reason': reason, 'cancelled_at': now,
+               'cancelled_by': session.get('user_id')}
+    if action == 'refunded':
+        updates.update(payment_status='Refunded', refunded_at=now)
+    ref.update(updates)
+    log_action(db, f"REGISTRATION_{action.upper()}", f"{reg_id} marked {action} by {session.get('user_id')}: {reason}")
+    flash(f"Registration {reg_id} marked {action}.", "success")
+    return redirect('/admin/payments')
+
+
+@admin_bp.route('/payments/<order_id>/refund', methods=['POST'])
+@login_required
+def refund_order(order_id):
+    """Refund a paid order that has no registration through Razorpay, once."""
+    _super_only()
+    from services_payments import finish_refund, start_refund, undo_refund
+    if request.form.get('confirm') != 'yes':
+        flash("Tick the box to confirm the refund.", "warning")
+        return redirect('/admin/payments')
+    order = start_refund(order_id)
+    if order is None:
+        flash("Nothing to refund: it was already refunded, or the payment has a registration.", "info")
+        return redirect('/admin/payments')
+    try:
+        import routes_payment
+        refund = routes_payment._rzp().payment.refund(order['payment_id'], {'amount': order['amount_paise']})
+    except Exception as exc:
+        undo_refund(order_id)
+        flash(f"The refund failed and nothing changed: {exc}", "danger")
+        return redirect('/admin/payments')
+    finish_refund(order_id, str((refund or {}).get('id', '')), session.get('user_id', ''))
+    log_action(db, "PAYMENT_REFUNDED",
+               f"Order {order_id} (payment {order['payment_id']}, ₹{order['amount_paise'] / 100:g}) refunded by "
+               f"{session.get('user_id')}: refund {(refund or {}).get('id', '')}")
+    flash(f"Refunded ₹{order['amount_paise'] / 100:g} to {order['email']}.", "success")
+    return redirect('/admin/payments')
+
+
+# =========================================================
 # 5. VIEW AUDIT LOG
 # =========================================================
 @admin_bp.route('/audit_log')
 @login_required
 @role_required(SUPER_ROLES)
 def view_audit_log():
+    from utils_pagination import Page, page_args, paginate_items, paginate_query
+    role = (request.args.get('role') or '').strip()
+    action = (request.args.get('action') or '').strip().upper()
+    newest_first = db.collection('audit_log').order_by('timestamp', direction=firestore.Query.DESCENDING)
     try:
-        logs = (db.collection('audit_log')
-                  .order_by('timestamp', direction=firestore.Query.DESCENDING)
-                  .limit(100).stream())
-        entries = [l.to_dict() for l in logs]
-    except Exception as exc:
-        flash(f"Error loading audit log: {exc}", "danger")
-        entries = []
-    return render_template('admin/audit_log.html', entries=entries)
+        if page_args()[2] or role or action:
+            # Filters and search run on the loaded entries; the page stays in the URL (UPG-19).
+            entries = [l.to_dict() or {} for l in newest_first.stream()]
+            entries = [e for e in entries
+                       if (not role or str(e.get('role', '')) == role)
+                       and (not action or action in str(e.get('action', '')).upper())]
+            page = paginate_items(entries, search_fields=('action', 'details', 'user'))
+        else:
+            page = paginate_query(newest_first, transform=lambda d: d.to_dict() or {})
+    except Exception:
+        logger.exception("Error loading audit log")
+        flash("The audit log couldn't be loaded. Try again.", "danger")
+        page = Page([], 1, page_args()[1], 0)
+    return render_template('admin/audit_log.html', entries=page.items, page=page,
+                           role_filter=role, action_filter=action)
 
 
 # =========================================================

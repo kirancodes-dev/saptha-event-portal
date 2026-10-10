@@ -1,11 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23a (full-screen: no footer). -#}
+{% block head %}
 <title>Live Leaderboard | {{ event.title }}</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
 /* ── PROJECTOR-OPTIMISED DARK THEME ────────────────────────────── */
 :root{
@@ -34,8 +31,8 @@ body{
 }
 .hdr-left{display:flex;align-items:center;gap:14px;}
 .hdr-logo{height:40px;width:auto;object-fit:contain;opacity:.9;}
-.hdr-brand{font-family:'Poppins',sans-serif;font-weight:800;font-size:15px;color:var(--accent);}
-.hdr-event{font-size:22px;font-weight:800;font-family:'Poppins',sans-serif;color:#fff;
+.hdr-brand{font-family:'Outfit',sans-serif;font-weight:800;font-size:15px;color:var(--accent);}
+.hdr-event{font-size:22px;font-weight:800;font-family:'Outfit',sans-serif;color:#fff;
            letter-spacing:-.3px;text-align:center;line-height:1.1;}
 .hdr-event small{font-size:12px;font-weight:500;color:var(--sub);display:block;
                   text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
@@ -56,7 +53,7 @@ body{
 .round-pill{
   background:rgba(201,164,94,.15);border:1px solid rgba(201,164,94,.35);
   color:var(--accent);font-size:13px;font-weight:700;
-  padding:5px 16px;border-radius:100px;font-family:'Poppins',sans-serif;
+  padding:5px 16px;border-radius:100px;font-family:'Outfit',sans-serif;
 }
 .fullscreen-btn{
   background:rgba(255,255,255,.06);border:1px solid var(--border);
@@ -94,17 +91,17 @@ body{
 }
 .podium-medal{font-size:40px;margin-bottom:6px;line-height:1;}
 .podium-rank{
-  font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;
+  font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;
   text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;
 }
 .rank-1 .podium-rank{color:var(--gold);}
 .rank-2 .podium-rank{color:var(--silver);}
 .rank-3 .podium-rank{color:var(--bronze);}
-.podium-team{font-family:'Poppins',sans-serif;font-size:17px;font-weight:800;
+.podium-team{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;
              color:#fff;line-height:1.2;margin-bottom:4px;}
 .podium-lead{font-size:12px;color:var(--sub);margin-bottom:12px;}
 .podium-score{
-  font-family:'Poppins',sans-serif;font-size:28px;font-weight:900;line-height:1;
+  font-family:'Outfit',sans-serif;font-size:28px;font-weight:900;line-height:1;
 }
 .rank-1 .podium-score{color:var(--gold);}
 .rank-2 .podium-score{color:var(--silver);}
@@ -130,14 +127,14 @@ body{
 .board-row td{padding:10px 12px;vertical-align:middle;}
 .td-rank{width:48px;text-align:center;}
 .rank-num{
-  font-family:'Poppins',sans-serif;font-size:16px;font-weight:800;
+  font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;
   color:rgba(255,255,255,.4);
 }
 .td-team{font-weight:700;font-size:14.5px;color:#e2e8f0;}
 .td-lead{font-size:12px;color:var(--sub);}
 .td-score{width:130px;text-align:right;}
 .score-val{
-  font-family:'Poppins',sans-serif;font-size:17px;font-weight:800;
+  font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;
   color:var(--accent);
 }
 .score-pending{font-size:12px;color:rgba(255,255,255,.25);font-style:italic;}
@@ -183,14 +180,15 @@ body{
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
 </style>
-</head>
-<body>
+<script src="/static/js/escape.js"></script>
+{% endblock %}
+{% block body %}
 
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-left">
-    <img src="/static/snpsu-logo.png" alt="SNPSU" class="hdr-logo"
-         onerror="this.style.display='none'">
+    <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" class="hdr-logo"
+         data-h-error="live/leaderboard:1">
     <span class="hdr-brand">SapthaEvent</span>
   </div>
 
@@ -204,7 +202,7 @@ body{
   <div class="hdr-right">
     <span class="round-pill" id="roundPill">Round 1</span>
     <span class="live-badge"><span class="live-dot"></span>LIVE</span>
-    <button class="fullscreen-btn" onclick="toggleFS()" title="Fullscreen">
+    <button class="fullscreen-btn" data-h-click="live/leaderboard:2" title="Fullscreen">
       <i class="fas fa-expand"></i>
     </button>
   </div>
@@ -253,7 +251,7 @@ body{
   </span>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 const EVENT_ID = {{ event_id | tojson }};
 
 // ── Rank memory for change detection ──────────────────────────────────
@@ -313,13 +311,13 @@ function render(data) {
   const labels  = ['1st Place','2nd Place','3rd Place'];
   const top3    = scored.slice(0, 3);
   const podHtml = top3.map((r, i) => `
-    <div class="podium-card ${classes[i]}">
-      <div class="podium-medal">${medals[i]}</div>
-      <div class="podium-rank">${labels[i]}</div>
-      <div class="podium-team">${esc(r.team)}</div>
-      <div class="podium-lead">${esc(r.lead)}</div>
-      <div class="podium-score">${r.score.toFixed(1)}<span>/100</span></div>
-      <div class="judge-count">${r.judges} judge${r.judges !== 1 ? 's' : ''}</div>
+    <div class="podium-card ${escapeHtml(classes[i])}">
+      <div class="podium-medal">${escapeHtml(medals[i])}</div>
+      <div class="podium-rank">${escapeHtml(labels[i])}</div>
+      <div class="podium-team">${escapeHtml(r.team)}</div>
+      <div class="podium-lead">${escapeHtml(r.lead)}</div>
+      <div class="podium-score">${escapeHtml(r.score.toFixed(1))}<span>/100</span></div>
+      <div class="judge-count">${escapeHtml(r.judges)} judge${r.judges !== 1 ? 's' : ''}</div>
     </div>`).join('');
   document.getElementById('podiumRow').innerHTML = podHtml;
 
@@ -327,28 +325,28 @@ function render(data) {
   const rest = scored.slice(3);
   if (rest.length) {
     document.getElementById('boardWrap').style.display = '';
-    const rows = rest.map(r => {
+    const rowsHtml = rest.map(r => {
       const prev   = prevRanks[r.reg_id];
       const cls    = prev === undefined ? '' : (r.rank < prev ? 'rank-up' : r.rank > prev ? 'rank-down' : '');
       const barPct = maxScore > 0 ? Math.round((r.score / maxScore) * 100) : 0;
-      return `<tr class="board-row ${cls}" data-id="${r.reg_id}">
-        <td class="td-rank"><span class="rank-num">${r.rank}</span></td>
+      return `<tr class="board-row ${escapeHtml(cls)}" data-id="${escapeHtml(r.reg_id)}">
+        <td class="td-rank"><span class="rank-num">${escapeHtml(r.rank)}</span></td>
         <td>
-          <div class="td-team">${esc(r.team)}</div>
-          <div class="td-lead">${esc(r.lead)}</div>
+          <div class="td-team">${escapeHtml(r.team)}</div>
+          <div class="td-lead">${escapeHtml(r.lead)}</div>
         </td>
         <td class="td-score">
-          <div class="score-val">${r.score.toFixed(1)}</div>
+          <div class="score-val">${escapeHtml(r.score.toFixed(1))}</div>
           <div class="score-bar-wrap">
             <div class="score-bar">
-              <div class="score-bar-fill" style="width:${barPct}%"></div>
+              <div class="score-bar-fill" style="width:${escapeHtml(barPct)}%"></div>
             </div>
           </div>
         </td>
-        <td class="td-judges">${r.judges}</td>
+        <td class="td-judges">${escapeHtml(r.judges)}</td>
       </tr>`;
     }).join('');
-    document.getElementById('boardBody').innerHTML = rows;
+    document.getElementById('boardBody').innerHTML = rowsHtml;
   } else {
     document.getElementById('boardWrap').style.display = 'none';
   }
@@ -363,13 +361,10 @@ function render(data) {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
 function toggleFS() {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen();
   else document.exitFullscreen();
 }
 </script>
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/live__leaderboard.js"></script>{% endblock %}

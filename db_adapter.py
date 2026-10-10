@@ -226,6 +226,13 @@ def verify_and_align_schema():
         ('certificateConfigJson', 'TEXT'),
         ('visibility', "VARCHAR(50) DEFAULT 'Public'"),
     ]
+    cols_payment_orders = [  # UPG-30
+        ('regDataJson', 'TEXT'),
+        ('failureReason', 'TEXT'),
+        ('refundId', 'VARCHAR(128)'),
+        ('refundedAt', 'TIMESTAMP WITH TIME ZONE'),
+        ('refundedBy', 'VARCHAR(255)'),
+    ]
     cols_registrations = [
         ('assigned_judge_email', 'VARCHAR(255)'),
         ('amount_paid', 'DOUBLE PRECISION'),
@@ -266,6 +273,11 @@ def verify_and_align_schema():
                         conn.execute(text(f"ALTER TABLE registrations ADD COLUMN {col} {col_type}"))
                     except Exception:
                         pass
+                for col, col_type in cols_payment_orders:
+                    try:
+                        conn.execute(text(f'ALTER TABLE payment_orders ADD COLUMN "{col}" {col_type}'))
+                    except Exception:
+                        pass
                 conn.commit()
         except Exception as e:
             logger.debug("SQLite schema alignment note: %s", e)
@@ -304,6 +316,10 @@ def verify_and_align_schema():
                 if not res:
                     logger.info("Aligning Schema: Adding column '%s' to 'registrations'...", col)
                     conn.execute(text(f'ALTER TABLE registrations ADD COLUMN "{col}" {col_type}'))
+
+            # Payment orders alignment (UPG-30)
+            for col, col_type in cols_payment_orders:
+                conn.execute(text(f'ALTER TABLE IF EXISTS payment_orders ADD COLUMN IF NOT EXISTS "{col}" {col_type}'))
             conn.commit()
     except Exception as e:
         logger.error("Failed to run schema alignment checks: %s", e)
@@ -417,6 +433,18 @@ def _with_column_aliases(collection_name, data):
     return d
 
 
+def _submission_document(text):
+    """A form submission's stored JSON as a document. Rows written before
+    UPG-45 hold only the answers, so those become {'answers': …}."""
+    try:
+        doc = json.loads(text) if text else {}
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(doc, dict):
+        return {}
+    return doc if isinstance(doc.get('answers'), dict) else {'answers': doc}
+
+
 def _normalize_out(val):
     """Normalise a column value to the plain form documents expose."""
     if hasattr(val, 'value') and val.__class__.__module__ != 'builtins':
@@ -492,8 +520,20 @@ def safe_str(val) -> str:
 # ── Native Firestore Store (Multi-Worker Durable Document Store) ────────────
 PURE_FIRESTORE_COLLECTIONS = {'push_subscriptions', 'announcements', 'deletion_requests', 'user_consent', 'waitlists'}
 
+_native_table_ready = False
+
+
 def _ensure_native_table(session):
-    """Ensure persistent native document table exists with audit timestamp."""
+    """Development only, once per process: create the native document table in
+    a database built before it had a model. Production databases get it from
+    migrations and never run DDL here (UPG-58)."""
+    global _native_table_ready
+    if _native_table_ready:
+        return
+    from db_pg import _is_production
+    _native_table_ready = True
+    if _is_production():
+        return
     session.execute(text("""
         CREATE TABLE IF NOT EXISTS native_document_store (
             collection_name VARCHAR(64),
@@ -1016,13 +1056,12 @@ class SQLDocumentReference:
                 d = {'fields': [], 'form_title': 'Registration Form', 'form_desc': ''}
 
         elif self.collection_name == 'form_submissions':
-            if record.answers_json:
-                try:
-                    d = json.loads(record.answers_json)
-                except Exception:
-                    pass
+            # The whole submission, answers nested as written (UPG-45)
+            d = _submission_document(record.answers_json)
             d['event_id'] = str(record.event_id)
             d['registration_id'] = str(record.registration_id)
+            if record.submitted_at and not d.get('submitted_at'):
+                d['submitted_at'] = record.submitted_at.isoformat()
 
         elif self.collection_name == 'push_subscriptions':
             d['user_id'] = record.user_email
@@ -1382,6 +1421,13 @@ class SQLDocumentReference:
 
     def _update_record_fields(self, record, data, session):
         """Update fields on an existing record based on Firestore inputs."""
+        if self.collection_name == 'form_submissions':
+            # Keep the whole submission (who, when, answers) in its JSON
+            # column, not only the answers (UPG-45)
+            stored = _submission_document(record.answers_json)
+            stored.update({k: v for k, v in data.items() if k not in ('id', 'answersJson', 'answers_json')})
+            record.answers_json = json.dumps(stored, default=str)
+            data = {k: v for k, v in data.items() if FIELD_MAP.get(k, k) != 'answers_json'}
         for key, val in data.items():
             # Translate keys
             mapped_key = FIELD_MAP.get(key, key)
@@ -1636,6 +1682,7 @@ class SQLQuery:
         self.filters = []
         self.orders = []
         self._limit = None
+        self._offset = 0
 
     def where(self, field=None, op=None, value=None, filter=None):
         if filter is not None:
@@ -1657,11 +1704,35 @@ class SQLQuery:
         self._limit = n
         return self
 
+    def offset(self, n):
+        """Skip the first n results (pagination, UPG-19). Pushed into SQL with
+        the limit when every filter and order is a plain column."""
+        self._offset = max(int(n or 0), 0)
+        return self
+
+    def count(self):
+        """How many documents match: one SQL COUNT when every filter is a plain
+        column, else by loading the matches."""
+        model = self.collection.model
+        pushable = (model is not None and self.collection.id not in PURE_FIRESTORE_COLLECTIONS
+                    and not self.filters)
+        if pushable:
+            from sqlalchemy import func, select
+            with get_session() as session:
+                return int(session.execute(select(func.count()).select_from(model)).scalar() or 0)
+        saved = (self._limit, self._offset)
+        self._limit, self._offset = None, 0
+        try:
+            return sum(1 for _ in self.stream())
+        finally:
+            self._limit, self._offset = saved
+
     def stream(self):
         model = self.collection.model
         if self.collection.id in PURE_FIRESTORE_COLLECTIONS or not model:
-            return _query_native_docs(self.collection.id, filters=self.filters,
-                                      limit=self._limit, orders=self.orders)
+            docs = list(_query_native_docs(self.collection.id, filters=self.filters, orders=self.orders))
+            end = None if self._limit is None else self._offset + self._limit
+            return iter(docs[self._offset:end])
 
         column_keys = {prop.key for prop in model.__mapper__.column_attrs} - {'extra_json'}
         sql_ops = {'==', '!=', '>', '<', '>=', '<=', 'in'}
@@ -1720,7 +1791,10 @@ class SQLQuery:
                     else:
                         query = query.order_by(col_attr.asc())
 
-            if self._limit is not None and not py_filters and not enum_filters and sql_sortable:
+            pushed = not py_filters and not enum_filters and sql_sortable
+            if pushed and self._offset:
+                query = query.offset(self._offset)
+            if self._limit is not None and pushed:
                 query = query.limit(self._limit)
 
             snapshots = []
@@ -1740,6 +1814,8 @@ class SQLQuery:
                                 for f, mf, cls, op, v in enum_filters)]
         if not sql_sortable:
             snapshots = _sort_snapshots(snapshots, self.orders)
+        if not pushed and self._offset:
+            snapshots = snapshots[self._offset:]
         if self._limit is not None:
             snapshots = snapshots[:self._limit]
         return iter(snapshots)
@@ -1775,6 +1851,12 @@ class SQLCollectionReference:
         q = SQLQuery(self)
         return q.limit(n)
 
+    def offset(self, n) -> SQLQuery:
+        return SQLQuery(self).offset(n)
+
+    def count(self) -> int:
+        return SQLQuery(self).count()
+
     def stream(self):
         q = SQLQuery(self)
         return q.stream()
@@ -1809,19 +1891,23 @@ class SQLBatch:
 class SQLFirestoreAdapter:
     """Mock Firestore client providing complete adapter interfaces to SQLAlchemy."""
     def __init__(self):
-        # Create all tables if they do not exist
-        from db_pg import init_db, DatabaseConfigError
-        try:
-            init_db()
-        except DatabaseConfigError:
-            raise
-        except Exception as exc:
-            logger.info("Database table init note: %s", exc)
-        # Auto-align live postgres schemas on start
-        try:
-            verify_and_align_schema()
-        except Exception as exc:
-            logger.info("Schema alignment note: %s", exc)
+        from db_pg import _is_production, init_db, require_schema_at_head, DatabaseConfigError
+        if _is_production():
+            # Production never issues CREATE or ALTER at start-up: migrations
+            # build the schema, and start-up refuses a database not at head (UPG-16).
+            require_schema_at_head()
+        else:
+            # Development: create missing tables and align columns on start.
+            try:
+                init_db()
+            except DatabaseConfigError:
+                raise
+            except Exception as exc:
+                logger.info("Database table init note: %s", exc)
+            try:
+                verify_and_align_schema()
+            except Exception as exc:
+                logger.info("Schema alignment note: %s", exc)
         try:
             self._ensure_root_units()
         except Exception as exc:

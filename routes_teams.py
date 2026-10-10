@@ -1,275 +1,215 @@
 """
-routes_teams.py — Team formation for group events
+routes_teams.py — teams live on the registration itself (UPG-08)
 
-Students can create a team (gets a 6-char join code) and share the code
-with teammates. Teammates use /teams/join to enter the code and be added.
-
-Firestore collection: teams
-  { team_id, event_id, team_name, lead_email, lead_name,
-    members: [{email,name,usn,phone}], join_code, max_size, status, created_at }
+The lead registers the team through the event's form (team name and the
+members they already have). The registration carries a 6-character invite
+code; anyone else joins with it, which adds them to the registration's
+`members`, so tickets, check-in and judging see them. Team size stays within
+the event's limits. The lead can remove a member and replace the code.
 """
-import datetime
-import secrets
-import string
-
-from flask import (Blueprint, flash, redirect, render_template, request,
-                   session)
-try:
-    from google.cloud.firestore_v1.base_query import FieldFilter
-except ImportError:
-    FieldFilter = None
+from flask import Blueprint, flash, redirect, render_template, request, session
 
 from models import db
-from utils import login_required, role_required, log_action, safe_int
+from utils import login_required, role_required, log_action
 
 teams_bp = Blueprint('teams', __name__, url_prefix='/teams')
 
 
-def _ff(f, op, v):
-    return FieldFilter(f, op, v)
+def _me():
+    return (session.get('user_id') or '').strip().lower()
 
 
-def _new_join_code():
-    alphabet = string.ascii_uppercase + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(6))
+def _email(member):
+    return (member.get('email') or '').strip().lower()
 
 
-def _get_user(email):
-    if not email:
-        return {}
-    doc = db.collection('users').document(email).get()
-    return doc.to_dict() if doc.exists else {}
+def _team(reg_id):
+    """(registration, event) for a team registration, else (None, None)."""
+    doc = db.collection('registrations').document(reg_id).get()
+    if not doc.exists:
+        return None, None
+    reg = doc.to_dict() or {}
+    if not reg.get('team_code'):
+        return None, None
+    ev = db.collection('events').document(str(reg.get('event_id', ''))).get()
+    return reg, ((ev.to_dict() or {}) if ev.exists else {})
 
 
-# ──────────────────────────────────────────
-# CREATE
-# ──────────────────────────────────────────
+def _is_lead(reg):
+    return (reg.get('lead_email') or '').lower() == _me()
+
+
+def _registered_for(event_id, email):
+    """Whether email already leads or belongs to a registration for the event."""
+    for d in db.collection('registrations').where('event_id', '==', event_id).stream():
+        r = d.to_dict() or {}
+        if (r.get('lead_email') or '').lower() == email or any(_email(m) == email for m in r.get('members') or []):
+            return True
+    return False
+
+
+def _save_members(reg_id, members):
+    db.collection('registrations').document(reg_id).update({'members': members, 'member_count': len(members)})
+
+
+def _add_member(reg_id, member, team_max):
+    """Add one member atomically: 'added', 'already' or 'full' (UPG-52).
+
+    On the SQL layer the registration row is locked (SELECT ... FOR UPDATE on
+    PostgreSQL) while its member rows are counted and the new one inserted, so
+    two people joining at once can neither overwrite each other nor push the
+    team past team_max. Firestore mode (legacy) keeps the read-then-write."""
+    from db_adapter import SQLFirestoreAdapter
+    if not isinstance(db, SQLFirestoreAdapter):
+        doc = db.collection('registrations').document(reg_id).get()
+        members = list((doc.to_dict() or {}).get('members') or [])
+        if any(_email(m) == _email(member) for m in members):
+            return 'already'
+        if len(members) >= team_max:
+            return 'full'
+        _save_members(reg_id, members + [member])
+        return 'added'
+
+    import json
+    import uuid
+    from sqlalchemy.orm import Session
+    from db_adapter import to_uuid
+    from db_pg import get_engine
+    from models_pg import Registration, TeamMember
+    with Session(get_engine()) as s, s.begin():
+        reg = (s.query(Registration).filter(Registration.id == to_uuid(reg_id))
+                .with_for_update().one_or_none())
+        if reg is None:
+            return 'full'
+        rows = s.query(TeamMember).filter(TeamMember.registration_id == reg.id).all()
+        if any((r.email or '').strip().lower() == _email(member) for r in rows):
+            return 'already'
+        if len(rows) >= team_max:
+            return 'full'
+        s.add(TeamMember(id=uuid.uuid4(), registration_id=reg.id, name=member.get('name') or 'Unknown',
+                         email=member.get('email', ''), phone=member.get('phone', ''),
+                         usn=member.get('usn', ''), extra_json=json.dumps(member)))
+        count = len(rows) + 1
+    db.collection('registrations').document(reg_id).update({'member_count': count})
+    return 'added'
+
+
 @teams_bp.route('/create/<event_id>', methods=['GET', 'POST'])
-@login_required
-@role_required('Student')
 def create_team(event_id):
-    event_doc = db.collection('events').document(event_id).get()
-    if not event_doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/participant/dashboard')
-    event = event_doc.to_dict()
-
-    if request.method == 'POST':
-        team_name = (request.form.get('team_name') or '').strip()
-        max_size  = safe_int(request.form.get('max_size') or event.get('max_team_size', 4))
-        if not team_name:
-            flash("Team name is required.", "warning")
-            return redirect(f'/teams/create/{event_id}')
-        if max_size < 2 or max_size > 10:
-            max_size = 4
-
-        lead_email = session.get('user_id')
-        lead_user  = _get_user(lead_email)
-
-        # One active team per event per lead
-        existing = list(
-            db.collection('teams')
-              .where(filter=_ff('event_id', '==', event_id))
-              .where(filter=_ff('lead_email', '==', lead_email))
-              .limit(1).stream()
-        )
-        if existing:
-            flash("You already have a team for this event.", "warning")
-            return redirect(f'/teams/{existing[0].id}')
-
-        # Retry on code collision (tiny chance)
-        for _ in range(5):
-            code = _new_join_code()
-            dup = list(
-                db.collection('teams')
-                  .where(filter=_ff('join_code', '==', code))
-                  .limit(1).stream()
-            )
-            if not dup:
-                break
-
-        team_id = f"TEAM-{int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)}"
-        db.collection('teams').document(team_id).set({
-            'team_id':    team_id,
-            'event_id':   event_id,
-            'event_title': event.get('title', ''),
-            'team_name':  team_name,
-            'lead_email': lead_email,
-            'lead_name':  lead_user.get('name', session.get('name', '')),
-            'members': [{
-                'email': lead_email,
-                'name':  lead_user.get('name', session.get('name', '')),
-                'usn':   lead_user.get('usn', ''),
-                'phone': lead_user.get('phone', ''),
-                'role':  'Leader',
-            }],
-            'join_code':   code,
-            'max_size':    max_size,
-            'status':      'Open',
-            'created_at':  datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        })
-        log_action(lead_email, 'team_create', f"{team_id} for {event_id}")
-        flash(f"Team created. Share code {code} with your teammates.", "success")
-        return redirect(f'/teams/{team_id}')
-
-    return render_template(
-        'teams/create.html',
-        event=event, event_id=event_id,
-        default_max=event.get('max_team_size', 4),
-    )
+    """A team is created by registering it through the event's form."""
+    return redirect(f'/forms/register/{event_id}')
 
 
-# ──────────────────────────────────────────
-# JOIN
-# ──────────────────────────────────────────
 @teams_bp.route('/join', methods=['GET', 'POST'])
 @login_required
 @role_required('Student')
 def join_team():
-    if request.method == 'POST':
-        code = (request.form.get('join_code') or '').strip().upper()
-        if len(code) != 6:
-            flash("Enter a valid 6-character code.", "warning")
-            return redirect('/teams/join')
+    from routes_forms import registration_closed, team_limits
+    if request.method == 'GET':
+        return render_template('teams/join.html', code=(request.args.get('code') or '').strip().upper())
 
-        matches = list(
-            db.collection('teams')
-              .where(filter=_ff('join_code', '==', code))
-              .limit(1).stream()
-        )
-        if not matches:
-            flash("Team not found.", "danger")
-            return redirect('/teams/join')
+    code = (request.form.get('join_code') or '').strip().upper()
+    found = list(db.collection('registrations').where('team_code', '==', code).limit(1).stream()) if len(code) == 6 else []
+    if not found:
+        flash("No team has that code. Check it with your team lead.", "warning")
+        return redirect('/teams/join')
+    reg_id, reg = found[0].id, found[0].to_dict() or {}
+    event_id = str(reg.get('event_id', ''))
+    ev_doc = db.collection('events').document(event_id).get()
+    event = (ev_doc.to_dict() or {}) if ev_doc.exists else {}
+    me = _me()
+    members = list(reg.get('members') or [])
 
-        team_doc = matches[0]
-        team = team_doc.to_dict() or {}
+    if any(_email(m) == me for m in members) or (reg.get('lead_email') or '').lower() == me:
+        flash("You're already on this team.", "info")
+        return redirect(f'/teams/{reg_id}')
+    if not event or registration_closed(event):
+        flash("This event isn't taking registrations, so its teams can't change.", "warning")
+        return redirect('/teams/join')
+    if _registered_for(event_id, me):
+        flash("You're already registered for this event with another team.", "warning")
+        return redirect('/teams/join')
+    _, team_max = team_limits(event)
+    if len(members) >= team_max:
+        flash(f"This team is full ({team_max} people).", "warning")
+        return redirect('/teams/join')
 
-        if team.get('status') != 'Open':
-            flash("This team is no longer accepting members.", "warning")
-            return redirect('/teams/join')
-
-        email   = session.get('user_id') or ''
-        members = team.get('members', [])
-
-        if any((m.get('email') or '').lower() == email.lower() for m in members):
-            flash("You're already on this team.", "info")
-            return redirect(f'/teams/{team_doc.id}')
-
-        max_size = safe_int(team.get('max_size', 4))
-        if len(members) >= max_size:
-            flash("This team is already full.", "warning")
-            return redirect('/teams/join')
-
-        user    = _get_user(email)
-        members.append({
-            'email': email,
-            'name':  user.get('name', session.get('name', '')),
-            'usn':   user.get('usn', ''),
-            'phone': user.get('phone', ''),
-            'role':  'Member',
-        })
-
-        db.collection('teams').document(team_doc.id).update({
-            'members': members,
-            'status':  'Full' if len(members) >= max_size else 'Open',
-        })
-        log_action(email, 'team_join', team_doc.id)
-        flash(f"Joined team {team.get('team_name')}.", "success")
-        return redirect(f'/teams/{team_doc.id}')
-
-    return render_template('teams/join.html')
+    profile_doc = db.collection('users').document(me).get()
+    profile = (profile_doc.to_dict() or {}) if profile_doc.exists else {}
+    member = {'role': 'Member', 'email': me, 'name': profile.get('name') or session.get('name', ''),
+              'usn': (profile.get('usn') or '').upper(), 'phone': profile.get('phone', '')}
+    # The checks above are re-made atomically while adding (UPG-52)
+    added = _add_member(reg_id, member, team_max)
+    if added == 'full':
+        flash(f"This team is full ({team_max} people).", "warning")
+        return redirect('/teams/join')
+    if added == 'already':
+        flash("You're already on this team.", "info")
+        return redirect(f'/teams/{reg_id}')
+    log_action(db, "TEAM_JOIN", f"{me} joined {reg.get('team_name')} ({reg_id})")
+    flash(f"You joined {reg.get('team_name')}. Your ticket is on the team page.", "success")
+    return redirect(f'/teams/{reg_id}')
 
 
-# ──────────────────────────────────────────
-# VIEW
-# ──────────────────────────────────────────
-@teams_bp.route('/<team_id>')
+@teams_bp.route('/<reg_id>')
 @login_required
-@role_required('Student')
-def view_team(team_id):
-    doc = db.collection('teams').document(team_id).get()
-    if not doc.exists:
-        flash("Team not found.", "danger")
-        return redirect('/participant/dashboard')
-    team = doc.to_dict() or {}
-    team['team_id'] = doc.id
-
-    # Enrich with live event title
-    event_id = team.get('event_id')
-    if event_id:
-        event_doc = db.collection('events').document(event_id).get()
-        if event_doc.exists:
-            evt = event_doc.to_dict()
-            team['event_title'] = evt.get('title', team.get('event_title', ''))
-
-    email = session.get('user_id')
-    is_member = any((m.get('email') or '').lower() == (email or '').lower()
-                    for m in team.get('members', []))
-    if not is_member:
+def view_team(reg_id):
+    from routes_forms import team_limits
+    reg, event = _team(reg_id)
+    if reg is None or not (_is_lead(reg) or any(_email(m) == _me() for m in reg.get('members') or [])):
         flash("You don't have access to this team.", "warning")
         return redirect('/participant/dashboard')
+    team_min, team_max = team_limits(event or {})
+    return render_template('teams/view.html', reg=reg, reg_id=reg_id, event=event, is_lead=_is_lead(reg),
+                           team_min=team_min, team_max=team_max)
 
-    is_leader = team.get('lead_email', '').lower() == (email or '').lower()
-    return render_template('teams/view.html',
-                           team=team, is_leader=is_leader)
 
-
-# ──────────────────────────────────────────
-# LEAVE
-# ──────────────────────────────────────────
-@teams_bp.route('/<team_id>/leave', methods=['POST'])
+@teams_bp.route('/<reg_id>/remove', methods=['POST'])
 @login_required
-@role_required('Student')
-def leave_team(team_id):
-    ref = db.collection('teams').document(team_id)
-    doc = ref.get()
-    if not doc.exists:
-        flash("Team not found.", "warning")
+def remove_member(reg_id):
+    from routes_forms import team_limits
+    reg, event = _team(reg_id)
+    if reg is None or not _is_lead(reg):
+        flash("Only the team lead can remove members.", "danger")
+        return redirect(f'/teams/{reg_id}' if reg else '/participant/dashboard')
+    email = (request.form.get('email') or '').strip().lower()
+    members = list(reg.get('members') or [])
+    kept = [m for m in members if _email(m) != email or m.get('role') == 'Lead']
+    if not email or len(kept) == len(members):
+        flash("That person isn't a member of this team.", "warning")
+        return redirect(f'/teams/{reg_id}')
+    _save_members(reg_id, kept)
+    log_action(db, "TEAM_REMOVE", f"{_me()} removed {email} from {reg_id}")
+    team_min, _ = team_limits(event or {})
+    flash(f"{email} removed from the team." + (
+        f" Your team now has {len(kept)}; it needs {team_min} to take part." if len(kept) < team_min else ''),
+        "success" if len(kept) >= team_min else "warning")
+    return redirect(f'/teams/{reg_id}')
+
+
+@teams_bp.route('/<reg_id>/regenerate', methods=['POST'])
+@login_required
+def regenerate_code(reg_id):
+    from routes_forms import new_team_code
+    reg, _ = _team(reg_id)
+    if reg is None or not _is_lead(reg):
+        flash("Only the team lead can change the invite code.", "danger")
+        return redirect(f'/teams/{reg_id}' if reg else '/participant/dashboard')
+    db.collection('registrations').document(reg_id).update({'team_code': new_team_code(db)})
+    log_action(db, "TEAM_CODE_RESET", f"{_me()} replaced the invite code of {reg_id}")
+    flash("New invite code made; the old one no longer works.", "success")
+    return redirect(f'/teams/{reg_id}')
+
+
+@teams_bp.route('/<reg_id>/leave', methods=['POST'])
+@login_required
+def leave_team(reg_id):
+    reg, _ = _team(reg_id)
+    me = _me()
+    if reg is None or _is_lead(reg) or not any(_email(m) == me for m in reg.get('members') or []):
+        flash("You can't leave this team." if reg else "Team not found.", "warning")
         return redirect('/participant/dashboard')
-
-    team  = doc.to_dict() or {}
-    email = session.get('user_id') or ''
-
-    # IDOR protection: Verify caller is actually in the team
-    is_leader = team.get('lead_email', '').lower() == email.lower()
-    is_member = any((m.get('email') or '').lower() == email.lower() for m in team.get('members', []))
-
-    if not (is_leader or is_member):
-        flash("You are not a member of this team.", "danger")
-        return redirect('/participant/dashboard')
-
-    if is_leader:
-        # Leader leaving = disband team
-        ref.delete()
-        log_action(email, 'team_disband', team_id)
-        flash("Team disbanded.", "info")
-        return redirect('/participant/dashboard')
-
-    new_members = [m for m in team.get('members', [])
-                   if (m.get('email') or '').lower() != email.lower()]
-    ref.update({'members': new_members, 'status': 'Open'})
-    log_action(email, 'team_leave', team_id)
+    _save_members(reg_id, [m for m in reg.get('members') or [] if _email(m) != me])
+    log_action(db, "TEAM_LEAVE", f"{me} left {reg_id}")
     flash("You left the team.", "info")
     return redirect('/participant/dashboard')
-
-
-# ──────────────────────────────────────────
-# CLOSE (leader locks roster before registration)
-# ──────────────────────────────────────────
-@teams_bp.route('/<team_id>/close', methods=['POST'])
-@login_required
-@role_required('Student')
-def close_team(team_id):
-    ref = db.collection('teams').document(team_id)
-    doc = ref.get()
-    if not doc.exists:
-        flash("Team not found.", "warning")
-        return redirect('/participant/dashboard')
-    team  = doc.to_dict() or {}
-    email = session.get('user_id') or ''
-    if team.get('lead_email', '').lower() != email.lower():
-        flash("Only the team leader can close the team.", "danger")
-        return redirect(f'/teams/{team_id}')
-    ref.update({'status': 'Closed'})
-    flash("Team roster locked.", "success")
-    return redirect(f'/teams/{team_id}')

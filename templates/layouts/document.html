@@ -1,0 +1,46 @@
+{#- The one document every page is rendered in (UPG-23). Children:
+    base_classic.html (the app layout with the role-aware sidebar),
+    layouts/standalone.html (pages with their own header and design) and
+    layouts/fullscreen.html (kiosk, scanners, printable pages: no footer).
+    Blocks: html_attrs, csrf_meta, head, body_attrs, body, site_footer, body_end.
+    The one font set is self-hosted (static/css/fonts.css); Bootstrap 5.3.3 and
+    Font Awesome come from layouts/_bootstrap_css.html, _bootstrap_js.html and
+    _fontawesome.html, which a page includes where it needs them (UPG-24). -#}
+<!DOCTYPE html>
+<html {% block html_attrs %}lang="en"{% endblock %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_meta_token() }}">{% endblock %}
+    {% include 'includes/csrf_fetch.html' %}
+    <link rel="stylesheet" href="/static/css/fonts.css">
+    {# Binds the data-h-<event> handlers each page registers (UPG-25) #}
+    <script src="/static/js/handlers.js"></script>
+    {# One submit per click on every form (UPG-26) #}
+    <script src="/static/js/forms.js"></script>
+    <style>
+        /* Mobile responsive safeguard (UPG-28): prevent horizontal scroll on 375px+ */
+        html, body { max-width: 100%; overflow-x: hidden; }
+        /* Shared footer (includes/site_footer.html): takes the page's own text colour */
+        .site-footer { text-align: center; font-size: 0.85rem; padding: 1rem; color: inherit; opacity: 0.8; }
+        .site-footer a { color: inherit; text-decoration: underline; }
+        .site-footer--fixed { position: fixed; left: 0; right: 0; bottom: 0; padding: 0.35rem; font-size: 0.75rem;
+                              pointer-events: none; z-index: 1; }
+        .site-footer--fixed a { pointer-events: auto; }
+        /* forms.js: the spinner on a submit button while its form is sent */
+        .se-spinner { display: inline-block; width: 0.9em; height: 0.9em; border: 2px solid currentColor;
+                      border-right-color: transparent; border-radius: 50%; vertical-align: -0.1em;
+                      animation: se-spin 0.7s linear infinite; }
+        @keyframes se-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .se-spinner { animation: none; } }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body{% block body_attrs %}{% endblock %}>
+{% block body %}{% endblock %}
+{% block site_footer %}{% include 'includes/site_footer.html' %}{% endblock %}
+{# Each page's handler file, static/js/handlers/<page>.js (UPG-25) #}
+{% block handler_scripts %}{% endblock %}
+{% block body_end %}{% endblock %}
+</body>
+</html>

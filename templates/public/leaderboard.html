@@ -1,18 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
 <title>Live Leaderboard — {{ event.get('title','Event') }}</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{--blue:#1a2557;--orange:#c9a45e;}
 body{background:#f1f5f9;font-family:'Inter',sans-serif;min-height:100vh;}
 .header{background:var(--blue);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;}
 .logo{display:flex;align-items:center;gap:10px;}
-.logo-sq{width:40px;height:40px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:16px;color:#fff;}
-.event-name{font-family:'Poppins',sans-serif;font-size:18px;font-weight:700;color:#fff;}
+.logo-sq{width:40px;height:40px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:#fff;}
+.event-name{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;color:#fff;}
 .live-badge{display:flex;align-items:center;gap:6px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;font-size:12px;font-weight:600;padding:5px 14px;border-radius:100px;}
 .live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:blink 1.4s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
@@ -23,29 +20,29 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;min-height:100vh;}
 .podium-card.second{border-color:#94a3b8;background:#f8fafc;}
 .podium-card.third{border-color:#f87171;background:#fff5f5;}
 .medal{font-size:32px;display:block;margin-bottom:6px;}
-.podium-name{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--blue);}
-.podium-score{font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;color:var(--orange);margin-top:4px;}
+.podium-name{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:var(--blue);}
+.podium-score{font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:var(--orange);margin-top:4px;}
 .podium-lead{font-size:12px;color:#64748b;margin-top:2px;}
 .table-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;}
 .lb-table{width:100%;border-collapse:collapse;}
-.lb-table th{background:var(--blue);color:#fff;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;padding:12px 16px;text-align:left;letter-spacing:.3px;}
+.lb-table th{background:var(--blue);color:#fff;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;padding:12px 16px;text-align:left;letter-spacing:.3px;}
 .lb-table td{padding:12px 16px;font-size:14px;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
 .lb-table tr:last-child td{border-bottom:none;}
 .lb-table tr:hover td{background:#fafbfc;}
-.rank-no{font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;color:#94a3b8;width:40px;}
-.score-cell{font-family:'Poppins',sans-serif;font-size:18px;font-weight:800;color:var(--orange);}
+.rank-no{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:#94a3b8;width:40px;}
+.score-cell{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--orange);}
 .judges-pill{background:#eff6ff;color:#1e40af;font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;}
 .updated{font-size:11px;color:rgba(255,255,255,.5);text-align:right;padding:0 32px 12px;}
 .empty{text-align:center;padding:60px 24px;}
 .empty p{font-size:14px;color:#94a3b8;margin-top:10px;}
 </style>
     <link href="/static/css/global.css" rel="stylesheet">
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="header">
   <div class="logo">
-    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:40px;width:auto;object-fit:contain;">
+    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:40px;width:auto;object-fit:contain;">
     <div>
       <div class="event-name">{{ event.get('title','Event') }}</div>
       <div style="font-size:11px;color:rgba(255,255,255,.55);">
@@ -138,22 +135,5 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;min-height:100vh;}
 
 <div class="updated" id="updated-ts">Last updated: loading...</div>
 
-<script>
-async function refresh() {
-  try {
-    const res  = await fetch(window.location.href, {
-      headers: { 'Accept': 'application/json' }
-    });
-    const data = await res.json();
-    // Simple auto-reload approach — full page refresh every 15s
-    document.getElementById('updated-ts').textContent =
-      'Last updated: ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-  } catch(e){}
-}
-// Full reload every 15 seconds for simplicity — projector use
-setTimeout(() => window.location.reload(), 15000);
-document.getElementById('updated-ts').textContent =
-  'Auto-refreshes every 15 seconds · ' + new Date().toLocaleTimeString();
-</script>
-</body>
-</html>
+<script src="/static/js/pages/public__leaderboard.js"></script>
+{% endblock %}

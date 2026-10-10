@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
     <meta name="theme-color" content="#0d1b3e">
     <!-- ═══ SEO Meta Tags ═══ -->
     <meta name="description" content="Login to SapthaEvent: Official event management portal for Sapthagiri NPS University. Access your event registrations, manage tickets, and sign up for campus events.">
@@ -25,14 +23,15 @@
     {% include 'includes/pwa_head.html' %}
     <title>Login | SapthaEvent - Sapthagiri NPS University</title>
     <!-- Stylesheets -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    {% include "layouts/_bootstrap_css.html" %}
+    {% include "layouts/_fontawesome.html" %}
     <link href="/static/css/global.css?v=1.0.2" rel="stylesheet">
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+    {% include "layouts/_bootstrap_js.html" %}
     <script src="/static/js/global.js?v=1.0.2" defer></script>
-</head>
-<body class="auth zero-scroll">
+{% endblock %}
+{% block body_attrs %} class="auth zero-scroll"{% endblock %}
+{% block body %}
     <!-- Aurora background elements -->
     <div class="aurora-bg">
         <div class="aurora-orb"></div>
@@ -49,7 +48,7 @@
             <!-- Left Info Panel (visible on laptop/desktop only) -->
             <div class="auth-info-panel">
                 <div class="auth-info-content">
-                    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University Logo" class="info-logo img-fluid">
+                    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University Logo" class="info-logo img-fluid">
                     <h1 class="info-title">SapthaEvent Portal</h1>
                     <p class="info-subtitle">Unmatched Excellence, Unlimited Potential</p>
                     
@@ -84,7 +83,7 @@
                 <div class="login-card">
                     <!-- Header (Mobile Only) -->
                     <div class="text-center mb-4 d-lg-none">
-                        <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="img-fluid mb-2" style="max-width: 260px; height: auto; object-fit: contain;">
+                        <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="img-fluid mb-2" style="max-width: 260px; height: auto; object-fit: contain;">
                         <p class="text-uppercase text-muted small fw-bold tracking-wider mb-0" style="letter-spacing: 2px;">Event Portal</p>
                     </div>
                     
@@ -165,7 +164,7 @@
                             <div class="pw-wrap input-icon-wrap">
                                 <i class="fas fa-lock inp-icon"></i>
                                 <input type="password" id="passwordInput" name="password" class="form-control" required placeholder="••••••••">
-                                <button type="button" class="pw-toggle" onclick="spTogglePw('passwordInput',this)" tabindex="-1" aria-label="Toggle password visibility">
+                                <button type="button" class="pw-toggle" data-h-click="login:1" tabindex="-1" aria-label="Toggle password visibility">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
@@ -204,6 +203,17 @@
                             <i class="fas fa-sign-in-alt me-2"></i> Login to Portal
                         </button>
 
+                        {% if google_oauth_configured %}
+                        <div class="position-relative my-3 text-center">
+                            <hr class="text-muted opacity-25">
+                            <span class="position-absolute top-50 start-50 translate-middle px-2 small text-muted" style="background: var(--bg-card, #fff);">or</span>
+                        </div>
+                        <a href="/auth/google" class="btn btn-outline-secondary w-100 py-2 d-flex align-items-center justify-content-center gap-2" style="border-radius: var(--radius-md, 8px);">
+                            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                            <span class="fw-semibold">Sign in with Google</span>
+                        </a>
+                        {% endif %}
+
                         <div class="text-center mt-4 pt-3 border-top text-muted small">
                             New Student? <a href="/register" class="text-decoration-none fw-bold text-primary">Register Here</a>
                         </div>
@@ -214,7 +224,7 @@
                         <p class="mb-0">Sapthagiri NPS University &copy; 2026</p>
                         <p class="mb-1 text-muted-opacity">SapthaEvent Portal &bull; Premium Experience</p>
                         <!-- Install App link — always visible -->
-                        <button onclick="window.showPwaInstallModal ? window.showPwaInstallModal() : alert('Coming soon!');"
+                        <button data-h-click="login:2"
                                 style="background:none;border:none;cursor:pointer;color:#c9a45e;font-size:12px;font-weight:700;padding:2px 0;"
                                 id="loginInstallBtn">
                             <i class="fas fa-download me-1"></i>Add to Home Screen
@@ -230,7 +240,7 @@
         display:none; position:fixed; inset:0; z-index:100000;
         background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);
         align-items:flex-end; justify-content:center;"
-        onclick="if(event.target===this) window.closePwaModal()">
+        data-h-click="login:3">
       <div id="pwaModalSheet" style="
           background:linear-gradient(160deg,#0c122b 0%,#1a2557 100%);
           border-radius:24px 24px 0 0; border-top:3px solid #c9a45e;
@@ -240,12 +250,12 @@
           transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);">
         <div style="width:40px;height:4px;background:rgba(201,164,94,0.4);border-radius:2px;margin:0 auto 20px;"></div>
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-          <img src="/static/app-icon.png" width="52" height="52" style="border-radius:13px;border:2px solid #c9a45e;" alt="SapthaEvent">
+          <img loading="lazy" src="/static/app-icon.png" width="52" height="52" style="border-radius:13px;border:2px solid #c9a45e;" alt="SapthaEvent">
           <div>
             <h3 style="margin:0;color:#fff;font-size:18px;font-weight:800;">Install SapthaEvent</h3>
             <p style="margin:0;color:#c9a45e;font-size:13px;">Add to your home screen</p>
           </div>
-          <button onclick="window.closePwaModal()" style="margin-left:auto;background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:34px;height:34px;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;">×</button>
+          <button data-h-click="login:4" style="margin-left:auto;background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:34px;height:34px;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;">×</button>
         </div>
         <div style="background:rgba(255,255,255,0.05);border-radius:14px;padding:14px 16px;margin-bottom:20px;">
           <div style="display:flex;flex-direction:column;gap:9px;">
@@ -255,7 +265,7 @@
           </div>
         </div>
         <div id="pwaAndroidSection">
-          <button onclick="window.triggerNativeInstall()" style="display:block;width:100%;background:linear-gradient(135deg,#c9a45e,#a8843f);color:#fff;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;">
+          <button data-h-click="login:5" style="display:block;width:100%;background:linear-gradient(135deg,#c9a45e,#a8843f);color:#fff;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;">
             <i class="fas fa-download me-2"></i>Install App Now
           </button>
         </div>
@@ -272,111 +282,12 @@
           </div>
         </div>
         <p style="text-align:center;margin-top:14px;margin-bottom:0;">
-          <button onclick="window.closePwaModal();localStorage.setItem('pwa_banner_dismissed','1');" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">Not now</button>
+          <button data-h-click="login:6" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">Not now</button>
         </p>
       </div>
     </div>
 
-    <script>
-        // ── SKELETON LOADER ────
-        document.addEventListener('DOMContentLoaded', function(){
-            setTimeout(function(){
-                const skeleton = document.getElementById('formSkeleton');
-                const form = document.getElementById('main-content');
-                if(skeleton) skeleton.style.display = 'none';
-                if(form) form.style.display = '';
-            }, 250);
-        });
+    <script src="/static/js/pages/login.js"></script>
 
-        // ── PWA modal logic (mirrors mobile_nav.html) ────
-            const isIOS      = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            const isAndroid  = /Android/.test(navigator.userAgent);
-            const isChrome   = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-            const isSafari   = /Safari/.test(navigator.userAgent) && !isChrome;
-            const isInstalled = window.matchMedia('(display-mode: standalone)').matches
-                             || navigator.standalone
-                             || localStorage.getItem('pwa_installed') === '1';
-
-            window.showPwaInstallModal = function() {
-                const modal = document.getElementById('pwaInstallModal');
-                const sheet = document.getElementById('pwaModalSheet');
-                const androidSec = document.getElementById('pwaAndroidSection');
-                const iosSec     = document.getElementById('pwaIosSection');
-                const chromeFb   = document.getElementById('pwaChromeFallback');
-                if (isIOS || isSafari) {
-                    androidSec.style.display = 'none'; iosSec.style.display = 'block';
-                } else if (window.__pwaPrompt) {
-                    androidSec.style.display = 'block'; iosSec.style.display = 'none';
-                } else {
-                    androidSec.style.display = 'none'; iosSec.style.display = 'block';
-                    if (isAndroid && chromeFb) chromeFb.style.display = 'flex';
-                }
-                modal.style.display = 'flex';
-                requestAnimationFrame(() => requestAnimationFrame(() => { sheet.style.transform = 'translateY(0)'; }));
-            };
-            window.closePwaModal = function() {
-                const sheet = document.getElementById('pwaModalSheet');
-                const modal = document.getElementById('pwaInstallModal');
-                sheet.style.transform = 'translateY(100%)';
-                setTimeout(() => { modal.style.display = 'none'; }, 350);
-            };
-            window.triggerNativeInstall = async function() {
-                if (!window.__pwaPrompt) {
-                    document.getElementById('pwaAndroidSection').style.display = 'none';
-                    document.getElementById('pwaIosSection').style.display = 'block';
-                    const fb = document.getElementById('pwaChromeFallback');
-                    if (fb) fb.style.display = 'flex';
-                    return;
-                }
-                window.__pwaPrompt.prompt();
-                const { outcome } = await window.__pwaPrompt.userChoice;
-                window.__pwaPrompt = null;
-                window.closePwaModal();
-                if (outcome === 'accepted') localStorage.setItem('pwa_banner_dismissed','1');
-            };
-
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                window.__pwaPrompt = e;
-            });
-
-            // Hide install button if already installed and no update is pending
-            if (isInstalled && !window.pwaUpdateAvailable) {
-                const b = document.getElementById('loginInstallBtn');
-                if (b) b.style.display = 'none';
-            }
-
-        // ── PASSWORD TOGGLE ────
-        function spTogglePw(id, btn) {
-            const inp = document.getElementById(id);
-            const icon = btn.querySelector('i');
-            if (inp.type === 'password') {
-                inp.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                inp.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
-
-        // ── ROLE SELECTION HANDLER ────
-        document.getElementById('roleSelect').addEventListener('change', function() {
-            const secretDiv   = document.getElementById('secretKeyDiv');
-            const secretInput = document.getElementById('secretKeyInput');
-            const forgotWrap  = document.getElementById('forgotPasswordWrap');
-
-            if (this.value === 'SuperAdmin') {
-                secretDiv.classList.add('show');
-                if (forgotWrap) forgotWrap.style.display = 'none';
-                document.body.classList.add('super-admin-selected');
-            } else {
-                secretDiv.classList.remove('show');
-                secretInput.value = '';
-                if (forgotWrap) forgotWrap.style.display = '';
-                document.body.classList.remove('super-admin-selected');
-            }
-        });
-    </script>
-
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/login.js"></script>{% endblock %}

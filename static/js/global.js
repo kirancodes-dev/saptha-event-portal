@@ -143,11 +143,14 @@
                           warning:'#f59e0b', info:'#3b82f6'};
     t.style.borderLeftColor = borderColors[type] || '#3b82f6';
 
+    // The icon is fixed markup; the message is text (BLK-19)
+    const iconHtml = toastIcons[type] || toastIcons.info;
     t.innerHTML = `
-      <span style="flex-shrink:0;font-size:16px;margin-top:1px">${toastIcons[type] || toastIcons.info}</span>
-      <span style="flex:1">${message}</span>
-      <button onclick="this.closest('[id^=sp-t]').remove()" style="background:none;border:none;cursor:pointer;color:var(--ink-400,#94a3b8);padding:0 0 0 6px;font-size:15px;line-height:1;flex-shrink:0" aria-label="Dismiss">&times;</button>
+      <span style="flex-shrink:0;font-size:16px;margin-top:1px">${iconHtml}</span>
+      <span style="flex:1" class="sp-t-message"></span>
+      <button data-h-click="se:remove-closest" data-closest="[id^=sp-t]" style="background:none;border:none;cursor:pointer;color:var(--ink-400,#94a3b8);padding:0 0 0 6px;font-size:15px;line-height:1;flex-shrink:0" aria-label="Dismiss">&times;</button>
     `;
+    t.querySelector('.sp-t-message').textContent = message;
     t.id = 'sp-t-' + Date.now();
     toastContainer.appendChild(t);
 
@@ -205,27 +208,8 @@
   }
   document.addEventListener('DOMContentLoaded', processFlashMessages);
 
-  /* ── 5. BUTTON LOADING STATE ──────────────────────────────────────────── */
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('form').forEach(function (form) {
-      form.addEventListener('submit', function () {
-        const btn = form.querySelector('[type="submit"]');
-        if (!btn || btn.dataset.noLoader) return;
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.dataset.originalHtml = original;
-        btn.innerHTML = `<span class="sp-spinner"></span> ${btn.dataset.loadingText || 'Please wait…'}`;
-
-        // Safety timeout to re-enable
-        setTimeout(function () {
-          if (btn.disabled) {
-            btn.disabled = false;
-            btn.innerHTML = original;
-          }
-        }, 15000);
-      });
-    });
-  });
+  /* ── 5. BUTTON LOADING STATE ──────────────────────────────────────────
+     Moved to static/js/forms.js, which every page loads (UPG-26). */
 
   /* ── 6. BACK TO TOP BUTTON ────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
@@ -425,9 +409,10 @@
       overlay.innerHTML = `
         <div style="background:var(--bg-card,#fff);padding:2.5rem;border-radius:16px;text-align:center;box-shadow:var(--shadow-lg);max-width:320px;width:90%">
           <div class="sp-spinner" style="width:3.5rem;height:3.5rem;border-width:4px;border-top-color:var(--snpsu-blue,#1a2557);margin:0 auto 1.25rem"></div>
-          <p id="sp-loading-text" style="margin:0;color:var(--ink-700,#334155);font-weight:600;font-size:15px">${message}</p>
+          <p id="sp-loading-text" style="margin:0;color:var(--ink-700,#334155);font-weight:600;font-size:15px"></p>
         </div>
       `;
+      overlay.querySelector('#sp-loading-text').textContent = message;
       document.body.appendChild(overlay);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => overlay.style.opacity = '1');

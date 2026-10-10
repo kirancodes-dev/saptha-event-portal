@@ -31,7 +31,7 @@
 
   <!-- Install App button — always visible, triggers custom install flow -->
   <button class="mobile-nav-item" id="mn-install-btn"
-          onclick="window.showPwaInstallModal()"
+          data-h-click="components/mobile_nav:1"
           style="background:none; border:none; cursor:pointer;"
           aria-label="Install App">
     <i class="fas fa-download" style="color:#c9a45e;"></i>
@@ -46,7 +46,7 @@
     display:none; position:fixed; inset:0; z-index:100000;
     background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);
     align-items:flex-end; justify-content:center;"
-    onclick="if(event.target===this) window.closePwaModal()">
+    data-h-click="components/mobile_nav:2">
 
   <div id="pwaModalSheet" style="
       background:linear-gradient(160deg,#0c122b 0%,#1a2557 100%);
@@ -63,7 +63,7 @@
 
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-      <img src="/static/app-icon.png" width="52" height="52"
+      <img loading="lazy" src="/static/app-icon.png" width="52" height="52"
            style="border-radius:13px;border:2px solid #c9a45e;" alt="SapthaEvent">
       <div>
         <h3 style="margin:0;color:#fff;font-size:18px;font-weight:800;line-height:1.2;">
@@ -71,7 +71,7 @@
         </h3>
         <p style="margin:0;color:#c9a45e;font-size:13px;">Add to your home screen</p>
       </div>
-      <button onclick="window.closePwaModal()" style="
+      <button data-h-click="components/mobile_nav:3" style="
           margin-left:auto; background:rgba(255,255,255,0.1);
           border:none; border-radius:50%; width:34px; height:34px;
           color:#fff; font-size:18px; cursor:pointer; line-height:1;
@@ -102,7 +102,7 @@
 
     <!-- Android install (shown when native prompt available) -->
     <div id="pwaAndroidSection">
-      <button id="pwaAndroidInstallBtn" onclick="window.triggerNativeInstall()" style="
+      <button id="pwaAndroidInstallBtn" data-h-click="components/mobile_nav:4" style="
           display:block; width:100%;
           background:linear-gradient(135deg,#c9a45e,#a8843f);
           color:#fff; border:none; border-radius:13px;
@@ -160,7 +160,7 @@
     </div>
 
     <p style="text-align:center;margin-top:16px;margin-bottom:0;">
-      <button onclick="window.closePwaModal();localStorage.setItem('pwa_banner_dismissed','1');"
+      <button data-h-click="components/mobile_nav:5"
               style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">
         Not now
       </button>
@@ -168,121 +168,5 @@
   </div>
 </div>
 
-<script>
-(function() {
-  var isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  var isAndroid = /Android/.test(navigator.userAgent);
-  var isChrome  = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-  var isSafari  = /Safari/.test(navigator.userAgent) && !isChrome;
-  var isInstalled = window.matchMedia('(display-mode: standalone)').matches
-                 || window.navigator.standalone === true
-                 || localStorage.getItem('pwa_installed') === '1';
-
-  // ── Hide the Install nav button if already installed ────
-  if (isInstalled && !window.pwaUpdateAvailable) {
-    var btn = document.getElementById('mn-install-btn');
-    if (btn) btn.style.display = 'none';
-  }
-
-  // ── Modal open / close ────────────────────────────────────
-  window.showPwaInstallModal = function() {
-    var modal  = document.getElementById('pwaInstallModal');
-    var sheet  = document.getElementById('pwaModalSheet');
-    var androidSection = document.getElementById('pwaAndroidSection');
-    var iosSection     = document.getElementById('pwaIosSection');
-    var chromeFallback = document.getElementById('pwaChromeFallback');
-
-    // Decide which instructions to show
-    if (isIOS || isSafari) {
-      // iOS always needs manual steps
-      androidSection.style.display = 'none';
-      iosSection.style.display     = 'block';
-    } else if (window.__pwaPrompt) {
-      // Android Chrome with native prompt ready
-      androidSection.style.display = 'block';
-      iosSection.style.display     = 'none';
-    } else {
-      // No native prompt (might be late, might be Chrome with engagement not met)
-      androidSection.style.display = 'none';
-      iosSection.style.display     = 'block';
-      if (isAndroid) chromeFallback.style.display = 'block';
-    }
-
-    modal.style.display = 'flex';
-    // Animate in
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        sheet.style.transform = 'translateY(0)';
-      });
-    });
-  };
-
-  window.closePwaModal = function() {
-    var sheet = document.getElementById('pwaModalSheet');
-    var modal = document.getElementById('pwaInstallModal');
-    sheet.style.transform = 'translateY(100%)';
-    setTimeout(function() { modal.style.display = 'none'; }, 350);
-  };
-
-  window.triggerNativeInstall = async function() {
-    if (!window.__pwaPrompt) {
-      // Prompt gone — fall back to manual instructions
-      document.getElementById('pwaAndroidSection').style.display = 'none';
-      document.getElementById('pwaIosSection').style.display = 'block';
-      document.getElementById('pwaChromeFallback').style.display = 'block';
-      return;
-    }
-    window.__pwaPrompt.prompt();
-    var result = await window.__pwaPrompt.userChoice;
-    window.__pwaPrompt = null;
-    window.closePwaModal();
-    if (result.outcome === 'accepted') {
-      localStorage.setItem('pwa_banner_dismissed', '1');
-    }
-  };
-
-  // ── Capture the beforeinstallprompt event globally ────────
-  window.addEventListener('beforeinstallprompt', function(e) {
-    e.preventDefault();
-    window.__pwaPrompt = e;
-    // Also update the Install button if modal is open
-    var androidSection = document.getElementById('pwaAndroidSection');
-    var iosSection     = document.getElementById('pwaIosSection');
-    if (androidSection && iosSection) {
-      androidSection.style.display = 'block';
-      iosSection.style.display     = 'none';
-    }
-  });
-
-  // ── Highlight active bottom nav item based on current URL path ──
-  var path = window.location.pathname;
-  var hash = window.location.hash;
-  var items = document.querySelectorAll('.mobile-nav-bar .mobile-nav-item');
-  items.forEach(function(item) {
-    item.classList.remove('active');
-    var href = item.getAttribute('href');
-    if (href) {
-      if (href === '/' && path === '/' && !hash) {
-        item.classList.add('active');
-      } else if (href === '/#events' && hash === '#events') {
-        item.classList.add('active');
-      } else if (href !== '/' && href !== '/#events') {
-        var baseHref = href.split('?')[0].split('#')[0];
-        if (path === baseHref || path.startsWith(baseHref + '/')) {
-          item.classList.add('active');
-        }
-      }
-    }
-  });
-
-  // ── Auto-show modal once after 3 page visits ──────────────
-  if (!isInstalled && localStorage.getItem('pwa_banner_dismissed') !== '1') {
-    var visits = parseInt(localStorage.getItem('pwa_visit_count') || '0', 10) + 1;
-    localStorage.setItem('pwa_visit_count', String(visits));
-    if (visits === 3) {
-      // Show on 3rd visit to avoid being annoying on first load
-      setTimeout(function() { window.showPwaInstallModal(); }, 3000);
-    }
-  }
-})();
-</script>
+<script src="/static/js/pages/components__mobile_nav.js"></script>
+<script src="/static/js/handlers/components__mobile_nav.js"></script>

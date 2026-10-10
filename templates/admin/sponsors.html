@@ -114,7 +114,7 @@
                         <tr>
                             <td>
                                 {% if s.logo_url %}
-                                    <img src="{{ s.logo_url }}" alt="{{ s.name }} logo" class="logo-thumb"
+                                    <img loading="lazy" src="{{ s.logo_url }}" alt="{{ s.name }} logo" class="logo-thumb"
                                          data-h-error="admin/sponsors:1">
                                 {% else %}
                                     <div class="logo-thumb d-flex align-items-center justify-content-center text-muted">

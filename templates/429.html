@@ -32,7 +32,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800
 {% block body_attrs %} role="main" aria-label="429 Rate Limit Error"{% endblock %}
 {% block body %}
 <div class="card" role="region" aria-live="polite" aria-label="Rate limit error message">
-  <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:52px;width:auto;object-fit:contain;margin-bottom:12px;" aria-hidden="true">
+  <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:52px;width:auto;object-fit:contain;margin-bottom:12px;" aria-hidden="true">
   <div class="code" aria-label="Error code">429</div>
   <h1 class="title">Slow Down!</h1>
   <p class="desc">You've made too many requests in a short time. Please wait a moment before trying again.</p>
@@ -42,7 +42,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg-app);color:var(--ink-800
   </div>
   <a href="/" class="btn-home">↩ Return Home</a>
   <div style="text-align:center;margin-bottom:8px;margin-top:24px;">
-    <img src="/static/snpsu-logo.png"
+    <img loading="eager" src="/static/snpsu-logo.png"
          alt="Sapthagiri NPS University"
          style="height:24px;width:auto;object-fit:contain;"
          data-h-error="429:1">

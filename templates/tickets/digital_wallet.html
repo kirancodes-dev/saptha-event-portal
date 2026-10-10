@@ -228,7 +228,7 @@
         <!-- Body & QR -->
         <div class="card-body">
             <div class="qr-wrapper">
-                <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Ticket" id="qr-image">
+                <img loading="lazy" src="data:image/png;base64,{{ qr_b64 }}" alt="QR Ticket" id="qr-image">
             </div>
 
             <div class="ticket-code">{{ ticket.ticket_code }}</div>

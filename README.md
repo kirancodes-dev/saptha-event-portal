@@ -1,7 +1,7 @@
 <div align="center">
 
 <a href="https://saptha-event-portal-762269836348.us-east4.run.app/" target="_blank">
-  <img src="static/img/hero-banner.png" width="800" alt="SapthaEvent Banner" style="border-radius:14px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);" />
+  <img src="static/img/hero-banner.webp" width="800" alt="SapthaEvent Banner" style="border-radius:14px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);" />
 </a>
 
 <br/><br/>
@@ -52,7 +52,7 @@
 
 ## 📸 Platform Showcase
 
-<img src="static/img/feature-showcase.png" width="850" alt="Feature Showcase" style="border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2);" />
+<img src="static/img/feature-showcase.webp" width="850" alt="Feature Showcase" style="border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2);" />
 
 </div>
 

@@ -1175,7 +1175,7 @@ h1,h2,h3,h4,h5,h6 {
 <!-- ═══ NAVIGATION ═══ -->
 <nav class="topnav">
   <a href="/" class="brand-mark">
-    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
+    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University">
     <span class="brand-text">SapthaEvent</span>
   </a>
   <div class="nav-items">
@@ -1378,7 +1378,7 @@ h1,h2,h3,h4,h5,h6 {
       <div class="d-flex flex-wrap align-items-start gap-4">
         {% if reg.days_until is not none and 0 <= reg.days_until <= 1 %}
         <div class="qr-container">
-          <img src="/ticket/qr/{{ reg.id }}" alt="QR Code" data-h-error="participant/dashboard:8">
+          <img loading="lazy" src="/ticket/qr/{{ reg.id }}" alt="QR Code" data-h-error="participant/dashboard:8">
           <div class="qr-label">{{ reg.get('reg_id', reg.id)[:20] }}</div>
         </div>
         {% else %}

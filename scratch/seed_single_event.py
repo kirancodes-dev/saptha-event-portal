@@ -153,12 +153,12 @@ def main():
         'status': 'active',
         'active_round': 1,
         'registration_count': 5,
-        'banner_url': '/static/img/event_slide1.png',
+        'banner_url': '/static/img/event_slide1.webp',
         'media_urls': [
-            '/static/img/event_slide1.png',
-            '/static/img/event_slide2.png',
-            '/static/img/event_slide3.png',
-            '/static/img/event_slide4.png'
+            '/static/img/event_slide1.webp',
+            '/static/img/event_slide2.webp',
+            '/static/img/event_slide3.webp',
+            '/static/img/event_slide4.webp'
         ],
         'staff': [
             {'name': 'Event Coordinator', 'email': 'coordinator@example.com', 'role': 'EventCoordinator'},

@@ -275,7 +275,7 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
           {% for url in event.media_urls[1:] %}
           {% if url %}
           <div class="col-6 col-md-4">
-            <img src="{{ url }}" class="gallery-img" alt="Event image" onerror="this.style.display='none'">
+            <img loading="lazy" src="{{ url }}" class="gallery-img" alt="Event image" onerror="this.style.display='none'">
           </div>
           {% endif %}
           {% endfor %}
@@ -383,7 +383,7 @@ body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#1e293b;}
       <div class="info-card text-center mb-4">
         <div class="section-title justify-content-center"><i class="fas fa-qrcode" style="color:var(--blue);"></i>Share This Event</div>
         <div class="mb-3">
-          <img src="/event/{{ event.id }}/qr" width="160" height="160" alt="Event QR" style="border-radius:10px;border:1px solid #e2e8f0;padding:6px;">
+          <img loading="lazy" src="/event/{{ event.id }}/qr" width="160" height="160" alt="Event QR" style="border-radius:10px;border:1px solid #e2e8f0;padding:6px;">
         </div>
         <p class="text-muted small mb-3">Scan to open this brochure on any device</p>
         <div class="d-flex gap-2 justify-content-center flex-wrap">

@@ -427,7 +427,7 @@
                         <div class="qr-section">
                             <div class="qr-label">Scan at venue entry</div>
                             <div class="qr-wrapper">
-                                <img src="data:image/png;base64,{{ qr_b64 }}"
+                                <img loading="lazy" src="data:image/png;base64,{{ qr_b64 }}"
                                      alt="Ticket QR code for {{ reg.get('reg_id') }}">
                             </div>
                             <div class="ticket-id">{{ reg.get('reg_id', 'N/A') }}</div>
@@ -458,7 +458,7 @@
 
                     <!-- Footer -->
                     <div class="ticket-footer">
-                        <img src="/static/snpsu-logo.png"
+                        <img loading="eager" src="/static/snpsu-logo.png"
                              alt="Sapthagiri NPS University"
                              style="height:18px;width:auto;object-fit:contain;margin:0 4px;"
                              data-h-error="participant/ticket:2">

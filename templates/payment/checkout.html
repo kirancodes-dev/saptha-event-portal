@@ -25,7 +25,7 @@
 <div class="checkout-card row g-0">
     <div class="col-md-5 left-panel d-flex flex-column justify-content-between">
         <div>
-            <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;margin-bottom:24px;">
+            <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;margin-bottom:24px;">
             <h4 class="fw-bold mb-4"><i class="fas fa-shopping-cart me-2"></i> Order Summary</h4>
             <div class="mb-3">
                 <p class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Event</p>
@@ -58,10 +58,10 @@
         <div id="rzp-section">
             <p class="text-muted mb-4">Click below to open the secure Razorpay payment window. You can pay via UPI, Card, Net Banking, or Wallet.</p>
             <div class="d-flex gap-3 mb-4 flex-wrap">
-                <img src="https://cdn.razorpay.com/static/assets/logo/upi.svg" alt="UPI" height="28">
-                <img src="https://cdn.razorpay.com/static/assets/logo/visa.svg" alt="Visa" height="28">
-                <img src="https://cdn.razorpay.com/static/assets/logo/mastercard.svg" alt="Mastercard" height="28">
-                <img src="https://cdn.razorpay.com/static/assets/logo/netbanking.svg" alt="Netbanking" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/upi.svg" alt="UPI" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/visa.svg" alt="Visa" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/mastercard.svg" alt="Mastercard" height="28">
+                <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/netbanking.svg" alt="Netbanking" height="28">
             </div>
             <button id="pay-btn" class="rzp-btn mb-3">
                 <i class="fas fa-shield-alt me-2"></i> Pay ₹{{ amount }} Securely

@@ -498,7 +498,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
 <nav class="snav navbar navbar-expand-lg">
 <div class="container">
   <a class="navbar-brand" href="/">
-    <img src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:42px;width:auto;object-fit:contain;filter: drop-shadow(0 0 8px rgba(255,255,255,0.15));">
+    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:42px;width:auto;object-fit:contain;filter: drop-shadow(0 0 8px rgba(255,255,255,0.15));">
     <div>
       <span class="brand-n">SapthaEvent</span>
       <span class="brand-s">Sapthagiri NPS University</span>
@@ -696,7 +696,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; color: var(--text-pr
 
         <!-- Banner -->
         <div class="ev-banner">
-          <img src="{{ event.banner_url | default('') }}"
+          <img loading="lazy" src="{{ event.banner_url | default('') }}"
                alt="{{ event.title }}"
                data-h-error="public/home:4">
           <div class="ev-banner-overlay"></div>
@@ -891,7 +891,7 @@ function showDetails(eventId) {
   document.getElementById('detailModalRegBtn').href = '/event/' + eventId;
   let html = '';
   if (ev.banner_url) {
-    html += `<img src="${ev.banner_url}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:16px;" data-h-error="se:hide">`;
+    html += `<img loading="lazy" src="${ev.banner_url}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:16px;" data-h-error="se:hide">`;
   }
   // Info grid
   html += `<div class="row g-3 mb-4">`;

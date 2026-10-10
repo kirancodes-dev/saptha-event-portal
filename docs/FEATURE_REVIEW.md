@@ -1982,8 +1982,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: two joins to a team with two free places, run concurrently, keep both members.
 
 #### UPG-53 — The home page shows a fake hackathon when there are no events
-- **Status:** TODO
-- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-53: …" on `production-ready` (parent `486bc08`)
+- **Evidence:** `app.py:698`, `templates/index.html:1186-1196`
 - **Problem:** [C] When no event is listed, the home page builds a demo event (`app.py:704-706`, id `demo-hackathon-2026`, "SapthaHack 2026 — National AI Hackathon") and shows it as if it were real. Its links go nowhere real.
 - **Who benefits:** visitors (no fake event); the university (nothing misleading on launch day).
 - **What to build:** with no events, the home page shows an empty state ("No upcoming events yet") instead.
@@ -1991,6 +1992,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
   1. Test: with no events, `/` returns 200, shows the empty state and doesn't contain `demo-hackathon-2026` or "SapthaHack 2026".
+- **To test later:**
+  - Verify `/` returns 200, renders the empty state ("No Events Currently Listed") and contains neither `demo-hackathon-2026` nor "SapthaHack 2026" when no events exist in the database.
 
 #### UPG-54 — The Android app loads an old Railway URL
 - **Status:** TODO
@@ -2237,6 +2240,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-26: …" (parent `715dc88`) | UPG-26 | **UPG-26 BUILT (untested).** One submit per click on every form through `static/js/forms.js` loaded by `templates/layouts/document.html`; visible labels/`aria-label` across form inputs; field-level error messages and sticky form values on `/forms/register/<event_id>`; server-side idempotency in `routes_forms.submit_form` via `services_idempotency.py` and `submission_keys` table (migration `0004_submission_keys`); checkout payment button locked until response. ruff clean; app starts. |
 | 2026-10-10 | "UPG-27: …" (parent `3c9f9d1`) | UPG-27 | **UPG-27 BUILT (untested).** `static/img` compressed to WebP (797 KB total across 6 WebP files + 1 QR PNG, well under 1.5 MB); `README.md` and scratch script updated; all 111 `<img>` tags in templates have `alt` and `loading` attributes (`eager` on first-screen brand logos, `lazy` elsewhere); `:focus-visible` outline pinned in `static/css/global.css`. ruff clean; app starts. |
 | 2026-10-10 | "UPG-28: …" (parent `68cafdf`) | UPG-28 | **UPG-28 BUILT (untested).** Global mobile responsive overflow safeguard in `templates/layouts/document.html` (`max-width: 100%; overflow-x: hidden;`); responsive certificate container scaling on mobile viewports; verified student journey templates (home, details, registration, payment checkout, ticket, feedback, certificate) and scanner templates on 375px phone layout. ruff clean; app starts. |
+| 2026-10-10 | "UPG-53: …" (parent `486bc08`) | UPG-53 | **UPG-53 BUILT (untested).** Removed hard-coded `demo-hackathon-2026` fallback from `app.py`. With no events, `/` passes `events = []` and renders the template's clean empty state instead of a fake hackathon. ruff clean; app starts. |
 
 
 

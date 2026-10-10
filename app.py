@@ -695,19 +695,6 @@ def home():
             'event_id': d.get('id', ''),
         })
 
-    if not events and not (q or filter_dept or filter_type or filter_mode or filter_fee):
-        events = [{
-            'id': 'demo-hackathon-2026',
-            'title': 'SapthaHack 2026 — National AI Hackathon',
-            'description': 'Flagship 36-hour hackathon organized by Sapthagiri NPS University.',
-            'category': 'Technical',
-            'date': '2026-08-15',
-            'venue': 'APJ Abdul Kalam Auditorium, SNPSU Campus',
-            'entry_fee': 0,
-            'registration_count': 124,
-            'is_closed': False
-        }]
-
     _ctx = {
         'events': events,
         'current_date': current_date,

@@ -52,3 +52,9 @@ saptha-event-portal-source*/
 *.zip
 
 
+
+# Generated documents (generate_*.py output) — never track, never serve from static/
+static/reports/
+reports/*.pdf
+reports/*.docx
+reports/snpsu-logo-bw.png

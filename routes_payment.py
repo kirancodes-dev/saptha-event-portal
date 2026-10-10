@@ -94,7 +94,8 @@ def create_order():
         return jsonify({'error': 'Event not found'}), 404
 
     try:
-        price = server_price(_db(), event_id, event_doc.to_dict() or {}, body.get('coupon', ''))
+        coupon_val = body.get('coupon') or body.get('coupon_code', '')
+        price = server_price(_db(), event_id, event_doc.to_dict() or {}, coupon_val)
     except PaymentError as exc:
         return jsonify({'error': str(exc)}), exc.status
     if price['amount_paise'] < 100:
@@ -225,6 +226,60 @@ def _use_coupon(event_id, code):
             _db().collection('coupons').document(doc.id).update({'current_uses': firestore.Increment(1)})
     except Exception as exc:
         log_action(_db(), "COUPON_USE_FAILED", f"{code} on {event_id}: {exc}")
+
+
+@payment_bp.route('/price_preview', methods=['POST'])
+def price_preview():
+    """Return server price breakdown (fee, discount, total) for an event and coupon."""
+    data = request.get_json(silent=True) or {}
+    event_id = str(data.get('event_id', '')).strip()
+    coupon_code = str(data.get('coupon') or data.get('coupon_code') or '').strip().upper()
+
+    if not event_id:
+        return jsonify({'valid': False, 'error': 'event_id is required'}), 400
+
+    event_doc = _db().collection('events').document(event_id).get()
+    if not event_doc.exists:
+        return jsonify({'valid': False, 'error': 'Event not found'}), 404
+
+    event_data = event_doc.to_dict() or {}
+    base_fee = float(event_data.get('entry_fee', 0) or 0)
+
+    if not coupon_code:
+        try:
+            price = server_price(_db(), event_id, event_data, '')
+            return jsonify({
+                'valid': True,
+                'fee': price['fee'],
+                'discount': 0.0,
+                'total': price['amount_inr'],
+                'amount_inr': price['amount_inr'],
+                'coupon_code': '',
+            })
+        except PaymentError as exc:
+            return jsonify({'valid': False, 'error': str(exc)}), exc.status
+
+    try:
+        price = server_price(_db(), event_id, event_data, coupon_code)
+        return jsonify({
+            'valid': True,
+            'fee': price['fee'],
+            'discount': price['discount'],
+            'total': price['amount_inr'],
+            'amount_inr': price['amount_inr'],
+            'coupon_code': price['coupon_code'],
+            'multiplier': price.get('multiplier', 1.0),
+            'reason': price.get('reason', ''),
+        })
+    except PaymentError as exc:
+        return jsonify({
+            'valid': False,
+            'error': str(exc),
+            'fee': base_fee,
+            'discount': 0.0,
+            'total': base_fee,
+            'amount_inr': base_fee,
+        }), 200
 
 
 # =========================================================

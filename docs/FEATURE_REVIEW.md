@@ -2028,8 +2028,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Verify `/profile/` displays the 2FA section with "Set Up 2FA" linking `/auth/2fa/setup` when 2FA dependencies are available, and omits the section when unavailable.
 
 #### UPG-56 — Checkout has no coupon field
-- **Status:** TODO
-- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-56: …" on `production-ready` (parent `21d107a`)
+- **Evidence:** `routes_payment.py:97,231-285`, `templates/payment/checkout.html:45-140`
 - **Problem:** [C] The server applies a coupon validated on the server when `create_order` gets one (`services_payments.server_price`, `services_payments.py:77`; uses held since UPG-36), but no template or script sends one: `grep -rni coupon templates static/js` finds only marketing copy.
 - **Who benefits:** organisers running discounts; students with a code.
 - **What to build:** a coupon field on the checkout page with an "Apply" button that shows the server's price (fee, discount, total) before paying, and sends the code with the order. The server's price stays the only price.
@@ -2038,6 +2039,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: the checkout page has a coupon input and its script sends the code with the order.
   2. Test: the price preview with a valid code shows the discounted total from the server; an invalid code shows the server's error and the full price.
+- **To test later:**
+  - Verify `templates/payment/checkout.html` renders the coupon input and "Apply" button, and passes `coupon` with `/payment/create_order`.
+  - Verify `/payment/price_preview` returns `valid: True` and discounted total for a valid coupon code, and `valid: False` with server error and full price for an invalid code.
 
 #### UPG-57 — Placement drives: eligibility rules and shortlist rounds
 - **Status:** TODO
@@ -2251,6 +2255,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-53: …" (parent `486bc08`) | UPG-53 | **UPG-53 BUILT (untested).** Removed hard-coded `demo-hackathon-2026` fallback from `app.py`. With no events, `/` passes `events = []` and renders the template's clean empty state instead of a fake hackathon. ruff clean; app starts. |
 | 2026-10-10 | "UPG-54: …" (parent `7c0bd90`) | UPG-54 | **UPG-54 BUILT (untested).** Android Capacitor webview config generated from `BASE_URL` at build time (`scripts/configure_capacitor.py`, `npm run cap:config`); retired Railway host removed from `capacitor.config.json`; `allowNavigation` restricted strictly to configured host; documented in `docs/DEPLOY.md`. ruff clean; app starts. |
 | 2026-10-10 | "UPG-55: …" (parent `2acf8a5`) | UPG-55 | **UPG-55 BUILT (untested).** Google sign-in linked on `/login` only when Google OAuth is configured (`google_oauth_configured` context processor); TOTP Two-Factor Authentication management (setup link / disable modal) displayed on `/profile/` when 2FA dependencies are available (`twofa_available`). ruff clean; app starts. |
+| 2026-10-10 | "UPG-56: …" (parent `21d107a`) | UPG-56 | **UPG-56 BUILT (untested).** Coupon input and "Apply" button on `/payment/checkout/<event_id>`; server price preview endpoint (`POST /payment/price_preview`) returning server fee, discount and total; applied coupon passed to `POST /payment/create_order`. ruff clean; app starts. |
 
 
 

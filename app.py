@@ -416,7 +416,8 @@ for _bearer_bp in (api_v1_bp,):
         logger.warning("CSRF exempt failed for %s: %s", _bearer_bp.name, exc)
 
 # Razorpay calls its webhook server to server; its signature authenticates it (UPG-30)
-from routes_payment import razorpay_webhook  # noqa: E402
+from routes_payment import price_preview, razorpay_webhook  # noqa: E402
+csrf.exempt(price_preview)
 csrf.exempt(razorpay_webhook)
 # The scheduler calls the cron endpoint with a shared secret, not a session (UPG-07)
 csrf.exempt(cron_bp)

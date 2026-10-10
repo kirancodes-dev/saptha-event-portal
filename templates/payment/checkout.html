@@ -42,9 +42,31 @@
             </div>
         </div>
         <div class="mt-4 pt-4 border-top border-secondary">
-            <div class="d-flex justify-content-between align-items-center">
+            <!-- Coupon Code Section -->
+            <div class="mb-3">
+                <label for="coupon-input" class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Coupon Code</label>
+                <div class="input-group">
+                    <input type="text" id="coupon-input" class="form-control form-control-sm text-uppercase" placeholder="Have a coupon code?" aria-label="Coupon code" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff;">
+                    <button class="btn btn-sm btn-outline-warning" type="button" id="apply-coupon-btn" style="border-radius: 0 6px 6px 0;">Apply</button>
+                </div>
+                <div id="coupon-feedback" class="small mt-1 d-none"></div>
+            </div>
+
+            <!-- Price Breakdown -->
+            <div id="price-breakdown">
+                <div class="d-flex justify-content-between align-items-center mb-1 text-light small opacity-75">
+                    <span>Base Fee</span>
+                    <span id="base-fee-display">₹{{ amount }}</span>
+                </div>
+                <div id="discount-row" class="d-flex justify-content-between align-items-center mb-1 text-success small d-none">
+                    <span>Discount</span>
+                    <span id="discount-display">-₹0</span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary">
                 <span>Total Amount</span>
-                <span class="fs-3 fw-bold" style="color:#c9a45e;">₹{{ amount }}</span>
+                <span class="fs-3 fw-bold" id="total-amount-display" style="color:#c9a45e;">₹{{ amount }}</span>
             </div>
         </div>
     </div>
@@ -64,7 +86,7 @@
                 <img loading="lazy" src="https://cdn.razorpay.com/static/assets/logo/netbanking.svg" alt="Netbanking" height="28">
             </div>
             <button id="pay-btn" class="rzp-btn mb-3">
-                <i class="fas fa-shield-alt me-2"></i> Pay ₹{{ amount }} Securely
+                <i class="fas fa-shield-alt me-2"></i> <span id="pay-btn-text">Pay ₹{{ amount }} Securely</span>
             </button>
             <div id="sim-note" class="sim-note d-none">
                 <i class="fas fa-info-circle me-2"></i>
@@ -76,7 +98,7 @@
         <form id="sim-form" action="/payment/process" method="POST" class="d-none">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="event_id" value="{{ event_id }}">
-            <input type="hidden" name="amount" value="{{ amount }}">
+            <input type="hidden" name="amount" id="sim-amount" value="{{ amount }}">
         </form>
 
         <div class="text-center mt-3">
@@ -89,22 +111,96 @@
 
 <script nonce="{{ csp_nonce() }}">
 (function () {
-    var btn     = document.getElementById('pay-btn');
-    var simNote = document.getElementById('sim-note');
-    var simForm = document.getElementById('sim-form');
-    var csrf    = document.querySelector('meta[name="csrf-token"]').content;
-    var eventId = "{{ event_id }}";
-    var amountInr = {{ amount }};
+    var btn        = document.getElementById('pay-btn');
+    var payBtnText = document.getElementById('pay-btn-text');
+    var simNote    = document.getElementById('sim-note');
+    var simForm    = document.getElementById('sim-form');
+    var simAmount  = document.getElementById('sim-amount');
+    var csrf       = document.querySelector('meta[name="csrf-token"]').content;
+    var eventId    = "{{ event_id }}";
+    var baseAmount = {{ amount }};
+    var currentTotal = baseAmount;
+    var appliedCoupon = '';
+
+    var couponInput        = document.getElementById('coupon-input');
+    var applyCouponBtn     = document.getElementById('apply-coupon-btn');
+    var couponFeedback    = document.getElementById('coupon-feedback');
+    var discountRow        = document.getElementById('discount-row');
+    var discountDisplay    = document.getElementById('discount-display');
+    var totalAmountDisplay = document.getElementById('total-amount-display');
+
+    if (applyCouponBtn && couponInput) {
+        applyCouponBtn.addEventListener('click', function () {
+            var code = couponInput.value.trim().toUpperCase();
+            if (!code) {
+                couponFeedback.className = 'small mt-1 text-danger';
+                couponFeedback.textContent = 'Please enter a coupon code.';
+                couponFeedback.classList.remove('d-none');
+                return;
+            }
+            applyCouponBtn.disabled = true;
+            applyCouponBtn.textContent = 'Checking…';
+
+            fetch('/payment/price_preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                credentials: 'same-origin',
+                body: JSON.stringify({ event_id: eventId, coupon: code })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                applyCouponBtn.disabled = false;
+                applyCouponBtn.textContent = 'Apply';
+                couponFeedback.classList.remove('d-none');
+                if (data.valid) {
+                    appliedCoupon = data.coupon_code || code;
+                    currentTotal = data.total;
+                    couponFeedback.className = 'small mt-1 text-success';
+                    couponFeedback.textContent = '✓ Coupon applied: ₹' + escapeHtml(data.discount) + ' off';
+                    discountRow.classList.remove('d-none');
+                    discountDisplay.textContent = '-₹' + escapeHtml(data.discount);
+                    totalAmountDisplay.textContent = '₹' + escapeHtml(data.total);
+                    if (simAmount) { simAmount.value = data.total; }
+                    if (payBtnText) {
+                        payBtnText.textContent = 'Pay ₹' + escapeHtml(data.total) + ' Securely';
+                    }
+                } else {
+                    appliedCoupon = '';
+                    currentTotal = data.total || baseAmount;
+                    couponFeedback.className = 'small mt-1 text-danger';
+                    couponFeedback.textContent = '✗ ' + (data.error || 'Invalid coupon code');
+                    discountRow.classList.add('d-none');
+                    totalAmountDisplay.textContent = '₹' + escapeHtml(currentTotal);
+                    if (simAmount) { simAmount.value = currentTotal; }
+                    if (payBtnText) {
+                        payBtnText.textContent = 'Pay ₹' + escapeHtml(currentTotal) + ' Securely';
+                    }
+                }
+            })
+            .catch(function () {
+                applyCouponBtn.disabled = false;
+                applyCouponBtn.textContent = 'Apply';
+                couponFeedback.className = 'small mt-1 text-danger';
+                couponFeedback.textContent = 'Could not validate coupon. Try again.';
+                couponFeedback.classList.remove('d-none');
+            });
+        });
+    }
 
     btn.addEventListener('click', function () {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Opening payment…';
 
+        var payload = { event_id: eventId };
+        if (appliedCoupon) {
+            payload.coupon = appliedCoupon;
+        }
+
         fetch('/payment/create_order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
             credentials: 'same-origin',
-            body: JSON.stringify({ event_id: eventId }),
+            body: JSON.stringify(payload),
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
@@ -144,8 +240,6 @@
                         else { alert(res.message || res.error || 'Verification failed'); resetBtn(); }
                     })
                     .catch(function () {
-                        // Razorpay took the payment but our check didn't answer: keep the
-                        // button locked so nobody pays twice (UPG-26). The webhook completes it.
                         btn.innerHTML = '<i class="fas fa-hourglass-half me-2"></i> Payment received, confirming…';
                         alert('Your payment went through, but we could not confirm it just now. ' +
                               'Check your dashboard in a minute; do not pay again.');
@@ -160,7 +254,7 @@
 
     function resetBtn() {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-shield-alt me-2"></i> Pay ₹' + escapeHtml(amountInr) + ' Securely';
+        btn.innerHTML = '<i class="fas fa-shield-alt me-2"></i> <span id="pay-btn-text">Pay ₹' + escapeHtml(currentTotal) + ' Securely</span>';
     }
 })();
 </script>

@@ -435,6 +435,8 @@ def inject_auth_features():
     return {
         'google_oauth_configured': google_configured,
         'twofa_available': twofa_available,
+        # Help and privacy requests (D-4, UPG-42); unset, pages show no address
+        'support_email': (os.environ.get('SUPPORT_EMAIL') or '').strip(),
     }
 
 

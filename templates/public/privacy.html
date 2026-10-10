@@ -63,7 +63,8 @@
     <li>Right to erasure (where not required for legal/academic purposes)</li>
     <li>Right to lodge a complaint with the Data Protection Board of India</li>
   </ul>
-  <p>To exercise your rights, email: <a href="mailto:sapthhack@gmail.com" style="color:#1a2557;">sapthhack@gmail.com</a></p>
+  {% if support_email %}<p>To exercise your rights, email: <a href="mailto:{{ support_email }}" style="color:#1a2557;">{{ support_email }}</a></p>
+  {% else %}<p>To exercise your rights, use your <a href="/profile/" style="color:#1a2557;">profile page</a> or contact the university office.</p>{% endif %}
 
   <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">6. Cookies & Sessions</h2>
   <p>
@@ -80,7 +81,7 @@
   <h2 style="color:#1a2557;font-size:18px;font-weight:700;margin-top:32px;">8. Contact</h2>
   <p>
     <strong>Data Controller:</strong> Sapthagiri NPS University, Bengaluru, Karnataka<br>
-    <strong>Email:</strong> <a href="mailto:sapthhack@gmail.com" style="color:#1a2557;">sapthhack@gmail.com</a><br>
+    {% if support_email %}<strong>Email:</strong> <a href="mailto:{{ support_email }}" style="color:#1a2557;">{{ support_email }}</a><br>{% endif %}
     <strong>Address:</strong> Hesarghatta Main Rd, Chikkabanavara, Bengaluru - 560090
   </p>
 

@@ -1850,8 +1850,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **759 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-42 — The privacy, terms and payment-failed pages give the old Gmail account as the contact address
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-42: …" on `production-ready` (parent `e82943b`)
 - **Problem:** Found 2026-10-07 while building UPG-41 [C]. Three public pages tell people to write to the old mail account, the one whose password was changed on 2026-09-30 (BLK-01, UPG-41):
   - `templates/public/privacy.html:60` (exercising data rights) and `:77`;
   - `templates/public/terms.html:68`;
@@ -1862,6 +1862,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Needs from the owner:** ~~the contact address (D-4).~~ Decided 2026-10-10: `events@your-university-domain` (D-4).
 - **Files touched:** `config.py` or a context processor in `app.py`, the three templates, `.env.example`, tests.
 - **Effort:** S · **Depends on:** none · **Risk:** none.
+- **What was built (2026-10-10, owner's second run; D-4):** the address comes from the `SUPPORT_EMAIL` setting through a template context value (`app.py`, `inject_auth_features`). The privacy page (rights and contact), terms page (contact) and payment-failed page show it as a `mailto:` link when it's set, and no address when it isn't (the privacy page then points to the profile page's data tools). The old Gmail address is gone from every tracked file. `.env.example` documents `SUPPORT_EMAIL` with the placeholder `events@your-university-domain`; the owner sets the real value in the deployment. Checked by hand [R]: with it unset, the three pages answer 200 with no `mailto:`; set to a test address, all three show it.
+- **To test later:** criteria 1–2.
 - **Acceptance criteria:**
   1. Test: with `SUPPORT_EMAIL` set, the privacy, terms and payment-failed pages show it, and no tracked template outside `functions/` and `scratch/` contains the old account's address.
   2. Test: with it unset, those pages render without a `mailto:` link.
@@ -2344,3 +2346,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-59: …" (parent `3477667`) | UPG-59 | **UPG-59 BUILT (untested).** The five 500s fixed, none removed: a judge entry without a name on the AI match page; redirects to `public.event_details`/`public.index` (removed blueprint) on exams and hackathon pages; a division by zero on the XP leaderboard; a `None` sort key in the SPOC stats API. A crawl of every GET route as six roles answers no 500. ruff clean; app starts. |
 | 2026-10-10 | "UPG-50: …" (parent `0db8a4f`) | UPG-50 | **UPG-50 BUILT (untested).** Every value put into email HTML is escaped (`_e()` in `utils_email.py` and `tasks/scheduled_tasks.py`): all account, event, payment, refund, result, broadcast and room emails, email titles, and the briefing, 3-day and velocity emails. Subjects stay plain text. Certificate part deferred (owner, 2026-10-10): the certificate email is unchanged. Email tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-60: …" (parent `59f081f`) | UPG-60, D-8 | **UPG-60 BUILT (untested).** Favicon added; the catalogue banner and checkout payment logos no longer point at missing or refused files; the reels and streams pages show event images instead of blocked cartoon sample videos; the create-event script's duplicate `let` (which stopped the whole wizard script from running) and the round panel's missing-field listener fixed; the calendar's missing CSS link and unknown option removed; SVG height fixed. Chromium pass over 254 page loads: no page error, no static 404, no CSP violation. **New decision D-8** (keep the demo reels/streams pages public?). ruff clean; app starts. |
+| 2026-10-10 | "UPG-42: …" (parent `e82943b`) | UPG-42 | **UPG-42 BUILT (untested).** The privacy, terms and payment-failed pages take their contact address from `SUPPORT_EMAIL` and show none when it's unset; the old Gmail address is gone from the repository; `.env.example` has the placeholder (D-4). Checked both cases by hand; ruff clean; app starts. |

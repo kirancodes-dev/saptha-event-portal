@@ -38,10 +38,12 @@
       </a>
     </div>
 
+    {% if support_email %}
     <p style="color:#9ca3af;font-size:12px;text-align:center;margin:20px 0 0;">
       Need help? Email us at
-      <a href="mailto:sapthhack@gmail.com" style="color:#1a2557;">sapthhack@gmail.com</a>
+      <a href="mailto:{{ support_email }}" style="color:#1a2557;">{{ support_email }}</a>
     </p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

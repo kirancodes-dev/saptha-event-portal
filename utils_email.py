@@ -473,7 +473,8 @@ def _send(to_email, subject: str, html: str,
 def send_registration_confirmed_email(to_email: str, name: str, event_title: str,
                                        event_date: str = '', venue: str = '',
                                        is_new_user: bool = False,
-                                       raw_password: str | None = None) -> bool:
+                                       raw_password: str | None = None,
+                                       added_by: str = '', team_name: str = '') -> bool:
     """
     Sent immediately at registration. Simple confirmation — no QR, no ticket ID.
     The actual entry ticket (with QR) is sent 1 day before the event.
@@ -504,7 +505,9 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
         details += f"<tr><td style='color:#64748b;padding:4px 0;'>Venue</td><td style='font-weight:600;color:#1a2557;'>📍 {_e(venue)}</td></tr>"
     html = _html_wrapper(f"""
         <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
-        <p style="color:#475569;">Your registration for
+        <p style="color:#475569;">{
+            f'<strong>{_e(added_by)}</strong> added you to team <strong>{_e(team_name)}</strong> for'
+            if added_by else 'Your registration for'}
            <strong style="color:#1a2557;">{_e(event_title)}</strong> is confirmed!</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:16px;margin:16px 0;">

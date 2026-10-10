@@ -754,6 +754,14 @@ def submit_form(event_id):
             venue=event_data.get('venue', ''),
             is_new_user=is_new_user,
         )
+        # Each team member the lead listed hears they were added (UPG-48)
+        for m in reg_data.get('members') or []:
+            m_email = str((m or {}).get('email') or '').strip().lower()
+            if m_email and m_email != email:
+                send_registration_confirmed_email(
+                    m_email, m.get('name') or 'Participant', event_data.get('title', ''),
+                    event_date=event_data.get('date', ''), venue=event_data.get('venue', ''),
+                    added_by=full_name, team_name=team_name)
         if phone and WA_ENABLED:
             try:
                 send_ticket_whatsapp(

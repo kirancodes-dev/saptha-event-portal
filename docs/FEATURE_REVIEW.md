@@ -1963,13 +1963,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet** (owner's call).
 
 #### UPG-48 — Team members get no confirmation, reminder or notice
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-48: …" on `production-ready` (parent `457e2b0`)
 - **Problem:** Found while building UPG-31 [C]. Since UPG-08 a team's members are on the registration and can open its ticket, but every message goes to the lead only: the confirmation (`routes_forms.py:702`), the day-before ticket and the 3-day reminder (`tasks/scheduled_tasks.py:81,279`), and the change and cancellation notices (`services_venue.py:550`, `services_workflow.py:300`). Members find out only from the lead.
 - **Who benefits:** every team member.
 - **What to build:** each member with an email gets the day-before ticket (with the same QR) and the change and cancellation notices, once each, keyed per person; the confirmation tells members they were added.
 - **Files touched:** `tasks/scheduled_tasks.py`, `services_venue.py`, `services_workflow.py`, `routes_forms.py`, `routes_teams.py`, tests.
 - **Effort:** S · **Depends on:** UPG-08, UPG-31 · **Risk:** more email volume (Brevo's free tier allows 300 a day).
+- **What was built (2026-10-10, owner's second run):**
+  - **One list of recipients per registration:** `services_recipients.registration_people` gives the lead and every team member with an email, each once (case-insensitive), with name and phone.
+  - **Confirmation:** each member the lead listed gets the confirmation, saying who added them to which team (`routes_forms.submit_form`; `utils_email.send_registration_confirmed_email` gained `added_by`/`team_name`); someone who joins with the invite code gets it too (`routes_teams.join_team`; a repeat join stops before it, so once).
+  - **Day-before ticket (with the entry QR) and 3-day reminder** (`tasks/scheduled_tasks.py`): sent to each person once; the registration remembers who has them (`ticket_sent_to`, `early_reminder_sent_to`) as well as the old `ticket_sent`/`early_reminder_sent` flags. The WhatsApp reminder goes to each person with a phone.
+  - **Change and cancellation notices** (`services_venue.notify_event_details_changed`, `services_workflow._notify_participants_of_cancellation`): every person on each registration, under the existing per-email idempotency keys.
+  - Checked by hand [R] with a team of three (one email in capitals): the day-before and 3-day jobs run twice, a venue change sent twice, and a cancellation sent twice each reach each member exactly once. Notice, cron, team, form, account-email and workflow tests pass.
+  - Not changed: people who join a team after its day-before ticket went out don't get a late ticket (they can open it from the team page).
+- **To test later:** criteria 1–2, plus the member confirmation at registration and on joining.
 - **Acceptance criteria:**
   1. Test: for a team of three, the day-before reminder through the cron endpoint emails each member once.
   2. Test: a venue change and a cancellation reach each member once.
@@ -2360,3 +2368,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-44: …" (parent `737bd0c`) | UPG-44 | **UPG-44 BUILT (untested).** An empty or missing payment status reads back as written, not as the column default `unpaid`; an explicit `unpaid` and the `== unpaid` filter are unchanged. Checked on SQLite and PostgreSQL 16; adapter and payment tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-46: …" (parent `29d859b`) | UPG-46 | **UPG-46 BUILT (untested).** The coordinators' briefing and the velocity alert link from `BASE_URL`, never `sapthaevent.in`. Checked by hand with a test `BASE_URL`; ruff clean; app starts. |
 | 2026-10-10 | "UPG-47: …" (parent `2aeef46`) | UPG-47 | **UPG-47 BUILT (untested).** Events created without times keep their start and end empty (no save time); pages show "Time to be announced"; a time-less booking still blocks its room on its date. Existing rows unchanged. Checked by hand; venue, calendar, adapter and cron tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-48: …" (parent `457e2b0`) | UPG-48 | **UPG-48 BUILT (untested).** Team members, not only the lead, get the confirmation (saying who added them), the day-before ticket, the 3-day reminder and the change and cancellation notices, once each per person (`services_recipients.registration_people`; per-person `*_sent_to` lists; per-email notice keys). Checked by hand with a team of three and repeated runs; notice, cron and team tests pass; ruff clean; app starts. |

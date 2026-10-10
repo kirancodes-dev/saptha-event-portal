@@ -147,6 +147,14 @@ def join_team():
         flash("You're already on this team.", "info")
         return redirect(f'/teams/{reg_id}')
     log_action(db, "TEAM_JOIN", f"{me} joined {reg.get('team_name')} ({reg_id})")
+    try:   # the new member's confirmation, once: a repeat join stops at 'already' above (UPG-48)
+        from utils_email import send_registration_confirmed_email
+        send_registration_confirmed_email(
+            me, member['name'] or 'Participant', event.get('title', ''),
+            event_date=event.get('date', ''), venue=event.get('venue', ''),
+            added_by=reg.get('lead_name') or 'Your team lead', team_name=reg.get('team_name', ''))
+    except Exception:
+        pass
     flash(f"You joined {reg.get('team_name')}. Your ticket is on the team page.", "success")
     return redirect(f'/teams/{reg_id}')
 

@@ -92,14 +92,13 @@ def send_24h_reminders(self):
                 if reg.get('is_eliminated'):
                     continue
 
-                name  = reg.get('lead_name', 'Participant')
-                email = reg.get('lead_email', '')
-                phone = (reg.get('lead_phone') or
-                         reg.get('phone') or
-                         (reg.get('members') or [{}])[0].get('phone', ''))
-
-                # Send the actual entry ticket (with QR link) 1 day before
-                if email:
+                # The entry ticket (with the QR) to the lead and every team
+                # member, once each (UPG-48); ticket_sent_to remembers who has it
+                from services_recipients import registration_people
+                already = set(reg.get('ticket_sent_to') or [])
+                for email, name, phone in registration_people(reg):
+                    if email in already:
+                        continue
                     send_ticket_email_task.delay(
                         to_email=email,
                         name=name,
@@ -110,21 +109,22 @@ def send_24h_reminders(self):
                         with_qr=True,
                     )
                     queued_emails += 1
-
-                if phone:
-                    send_reminder_whatsapp_task.delay(
-                        phone=phone,
-                        name=name,
-                        event_title=event_title,
-                        event_date=event_date,
-                        venue=venue,
-                        reg_id=reg_id,
-                    )
-                    queued_wa += 1
+                    if phone:
+                        send_reminder_whatsapp_task.delay(
+                            phone=phone,
+                            name=name,
+                            event_title=event_title,
+                            event_date=event_date,
+                            venue=venue,
+                            reg_id=reg_id,
+                        )
+                        queued_wa += 1
+                    already.add(email)
 
                 try:
                     db.collection('registrations').document(reg_id).update({
                         'ticket_sent':    True,
+                        'ticket_sent_to': sorted(already),
                         'ticket_sent_at': datetime.datetime.utcnow().isoformat(),
                     })
                 except Exception:
@@ -290,65 +290,68 @@ def send_3day_reminders(self):
                 if reg.get('is_eliminated'):
                     continue
 
-                name  = reg.get('lead_name', 'Participant')
-                email = reg.get('lead_email', '')
-                if not email:
-                    continue
-
-                subject = f"Reminder: {event_title} is in 3 Days!"
-                body_text = (
-                    f"Hello {name},\n\n"
-                    f"{event_title} is just 3 days away!\n\n"
-                    f"Date: {event_date}\nVenue: {venue}\n\n"
-                    f"Your entry QR ticket will arrive in your inbox 1 day before the event.\n\n"
-                    f"— SapthaEvent, Sapthagiri NPS University"
-                )
-                body_html = f"""<!DOCTYPE html>
-<html><body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
-<table width="540" cellpadding="0" cellspacing="0"
-       style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;max-width:540px;">
-  <tr><td align="center" style="background:#1a2557;padding:28px 32px 24px;">
-    <h2 style="margin:0;font-size:18px;color:#fff;">📅 Your Event is in 3 Days!</h2>
-  </td></tr>
-  <tr><td style="padding:28px 32px;">
-    <p style="font-size:15px;color:#1e293b;">Hello <strong>{_e(name)}</strong>,</p>
-    <p style="font-size:14px;color:#475569;">
-      <strong>{_e(event_title)}</strong> is happening in just 3 days.
-    </p>
-    <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
-      <tr><td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
-        <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Date</span><br>
-        <strong style="color:#1a2557;">📅 {_e(event_date)}</strong>
+                # The lead and every team member, once each (UPG-48)
+                from services_recipients import registration_people
+                already = set(reg.get('early_reminder_sent_to') or [])
+                for email, name, _phone in registration_people(reg):
+                    if email in already:
+                        continue
+                    subject = f"Reminder: {event_title} is in 3 Days!"
+                    body_text = (
+                        f"Hello {name},\n\n"
+                        f"{event_title} is just 3 days away!\n\n"
+                        f"Date: {event_date}\nVenue: {venue}\n\n"
+                        f"Your entry QR ticket will arrive in your inbox 1 day before the event.\n\n"
+                        f"— SapthaEvent, Sapthagiri NPS University"
+                    )
+                    body_html = f"""<!DOCTYPE html>
+    <html><body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+    <table width="540" cellpadding="0" cellspacing="0"
+           style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;max-width:540px;">
+      <tr><td align="center" style="background:#1a2557;padding:28px 32px 24px;">
+        <h2 style="margin:0;font-size:18px;color:#fff;">📅 Your Event is in 3 Days!</h2>
       </td></tr>
-      <tr><td style="padding:14px 20px;">
-        <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Venue</span><br>
-        <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
+      <tr><td style="padding:28px 32px;">
+        <p style="font-size:15px;color:#1e293b;">Hello <strong>{_e(name)}</strong>,</p>
+        <p style="font-size:14px;color:#475569;">
+          <strong>{_e(event_title)}</strong> is happening in just 3 days.
+        </p>
+        <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
+          <tr><td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+            <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Date</span><br>
+            <strong style="color:#1a2557;">📅 {_e(event_date)}</strong>
+          </td></tr>
+          <tr><td style="padding:14px 20px;">
+            <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Venue</span><br>
+            <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
+          </td></tr>
+        </table>
+        <p style="font-size:13px;color:#64748b;">
+          Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
+        </p>
       </td></tr>
-    </table>
-    <p style="font-size:13px;color:#64748b;">
-      Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
-    </p>
-  </td></tr>
-  <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;">
-    <p style="margin:0;font-size:12px;color:#94a3b8;">
-      SapthaEvent &middot; Sapthagiri NPS University, Bengaluru
-    </p>
-  </td></tr>
-</table></td></tr></table>
-</body></html>"""
+      <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="margin:0;font-size:12px;color:#94a3b8;">
+          SapthaEvent &middot; Sapthagiri NPS University, Bengaluru
+        </p>
+      </td></tr>
+    </table></td></tr></table>
+    </body></html>"""
 
-                send_generic_email_task.delay(
-                    to_email=email,
-                    subject=subject,
-                    body_text=body_text,
-                    body_html=body_html,
-                )
-                queued += 1
+                    send_generic_email_task.delay(
+                        to_email=email,
+                        subject=subject,
+                        body_text=body_text,
+                        body_html=body_html,
+                    )
+                    queued += 1
+                    already.add(email)
 
                 try:
                     db.collection('registrations').document(reg_id).update({
                         'early_reminder_sent':    True,
+                        'early_reminder_sent_to': sorted(already),
                         'early_reminder_sent_at': datetime.datetime.utcnow().isoformat(),
                     })
                 except Exception:

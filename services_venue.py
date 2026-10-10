@@ -547,14 +547,16 @@ def notify_event_details_changed(
         notified_emails = set()
         count = 0
 
+        from services_recipients import registration_people
         for r in regs:
             rd = r.to_dict()
             if (rd.get("status") or "").strip().lower() == "cancelled":
                 continue
-            email = (rd.get("lead_email") or rd.get("student_email") or "").strip().lower()
-            if email and email not in notified_emails:
+            # The lead and every team member, once each (UPG-48)
+            for email, recipient_name, _phone in registration_people(rd):
+                if email in notified_emails:
+                    continue
                 notified_emails.add(email)
-                recipient_name = rd.get("lead_name") or rd.get("name") or "Participant"
                 context = {
                     "recipient_email": email,
                     "recipient_name": recipient_name,

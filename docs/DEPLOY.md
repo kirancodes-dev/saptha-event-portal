@@ -187,3 +187,65 @@ last_error FROM outbox WHERE status <> 'done' ORDER BY next_attempt_at;`.
 retries them itself (each task's `max_retries`); the outbox isn't used and the
 `outbox` job finds nothing to do.
 
+## Backups
+
+A dump of the whole database is taken every day and kept in a **private**
+bucket. It holds every record of every person, so treat the bucket like the
+database itself. Dumps are never committed: `.gitignore` refuses `*.dump`,
+`*.sql`, `*.sql.gz` and `*.backup`.
+
+**What runs:** `scripts/backup_db.sh` runs `pg_dump --format=custom` against
+`DATABASE_URL`, checks the dump can be read, uploads it as
+`saptha-<UTC date and time>.dump` to `BACKUP_BUCKET` (`s3://…` or `gs://…`),
+and deletes dumps older than `BACKUP_RETENTION_DAYS` (default 30). The local
+copy is deleted when it ends. `pg_dump` must be the database server's major
+version or newer.
+
+**Schedule (pick one):**
+
+- **GitHub Actions** (`.github/workflows/backup.yml`, daily at 02:00 IST, or
+  run it by hand from the Actions tab). Repository secrets:
+  `BACKUP_DATABASE_URL` (a read-only database user is enough),
+  `BACKUP_BUCKET`, and for S3 `BACKUP_AWS_ACCESS_KEY_ID`,
+  `BACKUP_AWS_SECRET_ACCESS_KEY` and, for Supabase Storage or another
+  S3-compatible service, `S3_ENDPOINT_URL`. Optional variables:
+  `BACKUP_RETENTION_DAYS`, `BACKUP_AWS_REGION`, `BACKUP_PG_MAJOR` (default 17).
+  It does nothing until the first two secrets are set.
+- **Cloud Run job + Cloud Scheduler:** build a small image from
+  `postgres:17` with the gcloud CLI and this script, run it as a job with
+  `DATABASE_URL` from Secret Manager and `BACKUP_BUCKET=gs://<bucket>/backups`,
+  and trigger the job daily from Cloud Scheduler. The job's service account
+  needs only `roles/storage.objectAdmin` on that bucket.
+
+**Bucket permissions:** no public access (S3 "Block all public access" on;
+GCS "Public access prevention" enforced; a Supabase Storage bucket that is
+not public). Only the backup identity can write, and only the people who run
+restores can read. A lifecycle rule that deletes objects after the retention
+period is a good second guard.
+
+**Storage settings the app shares** (UPG-17, folded in here, D-5):
+`STORAGE_TYPE=s3` with `AWS_*` and, for Supabase Storage,
+`S3_ENDPOINT_URL=https://<project>.supabase.co/storage/v1/s3`. Exports are
+uploaded as private objects and handed out through links that expire after
+15 minutes. In production a storage error is an error: nothing is written to
+the container's disk.
+
+## Restore drill
+
+Run this once before launch and then every term, so a restore is never done
+for the first time in an emergency:
+
+1. Create an **empty** database (a new Supabase project, or
+   `createdb saptha_restore_test`). `scripts/restore_db.sh` refuses a target
+   that already has tables.
+2. `scripts/restore_db.sh s3://<bucket>/backups/saptha-<date>.dump "<target URL>"`
+   (or `gs://…`, or a downloaded file). It prints the rows per table.
+3. Check: `psql "<target URL>" -c "ANALYZE"` then compare row counts with the
+   live database (`SELECT relname, n_live_tup FROM pg_stat_user_tables`), and
+   `DATABASE_URL="<target URL>" alembic current` shows the expected revision.
+4. To recover for real: point the app's `DATABASE_URL` at the restored
+   database and redeploy (or restore into the original after renaming it).
+   Data written after the dump's time is lost, so note the time in the
+   incident record.
+5. Delete the test database when the drill is done; it holds real personal data.
+

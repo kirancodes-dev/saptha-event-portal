@@ -58,3 +58,9 @@ static/reports/
 reports/*.pdf
 reports/*.docx
 reports/snpsu-logo-bw.png
+
+# Database dumps hold everyone's personal data — never commit them (UPG-21)
+*.dump
+*.sql
+*.sql.gz
+*.backup

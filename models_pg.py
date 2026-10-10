@@ -637,6 +637,18 @@ class CouponUse(Base):
     used = Column(Integer, nullable=False, default=0)
 
 
+class NativeDocument(Base):
+    """Documents of collections with no table of their own, stored as JSON
+    (db_adapter's native document store). Built by migrations like every
+    other table (UPG-58)."""
+    __tablename__ = "native_document_store"
+
+    collection_name = Column(String(64), primary_key=True)
+    doc_id          = Column(String(128), primary_key=True)
+    data_json       = Column(Text, nullable=True)
+    updated_at      = Column(DateTime, nullable=True, default=_utcnow)
+
+
 class OutboxTask(Base):
     """A background task that failed or timed out while running inline (no
     broker), kept for the cron endpoint's `outbox` job to retry (UPG-18).

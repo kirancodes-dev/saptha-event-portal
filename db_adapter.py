@@ -520,8 +520,20 @@ def safe_str(val) -> str:
 # ── Native Firestore Store (Multi-Worker Durable Document Store) ────────────
 PURE_FIRESTORE_COLLECTIONS = {'push_subscriptions', 'announcements', 'deletion_requests', 'user_consent', 'waitlists'}
 
+_native_table_ready = False
+
+
 def _ensure_native_table(session):
-    """Ensure persistent native document table exists with audit timestamp."""
+    """Development only, once per process: create the native document table in
+    a database built before it had a model. Production databases get it from
+    migrations and never run DDL here (UPG-58)."""
+    global _native_table_ready
+    if _native_table_ready:
+        return
+    from db_pg import _is_production
+    _native_table_ready = True
+    if _is_production():
+        return
     session.execute(text("""
         CREATE TABLE IF NOT EXISTS native_document_store (
             collection_name VARCHAR(64),

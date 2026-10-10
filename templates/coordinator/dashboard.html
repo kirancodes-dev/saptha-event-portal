@@ -198,10 +198,12 @@
     <h4 class="fw-bold mb-4" style="color:var(--snpsu-blue);">
         <i class="fas fa-tasks me-2 text-warning"></i> Event Control Center
     </h4>
+    {% set search_label = 'Search events by title, venue or category' %}
+    {% include "includes/list_search.html" %}
 
     <!-- ── EVENT CARDS ──────────────────────────────────── -->
     <div class="row g-4">
-        {% for event in events %}
+        {% for event in page.items %}
         <div class="col-lg-4 col-md-6">
             <div class="ev-card d-flex flex-column h-100">
 
@@ -690,9 +692,10 @@
         </div>
 
         {% else %}
-        <p class="text-muted text-center w-100 py-5">No events found. Start building one!</p>
+        <p class="text-muted text-center w-100 py-5">{% if page.q %}No events match “{{ page.q }}”.{% else %}No events found. Start building one!{% endif %}</p>
         {% endfor %}
     </div><!-- /row -->
+    {% include "includes/pagination.html" %}
 
 
     <!-- ══════════════════════════════════════════════════

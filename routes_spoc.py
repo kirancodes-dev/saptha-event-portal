@@ -100,9 +100,12 @@ def dashboard():
         chart_labels.append(data.get('title', doc.id)[:20])
         chart_regs.append(reg_count)
 
+    from utils_pagination import paginate_events
     return render_template(
         'spoc/dashboard.html',
         events=events,
+        page=paginate_events(events),   # sidebar and event panels: 25 a page; stats use every event (UPG-19)
+        status_filter=(request.args.get('status') or '').strip().lower(),
         stats={
             'total_events':  len(events),
             'total_regs':    total_regs,

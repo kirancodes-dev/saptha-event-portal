@@ -562,15 +562,20 @@
       <div class="section-hdr">
         <h6><i class="fas fa-calendar-check me-2" style="color:var(--orange);"></i>Event Control Center</h6>
         <div class="d-flex align-items-center gap-2">
-          <div class="search-wrap">
-            <i class="fas fa-search"></i>
-            <input type="text" id="eventSearch" placeholder="Search events…">
-          </div>
-          <select id="statusFilter" class="form-select form-select-sm" style="width:120px;font-size:12px;">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-          </select>
+          <form method="get" action="/admin/dashboard" class="d-flex align-items-center gap-2" role="search">
+            <div class="search-wrap">
+              <i class="fas fa-search" aria-hidden="true"></i>
+              <label for="eventSearch" class="visually-hidden">Search events</label>
+              <input type="search" id="eventSearch" name="q" value="{{ page.q }}" placeholder="Search events…">
+            </div>
+            <label for="statusFilter" class="visually-hidden">Status</label>
+            <select id="statusFilter" name="status" class="form-select form-select-sm" style="width:120px;font-size:12px;" onchange="this.form.submit()">
+              <option value="">All Status</option>
+              <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+              <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Search</button>
+          </form>
         </div>
       </div>
       <div class="table-responsive">
@@ -588,7 +593,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for event in events %}
+            {% for event in page.items %}
             <tr data-title="{{ event.title|lower }}" data-status="{{ event.status }}">
               <td>
                 <div class="ev-title">{{ event.title }}</div>
@@ -626,11 +631,12 @@
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="8" class="text-center text-muted py-5">No events yet. Create one to get started!</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-5">{% if page.q or status_filter %}No events match.{% else %}No events yet. Create one to get started!{% endif %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      <div class="px-3">{% include "includes/pagination.html" %}</div>
     </div>
 
     <!-- ── AUDIT LOG ── -->
@@ -946,7 +952,7 @@ async function approveAiProposal() {
 </script>
 
 <!-- Per-event modals -->
-{% for event in events %}
+{% for event in page.items %}
 
 <div class="modal fade" id="assignStaffModal{{ event.id }}" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -1125,21 +1131,7 @@ if (_chartData.labels.length) {
   }
 }
 
-// ── SEARCH & FILTER ──
-var searchInput = document.getElementById('eventSearch');
-var statusFilter = document.getElementById('statusFilter');
-function filterTable() {
-  var q = (searchInput.value||'').toLowerCase();
-  var s = (statusFilter.value||'').toLowerCase();
-  document.querySelectorAll('#eventsTable tbody tr[data-title]').forEach(function(row) {
-    var title  = row.getAttribute('data-title')||'';
-    var status = row.getAttribute('data-status')||'';
-    var show = title.includes(q) && (!s || status === s);
-    row.style.display = show ? '' : 'none';
-  });
-}
-if (searchInput) searchInput.addEventListener('input', filterTable);
-if (statusFilter) statusFilter.addEventListener('change', filterTable);
+// Search and the status filter run on the server (UPG-19).
 
 // ── MEDIA FIELD ──
 function addMediaField(containerId) {

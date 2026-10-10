@@ -113,8 +113,11 @@ def dashboard():
     except Exception as exc:
         flash(f"Dashboard error: {exc}", "danger")
         events = []; total_regs = 0; total_staff = 0
+    from utils_pagination import paginate_events
     return render_template('coordinator/dashboard.html',
-        events=events, club_category=club_category,
+        events=events, page=paginate_events(events),   # cards: 25 a page (UPG-19)
+        status_filter=(request.args.get('status') or '').strip().lower(),
+        club_category=club_category,
         total_regs=total_regs, total_staff=total_staff,
         user_name=session.get('name'))
 
@@ -138,9 +141,12 @@ def view_registrations(event_id):
                       .where(filter=_ff('event_id', '==', event_id)).stream())
         registrations = sorted(
             [dict(r.to_dict(), id=r.id) for r in regs_raw],
-            key=lambda x: x.get('registered_at', ''), reverse=True)
+            key=lambda x: str(x.get('registered_at', '')), reverse=True)
+        from utils_pagination import paginate_items
+        page = paginate_items(registrations, search_fields=(
+            'lead_name', 'name', 'lead_email', 'student_email', 'usn', 'team_name', 'lead_phone'))
         return render_template('coordinator/registrations.html',
-            event=event, registrations=registrations, total=len(registrations))
+            event=event, registrations=page.items, page=page, total=len(registrations))
     except Exception as exc:
         if getattr(exc, 'code', None) == 403:
             abort(403)

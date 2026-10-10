@@ -1,6 +1,7 @@
 import collections
 import datetime
 import json
+import logging
 import re
 import uuid
 
@@ -29,6 +30,7 @@ from utils import login_required, role_required, log_action
 from services_accounts import create_unverified_account, send_set_password_link
 
 admin_bp    = Blueprint('admin', __name__, url_prefix='/admin')
+logger      = logging.getLogger(__name__)
 SUPER_ROLES = ['SuperAdmin', 'Super Admin', 'UniversityAdmin']
 
 
@@ -103,9 +105,12 @@ def dashboard():
         events, total_regs, total_revenue = [], 0, 0
         unique_staff_emails, user_stats, audit_log, cat_counts = set(), {}, [], {}
 
+    from utils_pagination import paginate_events
     return render_template(
         'admin/dashboard.html',
         events=events,
+        page=paginate_events(events),   # the table shows 25 a page; stats and charts use every event (UPG-19)
+        status_filter=(request.args.get('status') or '').strip().lower(),
         total_regs=total_regs,
         total_revenue=total_revenue,
         total_staff=len(unique_staff_emails),
@@ -427,20 +432,28 @@ def _waiting_for_password(user: dict) -> bool:
 @login_required
 @role_required(SUPER_ROLES)
 def users():
-    accounts = []
-    for doc in db.collection('users').stream():
+    from utils_pagination import page_args, paginate_items, paginate_query
+
+    def account(doc):
         u = doc.to_dict() or {}
         role = _role_name(u)
         waiting = _waiting_for_password(u)
-        accounts.append({
+        return {
             'email':      doc.id,
             'name':       u.get('name', ''),
+            'usn':        u.get('usn', ''),
             'role':       role,
             'waiting':    waiting,
             'can_resend': waiting and role not in SUPER_ROLE_NAMES,
-        })
-    accounts.sort(key=lambda a: (not a['waiting'], a['email']))
-    return render_template('admin/users.html', accounts=accounts, current_page='users')
+        }
+
+    # 25 a page in email order, paged in SQL; a search loads and filters (UPG-19).
+    if page_args()[2]:
+        accounts = sorted((account(d) for d in db.collection('users').stream()), key=lambda a: a['email'])
+        page = paginate_items(accounts, search_fields=('name', 'email', 'usn', 'role'))
+    else:
+        page = paginate_query(db.collection('users').order_by('email'), transform=account)
+    return render_template('admin/users.html', accounts=page.items, page=page, current_page='users')
 
 
 @admin_bp.route('/users/resend_set_password', methods=['POST'])
@@ -493,7 +506,10 @@ def payments():
                   key=lambda r: str(r[1].get('registered_at') or ''), reverse=True)
     paid = [dict(r, doc_id=rid, event_title=titles.get(str(r.get('event_id')), r.get('event_title', '')))
             for rid, r in regs if _is_paid(r)]
-    return render_template('admin/payments.html', orders=orders, registrations=paid, current_page='payments')
+    from utils_pagination import paginate_items
+    page = paginate_items(paid, search_fields=('lead_name', 'lead_email', 'usn', 'reg_id', 'event_title'))
+    return render_template('admin/payments.html', orders=orders, registrations=page.items, page=page,
+                           current_page='payments')
 
 
 @admin_bp.route('/registrations/<reg_id>/mark', methods=['POST'])
@@ -557,15 +573,26 @@ def refund_order(order_id):
 @login_required
 @role_required(SUPER_ROLES)
 def view_audit_log():
+    from utils_pagination import Page, page_args, paginate_items, paginate_query
+    role = (request.args.get('role') or '').strip()
+    action = (request.args.get('action') or '').strip().upper()
+    newest_first = db.collection('audit_log').order_by('timestamp', direction=firestore.Query.DESCENDING)
     try:
-        logs = (db.collection('audit_log')
-                  .order_by('timestamp', direction=firestore.Query.DESCENDING)
-                  .limit(100).stream())
-        entries = [l.to_dict() for l in logs]
-    except Exception as exc:
-        flash(f"Error loading audit log: {exc}", "danger")
-        entries = []
-    return render_template('admin/audit_log.html', entries=entries)
+        if page_args()[2] or role or action:
+            # Filters and search run on the loaded entries; the page stays in the URL (UPG-19).
+            entries = [l.to_dict() or {} for l in newest_first.stream()]
+            entries = [e for e in entries
+                       if (not role or str(e.get('role', '')) == role)
+                       and (not action or action in str(e.get('action', '')).upper())]
+            page = paginate_items(entries, search_fields=('action', 'details', 'user'))
+        else:
+            page = paginate_query(newest_first, transform=lambda d: d.to_dict() or {})
+    except Exception:
+        logger.exception("Error loading audit log")
+        flash("The audit log couldn't be loaded. Try again.", "danger")
+        page = Page([], 1, page_args()[1], 0)
+    return render_template('admin/audit_log.html', entries=page.items, page=page,
+                           role_filter=role, action_filter=action)
 
 
 # =========================================================

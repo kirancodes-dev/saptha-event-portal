@@ -18,6 +18,7 @@
             People who already have a password can use "Forgot password" on the login page.
         </p>
 
+        {% include "includes/list_search.html" %}
         <div class="table-responsive">
             <table class="table">
                 <thead>
@@ -58,6 +59,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "includes/pagination.html" %}
     </div>
 </div>
 {% endblock %}

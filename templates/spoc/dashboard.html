@@ -1347,16 +1347,20 @@ h1, h2, h3, h4, h5, h6 {
     <!-- LEFT COLUMN: SIDEBAR -->
     <div class="sidebar-column" id="tour-sidebar">
       <div class="event-search-wrapper" id="tour-search">
-        <div class="search-box-container">
-          <i class="fas fa-search search-icon-inside"></i>
-          <input type="text" id="event-search" class="form-control search-input-field" placeholder="Search events title, venue..." oninput="applySearchAndFilter()">
-        </div>
+        <form method="get" action="/spoc/dashboard" class="search-box-container" role="search">
+          {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+          <i class="fas fa-search search-icon-inside" aria-hidden="true"></i>
+          <label for="event-search" class="visually-hidden">Search events by title, venue or category</label>
+          <input type="search" id="event-search" name="q" value="{{ page.q }}" class="form-control search-input-field" placeholder="Search events title, venue...">
+        </form>
       </div>
-      
+
+      {# Filters and search run on the server and stay in the URL (UPG-19) #}
       <div class="filter-pills-row">
-        <button class="filter-pill-btn active" data-filter="all" onclick="setFilter(this)">All</button>
-        <button class="filter-pill-btn" data-filter="active" onclick="setFilter(this)">Active</button>
-        <button class="filter-pill-btn" data-filter="completed" onclick="setFilter(this)">Ended</button>
+        {% for value, label in [('', 'All'), ('active', 'Active'), ('completed', 'Ended')] %}
+        <a class="filter-pill-btn {% if status_filter == value %}active{% endif %}" style="text-decoration:none;"
+           href="/spoc/dashboard?status={{ value|urlencode }}{% if page.q %}&q={{ page.q|urlencode }}{% endif %}">{{ label }}</a>
+        {% endfor %}
       </div>
       
       <div class="sidebar-events-list">
@@ -1370,8 +1374,8 @@ h1, h2, h3, h4, h5, h6 {
           <i class="fas fa-chevron-right fa-xs"></i>
         </div>
         
-        {% if events %}
-          {% for event in events %}
+        {% if page.items %}
+          {% for event in page.items %}
           {% set max_p = (event.limits or {}).get('max_participants', 0) %}
           {% set rc = event.registration_count | default(0) %}
           {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}
@@ -1393,8 +1397,9 @@ h1, h2, h3, h4, h5, h6 {
             </div>
           </div>
           {% endfor %}
+          {% include "includes/pagination.html" %}
         {% else %}
-          <div class="text-center py-4 text-muted small">No events created yet.</div>
+          <div class="text-center py-4 text-muted small">{% if page.q or status_filter %}No events match.{% else %}No events created yet.{% endif %}</div>
         {% endif %}
       </div>
     </div>
@@ -1617,8 +1622,8 @@ h1, h2, h3, h4, h5, h6 {
       </div>
 
       <!-- Panel 2: Single Event Detailed Panel Command Center Loop -->
-      {% if events %}
-        {% for event in events %}
+      {% if page.items %}
+        {% for event in page.items %}
         {% set max_p = (event.limits or {}).get('max_participants', 0) %}
         {% set rc = event.registration_count | default(0) %}
         {% set fill_pct = [(rc / max_p * 100)|int, 100]|min if max_p > 0 else 0 %}

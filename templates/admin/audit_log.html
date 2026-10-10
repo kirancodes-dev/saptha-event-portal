@@ -97,30 +97,30 @@
 
 <div class="container pb-5">
 
-    <!-- FILTER BAR -->
-    <div class="filter-bar">
-        <i class="fas fa-filter" style="color:var(--blue);font-size:13px;"></i>
-        <input type="text" id="filterText" placeholder="Search action or details…" style="flex:1;min-width:180px;">
-        <select id="filterRole">
+    <!-- FILTER BAR: filters, search and page stay in the URL (UPG-19) -->
+    <form method="get" action="/admin/audit_log" class="filter-bar" role="search">
+        <i class="fas fa-filter" style="color:var(--blue);font-size:13px;" aria-hidden="true"></i>
+        <label for="filterText" class="visually-hidden">Search action, details or user</label>
+        <input type="search" id="filterText" name="q" value="{{ page.q }}" placeholder="Search action, details or user…" style="flex:1;min-width:180px;">
+        <label for="filterRole" class="visually-hidden">Role</label>
+        <select id="filterRole" name="role">
             <option value="">All Roles</option>
-            <option value="SuperAdmin">SuperAdmin</option>
-            <option value="ClubSPOC">ClubSPOC</option>
-            <option value="EventCoordinator">EventCoordinator</option>
+            {% for r in ['SuperAdmin', 'ClubSPOC', 'EventCoordinator'] %}
+            <option value="{{ r }}" {% if role_filter == r %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
         </select>
-        <select id="filterAction">
+        <label for="filterAction" class="visually-hidden">Action</label>
+        <select id="filterAction" name="action">
             <option value="">All Actions</option>
-            <option value="CREATE">CREATE</option>
-            <option value="UPDATE">UPDATE</option>
-            <option value="DELETE">DELETE</option>
-            <option value="LOGIN">LOGIN</option>
-            <option value="PUBLISH">PUBLISH</option>
-            <option value="SCORE">SCORE</option>
+            {% for a in ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'PUBLISH', 'SCORE'] %}
+            <option value="{{ a }}" {% if action_filter == a %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
         </select>
-        <button class="btn btn-sm" style="background:var(--blue);color:#fff;border-radius:8px;font-size:12px;" onclick="clearFilters()">
-            <i class="fas fa-times me-1"></i> Clear
+        <button type="submit" class="btn btn-sm" style="background:var(--blue);color:#fff;border-radius:8px;font-size:12px;">
+            <i class="fas fa-search me-1" aria-hidden="true"></i> Apply
         </button>
-        <span id="rowCount" style="font-size:12px;color:#94a3b8;margin-left:auto;"></span>
-    </div>
+        <a href="/admin/audit_log" class="btn btn-sm btn-link" style="font-size:12px;">Clear</a>
+    </form>
 
     <!-- LOG TABLE -->
     <div class="log-table-wrap">
@@ -140,7 +140,7 @@
             <tbody id="auditBody">
                 {% for entry in entries %}
                 <tr data-action="{{ entry.get('action','') }}" data-role="{{ entry.get('role','') }}" data-text="{{ (entry.get('action','') ~ ' ' ~ entry.get('details','') ~ ' ' ~ entry.get('user','')) | lower }}">
-                    <td style="color:#94a3b8;font-size:12px;">{{ loop.index }}</td>
+                    <td style="color:#94a3b8;font-size:12px;">{{ page.first_index + loop.index0 }}</td>
                     <td class="ts">
                         {% set ts = entry.get('timestamp') %}
                         {% if ts %}
@@ -185,10 +185,11 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% include "includes/pagination.html" %}
         {% else %}
         <div class="empty-state">
             <i class="fas fa-clipboard-list"></i>
-            <h5>No Audit Entries Yet</h5>
+            <h5>{% if page.q or role_filter or action_filter %}No entries match{% else %}No Audit Entries Yet{% endif %}</h5>
             <p>Privileged actions will appear here as they happen.</p>
         </div>
         {% endif %}
@@ -196,40 +197,6 @@
 
 </div>
 
-<script>
-const rows = document.querySelectorAll('#auditBody tr');
-
-function applyFilters() {
-    const text   = document.getElementById('filterText').value.toLowerCase();
-    const role   = document.getElementById('filterRole').value.toLowerCase();
-    const action = document.getElementById('filterAction').value.toLowerCase();
-    let visible  = 0;
-    rows.forEach(function(row) {
-        const rText   = row.dataset.text   || '';
-        const rRole   = (row.dataset.role   || '').toLowerCase();
-        const rAction = (row.dataset.action || '').toLowerCase();
-        const show = (!text   || rText.includes(text)) &&
-                     (!role   || rRole.includes(role)) &&
-                     (!action || rAction.includes(action));
-        row.style.display = show ? '' : 'none';
-        if (show) visible++;
-    });
-    document.getElementById('rowCount').textContent = visible + ' of ' + rows.length + ' shown';
-}
-
-function clearFilters() {
-    document.getElementById('filterText').value   = '';
-    document.getElementById('filterRole').value   = '';
-    document.getElementById('filterAction').value = '';
-    applyFilters();
-}
-
-document.getElementById('filterText').addEventListener('input', applyFilters);
-document.getElementById('filterRole').addEventListener('change', applyFilters);
-document.getElementById('filterAction').addEventListener('change', applyFilters);
-
-applyFilters();
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

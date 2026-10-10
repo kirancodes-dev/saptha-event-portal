@@ -91,7 +91,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:534`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders read every event-day status since UPG-43 (built, untested); the ticket-email signature was fixed in UPG-31. |
 | Registration exports (CSV/Excel) | WORKING [R at UPG-03] | `services_export.py`, `routes_spoc.py:346,355`, `routes_coordinator.py:523,533`, `routes_admin.py:285` | One export for SPOC, coordinator and admin: lead name, USN, department, year, email, phone, team, members, attendance, payment, amount, score, rank, certificate ID. 403 without `export_data` on the event. Department and year are inferred from the profile, form or USN when not asked. |
 | Admin dashboard / analytics / report | WORKING (page load) [R] | `routes_admin.py:38,123,690` | Figures come from records that keep every field since BLK-06; not re-run. |
-| Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:429-467`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. Unpaginated (UPG-19). |
+| Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:429-467`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. 25 a page with search since UPG-19 (built, untested). |
 | Org units, scoped roles | WORKING [R at BLK-07] | `routes_admin.py:756-950` | Viewing never migrates; "Migrate roles" previews first, and migrated SuperAdmin and SPOC accounts keep access (BLK-07). |
 | Venues, rooms, conflict check | PARTLY BUILT [C] | `routes_admin.py:957-1153`, `routes_spoc.py:1138-1144`, `services_workflow.py:190-218` | Admin CRUD page loads [R]; the create-event form has no room field, so conflicts are only checked on edit/publish. |
 | Student portfolio `/u/<usn>` | WORKING [R at `1f4cdc8`] | `routes_portfolio.py:27` | Shows the right student; at `694c729` the ignored `usn` filter showed the Super Admin. |
@@ -113,7 +113,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Health check | PARTLY BUILT [C at `986d108`] | `app.py:502-538` | Calls `.stream()` without reading it, so it may not reach the DB; returns exception text (UPG-20). |
 | Error monitoring (Sentry) | PARTLY BUILT [C at `56a014d`] | `app.py:124-138` | Initialises when `SENTRY_DSN` is set; untested, not in `.env.example` docs (UPG-20). |
 | Database backups | MISSING [C] | — | Nothing in the repo dumps or restores the database (UPG-21). |
-| Pagination on web lists | MISSING [C at `56a014d`] | `routes_admin.py`, `routes_spoc.py`, `routes_coordinator.py`, `routes_forms.py` | Only `routes_api_v1.py` and `routes_notifications_v2.py` page results (UPG-19). |
+| Pagination on web lists | BUILT (untested) [R by hand at UPG-19] | `utils_pagination.py`, `templates/includes/pagination.html` | 25 a page with search on users, audit log, payments, the admin/SPOC/coordinator dashboards' events, event registrations and form responses; page and filters in the URL; users and the audit log page in SQL (UPG-19). |
 | Shared page layout | PARTLY BUILT [C at `56a014d`] | `templates/base_classic.html` | 12 of 129 templates extend it; 111 are standalone pages (UPG-23). |
 
 ---
@@ -630,13 +630,28 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. `docs/DEPLOY.md` explains the inline + outbox mode and the broker mode.
 
 #### UPG-19 — Pagination and search on every admin, SPOC and coordinator list
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-19: …" on `production-ready` (parent `d40698a`)
 - **Problem:** [C at `56a014d`] Only `routes_api_v1.py` and `routes_notifications_v2.py` read a page or limit parameter (the plan's prompt said 3 route files). The web lists stream whole collections into one page: `.stream()` appears 27 times in `routes_admin.py`, 27 in `routes_spoc.py`, 13 in `routes_coordinator.py` and 7 in `routes_forms.py` (re-counted 2026-10-08; 25, 29, 15 and 6 at `986d108`) (for example users, registrations, form responses, audit log). With a whole university's data these pages will be slow or time out.
 - **Who benefits:** admins, SPOCs and coordinators of large events.
 - **What to build:** one pagination helper (page, per-page capped at 100, total, next/previous links) with SQL-side limit/offset where the adapter can push it down, and a search box (name, email, USN) on each list. The item lists every covered endpoint when done.
 - **Files touched:** new helper, `routes_admin.py`, `routes_spoc.py`, `routes_coordinator.py`, `routes_forms.py`, list templates, `db_adapter.py` (offset), tests.
 - **Effort:** M (split by area if it grows past ~800 lines) · **Depends on:** BLK-06 (indexed columns) · **Risk:** low.
+- **What was built (2026-10-10, development-only run; 25 a page, the owner's number, instead of the 50 in criterion 1):**
+  - **One helper**, `utils_pagination.py`: `page_args` reads `?page`, `?per_page` (25 by default, capped at 100) and `?q`; `paginate_query` pages a database query with LIMIT/OFFSET; `paginate_items` searches and pages a loaded list; `paginate_events` adds `?status=` (active / completed) for dashboards. Links keep every other query argument, so the search, filters and page stay in the URL. Shared partials `templates/includes/list_search.html` and `templates/includes/pagination.html` ("Showing 26–50 of 61", previous/next).
+  - **The SQL adapter gained `offset()` and `count()`** (`db_adapter.py:1695,1701`, also on collections `:1842,1845`): both go into SQL when every filter and order is a plain column (an unfiltered `count()` is one `COUNT`), else they apply after loading.
+  - **Lists covered:**
+    - admin users (`routes_admin.py:455`, SQL LIMIT/OFFSET in email order; a search loads and filters on name, email, USN and role, `:453`);
+    - admin audit log (`:589` SQL-paged, newest first; was capped at the last 100; role, action and text filters are now a GET form, `:587`);
+    - admin payments, paid registrations (`:510`);
+    - admin dashboard event table and its modals (`:112`);
+    - SPOC dashboard sidebar and event panels (`routes_spoc.py:107`; the filter pills are links);
+    - coordinator dashboard cards (`routes_coordinator.py:118`) and event registrations (`:146`);
+    - form responses (`routes_forms.py:767`).
+    Stats and charts on the dashboards still count every event. The client-side filter scripts on the audit log, admin dashboard and form responses were removed (the server filters now).
+  - **Not paginated, on purpose:** the SPOC scan page's manual check-in list (on event day staff search the whole list on one screen); the admin payments page's unmatched-orders table (exceptions, few); the admin dashboard's "recent activity" (20 rows).
+  - Checked by hand [R] with 61 users, 60 audit entries, 30 events and 60 registrations and submissions: every list shows 25 then "51–60 of 60" on page 3; searches by name, email or USN narrow it and combine with the page; `per_page=1000` shows 61 (cap 100); the users page issues `SELECT … FROM users … LIMIT`. Related existing tests pass.
+- **To test later:** criteria 1–4 below with 25 as the default (each covered list with 120 rows: 25 by default, page 5 shows the last 20; search by name, email or USN narrows and combines with the page; `per_page=1000` capped at 100; the users list issues a SQL `LIMIT`), plus `?status=` on the three dashboards and the audit log's role/action filters, and that the dashboards' stats still count every event.
 - **Acceptance criteria:**
   1. Test: each covered list with 120 rows shows 50 by default, and page 3 shows the last 20.
   2. Test: searching by name, email or USN narrows the list; search and page combine.
@@ -1960,6 +1975,18 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: the organiser moves 2 of 3 registrations into round 2; the round-2 export lists exactly those 2.
   3. Test: only the event's staff can move registrations or export a round.
 
+#### UPG-58 — The native document store creates its table at runtime, outside migrations
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit "UPG-19: …" (parent `d40698a`)
+- **Problem:** Found while building UPG-19 [C]. Collections with no SQL model live in `native_document_store`, which `_ensure_native_table` (`db_adapter.py:523`) creates with a raw `CREATE TABLE IF NOT EXISTS` on **every** read and write. The table isn't in `models_pg.py`, so UPG-16's baseline doesn't build it and `compare_metadata` doesn't see it; in production this is DDL at runtime (UPG-16 forbids it at start-up) and needs the app's database user to hold `CREATE`.
+- **Who benefits:** whoever deploys the app (a database user with no DDL rights works); every request touching those collections (one statement fewer).
+- **What to build:** a `NativeDocument` model for the table and a migration (`0003`), and `_ensure_native_table` only in development.
+- **Files touched:** `models_pg.py`, `migrations/versions/`, `db_adapter.py`, tests.
+- **Effort:** S · **Depends on:** UPG-16 · **Risk:** a production database created before this already has the table; the migration must create it only if missing.
+- **Acceptance criteria:**
+  1. Test: `alembic upgrade head` on an empty database creates `native_document_store`, and `compare_metadata` stays empty.
+  2. Test: with production settings, reading and writing a native collection issues no `CREATE`.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -2093,3 +2120,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-43: …" (parent `932afdd`) | UPG-43 | **UPG-43 BUILT (untested).** One helper (`services_workflow.EVENT_DAY_STATUSES`, `is_event_day_status`) for the statuses an event runs in: published, registration open or closed, in progress, and the old `active`. Used by the coordinator scanner list and walk-in form, venue self check-in, the day-before and 3-day reminders; the velocity alert reads events still taking registrations. Judge dashboard left for UPG-04. ruff clean; app starts; existing cron, notice, check-in and coordinator tests pass on Python 3.11. |
 | 2026-10-10 | "UPG-16: …" (parent `1af8b9d`) | UPG-16 | **UPG-16 BUILT (untested).** One autogenerated baseline migration (`0001_baseline`) holds every table in `models_pg.py`; the old 0001/0002 incremental migrations are folded in and removed. Production start-up never creates or alters tables: it checks the database is at Alembic head and refuses with the command to run; development keeps `init_db`/`verify_and_align_schema`. `docs/DEPLOY.md` documents the Cloud Run migration job, `alembic stamp 0001_baseline` for old databases, rollback and new changes. By hand [R]: upgrade on empty SQLite and PostgreSQL 16, 0 metadata differences on PostgreSQL, downgrade/upgrade, production start with 0 DDL statements and a refusal on an empty database. ruff clean; app starts. |
 | 2026-10-10 | "UPG-18: …" (parent `e373c24`) | UPG-18 | **UPG-18 BUILT (untested).** With no broker, queued tasks run inline once in a worker thread under `TASK_INLINE_TIMEOUT` (10 s); failures and timeouts are stored in a new `outbox` table (migration `0002_outbox`) keyed by an idempotency hash, and a new cron job `outbox` retries due rows with a claim, backoff and a maximum of 5 attempts; `cleanup` purges old rows. A timed-out task that later succeeds is marked sent. With a broker nothing changes. Cron workflow, `docs/DEPLOY.md` and `.env.example` updated. Checked by hand with throwaway tasks; related existing tests pass on Python 3.11; ruff clean; app starts. |
+| 2026-10-10 | "UPG-19: …" (parent `d40698a`) | UPG-19, UPG-58 | **UPG-19 BUILT (untested).** One pagination helper (`utils_pagination.py`, 25 a page, `per_page` capped at 100, `?q=` search, `?status=` on dashboards; links keep the page and filters in the URL) and two shared partials. The SQL adapter gained `offset()` and `count()`, pushed into SQL when possible; the users list and audit log page in SQL. Covered: admin users, audit log (no longer capped at 100), payments, the admin, SPOC and coordinator dashboards' event lists, event registrations, form responses. Not paginated on purpose: the SPOC scan page's check-in list, unmatched orders, recent activity. Checked by hand with seeded rows; related existing tests pass; ruff clean; app starts. **New:** UPG-58 (the native document store creates its table at runtime, outside migrations). |

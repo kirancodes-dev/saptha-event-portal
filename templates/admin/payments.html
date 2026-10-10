@@ -48,6 +48,8 @@
         <h2 style="font-size:17px;margin-top:24px;">Paid registrations</h2>
         <p>Mark a registration refunded (the money was returned another way) or cancelled. Either way its ticket
            no longer checks in. Both are recorded in the audit log.</p>
+        {% set search_label = 'Search by name, email, USN, registration or event' %}
+        {% include "includes/list_search.html" %}
         <div class="table-responsive">
             <table class="table">
                 <thead><tr><th scope="col">Registration</th><th scope="col">Event</th><th scope="col">Name</th>
@@ -72,11 +74,12 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td colspan="6">No paid registrations yet.</td></tr>
+                    <tr><td colspan="6">{% if page.q %}No paid registrations match.{% else %}No paid registrations yet.{% endif %}</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% include "includes/pagination.html" %}
     </div>
 </div>
 {% endblock %}

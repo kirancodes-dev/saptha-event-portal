@@ -1670,6 +1670,7 @@ class SQLQuery:
         self.filters = []
         self.orders = []
         self._limit = None
+        self._offset = 0
 
     def where(self, field=None, op=None, value=None, filter=None):
         if filter is not None:
@@ -1691,11 +1692,35 @@ class SQLQuery:
         self._limit = n
         return self
 
+    def offset(self, n):
+        """Skip the first n results (pagination, UPG-19). Pushed into SQL with
+        the limit when every filter and order is a plain column."""
+        self._offset = max(int(n or 0), 0)
+        return self
+
+    def count(self):
+        """How many documents match: one SQL COUNT when every filter is a plain
+        column, else by loading the matches."""
+        model = self.collection.model
+        pushable = (model is not None and self.collection.id not in PURE_FIRESTORE_COLLECTIONS
+                    and not self.filters)
+        if pushable:
+            from sqlalchemy import func, select
+            with get_session() as session:
+                return int(session.execute(select(func.count()).select_from(model)).scalar() or 0)
+        saved = (self._limit, self._offset)
+        self._limit, self._offset = None, 0
+        try:
+            return sum(1 for _ in self.stream())
+        finally:
+            self._limit, self._offset = saved
+
     def stream(self):
         model = self.collection.model
         if self.collection.id in PURE_FIRESTORE_COLLECTIONS or not model:
-            return _query_native_docs(self.collection.id, filters=self.filters,
-                                      limit=self._limit, orders=self.orders)
+            docs = list(_query_native_docs(self.collection.id, filters=self.filters, orders=self.orders))
+            end = None if self._limit is None else self._offset + self._limit
+            return iter(docs[self._offset:end])
 
         column_keys = {prop.key for prop in model.__mapper__.column_attrs} - {'extra_json'}
         sql_ops = {'==', '!=', '>', '<', '>=', '<=', 'in'}
@@ -1754,7 +1779,10 @@ class SQLQuery:
                     else:
                         query = query.order_by(col_attr.asc())
 
-            if self._limit is not None and not py_filters and not enum_filters and sql_sortable:
+            pushed = not py_filters and not enum_filters and sql_sortable
+            if pushed and self._offset:
+                query = query.offset(self._offset)
+            if self._limit is not None and pushed:
                 query = query.limit(self._limit)
 
             snapshots = []
@@ -1774,6 +1802,8 @@ class SQLQuery:
                                 for f, mf, cls, op, v in enum_filters)]
         if not sql_sortable:
             snapshots = _sort_snapshots(snapshots, self.orders)
+        if not pushed and self._offset:
+            snapshots = snapshots[self._offset:]
         if self._limit is not None:
             snapshots = snapshots[:self._limit]
         return iter(snapshots)
@@ -1808,6 +1838,12 @@ class SQLCollectionReference:
     def limit(self, n) -> SQLQuery:
         q = SQLQuery(self)
         return q.limit(n)
+
+    def offset(self, n) -> SQLQuery:
+        return SQLQuery(self).offset(n)
+
+    def count(self) -> int:
+        return SQLQuery(self).count()
 
     def stream(self):
         q = SQLQuery(self)

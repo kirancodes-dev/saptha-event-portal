@@ -762,11 +762,13 @@ def view_responses(event_id):
         d['doc_id'] = doc.id
         submissions.append(d)
 
-    submissions.sort(key=lambda x: x.get('submitted_at', ''), reverse=True)
+    submissions.sort(key=lambda x: str(x.get('submitted_at', '')), reverse=True)
+    from utils_pagination import paginate_items
+    page = paginate_items(submissions, search_fields=('name', 'email', 'reg_id'))
 
     return render_template(
         'coordinator/form_responses.html',
-        event=event, schema=schema, submissions=submissions
+        event=event, schema=schema, submissions=page.items, page=page, total=len(submissions)
     )
 
 

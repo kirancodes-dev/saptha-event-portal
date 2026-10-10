@@ -17,6 +17,8 @@
     </div>
   </div>
 
+  {% set search_label = 'Search by name, email, USN, team or phone' %}
+  {% include "includes/list_search.html" %}
   {% if registrations %}
   <div class="table-responsive">
     <table class="table table-hover align-middle">
@@ -53,10 +55,11 @@
       </tbody>
     </table>
   </div>
+  {% include "includes/pagination.html" %}
   {% else %}
   <div class="text-center text-muted py-5">
     <i class="fas fa-users fa-2x mb-2"></i>
-    <p class="mb-0">No registrations yet.</p>
+    <p class="mb-0">{% if page.q %}No registrations match “{{ page.q }}”.{% else %}No registrations yet.{% endif %}</p>
   </div>
   {% endif %}
 </div>

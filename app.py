@@ -53,7 +53,7 @@ try:
 except ImportError:
     def load_dotenv(*args, **kwargs): pass
 
-from config import Config, validate_production_config
+from config import Config, check_production_settings
 from utils import ROLE_REDIRECTS  # single source of truth
 
 # =========================================================
@@ -87,62 +87,49 @@ if not getattr(_wsec, '_is_patched', False):
 
 
 # =========================================================
-# LOGGING CONFIGURATION — structured JSON in production
+# LOGGING — one JSON object per line in production (Cloud Run), UPG-20
 # =========================================================
-def _configure_logging():
-    log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
-    root = logging.getLogger()
-    root.setLevel(log_level)
-    # Clear pre-existing handlers so reloaders don't double-log
-    for h in list(root.handlers):
-        root.removeHandler(h)
-    handler = logging.StreamHandler()
-    if os.environ.get('FLASK_ENV') == 'production':
-        try:
-            from pythonjsonlogger import jsonlogger
-            fmt = jsonlogger.JsonFormatter(
-                '%(asctime)s %(levelname)s %(name)s %(message)s %(pathname)s %(lineno)d'
-            )
-            handler.setFormatter(fmt)
-        except Exception:
-            handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
-    else:
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
-    root.addHandler(handler)
+from utils_logging import configure_logging  # noqa: E402
 
-_configure_logging()
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # =========================================================
-# SENTRY — initialized before app creation so errors during
-# boot are captured too
+# SENTRY — on when SENTRY_DSN is set; initialized before app
+# creation so errors during boot are captured too. Never sends
+# personal data (send_default_pii=False). UPG-20.
 # =========================================================
-_SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
-if _SENTRY_DSN:
+def init_sentry(env=None):
+    env = os.environ if env is None else env
+    dsn = (env.get('SENTRY_DSN') or '').strip()
+    if not dsn:
+        return False
     try:
         import sentry_sdk
         from sentry_sdk.integrations.flask import FlaskIntegration
         sentry_sdk.init(
-            dsn=_SENTRY_DSN,
+            dsn=dsn,
             integrations=[FlaskIntegration()],
-            environment=os.environ.get('FLASK_ENV', 'development'),
-            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+            environment=env.get('FLASK_ENV', 'development'),
+            release=env.get('K_REVISION') or None,   # the Cloud Run revision
+            traces_sample_rate=float(env.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
             send_default_pii=False,
         )
         logger.info("Sentry: initialized")
+        return True
     except Exception as exc:
         logger.warning("Sentry: failed to initialize: %s", exc)
+        return False
+
+
+init_sentry()
 
 # =========================================================
 # APP FACTORY
 # =========================================================
 app = Flask(__name__)
 app.config.from_object(Config)
-validate_production_config(app.config)
+check_production_settings()   # production: one error naming every missing or weak setting (UPG-20)
 
 # One proxy hop (Cloud Run's front end): trust its client IP (login throttle)
 # and scheme (so Talisman's force_https doesn't loop). Never X-Forwarded-Host
@@ -227,10 +214,14 @@ _csp = {
     'frame-src':   ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
     'frame-ancestors': ["'self'"],
 }
+_is_production = os.environ.get('FLASK_ENV') == 'production'
 Talisman(
     app,
     force_https=app.config.get('FORCE_HTTPS', False),
-    strict_transport_security=app.config.get('FORCE_HTTPS', False),
+    # Always in production: TLS ends at Cloud Run's front end, and ProxyFix
+    # above trusts its X-Forwarded-Proto, so requests are seen as https (UPG-20).
+    strict_transport_security=app.config.get('FORCE_HTTPS', False) or _is_production,
+    strict_transport_security_include_subdomains=False,
     strict_transport_security_max_age=31536000,
     content_security_policy=_csp,
     content_security_policy_nonce_in=[],
@@ -238,6 +229,8 @@ Talisman(
     referrer_policy='strict-origin-when-cross-origin',
     frame_options='SAMEORIGIN',
     x_content_type_options=True,
+    # Scanners use the camera, judges' dictation the microphone; nothing else.
+    permissions_policy={'camera': "'self'", 'microphone': "'self'", 'geolocation': '()', 'payment': "'self'"},
 )
 
 # ── Rate limiter ─────────────────────────────────────────
@@ -499,43 +492,43 @@ def terms_of_service():
 # =========================================================
 # HEALTH CHECK — For load balancers & monitoring
 # =========================================================
+def _database_ok():
+    """One real round trip to the database: SELECT 1 on the SQL layer, or one
+    document read in Firestore mode. Never raises."""
+    try:
+        from db_adapter import SQLFirestoreAdapter
+        if isinstance(db, SQLFirestoreAdapter):
+            from sqlalchemy import text
+            from db_pg import get_engine
+            with get_engine().connect() as conn:
+                conn.execute(text('SELECT 1')).scalar()
+        else:
+            next(iter(db.collection('users').limit(1).stream()), None)
+        return True
+    except Exception:
+        logger.exception("Health check: the database is unreachable")
+        return False
+
+
 @app.route('/health', methods=['GET'])
 @limiter.exempt
 def health_check():
-    """
-    Health check endpoint for Railway, Render, and load balancers.
-    Returns 200 OK if app and Firebase are healthy.
-    """
-    try:
-        # Quick Firebase connection test
-        db.collection('users').limit(1).stream()
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.datetime.now().isoformat(),
-            'version': '1.0.0',
-            'environment': app.config.get('FLASK_ENV', 'unknown')
-        }), 200
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.datetime.now().isoformat()
-        }), 503
+    """Liveness and database check for Cloud Run and load balancers: 200 or
+    503, never error details (they're in the log). UPG-20."""
+    ok = _database_ok()
+    return jsonify({
+        'status': 'healthy' if ok else 'unhealthy',
+        'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'version': os.environ.get('K_REVISION', '1.0.0'),
+    }), 200 if ok else 503
+
 
 @app.route('/health/ready', methods=['GET'])
 @limiter.exempt
 def ready_check():
-    """
-    Readiness endpoint - checks if app is ready to handle traffic.
-    """
-    try:
-        # Check Firebase
-        db.collection('users').limit(1).stream()
-        return jsonify({'ready': True}), 200
-    except Exception as e:
-        logger.error(f"Readiness check failed: {e}")
-        return jsonify({'ready': False, 'error': str(e)}), 503
+    """Readiness: the database answers. No error details."""
+    ok = _database_ok()
+    return jsonify({'ready': ok}), 200 if ok else 503
 
 # =========================================================
 # HOME

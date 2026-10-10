@@ -29,15 +29,82 @@ def _dev_secret_key():
     return key
 
 
+# Values that must never be used in production (old published defaults)
+_KNOWN_WEAK_SECRETS = {'SAPTHA@2026', 'Saptha@Admin2026', 'Admin@12345',
+                       'your_random_secret_key_here_64_chars_minimum',
+                       'default_secret_key', 'dev', 'secret', 'changeme'}
+_GENERATE = 'generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"'
+
+
+def _weak(value, min_len):
+    return len(value or '') < min_len or value in _KNOWN_WEAK_SECRETS
+
+
+def production_problems(env=None) -> list:
+    """Every missing or weak production setting, in one list (UPG-20).
+    Empty outside production. Read from the environment, so it can run
+    before the app (and its database) exists."""
+    env = os.environ if env is None else env
+    get = lambda name: (env.get(name) or '').strip()  # noqa: E731
+    if get('FLASK_ENV') != 'production':
+        return []
+    problems = []
+    if _weak(get('SECRET_KEY'), 32):
+        problems.append(f'SECRET_KEY must be a random value of 32+ characters ({_GENERATE})')
+    if _weak(get('MASTER_SECRET_KEY'), 12):
+        problems.append(f'MASTER_SECRET_KEY must be set (12+ characters, not a published default; {_GENERATE})')
+    jwt = get('JWT_SECRET_KEY')
+    if _weak(jwt, 32):
+        problems.append(f'JWT_SECRET_KEY must be a random value of 32+ characters ({_GENERATE})')
+    elif jwt == get('SECRET_KEY'):
+        problems.append('JWT_SECRET_KEY must differ from SECRET_KEY')
+    if get('SUPER_ADMIN_PASS') and _weak(get('SUPER_ADMIN_PASS'), 12):
+        problems.append('SUPER_ADMIN_PASS must be 12+ characters and not a published default')
+    base = urlparse(get('BASE_URL'))
+    if base.scheme != 'https' or (base.hostname or 'localhost') in ('localhost', '127.0.0.1', '::1'):
+        problems.append('BASE_URL must be the public https:// address of the site '
+                        '(every emailed link is built from it)')
+    db_url = get('DATABASE_URL')
+    if not db_url and not get('CLOUD_SQL_INSTANCE'):
+        problems.append('DATABASE_URL must be set to a PostgreSQL URL (or CLOUD_SQL_INSTANCE)')
+    elif db_url.startswith('sqlite') and get('ALLOW_SQLITE_IN_PRODUCTION').lower() != 'true':
+        problems.append('DATABASE_URL points at SQLite; use PostgreSQL')
+    if not (get('BREVO_API_KEY') or get('RESEND_API_KEY') or (get('MAIL_USER') and get('MAIL_PASS'))):
+        problems.append('no mail provider: set BREVO_API_KEY (or RESEND_API_KEY, or MAIL_USER and MAIL_PASS); '
+                        'set-password links and tickets go out by email')
+    if not (get('MAIL_FROM') or get('MAIL_USER')):
+        problems.append('MAIL_FROM must be set to a sender verified with the mail provider')
+    if not get('CELERY_BROKER_URL').startswith('redis') and _weak(get('CRON_SECRET'), 24):
+        problems.append(f'CRON_SECRET must be set (24+ characters) so the scheduler can run reminders '
+                        f'and retries ({_GENERATE})')
+    razorpay = [n for n in ('RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET') if get(n)]
+    if razorpay and len(razorpay) < 3:
+        missing = sorted({'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'} - set(razorpay))
+        problems.append('Razorpay is half set up: also set ' + ', '.join(missing))
+    if get('PAYMENT_SIMULATION').lower() in ('1', 'true', 'yes'):
+        problems.append('PAYMENT_SIMULATION must not be set in production')
+    return problems
+
+
+def check_production_settings(env=None):
+    """Refuse to start in production, naming every problem at once (UPG-20)."""
+    problems = production_problems(env)
+    if problems:
+        raise RuntimeError('Refusing to start in production. Fix these settings:\n  - '
+                           + '\n  - '.join(problems))
+
+
 class Config:
     # =========================================================
     # 1. SECURITY & SESSION
     # =========================================================
     _is_production = os.environ.get('FLASK_ENV') == 'production'
     _env_secret = os.environ.get('SECRET_KEY', '').strip()
-    if _is_production:
-        if not _env_secret or len(_env_secret) < 32 or _env_secret in ('default_secret_key', 'dev', 'secret', 'changeme', 'your_random_secret_key_here_64_chars_minimum'):
-            raise RuntimeError("CRITICAL: In production, SECRET_KEY must be set in the environment and be at least 32 characters long.")
+    if _is_production and _weak(_env_secret, 32):
+        # Every other problem is named in the same error (UPG-20).
+        _others = [p for p in production_problems() if not p.startswith('SECRET_KEY')]
+        raise RuntimeError("CRITICAL: In production, SECRET_KEY must be set in the environment and be at least "
+                           "32 characters long." + ("".join("\n  - " + p for p in _others) if _others else ""))
 
     # Production must set SECRET_KEY (checked above and by validate_production_config).
     # Development uses a stable key from instance/ so all workers share it.
@@ -184,10 +251,8 @@ class Config:
     # Defaults to official SNPSU logo. Override in Railway:
     #   COLLEGE_LOGO_URL = https://your-custom-logo.png
     # =========================================================
-    COLLEGE_LOGO_URL = os.environ.get(
-        'COLLEGE_LOGO_URL',
-        'https://saptha-event-portal-production.up.railway.app/static/snpsu-logo.png'
-    )
+    # Unset: emails and certificates use BASE_URL + /static/snpsu-logo.png (UPG-20)
+    COLLEGE_LOGO_URL = os.environ.get('COLLEGE_LOGO_URL', '')
 
     # =========================================================
     # 10. FIREBASE
@@ -249,13 +314,10 @@ class Config:
 
 
 
-# Values that must never be used in production (old published defaults)
-_KNOWN_WEAK_SECRETS = {'SAPTHA@2026', 'Saptha@Admin2026', 'Admin@12345',
-                       'your_random_secret_key_here_64_chars_minimum'}
-
-
 def validate_production_config(config):
-    """Refuse to start in production with missing or placeholder secrets."""
+    """Refuse to start in production with missing or placeholder secrets in an
+    app config. The app's start-up runs check_production_settings, which
+    covers these and every other setting (UPG-20)."""
     if config.get('FLASK_ENV') != 'production':
         return
     problems = []

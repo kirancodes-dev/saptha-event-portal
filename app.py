@@ -315,7 +315,6 @@ from routes_forms       import forms_bp        # noqa: E402
 from routes_portfolio   import portfolio_bp    # noqa: E402
 from routes_sponsors    import sponsors_bp     # noqa: E402
 from routes_teams          import teams_bp           # noqa: E402
-from routes_notifications  import notif_bp          # noqa: E402
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
 from routes_spoc           import spoc_bp           # noqa: E402
@@ -342,7 +341,6 @@ app.register_blueprint(forms_bp)
 app.register_blueprint(portfolio_bp)
 app.register_blueprint(sponsors_bp)
 app.register_blueprint(teams_bp)
-app.register_blueprint(notif_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
@@ -368,7 +366,6 @@ from routes_i18n            import i18n_bp             # noqa: E402
 from i18n                   import init_i18n           # noqa: E402
 from routes_developer       import developer_bp        # noqa: E402
 from routes_analytics       import analytics_bp        # noqa: E402
-from routes_payment_stripe  import stripe_bp           # noqa: E402
 from routes_ai_features     import ai_features_bp      # noqa: E402
 from routes_onboarding      import onboarding_bp       # noqa: E402
 from routes_gamification    import gamification_bp     # noqa: E402
@@ -387,7 +384,6 @@ app.register_blueprint(marketing_bp)
 app.register_blueprint(i18n_bp)
 app.register_blueprint(developer_bp)
 app.register_blueprint(analytics_bp)
-app.register_blueprint(stripe_bp)
 app.register_blueprint(ai_features_bp)
 app.register_blueprint(onboarding_bp)
 app.register_blueprint(gamification_bp)

@@ -1,9 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23e (full-screen: no footer). -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
     <title>High-Speed Entry Scanner HUD | {{ event.title }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -203,8 +201,8 @@
         }
         .btn-hud:active { transform: scale(0.96); }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <!-- Header -->
 <div class="hud-header">
@@ -415,5 +413,4 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('offline-checkins-synced', updateSyncCount);
 });
 </script>
-</body>
-</html>
+{% endblock %}

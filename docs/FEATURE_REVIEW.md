@@ -201,10 +201,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06) | Slots, judging sheets | UPG-04 |
 | Club activities | Org units can be clubs (`routes_admin.py:812`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
 | Placement drives | Generic registration only | Eligibility (branch / CGPA / backlogs), shortlists per round, company communication — all Excel | UPG-57 (eligibility rules + shortlist rounds) |
-| FDPs | Registration creates a **Student** account (`services_accounts.py:59,66`, used at `routes_forms.py:571`) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
+| FDPs | Faculty-only events: faculty register with designation and institution (UPG-12, built, untested); hours credited in the ledger (UPG-11) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
 | NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a | Volunteer hours register, unit rolls, hours certificates | UPG-11 |
 | Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R] | Same as seminar | Seminar items |
-| Conference / webinar | Templates exist; their forms work since UPG-01 [R] | External attendee registration | UPG-12 |
+| Conference / webinar | Templates exist; their forms work since UPG-01 [R]; faculty and external participants register (UPG-12, built, untested) | — | — |
 
 ---
 
@@ -509,16 +509,26 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. The certificate shows the hours when the event has them.
 
 #### UPG-12 — Faculty and external participants (FDPs, guest lectures, conferences)
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-12: …" on `production-ready` (parent `33437e4`)
 - **Problem:** Every registrant is created as `Student`: registration through `services_accounts.create_unverified_account` (its role defaults to `Student`, `services_accounts.py:59,66`; used at `routes_forms.py:571`), and sign-up at `routes_auth.py:306`. There's no faculty or external participant type (`utils.py:24-36`, `services_permission.py:53-80`), so FDPs and conferences can't be run for their real audience.
 - **Who benefits:** HR/IQAC (FDP records), departments running FDPs and conferences, external delegates.
 - **What to build:** `participant_type` (student / faculty / external) with designation and institution; the same participant dashboard; FDP certificate wording; analytics split by type.
 - **Files touched:** `routes_forms.py`, `routes_auth.py`, `models_pg.py` + migration, `routes_participant.py`, `utils_certificate.py`, tests.
 - **Effort:** M · **Depends on:** BLK-02, BLK-06 · **Risk:** role checks assume `Student`.
+- **What was built (2026-10-10, owner's second run; no certificate work):**
+  - **Data:** `participant_type` (student / faculty / external), `designation` and `institution` on users and registrations (`models_pg.py`; migration `0006_participant_types`, which matches the models with 0 differences on PostgreSQL 16 and downgrades cleanly). `services_participants.py` holds the types, labels and helpers; records without a type are students.
+  - **The event decides who may register:** "Who can register" checkboxes (students, faculty, external participants) on the SPOC's create and edit forms, stored as the event's `allowed_participants`; an event that doesn't say takes students only, so existing events behave as before.
+  - **Registration form:** when the event takes more than students, it asks "I'm registering as" (or fixes the only allowed type) and shows designation and institution only for faculty and external participants (`static/js/handlers/public__registration_form.js` toggles them). The server refuses a type the event doesn't take ("This event is for faculty only.") and missing designation or institution, beside the fields (UPG-26). The registration stores the type and affiliation; a new account gets them too, with the set-password link and never a password (UPG-33); an existing account takes the type the first time it's given.
+  - **Same journey as students:** the account keeps the participant role, so faculty and external participants use the same dashboard, ticket, check-in and feedback.
+  - **Ledger and department export:** the department export (`services_export.department_activity_*`) includes faculty FDP hours, has a Participant Type column and a `?participant_type=` filter on the SPOC and admin export routes. The ledger page already works for any signed-in participant.
+  - **Analytics and exports:** registration exports gain Participant Type, Designation and Institution; the event report has a "By participant type" sheet (registered and present); the admin analytics page shows registrations and attendance by participant type.
+  - **Certificate part deferred (owner, 2026-10-10):** criterion 2 (FDP certificate wording with designation and institution) isn't built.
+  - Checked by hand [R] on a temporary database: an FDP (faculty only) form fixes the type and shows the affiliation fields; a conference (faculty + external) offers two choices; a plain event doesn't ask; missing designation and a student registering for the FDP are refused with the reason; a valid faculty registration stores type and affiliation and creates a faculty account waiting for its set-password link, who opens the ticket and dashboard (200); exports, report sheet, the faculty-filtered department export (6 FDP hours) and the analytics table show the split. Export, form, team, journey, adapter and ticketing tests pass.
+- **To test later:** criteria 1 and 3, plus the event's allowed types being enforced, the affiliation fields being required only for faculty and external, and the department export filter. Criterion 2 is deferred (certificates).
 - **Acceptance criteria:**
   1. Test: a faculty registration creates a user with `participant_type = faculty` who can open their ticket.
-  2. Test: the FDP certificate shows designation and institution.
+  2. ~~Test: the FDP certificate shows designation and institution.~~ Certificate part deferred (owner, 2026-10-10).
   3. Test: the admin analytics split counts by participant type.
 
 #### UPG-13 — Sports tournaments: fixtures, results, standings
@@ -2386,3 +2396,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-48: …" (parent `457e2b0`) | UPG-48 | **UPG-48 BUILT (untested).** Team members, not only the lead, get the confirmation (saying who added them), the day-before ticket, the 3-day reminder and the change and cancellation notices, once each per person (`services_recipients.registration_people`; per-person `*_sent_to` lists; per-email notice keys). Checked by hand with a team of three and repeated runs; notice, cron and team tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-49: …" (parent `86dcdee`) | UPG-49 | **UPG-49 BUILT (untested).** The automation's WhatsApp channel calls the new `utils_whatsapp.send_whatsapp_message` (Twilio), is skipped cleanly when Twilio isn't configured, and records failures as failures. Checked with Twilio mocked; automation and notice tests pass; ruff clean; app starts. **Part 1 of the owner's second run is built.** |
 | 2026-10-10 | "docs: …" (parent `96b9c80`) | UPG-62, D-9 | **Full pytest after Part 1: 19 failed, 792 passed, 1 skipped** (SQLite, Python 3.11). All 19 fail the same way at `251f444`, before this run's commits. **New:** UPG-62 (obsolete Stripe and matchmaker tests, the seed-safety test after the seed fold, an unescaped `maxScore` on the judge page, and a waitlist promotion that gives no ticket and calls the email task with a wrong argument) and decision D-9 (retire the Stripe and matchmaker tests?). |
+| 2026-10-10 | "UPG-12: …" (parent `33437e4`) | UPG-12 | **UPG-12 BUILT (untested).** Participant type (student, faculty, external) with designation and institution on users and registrations (migration 0006); each event chooses who may register (students only by default); the form asks for affiliation only from faculty and external participants and refuses types the event doesn't take; new accounts get a set-password link; same dashboard, ticket, check-in and feedback; the department export includes faculty FDP hours with a type filter; exports, the event report and admin analytics split by type. Certificate part deferred (owner, 2026-10-10). Checked by hand; related tests pass; ruff clean; app starts. |

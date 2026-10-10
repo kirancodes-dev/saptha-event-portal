@@ -260,6 +260,13 @@ def analytics():
             'no_show_pct':   round((f_confirmed - f_attended) * 100 / f_confirmed, 1) if f_confirmed else 0,
             'conv_pct':      round(f_attended * 100 / f_registered, 1) if f_registered else 0,
         }
+        # Registrations and attendance by participant type (UPG-12)
+        from services_participants import PARTICIPANT_TYPES, type_of
+        stats['by_participant_type'] = [
+            {'type': t,
+             'registered': sum(1 for r in all_regs if type_of(r) == t),
+             'present': sum(1 for r in all_regs if type_of(r) == t and r.get('attendance') == 'Present')}
+            for t in PARTICIPANT_TYPES]
 
     except Exception as exc:
         flash(f"Analytics error: {exc}", "danger")
@@ -338,7 +345,7 @@ def analytics_export(kind):
     elif kind in ('activity', 'activity_points', 'department_activity'):
         import services_export
         dept = request.args.get('department')
-        buf.write(services_export.department_activity_csv(db, dept))
+        buf.write(services_export.department_activity_csv(db, dept, request.args.get('participant_type')))
         filename = f"activity_ledger_{dept or 'all'}.csv"
 
     else:  # revenue
@@ -379,13 +386,13 @@ def export_department_activity():
     from flask import Response
     import services_export
     if fmt == 'xlsx':
-        data = services_export.department_activity_xlsx(db, dept)
+        data = services_export.department_activity_xlsx(db, dept, request.args.get('participant_type'))
         return Response(
             data,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.xlsx"'}
         )
-    data = services_export.department_activity_csv(db, dept)
+    data = services_export.department_activity_csv(db, dept, request.args.get('participant_type'))
     return Response(
         data,
         mimetype='text/csv; charset=utf-8',

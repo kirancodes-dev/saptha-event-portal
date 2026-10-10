@@ -538,6 +538,25 @@ def submit_form(event_id):
 
         # Validate: messages go beside their fields, and the form keeps what was typed (UPG-26)
         field_errors = _field_errors(schema, answers)
+
+        # Student, faculty or external, as the event allows; faculty and
+        # external participants give designation and institution (UPG-12)
+        from services_participants import PLURALS, NEEDS_AFFILIATION, allowed_types
+        allowed = allowed_types(event_data)
+        ptype = (request.form.get('participant_type') or allowed[0]).strip().lower()
+        designation = (request.form.get('designation') or '').strip()[:150]
+        institution = (request.form.get('institution') or '').strip()[:200]
+        answers.update(participant_type=ptype, designation=designation, institution=institution)
+        if ptype not in allowed:
+            field_errors.append(('participant_type', 'This event is for ' +
+                                 ' and '.join(PLURALS[t] for t in allowed) + ' only.'))
+        elif ptype in NEEDS_AFFILIATION:
+            if not designation:
+                field_errors.append(('designation', 'Please give your designation.'))
+            if not institution:
+                field_errors.append(('institution', 'Please give your institution.'))
+        if ptype not in NEEDS_AFFILIATION:
+            designation = institution = ''
         if field_errors:
             for _, err in field_errors:
                 flash(err, 'danger')
@@ -613,9 +632,18 @@ def submit_form(event_id):
         # emailed one-time link is used (never a password in email or session)
         is_new_user = not session_email
         if is_new_user:
-            create_unverified_account(db, email, full_name, phone)
+            # A set-password link, never a password (UPG-33); faculty and external
+            # participants keep the participant role and their own type (UPG-12)
+            create_unverified_account(db, email, full_name, phone, participant_type=ptype,
+                                      designation=designation, institution=institution)
             send_set_password_link(db, email, full_name)
             flash("🆕 We've emailed you a link to set your password.", "info")
+        else:
+            # An existing account takes the type the first time it's given (UPG-12)
+            prof = db.collection('users').document(email).get()
+            if prof.exists and not (prof.to_dict() or {}).get('participant_type'):
+                db.collection('users').document(email).update(
+                    {'participant_type': ptype, 'designation': designation, 'institution': institution})
 
         # Members: the lead, then the team's other members (UPG-08)
         members = [{'role': 'Lead', 'name': full_name,
@@ -641,6 +669,9 @@ def submit_form(event_id):
             'form_answers':    answers,
             'form_type':       schema.get('form_type', 'simple'),
             'privacy_consent': consent_record(),   # time and notice version (UPG-22)
+            'participant_type': ptype,             # UPG-12
+            'designation':     designation,
+            'institution':     institution,
         }
         record_consent(db, email, reg_data['privacy_consent'])
         if team_max > 1:

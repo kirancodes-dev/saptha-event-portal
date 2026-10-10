@@ -14,7 +14,13 @@ from collections import Counter, defaultdict
 # One row per registration; a team's lead, then its other members
 COLUMNS = ['Ticket ID', 'Lead Name', 'Lead USN', 'Department', 'Year', 'Lead Email', 'Lead Phone', 'Team', 'Members',
            'Attendance', 'Check-in Time', 'Payment Status', 'Amount (Rs)', 'Score', 'Rank',
-           'Certificate ID', 'Registered At']
+           'Certificate ID', 'Registered At', 'Participant Type', 'Designation', 'Institution']
+
+def _ptype(record):
+    """Student, faculty or external (UPG-12); older records are students."""
+    from services_participants import type_of
+    return type_of(record)
+
 
 USN = re.compile(r'^\d?[A-Z]{2}(\d{2})([A-Z]{2,3})\d+$')
 
@@ -84,6 +90,7 @@ def registration_rows(db, event_id):
             r.get('payment_status', ''), r.get('amount_paid', 0) or 0,
             '' if score is None else score, ranks.get(rid, ''),
             r.get('certificate_id', ''), r.get('registered_at', ''),
+            _ptype(r), r.get('designation', ''), r.get('institution', ''),   # UPG-12
         ])
     return rows
 
@@ -153,12 +160,13 @@ def event_report(db, event_id):
     profiles = _profiles(db, regs)
     ranks = _ranks(regs)
 
-    by_dept, by_year = defaultdict(Counter), defaultdict(Counter)
+    by_dept, by_year, by_type = defaultdict(Counter), defaultdict(Counter), defaultdict(Counter)
     ratings = []
     for rid, r in regs:
         department, year = department_and_year(r, profiles.get((r.get('lead_email') or '').lower()))
         present = r.get('attendance') == 'Present'
-        for table, key in ((by_dept, department or 'Not given'), (by_year, year or 'Not given')):
+        for table, key in ((by_dept, department or 'Not given'), (by_year, year or 'Not given'),
+                           (by_type, _ptype(r))):
             table[key]['registered'] += 1
             table[key]['present'] += 1 if present else 0
         rating = (r.get('feedback') or {}).get('rating') if isinstance(r.get('feedback'), dict) else None
@@ -173,6 +181,7 @@ def event_report(db, event_id):
         'present': sum(1 for _, r in regs if r.get('attendance') == 'Present'),
         'by_department': {k: dict(v) for k, v in sorted(by_dept.items())},
         'by_year': {k: dict(v) for k, v in sorted(by_year.items())},
+        'by_participant_type': {k: dict(v) for k, v in sorted(by_type.items())},   # UPG-12
         'feedback': {'responses': len(ratings),
                      'average_rating': round(sum(ratings) / len(ratings), 2) if ratings else None},
         'winners': [{'rank': rank, 'name': r.get('lead_name', ''), 'team': r.get('team_name', ''),
@@ -199,6 +208,8 @@ def event_report_xlsx(db, event_id):
         ('Summary', ['Item', 'Value'], summary),
         ('By department', ['Department', 'Registered', 'Present'], breakdown(report['by_department'])),
         ('By year', ['Year', 'Registered', 'Present'], breakdown(report['by_year'])),
+        ('By participant type', ['Participant type', 'Registered', 'Present'],
+         breakdown(report['by_participant_type'])),
         ('Winners', ['Rank', 'Name', 'Team', 'Score'],
          [[w['rank'], w['name'], w['team'], '' if w['score'] is None else w['score']] for w in report['winners']]),
         ('Registrations', COLUMNS, registration_rows(db, event_id)),
@@ -209,11 +220,11 @@ def event_report_xlsx(db, event_id):
 
 DEPARTMENT_ACTIVITY_COLUMNS = [
     'Student Name', 'USN', 'Email', 'Department', 'Year',
-    'Events Attended', 'Total Activity Points', 'Total Activity Hours',
+    'Events Attended', 'Total Activity Points', 'Total Activity Hours', 'Participant Type',
 ]
 
 
-def department_activity_data(db, department=None):
+def department_activity_data(db, department=None, participant_type=None):
     """Return list of dicts with activity totals for every student in the department."""
     students = []
     for u in db.collection('users').stream():
@@ -222,6 +233,9 @@ def department_activity_data(db, department=None):
         if role in ('Student', 'Participant'):
             stud_dept = str(udata.get('department') or '').strip()
             if department and stud_dept.lower() != str(department).strip().lower():
+                continue
+            # Faculty FDP hours too; ?participant_type= narrows to one type (UPG-12)
+            if participant_type and _ptype(udata) != str(participant_type).strip().lower():
                 continue
             students.append((u.id, udata))
 
@@ -279,25 +293,27 @@ def department_activity_data(db, department=None):
             'events_attended': attended_count,
             'total_points': total_points,
             'total_hours': total_hours,
+            'participant_type': _ptype(sdata),
         })
     return results
 
 
-def department_activity_rows(db, department=None):
-    """List every student in the department with totals as row tuples."""
-    data = department_activity_data(db, department)
+def department_activity_rows(db, department=None, participant_type=None):
+    """List every participant in the department with totals as row tuples."""
+    data = department_activity_data(db, department, participant_type)
     return [
         [
             d['name'], d['usn'], d['email'], d['department'], d['year'],
-            d['events_attended'], d['total_points'], d['total_hours'],
+            d['events_attended'], d['total_points'], d['total_hours'], d['participant_type'],
         ]
         for d in data
     ]
 
 
-def department_activity_csv(db, department=None):
-    return to_csv(department_activity_rows(db, department), columns=DEPARTMENT_ACTIVITY_COLUMNS)
+def department_activity_csv(db, department=None, participant_type=None):
+    return to_csv(department_activity_rows(db, department, participant_type), columns=DEPARTMENT_ACTIVITY_COLUMNS)
 
 
-def department_activity_xlsx(db, department=None):
-    return to_xlsx([('Department Activity', DEPARTMENT_ACTIVITY_COLUMNS, department_activity_rows(db, department))])
+def department_activity_xlsx(db, department=None, participant_type=None):
+    return to_xlsx([('Department Activity', DEPARTMENT_ACTIVITY_COLUMNS,
+                     department_activity_rows(db, department, participant_type))])

@@ -650,6 +650,20 @@
                         <label class="form-label">Activity Hours <span style="font-weight:400;color:#94a3b8;">(NSS / NCC / FDP credit)</span></label>
                         <input aria-label="Activity Hours" type="number" step="0.5" min="0" name="activity_hours" class="form-control" placeholder="e.g. 2">
                     </div>
+                    {% set _allowed = allowed_types(event) if event is defined and event else ['student'] %}
+                    <div class="col-12">
+                        <span class="form-label d-block">Who can register</span>
+                        {% for value, label in [('student', 'Students'), ('faculty', 'Faculty'), ('external', 'External participants')] %}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="allowed_participants" value="{{ value }}"
+                                   id="allowed-{{ value }}" {% if value in _allowed %}checked{% endif %}>
+                            <label class="form-check-label" for="allowed-{{ value }}">{{ label }}</label>
+                        </div>
+                        {% endfor %}
+                        <input type="hidden" name="allowed_participants_sent" value="1">
+                        <div class="form-text">FDPs are usually faculty only; conferences faculty and external participants.
+                            Faculty and external registrants give their designation and institution.</div>
+                    </div>
                 </div>
             </div>
 

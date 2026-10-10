@@ -260,6 +260,9 @@ def create_event():
             'results_published': False,
             'activity_points': float(request.form.get('activity_points') or 0.0) if request.form.get('activity_points') else 0.0,
             'activity_hours': float(request.form.get('activity_hours') or 0.0) if request.form.get('activity_hours') else 0.0,
+            # Who may register: students, faculty, external participants (UPG-12)
+            'allowed_participants': __import__('services_participants').from_form(
+                request.form.getlist('allowed_participants')),
         }
 
         if room_id:
@@ -438,13 +441,13 @@ def spoc_export_department_activity():
     from flask import Response
     import services_export
     if fmt == 'xlsx':
-        data = services_export.department_activity_xlsx(db, dept)
+        data = services_export.department_activity_xlsx(db, dept, request.args.get('participant_type'))
         return Response(
             data,
             mimetype=XLSX_MIMETYPE,
             headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.xlsx"'}
         )
-    data = services_export.department_activity_csv(db, dept)
+    data = services_export.department_activity_csv(db, dept, request.args.get('participant_type'))
     return Response(
         data,
         mimetype='text/csv; charset=utf-8',
@@ -1214,6 +1217,9 @@ def edit_event(event_id):
         val = request.form.get(field, '').strip()
         if val:
             updates[field] = val
+    if request.form.get('allowed_participants_sent'):   # the edit form's "who can register" (UPG-12)
+        from services_participants import from_form
+        updates['allowed_participants'] = from_form(request.form.getlist('allowed_participants'))
     for num_field in ['activity_points', 'activity_hours']:
         val = request.form.get(num_field, '').strip()
         if val != '':

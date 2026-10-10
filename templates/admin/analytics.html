@@ -143,6 +143,21 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
         <div class="stat-sub">{{ stats.free_regs }} free</div>
       </div>
     </div>
+    {% if stats.by_participant_type %}
+    <div class="chart-card mb-4">
+      <div class="chart-card-title">By participant type</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th scope="col">Participant type</th><th scope="col">Registered</th><th scope="col">Present</th></tr></thead>
+          <tbody>
+            {% for row in stats.by_participant_type %}
+            <tr><td>{{ participant_labels[row.type] }}</td><td>{{ row.registered }}</td><td>{{ row.present }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
     {% endif %}
 
     <!-- ── ROW 1: Registrations over time + Category breakdown ── -->

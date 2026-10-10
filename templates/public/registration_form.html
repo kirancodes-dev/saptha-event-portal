@@ -382,6 +382,46 @@ body{
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="submission_id" value="{{ submission_id }}">
 
+      {# Who is registering: students, faculty, external participants (UPG-12) #}
+      {% set ptypes = allowed_types(event) %}
+      {% if ptypes != ['student'] %}
+        {% set chosen = values.get('participant_type') or ptypes[0] %}
+        {% if ptypes|length > 1 %}
+        <div class="form-group">
+          <span class="d-block mb-1" style="font-weight:600;">I'm registering as<span class="req">*</span></span>
+          <div class="choice-list mt-1">
+            {% for t in ptypes %}
+            <label class="choice-item">
+              <input type="radio" name="participant_type" value="{{ t }}" required {% if chosen == t %}checked{% endif %}
+                     data-h-change="public/registration_form:participant-type">
+              <span>{{ participant_labels[t] }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% if field_errors.get('participant_type') %}<div class="field-error" role="alert">{{ field_errors['participant_type'] }}</div>{% endif %}
+        </div>
+        {% else %}
+        <input type="hidden" name="participant_type" value="{{ ptypes[0] }}">
+        {% endif %}
+        {% set needs = chosen in ('faculty', 'external') %}
+        <div id="affiliation-fields" {% if not needs %}hidden{% endif %}>
+          <div class="form-group">
+            <label for="designation">Designation<span class="req">*</span></label>
+            <input type="text" class="form-control" id="designation" name="designation" maxlength="150"
+                   placeholder="e.g. Assistant Professor" value="{{ values.get('designation', '') }}" {% if needs %}required{% endif %}
+                   {% if field_errors.get('designation') %}aria-invalid="true" aria-describedby="designation-error"{% endif %}>
+            {% if field_errors.get('designation') %}<div class="field-error" id="designation-error" role="alert">{{ field_errors['designation'] }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label for="institution">Institution<span class="req">*</span></label>
+            <input type="text" class="form-control" id="institution" name="institution" maxlength="200"
+                   placeholder="Your college, university or organisation" value="{{ values.get('institution', '') }}" {% if needs %}required{% endif %}
+                   {% if field_errors.get('institution') %}aria-invalid="true" aria-describedby="institution-error"{% endif %}>
+            {% if field_errors.get('institution') %}<div class="field-error" id="institution-error" role="alert">{{ field_errors['institution'] }}</div>{% endif %}
+          </div>
+        </div>
+      {% endif %}
+
       {% for field in schema.fields %}
 
         {# ── Layout fields ── #}
@@ -541,3 +581,4 @@ body{
 <script src="/static/js/global.js"></script>
 <script src="/static/js/pages/public__registration_form.js"></script>
 {% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__registration_form.js"></script>{% endblock %}

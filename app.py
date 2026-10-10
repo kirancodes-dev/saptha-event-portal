@@ -176,6 +176,8 @@ def _csrf_meta_token():
 
 
 app.jinja_env.globals.update(csrf_token=_safe_csrf_token, csrf_meta_token=_csrf_meta_token)
+from services_participants import allowed_types as _allowed_participant_types, LABELS as _participant_labels  # noqa: E402
+app.jinja_env.globals.update(allowed_types=_allowed_participant_types, participant_labels=_participant_labels)  # UPG-12
 
 # ── Server-side sessions (BLK-08): Redis when configured, else the database ──
 if app.config.get('SESSION_TYPE') == 'redis':

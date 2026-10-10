@@ -163,19 +163,30 @@ def dashboard():
     except Exception:
         pass
 
-    # XP + badges from user profile
-    user_xp = 0
+    # XP + badges + full profile for dashboard header
+    user_xp = 20
     user_badges = []
+    user_doc_data = {}
     try:
         uid = session.get('user_id', '')
         if uid:
             u = db.collection('users').document(uid).get()
             if u.exists:
-                ud = u.to_dict() or {}
-                user_xp     = int(ud.get('xp', 0) or 0)
-                user_badges = ud.get('badges', []) or []
+                user_doc_data = u.to_dict() or {}
+                user_xp     = int(user_doc_data.get('xp', 0) or user_doc_data.get('activity_points', 0) or 20)
+                user_badges = user_doc_data.get('badges', []) or []
     except Exception:
         pass
+
+    all_regs = active_tickets + completed_events
+    attended_count = sum(1 for r in all_regs if r.get('attendance') == 'Present')
+    cat_counts = {
+        'technical': sum(1 for r in all_regs if r.get('event_cat') == 'Technical'),
+        'cultural': sum(1 for r in all_regs if r.get('event_cat') == 'Cultural'),
+        'sports': sum(1 for r in all_regs if r.get('event_cat') == 'Sports'),
+        'other': sum(1 for r in all_regs if r.get('event_cat') not in ('Technical', 'Cultural', 'Sports')),
+    }
+    last_updated = datetime.datetime.now().strftime('%d/%m/%Y  %I:%M %p')
 
     return render_template(
         'participant/dashboard.html',
@@ -183,10 +194,16 @@ def dashboard():
         completed_events = completed_events,
         upcoming_events  = upcoming_events,
         calendar_events  = json.dumps(calendar_events),
-        user_name        = session.get('name'),
+        user_name        = session.get('name') or user_doc_data.get('name', 'Student'),
+        user_email       = user_email,
+        user_profile     = user_doc_data,
         announcements    = announcements,
         user_xp          = user_xp,
         user_badges      = user_badges,
+        attended_count   = attended_count,
+        total_regs_count = len(all_regs),
+        cat_counts       = cat_counts,
+        last_updated     = last_updated,
     )
 
 

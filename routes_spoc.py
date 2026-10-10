@@ -100,6 +100,17 @@ def dashboard():
         chart_labels.append(data.get('title', doc.id)[:20])
         chart_regs.append(reg_count)
 
+    user_doc_data = {}
+    try:
+        if spoc_id:
+            u = db.collection('users').document(spoc_id).get()
+            if u.exists:
+                user_doc_data = u.to_dict() or {}
+    except Exception:
+        pass
+    import datetime
+    last_updated = datetime.datetime.now().strftime('%d/%m/%Y  %I:%M %p')
+
     from utils_pagination import paginate_events
     return render_template(
         'spoc/dashboard.html',
@@ -116,6 +127,10 @@ def dashboard():
         category=session.get('category', 'General'),
         chart_labels=chart_labels,
         chart_regs=chart_regs,
+        user_name=session.get('name') or user_doc_data.get('name', 'Club SPOC'),
+        user_email=spoc_id,
+        user_profile=user_doc_data,
+        last_updated=last_updated,
     )
 
 # --- 2. CREATE EVENT (DYNAMIC BUILDER) ---

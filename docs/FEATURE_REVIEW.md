@@ -200,7 +200,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Sports | Create, registration (teams since UPG-08), leaderboard page | Fixtures, match results, standings (whiteboard/Excel) | UPG-13 |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06) | Slots, judging sheets | UPG-04 |
 | Club activities | Org units can be clubs (`routes_admin.py:812`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
-| Placement drives | Generic registration only | Eligibility (branch / CGPA / backlogs), shortlists per round, company communication — all Excel | Eligibility rules + shortlist rounds (not in this list; add as next free ID when prioritised) |
+| Placement drives | Generic registration only | Eligibility (branch / CGPA / backlogs), shortlists per round, company communication — all Excel | UPG-57 (eligibility rules + shortlist rounds) |
 | FDPs | Registration creates a **Student** account (`services_accounts.py:59,66`, used at `routes_forms.py:571`) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
 | NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a | Volunteer hours register, unit rolls, hours certificates | UPG-11 |
 | Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R] | Same as seminar | Seminar items |
@@ -467,7 +467,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   1. Test: uploading 3 rows creates 3 users with USN and department read back.
   2. Test: re-uploading updates in place, with no duplicates.
   3. Test: a Google callback with a non-university domain is rejected.
-  4. The login page shows the Google button when OAuth is configured.
+  4. The login page shows the Google button when OAuth is configured. *(2026-10-10: moved to UPG-55, which links Google sign-in and 2FA before launch; UPG-10 adds the domain rule.)*
 
 #### UPG-11 — Participation ledger: activity points and NSS / NCC / FDP hours
 - **Status:** TODO
@@ -581,7 +581,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. `docs/DEPLOY.md` shows the migration step and how to stamp an existing database.
 
 #### UPG-17 — Uploads go to object storage and survive restarts
-- **Status:** TODO
+- **Status:** MERGED into UPG-21 (D-5, owner, 2026-10-10). Criteria 1–2 are built and tested there; 3–4 have nothing live to test.
 - **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
 - **Problem:** [C at `56a014d`]
   - **Corrected in the end-of-Phase 2 re-verification (2026-10-08) [C]: no live path stores files today.** Certificates are generated, emailed and verified from their database record since UPG-06 (`tasks/cert_tasks.py` no longer uploads); certificate templates are stored in the database (`routes_spoc.py:1305`); exports are streamed by `services_export` (UPG-03). `utils_storage.upload_file` is called only by `tasks/export_tasks.py:187`, which nothing queues, and the unused `scheduler_enhanced.py:456` (both UPG-14). So nothing is lost on a restart today.
@@ -826,7 +826,7 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
   1. ✅ Test (Razorpay client mocked): register → order → verify gives `Confirmed / Paid` with the server amount and queues exactly one receipt email (`::test_a_verified_payment_confirms_and_sends_one_receipt`).
   2. ✅ Test: an admin marks the registration refunded, then another cancelled; each is audit-logged, and the ticket is refused at check-in (`::test_admin_marks_registrations_refunded_and_cancelled_and_their_tickets_stop`).
   3. ✅ Test: a non-admin gets 403 on both actions (`::test_non_admins_cant_use_any_payment_action`: the owner SPOC and a student, also on the page, the refund and the export).
-  4. Manual (owner, with Razorpay test keys): the full checkout in test mode. **Open**, as is BLK-03's matching check. Set the webhook (event `payment.captured`, URL `<BASE_URL>/payment/webhook/razorpay`) and its secret first.
+  4. Manual (owner, with Razorpay test keys): the full checkout in test mode. **Open**, as is BLK-03's matching check. **Deferred to UPG-32** (D-6, 2026-10-10): run on a public test deployment together with the webhook. Set the webhook (event `payment.captured`, URL `<BASE_URL>/payment/webhook/razorpay`) and its secret first.
   5. ✅ Test: when completion fails after the order is claimed (the event filled up, the payer is already registered, or an exception), no seat is over-allocated, the order stays paid with no registration, it appears in the admin list, and the payer sees that the payment is recorded (`::test_a_failed_completion_keeps_the_payment_and_overbooks_nobody`, one case per cause).
   6. ✅ Test: a `payment.captured` webhook with a valid signature for a recorded order whose browser never returned completes the registration once; replaying it, or the browser's `/payment/verify` arriving afterwards, changes nothing. A bad signature → 400 and nothing changes; an unknown order → 200 and nothing is created (`::test_the_webhook_completes_a_payment_whose_browser_never_returned_once`, `::test_the_webhook_refuses_bad_signatures_and_ignores_unknown_orders`, which also covers a wrong amount; `::test_the_webhook_fails_closed_without_its_secret`).
   7. ✅ Test: the admin list shows exactly the paid orders that have no registration; a non-admin gets 403 (`::test_the_admin_list_shows_exactly_the_paid_orders_without_a_registration`; the 403 is in criterion 3's test).
@@ -1728,7 +1728,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   If nobody reads that inbox, privacy requests and payment problems go unanswered. The privacy notice's grievance contact is also part of the university's DPDP obligations (UPG-22).
 - **Who benefits:** students and external participants who need help; the university (privacy requests reach someone).
 - **What to build:** one contact address from a setting (e.g. `SUPPORT_EMAIL`, documented in `.env.example`), used by all three pages. When it's unset, the pages show no address rather than a personal one.
-- **Needs from the owner:** the contact address (D-4).
+- **Needs from the owner:** ~~the contact address (D-4).~~ Decided 2026-10-10: `events@your-university-domain` (D-4).
 - **Files touched:** `config.py` or a context processor in `app.py`, the three templates, `.env.example`, tests.
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
@@ -1850,6 +1850,94 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: a registrant named `<b>Ann</b>` gets a confirmation that shows the text `<b>Ann</b>`, not bold.
 - **Not scheduled yet** (owner's call).
 
+### G. Added 2026-10-10 (owner's run prompt)
+
+#### UPG-51 — Cancelling a paid event refunds nobody
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** [C] Cancelling an event (`services_workflow.WorkflowEngine.transition_event` → `cancelled`) sends the cancellation notice (UPG-31) but touches no payment. The admin's refund action (`routes_admin.py:527`, `services_payments.start_refund`, `services_payments.py:265`) only refunds paid orders that have **no** registration, so the paid registrations of a cancelled event can only be marked "refunded" by hand, with the money returned outside the app.
+- **Who benefits:** paying participants of a cancelled event; the finance office.
+- **What to build:** when an event is cancelled, its staff and the Super Admin see its paid registrations, with a "Refund all through Razorpay" action: a confirm step (ticked box and the total), one Razorpay refund per payment, never twice (an atomic claim per order, as in UPG-30), failures listed with their reason and retryable, every refund audit-logged and emailed to the student.
+- **Files touched:** `routes_admin.py`, `services_payments.py`, `utils_email.py`, `templates/admin/payments.html` (or a new cancelled-event refunds page), tests.
+- **Effort:** M · **Depends on:** UPG-30 · **Risk:** moves real money; the confirm step and the per-order claim guard it.
+- **Acceptance criteria:**
+  1. Test (Razorpay mocked): a cancelled event with 3 paid registrations lists all 3; "Refund all" without the confirmation does nothing.
+  2. Test: with the confirmation, the refund API is called once per payment with its ID and amount; each is recorded, audit-logged and emailed once; pressing again calls nothing.
+  3. Test: one failed refund is listed with its reason, the others complete; retrying refunds only the failed one.
+  4. Test: a non-admin who isn't the event's owner gets 403; refunds are refused for an event that isn't cancelled.
+
+#### UPG-52 — Joining a team can overwrite another join or exceed `team_max`
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** [C] `routes_teams.join_team` (`routes_teams.py:64-102`) reads the registration's `members`, checks `len(members) >= team_max` (`:91`), appends, and writes the whole list back (`_save_members`, `:51`). Two people joining at once both read the same list: the second write drops the first member, or both pass the size check and the team exceeds `team_max`.
+- **Who benefits:** team leads and members of hackathons and sports events.
+- **What to build:** adding a member is atomic: a row lock (`SELECT … FOR UPDATE` on PostgreSQL) or a conditional update that only succeeds if `members` is unchanged, retried a few times; the size check runs inside it.
+- **Files touched:** `routes_teams.py`, `db_adapter.py` (or a small SQL helper), tests.
+- **Effort:** S · **Depends on:** UPG-08 · **Risk:** touches the adapter (rule 8's early pass when tested).
+- **Acceptance criteria:**
+  1. Test (PostgreSQL): two joins to a team with one free place, run concurrently, leave exactly one new member and `team_max` holds.
+  2. Test: two joins to a team with two free places, run concurrently, keep both members.
+
+#### UPG-53 — The home page shows a fake hackathon when there are no events
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** [C] When no event is listed, the home page builds a demo event (`app.py:704-706`, id `demo-hackathon-2026`, "SapthaHack 2026 — National AI Hackathon") and shows it as if it were real. Its links go nowhere real.
+- **Who benefits:** visitors (no fake event); the university (nothing misleading on launch day).
+- **What to build:** with no events, the home page shows an empty state ("No upcoming events yet") instead.
+- **Files touched:** `app.py`, `templates/public/home.html` (or the home template in use), tests.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: with no events, `/` returns 200, shows the empty state and doesn't contain `demo-hackathon-2026` or "SapthaHack 2026".
+
+#### UPG-54 — The Android app loads an old Railway URL
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** [C] `capacitor.config.json:5-6` points the Android webview at `https://saptha-portal.railway.app`, a retired host; `allowNavigation` lists `*.railway.app` and `*.firebaseapp.com`. An APK built today opens a dead site.
+- **Who benefits:** students using the Android app.
+- **What to build:** the server URL comes from `BASE_URL` at build time (a `capacitor.config.ts` or a small script that writes the JSON before `npx cap sync`); `allowNavigation` holds only that host; the build steps are documented.
+- **Files touched:** `capacitor.config.json` (or `.ts`), `package.json` script, `docs/DEPLOY.md`, tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low; the Flutter app under `~/development/saptha_app` is separate.
+- **Acceptance criteria:**
+  1. Test: no tracked file outside `functions/` and `scratch/` contains `railway.app` in the Capacitor config.
+  2. Test: running the config step with `BASE_URL=https://events.example.edu` gives a config whose server URL and `allowNavigation` use only that host.
+
+#### UPG-55 — Google sign-in and 2FA exist but nothing links to them
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** [C] `auth_oauth.py` serves `/auth/google` and `auth_2fa.py` serves `/auth/2fa/*`, but no template links to either (`grep -rn 'auth/google\|auth/2fa' templates` finds nothing). Users can't find them. (The matchmaker's `MOCK_STUDENTS`, also on the launch list, is already UPG-14 criterion 4.)
+- **Who benefits:** every user (one-click login, a second factor for staff accounts).
+- **What to build:** a "Sign in with Google" button on the login page only when Google OAuth is configured; a "Two-factor authentication" section on the profile page (set up / turn off) only when 2FA is available. UPG-10 later restricts Google sign-in to the university domain.
+- **Files touched:** `templates/login.html`, the profile template, `app.py` (a context flag), tests.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with Google OAuth configured, the login page links `/auth/google`; without it, it doesn't.
+  2. Test: the profile page links the 2FA set-up when 2FA is available and not when it isn't.
+
+#### UPG-56 — Checkout has no coupon field
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** [C] The server applies a coupon validated on the server when `create_order` gets one (`services_payments.server_price`, `services_payments.py:77`; uses held since UPG-36), but no template or script sends one: `grep -rni coupon templates static/js` finds only marketing copy.
+- **Who benefits:** organisers running discounts; students with a code.
+- **What to build:** a coupon field on the checkout page with an "Apply" button that shows the server's price (fee, discount, total) before paying, and sends the code with the order. The server's price stays the only price.
+- **Files touched:** `templates/payment/checkout.html`, its script, `routes_payment.py` (a price-preview endpoint if needed), tests.
+- **Effort:** S · **Depends on:** UPG-36 · **Risk:** low; the server already validates.
+- **Acceptance criteria:**
+  1. Test: the checkout page has a coupon input and its script sends the code with the order.
+  2. Test: the price preview with a valid code shows the discounted total from the server; an invalid code shows the server's error and the full price.
+
+#### UPG-57 — Placement drives: eligibility rules and shortlist rounds
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Problem:** MISSING [C]. The event-type table lists placement drives as "Generic registration only": eligibility (branch, CGPA, backlogs), shortlists per round and the company's lists are kept in Excel.
+- **Who benefits:** the placement cell, students, recruiting companies.
+- **What to build:** eligibility rules on the event (allowed branches, minimum CGPA, maximum active backlogs), checked at registration against what the student enters (or their roster record, UPG-10); named shortlist rounds the organiser moves registrations through (selected / rejected per round); an export per round.
+- **Files touched:** `routes_spoc.py` (or a new `routes_placement.py`), `routes_forms.py`, `services_export.py`, templates, tests.
+- **Effort:** M · **Depends on:** UPG-01 · **Risk:** self-declared CGPA can be wrong until the roster import holds it.
+- **Acceptance criteria:**
+  1. Test: a student whose branch isn't allowed, or whose CGPA is below the minimum, or with too many backlogs is refused with the reason; an eligible one registers.
+  2. Test: the organiser moves 2 of 3 registrations into round 2; the round-2 export lists exactly those 2.
+  3. Test: only the event's staff can move registrations or export a round.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -1861,12 +1949,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | 0. Sync the plan | — | Done 2026-09-30: every item re-verified; BLK-12, BLK-13, UPG-16 to UPG-32 added; sessions merged into BLK-08. |
 | 1. Blockers | BLK-02 → BLK-14 → BLK-03 → BLK-04 + BLK-12 → BLK-05 → BLK-06 → BLK-07 → BLK-08 → BLK-10 → BLK-13 → BLK-15 → BLK-11, then BLK-16 (added 2026-10-02 from the PR #48 review) and BLK-17 (found starting UPG-33), both built before Phase 2 | **Done** (2026-10-01; BLK-16 and BLK-11's CI on GitHub 2026-10-02). Waiting on the owner: BLK-01's last criterion (the PR refs, GitHub Support, D-2); it doesn't block Phase 2. |
 | 2. Event day | UPG-33 account emails → UPG-35 uniform login/reset messages → UPG-37 hourly login cap → UPG-39 links in the dev console → UPG-40 resend set-password links → UPG-41 leftover mail password → UPG-02 check-in → UPG-06 certificates → UPG-03 exports → UPG-29 assignment → UPG-01 forms → UPG-34 legacy registration route → UPG-08 teams → UPG-30 paid events → UPG-36 coupon uses → UPG-05 feedback → UPG-07 scheduled jobs → UPG-31 notifications | **Done** (2026-10-08), except UPG-30's criterion 4 (the owner's checkout in Razorpay test mode). Found and built during the phase: BLK-18, BLK-19, UPG-45. Not pushed yet: the remote `production-ready` is at `37c2a5c`. UPG-01 comes before UPG-08 (team fields need it); UPG-07 comes before UPG-31 (the reminder needs it). Each flow gets an end-to-end test on the real database layer. |
-| 3. Production setup | UPG-16 migrations → UPG-17 uploads → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups → UPG-22 privacy | |
-| 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check | One commit per UPG-23 area. |
-| 5. Clean-up | UPG-14 → UPG-15 → UPG-38 Jekyll workflow | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
-| 6. Release check | UPG-32 | Fresh clone, production boot, restart/two instances, all scans, `docs/DEPLOY.md`, final report. |
+| 3. Production setup | UPG-43 event-day states → UPG-16 migrations → UPG-18 background jobs → UPG-19 pagination → UPG-20 boot checks/health/logs → UPG-21 backups (UPG-17 folded in, D-5) → UPG-22 privacy (with UPG-42) → UPG-51 refund all on cancellation → UPG-52 atomic team join | Order set by the owner's run prompt (2026-10-10). |
+| 4. Frontend | UPG-23a–h layout → UPG-24 Bootstrap/fonts → UPG-25 inline scripts/CSP → UPG-26 forms → UPG-27 images → UPG-28 375px check → launch checks UPG-53, UPG-54, UPG-55, UPG-56 | One commit per UPG-23 area. |
+| 5. Clean-up | UPG-14 → UPG-15 → UPG-38 Jekyll workflow → one seed command | UPG-15 removes `functions/saptha_app/` and `catalyst.json` (D-1). |
+| 6. University features (2026-10-10) | UPG-04 → UPG-09 → UPG-10 → UPG-11 → UPG-12 → UPG-13 → UPG-57; UPG-44, UPG-46 to UPG-50 where they fit | Added by the owner's run prompt. |
+| 7. Release check | UPG-32 | Fresh clone, production boot, restart/two instances, all scans, `docs/DEPLOY.md`, final report. |
 
-Outside these phases (after Phase 6 unless the owner says otherwise): UPG-04 judging rubrics, UPG-09 venue booking on create, UPG-10 roster import and Google sign-in, UPG-11 participation ledger, UPG-12 faculty/external participants, UPG-13 sports fixtures.
+*(2026-10-10: UPG-04 and UPG-09 to UPG-13 moved into Phase 6 above; UPG-32 is Phase 7.)*
+
+**Development-only run (owner, 2026-10-10).** For the run that starts at `6b4fe41`, rule 5 (tests) and rule 8 (re-verification) are suspended. An item built in this run is marked **BUILT (untested)**, not DONE, and gets a "To test later" line listing what its acceptance criteria need. Every commit still passes `ruff check .` and starts the app (home page loads). No existing test is deleted, skipped or weakened.
 
 ### Decisions needed
 
@@ -1875,8 +1966,9 @@ Outside these phases (after Phase 6 unless the owner says otherwise): UPG-04 jud
 | D-1 | **Is Cloud Run the only deploy target?** If yes, `functions/saptha_app/` (the Zoho Catalyst copy) and `catalyst.json` are removed in Phase 5. That copy still has the kiosk/ticket holes (BLK-12), the public SuperAdmin sign-up (BLK-14), the bandit findings (BLK-11) and the walk-in default password (UPG-15). If Catalyst stays, it needs a build step instead of a tracked copy. | BLK-12 criterion 4; BLK-14 criterion 3; UPG-15 criteria 3–4 | **Decided (owner, 2026-10-01): yes, Cloud Run is the only deploy target.** UPG-15 removes `functions/saptha_app/` and `catalyst.json` in Phase 5, which completes BLK-12 criterion 4 and BLK-14 criterion 3; no Catalyst build step is needed. Until then, BLK-11 fixes the two flagged files in place so CI can go green. |
 | D-2 | **BLK-01 owner actions:** force-push the rewritten `master`, delete the remote `main` and `claude/busy-davinci-6nkabi`, and ask GitHub Support to purge the 47 PR refs (commands in the 2026-09-29 changelog). The agent never pushes. | BLK-01 criteria 0 and 4 (CI green on GitHub); BLK-11 criterion 2 | **Done (owner, 2026-10-01):** `master` force-pushed, `main` and `claude/busy-davinci-6nkabi` deleted, `production-ready` pushed, GitHub Support contacted. Verified with `git ls-remote`; BLK-01 criterion 4 is met on GitHub. **Left:** Support removing the 47 PR refs (BLK-01 criterion 0). Nothing else waits on it. |
 | D-3 | **UPG-35: should login, password-reset and sign-up messages hide whether an account exists?** | UPG-35 | **Decided (owner, 2026-10-02):** login and password-reset messages become uniform ("Email or password is incorrect"; "If an account exists for this email, we've sent a reset link"). Sign-up and registration stay as they are: an existing email is told to log in first. Scheduled in Phase 2 right after UPG-33. |
-| D-5 | **UPG-17: fold into UPG-21?** Nothing the app runs stores files any more (end-of-Phase 2 re-verification), so UPG-17's criteria 3–4 have nothing to test. Proposed: move its storage settings (S3 endpoint, private objects, no silent local fallback) into UPG-21's backup work and close UPG-17. | UPG-17, UPG-21 | Open (2026-10-08). |
-| D-4 | **UPG-42: which address should the privacy, terms and payment-failed pages give for help and privacy requests?** | UPG-42 | Open (2026-10-07). Until then the pages keep the old Gmail account's address. Not scheduled in a phase yet; it fits next to UPG-22 in Phase 3. |
+| D-5 | **UPG-17: fold into UPG-21?** Nothing the app runs stores files any more (end-of-Phase 2 re-verification), so UPG-17's criteria 3–4 have nothing to test. Proposed: move its storage settings (S3 endpoint, private objects, no silent local fallback) into UPG-21's backup work and close UPG-17. | UPG-17, UPG-21 | **Decided (owner, 2026-10-10): yes.** UPG-17 is folded into UPG-21: its storage settings (S3 endpoint, private objects, no silent local fallback) are built with the backups; UPG-17 is closed as MERGED. |
+| D-4 | **UPG-42: which address should the privacy, terms and payment-failed pages give for help and privacy requests?** | UPG-42 | **Decided (owner, 2026-10-10):** `events@your-university-domain`. UPG-42 reads it from `SUPPORT_EMAIL`; `.env.example` gives this value. |
+| D-6 | **UPG-30 criterion 4: when is the Razorpay test-mode checkout run?** | UPG-30 criterion 4 | **Decided (owner, 2026-10-10):** deferred to UPG-32 (release check), run on a public test deployment together with the webhook (Razorpay must reach `<BASE_URL>/payment/webhook/razorpay`). UPG-30 stays IN PROGRESS until then. |
 
 ---
 
@@ -1975,3 +2067,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-08 | "UPG-31: …" (parent `f570f07`) | UPG-31, UPG-18, UPG-48, UPG-49, UPG-50 | **UPG-31 DONE.** The change and cancellation notices existed but never emailed anyone: their email channel imported `utils_email.send_email_notification`, which didn't exist. Added it (escaped, through Brevo first), so those notices, and API v1's automation emails, now go out. The ticket-email task's `event_date`/`venue` are now accepted, so paid registrants get their ticket email again; the receipt WhatsApp gets the payment ID; the missing day-before WhatsApp function exists. The day-before email carries the entry QR (the ticket page's signed token) under the ticket's ID. Change notices use a stable key (Python's `hash()` differs per process), and the coordinator's edit sends them too. 5 new real-database cases with Brevo's HTTP API mocked and outside connections refused (4 fail on the old code). Full pytest 888 passed on PostgreSQL 16, 887 passed and 1 skipped on SQLite; ruff clean. A first draft of the tests overwrote the existing `tests/test_notifications.py`; it was restored unchanged before any commit, and the new tests are in `tests/test_notices.py`. **New:** UPG-48 (team members get no notices), UPG-49 (automation WhatsApp channel), UPG-50 (email templates don't escape). |
 | 2026-10-08 | "docs: …" (parent `1b7fd7c`) | ALL (re-verification at the end of Phase 2) | **Full re-verification of every open item (33), plus sections 1–4 (their citations in 2–4), against the code at `1b7fd7c`** (rule 8: 22 items DONE since the post-Phase 1 pass, BLK-16 and BLK-17 included; the count restarts at 0). Each citation was mapped from the commit that last wrote its line (`git blame` on this file) to `1b7fd7c` by exact line alignment; every moved, changed or unresolved one was read, and the counts were re-run with one script on `986d108` and `1b7fd7c`. **Claims corrected:** UPG-17 (nothing live stores files any more: certificates are emailed and verified from the database since UPG-06, exports are streamed; criteria 3–4 have nothing to test; new decision D-5 proposes folding it into UPG-21; the uploads inventory row is now NOT USED); UPG-32 (`README.md` has no Railway/Render guide; `docs/DEPLOY.md` exists with the scheduled-jobs section); UPG-15 (walk-ins get no password since UPG-33; the `functions/` diff re-counted); UPG-13 (a second checklist label, `services_copilot.py:180`, was missed before); UPG-10, UPG-12 and the FDP row (the account helper's role is now a parameter that defaults to `Student`); UPG-20 (47 of 99 environment variables in `.env.example` by this pass's script, and `MAIL_FROM` isn't one); inventory rows for approval, the calendar feed, the registration form and the kiosk. **Counts updated:** UPG-19 (`.stream()` 27/27/13/7), UPG-23 (16 templates on the shared layout, 107 standalone), UPG-24 (Bootstrap 5.3.0 on 46), UPG-25 (70 templates with inline scripts; 483 handlers in 76), UPG-26 (24 templates load `global.js`). **UPG-14 gains** `tasks/export_tasks.py` and `tasks/webhook_tasks.py`, which nothing queues (the second is tested by `tests/test_tasks.py`, so rule 5 applies). **Line moves only:** UPG-04, 09, 10, 12, 14, 15, 16, 20, 25, 26, 30, 43, 46, 47, BLK-01 and 45 citations in sections 2–4. **Unchanged and still accurate:** UPG-11, 18, 21, 22, 27, 28, 38, 42, 44 (re-run [R]: an empty payment status still reads back `unpaid`), 48, 49, 50. **BLK-01** [R, read-only `git ls-remote`]: `master` at `8b72203` (PR #49 merged), the remote `production-ready` at `37c2a5c`, PR refs 1–49 (the same 47 old ones, plus #48 and #49 on the rewritten history). No status changes and no new items. Checks: see the Phase 2 summary. |
 | 2026-10-08 | "docs: …" (parent `1b7fd7c`) | Phase 2 summary | **Phase 2 (event day) done, except UPG-30's criterion 4.** **DONE:** UPG-33, UPG-35, UPG-37, UPG-39, UPG-40, UPG-41, UPG-02, UPG-06, UPG-03, UPG-29, UPG-01, UPG-34, UPG-08, UPG-36, UPG-05, UPG-07, UPG-31; found and built during the phase: BLK-18, BLK-19, UPG-45. **Still open:** UPG-30 (built; waits on the owner's checkout in Razorpay test mode). **Opened during the phase:** UPG-42, UPG-43, UPG-44, UPG-46, UPG-47, UPG-48, UPG-49, UPG-50 (none scheduled yet; owner's call), and decisions D-4 and D-5 (both open). **Checks at the end of Phase 2 [R]:** full pytest 888 passed on PostgreSQL 16, and 887 passed with 1 skipped on SQLite (the PostgreSQL-only concurrency case); 689 at the start of the phase. CI's test command and environment in a fresh clone, with a Redis-protocol server (`fakeredis`'s TCP server, since this machine has no Redis): 887 passed, 1 skipped. ruff clean; CI's bandit command on the fresh clone: exit 0. **Waiting on the owner:** push `production-ready` (21 local commits; the remote is at `37c2a5c`) and open a pull request into `master` so CI runs; UPG-30's test-mode checkout; D-4; D-5; BLK-01's last criterion (GitHub Support, D-2). **Next:** Phase 3, starting with UPG-16. |
+| 2026-10-10 | "docs: …" (parent `6b4fe41`) | Step 0: D-4, D-5, D-6, UPG-51 to UPG-57 | **Owner run prompt, Step 0.** `origin/master` holds PR #49 only (`37c2a5c`), so local `master` was not moved. `chore: keep generated proposals out of static/ and git` (`6b4fe41`) removed the generated proposals from `static/reports/` (servable by the website) and untracked them in `reports/`, ignored `static/reports/`, `reports/*.pdf`, `reports/*.docx` and the generated logo, moved `python-docx` to `requirements-dev.txt`, and cut `HANDOFF.md` to a pointer. **Decisions:** D-4 (contact address `events@your-university-domain`), D-5 (UPG-17 folded into UPG-21; UPG-17 → MERGED), D-6 (UPG-30 criterion 4 deferred to UPG-32 on a public test deployment). **New:** UPG-51 (refund all on cancellation), UPG-52 (atomic team join), launch checks UPG-53 (fake home-page hackathon), UPG-54 (Capacitor URL from `BASE_URL`), UPG-55 (Google and 2FA links; takes UPG-10 criterion 4), UPG-56 (coupon field at checkout); the matchmaker's `MOCK_STUDENTS` is already UPG-14 criterion 4. UPG-57 (placement drives) for Phase 6. Phases 3–7 reordered as the owner set; this run is development-only (rules 5 and 8 suspended; built items are BUILT (untested)). |

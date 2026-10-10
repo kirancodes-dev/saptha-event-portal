@@ -1903,7 +1903,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **What to build:** an empty or missing payment status reads back as written, as other fields do since BLK-06b; an explicit `unpaid` still reads `unpaid`.
 - **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
-- **What was built (2026-10-10, owner's second run):** when the SQL layer overlays the stored document on the columns, an empty or missing `payment_status` now reads back as written instead of the enum column's default `unpaid` (`EMPTY_READS_BACK`, `db_adapter.py:693`, used in `_merge_shadow`). An explicit `unpaid` still reads `unpaid`, and the `payment_status == 'unpaid'` filter finds only it (the filter compares the document value). Checked by hand [R] on SQLite and PostgreSQL 16: `''` → `''`, missing → missing, `'unpaid'` → `'unpaid'`, `'Paid'` → `'Paid'`; the filter returns only the explicit one; updating the empty one to `unpaid` reads `unpaid`. Adapter, filter, payment, export and check-in tests pass.
+- **What was built (2026-10-10, owner's second run):** when the SQL layer overlays the stored document on the columns, an empty or missing `payment_status` now reads back as written instead of the enum column's default `unpaid` (`EMPTY_READS_BACK`, `db_adapter.py:696`, used in `_merge_shadow`). An explicit `unpaid` still reads `unpaid`, and the `payment_status == 'unpaid'` filter finds only it (the filter compares the document value). Checked by hand [R] on SQLite and PostgreSQL 16: `''` → `''`, missing → missing, `'unpaid'` → `'unpaid'`, `'Paid'` → `'Paid'`; the filter returns only the explicit one; updating the empty one to `unpaid` reads `unpaid`. Adapter, filter, payment, export and check-in tests pass.
 - **To test later:** criterion 1 (SQLite and PostgreSQL). Touches `db_adapter.py` (a shared file); rule 8 is off for this run.
 - **Acceptance criteria:**
   1. Test (SQLite and PostgreSQL): `''` and a missing `payment_status` read back as `''` and missing; `'unpaid'` reads back `'unpaid'`; filters on `payment_status == 'unpaid'` find only the explicit one.
@@ -1927,13 +1927,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **832 passed** on SQLite and PostgreSQL 16; ruff clean.
 - **Rule 8 (early pass, `db_adapter.py` changed):** all 35 open items checked against this change. Only UPG-01 reads form submissions (its criterion 2 needs this item). UPG-16's citation of the schema check's call site (`db_adapter.py:1822` at `986d108`) is now at `:1840`; its claims are unchanged. No other open item's claims change.
 #### UPG-46 — Scheduled emails link to a fixed `sapthaevent.in`, not `BASE_URL`
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-46: …" on `production-ready` (parent `29d859b`)
 - **Problem:** Found while building UPG-07 [C]. The coordinators' day-before briefing links `https://sapthaevent.in/coordinator/scanner` (`tasks/scheduled_tasks.py:183`), and the SPOC's velocity alert links `https://sapthaevent.in/forms/register/<event>` (`:416`). BLK-16 moved every other emailed link to `BASE_URL`; these two point at a domain the deployment may not use.
 - **Who benefits:** coordinators and SPOCs who click the link.
 - **What to build:** both links built from `BASE_URL`, like the other emails (BLK-16's helper).
 - **Files touched:** `tasks/scheduled_tasks.py`, tests.
 - **Effort:** S · **Depends on:** BLK-16 · **Risk:** low.
+- **What was built (2026-10-10, owner's second run):** `tasks/scheduled_tasks.py` builds both links from `BASE_URL` through a `_base_url()` helper (it uses `utils_email._base_url`, BLK-16's): the coordinators' day-before briefing (in `send_24h_reminders`) links `<BASE_URL>/coordinator/scanner`, and the SPOC's velocity alert (`check_registration_velocity`) links `<BASE_URL>/forms/register/<event>`. No tracked file mentions `sapthaevent.in` any more. Checked by hand [R] with `BASE_URL=https://events.example.edu`: both emails link only to `events.example.edu`.
+- **To test later:** criterion 1.
 - **Acceptance criteria:**
   1. Test: with `BASE_URL=https://events.example.edu`, the briefing and the velocity alert link only to that host; `sapthaevent.in` appears in neither.
 - **Not scheduled yet** (owner's call; it fits next to UPG-31).
@@ -2350,3 +2352,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-60: …" (parent `59f081f`) | UPG-60, D-8 | **UPG-60 BUILT (untested).** Favicon added; the catalogue banner and checkout payment logos no longer point at missing or refused files; the reels and streams pages show event images instead of blocked cartoon sample videos; the create-event script's duplicate `let` (which stopped the whole wizard script from running) and the round panel's missing-field listener fixed; the calendar's missing CSS link and unknown option removed; SVG height fixed. Chromium pass over 254 page loads: no page error, no static 404, no CSP violation. **New decision D-8** (keep the demo reels/streams pages public?). ruff clean; app starts. |
 | 2026-10-10 | "UPG-42: …" (parent `e82943b`) | UPG-42 | **UPG-42 BUILT (untested).** The privacy, terms and payment-failed pages take their contact address from `SUPPORT_EMAIL` and show none when it's unset; the old Gmail address is gone from the repository; `.env.example` has the placeholder (D-4). Checked both cases by hand; ruff clean; app starts. |
 | 2026-10-10 | "UPG-44: …" (parent `737bd0c`) | UPG-44 | **UPG-44 BUILT (untested).** An empty or missing payment status reads back as written, not as the column default `unpaid`; an explicit `unpaid` and the `== unpaid` filter are unchanged. Checked on SQLite and PostgreSQL 16; adapter and payment tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-46: …" (parent `29d859b`) | UPG-46 | **UPG-46 BUILT (untested).** The coordinators' briefing and the velocity alert link from `BASE_URL`, never `sapthaevent.in`. Checked by hand with a test `BASE_URL`; ruff clean; app starts. |

@@ -23,6 +23,12 @@ from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_S
 logger = logging.getLogger(__name__)
 
 
+def _base_url() -> str:
+    """Every link in a scheduled email starts with BASE_URL (BLK-16, UPG-46)."""
+    from utils_email import _base_url as base
+    return base()
+
+
 def _e(value) -> str:
     """Escape a value put into an email's HTML (UPG-50)."""
     import html as _html
@@ -189,7 +195,7 @@ def send_24h_reminders(self):
       </td></tr>
     </table>
     <table><tr><td>
-      <a href="https://sapthaevent.in/coordinator/scanner"
+      <a href="{_e(_base_url())}/coordinator/scanner"
          style="display:inline-block;padding:12px 28px;background:#1a2557;color:#fff;font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;">
         Open Scanner Dashboard →
       </a>
@@ -422,7 +428,7 @@ def check_registration_velocity(self):
                     continue
                 fill_display = f"{reg_count} registered (no capacity limit set)"
 
-            reg_link = f"https://sapthaevent.in/forms/register/{e_id}"
+            reg_link = f"{_base_url()}/forms/register/{e_id}"   # BASE_URL, never a fixed domain (UPG-46)
 
             subject = f"⚡ Low registrations alert: {title} — deadline in 3 days"
             body_text = (

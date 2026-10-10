@@ -2191,6 +2191,18 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: a SQLite database created without `events.activity_points` gets it (NOT NULL, default 0) at development start-up, and `/spoc/dashboard` answers 200.
 
+#### UPG-62 — 19 existing tests fail since the clean-up and seed commits
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit "docs: …" (parent `96b9c80`)
+- **Problem:** Found by the full pytest after Part 1 of the owner's second run [R]: 19 failed, 792 passed, 1 skipped on SQLite (Python 3.11). The same 19 fail at `251f444`, before this run's commits, so they come from the earlier commits (UPG-14, UPG-15, the seed fold, UPG-04/UPG-11), not from Part 1. No test file was changed or deleted; the total fell from 894 to 812 because `tests/test_seed_safety.py` is parametrised over the seed scripts, which are now one `seed.py`.
+  - **Obsolete after removals (owner's rule: leave them, note them):** `tests/test_global_scale.py::test_stripe_create_session_simulation_fallback` and `::test_stripe_success_redirection_and_registration` (Stripe removed, UPG-14); `tests/test_next_gen.py::test_matchmaker_page_requires_auth`, `::test_matchmaker_endpoint_calculates_jaccard_matches`, `::test_matchmaker_message_exchange_simulates_realtime_replies` (matchmaker hidden, UPG-14).
+  - **Seed safety (12 cases):** `tests/test_seed_safety.py` now collects `scripts/configure_capacitor.py` and `scripts/generate_vapid.py` as seed scripts (they don't call `seed_safety.guard()`), and `test_there_are_scripts_to_check` / `test_there_are_firestore_scripts_to_check` find no seed scripts under the old names.
+  - **Real bugs:** `tests/test_no_html_injection.py::test_every_value_put_into_html_is_escaped` finds `maxScore` put into HTML unescaped in `templates/judge/teams.html` (UPG-04's rubric); `tests/test_seminar_e2e.py::test_capacity_waitlist_and_promotion_guard`: a promoted waitlist registrant gets no `ticket_id`, and `routes_waitlist.auto_promote` calls `send_generic_email_task` with `body=` (it takes `body_text`), so the promotion email fails (now kept in the outbox and retried, still failing).
+- **What to build:** fix the three real bugs; point the seed-safety test at `seed.py` (and exclude scripts that aren't seeds) without weakening it; for the Stripe and matchmaker tests, the owner decides whether they're retired (D-9).
+- **Effort:** S · **Depends on:** UPG-14, UPG-15 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Full pytest passes, except tests the owner retires under D-9.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -2224,6 +2236,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | D-6 | **UPG-30 criterion 4: when is the Razorpay test-mode checkout run?** | UPG-30 criterion 4 | **Decided (owner, 2026-10-10):** deferred to UPG-32 (release check), run on a public test deployment together with the webhook (Razorpay must reach `<BASE_URL>/payment/webhook/razorpay`). UPG-30 stays IN PROGRESS until then. |
 | D-7 | **UPG-22: what is kept after an account is deleted?** Built: the account and the person's name, email, phone, USN and answers go; registration rows stay without them (attendance and payment totals for reports). Still holding the email: payment orders (finance records) and the audit log. Also: should API v1 registrations (the apps) require consent once the apps are updated? | UPG-22 (policy, not code) | Open (2026-10-10). Proposed: keep payment orders and the audit log for the finance and audit retention period (e.g. 8 years), then anonymise; require consent in API v1 after the next app release. |
 | D-8 | **Keep `/live/reels` and `/live/streams` public?** Both are demo pages: made-up like and viewer counts, a "Live" badge, and (until UPG-60) cartoon sample videos. UPG-60 replaced the videos with event images; the counts are still invented. | none (content, not code) | Open (2026-10-10). Proposed: hide both until there's real event media, as UPG-53 did for the home page's fake hackathon. |
+| D-9 | **Retire the Stripe and matchmaker tests?** UPG-14 removed Stripe and hid the matchmaker, so 5 existing tests (`test_global_scale.py` Stripe ×2, `test_next_gen.py` matchmaker ×3) now fail. The rules say never delete or weaken a test. | UPG-62 | Open (2026-10-10). Proposed: delete them with a changelog line naming each, since the features they test are gone. |
 
 ---
 
@@ -2372,3 +2385,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-47: …" (parent `2aeef46`) | UPG-47 | **UPG-47 BUILT (untested).** Events created without times keep their start and end empty (no save time); pages show "Time to be announced"; a time-less booking still blocks its room on its date. Existing rows unchanged. Checked by hand; venue, calendar, adapter and cron tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-48: …" (parent `457e2b0`) | UPG-48 | **UPG-48 BUILT (untested).** Team members, not only the lead, get the confirmation (saying who added them), the day-before ticket, the 3-day reminder and the change and cancellation notices, once each per person (`services_recipients.registration_people`; per-person `*_sent_to` lists; per-email notice keys). Checked by hand with a team of three and repeated runs; notice, cron and team tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-49: …" (parent `86dcdee`) | UPG-49 | **UPG-49 BUILT (untested).** The automation's WhatsApp channel calls the new `utils_whatsapp.send_whatsapp_message` (Twilio), is skipped cleanly when Twilio isn't configured, and records failures as failures. Checked with Twilio mocked; automation and notice tests pass; ruff clean; app starts. **Part 1 of the owner's second run is built.** |
+| 2026-10-10 | "docs: …" (parent `96b9c80`) | UPG-62, D-9 | **Full pytest after Part 1: 19 failed, 792 passed, 1 skipped** (SQLite, Python 3.11). All 19 fail the same way at `251f444`, before this run's commits. **New:** UPG-62 (obsolete Stripe and matchmaker tests, the seed-safety test after the seed fold, an unescaped `maxScore` on the judge page, and a waitlist promotion that gives no ticket and calls the email task with a wrong argument) and decision D-9 (retire the Stripe and matchmaker tests?). |

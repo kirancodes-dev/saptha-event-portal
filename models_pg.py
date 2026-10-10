@@ -637,6 +637,26 @@ class CouponUse(Base):
     used = Column(Integer, nullable=False, default=0)
 
 
+class OutboxTask(Base):
+    """A background task that failed or timed out while running inline (no
+    broker), kept for the cron endpoint's `outbox` job to retry (UPG-18).
+    `key` is the idempotency key: one row per distinct send."""
+    __tablename__ = "outbox"
+
+    key             = Column(String(64), primary_key=True)
+    task_name       = Column(String(200), nullable=False)
+    args_json       = Column(Text, nullable=False, default="[]")
+    kwargs_json     = Column(Text, nullable=False, default="{}")
+    status          = Column(String(20), nullable=False, default="pending")  # pending / running / done / failed
+    attempts        = Column(Integer, nullable=False, default=0)
+    next_attempt_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    last_error      = Column(Text, nullable=True)
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at      = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    __table_args__ = (Index("idx_outbox_status_next", "status", "next_attempt_at"),)
+
+
 class Announcement(Base):
     __tablename__ = "announcements"
 

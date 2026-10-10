@@ -6,8 +6,8 @@ the GitHub Actions workflow in .github/workflows/cron.yml calls
 POST /internal/cron/<job> with the shared secret in the X-Cron-Secret header
 (docs/DEPLOY.md). Every job can safely run again: reminders skip
 registrations already reminded (`ticket_sent`, `early_reminder_sent`), the
-lifecycle only moves events forward, and the clean-up deletes only expired
-rows.
+lifecycle only moves events forward, the clean-up deletes only expired
+rows, and the outbox claims each row before retrying it.
 """
 import hmac
 import logging
@@ -32,13 +32,21 @@ def _lifecycle():
 
 
 def _cleanup():
-    """Expired sessions (BLK-08) and login attempts older than the throttle window (BLK-13)."""
+    """Expired sessions (BLK-08), login attempts older than the throttle window
+    (BLK-13), and old sent or failed outbox rows (UPG-18)."""
     from services_login_throttle import purge_expired
+    from services_outbox import purge_old
     from session_store import purge_expired_sessions
-    return {'sessions': purge_expired_sessions(), 'login_attempts': purge_expired()}
+    return {'sessions': purge_expired_sessions(), 'login_attempts': purge_expired(), 'outbox': purge_old()}
 
 
-JOBS = {'reminders': _reminders, 'lifecycle': _lifecycle, 'cleanup': _cleanup}
+def _outbox():
+    """Retry background tasks that failed or timed out inline (UPG-18)."""
+    from services_outbox import retry_due
+    return retry_due()
+
+
+JOBS = {'reminders': _reminders, 'lifecycle': _lifecycle, 'cleanup': _cleanup, 'outbox': _outbox}
 
 
 @cron_bp.route('/<job>', methods=['POST'])

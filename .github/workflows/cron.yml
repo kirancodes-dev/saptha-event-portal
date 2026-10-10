@@ -11,12 +11,13 @@ on:
     - cron: '0 * * * *'      # reminders: every hour
     - cron: '15 */6 * * *'   # lifecycle: every 6 hours
     - cron: '45 21 * * *'    # cleanup: daily, 03:15 IST
+    - cron: '*/15 * * * *'   # outbox: retry failed sends every 15 minutes (UPG-18)
   workflow_dispatch:
     inputs:
       job:
         description: Job to run now
         type: choice
-        options: [reminders, lifecycle, cleanup]
+        options: [reminders, lifecycle, cleanup, outbox]
 
 permissions: {}
 
@@ -40,6 +41,7 @@ jobs:
             '0 * * * *')    job=reminders ;;
             '15 */6 * * *') job=lifecycle ;;
             '45 21 * * *')  job=cleanup ;;
+            '*/15 * * * *') job=outbox ;;
             *)              job="$CHOSEN" ;;
           esac
           curl --fail-with-body --silent --show-error --max-time 1800 \

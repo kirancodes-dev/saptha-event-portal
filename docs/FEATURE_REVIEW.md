@@ -183,7 +183,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Users / roles | Role assignment page OK [R]; `/admin/users` lists accounts and resends set-password links (UPG-40) [R]; the dead `/admin/events` link is gone from every template [C at `986d108`] | Other dead links: UPG-15. |
 | Calendar | OK [R] | — |
 | Analytics / exports | Pages OK [R]; exports not re-run | Names read back since BLK-06 [R round-trip]; UPG-03. |
-| Bulk student import | MISSING | UPG-10. |
+| Bulk student import | WORKING (untested) [C] | UPG-10: SuperAdmin CSV roster import with USN, department, year, section; Google sign-in restricted to university domain. |
 
 ---
 
@@ -467,8 +467,13 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### B. New features the university needs
 
 #### UPG-10 — Student roster import and university Google sign-in
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Evidence:** `routes_admin.py:461-572`, `templates/admin/users.html:23-45`, `auth_oauth.py:51-57,205-217`, `config.py:296-297`
+- **Last verified:** 2026-10-10, commit `UPG-10`
+- **To test later:**
+  1. Test: uploading 3 rows creates 3 users with USN and department read back.
+  2. Test: re-uploading updates in place, with no duplicates.
+  3. Test: a Google callback with a non-university domain is rejected.
 - **Problem:** Accounts come only from self sign-up (`routes_auth.py:276-323`) or registration, which creates an unverified account since BLK-02 (`routes_forms.py:570-572`, `services_accounts.py:58`). There's no bulk import (not found). USN is now stored (fixed by BLK-09 [R round-trip at `1f4cdc8`]), but department and year are often blank, so department filters and reports are unreliable. OAuth routes exist, configured via `config.py:227-230`, but at `986d108` no template links to `/auth/google` or `/auth/microsoft`, and `auth_oauth.py` has no university-domain restriction [C].
 - **Who benefits:** every student (one-click login) and every report that needs department/year.
 - **What to build:** a SuperAdmin CSV upload (email, name, USN, department, year, section) that creates or updates users. Show a "Sign in with Google" button restricted to the university domain.
@@ -2291,6 +2296,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "docs: …" (parent `55c5241`) | Phase 5 summary | **Phase 5 (clean-up) built, development-only run (rules 5 and 8 suspended by the owner).** **BUILT (untested):** UPG-14 (duplicate notifications, Stripe, matchmaker, and schedulers merged/cleaned), UPG-15 (Zoho Catalyst copy `functions/saptha_app/` and `catalyst.json` deleted; stale gitlink removed; unregistered blueprints `routes_public`, `routes_head`, `routes_super`, `routes_api` removed; 17 unrendered templates deleted; dead ticket link fixed; `WALKIN_DEFAULT_PASSWORD` eliminated), UPG-38 (sample Jekyll workflow `.github/workflows/jekyll-docker.yml` deleted), and Phase 5 Item 4 (seed scripts consolidated into unified `seed.py` with `--profile demo|events|scale` and `--all` under `seed_safety.guard()`; `generate_vapid.py` moved to `scripts/`; `reset_system.py`, `run_alembic.py`, `scratch/` directory, and 9 redundant seed scripts deleted). Over 4,500 lines of dead code removed. **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200. **Next:** Phase 6 (university features), starting with UPG-04. |
 | 2026-10-10 | "UPG-04: …" (parent `cffd2ae`) | UPG-04 | **UPG-04 BUILT (untested).** Implemented judging criteria normalizer `normalize_criteria` handling dicts and strings with `{name, max_score, key, slug}`; added max score and range validation (400 on out of bounds) in `submit_score` and `score_inline`; returned locked indicator when SPOC locks scoring; updated judge dashboard to query events in `in_progress` and `evaluation` states; updated `templates/judge/teams.html` to render per-criterion max score inputs and sliders. ruff clean; app starts. |
 | 2026-10-10 | "UPG-09: …" (parent `0630122`) | UPG-09 | **UPG-09 BUILT (untested).** Added room picker and conflict detection to event creation in `routes_spoc.py` and `templates/spoc/create_event.html` (returns 400 on conflict without creating event); creates tentative booking in `venue_bookings`; confirms tentative bookings on approval/publish transition in `services_workflow.py`; populates room name on calendar JSON feeds in `app.py`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-10: …" (parent `a15e291`) | UPG-10 | **UPG-10 BUILT (untested).** Implemented SuperAdmin student roster CSV import (`/admin/users/import_csv` and `/admin/students/import_csv`) supporting `email`, `name`, `usn`, `department`, `year`, `section`; creates unverified student accounts or updates in place without duplicates; added CSV upload card to `templates/admin/users.html`; restricted Google sign-in to university domain (`UNIVERSITY_EMAIL_DOMAIN` / `GOOGLE_ALLOWED_DOMAIN`) in `auth_oauth.py` and `config.py`. ruff clean; app starts. |
 
 
 

@@ -293,6 +293,8 @@ class Config:
     OAUTH_GOOGLE_CLIENT_SECRET = os.environ.get('OAUTH_GOOGLE_CLIENT_SECRET', '')
     OAUTH_MICROSOFT_CLIENT_ID     = os.environ.get('OAUTH_MICROSOFT_CLIENT_ID', '')
     OAUTH_MICROSOFT_CLIENT_SECRET = os.environ.get('OAUTH_MICROSOFT_CLIENT_SECRET', '')
+    UNIVERSITY_EMAIL_DOMAIN       = os.environ.get('UNIVERSITY_EMAIL_DOMAIN', '')
+    GOOGLE_ALLOWED_DOMAIN         = os.environ.get('GOOGLE_ALLOWED_DOMAIN', '')
 
     # =========================================================
     # 15. POSTGRESQL (for SQL-backed features / migration target)

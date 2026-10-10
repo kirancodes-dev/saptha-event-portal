@@ -18,6 +18,27 @@
             People who already have a password can use "Forgot password" on the login page.
         </p>
 
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Import Student Roster (CSV)</strong>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-2">
+                    Upload a CSV file containing columns: <code>email</code>, <code>name</code>, <code>usn</code>, <code>department</code>, <code>year</code>, <code>section</code>.
+                    Existing student records are updated in place without creating duplicates.
+                </p>
+                <form method="POST" action="/admin/users/import_csv" enctype="multipart/form-data" class="row g-2 align-items-center">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-auto">
+                        <input type="file" name="file" accept=".csv,text/csv" required class="form-control form-control-sm">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-primary">Upload & Import Roster</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         {% include "includes/list_search.html" %}
         <div class="table-responsive">
             <table class="table">
@@ -33,7 +54,12 @@
                 <tbody>
                     {% for a in accounts %}
                     <tr>
-                        <td>{{ a.name or '—' }}</td>
+                        <td>
+                            {{ a.name or '—' }}
+                            {% if a.usn %}
+                                <div class="small text-muted">{{ a.usn }}{% if a.department %} &middot; {{ a.department }}{% endif %}{% if a.year %} (Yr {{ a.year }}{% if a.section %} Sec {{ a.section }}{% endif %}){% endif %}</div>
+                            {% endif %}
+                        </td>
                         <td>{{ a.email }}</td>
                         <td>{{ a.role or '—' }}</td>
                         <td>

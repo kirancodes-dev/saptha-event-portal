@@ -1,5 +1,7 @@
 import collections
+import csv
 import datetime
+import io
 import json
 import logging
 import re
@@ -442,6 +444,9 @@ def users():
             'email':      doc.id,
             'name':       u.get('name', ''),
             'usn':        u.get('usn', ''),
+            'department': u.get('department', ''),
+            'year':       u.get('year', ''),
+            'section':    u.get('section', ''),
             'role':       role,
             'waiting':    waiting,
             'can_resend': waiting and role not in SUPER_ROLE_NAMES,
@@ -450,10 +455,123 @@ def users():
     # 25 a page in email order, paged in SQL; a search loads and filters (UPG-19).
     if page_args()[2]:
         accounts = sorted((account(d) for d in db.collection('users').stream()), key=lambda a: a['email'])
-        page = paginate_items(accounts, search_fields=('name', 'email', 'usn', 'role'))
+        page = paginate_items(accounts, search_fields=('name', 'email', 'usn', 'department', 'role'))
     else:
         page = paginate_query(db.collection('users').order_by('email'), transform=account)
     return render_template('admin/users.html', accounts=page.items, page=page, current_page='users')
+
+
+@admin_bp.route('/users/import_csv', methods=['POST'])
+@admin_bp.route('/students/import_csv', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def import_student_roster():
+    file = request.files.get('file') or request.files.get('csv_file')
+    csv_text = ''
+    if file and file.filename:
+        raw = file.read()
+        try:
+            csv_text = raw.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            csv_text = raw.decode('latin-1')
+    else:
+        csv_text = request.form.get('csv_data', '')
+
+    if not csv_text.strip():
+        flash("Please select a valid CSV file to upload.", "warning")
+        return redirect('/admin/users')
+
+    reader = csv.DictReader(io.StringIO(csv_text))
+    if not reader.fieldnames:
+        flash("CSV file is empty or missing a header row.", "danger")
+        return redirect('/admin/users')
+
+    created_count = 0
+    updated_count = 0
+
+    for row in reader:
+        norm = {
+            k.strip().lower().replace(' ', '_'): (v or '').strip()
+            for k, v in row.items() if k
+        }
+        email = (
+            norm.get('email')
+            or norm.get('email_id')
+            or norm.get('student_email')
+            or norm.get('mail')
+            or ''
+        ).lower()
+        if not email or '@' not in email:
+            continue
+
+        name = (
+            norm.get('name')
+            or norm.get('student_name')
+            or norm.get('full_name')
+            or ''
+        )
+        usn = (
+            norm.get('usn')
+            or norm.get('roll_no')
+            or norm.get('roll_number')
+            or norm.get('rollno')
+            or norm.get('reg_no')
+            or norm.get('registration_no')
+            or ''
+        )
+        department = (
+            norm.get('department')
+            or norm.get('dept')
+            or norm.get('branch')
+            or ''
+        )
+        year = (
+            norm.get('year')
+            or norm.get('class_year')
+            or norm.get('batch')
+            or ''
+        )
+        section = (
+            norm.get('section')
+            or norm.get('sec')
+            or ''
+        )
+
+        doc_ref = db.collection('users').document(email)
+        user_doc = doc_ref.get()
+
+        if user_doc.exists:
+            update_data = {}
+            if name:
+                update_data['name'] = name
+            if usn:
+                update_data['usn'] = usn
+            if department:
+                update_data['department'] = department
+            if year:
+                update_data['year'] = year
+            if section:
+                update_data['section'] = section
+            if update_data:
+                doc_ref.set(update_data, merge=True)
+            updated_count += 1
+        else:
+            create_unverified_account(
+                db,
+                email=email,
+                name=name or email.split('@')[0],
+                role='Student',
+                usn=usn,
+                department=department,
+                year=year,
+                section=section,
+            )
+            created_count += 1
+
+    log_action(db, "STUDENT_ROSTER_IMPORTED",
+               f"Roster imported: {created_count} created, {updated_count} updated by {session.get('user_id')}")
+    flash(f"✅ Student roster imported: {created_count} created, {updated_count} updated.", "success")
+    return redirect('/admin/users')
 
 
 @admin_bp.route('/users/resend_set_password', methods=['POST'])

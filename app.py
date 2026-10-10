@@ -229,7 +229,8 @@ Talisman(
     frame_options='SAMEORIGIN',
     x_content_type_options=True,
     # Scanners use the camera, judges' dictation the microphone; nothing else.
-    permissions_policy={'camera': "'self'", 'microphone': "'self'", 'geolocation': '()', 'payment': "'self'"},
+    # Structured-header syntax: camera=(self), geolocation=() — not Feature-Policy's 'self'
+    permissions_policy={'camera': '(self)', 'microphone': '(self)', 'geolocation': '()', 'payment': '(self)'},
 )
 
 # ── Rate limiter ─────────────────────────────────────────

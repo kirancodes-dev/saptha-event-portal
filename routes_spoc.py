@@ -1938,7 +1938,7 @@ def api_stats():
         })
 
     # Registered items
-    regs_sorted = sorted(all_regs, key=lambda x: x[1].get('registered_at', ''), reverse=True)
+    regs_sorted = sorted(all_regs, key=lambda x: str(x[1].get('registered_at') or ''), reverse=True)
     for event_title, r_data in regs_sorted[:5]:
         recent_activity.append({
             'type': 'registration',
@@ -1949,7 +1949,7 @@ def api_stats():
         })
 
     # Sort recent activity by time descending
-    recent_activity.sort(key=lambda x: x['time'], reverse=True)
+    recent_activity.sort(key=lambda x: str(x['time'] or ''), reverse=True)
 
     return jsonify({
         'total_events':  len(event_docs),

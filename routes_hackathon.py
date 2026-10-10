@@ -43,7 +43,7 @@ def submit_project(event_id):
     ]
     if not reg_docs:
         flash("You must be registered for this hackathon to submit a project.", "warning")
-        return redirect(url_for('public.event_details', event_id=event_id))
+        return redirect(url_for('event_details', event_id=event_id))
 
     reg_doc = reg_docs[0]
     reg_data = reg_doc.to_dict()
@@ -111,7 +111,7 @@ def kanban_pipeline(event_id):
     event_doc = event_ref.get()
     if not event_doc.exists:
         flash("Event not found.", "danger")
-        return redirect(url_for('public.index'))
+        return redirect(url_for('home'))
 
     event_data = event_doc.to_dict()
     event_data['id'] = event_doc.id
@@ -140,7 +140,7 @@ def project_detail(submission_id):
     sub_doc = db.collection('project_submissions').document(submission_id).get()
     if not sub_doc.exists:
         flash("Project submission not found.", "danger")
-        return redirect(url_for('public.index'))
+        return redirect(url_for('home'))
 
     sub_data = sub_doc.to_dict()
     sub_data['id'] = sub_doc.id

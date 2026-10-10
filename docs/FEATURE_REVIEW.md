@@ -2113,13 +2113,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: with production settings, reading and writing a native collection issues no `CREATE`.
 
 #### UPG-59 — Five pages answer 500 for any role
-- **Status:** TODO
-- **Last verified:** 2026-10-10, commit "UPG-23h: …" (parent `be0b13f`)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-59: …" on `production-ready` (parent `3477667`)
 - **Problem:** Found by UPG-23's route crawl [R], on a seeded event with one registration, the same before this run (`932afdd`) and after: `/ai/match_page/<event>`, `/exams/<event>`, `/gamification/leaderboard`, `/hackathon/submit/<event>` (Super Admin, SPOC, coordinator, judge, and the leaderboard for students too) and `/spoc/api/stats` (SPOC) answer 500. Causes not yet traced.
 - **Who benefits:** whoever opens those pages (judging matcher, online exams, the XP leaderboard, hackathon submissions, SPOC dashboard stats).
 - **What to build:** trace each 500 and fix it, or remove the page if UPG-15 finds it dead.
 - **Files touched:** `routes_ai_matching.py`, `routes_exams.py`, `routes_gamification.py`, `routes_hackathon.py`, `routes_spoc.py`, tests.
 - **Effort:** S–M · **Depends on:** none · **Risk:** low.
+- **What was built (2026-10-10, owner's second run):** each 500 traced and fixed; none of the pages was dead, so none was removed.
+  - `/ai/match_page/<event>`: a judge's staff entry without a `name` raised `KeyError`; the name now falls back to the account's name, then the email (`routes_ai_matching.py:439`).
+  - `/exams/<event>` and `/hackathon/submit/<event>`: someone not registered was redirected with `url_for('public.event_details')`, an endpoint of the blueprint UPG-15 removed (`BuildError`); now `event_details` (`routes_exams.py:54`, `routes_hackathon.py:46`). Two more `url_for('public.index')` redirects in `routes_hackathon.py` (`:114,143`) would have failed the same way; now `home`.
+  - `/gamification/leaderboard`: dividing by the top department's XP failed when nobody had XP yet (`templates/gamification/leaderboard.html:476`).
+  - `/spoc/api/stats`: sorting registrations whose `registered_at` is empty compared `None` with text; the sort keys are strings now (`routes_spoc.py:1952`).
+  - Found starting this item: a development database made before UPG-11 broke every events query (UPG-61, fixed first).
+  - Checked [R]: a crawl of every GET route as six roles (888 fetches) answers no 500; the five pages answer 200 for whoever may use them and redirect the others.
+- **To test later:** criterion 1.
 - **Acceptance criteria:**
   1. Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500.
 
@@ -2320,3 +2328,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-11: …" (parent `54df99c`) | UPG-11 | **UPG-11 BUILT (untested).** Added `activity_points` and `activity_hours` to `Event` model and migration `0005_activity_points_hours`; added inputs in SPOC create and edit event pages; credited points and hours on check-in in `routes_ticket.py`; created `/participant/ledger` student ledger view; added department activity points & hours export (`/admin/export/department_activity` CSV/XLSX) in `services_export.py` and admin routes; printed activity hours on certificate PDF and HTML view. ruff clean; app starts. |
 | 2026-10-10 | "chore: …" (parent `251f444`) | Step 0 (second run): local data, UPG-11, D-4, UPG-28 | **Owner run prompt 2, Step 0.** (1) Local development database `saptha_fallback.db` (gitignored): deleted the 18 named test rows that existed (users `u1`, `u2`, `u1_test`, `u2_test`; events `e1`–`e3`, `e1_test`–`e3_test`; registrations `r1`–`r4`, `r1_test`–`r4_test`), no orphaned members, scores, tickets or submissions left; `student1`–`3@snpsu.edu.in`, `e_pts1`, `r_pts1`, `r_pts2` and `att1` were not in the database. A copy taken before was kept outside the repo; the database was not rebuilt. (2) UPG-11 credits points and hours once per registration from its attendance (`services_ledger.credit_for`, used by the ledger and the department export); check-in no longer writes the stale `*_credited` fields. (3) D-4: `SUPPORT_EMAIL` holds the address; the owner sets the real value in `.env`, the placeholder is only in `.env.example`. (4) The certificate changes from UPG-11 (hours on the certificate) and UPG-28 (certificate phone scaling) are reverted; both items say "Certificate part deferred (owner, 2026-10-10)". ruff clean; app starts. |
 | 2026-10-10 | "UPG-61: …" (parent `f9ebbeb`) | UPG-61 | **UPG-61 (new, found starting UPG-59) BUILT (untested).** Development start-up only added nullable columns, so a database made before UPG-11 lacked `events.activity_points`/`activity_hours` (NOT NULL) and every events query failed. `init_db` now adds NOT NULL columns that have a constant default with that default. Checked on such a database; adapter tests pass; ruff clean; app starts. |
+| 2026-10-10 | "UPG-59: …" (parent `3477667`) | UPG-59 | **UPG-59 BUILT (untested).** The five 500s fixed, none removed: a judge entry without a name on the AI match page; redirects to `public.event_details`/`public.index` (removed blueprint) on exams and hackathon pages; a division by zero on the XP leaderboard; a `None` sort key in the SPOC stats API. A crawl of every GET route as six roles answers no 500. ruff clean; app starts. |

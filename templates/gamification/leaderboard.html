@@ -473,7 +473,7 @@
                                         </div>
                                         <!-- Calculate dynamic progress percent relative to rank #1 -->
                                         {% set max_dept_xp = departments[0].total_xp if departments|length > 0 else 1 %}
-                                        {% set percent = (dept.total_xp / max_dept_xp * 100) | int %}
+                                        {% set percent = ((dept.total_xp / max_dept_xp * 100) | int) if max_dept_xp else 0 %}{# nobody has XP yet: no division by zero (UPG-59) #}
                                         <div class="progress" style="height: 10px; border-radius: 5px;">
                                             <div class="progress-bar bg-primary" role="progressbar" style="width: {{ percent }}%; border-radius: 5px;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
                                         </div>

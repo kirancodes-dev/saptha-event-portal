@@ -51,7 +51,7 @@ def exam_interface(event_id):
     ]
     if not reg_docs:
         flash("You are not registered for this assessment.", "warning")
-        return redirect(url_for('public.event_details', event_id=event_id))
+        return redirect(url_for('event_details', event_id=event_id))
 
     reg_doc = reg_docs[0]
     reg_data = reg_doc.to_dict()

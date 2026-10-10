@@ -436,7 +436,8 @@ def match_page(event_id):
         expertise = ud.to_dict().get('expertise', '') if ud.exists else ''
         judges.append({
             'email':     j['email'],
-            'name':      j['name'],
+            # staff entries made by some paths carry no name (UPG-59)
+            'name':      j.get('name') or ((ud.to_dict() or {}).get('name') if ud.exists else '') or j['email'],
             'expertise': expertise,
         })
 

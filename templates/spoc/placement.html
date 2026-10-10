@@ -1,0 +1,98 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Placement — {{ event.title }}{% endblock %}
+{% block page_title %}Placement drive{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+        <h2 style="font-size:20px;">{{ rules.company or event.title }}{% if rules.role %} · {{ rules.role }}{% endif %}</h2>
+        <p class="mb-1">{% if rules.package %}Package: <strong>{{ rules.package }}</strong>{% endif %}
+            {% if rules.jd_link %} · <a href="{{ rules.jd_link }}" target="_blank" rel="noopener">Job description</a>{% endif %}</p>
+        <p class="text-muted mb-2">Eligibility:
+            {{ rules.branches|join(', ') if rules.branches else 'all branches' }} ·
+            {{ ('year ' ~ rules.years|join(', ')) if rules.years else 'all years' }} ·
+            {{ ('CGPA ≥ ' ~ rules.min_cgpa) if rules.min_cgpa is not none else 'no CGPA rule' }} ·
+            {{ ('≤ ' ~ rules.max_backlogs ~ ' active backlogs') if rules.max_backlogs is not none else 'no backlog rule' }}</p>
+        <p class="mb-0"><strong>{{ eligible_count }}</strong> eligible on the roster ·
+            <strong>{{ registered_count }}</strong> registered</p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h3 style="font-size:17px;">Rounds</h3>
+        {% if rounds %}
+        <ul>
+            {% for r in rounds %}
+            <li>{{ r.name }} —
+                <a href="/placement/{{ event.id }}/export/{{ r.id }}.csv">CSV</a> ·
+                <a href="/placement/{{ event.id }}/export/{{ r.id }}.xlsx">Excel</a> ·
+                <a href="/placement/{{ event.id }}/export/{{ r.id }}.csv?status=shortlisted">shortlisted only</a></li>
+            {% endfor %}
+        </ul>
+        {% else %}<p class="text-muted">No rounds yet.</p>{% endif %}
+        {% if can_edit %}
+        <form method="POST" action="/placement/{{ event.id }}/rounds" class="d-flex gap-2 flex-wrap align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div><label for="round-name" class="form-label mb-1">New round</label>
+                <input type="text" id="round-name" name="name" class="form-control" placeholder="e.g. Aptitude" maxlength="100"></div>
+            <button type="submit" class="btn btn-outline-primary">Add round</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h3 style="font-size:17px;">Registrants</h3>
+        <form method="POST" action="/placement/{{ event.id }}/move">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if can_edit and rounds %}
+            <div class="d-flex gap-2 flex-wrap align-items-end mb-3">
+                <div><label for="move-round" class="form-label mb-1">Round</label>
+                    <select id="move-round" name="round_id" class="form-select">
+                        {% for r in rounds %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                    </select></div>
+                <div><label for="move-status" class="form-label mb-1">Result</label>
+                    <select id="move-status" name="status" class="form-select">
+                        <option value="shortlisted">Shortlisted</option>
+                        <option value="rejected">Rejected</option>
+                    </select></div>
+                <button type="submit" class="btn btn-primary">Mark the ticked students</button>
+            </div>
+            {% endif %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr>{% if can_edit and rounds %}<th scope="col"><span class="visually-hidden">Select</span></th>{% endif %}
+                        <th scope="col">Name</th><th scope="col">USN</th><th scope="col">Branch</th><th scope="col">CGPA</th>
+                        <th scope="col">Backlogs</th>{% for r in rounds %}<th scope="col">{{ r.name }}</th>{% endfor %}
+                        <th scope="col">Current</th></tr></thead>
+                    <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            {% if can_edit and rounds %}<td><input type="checkbox" name="reg_ids" value="{{ row.id }}"
+                                aria-label="Select {{ row.reg.lead_name }}"></td>{% endif %}
+                            <td>{{ row.reg.lead_name }}<br><small>{{ row.reg.lead_email }}</small></td>
+                            <td>{{ row.reg.lead_usn or row.rec.usn or '—' }}</td>
+                            <td>{{ row.rec.department or '—' }}</td>
+                            <td>{{ row.rec.cgpa if row.rec.cgpa is not none else '—' }}</td>
+                            <td>{{ row.rec.backlogs if row.rec.backlogs is not none else '—' }}</td>
+                            {% for r in rounds %}<td>{{ row.results.get(r.id, '—') }}</td>{% endfor %}
+                            <td>{{ (row.round ~ ': ' ~ row.status) if row.round else 'Registered' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="{{ 7 + rounds|length }}">Nobody has registered yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

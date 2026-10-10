@@ -1949,6 +1949,11 @@ h1, h2, h3, h4, h5, h6 {
                       </button>
                     </form>
                     
+                    {% if event.is_placement %}
+                    <a href="/placement/{{ event.id }}" class="action-btn btn-outline justify-content-start">
+                      <i class="fas fa-briefcase"></i> Placement Drive: Eligibility &amp; Rounds
+                    </a>
+                    {% endif %}
                     <a href="/spoc/results/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-trophy"></i> Live Leaderboard &amp; Judging Scores
                     </a>

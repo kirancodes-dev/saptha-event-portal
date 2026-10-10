@@ -317,3 +317,30 @@ def department_activity_csv(db, department=None, participant_type=None):
 def department_activity_xlsx(db, department=None, participant_type=None):
     return to_xlsx([('Department Activity', DEPARTMENT_ACTIVITY_COLUMNS,
                      department_activity_rows(db, department, participant_type))])
+
+
+# ── Placement drive rounds (UPG-57) ────────────────────────────────────────
+
+PLACEMENT_ROUND_COLUMNS = ['Ticket ID', 'Name', 'USN', 'Email', 'Phone', 'Department', 'Year',
+                           'CGPA', 'Active Backlogs', 'Round', 'Result']
+
+
+def placement_round_rows(db, event_id, round_id, status=None):
+    """Everyone with a result in one round of a placement drive (optionally one result)."""
+    from services_placement import academic_record, settings
+    ev_doc = db.collection('events').document(event_id).get()
+    event = (ev_doc.to_dict() or {}) if ev_doc.exists else {}
+    round_name = next((r['name'] for r in settings(event).get('rounds') or [] if r['id'] == round_id), round_id)
+    regs = _registrations(db, event_id)
+    profiles = _profiles(db, regs)
+    rows = []
+    for rid, r in sorted(regs, key=lambda x: str(x[1].get('lead_name') or '')):
+        result = (r.get('placement_rounds') or {}).get(round_id)
+        if not result or (status and result != status):
+            continue
+        rec = academic_record(profiles.get((r.get('lead_email') or '').lower()) or {})
+        rows.append([r.get('reg_id') or rid, r.get('lead_name', ''), r.get('lead_usn') or rec['usn'], r.get('lead_email', ''),
+                     r.get('lead_phone', ''), rec['department'], rec['year'],
+                     '' if rec['cgpa'] is None else rec['cgpa'], '' if rec['backlogs'] is None else rec['backlogs'],
+                     round_name, result])
+    return rows

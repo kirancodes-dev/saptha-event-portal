@@ -199,6 +199,14 @@
                             <label class="form-label">USN / Roll No</label>
                             <input aria-label="USN / Roll No" type="text" name="usn" class="form-control" value="{{ user.usn or '' }}">
                         </div>
+                        {% if user.get('cgpa') not in (none, '') or user.get('backlogs') not in (none, '') %}
+                        {# From the roster; only the placement office changes these (UPG-57) #}
+                        <p class="mb-3 small text-muted">
+                            On record: CGPA <strong>{{ user.get('cgpa') if user.get('cgpa') not in (none, '') else '—' }}</strong> ·
+                            active backlogs <strong>{{ user.get('backlogs') if user.get('backlogs') not in (none, '') else '—' }}</strong>.
+                            Ask the placement office to correct them.
+                        </p>
+                        {% endif %}
                         {% endif %}
                         <div class="text-end">
                             <button type="submit" class="btn-save">Save Changes</button>

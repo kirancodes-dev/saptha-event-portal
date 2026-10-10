@@ -1,0 +1,38 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Academic record{% endblock %}
+{% block page_title %}Academic record{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+        <h2 style="font-size:18px;">{{ user.get('name') or email }}</h2>
+        <p class="text-muted">{{ email }} · {{ user.get('usn') or 'No USN' }} · {{ user.get('department') or 'No branch' }}
+            · Year {{ user.get('year') or '—' }}</p>
+        <p>Placement drives check these (UPG-57). The roster CSV sets them too (columns <code>cgpa</code> and
+           <code>backlogs</code>); students see them on their profile but can't change them.</p>
+        <form method="POST" class="row g-3" style="max-width:480px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-6">
+                <label for="cgpa" class="form-label">CGPA</label>
+                <input type="number" step="0.01" min="0" max="10" id="cgpa" name="cgpa" class="form-control"
+                       value="{{ user.get('cgpa', '') }}">
+            </div>
+            <div class="col-6">
+                <label for="backlogs" class="form-label">Active backlogs</label>
+                <input type="number" step="1" min="0" id="backlogs" name="backlogs" class="form-control"
+                       value="{{ user.get('backlogs', '') }}">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="/admin/users" class="btn btn-link">Back to users</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

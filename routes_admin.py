@@ -573,6 +573,17 @@ def import_student_roster():
             or norm.get('sec')
             or ''
         )
+        # Academic record for placement drives (UPG-57): only the roster sets these
+        academics = {}
+        cgpa_raw = norm.get('cgpa') or norm.get('gpa') or ''
+        backlogs_raw = norm.get('backlogs') or norm.get('active_backlogs') or ''
+        try:
+            if cgpa_raw:
+                academics['cgpa'] = round(float(cgpa_raw), 2)
+            if backlogs_raw:
+                academics['backlogs'] = int(float(backlogs_raw))
+        except ValueError:
+            pass
 
         doc_ref = db.collection('users').document(email)
         user_doc = doc_ref.get()
@@ -589,6 +600,7 @@ def import_student_roster():
                 update_data['year'] = year
             if section:
                 update_data['section'] = section
+            update_data.update(academics)
             if update_data:
                 doc_ref.set(update_data, merge=True)
             updated_count += 1
@@ -602,6 +614,7 @@ def import_student_roster():
                 department=department,
                 year=year,
                 section=section,
+                **academics,
             )
             created_count += 1
 
@@ -609,6 +622,48 @@ def import_student_roster():
                f"Roster imported: {created_count} created, {updated_count} updated by {session.get('user_id')}")
     flash(f"✅ Student roster imported: {created_count} created, {updated_count} updated.", "success")
     return redirect('/admin/users')
+
+
+@admin_bp.route('/users/<path:email>/academics', methods=['GET', 'POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def edit_academics(email):
+    """An admin corrects a student's CGPA and active backlogs (UPG-57); students
+    see them on their profile but can't change them."""
+    email = email.strip().lower()
+    doc = db.collection('users').document(email).get()
+    if not doc.exists:
+        flash("No account with that email.", "warning")
+        return redirect('/admin/users')
+    user = doc.to_dict() or {}
+    if request.method == 'POST':
+        updates, problems = {}, []
+        cgpa, backlogs = request.form.get('cgpa', '').strip(), request.form.get('backlogs', '').strip()
+        try:
+            if cgpa:
+                value = float(cgpa)
+                if not 0 <= value <= 10:
+                    raise ValueError
+                updates['cgpa'] = round(value, 2)
+        except ValueError:
+            problems.append("CGPA must be a number from 0 to 10.")
+        try:
+            if backlogs:
+                value = int(backlogs)
+                if value < 0:
+                    raise ValueError
+                updates['backlogs'] = value
+        except ValueError:
+            problems.append("Backlogs must be a whole number, 0 or more.")
+        if problems:
+            for p in problems:
+                flash(p, "danger")
+        elif updates:
+            db.collection('users').document(email).set(updates, merge=True)
+            log_action(db, "ACADEMIC_RECORD_UPDATED", f"{session.get('user_id')} set {updates} for {email}")
+            flash("Academic record saved.", "success")
+            return redirect('/admin/users?q=' + email)
+    return render_template('admin/user_academics.html', email=email, user=user, current_page='users')
 
 
 @admin_bp.route('/users/resend_set_password', methods=['POST'])

@@ -269,6 +269,10 @@ def view_ticket(reg_id):
         verify_url = f"{_base_url()}/ticket/verify/{token}"
         qr_b64     = generate_qr_base64(verify_url)
 
+    # A placement drive shows the student's current round and result (UPG-57)
+    from services_placement import current_round, is_placement
+    placement_status = current_round(event, reg) if is_placement(event) else None
+
     return render_template(
         'participant/ticket.html',
         reg=reg,
@@ -277,6 +281,7 @@ def view_ticket(reg_id):
         verify_url=verify_url,
         show_qr=show_qr,
         event_date=event_date_str,
+        placement_status=placement_status,
     )
 
 

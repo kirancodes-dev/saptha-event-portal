@@ -596,6 +596,15 @@ def submit_form(event_id):
                   "you'll come back to this form.", "info")
             return redirect(login_redirect)
 
+        # Placement drives: only students who meet the company's rules (UPG-57)
+        from services_placement import eligibility, is_placement
+        if is_placement(event_data):
+            prof = db.collection('users').document(email).get()
+            ok, reason = eligibility(event_data, (prof.to_dict() or {}) if prof.exists else None)
+            if not ok:
+                flash(reason, 'danger')
+                return redirect(f'/forms/register/{event_id}')
+
         # Duplicate check
         existing = list(
             db.collection('registrations')

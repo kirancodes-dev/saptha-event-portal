@@ -171,6 +171,32 @@
           <input type="hidden" name="allowed_participants_sent" value="1">
           <div class="form-text">Faculty and external registrants give their designation and institution (UPG-12).</div>
         </div>
+
+        {# Placement drive: company and eligibility (UPG-57) #}
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="is_placement" name="is_placement" value="yes" {% if event.get('is_placement') %}checked{% endif %}>
+                <label class="form-check-label" for="is_placement">This is a placement drive</label>
+            </div>
+            <input type="hidden" name="placement_sent" value="1">
+            <div class="form-text">Students register only if they meet the rules below; CGPA and backlogs come from the roster.</div>
+        </div>
+        <div class="col-md-6"><label class="form-label" for="placement_company">Company</label>
+            <input type="text" class="form-control" id="placement_company" name="placement_company" value="{{ (event.get('placement') or {}).get('company', '') }}"></div>
+        <div class="col-md-6"><label class="form-label" for="placement_role">Role</label>
+            <input type="text" class="form-control" id="placement_role" name="placement_role" value="{{ (event.get('placement') or {}).get('role', '') }}"></div>
+        <div class="col-md-6"><label class="form-label" for="placement_package">Package</label>
+            <input type="text" class="form-control" id="placement_package" name="placement_package" placeholder="e.g. 8 LPA" value="{{ (event.get('placement') or {}).get('package', '') }}"></div>
+        <div class="col-md-6"><label class="form-label" for="placement_jd_link">Job description link</label>
+            <input type="url" class="form-control" id="placement_jd_link" name="placement_jd_link" value="{{ (event.get('placement') or {}).get('jd_link', '') }}"></div>
+        <div class="col-md-6"><label class="form-label" for="placement_branches">Eligible branches / departments</label>
+            <input type="text" class="form-control" id="placement_branches" name="placement_branches" placeholder="e.g. CSE, ISE (empty: all)" value="{{ ((event.get('placement') or {}).get('branches') or [])|join(', ') }}"></div>
+        <div class="col-md-6"><label class="form-label" for="placement_years">Eligible years</label>
+            <input type="text" class="form-control" id="placement_years" name="placement_years" placeholder="e.g. 4 (empty: all)" value="{{ ((event.get('placement') or {}).get('years') or [])|join(', ') }}"></div>
+        <div class="col-md-6"><label class="form-label" for="placement_min_cgpa">Minimum CGPA</label>
+            <input type="number" step="0.01" min="0" max="10" class="form-control" id="placement_min_cgpa" name="placement_min_cgpa" value="{{ (event.get('placement') or {}).get('min_cgpa') if (event.get('placement') or {}).get('min_cgpa') is not none else '' }}"></div>
+        <div class="col-md-6"><label class="form-label" for="placement_max_backlogs">Maximum active backlogs</label>
+            <input type="number" step="1" min="0" class="form-control" id="placement_max_backlogs" name="placement_max_backlogs" value="{{ (event.get('placement') or {}).get('max_backlogs') if (event.get('placement') or {}).get('max_backlogs') is not none else '' }}"></div>
       </div>
 
       <div class="row g-3 mb-4">

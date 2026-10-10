@@ -77,6 +77,9 @@
                                 <button type="submit" class="btn btn-sm btn-primary">Resend set-password link</button>
                             </form>
                             {% endif %}
+                            {% if a.role in ('Student', 'Participant') %}
+                            <a href="/admin/users/{{ a.email }}/academics" class="btn btn-sm btn-link">Academic record</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}

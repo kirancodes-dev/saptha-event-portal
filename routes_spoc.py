@@ -263,6 +263,9 @@ def create_event():
             # Who may register: students, faculty, external participants (UPG-12)
             'allowed_participants': __import__('services_participants').from_form(
                 request.form.getlist('allowed_participants')),
+            # Placement drive: company and eligibility rules (UPG-57)
+            'is_placement': request.form.get('is_placement') == 'yes',
+            'placement': __import__('services_placement').from_form(request.form),
         }
 
         if room_id:
@@ -1217,6 +1220,10 @@ def edit_event(event_id):
         val = request.form.get(field, '').strip()
         if val:
             updates[field] = val
+    if request.form.get('placement_sent'):   # the edit form's placement section (UPG-57); rounds are kept
+        from services_placement import from_form as placement_from_form, settings as placement_settings
+        updates['is_placement'] = request.form.get('is_placement') == 'yes'
+        updates['placement'] = placement_from_form(request.form, placement_settings(event))
     if request.form.get('allowed_participants_sent'):   # the edit form's "who can register" (UPG-12)
         from services_participants import from_form
         updates['allowed_participants'] = from_form(request.form.getlist('allowed_participants'))

@@ -174,7 +174,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 {% include "layouts/_bootstrap_js.html" %}
 <script nonce="{{ csp_nonce() }}">
 const EVENT_ID    = "{{ event.id }}";
-const CRITERIA    = {{ (event.judging_criteria or ['Overall Score']) | tojson | safe }};
+const CRITERIA    = {{ (event.judging_criteria_normalized or event.judging_criteria or ['Overall Score']) | tojson | safe }};
 const TEAMS_DATA  = {{ teams | tojson | safe }};
 let   currentRegId = null;
 const scoreModal    = new bootstrap.Modal(document.getElementById('scoreModal'));
@@ -190,18 +190,21 @@ function openScoreModal(regId) {
 
   let html = '';
   CRITERIA.forEach(c => {
-    const val = existing_scores[c] || 0;
+    const cName = typeof c === 'object' ? c.name : c;
+    const maxScore = typeof c === 'object' ? (c.max_score || 100) : 100;
+    const cSlug = cName.replace(/\s/g, '_');
+    const val = existing_scores[cName] !== undefined ? existing_scores[cName] : (existing_scores[c] || 0);
     html += `
       <div class="mb-3">
         <div class="d-flex justify-content-between align-items-center mb-1">
           <label style="font-size:12px;font-weight:700;color:#64748b;
-                        text-transform:uppercase;letter-spacing:.6px;">${escapeHtml(c)}</label>
-          <input type="number" class="score-input" id="${escapeHtml('score-' + c.replace(/\s/g,'_'))}"
-                 min="0" max="100" value="${escapeHtml(val)}"
+                        text-transform:uppercase;letter-spacing:.6px;">${escapeHtml(cName)} (Max: ${maxScore})</label>
+          <input type="number" class="score-input" id="${escapeHtml('score-' + cSlug)}"
+                 min="0" max="${maxScore}" value="${escapeHtml(val)}"
                  data-h-input="se:call" data-call="updateTotal">
         </div>
-        <input type="range" class="criteria-slider" min="0" max="100" value="${escapeHtml(val)}"
-               data-h-input="judge/teams:sync-slider" data-target="${escapeHtml('score-' + c.replace(/\s/g,'_'))}">
+        <input type="range" class="criteria-slider" min="0" max="${maxScore}" value="${escapeHtml(val)}"
+               data-h-input="judge/teams:sync-slider" data-target="${escapeHtml('score-' + cSlug)}">
       </div>`;
   });
 
@@ -248,14 +251,15 @@ function syncSlider(slider, inputId) {
 function updateTotal() {
   let total = 0;
   CRITERIA.forEach(c => {
-    const el = document.getElementById('score-' + c.replace(/\s/g,'_'));
+    const cName = typeof c === 'object' ? c.name : c;
+    const el = document.getElementById('score-' + cName.replace(/\s/g,'_'));
     if (el) {
       const v = parseInt(el.value) || 0;
       // Sync slider
       const sliders = document.querySelectorAll('.criteria-slider');
       sliders.forEach(s => {
         const label = s.previousElementSibling?.querySelector('label');
-        if (label && label.textContent.trim() === c) s.value = v;
+        if (label && label.textContent.includes(cName)) s.value = v;
       });
       total += v;
     }
@@ -273,8 +277,9 @@ async function submitScore() {
 
   const scores = {};
   CRITERIA.forEach(c => {
-    const el = document.getElementById('score-' + c.replace(/\s/g,'_'));
-    scores[c] = el ? parseInt(el.value) || 0 : 0;
+    const cName = typeof c === 'object' ? c.name : c;
+    const el = document.getElementById('score-' + cName.replace(/\s/g,'_'));
+    scores[cName] = el ? parseInt(el.value) || 0 : 0;
   });
   const remarks = document.getElementById('remarksField')?.value || '';
 

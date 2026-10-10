@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23b (full-screen: no footer). -#}
+{% block head %}
 <title>Event Badge | {{ reg.lead_name }}</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -114,8 +112,8 @@ body{background:#e2e8f0;display:flex;flex-direction:column;align-items:center;ju
   .badge-card{box-shadow:none;}
 }
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <div class="badge-card" id="badge-card">
 
@@ -186,5 +184,4 @@ body{background:#e2e8f0;display:flex;flex-direction:column;align-items:center;ju
   {% include 'includes/share_strip.html' %}
 </div>
 
-</body>
-</html>
+{% endblock %}

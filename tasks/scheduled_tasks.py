@@ -16,6 +16,9 @@ import logging
 import datetime
 from celery_app import celery
 from models import db
+# Statuses an event runs in (reminders, lifecycle) and takes registrations in;
+# `active` is the old single "running" status (UPG-43).
+from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_STATUSES as REGISTRATION_OPEN
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,7 @@ def send_24h_reminders(self):
 
         logger.info("send_24h_reminders: scanning for events on %s", tomorrow_str)
 
-        events_ref = db.collection('events').where('status', '==', 'active').stream()
+        events_ref = db.collection('events').where('status', 'in', list(RUNNING)).stream()
         events_tomorrow = [
             {**doc.to_dict(), 'id': doc.id}
             for doc in events_ref
@@ -242,7 +245,7 @@ def send_3day_reminders(self):
 
         logger.info("send_3day_reminders: scanning for events on %s", target_str)
 
-        events_ref   = db.collection('events').where('status', '==', 'active').stream()
+        events_ref   = db.collection('events').where('status', 'in', list(RUNNING)).stream()
         target_events = [
             {**doc.to_dict(), 'id': doc.id}
             for doc in events_ref
@@ -375,7 +378,7 @@ def check_registration_velocity(self):
 
         logger.info("check_registration_velocity: scanning for deadlines on %s", target)
 
-        events = db.collection('events').where('status', '==', 'active').stream()
+        events = db.collection('events').where('status', 'in', list(REGISTRATION_OPEN)).stream()
         alerted = skipped = 0
 
         for doc in events:
@@ -516,11 +519,6 @@ def check_registration_velocity(self):
         logger.exception("check_registration_velocity failed: %s", exc)
         raise self.retry(exc=exc)
 
-
-# Statuses the lifecycle job moves forward (services_workflow.EVENT_STATE_TRANSITIONS);
-# `active` is the old single "running" status.
-REGISTRATION_OPEN = ('registration_open', 'active')
-RUNNING = ('published', 'registration_open', 'registration_closed', 'in_progress', 'active')
 
 
 @celery.task(

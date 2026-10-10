@@ -543,9 +543,10 @@ def export_excel(event_id):
 @login_required
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
 def on_spot_form():
+    from services_workflow import EVENT_DAY_STATUSES
     events = [{'id': e.id, 'title': e.to_dict().get('title')}
               for e in (db.collection('events')
-                          .where(filter=_ff('status', '==', 'active')).stream())]
+                          .where(filter=_ff('status', 'in', list(EVENT_DAY_STATUSES))).stream())]
     return render_template('coordinator/on_spot.html', events=events)
 
 
@@ -632,8 +633,9 @@ def scanner_selector():
     today_str    = datetime.datetime.now().strftime('%Y-%m-%d')
     tomorrow_str = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
+    from services_workflow import EVENT_DAY_STATUSES
     events = []
-    for e in db.collection('events').where(filter=_ff('status', '==', 'active')).stream():
+    for e in db.collection('events').where(filter=_ff('status', 'in', list(EVENT_DAY_STATUSES))).stream():
         d = e.to_dict()
         in_staff  = any(s.get('email') == user_email for s in d.get('staff', []))
         in_coords = user_email in d.get('coordinators', [])

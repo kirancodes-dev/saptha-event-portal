@@ -19,6 +19,7 @@ except ImportError:
     FieldFilter = None
 
 from models import db
+from services_workflow import is_event_day_status
 from utils import login_required, role_required
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ def self_checkin_page(event_id):
     if not event.get('allow_self_checkin'):
         return render_template('public/checkin_disabled.html', event=event)
 
-    if event.get('status') != 'active':
+    if not is_event_day_status(event):
         return render_template('public/checkin_closed.html', event=event)
 
     code = request.args.get('code', '').strip()
@@ -99,8 +100,8 @@ def submit_self_checkin(event_id):
     event = event_doc.to_dict()
     if not event.get('allow_self_checkin'):
         return jsonify({'error': 'Self check-in is not enabled for this event'}), 403
-    if event.get('status') != 'active':
-        return jsonify({'error': 'Event is not active'}), 400
+    if not is_event_day_status(event):
+        return jsonify({'error': 'This event is not running'}), 400
 
     # Validate short-lived venue code
     code = (request.form.get('code') or request.args.get('code') or '').strip()

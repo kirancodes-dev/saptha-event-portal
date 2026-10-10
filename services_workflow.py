@@ -57,6 +57,20 @@ PARTICIPANT_STATE_TRANSITIONS: Dict[str, List[str]] = {
 }
 
 
+# Statuses in which an event can run on its day (scanners, walk-ins, self
+# check-in, reminders): every published state up to `in_progress`, plus the old
+# single `active` status. Not draft, pending approval, cancelled or completed.
+EVENT_DAY_STATUSES = ('published', 'registration_open', 'registration_closed', 'in_progress', 'active')
+
+# Statuses in which an event is still taking registrations.
+REGISTRATION_OPEN_STATUSES = ('registration_open', 'active')
+
+
+def is_event_day_status(event: Optional[Dict[str, Any]]) -> bool:
+    """True when the event's status lets it run on its day."""
+    return str((event or {}).get('status') or '').lower() in EVENT_DAY_STATUSES
+
+
 class WorkflowError(Exception):
     """Raised when an illegal or guarded workflow transition is attempted."""
     pass

@@ -114,7 +114,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Error monitoring (Sentry) | BUILT (untested) [C at UPG-20] | `app.py:102` | On when `SENTRY_DSN` is set, no personal data, release = Cloud Run revision; documented in `.env.example`. Logs are JSON lines with `severity` in production (UPG-20). |
 | Database backups | BUILT (untested) [R by hand at UPG-21] | `scripts/backup_db.sh`, `scripts/restore_db.sh`, `.github/workflows/backup.yml` | Daily `pg_dump` to a private bucket with 30-day retention; restore into an empty database only; documented drill in `docs/DEPLOY.md` (UPG-21). |
 | Pagination on web lists | BUILT (untested) [R by hand at UPG-19] | `utils_pagination.py`, `templates/includes/pagination.html` | 25 a page with search on users, audit log, payments, the admin/SPOC/coordinator dashboards' events, event registrations and form responses; page and filters in the URL; users and the audit log page in SQL (UPG-19). |
-| Shared page layout | PARTLY BUILT [C at `56a014d`] | `templates/base_classic.html` | 12 of 129 templates extend it; 111 are standalone pages (UPG-23). |
+| Shared page layout | BUILT (untested) [R crawl at UPG-23] | `templates/layouts/document.html`, `templates/base_classic.html` | Every template a route renders extends the shared document (app layout, standalone or full-screen child); only unrendered templates remain standalone (UPG-15) (UPG-23). |
 
 ---
 
@@ -742,13 +742,20 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### E. Frontend (added in Phase 0, 2026-09-30)
 
 #### UPG-23 — Every page on one shared layout (split by area: UPG-23a–h)
-- **Status:** IN PROGRESS (development-only run): 23a–23g built (untested)
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-23: …" on `production-ready` (parent `be0b13f`)
 - **Problem:** [C at `56a014d`, counted with a script] Of 129 templates, 16 extend `base_classic.html` (12 at `986d108`; Phase 2 added `admin/payments.html` and moved `admin/users.html`, `teams/join.html` and `teams/view.html` onto it), 1 extends `coordinator/base.html`, which doesn't exist (`templates/coordinator/view_scores.html`; nothing renders it, UPG-15), 5 are partials, and **107 are standalone pages** with their own `<head>`, CDN tags and navigation (111 at `986d108`; the plan's prompt said 108 of 126 and ~13). So fixes to navigation, CSP, fonts, footer or loading states have to be made 107 times. (Re-counted 2026-10-02: Phase 0 wrote 110, which left the four groups one short of 129.)
 - **Who benefits:** every user (consistent navigation, mobile layout); every later frontend item.
 - **What to build:** a role-aware shared layout (extend `base_classic.html`, with blocks for per-role navigation, and a minimal child layout for full-screen pages such as the kiosk, scanners and printable certificate). Move pages one area at a time, one commit each: 23a public, 23b participant, 23c teams/profile/payment, 23d SPOC, 23e coordinator, 23f judge, 23g admin, 23h marketing. Keep the existing design tokens in `static/css/global.css`; no redesign. Where a headless browser is available, screenshot each area's key pages at 375px and 1280px before and after.
 - **Files touched:** `templates/**`, `templates/base_classic.html`, tests.
 - **Effort:** L (8 sub-items) · **Depends on:** none (UPG-24/25 get easier after it) · **Risk:** lost page-specific CSS or scripts; the screenshot comparison and page tests guard it.
+- **What was built (2026-10-10, development-only run, 23a–23h, one commit each):**
+  - **One document for every page:** `templates/layouts/document.html` holds the doctype, charset, viewport, CSRF meta, the CSRF fetch shim (moved out of `base_classic.html`), the shared footer (privacy notice and terms, UPG-22) and its styles, with the blocks `html_attrs`, `csrf_meta`, `head`, `body_attrs`, `body`, `site_footer`, `body_end`. Its children: `base_classic.html` (the app layout with the role-aware sidebar, unchanged output; its footer stays in the content column), `layouts/standalone.html` (pages with their own header, navigation and design) and `layouts/fullscreen.html` (no footer: kiosk, exam, certificate embed, reels, live board, scanners and HUD, NFC scanner, badge, certificate).
+  - **Every template a route renders now extends the document** (directly or through `base_classic.html`): 35 public (23a), 8 participant (23b), 2 profile/payment (23c), 14 SPOC (23d), 10 coordinator (23e), 2 judge (23f), 12 admin (23g), 5 marketing/onboarding (23h). A converter moved each page's `<head>` and `<body>` into the `head` and `body` blocks byte for byte (it asserts the reconstruction) minus the charset and viewport metas the document now provides; a page's own CSRF meta, `<html>` and `<body>` attributes go into their blocks. Pages whose `<body>` centres one card get the footer pinned to the bottom (`site_footer_fixed`). No URL, style or script changed, so there's no redesign; per-page CDN tags stay until UPG-24.
+  - **Left standalone:** the 18 templates nothing renders (UPG-15 deletes them).
+  - **Checked [R]:** a crawl of every GET route (858 fetches: anonymous, Super Admin, SPOC, coordinator, judge, student, on a seeded event and registration) before 23a and after each area gives the same status, `<title>` and visible text (the shared footer aside) every time; full pytest 893 passed, 1 skipped. Not done: screenshots at 375px and 1280px (no headless browser yet; UPG-28 adds one).
+  - Found: 17 fetches answer 500 before and after this run (AI match page, exams, gamification leaderboard, hackathon submit, SPOC stats API) → new item UPG-59.
+- **To test later:** criteria 1–2 (every rendered template extends the document; key pages per role return 200 with the footer landmark) and 3 (375px, no horizontal scroll, nothing lost against before-screenshots; with UPG-28's browser). Criterion 4 holds: no URL changed.
 - **Acceptance criteria (per sub-item, for its area):**
   1. Test: every template in the area that is rendered by a route extends the shared layout (or its minimal child).
   2. Test: each key page returns 200 for its role and contains the shared navigation and footer landmarks.
@@ -2026,6 +2033,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: `alembic upgrade head` on an empty database creates `native_document_store`, and `compare_metadata` stays empty.
   2. Test: with production settings, reading and writing a native collection issues no `CREATE`.
 
+#### UPG-59 — Five pages answer 500 for any role
+- **Status:** TODO
+- **Last verified:** 2026-10-10, commit "UPG-23h: …" (parent `be0b13f`)
+- **Problem:** Found by UPG-23's route crawl [R], on a seeded event with one registration, the same before this run (`932afdd`) and after: `/ai/match_page/<event>`, `/exams/<event>`, `/gamification/leaderboard`, `/hackathon/submit/<event>` (Super Admin, SPOC, coordinator, judge, and the leaderboard for students too) and `/spoc/api/stats` (SPOC) answer 500. Causes not yet traced.
+- **Who benefits:** whoever opens those pages (judging matcher, online exams, the XP leaderboard, hackathon submissions, SPOC dashboard stats).
+- **What to build:** trace each 500 and fix it, or remove the page if UPG-15 finds it dead.
+- **Files touched:** `routes_ai_matching.py`, `routes_exams.py`, `routes_gamification.py`, `routes_hackathon.py`, `routes_spoc.py`, tests.
+- **Effort:** S–M · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -2175,3 +2193,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-23e: …" (parent `d6635e3`) | UPG-23e | **UPG-23e built (untested): coordinator pages** (dashboard, AI matching, form builder and responses, walk-ins, results summary, scanner list; verify result with the footer pinned; scanner and HUD full-screen) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
 | 2026-10-10 | "UPG-23f: …" (parent `e3c8816`) | UPG-23f | **UPG-23f built (untested): judge pages** (dashboard, team scoring) moved onto the shared document; the four unrendered judge templates are left for UPG-15. Crawl: no difference. ruff clean; app starts. |
 | 2026-10-10 | "UPG-23g: …" (parent `649a58f`) | UPG-23g | **UPG-23g built (untested): admin pages** (dashboard, analytics, audit log, org units, report, send email, sponsors, venues, the analytics dashboard, the super admin and head dashboards, API docs) moved onto the shared document. Crawl: no difference. ruff clean; app starts. |
+| 2026-10-10 | "UPG-23h: …" (parent `be0b13f`) | UPG-23h, UPG-23, UPG-59 | **UPG-23h built (untested): marketing and onboarding pages** moved onto the shared document. **UPG-23 BUILT (untested):** every template a route renders now extends `layouts/document.html` (through `base_classic.html`, `layouts/standalone.html` or `layouts/fullscreen.html`); 18 unrendered templates remain for UPG-15. Crawl of 858 fetches identical before and after every area; full pytest 893 passed, 1 skipped; ruff clean; app starts. **New:** UPG-59 (five pages answer 500, before and after this run). |

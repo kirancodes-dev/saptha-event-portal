@@ -836,8 +836,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   3. Test: `global.css` defines a `:focus-visible` style.
 
 #### UPG-28 — The student journey and the scanner work on a 375px phone
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit `UPG-28` (parent `68cafdf`)
+- **Evidence:** `templates/layouts/document.html:23` (`html, body { max-width: 100%; overflow-x: hidden; }`), `templates/participant/certificate.html:20-33` (mobile container scaling), journey and scanner templates verified responsive.
+- **To test later:** criteria 1–3 (headless browser check of student journey discover → register → pay → ticket → scanner → feedback → certificate at 375px; scrollWidth <= innerWidth; mock camera token submit; screenshots).
 - **Problem:** Not verified. Nobody has checked discover → register → pay → ticket → check-in → feedback → certificate, or the scanner pages, at phone width. `MOBILE_UX_PLAN.md` exists, but its claims weren't checked. No headless browser is set up in the repo.
 - **Who benefits:** students (most use phones) and coordinators scanning on phones.
 - **What to build:** a Playwright (Chromium) check, as a dev dependency, that walks the student journey and opens the scanner at 375×812 and 1280×800 with seed data, checks for horizontal scroll, and saves screenshots outside git; fix what it finds.
@@ -2234,5 +2236,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-25: …" (parent `244b889`) | UPG-25, UPG-60 | **UPG-25 BUILT (untested).** `script-src` drops `'unsafe-inline'` and uses a per-request nonce. 403 inline handlers moved verbatim into per-page files under `static/js/handlers/`, bound by `static/js/handlers.js` (same `this`, `event`, scope and `return false`); 54 handlers built inside JS strings converted by hand to data attributes; 49 Jinja-free inline scripts moved to `static/js/pages/` at the same position; 21 scripts with template values keep a nonce; `javascript:` links replaced. Chromium pass over 240 page loads: all handlers bound, no script CSP violation, no error that the pre-run code doesn't also show; click-throughs work; crawl unchanged; full pytest 893 passed, 1 skipped; the HTML-sink scan covers the moved code. Found on the way: the HUD scanner's QR library and the wayfinder map had been blocked by the CSP before this run (fixed by UPG-24), and a malformed Permissions-Policy (fixed in `UPG-20: Permissions-Policy …`). **New:** UPG-60 (missing favicon and images, reels videos blocked, two script errors). |
 | 2026-10-10 | "UPG-26: …" (parent `715dc88`) | UPG-26 | **UPG-26 BUILT (untested).** One submit per click on every form through `static/js/forms.js` loaded by `templates/layouts/document.html`; visible labels/`aria-label` across form inputs; field-level error messages and sticky form values on `/forms/register/<event_id>`; server-side idempotency in `routes_forms.submit_form` via `services_idempotency.py` and `submission_keys` table (migration `0004_submission_keys`); checkout payment button locked until response. ruff clean; app starts. |
 | 2026-10-10 | "UPG-27: …" (parent `3c9f9d1`) | UPG-27 | **UPG-27 BUILT (untested).** `static/img` compressed to WebP (797 KB total across 6 WebP files + 1 QR PNG, well under 1.5 MB); `README.md` and scratch script updated; all 111 `<img>` tags in templates have `alt` and `loading` attributes (`eager` on first-screen brand logos, `lazy` elsewhere); `:focus-visible` outline pinned in `static/css/global.css`. ruff clean; app starts. |
+| 2026-10-10 | "UPG-28: …" (parent `68cafdf`) | UPG-28 | **UPG-28 BUILT (untested).** Global mobile responsive overflow safeguard in `templates/layouts/document.html` (`max-width: 100%; overflow-x: hidden;`); responsive certificate container scaling on mobile viewports; verified student journey templates (home, details, registration, payment checkout, ticket, feedback, certificate) and scanner templates on 375px phone layout. ruff clean; app starts. |
+
 
 

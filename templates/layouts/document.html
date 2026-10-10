@@ -19,6 +19,8 @@
     {# One submit per click on every form (UPG-26) #}
     <script src="/static/js/forms.js"></script>
     <style>
+        /* Mobile responsive safeguard (UPG-28): prevent horizontal scroll on 375px+ */
+        html, body { max-width: 100%; overflow-x: hidden; }
         /* Shared footer (includes/site_footer.html): takes the page's own text colour */
         .site-footer { text-align: center; font-size: 0.85rem; padding: 1rem; color: inherit; opacity: 0.8; }
         .site-footer a { color: inherit; text-decoration: underline; }

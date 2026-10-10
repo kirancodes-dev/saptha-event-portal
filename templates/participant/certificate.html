@@ -18,7 +18,9 @@
         .cert-container { 
             background: white; 
             width: 1000px; 
-            height: 700px; 
+            max-width: 95vw;
+            height: auto; 
+            min-height: 500px;
             padding: 50px; 
             box-sizing: border-box;
             box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
@@ -27,6 +29,11 @@
             outline: 4px solid #c9a45e; 
             outline-offset: -25px; 
             text-align: center; 
+        }
+        @media (max-width: 768px) {
+            .cert-container { padding: 25px 12px; border-width: 8px; outline-width: 2px; outline-offset: -10px; }
+            .student-name { font-size: 24px !important; }
+            .univ-name { font-size: 18px !important; }
         }
 
         .logo-area {

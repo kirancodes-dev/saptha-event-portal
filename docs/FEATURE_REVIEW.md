@@ -1742,8 +1742,12 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **722 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-38 — Delete the sample Jekyll workflow
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Evidence:** `git rm .github/workflows/jekyll-docker.yml`
+- **Last verified:** 2026-10-10, commit `UPG-38`
+- **To test later:**
+  1. Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`).
+  2. The next CI run on GitHub shows no "Jekyll site CI" check.
 - **Problem:** From the code review of PR #48 (owner, 2026-10-02). `.github/workflows/jekyll-docker.yml` is GitHub's "Jekyll site CI" sample: it builds a Jekyll site in Docker on every push and pull request to `master`. The repo has no Jekyll site (no `_config.yml` or `Gemfile`), so the check means nothing and costs CI time.
 - **Who benefits:** developers (CI shows only real checks).
 - **What to build:** delete the file.
@@ -2270,6 +2274,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "docs: …" (parent `dc02234`) | Phase 4 summary | **Phase 4 (frontend modernization) built, development-only run (rules 5 and 8 suspended by the owner).** **BUILT (untested):** UPG-23a–h (every rendered template consolidated onto `layouts/document.html`), UPG-24 (Bootstrap 5.3.3 and Font Awesome 6.5.1 deduplicated with SRI hashes; fonts self-hosted; CDNs pinned), UPG-25 (all inline scripts removed or assigned per-request CSP nonce; `'unsafe-inline'` dropped), UPG-26 (form helpers, single submit per click guard, field-level error messages, server-side registration idempotency via `submission_keys`), UPG-27 (static images compressed to WebP dropping static assets under 800 KB; `alt` and `loading` attributes on all 111 images; focus-visible rings), UPG-28 (responsive mobile layout verified across 375px phone viewports with horizontal scroll safeguard and certificate scaling), and launch-check items UPG-53 (empty state instead of demo hackathon), UPG-54 (Capacitor URL from `BASE_URL`), UPG-55 (Google login and 2FA links shown when configured), UPG-56 (coupon field and price preview at checkout). **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200; `pytest tests/test_repo_hygiene.py` passes 62/62. **Next:** Phase 5 (clean-up), starting with UPG-14. |
 | 2026-10-10 | "UPG-14: …" (parent `14f04fa`) | UPG-14 | **UPG-14 BUILT (untested).** Consolidated notification endpoints onto `routes_notifications_v2.py` (`/notifications/feed`, `mark_read`, `mark_all_read`, `push_notification` alias); removed `routes_notifications.py` and unregistered `notif_bp`; removed `routes_payment_stripe.py` and unregistered `stripe_bp`; consolidated waitlist promotion task onto `routes_waitlist.auto_promote`; guarded matchmaker behind `FEATURE_MATCHMAKER` (404 by default); streamlined `scheduler_enhanced.py` to lightweight job factories without background runner; removed `scheduler.py` and root duplicate `tests.py`. ruff clean; app starts. |
 | 2026-10-10 | "UPG-15: …" (parent `aabcab0`) | UPG-15 | **UPG-15 BUILT (untested).** Removed Zoho Catalyst copy `functions/saptha_app/` (all 133 files), `catalyst.json`, and stale gitlink `saptha-event-portal`; removed unregistered blueprints `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py` and unregistered `api_bp` from `app.py`; deleted 17 unrendered templates; fixed dead ticket link in `templates/participant/my_events.html`; eliminated `WALKIN_DEFAULT_PASSWORD` completely. ruff clean; app starts. |
+| 2026-10-10 | "UPG-38: …" (parent `c9a2007`) | UPG-38 | **UPG-38 BUILT (untested).** Deleted unused `.github/workflows/jekyll-docker.yml` sample workflow. ruff clean; app starts. |
 
 
 

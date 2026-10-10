@@ -241,6 +241,54 @@
             </div>
         </div>
 
+        <!-- Your data and privacy (UPG-22) -->
+        <div class="col-12">
+            <div class="pcard">
+                <div class="pcard-header">
+                    <i class="fas fa-shield-alt" style="color:var(--orange);font-size:15px;"></i>
+                    <h5 class="pcard-header-title">Your data and privacy</h5>
+                </div>
+                <div class="pcard-body">
+                    <p class="mb-3">Read how your details are used in the <a href="/privacy">privacy notice</a>.
+                       Notification choices are in <a href="/compliance/settings">privacy settings</a>.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <form action="/compliance/export-data" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="mb-2">Download everything SapthaEvent holds about you (profile, registrations,
+                                   form answers, feedback, notifications) as a file.</p>
+                                <button type="submit" class="btn btn-outline-primary">Download my data</button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            {% if deletion_due %}
+                            <form action="/compliance/cancel-deletion" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="mb-2"><strong>Your account will be deleted on {{ deletion_due }}.</strong>
+                                   Until then you can change your mind.</p>
+                                <button type="submit" class="btn btn-outline-secondary">Cancel deletion</button>
+                            </form>
+                            {% else %}
+                            <form action="/compliance/delete-request" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="mb-2">Delete your account. After 30 days your login is removed and your name,
+                                   email, phone and answers are erased from every registration; attendance and
+                                   payment totals stay, without your details.</p>
+                                <label for="delete-reason" class="form-label">Reason (optional)</label>
+                                <input type="text" id="delete-reason" name="reason" class="form-control mb-2" maxlength="500">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="delete-confirm" name="confirm" value="yes" required>
+                                    <label class="form-check-label" for="delete-confirm">I want my account deleted</label>
+                                </div>
+                                <button type="submit" class="btn btn-outline-danger">Delete my account</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Team Registrations -->
         {% if user.role == 'Student' %}
         <div class="col-12">

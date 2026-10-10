@@ -65,7 +65,7 @@ def site(real_app, offline, monkeypatch):
 
     def register(event_id, who, phone='9876543210'):
         email = f"{_unique(who)}@test.edu"
-        resp = flask_app.test_client().post(f'/forms/submit/{event_id}', data={
+        resp = flask_app.test_client().post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
             'full_name': who.title(), 'email': email, 'phone': phone, 'usn': '1SN20CS042'})
         assert resp.status_code == 302
         [reg] = [d.to_dict() for d in db.collection('registrations').where('event_id', '==', event_id).stream()
@@ -120,7 +120,7 @@ def test_a_registration_sends_one_confirmation_through_brevo(site, brevo):
     assert [a['name'] for a in mail['attachment']] == ['invite.ics']
 
     # Registering again is refused, and sends nothing more
-    d['app'].test_client().post(f'/forms/submit/{event_id}', data={
+    d['app'].test_client().post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Rhea', 'email': email, 'phone': '9876543210', 'usn': '1SN20CS042'})
     assert len(_to(brevo, email, 'Registration Confirmed')) == 1
 

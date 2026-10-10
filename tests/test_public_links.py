@@ -76,7 +76,7 @@ def test_set_password_email_on_registration_links_to_base_url(public_app, mails)
     event_id = _spoc_event(flask_app, db)
     newcomer = f"{_unique('newcomer')}@test.edu"
 
-    resp = flask_app.test_client().post(f'/forms/submit/{event_id}', data=_form(newcomer), **FORGED)
+    resp = flask_app.test_client().post(f'/forms/submit/{event_id}', data={**_form(newcomer), 'privacy_consent': 'yes'}, **FORGED)
     assert resp.status_code == 302
 
     mails = [m for m in mails if m['to'] == newcomer]
@@ -98,7 +98,7 @@ def _today_event_with_student(flask_app, db):
     student = f"{_unique('qrstu')}@test.edu"
     _user(db, student, 'Student')
     student_client = _login(flask_app, student, 'Student')
-    assert student_client.post(f'/forms/submit/{event_id}', data=_form(student)).status_code == 302
+    assert student_client.post(f'/forms/submit/{event_id}', data={**_form(student), 'privacy_consent': 'yes'}).status_code == 302
     reg_id = next(d.id for d in db.collection('registrations').where('event_id', '==', event_id).stream())
     return spoc_client, student_client, event_id, reg_id
 

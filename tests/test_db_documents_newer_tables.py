@@ -103,7 +103,7 @@ def test_scores_read_back_with_the_keys_the_judge_route_wrote(real_app):
     db.collection('events').document(event_id).update({
         'judging_criteria': ['Innovation', 'Execution'], 'open_hall_mode': True,
         'staff': [{'name': 'J', 'email': j, 'role': 'Judge'} for j in judges]})
-    _login(flask_app, student, 'Student').post(f'/forms/submit/{event_id}', data={
+    _login(flask_app, student, 'Student').post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': student, 'phone': '9876543210', 'usn': '1SN20CS200'})
     reg_id = next(iter(db.collection('registrations').where('event_id', '==', event_id).stream())).id
     db.collection('registrations').document(reg_id).update({'attendance': 'Present'})

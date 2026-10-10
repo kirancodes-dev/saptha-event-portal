@@ -37,7 +37,7 @@ def _register(d, client, lead, mates, team='Byte Force', **extra):
     for i, (name, email, usn) in enumerate(mates, start=1):
         form.update({f'member_{i}_name': name, f'member_{i}_email': email, f'member_{i}_usn': usn})
     form.update(extra)
-    return client.post(f"/forms/submit/{d['event_id']}", data=form)
+    return client.post(f"/forms/submit/{d['event_id']}", data={**form, 'privacy_consent': 'yes'})
 
 
 def _team_regs(d):

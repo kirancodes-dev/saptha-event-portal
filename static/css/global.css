@@ -3871,3 +3871,7 @@ body.auth .skeleton {
 .skeleton-title { height: 24px; margin-bottom: 12px; width: 60%; }
 
 
+
+/* Shared layout footer: privacy notice and terms on every page (UPG-22) */
+.site-footer { color: var(--ink-600); }
+.site-footer a { color: var(--ink-700); }

@@ -49,7 +49,7 @@ def test_the_legacy_route_refuses_a_closed_event_and_creates_nothing(event, clos
     assert not db.collection('users').document(newcomer).get().exists
 
     # The form route refuses it too, with the same check
-    resp = flask_app.test_client().post(f'/forms/submit/{event_id}', data=_form(newcomer))
+    resp = flask_app.test_client().post(f'/forms/submit/{event_id}', data={**_form(newcomer), 'privacy_consent': 'yes'})
     assert resp.status_code == 302 and _regs(db, event_id) == []
 
 

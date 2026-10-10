@@ -75,7 +75,7 @@ def _checkout(d, email=None):
     """A payer who submitted the form and created an order: (client, email, order)."""
     client = d['app'].test_client()
     email = email or f"{_unique('payer')}@test.edu"
-    resp = client.post(f"/forms/submit/{d['event_id']}", data={
+    resp = client.post(f"/forms/submit/{d['event_id']}", data={'privacy_consent': 'yes',
         'full_name': 'Pay Er', 'email': email, 'phone': '9876543210', 'usn': '1SN20CS042'})
     assert resp.headers['Location'] == f"/payment/checkout/{d['event_id']}"
     order = client.post('/payment/create_order', json={'event_id': d['event_id']}).get_json()

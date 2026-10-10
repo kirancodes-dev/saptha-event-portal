@@ -98,7 +98,7 @@ def test_student_registers_for_free_team_event_and_spoc_checks_in(real_app):
 
     email = f"{_unique('stu')}@test.edu"
     mate = f"{_unique('mate')}@test.edu"  # the event's teams have 2–4 people (UPG-08)
-    resp = student.post(f'/forms/submit/{event_id}', data={
+    resp = student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': email, 'phone': '9876543210',
         'usn': '1SN20CS001', 'team_name': 'Team Rocket',
         'member_1_name': 'Tea Mate', 'member_1_email': mate,
@@ -115,7 +115,7 @@ def test_student_registers_for_free_team_event_and_spoc_checks_in(real_app):
     assert db.collection('users').document(email).get().to_dict()['role'] == 'Student'
 
     # Duplicate registration is rejected
-    student.post(f'/forms/submit/{event_id}', data={
+    student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': email, 'phone': '9876543210',
         'usn': '1SN20CS001', 'team_name': 'Team Rocket',
         'member_1_name': 'Tea Mate', 'member_1_email': mate,
@@ -137,7 +137,7 @@ def test_paid_event_sends_student_to_checkout(real_app):
     event_id = _create_event(spoc_client, db, _unique('Paid Hack'), '2030-06-01', fee=250, team=False)
 
     student = flask_app.test_client()
-    resp = student.post(f'/forms/submit/{event_id}', data={
+    resp = student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Pay Er', 'email': f"{_unique('payer')}@test.edu",
         'phone': '9876543210', 'usn': '1SN20CS002',
     })

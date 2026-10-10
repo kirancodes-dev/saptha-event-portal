@@ -38,7 +38,7 @@ def gate(real_app):
         'status': 'registration_open',
         'staff': [{'name': 'In', 'email': people['coord_in'], 'role': 'EventCoordinator'}]})
     student = _login(flask_app, people['student'], 'Student')
-    assert student.post(f'/forms/submit/{event_id}', data={
+    assert student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Tara Ticket', 'email': people['student'], 'phone': '9876543210',
         'usn': '1SN22CS007'}).status_code == 302
     reg_id = next(iter(db.collection('registrations').where('event_id', '==', event_id).stream())).id

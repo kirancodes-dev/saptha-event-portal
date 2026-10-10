@@ -146,7 +146,7 @@ def test_a_markup_name_is_stored_as_typed_and_shown_as_text(real_app):
     event_id = _create_event(owner, db, _unique('Markup Night'), datetime.date.today().isoformat(), team=False)
     student = f"{_unique('xss-student')}@test.edu"
     _user(db, student, 'Student')
-    resp = _login(flask_app, student, 'Student').post(f'/forms/submit/{event_id}', data={
+    resp = _login(flask_app, student, 'Student').post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': PAYLOAD, 'email': student, 'phone': '9876543210', 'usn': '1SN22CS666', 'team_name': PAYLOAD})
     assert resp.status_code == 302
 

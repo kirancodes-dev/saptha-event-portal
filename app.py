@@ -483,7 +483,8 @@ def well_known_suppress(subpath):
 # =========================================================
 @app.route('/privacy')
 def privacy_policy():
-    return render_template('public/privacy.html')
+    from services_privacy import PRIVACY_NOTICE_VERSION
+    return render_template('public/privacy.html', privacy_notice_version=PRIVACY_NOTICE_VERSION)
 
 @app.route('/terms')
 def terms_of_service():

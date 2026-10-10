@@ -68,7 +68,7 @@ def test_a_template_form_submission_is_stored_and_shown_on_the_responses_page(re
     answers = {'full_name': 'Hana Hacker', 'email': student, 'phone': '9876543210', 'usn': '1SN22CS050',
                'team_name': 'Null Pointers', 'github_url': 'https://github.com/hana', 'tech_stack': 'Cloud & DevOps',
                'project_pitch': 'Edge inference on a budget', 'tshirt_size': 'M', 'dietary_preference': 'Vegan'}
-    resp = client.post(f'/forms/submit/{event_id}', data=answers)
+    resp = client.post(f'/forms/submit/{event_id}', data={**answers, 'privacy_consent': 'yes'})
     assert resp.status_code == 302 and '/register' not in resp.headers['Location']
 
     reg = next(d.to_dict() for d in db.collection('registrations').where('event_id', '==', event_id).stream())
@@ -125,7 +125,7 @@ def test_a_student_registers_for_the_seeded_conference_through_the_ui(real_app, 
     for field in db.collection('event_forms').document(event_id).get().to_dict()['fields']:
         key = field['field_name']
         form.setdefault(key, (field.get('options') or ['Something'])[0])
-    resp = client.post(f'/forms/submit/{event_id}', data=form)
+    resp = client.post(f'/forms/submit/{event_id}', data={**form, 'privacy_consent': 'yes'})
     assert resp.status_code == 302
 
     if '/payment/checkout/' in resp.headers['Location']:  # the conference has a fee

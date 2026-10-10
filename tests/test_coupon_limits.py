@@ -48,7 +48,7 @@ def shop(real_app, monkeypatch):
 
 def _payer(d):
     client = d['app'].test_client()
-    resp = client.post(f"/forms/submit/{d['event_id']}", data={
+    resp = client.post(f"/forms/submit/{d['event_id']}", data={'privacy_consent': 'yes',
         'full_name': 'Cou Pon', 'email': f"{_unique('saver')}@test.edu", 'phone': '9876543210', 'usn': '1SN20CS042'})
     assert resp.headers['Location'] == f"/payment/checkout/{d['event_id']}"
     return client

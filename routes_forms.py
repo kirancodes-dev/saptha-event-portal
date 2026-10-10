@@ -564,6 +564,13 @@ def submit_form(event_id):
             flash("🚫 You have already registered for this event.", "warning")
             return redirect('/')
 
+        # DPDP: nobody is registered, and no account is created, without
+        # agreeing to the privacy notice (UPG-22)
+        from services_privacy import consent_given, consent_record, record_consent
+        if not consent_given(request.form):
+            flash("Please tick the box to agree to the privacy notice; we can't register you without it.", 'danger')
+            return redirect(f'/forms/register/{event_id}')
+
         # New email: an unverified account nobody can log in to until the
         # emailed one-time link is used (never a password in email or session)
         is_new_user = not session_email
@@ -595,7 +602,9 @@ def submit_form(event_id):
             'current_round':   1,
             'form_answers':    answers,
             'form_type':       schema.get('form_type', 'simple'),
+            'privacy_consent': consent_record(),   # time and notice version (UPG-22)
         }
+        record_consent(db, email, reg_data['privacy_consent'])
         if team_max > 1:
             reg_data['team_code'] = new_team_code(db)  # others join with it (UPG-08)
 

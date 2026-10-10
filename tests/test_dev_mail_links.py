@@ -24,7 +24,7 @@ def _run_both_flows(flask_app, db):
     """A registration with a new email, and a reset request for an existing account."""
     event_id = _spoc_event(flask_app, db)
     newcomer = f"{_unique('devnew')}@test.edu"
-    assert flask_app.test_client().post(f'/forms/submit/{event_id}', data=_form(newcomer)).status_code == 302
+    assert flask_app.test_client().post(f'/forms/submit/{event_id}', data={**_form(newcomer), 'privacy_consent': 'yes'}).status_code == 302
     student = f"{_unique('devreset')}@test.edu"
     _user(db, student, 'Student')
     assert flask_app.test_client().post('/forgot_password', data={'email': student}).status_code == 302

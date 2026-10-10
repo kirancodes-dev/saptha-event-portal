@@ -86,7 +86,7 @@ def test_anonymous_submit_with_existing_email_must_log_in_first(real_app, outbox
     _user(db, student, 'Student')
 
     visitor = flask_app.test_client()
-    resp = visitor.post(f'/forms/submit/{event_id}', data=_form(student))
+    resp = visitor.post(f'/forms/submit/{event_id}', data={**_form(student), 'privacy_consent': 'yes'})
 
     assert resp.status_code == 302
     assert resp.headers['Location'] == f'/login?next=/forms/register/{event_id}'
@@ -123,7 +123,7 @@ def test_logged_in_student_registers_under_the_session_email(real_app, outbox):
     _user(db, student, 'Student')
     client = _login(flask_app, student, 'Student')
 
-    resp = client.post(f'/forms/submit/{event_id}', data=_form(other, name='Me Myself'))
+    resp = client.post(f'/forms/submit/{event_id}', data={**_form(other, name='Me Myself'), 'privacy_consent': 'yes'})
 
     assert resp.status_code == 302
     regs = _regs(db, event_id)
@@ -145,7 +145,7 @@ def test_waitlist_branch_never_logs_in(real_app, outbox):
     email = f"{_unique('waiter')}@test.edu"
 
     visitor = flask_app.test_client()
-    resp = visitor.post(f'/forms/submit/{event_id}', data=_form(email))
+    resp = visitor.post(f'/forms/submit/{event_id}', data={**_form(email), 'privacy_consent': 'yes'})
 
     assert resp.status_code == 302
     assert resp.headers['Location'] == f'/event/{event_id}'
@@ -163,7 +163,7 @@ def test_simulated_payment_completion_never_logs_in(real_app, outbox, monkeypatc
     email = f"{_unique('simpay')}@test.edu"
 
     visitor = flask_app.test_client()
-    assert visitor.post(f'/forms/submit/{event_id}', data=_form(email)).headers['Location'] \
+    assert visitor.post(f'/forms/submit/{event_id}', data={**_form(email), 'privacy_consent': 'yes'}).headers['Location'] \
         == f'/payment/checkout/{event_id}'
     resp = visitor.post('/payment/process', data={'event_id': event_id, 'amount': '250'})
 
@@ -205,7 +205,7 @@ def test_verified_razorpay_payment_never_logs_in(real_app, outbox, monkeypatch):
     monkeypatch.setattr(routes_payment, '_rzp', lambda: FakeClient())
 
     visitor = flask_app.test_client()
-    visitor.post(f'/forms/submit/{event_id}', data=_form(email))
+    visitor.post(f'/forms/submit/{event_id}', data={**_form(email), 'privacy_consent': 'yes'})
     order = visitor.post('/payment/create_order', json={'event_id': event_id})
     assert order.status_code == 200, order.data
     order_id = order.get_json()['order_id']
@@ -231,7 +231,7 @@ def test_no_password_is_shown_stored_in_the_session_or_emailed(real_app, outbox)
     email = f"{_unique('nopw')}@test.edu"
 
     visitor = flask_app.test_client()
-    resp = visitor.post(f'/forms/submit/{event_id}', data=_form(email))
+    resp = visitor.post(f'/forms/submit/{event_id}', data={**_form(email), 'privacy_consent': 'yes'})
     assert resp.headers['Location'] == '/registration/confirmed'
     assert not any('password' in k for k in _session(visitor).get('reg_confirmed', {}))
 
@@ -256,7 +256,7 @@ def test_new_email_gets_an_account_and_a_one_time_set_password_link(real_app, ou
     email = f"{_unique('fresh')}@test.edu"
 
     visitor = flask_app.test_client()
-    visitor.post(f'/forms/submit/{event_id}', data=_form(email, name='Fresh Face'))
+    visitor.post(f'/forms/submit/{event_id}', data={**_form(email, name='Fresh Face'), 'privacy_consent': 'yes'})
 
     user = db.collection('users').document(email).get().to_dict()
     assert user['role'] == 'Student'
@@ -301,7 +301,7 @@ def test_expired_or_tampered_set_password_link_is_refused(real_app, outbox, monk
     event_id = _spoc_event(flask_app, db)
     email = f"{_unique('late')}@test.edu"
     visitor = flask_app.test_client()
-    visitor.post(f'/forms/submit/{event_id}', data=_form(email))
+    visitor.post(f'/forms/submit/{event_id}', data={**_form(email), 'privacy_consent': 'yes'})
     stored_hash = db.collection('users').document(email).get().to_dict()['password']
 
     four_days_ago = int(time.time()) - 4 * 24 * 3600

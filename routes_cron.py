@@ -33,11 +33,15 @@ def _lifecycle():
 
 def _cleanup():
     """Expired sessions (BLK-08), login attempts older than the throttle window
-    (BLK-13), and old sent or failed outbox rows (UPG-18)."""
+    (BLK-13), old sent or failed outbox rows (UPG-18), and account deletions
+    whose 30-day grace period has ended (UPG-22)."""
+    from models import db
     from services_login_throttle import purge_expired
     from services_outbox import purge_old
+    from services_privacy import process_due_deletions
     from session_store import purge_expired_sessions
-    return {'sessions': purge_expired_sessions(), 'login_attempts': purge_expired(), 'outbox': purge_old()}
+    return {'sessions': purge_expired_sessions(), 'login_attempts': purge_expired(), 'outbox': purge_old(),
+            'accounts_deleted': process_due_deletions(db)}
 
 
 def _outbox():

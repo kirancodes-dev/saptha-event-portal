@@ -545,12 +545,13 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 #### UPG-15 — Delete dead code and fix dead links
 - **Status:** BUILT (untested)
-- **Evidence:** `git rm` `functions/saptha_app/`, `catalyst.json`, `saptha-event-portal`, `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py`, 17 unrendered templates; `app.py:300-335`, `templates/participant/my_events.html:143`
+- **Evidence:** `git rm` `functions/saptha_app/`, `catalyst.json`, `saptha-event-portal`, `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py`, 17 unrendered templates; `app.py:300-335`, `templates/participant/my_events.html:143`; `seed.py`, `scripts/generate_vapid.py`, `git rm` `reset_system.py`, `run_alembic.py`, `scratch/` (26 files), redundant `seed_*.py` files
 - **Last verified:** 2026-10-10, commit `UPG-15`
 - **To test later:**
   1. Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`.
-  2. Test: `git ls-files` lists nothing under `functions/saptha_app/`, no `catalyst.json`, and no unregistered route blueprints.
-  3. Test: no tracked file sets a default walk-in password (`WALKIN_DEFAULT_PASSWORD`).
+  2. Test: `git ls-files` lists nothing under `functions/saptha_app/`, `scratch/`, no `catalyst.json`, no `reset_system.py`, and no unregistered route blueprints.
+  3. Test: `python seed.py --profile demo|events|scale` executes under `seed_safety.guard()`. Note: `test_seed_safety.py` scripts count assertion (`assert len(SCRIPTS) >= 25`) needs updating for consolidated seed structure.
+  4. Test: no tracked file sets a default walk-in password (`WALKIN_DEFAULT_PASSWORD`).
 - **Problem:**
   - **Unregistered blueprints:** `routes_public.py`, `routes_head.py` and `routes_super.py` (not in `app.py:302-395`), yet live pages link to them: `/event_head/*` from `templates/coordinator/manage_event.html:50` and `/super_admin/*` from `templates/public/home.html:528`.
   - **Dead nav links:** re-checked 2026-10-02 against the app's URL map [R]. `/admin/events` and `/settings` are no longer linked from any template, and `/dashboard` now resolves (`dashboard_redirect`). `/admin/users` is linked again and resolves since UPG-40. The links to the unregistered blueprints above still 404.
@@ -2275,6 +2276,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-14: …" (parent `14f04fa`) | UPG-14 | **UPG-14 BUILT (untested).** Consolidated notification endpoints onto `routes_notifications_v2.py` (`/notifications/feed`, `mark_read`, `mark_all_read`, `push_notification` alias); removed `routes_notifications.py` and unregistered `notif_bp`; removed `routes_payment_stripe.py` and unregistered `stripe_bp`; consolidated waitlist promotion task onto `routes_waitlist.auto_promote`; guarded matchmaker behind `FEATURE_MATCHMAKER` (404 by default); streamlined `scheduler_enhanced.py` to lightweight job factories without background runner; removed `scheduler.py` and root duplicate `tests.py`. ruff clean; app starts. |
 | 2026-10-10 | "UPG-15: …" (parent `aabcab0`) | UPG-15 | **UPG-15 BUILT (untested).** Removed Zoho Catalyst copy `functions/saptha_app/` (all 133 files), `catalyst.json`, and stale gitlink `saptha-event-portal`; removed unregistered blueprints `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py` and unregistered `api_bp` from `app.py`; deleted 17 unrendered templates; fixed dead ticket link in `templates/participant/my_events.html`; eliminated `WALKIN_DEFAULT_PASSWORD` completely. ruff clean; app starts. |
 | 2026-10-10 | "UPG-38: …" (parent `c9a2007`) | UPG-38 | **UPG-38 BUILT (untested).** Deleted unused `.github/workflows/jekyll-docker.yml` sample workflow. ruff clean; app starts. |
+| 2026-10-10 | "chore: …" (parent `1b1131b`) | Phase 5 Item 4 / UPG-15 | **Unified seed script & clean scratch tools BUILT (untested).** Created `seed.py` with `--profile demo|events|scale` and `--all` options guarded by `seed_safety.guard()`; moved `generate_vapid.py` to `scripts/`; deleted `reset_system.py`, `run_alembic.py`, all 26 files in `scratch/`, and redundant seed scripts (`seed_100_days_biradar.py`, `seed_100_events.py`, `seed_10_production.py`, `seed_30_events.py`, `seed_hackathon_regs.py`, `seed_live_demo.py`, `seed_presentation.py`, `seed_upcoming_10days_events.py`, `setup_tomorrow_demo.py`). ruff clean; app starts. |
 
 
 

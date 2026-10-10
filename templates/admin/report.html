@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23g. -#}
+{% block head %}
   <title>SapthaEvent Portal Report — Sapthagiri NPS University</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -103,8 +101,8 @@
     /* ── PAGE BREAK ── */
     .page-break{page-break-before:always;}
   </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <!-- SCREEN CONTROLS -->
 <div class="controls no-print">
@@ -320,5 +318,4 @@
   </div>
 
 </div><!-- /page -->
-</body>
-</html>
+{% endblock %}

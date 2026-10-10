@@ -317,6 +317,7 @@ from routes_portfolio   import portfolio_bp    # noqa: E402
 from routes_sponsors    import sponsors_bp     # noqa: E402
 from routes_teams          import teams_bp           # noqa: E402
 from routes_placement      import placement_bp       # noqa: E402  (UPG-57)
+from routes_sports         import sports_bp          # noqa: E402  (UPG-13)
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
 from routes_spoc           import spoc_bp           # noqa: E402
@@ -343,6 +344,7 @@ app.register_blueprint(portfolio_bp)
 app.register_blueprint(sponsors_bp)
 app.register_blueprint(teams_bp)
 app.register_blueprint(placement_bp)
+app.register_blueprint(sports_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
@@ -941,15 +943,37 @@ def event_details(event_id):
                         'phone': u.get('phone', ''),
                     }
 
+        # Tournament data if present (UPG-13)
+        t = event.get('tournament') or {}
+        t_names, t_table, t_champ = {}, [], None
+        if t:
+            try:
+                import services_sports
+                t_names = services_sports.names(t)
+                t_table = services_sports.standings(t) if t.get('format') == 'league' else []
+                t_champ = services_sports.champion(t)
+            except Exception:
+                pass
+
         return render_template('public/event_details.html',
                                event=event,
                                is_registered=is_registered,
                                reg_count=reg_count,
                                max_p=max_p,
-                               prefill=prefill)
+                               prefill=prefill,
+                               t=t,
+                               names=t_names,
+                               table=t_table,
+                               champion=t_champ)
     except Exception as exc:
         app.logger.error("Event details error: %s", exc)
         return render_template('500.html'), 500
+
+
+@app.route('/sports/fixtures/<event_id>')
+def sports_fixtures_alias(event_id):
+    """Public fixtures alias route (UPG-13)."""
+    return redirect(f'/tournament/fixtures/{event_id}')
 
 
 # =========================================================

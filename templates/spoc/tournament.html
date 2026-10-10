@@ -1,0 +1,220 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Tournament — {{ event.title }}{% endblock %}
+{% block page_title %}Sports Tournament{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h2 style="font-size:20px;" class="mb-1">{{ event.title }}</h2>
+                <p class="text-muted mb-0">
+                    Format: <strong>{{ (t.format or 'Not generated')|title }}</strong> ·
+                    Confirmed teams: <strong>{{ teams|length }}</strong>
+                    {% if champion %} · 🏆 Champion: <strong class="text-success">{{ names.get(champion, champion) }}</strong>{% endif %}
+                </p>
+            </div>
+            <div>
+                <a href="/tournament/fixtures/{{ event.id }}" class="btn btn-outline-secondary" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i> Public Fixtures Page
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if can_generate %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h3 style="font-size:17px;">{% if t %}Re-generate Fixtures{% else %}Generate Fixtures{% endif %}</h3>
+        {% if teams|length < 2 %}
+            <p class="text-muted mb-0">At least 2 confirmed teams/participants are required to generate fixtures.</p>
+        {% else %}
+            <form method="POST" action="/tournament/{{ event.id }}/generate" class="row g-3 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-md-3">
+                    <label for="format" class="form-label mb-1">Format</label>
+                    <select id="format" name="format" class="form-select">
+                        <option value="knockout" {% if t.format == 'knockout' %}selected{% endif %}>Knockout (Single Elimination)</option>
+                        <option value="league" {% if t.format == 'league' %}selected{% endif %}>League (Round Robin)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="points_win" class="form-label mb-1">Win points</label>
+                    <input type="number" id="points_win" name="points_win" class="form-control" value="{{ t.points.win if t.points else 3 }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="points_draw" class="form-label mb-1">Draw points</label>
+                    <input type="number" id="points_draw" name="points_draw" class="form-control" value="{{ t.points.draw if t.points else 1 }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="points_loss" class="form-label mb-1">Loss points</label>
+                    <input type="number" id="points_loss" name="points_loss" class="form-control" value="{{ t.points.loss if t.points else 0 }}">
+                </div>
+                {% if t %}
+                <div class="col-md-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="confirm_replace" value="yes" id="confirm_replace">
+                        <label class="form-check-label text-danger" for="confirm_replace">
+                            Confirm replacing existing fixtures and results
+                        </label>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        {% if t %}Replace Fixtures{% else %}Generate Fixtures{% endif %}
+                    </button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if t and t.format == 'league' and table %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h3 style="font-size:17px;" class="mb-3">League Standings Table</h3>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:50px;">Pos</th>
+                        <th>Team</th>
+                        <th style="width:60px;">P</th>
+                        <th style="width:60px;">W</th>
+                        <th style="width:60px;">D</th>
+                        <th style="width:60px;">L</th>
+                        <th style="width:60px;">GF</th>
+                        <th style="width:60px;">GA</th>
+                        <th style="width:60px;">GD</th>
+                        <th style="width:70px;"><strong>Pts</strong></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in table %}
+                    <tr>
+                        <td><strong>{{ loop.index }}</strong></td>
+                        <td><strong>{{ row.name }}</strong></td>
+                        <td>{{ row.played }}</td>
+                        <td>{{ row.won }}</td>
+                        <td>{{ row.drawn }}</td>
+                        <td>{{ row.lost }}</td>
+                        <td>{{ row.for }}</td>
+                        <td>{{ row.against }}</td>
+                        <td>{{ row.for - row.against }}</td>
+                        <td><strong class="text-primary fs-6">{{ row.points }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if t and t.matches %}
+<div class="card">
+    <div class="card-body">
+        <h3 style="font-size:17px;" class="mb-3">Matches &amp; Results</h3>
+        <div class="row g-3">
+            {% for m in t.matches %}
+            <div class="col-lg-6 col-12" id="{{ m.id }}">
+                <div class="p-3 border rounded {% if m.winner %}bg-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-secondary">Match {{ m.id|upper }} · Round {{ m.round }}</span>
+                        <span class="badge {% if m.status == 'played' %}bg-success{% elif m.status == 'bye' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
+                            {{ m.status|title }}
+                        </span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.home %}fw-bold text-success{% endif %}">
+                            <span>{% if m.home %}{{ names.get(m.home, m.home) }}{% else %}<em>TBD</em>{% endif %}</span>
+                            <span class="badge bg-dark fs-6">{{ m.home_score if m.home_score is not none else '-' }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.away %}fw-bold text-success{% endif %}">
+                            <span>{% if m.away %}{{ names.get(m.away, m.away) }}{% else %}<em>TBD</em>{% endif %}</span>
+                            <span class="badge bg-dark fs-6">{{ m.away_score if m.away_score is not none else '-' }}</span>
+                        </div>
+                        {% if m.venue or m.date or m.time %}
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-map-marker-alt me-1"></i> {{ m.venue or 'Venue TBA' }}
+                            {% if m.date %} · <i class="fas fa-calendar me-1"></i> {{ m.date }}{% endif %}
+                            {% if m.time %} {{ m.time }}{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if m.status != 'bye' %}
+                    <details class="mb-2">
+                        <summary class="small text-primary cursor-pointer">Enter / Update Result</summary>
+                        <form method="POST" action="/tournament/{{ event.id }}/match/{{ m.id }}/result" class="mt-2 p-2 border-top">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">Home Score</label>
+                                    <input type="number" min="0" name="home_score" class="form-control form-control-sm" value="{{ m.home_score if m.home_score is not none else 0 }}" required>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">Away Score</label>
+                                    <input type="number" min="0" name="away_score" class="form-control form-control-sm" value="{{ m.away_score if m.away_score is not none else 0 }}" required>
+                                </div>
+                                {% if t.format == 'knockout' %}
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">If Tie, Winner</label>
+                                    <select name="winner" class="form-select form-select-sm">
+                                        <option value="">Auto (score)</option>
+                                        {% if m.home %}<option value="{{ m.home }}" {% if m.winner == m.home %}selected{% endif %}>{{ names.get(m.home, m.home) }}</option>{% endif %}
+                                        {% if m.away %}<option value="{{ m.away }}" {% if m.winner == m.away %}selected{% endif %}>{{ names.get(m.away, m.away) }}</option>{% endif %}
+                                    </select>
+                                </div>
+                                {% endif %}
+                                <div class="col-12 mt-2">
+                                    <button type="submit" class="btn btn-sm btn-success w-100">Save Result</button>
+                                </div>
+                            </div>
+                        </form>
+                    </details>
+
+                    {% if can_generate %}
+                    <details>
+                        <summary class="small text-muted cursor-pointer">Edit Match Schedule &amp; Venue</summary>
+                        <form method="POST" action="/tournament/{{ event.id }}/match/{{ m.id }}/schedule" class="mt-2 p-2 border-top">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">Date</label>
+                                    <input type="date" name="date" class="form-control form-control-sm" value="{{ m.date }}">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">Time</label>
+                                    <input type="time" name="time" class="form-control form-control-sm" value="{{ m.time }}">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">Venue</label>
+                                    <input type="text" name="venue" class="form-control form-control-sm" value="{{ m.venue }}" placeholder="Court/Pitch">
+                                </div>
+                                <div class="col-12 mt-2">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save Schedule</button>
+                                </div>
+                            </div>
+                        </form>
+                    </details>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

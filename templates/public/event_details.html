@@ -538,6 +538,13 @@
             <p class="desc-text">{{ event.description }}</p>
         </div>
 
+        <!-- Tournament Fixtures & Standings (UPG-13) -->
+        {% if event.get('tournament') %}
+        <div class="card" id="tournament">
+            {% include "includes/tournament.html" %}
+        </div>
+        {% endif %}
+
         <!-- Rules -->
         {% if event.rules %}
         <div class="card">

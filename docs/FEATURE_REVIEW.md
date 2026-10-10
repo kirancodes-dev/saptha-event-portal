@@ -145,7 +145,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Step | Result | Where it breaks |
 |---|---|---|
-| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports gets no fixtures (MISSING, UPG-13). |
+| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, built, untested). |
 | Build form | Page OK [R] | — |
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
 | Manage registrations / waitlist | Partly [R] | Exports work since UPG-03 (CSV and Excel with every column); no waitlist screen. |
@@ -197,7 +197,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:154`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
 | Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08) | Rubric scoring, round shortlists | UPG-04 |
-| Sports | Create, registration (teams since UPG-08), leaderboard page | Fixtures, match results, standings (whiteboard/Excel) | UPG-13 |
+| Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings (UPG-13, built, untested) | Whiteboard/Excel replaced | — |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06) | Slots, judging sheets | UPG-04 |
 | Club activities | Org units can be clubs (`routes_admin.py:812`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
 | Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, built, untested) | Company communication | — |
@@ -532,17 +532,27 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   3. Test: the admin analytics split counts by participant type.
 
 #### UPG-13 — Sports tournaments: fixtures, results, standings
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** BUILT (untested)
+- **Evidence:** `routes_sports.py:1-132`, `services_sports.py:1-192`, `templates/spoc/tournament.html:1-221`, `templates/includes/tournament.html:1-80`, `templates/public/tournament_fixtures.html:1-48`, `templates/public/event_details.html:541-546`, `templates/spoc/dashboard.html:1957-1961`, `app.py:320,347,946-976`
+- **Last verified:** 2026-10-10, commit "UPG-13: …" on `production-ready` (parent `a26b6b2`)
 - **Problem:** The sports template promises "fixture brackets, live match score updates, point tables" (`services_templates.py:392-434`), but no model, route or template builds fixtures or standings. The only mentions are checklist labels (`services_event.py:63`, `services_copilot.py:180`; the second was missed before). Sports officers run tournaments on whiteboards and in Excel.
 - **Who benefits:** Physical Education department, sports clubs, inter-department tournaments.
 - **What to build:** a fixture generator (knockout and league) from confirmed teams; coordinator result entry; automatic advancement or points table; a public fixtures page.
 - **Files touched:** new `routes_sports.py`, `services_sports.py`, `models_pg.py` + migration, templates, tests.
 - **Effort:** L · **Depends on:** UPG-08, BLK-06 · **Risk:** scope creep; start with knockout and league only.
+- **What was built (2026-10-10, owner's second run; no certificate/medal work):**
+  - **Team rosters:** `services_sports.confirmed_teams` pulls confirmed registrations for the event (teams with members since UPG-08 or individual participants).
+  - **Fixture generation:** `services_sports.py` generates single-elimination knockout brackets (padding to next power of 2 with byes automatically settled) and round-robin leagues (circle method) with configurable win/draw/loss points (default 3/1/0).
+  - **Match management:** SPOC or assigned coordinator (`routes_sports.py`) schedules match date, time, and venue; enters match scores and tie-break winners. Knockout automatically advances winners to next round until a champion is crowned; league dynamically computes the points table / standings (played, won, drawn, lost, goals for/against, goal difference, points).
+  - **Public access:** embedded tournament bracket/table in public event details (`templates/includes/tournament.html`, `templates/public/event_details.html`) and dedicated public fixtures page (`templates/public/tournament_fixtures.html` at `/tournament/fixtures/<event_id>` and `/sports/fixtures/<event_id>`), both accessible without authentication.
+  - **SPOC dashboard:** added "Sports Tournament: Fixtures & Standings" management action button in `templates/spoc/dashboard.html` for sports events.
+  - **No certificate, medal or award documents built** (as directed).
+  - Checked by hand [R] on temporary database: 5-team knockout generates 7 matches with 3 byes; entering results advances winner; 4-team league generates 6 matches and updates points table; public routes `/tournament/fixtures/<event_id>`, `/sports/fixtures/<event_id>`, and `/event/<event_id>` render with 200 without login.
+- **To test later:** criteria 1–4.
 - **Acceptance criteria:**
   1. Test: 8 teams → a knockout with 7 matches; entering results advances the winners to a single champion.
   2. Test: a 4-team league points table is correct after 6 results.
-  3. Test: only the assigned coordinator can enter results.
+  3. Test: only the SPOC or assigned coordinator can enter results (unauthorized returns 403).
   4. The public fixtures page renders without login.
 
 ### C. Remove / merge
@@ -2408,3 +2418,5 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "docs: …" (parent `96b9c80`) | UPG-62, D-9 | **Full pytest after Part 1: 19 failed, 792 passed, 1 skipped** (SQLite, Python 3.11). All 19 fail the same way at `251f444`, before this run's commits. **New:** UPG-62 (obsolete Stripe and matchmaker tests, the seed-safety test after the seed fold, an unescaped `maxScore` on the judge page, and a waitlist promotion that gives no ticket and calls the email task with a wrong argument) and decision D-9 (retire the Stripe and matchmaker tests?). |
 | 2026-10-10 | "UPG-12: …" (parent `33437e4`) | UPG-12 | **UPG-12 BUILT (untested).** Participant type (student, faculty, external) with designation and institution on users and registrations (migration 0006); each event chooses who may register (students only by default); the form asks for affiliation only from faculty and external participants and refuses types the event doesn't take; new accounts get a set-password link; same dashboard, ticket, check-in and feedback; the department export includes faculty FDP hours with a type filter; exports, the event report and admin analytics split by type. Certificate part deferred (owner, 2026-10-10). Checked by hand; related tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-57: …" (parent `9abcb79`) | UPG-57 | **UPG-57 BUILT (untested).** Placement drives: company details and eligibility rules on the event; CGPA and backlogs from the roster CSV (read-only for students, editable by admins); registration refuses ineligible students with the reason; `/placement/<event>` shows eligible vs registered, rounds, shortlist/reject moves that notify each student once, and per-round CSV/Excel exports; the ticket shows the current round. Checked by hand; related tests pass (two `test_admin_users` cases fail only after other tests add accounts, as on the previous commit: noted in UPG-62); ruff clean; app starts. |
+| 2026-10-10 | "UPG-13: …" (parent `a26b6b2`) | UPG-13 | **UPG-13 BUILT (untested).** Sports tournaments: team rosters from confirmed registrations (`services_sports.confirmed_teams`); fixture generator for knockout (single elimination with byes auto-advancing to next power of 2) and league (circle method round-robin with configurable win/draw/loss points); match date/time/venue scheduling; result entry restricted to SPOC and assigned coordinators; automatic winner advancement in knockout; live league standings table; public fixtures page (`/tournament/fixtures/<event_id>`, `/sports/fixtures/<event_id>`) and event details embed without login; SPOC tournament management dashboard; no certificate/medal work. Checked by hand on temporary database; ruff clean; app starts. |
+

@@ -249,3 +249,20 @@ for the first time in an emergency:
    incident record.
 5. Delete the test database when the drill is done; it holds real personal data.
 
+## Android app (Capacitor) build
+
+The Capacitor Android application embeds the responsive portal in a webview wrapper.
+Before syncing or building the Android APK, configure `capacitor.config.json` with the deployment `BASE_URL`:
+
+```bash
+# Generate config pointing strictly at the target host
+BASE_URL="https://events.example.edu" npm run cap:config
+# or directly:
+BASE_URL="https://events.example.edu" python scripts/configure_capacitor.py
+
+# Sync assets and native platform
+npx cap sync android
+```
+
+This ensures `server.url` and `server.allowNavigation` in `capacitor.config.json` point strictly to your university production domain instead of retired development URLs.
+

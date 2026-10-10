@@ -103,7 +103,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Audit log | WORKING [R at BLK-06a] | `utils.py` `log_action`, `templates/admin/audit_log.html` | The page shows the actor again (reads the document's `user` key, now preserved). The SQL `actorEmail` column holds the acting user since BLK-06a [R]. |
 | REST API v1 (JWT) + multi-tenant control plane | NOT CONNECTED [C] | `routes_api_v1.py` | Only the AI copilot endpoints are called from a template. Finance, analytics, evaluation, certificate and control-plane services are used only here. |
 | AI copilot (admin) | not run [C] | `routes_api_v1.py:1466-1507`, `auth_jwt.py:212-242` | Session fallback exists; no Gemini key in sandbox. |
-| Android app | Webview wrapper [C] | `capacitor.config.json:5-6` | Loads `https://saptha-portal.railway.app`; no native or offline features. |
+| Android app | Webview wrapper (built, untested) [R at UPG-54] | `capacitor.config.json`, `scripts/configure_capacitor.py` | Server URL derived from `BASE_URL` at build time; `allowNavigation` restricted to host; documented in `docs/DEPLOY.md` (UPG-54). |
 | Payment failure page | WORKING [R at `1f4cdc8`] | `templates/payment/failed.html:1` | Now extends `base_classic.html`; 200 [R]. |
 | Login rate limiting | WORKING [R at BLK-13] | `services_login_throttle.py`, `routes_auth.py:83-86,337-341`, `routes_api_v1.py:62-88` | 5 failed logins (web + API, one counter) or reset requests per IP and per account per minute, and 20 failed logins per account per hour (UPG-37), then 429 "try again in N seconds"; counters in the database (Redis if `REDIS_URL`), shared by every instance (BLK-13). The old in-memory helpers in `security_middleware.py` are unused (UPG-14). |
 | Sessions | WORKING [R at BLK-08] | `session_store.py`, `config.py:49-64` | In the database (Redis if `REDIS_URL`): survive restarts, shared by instances, none for plain anonymous page views (BLK-08). |
@@ -1996,8 +1996,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Verify `/` returns 200, renders the empty state ("No Events Currently Listed") and contains neither `demo-hackathon-2026` nor "SapthaHack 2026" when no events exist in the database.
 
 #### UPG-54 — The Android app loads an old Railway URL
-- **Status:** TODO
-- **Last verified:** 2026-10-10, commit `6b4fe41`
+- **Status:** BUILT (untested)
+- **Last verified:** 2026-10-10, commit "UPG-54: …" on `production-ready` (parent `7c0bd90`)
+- **Evidence:** `capacitor.config.json`, `scripts/configure_capacitor.py`, `package.json:8`, `docs/DEPLOY.md:252-269`
 - **Problem:** [C] `capacitor.config.json:5-6` points the Android webview at `https://saptha-portal.railway.app`, a retired host; `allowNavigation` lists `*.railway.app` and `*.firebaseapp.com`. An APK built today opens a dead site.
 - **Who benefits:** students using the Android app.
 - **What to build:** the server URL comes from `BASE_URL` at build time (a `capacitor.config.ts` or a small script that writes the JSON before `npx cap sync`); `allowNavigation` holds only that host; the build steps are documented.
@@ -2006,6 +2007,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: no tracked file outside `functions/` and `scratch/` contains `railway.app` in the Capacitor config.
   2. Test: running the config step with `BASE_URL=https://events.example.edu` gives a config whose server URL and `allowNavigation` use only that host.
+- **To test later:**
+  - Verify `capacitor.config.json` contains no reference to `railway.app`.
+  - Verify running `scripts/configure_capacitor.py` with `BASE_URL=https://events.example.edu` sets `url` to `https://events.example.edu` and `allowNavigation` to `["events.example.edu"]`.
 
 #### UPG-55 — Google sign-in and 2FA exist but nothing links to them
 - **Status:** TODO
@@ -2241,6 +2245,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-27: …" (parent `3c9f9d1`) | UPG-27 | **UPG-27 BUILT (untested).** `static/img` compressed to WebP (797 KB total across 6 WebP files + 1 QR PNG, well under 1.5 MB); `README.md` and scratch script updated; all 111 `<img>` tags in templates have `alt` and `loading` attributes (`eager` on first-screen brand logos, `lazy` elsewhere); `:focus-visible` outline pinned in `static/css/global.css`. ruff clean; app starts. |
 | 2026-10-10 | "UPG-28: …" (parent `68cafdf`) | UPG-28 | **UPG-28 BUILT (untested).** Global mobile responsive overflow safeguard in `templates/layouts/document.html` (`max-width: 100%; overflow-x: hidden;`); responsive certificate container scaling on mobile viewports; verified student journey templates (home, details, registration, payment checkout, ticket, feedback, certificate) and scanner templates on 375px phone layout. ruff clean; app starts. |
 | 2026-10-10 | "UPG-53: …" (parent `486bc08`) | UPG-53 | **UPG-53 BUILT (untested).** Removed hard-coded `demo-hackathon-2026` fallback from `app.py`. With no events, `/` passes `events = []` and renders the template's clean empty state instead of a fake hackathon. ruff clean; app starts. |
+| 2026-10-10 | "UPG-54: …" (parent `7c0bd90`) | UPG-54 | **UPG-54 BUILT (untested).** Android Capacitor webview config generated from `BASE_URL` at build time (`scripts/configure_capacitor.py`, `npm run cap:config`); retired Railway host removed from `capacitor.config.json`; `allowNavigation` restricted strictly to configured host; documented in `docs/DEPLOY.md`. ruff clean; app starts. |
 
 
 

@@ -4,6 +4,7 @@
   "private": true,
   "description": "SapthaEvent Enterprise Event Portal — Pure Python Serverless Deployment",
   "scripts": {
-    "start": "python app.py"
+    "start": "python app.py",
+    "cap:config": "python3 scripts/configure_capacitor.py"
   }
 }

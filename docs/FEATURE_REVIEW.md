@@ -2254,6 +2254,134 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 **Development-only run (owner, 2026-10-10).** For the run that starts at `6b4fe41`, rule 5 (tests) and rule 8 (re-verification) are suspended. An item built in this run is marked **BUILT (untested)**, not DONE, and gets a "To test later" line listing what its acceptance criteria need. Every commit still passes `ruff check .` and starts the app (home page loads). No existing test is deleted, skipped or weakened.
 
+### Master "To test later" list (ordered by risk)
+
+All items built in the development-only run (`BUILT (untested)`), prioritized by risk for full verification before release:
+
+#### Tier 1: Payments, Refunds & Idempotency (Highest Risk)
+1. **UPG-51 (Refund all on cancellation):**
+   - Concurrent "refund all" calls Razorpay once per payment.
+   - Per-payment failure recorded and retryable without re-refunding succeeded ones.
+   - Audit log entry created and confirmation email sent to participant for every refund.
+   - Registrations without an online payment order listed for manual processing.
+2. **UPG-26 (Form & payment idempotency):**
+   - Single submit guard disabled after one click (checkout especially).
+   - Double-submit of registration form with same `submission_id` creates exactly one registration.
+   - Field-level validation error messages displayed beside fields with user input values preserved.
+3. **UPG-56 (Checkout coupons & price preview):**
+   - Coupon field on checkout submits to `/payment/price_preview` returning server fee, discount, and total.
+   - Final Razorpay order creation uses server-verified discounted price.
+   - Invalid/expired coupons rejected with clear error message.
+4. **UPG-44 (Empty payment status handling):**
+   - Empty/missing payment status reads back as empty string on PostgreSQL and SQLite (not enum default `'unpaid'`).
+   - Query filters for `'unpaid'` match only explicit unpaid registrations.
+
+#### Tier 2: Permissions, Concurrency & Security
+5. **UPG-52 (Atomic team join):**
+   - Two concurrent join requests on PostgreSQL when 1 spot remains: exactly one succeeds and one is rejected.
+   - Team max limit is strictly preserved under concurrency.
+6. **UPG-22 (Privacy notice consent & account deletion):**
+   - Consent checkbox required at registration/signup; records timestamp and notice version.
+   - Profile data export returns only user's own data (no leaked team member personal info).
+   - Account deletion anonymizes personal data while keeping necessary registration count aggregates; executed by cron cleanup.
+7. **UPG-10 (Roster CSV import & Google auth domain restriction):**
+   - SuperAdmin roster CSV import handles valid/invalid columns, duplicate emails, and creates unverified student accounts.
+   - Google OAuth sign-in rejects emails outside configured university domain.
+8. **UPG-20 (Boot checks, health & security headers):**
+   - Production boot checks aggregate all missing configurations into single startup error.
+   - `/health` endpoint returns minimal 200 OK or 503 Service Unavailable without exposing stack traces.
+   - HSTS and CSP security headers applied on all responses.
+
+#### Tier 3: Check-in, Workflow & Access Control
+9. **UPG-43 (Workflow states in event-day jobs):**
+   - Coordinator scanner and walk-in lists include `registration_open`, `registration_closed`, `in_progress`, and `published` events.
+   - Scheduled reminders process events in new workflow states; cancelled events excluded.
+10. **UPG-12 (Faculty & external participants):**
+    - Event allowed-participant types enforced (e.g. FDP faculty-only, conference faculty+external).
+    - Designation and institution required only for faculty and external participants.
+    - New faculty/external accounts receive set-password token without raw passwords.
+    - Participant dashboard, tickets, check-in, and feedback function identically to students.
+    - Department activity export and admin analytics split counts by participant type.
+11. **UPG-57 (Placement drives):**
+    - Eligibility rules (CGPA, backlogs, branch, year) verified against roster on registration.
+    - Ineligible registration attempts rejected with specific reason.
+    - Organizer view compares eligible vs registered students.
+    - Candidate round transitions (shortlisted/rejected) dispatch notification once.
+    - Per-round CSV and XLSX exports function correctly.
+12. **UPG-09 (Room booking conflict detection):**
+    - Room booking picker during event creation creates tentative booking.
+    - Overlapping room bookings detected and rejected.
+    - Approval/publish workflow transition confirms tentative booking.
+13. **UPG-04 (Judging rubric criteria):**
+    - Per-criterion max scores enforced; score inputs reject out-of-range scores.
+    - Locked scoring prevents further edits.
+    - Judge dashboard displays events in `in_progress` and `evaluation` states.
+14. **UPG-13 (Sports tournaments):**
+    - Knockout bracket generation handles uneven teams with byes and advances winners to final champion.
+    - League round-robin computes accurate points table (win/draw/loss points configurable).
+    - Result entry restricted to SPOC and assigned coordinators (unauthorized returns 403).
+    - Public fixtures page (`/tournament/fixtures/<event_id>` and `/sports/fixtures/<event_id>`) renders without login.
+
+#### Tier 4: Background Jobs, Data Layer & Notifications
+15. **UPG-16 (Alembic baseline migration):**
+    - `alembic upgrade head` builds empty PostgreSQL schema matching models with zero diffs.
+    - Downgrade to base and upgrade back to head succeeds.
+    - Production boot verifies schema is at head.
+16. **UPG-18 (Inline task timeout & outbox):**
+    - Background tasks run inline with timeout when no Celery broker configured.
+    - Failed tasks stored in `outbox` table; retried by `/internal/cron/outbox`.
+17. **UPG-21 (Database backup and restore):**
+    - Daily `pg_dump` script runs and uploads to private S3.
+    - Restore script verifies dump and refuses to overwrite non-empty target without explicit flag.
+18. **UPG-19 (Server-side pagination & search):**
+    - 25 per page pagination across admin, SPOC, coordinator event lists, users, payments, audit log.
+    - Search filters and page parameters preserved in URL query strings.
+19. **UPG-47 (Event times & room clashes):**
+    - Events saved without times keep start/end empty and display "Time to be announced".
+    - Zero-length bookings hold date and detect conflicts on same day.
+20. **UPG-48 (Team member notifications):**
+    - Team members (not only lead) receive confirmations, 24h reminders, 3-day reminders, and change/cancellation notices once each.
+    - Registration tracks `*_sent_to` to prevent duplicate dispatch.
+21. **UPG-49 (WhatsApp automation):**
+    - Automation WhatsApp channel dispatches via Twilio when configured; cleanly skipped when unconfigured.
+22. **UPG-50 (Email HTML escaping):**
+    - HTML values escaped in outbound email templates; subjects stay plain text.
+23. **UPG-46 (Base URL in emails):**
+    - Scheduled email links dynamically generated from `BASE_URL`.
+24. **UPG-42 (Support contact email):**
+    - `SUPPORT_EMAIL` rendered on privacy, terms, payment-failed pages; omitted when unset.
+25. **UPG-61 (Dev database startup schema sync):**
+    - Local SQLite startup synchronizes new NOT NULL columns with defaults on existing databases.
+
+#### Tier 5: Frontend, Mobile & Hygiene
+26. **UPG-23a–h (Consolidated template layout):**
+    - Every rendered template extends `layouts/document.html`; consistent header/footer across roles.
+27. **UPG-24 (Bootstrap 5.3.3, self-hosted fonts & SRI):**
+    - Bootstrap and Font Awesome loaded once with SRI; self-hosted Inter/Plus Jakarta Sans/Outfit fonts; external CDNs pinned.
+28. **UPG-25 (Nonce-based CSP & externalized scripts):**
+    - Inline scripts and handlers externalized; CSP script-src excludes `'unsafe-inline'`.
+29. **UPG-27 (Image optimization & accessibility):**
+    - Static images compressed to WebP under 1.5 MB total; `alt` and `loading="lazy"` on images below fold; `:focus-visible` outlines.
+30. **UPG-28 (Mobile responsiveness):**
+    - Student journey (discover → register → pay → ticket → scanner → feedback) verified on 375px viewport with no horizontal overflow.
+31. **UPG-53 (Empty home page state):**
+    - Home page renders clean empty state when no events exist (no fake hackathon).
+32. **UPG-54 (Capacitor dynamic configuration):**
+    - Android webview config derived from `BASE_URL` at build time.
+33. **UPG-55 (Conditional Google login & 2FA):**
+    - Google login and 2FA settings displayed only when configured.
+34. **UPG-59 (Fixed 500 routes):**
+    - All 5 fixed routes render without 500 errors.
+35. **UPG-60 (Frontend browser pass fixes):**
+    - Favicon, reels posters, create-event wizard script parse errors resolved.
+36. **UPG-14 (Subsystem deduplication):**
+    - Notifications v2 feed functional; Stripe routes 404; matchmaker guarded.
+37. **UPG-15 (Cleaned code & templates):**
+    - Catalyst code, unregistered blueprints, and unrendered templates removed.
+38. **UPG-38 (Jekyll workflow removed):**
+    - Jekyll workflow file deleted.
+
+
 ### Decisions needed
 
 | ID | Decision | Blocks | Status |
@@ -2419,4 +2547,6 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-12: …" (parent `33437e4`) | UPG-12 | **UPG-12 BUILT (untested).** Participant type (student, faculty, external) with designation and institution on users and registrations (migration 0006); each event chooses who may register (students only by default); the form asks for affiliation only from faculty and external participants and refuses types the event doesn't take; new accounts get a set-password link; same dashboard, ticket, check-in and feedback; the department export includes faculty FDP hours with a type filter; exports, the event report and admin analytics split by type. Certificate part deferred (owner, 2026-10-10). Checked by hand; related tests pass; ruff clean; app starts. |
 | 2026-10-10 | "UPG-57: …" (parent `9abcb79`) | UPG-57 | **UPG-57 BUILT (untested).** Placement drives: company details and eligibility rules on the event; CGPA and backlogs from the roster CSV (read-only for students, editable by admins); registration refuses ineligible students with the reason; `/placement/<event>` shows eligible vs registered, rounds, shortlist/reject moves that notify each student once, and per-round CSV/Excel exports; the ticket shows the current round. Checked by hand; related tests pass (two `test_admin_users` cases fail only after other tests add accounts, as on the previous commit: noted in UPG-62); ruff clean; app starts. |
 | 2026-10-10 | "UPG-13: …" (parent `a26b6b2`) | UPG-13 | **UPG-13 BUILT (untested).** Sports tournaments: team rosters from confirmed registrations (`services_sports.confirmed_teams`); fixture generator for knockout (single elimination with byes auto-advancing to next power of 2) and league (circle method round-robin with configurable win/draw/loss points); match date/time/venue scheduling; result entry restricted to SPOC and assigned coordinators; automatic winner advancement in knockout; live league standings table; public fixtures page (`/tournament/fixtures/<event_id>`, `/sports/fixtures/<event_id>`) and event details embed without login; SPOC tournament management dashboard; no certificate/medal work. Checked by hand on temporary database; ruff clean; app starts. |
+| 2026-10-10 | "docs: …" (parent `efb33f3`) | Phase 6 summary | **Phase 6 (university features) built, development-only run (rules 5 and 8 suspended by the owner; certificate work deferred).** **BUILT (untested):** UPG-04 (rubric judging), UPG-09 (room bookings & conflict check on publish), UPG-10 (student roster CSV import & Google sign-in domain restriction), UPG-11 (participation ledger, activity points/hours on attendance, department export), UPG-12 (faculty and external participants, participant types, allowed types per event, affiliation fields, type analytics), UPG-57 (placement drives, company details, roster eligibility rules, shortlist rounds, notifications, round exports), UPG-13 (sports tournaments, knockout with byes, league round-robin, results entry, points table, public fixtures). Built alongside in Part 1: UPG-42 (support email), UPG-44 (empty payment status), UPG-46 (BASE_URL links in emails), UPG-47 (TBA times), UPG-48 (team member notices), UPG-49 (WhatsApp automation via Twilio), UPG-50 (email HTML escaping), UPG-59 (five 500 pages fixed), UPG-60 (frontend browser pass fixes), UPG-61 (dev startup schema sync). **Deferred:** certificate portions of UPG-11, UPG-12, UPG-50 (owner instruction: no certificate work). **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200. **Next:** Phase 7 (release check, UPG-32), stopped before starting as instructed. |
+
 

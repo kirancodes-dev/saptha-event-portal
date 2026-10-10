@@ -226,13 +226,7 @@ def department_activity_data(db, department=None):
             students.append((u.id, udata))
 
     # Pre-fetch events
-    events_map = {}
-    for e in db.collection('events').stream():
-        edata = e.to_dict() or {}
-        events_map[str(e.id)] = {
-            'points': float(edata.get('activity_points') or 0.0),
-            'hours': float(edata.get('activity_hours') or 0.0),
-        }
+    events_map = {str(e.id): (e.to_dict() or {}) for e in db.collection('events').stream()}
 
     # Group registrations by email and usn
     regs_by_student = defaultdict(list)
@@ -268,12 +262,13 @@ def department_activity_data(db, department=None):
         attended_count = 0
         total_points = 0.0
         total_hours = 0.0
-        for r in matched_regs:
+        from services_ledger import credit_for
+        for r in matched_regs:   # each registration once (deduplicated above)
             if str(r.get('attendance') or '').strip().lower() == 'present':
                 attended_count += 1
-                ev = events_map.get(str(r.get('event_id')), {'points': 0.0, 'hours': 0.0})
-                total_points += ev['points']
-                total_hours += ev['hours']
+                points, hours = credit_for(r, events_map.get(str(r.get('event_id')), {}))
+                total_points += points
+                total_hours += hours
 
         results.append({
             'name': sdata.get('name', ''),

@@ -868,8 +868,9 @@ def participation_ledger():
         ev_points = float(event.get('activity_points') or 0.0)
         ev_hours = float(event.get('activity_hours') or 0.0)
 
-        points_earned = ev_points if is_present else 0.0
-        hours_earned = ev_hours if is_present else 0.0
+        # Once per registration, from its current attendance (services_ledger)
+        from services_ledger import credit_for
+        points_earned, hours_earned = credit_for(reg, event)
 
         total_points += points_earned
         total_hours += hours_earned

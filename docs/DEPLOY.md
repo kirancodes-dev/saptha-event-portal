@@ -1,9 +1,55 @@
 # Deploying SapthaEvent
 
 This guide is being written section by section. The full Cloud Run + Supabase
-guide (every setting, migrations, first Super Admin, rollback, backups,
-monitoring) comes with UPG-32 in `docs/FEATURE_REVIEW.md`. Until then,
+guide (every setting, first Super Admin, rollback, backups, monitoring) comes
+with UPG-32 in `docs/FEATURE_REVIEW.md`. Until then,
 `docs/DEPLOYMENT.md` covers the container and environment basics.
+
+## Database migrations
+
+The schema is built and changed only by Alembic migrations (`migrations/versions/`).
+In production (`FLASK_ENV=production`) the app never creates or alters tables at
+start-up: it checks that the database is at the newest migration and refuses to
+start otherwise, with a message saying what to run. In development, start-up still
+creates missing tables and columns so a local SQLite file just works.
+
+Run migrations **before** the new revision serves traffic, once per deploy, from
+the same image (so the migration files match the code):
+
+```bash
+# Cloud Run: a job that runs the image's alembic once, then deploy the service
+gcloud run jobs create saptha-migrate --image "$IMAGE" --region "$REGION" \
+  --set-secrets DATABASE_URL=DATABASE_URL:latest --command alembic --args upgrade,head
+gcloud run jobs execute saptha-migrate --region "$REGION" --wait
+gcloud run deploy saptha --image "$IMAGE" --region "$REGION"
+```
+
+```bash
+# Anywhere else (DATABASE_URL set in the environment)
+alembic upgrade head
+```
+
+Don't run migrations from every container's start command: several instances
+starting together would race.
+
+**A new, empty database:** `alembic upgrade head` builds every table.
+
+**A database created before migrations existed** (by the old start-up
+`create_all`/`ALTER TABLE`): bring it to the current models once with a
+development start-up of this version (which adds any missing columns), then
+record it as migrated without running anything:
+
+```bash
+alembic stamp 0001_baseline
+```
+
+**Checking:** `alembic current` shows the database's revision and `alembic heads`
+the code's. **Rolling back** a migration: `alembic downgrade -1` (only before the
+new revision has written data the old schema can't hold).
+
+**Adding a change:** edit `models_pg.py`, then
+`alembic revision --autogenerate -m "what changed"` against a database at head,
+read the generated file, and commit it with the code.
 
 ## Scheduled jobs
 

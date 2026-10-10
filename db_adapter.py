@@ -1843,19 +1843,23 @@ class SQLBatch:
 class SQLFirestoreAdapter:
     """Mock Firestore client providing complete adapter interfaces to SQLAlchemy."""
     def __init__(self):
-        # Create all tables if they do not exist
-        from db_pg import init_db, DatabaseConfigError
-        try:
-            init_db()
-        except DatabaseConfigError:
-            raise
-        except Exception as exc:
-            logger.info("Database table init note: %s", exc)
-        # Auto-align live postgres schemas on start
-        try:
-            verify_and_align_schema()
-        except Exception as exc:
-            logger.info("Schema alignment note: %s", exc)
+        from db_pg import _is_production, init_db, require_schema_at_head, DatabaseConfigError
+        if _is_production():
+            # Production never issues CREATE or ALTER at start-up: migrations
+            # build the schema, and start-up refuses a database not at head (UPG-16).
+            require_schema_at_head()
+        else:
+            # Development: create missing tables and align columns on start.
+            try:
+                init_db()
+            except DatabaseConfigError:
+                raise
+            except Exception as exc:
+                logger.info("Database table init note: %s", exc)
+            try:
+                verify_and_align_schema()
+            except Exception as exc:
+                logger.info("Schema alignment note: %s", exc)
         try:
             self._ensure_root_units()
         except Exception as exc:

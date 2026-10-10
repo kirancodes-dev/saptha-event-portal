@@ -168,8 +168,35 @@ def get_engine():
     return _engine
 
 
+ALEMBIC_INI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alembic.ini")
+
+
+def schema_revisions():
+    """(database revision, code's head revision) from Alembic; the first is None
+    for a database that was never migrated or stamped."""
+    from alembic.config import Config
+    from alembic.runtime.migration import MigrationContext
+    from alembic.script import ScriptDirectory
+    head = ScriptDirectory.from_config(Config(ALEMBIC_INI)).get_current_head()
+    with get_engine().connect() as conn:
+        current = MigrationContext.configure(conn).get_current_revision()
+    return current, head
+
+
+def require_schema_at_head():
+    """Production start-up: never create or alter tables, only check that
+    `alembic upgrade head` has run (UPG-16). Raises DatabaseConfigError otherwise."""
+    current, head = schema_revisions()
+    if current != head:
+        raise DatabaseConfigError(
+            f"The database schema is at {current or 'no Alembic revision'}, but this code needs {head}. "
+            "Run `alembic upgrade head` before starting the app (docs/DEPLOY.md). "
+            "A database created by an older start-up is stamped once with `alembic stamp 0001_baseline`.")
+
+
 def init_db():
-    """Create all tables and missing columns if they don't exist. Call once at app startup."""
+    """Development only: create missing tables and nullable columns at start-up.
+    Production databases are built and changed by Alembic migrations (UPG-16)."""
     engine = get_engine()
     if engine is not None:
         try:

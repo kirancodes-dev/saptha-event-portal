@@ -2,9 +2,12 @@
    needs no inline script (UPG-25). */
   // Shoot confetti on load
   window.addEventListener('DOMContentLoaded', () => {
+    // Brand colours; skipped for reduced motion or if the library failed to load (UPG-63)
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (typeof confetti !== 'function') return;
     const duration = 4 * 1000;
     const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 28, spread: 360, ticks: 60, zIndex: 1000 };
+    const defaults = { startVelocity: 28, spread: 360, ticks: 60, zIndex: 1000, colors: ['#00185e', '#c69d67', '#dcc199', '#3b5bc9'] };
 
     function randomInRange(min, max) {
       return Math.random() * (max - min) + min;

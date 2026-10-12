@@ -1,38 +1,20 @@
 {% extends "base_classic.html" %}
 
 {% block title %}Tournament — {{ event.title }}{% endblock %}
-{% block page_title %}Sports Tournament{% endblock %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% block page_title %}Sports tournament{% endblock %}
+
+{% block page_sub %}{{ event.title }} · Format: <strong>{{ (t.format or 'Not generated')|title }}</strong> · Confirmed teams: <strong>{{ teams|length }}</strong>{% if champion %} · <span class="se-badge se-badge--gold"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) }}</span>{% endif %}{% endblock %}
+{% block page_actions %}
+<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>
+<a href="/tournament/fixtures/{{ event.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-external-link-alt" aria-hidden="true"></i> Public fixtures page</a>
+{% endblock %}
 
 {% block content %}
-<div class="card mb-3">
-    <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <h2 style="font-size:20px;" class="mb-1">{{ event.title }}</h2>
-                <p class="text-muted mb-0">
-                    Format: <strong>{{ (t.format or 'Not generated')|title }}</strong> ·
-                    Confirmed teams: <strong>{{ teams|length }}</strong>
-                    {% if champion %} · 🏆 Champion: <strong class="text-success">{{ names.get(champion, champion) }}</strong>{% endif %}
-                </p>
-            </div>
-            <div>
-                <a href="/tournament/fixtures/{{ event.id }}" class="btn btn-outline-secondary" target="_blank">
-                    <i class="fas fa-external-link-alt me-1"></i> Public Fixtures Page
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% if can_generate %}
 <div class="card mb-3">
     <div class="card-body">
-        <h3 style="font-size:17px;">{% if t %}Re-generate Fixtures{% else %}Generate Fixtures{% endif %}</h3>
+        <h2 class="h5">{% if t %}Re-generate fixtures{% else %}Generate fixtures{% endif %}</h2>
         {% if teams|length < 2 %}
             <p class="text-muted mb-0">At least 2 confirmed teams/participants are required to generate fixtures.</p>
         {% else %}
@@ -69,7 +51,7 @@
                 {% endif %}
                 <div class="col-md-3">
                     <button type="submit" class="btn btn-primary w-100">
-                        {% if t %}Replace Fixtures{% else %}Generate Fixtures{% endif %}
+                        {% if t %}Replace Fixtures{% else %}Generate fixtures{% endif %}
                     </button>
                 </div>
             </form>
@@ -81,21 +63,21 @@
 {% if t and t.format == 'league' and table %}
 <div class="card mb-3">
     <div class="card-body">
-        <h3 style="font-size:17px;" class="mb-3">League Standings Table</h3>
+        <h2 class="h5 mb-3">League standings</h2>
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:50px;">Pos</th>
+                        <th style="width:50px;"><abbr title="Position">Pos</abbr></th>
                         <th>Team</th>
-                        <th style="width:60px;">P</th>
-                        <th style="width:60px;">W</th>
-                        <th style="width:60px;">D</th>
-                        <th style="width:60px;">L</th>
-                        <th style="width:60px;">GF</th>
-                        <th style="width:60px;">GA</th>
-                        <th style="width:60px;">GD</th>
-                        <th style="width:70px;"><strong>Pts</strong></th>
+                        <th style="width:60px;"><abbr title="Played">P</abbr></th>
+                        <th style="width:60px;"><abbr title="Won">W</abbr></th>
+                        <th style="width:60px;"><abbr title="Drawn">D</abbr></th>
+                        <th style="width:60px;"><abbr title="Lost">L</abbr></th>
+                        <th style="width:60px;"><abbr title="Goals for">GF</abbr></th>
+                        <th style="width:60px;"><abbr title="Goals against">GA</abbr></th>
+                        <th style="width:60px;"><abbr title="Goal difference">GD</abbr></th>
+                        <th style="width:70px;"><abbr title="Points"><strong>Pts</strong></abbr></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -123,7 +105,7 @@
 {% if t and t.matches %}
 <div class="card">
     <div class="card-body">
-        <h3 style="font-size:17px;" class="mb-3">Matches &amp; Results</h3>
+        <h2 class="h5 mb-3">Matches &amp; results</h2>
         <div class="row g-3">
             {% for m in t.matches %}
             <div class="col-lg-6 col-12" id="{{ m.id }}">
@@ -138,11 +120,11 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.home %}fw-bold text-success{% endif %}">
                             <span>{% if m.home %}{{ names.get(m.home, m.home) }}{% else %}<em>TBD</em>{% endif %}</span>
-                            <span class="badge bg-dark fs-6">{{ m.home_score if m.home_score is not none else '-' }}</span>
+                            <span class="badge fs-6">{{ m.home_score if m.home_score is not none else '-' }}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center py-1 {% if m.winner == m.away %}fw-bold text-success{% endif %}">
                             <span>{% if m.away %}{{ names.get(m.away, m.away) }}{% else %}<em>TBD</em>{% endif %}</span>
-                            <span class="badge bg-dark fs-6">{{ m.away_score if m.away_score is not none else '-' }}</span>
+                            <span class="badge fs-6">{{ m.away_score if m.away_score is not none else '-' }}</span>
                         </div>
                         {% if m.venue or m.date or m.time %}
                         <div class="small text-muted mt-1">

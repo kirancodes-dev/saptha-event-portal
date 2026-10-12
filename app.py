@@ -630,17 +630,11 @@ def home():
                 d = e.to_dict() if hasattr(e, 'to_dict') else e
                 if not isinstance(d, dict): continue
                 d['id'] = getattr(e, 'id', None) or d.get('id') or 'event-demo'
-                status = (d.get('status') or 'active').strip().lower()
-                if status not in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+                # Published, not private, department-only for that department (UPG-73)
+                from services_event_types import is_listed
+                if not is_listed(d, viewer_dept=(viewer_dept or '') if viewer_email else '', is_admin=is_admin):
                     continue
-
-                # Visibility guard
-                ev_visibility = (d.get('visibility') or 'Public').strip().lower()
-                ev_dept = str(d.get('org_unit_id') or d.get('department') or '').strip().lower()
-                if ev_visibility in ('department', 'department_only') or d.get('department_only') is True:
-                    if not is_admin:
-                        if not viewer_email or not viewer_dept or viewer_dept.lower() != ev_dept:
-                            continue
+                ev_dept = str(d.get('department') or d.get('org_unit_id') or '').strip().lower()
 
                 # Search query
                 if q:
@@ -719,7 +713,17 @@ def home():
             'event_id': d.get('id', ''),
         })
 
+    # The hero's "Coming up" list and the counts beside it, from the events
+    # above; the university's own facts come from university_info (UPG-86)
+    from university_info import UNIVERSITY, SOURCE_URL
+    open_events = [d for d in events if str(d.get('date') or '') >= current_date and not d.get('is_closed')]
+    month = current_date[:7]
     _ctx = {
+        'university': UNIVERSITY,
+        'university_source': SOURCE_URL,
+        'coming_up': open_events[:3],
+        'open_count': len(open_events),
+        'this_month_count': sum(1 for d in events if str(d.get('date') or '')[:7] == month),
         'events': events,
         'current_date': current_date,
         'today_date': current_date,
@@ -744,6 +748,21 @@ def dashboard_redirect():
 # =========================================================
 # UNIVERSAL EVENT DISCOVERY & CATALOG
 # =========================================================
+def _viewer_is_admin():
+    return session.get('role') in ('SuperAdmin', 'Super Admin', 'Admin', 'UniversityAdmin')
+
+
+def _viewer_department():
+    """The signed-in user's department, for department-only events (UPG-73)."""
+    if not session.get('user_id') or db is None:
+        return ''
+    try:
+        doc = db.collection('users').document(session['user_id']).get()
+        return ((doc.to_dict() or {}).get('department') or '') if doc.exists else ''
+    except Exception:
+        return ''
+
+
 @app.route('/events')
 def events_catalog():
     """Universal Event Discovery Catalog with multi-facet filtering."""
@@ -761,6 +780,10 @@ def events_catalog():
             for doc in stream:
                 ev = doc.to_dict()
                 ev['id'] = doc.id
+                # Only published, publicly visible events (drafts and private ones never; UPG-73)
+                from services_event_types import is_listed
+                if not is_listed(ev, viewer_dept=_viewer_department(), is_admin=_viewer_is_admin()):
+                    continue
                 cat = ev.get('category')
                 if cat:
                     categories.add(cat)
@@ -955,8 +978,24 @@ def event_details(event_id):
             except Exception:
                 pass
 
+        # Kind of event, its fest, and a fest's programme (UPG-73, UPG-74)
+        from services_event_types import get_type, is_listed, id_variants
+        spec = get_type(event.get('event_type'))
+        parent_fest, fest_events = None, []
+        if event.get('parent_event_id'):
+            p_doc = db.collection('events').document(event['parent_event_id']).get()
+            if p_doc.exists:
+                parent_fest = dict(p_doc.to_dict() or {}, id=p_doc.id)
+        if event.get('is_fest'):
+            fest_events = sorted(
+                [dict(d.to_dict() or {}, id=d.id) for d in
+                 db.collection('events').where('parent_event_id', 'in', id_variants(doc.id) + id_variants(event_id)).stream()],
+                key=lambda e: (str(e.get('date') or ''), str(e.get('time') or '')))
+            fest_events = [e for e in fest_events if is_listed(e, is_admin=True)]
+
         return render_template('public/event_details.html',
                                event=event,
+                               spec=spec, parent_fest=parent_fest, fest_events=fest_events,
                                is_registered=is_registered,
                                reg_count=reg_count,
                                max_p=max_p,
@@ -1029,19 +1068,11 @@ def _filter_calendar_events(events_stream, args, session_dict, db_client):
         ev_id = doc.id if hasattr(doc, 'id') else ev.get('id')
         ev['id'] = ev_id
 
-        # Must be active or published
-        ev_status = (ev.get('status') or 'active').strip().lower()
-        if ev_status not in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+        # Published, not private, department-only for that department (UPG-73)
+        from services_event_types import is_listed
+        if not is_listed(ev, viewer_dept=(viewer_dept or '') if viewer_email else '', is_admin=is_admin):
             continue
-
-        # Visibility guard: department-only events
-        ev_visibility = (ev.get('visibility') or 'Public').strip().lower()
-        ev_dept = str(ev.get('org_unit_id') or ev.get('department') or '').strip().lower()
-
-        if ev_visibility in ('department', 'department_only') or ev.get('department_only') is True:
-            if not is_admin:
-                if not viewer_email or not viewer_dept or viewer_dept.lower() != ev_dept:
-                    continue  # Hidden from other departments and unauthenticated users
+        ev_dept = str(ev.get('department') or ev.get('org_unit_id') or '').strip().lower()
 
         # "My events" filter
         if my_events_only and str(ev_id) not in user_registered_event_ids:

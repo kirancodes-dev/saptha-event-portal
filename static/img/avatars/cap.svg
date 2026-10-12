@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Graduation cap">
+<title>Graduation cap</title>
+<circle cx="64" cy="64" r="64" fill="#c69d67"/>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#c69d67" stroke-opacity=".55" stroke-width="2"/>
+<g fill="#00185e">
+<path d="M64 34 L104 52 L64 70 L24 52 Z"/>
+<path d="M40 60 V78 C40 86 88 86 88 78 V60 L64 71 Z"/>
+<rect x="98" y="52" width="3.5" height="26" rx="1.5"/><circle cx="99.75" cy="82" r="4.5"/>
+</g>
+</svg>

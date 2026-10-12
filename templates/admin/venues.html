@@ -1,90 +1,62 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23g. -#}
-{% block head %}
-    <title>Venues & Room Bookings | Admin HQ</title>
-    {% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include "layouts/_fontawesome.html" %}
-    <style>
-        :root { --blue: #1a2557; --orange: #c9a45e; }
-        body { background-color: #f8f9fa; color: #1e293b; font-family: 'Inter', sans-serif; }
-        .navbar { background: var(--blue); border-bottom: 1px solid #e2e8f0; }
-        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }
-        .form-control, .form-select { background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
-        .table-dark th { background-color: var(--blue); border-bottom: 2px solid var(--orange); color: #ffffff; }
-        .table td { border-color: #e2e8f0; vertical-align: middle; }
-        .badge-auditorium { background-color: #7c3aed; color: #fff; }
-        .badge-seminar { background-color: #0284c7; color: #fff; }
-        .badge-lab { background-color: #10b981; color: #fff; }
-        .badge-classroom { background-color: #f59e0b; color: #fff; }
-        .badge-outdoor { background-color: #ec4899; color: #fff; }
-    </style>
-{% endblock %}
-{% block body %}
-
-    <nav class="navbar navbar-expand-lg navbar-dark px-4 py-3">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/admin/dashboard">
-                <i class="fas fa-arrow-left me-2"></i> Back to Admin Dashboard
-            </a>
-            <span class="text-light opacity-75 small">Sapthagiri NPS University — Campus Venue Operations</span>
-        </div>
-    </nav>
-
-    <div class="container py-5">
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-            <div>
-                <h2 class="fw-bold mb-1"><i class="fas fa-building text-primary me-2"></i> Campus Venues &amp; Room Bookings</h2>
-                <p class="text-muted mb-0">Manage university campus hierarchy (Campus &rarr; Building &rarr; Room) and conflict-free booking records.</p>
-            </div>
-            <div class="d-flex gap-2">
-                <form action="/admin/venues/seed" method="POST" class="d-inline">
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% block title %}Venues & Room Bookings | Admin HQ{% endblock %}
+{% block page_title %}Campus Venues &amp; Room Bookings{% endblock %}
+{% block page_sub %}Manage university campus hierarchy (Campus &rarr; Building &rarr; Room) and conflict-free booking records.{% endblock %}
+{% block page_actions %}
+<form action="/admin/venues/seed" method="POST" class="d-inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline-primary">
-                        <i class="fas fa-seedling me-1"></i> Seed Standard Venues
+                        <i class="fas fa-seedling me-1"></i> Seed standard venues
                     </button>
                 </form>
                 <a href="/calendar" class="btn btn-outline-secondary" target="_blank">
-                    <i class="fas fa-calendar-alt me-1"></i> View Public Calendar
+                    <i class="fas fa-calendar-alt me-1"></i> Public calendar
                 </a>
-            </div>
-        </div>
+{% endblock %}
+{% block extra_css %}
+<style>
+.table-dark th { background-color: var(--brand-navy); border-bottom: 2px solid var(--brand-gold); color: #ffffff; }
+.table td { border-color: var(--border); vertical-align: middle; }
+.badge-auditorium { background-color: var(--brand-navy-50); color: var(--brand-ink); }
+.badge-seminar { background-color: var(--info-soft); color: var(--info-text); }
+.badge-lab { background-color: var(--success-soft); color: var(--success-text); }
+.badge-classroom { background-color: var(--brand-gold-100); color: var(--brand-gold-700); }
+.badge-outdoor { background-color: var(--surface-sunken); color: var(--text-strong); }
+</style>
+{% endblock %}
+{% block content %}
+    
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+    <div>
+        
+
+        
 
         <!-- Quick Summary Stats -->
         <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
                     <div class="text-muted small fw-bold text-uppercase">Campuses</div>
-                    <div class="fs-3 fw-bold text-primary">{{ campuses|length }}</div>
+                    <div class="fs-3 fw-bold text-strong">{{ campuses|length }}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
                     <div class="text-muted small fw-bold text-uppercase">Buildings</div>
-                    <div class="fs-3 fw-bold text-info">{{ buildings|length }}</div>
+                    <div class="fs-3 fw-bold text-strong">{{ buildings|length }}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
                     <div class="text-muted small fw-bold text-uppercase">Total Rooms</div>
-                    <div class="fs-3 fw-bold text-success">{{ rooms|length }}</div>
+                    <div class="fs-3 fw-bold text-strong">{{ rooms|length }}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
                     <div class="text-muted small fw-bold text-uppercase">Venue Bookings</div>
-                    <div class="fs-3 fw-bold text-warning">{{ bookings|length }}</div>
+                    <div class="fs-3 fw-bold text-strong">{{ bookings|length }}</div>
                 </div>
             </div>
         </div>
@@ -95,7 +67,7 @@
             <div class="col-lg-4">
                 <div class="card h-100 shadow-sm">
                     <div class="card-header bg-white fw-bold py-3 border-bottom">
-                        <i class="fas fa-landmark text-primary me-2"></i> Add Campus
+                        <i class="fas fa-landmark text-gold me-2" aria-hidden="true"></i> Add Campus
                     </div>
                     <div class="card-body">
                         <form action="/admin/venues/campus/create" method="POST">
@@ -112,7 +84,7 @@
                                 <label class="form-label small fw-semibold">Address</label>
                                 <textarea aria-label="Address" name="address" class="form-control" rows="2" placeholder="Full postal address"></textarea>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100">Create Campus</button>
+                            <button type="submit" class="btn btn-primary w-100">Create campus</button>
                         </form>
                     </div>
                 </div>
@@ -122,7 +94,7 @@
             <div class="col-lg-4">
                 <div class="card h-100 shadow-sm">
                     <div class="card-header bg-white fw-bold py-3 border-bottom">
-                        <i class="fas fa-building text-info me-2"></i> Add Building
+                        <i class="fas fa-building text-gold me-2" aria-hidden="true"></i> Add Building
                     </div>
                     <div class="card-body">
                         <form action="/admin/venues/building/create" method="POST">
@@ -144,7 +116,7 @@
                                 <label class="form-label small fw-semibold">Building Code</label>
                                 <input aria-label="Building Code" type="text" name="code" class="form-control" placeholder="e.g. BLOCK-A">
                             </div>
-                            <button type="submit" class="btn btn-info text-white w-100">Create Building</button>
+                            <button type="submit" class="btn btn-primary w-100">Create building</button>
                         </form>
                     </div>
                 </div>
@@ -154,7 +126,7 @@
             <div class="col-lg-4">
                 <div class="card h-100 shadow-sm">
                     <div class="card-header bg-white fw-bold py-3 border-bottom">
-                        <i class="fas fa-door-open text-success me-2"></i> Add Room / Venue
+                        <i class="fas fa-door-open text-gold me-2" aria-hidden="true"></i> Add Room / Venue
                     </div>
                     <div class="card-body">
                         <form action="/admin/venues/room/create" method="POST">
@@ -196,7 +168,7 @@
                                 <label class="form-label small fw-semibold">Facilities (comma-separated)</label>
                                 <input aria-label="Facilities (comma-separated)" type="text" name="facilities" class="form-control" placeholder="Projector, AC, WiFi, Sound System">
                             </div>
-                            <button type="submit" class="btn btn-success w-100">Create Room</button>
+                            <button type="submit" class="btn btn-primary w-100">Create room</button>
                         </form>
                     </div>
                 </div>
@@ -206,7 +178,7 @@
         <!-- Rooms Directory Table -->
         <div class="card shadow-sm mb-5">
             <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="fas fa-list text-primary me-2"></i> Campus Rooms &amp; Facilities</h5>
+                <h5 class="fw-bold mb-0"><i class="fas fa-list text-gold me-2" aria-hidden="true"></i> Campus Rooms &amp; Facilities</h5>
                 <span class="badge bg-secondary">{{ rooms|length }} Registered</span>
             </div>
             <div class="table-responsive">
@@ -274,7 +246,7 @@
         <!-- Active Room Bookings Table -->
         <div class="card shadow-sm">
             <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="fas fa-calendar-check text-warning me-2"></i> Active Venue Bookings</h5>
+                <h5 class="fw-bold mb-0"><i class="fas fa-calendar-check text-gold me-2" aria-hidden="true"></i> Active Venue Bookings</h5>
                 <span class="badge bg-warning text-dark">{{ bookings|length }} Bookings</span>
             </div>
             <div class="table-responsive">
@@ -335,4 +307,5 @@
 
     {% include "layouts/_bootstrap_js.html" %}
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__venues.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__venues.js"></script>
+{% endblock %}

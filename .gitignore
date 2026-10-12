@@ -64,3 +64,16 @@ reports/snpsu-logo-bw.png
 *.sql
 *.sql.gz
 *.backup
+
+SapthaEvent_Demo_Guide.pdf
+static/uploads/
+
+SapthaEvent_Demo_Guide.pdf
+static/uploads/
+
+# Generated documents, uploads and local backups (UPG-89): never committed
+*.pdf
+*.docx
+*.pptx
+static/uploads/
+test_event_id.txt

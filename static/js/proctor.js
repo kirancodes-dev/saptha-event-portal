@@ -75,7 +75,7 @@
             this.violationCount++;
             this.updateBadgeUI();
 
-            this.showToast(`⚠️ Warning (${this.violationCount}/${this.maxViolations}): ${detail}`, 'danger');
+            this.showToast(`Warning (${this.violationCount}/${this.maxViolations}): ${detail}`, 'danger');
 
             // Send violation log to server
             fetch('/api/proctor/log_violation', {
@@ -93,7 +93,7 @@
 
             if (this.violationCount >= this.maxViolations) {
                 this.isActive = false;
-                alert(`🚨 Maximum proctoring violations reached (${this.maxViolations}). Your exam will now be force-submitted.`);
+                alert(`Maximum proctoring violations reached (${this.maxViolations}). Your exam will now be force-submitted.`);
                 const examForm = document.getElementById('examForm');
                 if (examForm) {
                     examForm.submit();
@@ -105,14 +105,14 @@
             const badge = document.getElementById('proctorViolationBadge');
             if (badge) {
                 badge.textContent = `${this.violationCount} / ${this.maxViolations} Warnings`;
-                badge.className = `badge ${this.violationCount > 2 ? 'bg-danger' : 'bg-warning'} px-3 py-2 fs-6`;
+                badge.className = `se-badge se-badge--plain ${this.violationCount > 2 ? 'se-badge--danger' : 'se-badge--warning'}`;
             }
         },
 
         showToast(message, type = 'warning') {
             const container = document.getElementById('proctorToastContainer') || this.createToastContainer();
             const toast = document.createElement('div');
-            toast.className = `toast align-items-center text-white bg-${type === 'danger' ? 'danger' : 'warning'} border-0 show mb-2`;
+            toast.className = `toast align-items-center border-0 show mb-2 ${type === 'danger' ? 'text-white bg-danger' : 'text-dark bg-warning'}`;
             toast.setAttribute('role', 'alert');
             toast.innerHTML = `
                 <div class="d-flex">

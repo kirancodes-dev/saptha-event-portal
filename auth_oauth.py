@@ -218,8 +218,11 @@ def _complete_oauth_login(email: str, name: str, provider: str, avatar_url: str 
     user_doc = db.collection("users").document(email).get()
 
     if user_doc.exists:
-        # Existing user — log in
+        # Existing user — log in, unless a Super Admin deactivated it (UPG-75)
         user = user_doc.to_dict()
+        if user.get("is_active") is False:
+            flash("This account has been deactivated. Contact the portal administrator.", "danger")
+            return redirect("/login")
         role = user.get("role", "Student")
     else:
         # New user — auto-register as Student

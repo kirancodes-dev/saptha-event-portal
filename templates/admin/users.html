@@ -1,22 +1,37 @@
 {% extends "base_classic.html" %}
 
+{% set app_active = 'users' %}
 {% block title %}Users{% endblock %}
 {% block page_title %}Users{% endblock %}
+{% block page_sub %}Every account on the portal. Open one to change its role, department or category, or to deactivate it.{% endblock %}
 
 {% block content %}
 <div class="card">
     <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
 
         <p>
             Accounts that someone else creates (walk-ins, staff, SPOCs) open only through an emailed
             set-password link, which expires after 3 days. If someone's link has expired, send them a new one here.
             People who already have a password can use "Forgot password" on the login page.
         </p>
+
+        <details class="card mb-3" {{ 'open' if not accounts }}>
+            <summary class="card-header" style="cursor:pointer"><strong><i class="fas fa-user-plus text-gold me-1" aria-hidden="true"></i> Add a user</strong> <span class="text-muted small">(any role; they get a set-password email)</span></summary>
+            <div class="card-body">
+                <form method="POST" action="/admin/users/add" class="row g-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-md-4"><label class="form-label" for="nu-name">Name</label><input class="form-control" id="nu-name" name="name" required></div>
+                    <div class="col-md-4"><label class="form-label" for="nu-email">Email</label><input class="form-control" type="email" id="nu-email" name="email" required></div>
+                    <div class="col-md-4"><label class="form-label" for="nu-phone">Phone <span class="text-muted fw-normal">(optional)</span></label><input class="form-control" id="nu-phone" name="phone"></div>
+                    <div class="col-md-4"><label class="form-label" for="nu-role">Role</label>
+                        <select class="form-select" id="nu-role" name="role" required>{% for value, label in roles %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+                    <div class="col-md-4"><label class="form-label" for="nu-cat">Category <span class="text-muted fw-normal">(SPOCs, coordinators)</span></label>
+                        <select class="form-select" id="nu-cat" name="category"><option value="">Not set</option>{% for c in categories %}<option value="{{ c }}">{{ 'All categories' if c == 'All' else c }}</option>{% endfor %}</select></div>
+                    <div class="col-md-4"><label class="form-label" for="nu-dept">Department <span class="text-muted fw-normal">(optional)</span></label><input class="form-control" id="nu-dept" name="department"></div>
+                    <div class="col-12"><button class="btn btn-primary" type="submit"><i class="fas fa-user-plus" aria-hidden="true"></i> Create account</button></div>
+                </form>
+            </div>
+        </details>
 
         <div class="card mb-4">
             <div class="card-header">
@@ -39,6 +54,11 @@
             </div>
         </div>
 
+        <div class="d-flex flex-wrap gap-2 mb-2" aria-label="Filter by role">
+            <a href="/admin/users" class="se-badge {{ 'se-badge--brand' if not role_filter else 'se-badge--neutral' }}">All</a>
+            {% for value, label in roles %}<a href="/admin/users?role={{ value }}" class="se-badge {{ 'se-badge--brand' if role_filter == value else 'se-badge--neutral' }}">{{ label }}</a>{% endfor %}
+            <a href="/admin/users?role=inactive" class="se-badge {{ 'se-badge--brand' if role_filter == 'inactive' else 'se-badge--neutral' }}">Deactivated</a>
+        </div>
         {% include "includes/list_search.html" %}
         <div class="table-responsive">
             <table class="table">
@@ -55,7 +75,7 @@
                     {% for a in accounts %}
                     <tr>
                         <td>
-                            {{ a.name or '—' }}
+                            <a href="/admin/users/{{ a.email }}">{{ a.name or '—' }}</a>{% if not a.active %} <span class="badge badge-danger">Deactivated</span>{% endif %}
                             {% if a.usn %}
                                 <div class="small text-muted">{{ a.usn }}{% if a.department %} &middot; {{ a.department }}{% endif %}{% if a.year %} (Yr {{ a.year }}{% if a.section %} Sec {{ a.section }}{% endif %}){% endif %}</div>
                             {% endif %}
@@ -80,6 +100,7 @@
                             {% if a.role in ('Student', 'Participant') %}
                             <a href="/admin/users/{{ a.email }}/academics" class="btn btn-sm btn-link">Academic record</a>
                             {% endif %}
+                            <a href="/admin/users/{{ a.email }}" class="btn btn-sm btn-outline-primary">Open</a>
                         </td>
                     </tr>
                     {% else %}

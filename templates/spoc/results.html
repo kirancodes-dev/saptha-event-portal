@@ -1,100 +1,126 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23d. -#}
-{% block head %}
-    <title>Event Results</title>
-    {% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include "layouts/_fontawesome.html" %}
-    <style>
-        :root{--blue:#1a2557;--orange:#c9a45e;}
-        body { background: #f8f9fa; color: #1e293b; font-family: 'Outfit', 'Inter', sans-serif; }
-        .table-dark { --bs-table-bg: #ffffff; border-color: #e2e8f0; color: #1e293b; }
-        .table td { border-color: #e2e8f0; }
-        .rank-1 { color: var(--orange); font-weight: 800; font-size: 1.2rem; } /* Gold */
-        .rank-2 { color: #94a3b8; font-weight: 700; } /* Silver */
-        .rank-3 { color: #b45309; font-weight: 700; } /* Bronze */
-        
-        .card-header-custom { border-bottom: 1px solid #e2e8f0; padding: 20px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; }
-        .card { background: #ffffff; border-color: #e2e8f0; }
-        .badge { background: var(--blue) !important; }
-        .btn-success { background: var(--orange) !important; border-color: var(--orange) !important; }
-        .text-primary { color: var(--blue) !important; }
-        h2 { color: var(--blue); }
-        .text-muted { color: #94a3b8 !important; }
-        .text-warning { color: var(--orange) !important; }
-    </style>
+{% extends "base_classic.html" %}
+{#- Results: the shared ranking (UPG-84). Scored teams are ranked, equal scores
+    share a place, and teams nobody has scored yet are listed apart. -#}
+{% import 'includes/ui.html' as ui with context %}
+{% block title %}Results — {{ event.title }}{% endblock %}
+{% block page_title %}Results{% endblock %}
+{% block page_sub %}{{ event.title }}{% endblock %}
+{% block page_actions %}<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>
+<a href="/live/{{ event.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-display" aria-hidden="true"></i> Projector board</a>
+{% if not event.results_published %}
+<form class="m-0" action="/spoc/publish_results/{{ event.id }}" method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit" class="btn btn-gold"{% if not leaderboard %} disabled title="No team has been scored yet"{% endif %}>
+    <i class="fas fa-bullhorn" aria-hidden="true"></i> Publish results
+  </button>
+</form>
+{% else %}
+<a href="/feedback/analytics/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-chart-pie" aria-hidden="true"></i> Feedback analytics</a>
+<span class="se-badge se-badge--success align-self-center">Results published</span>
+{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+.res-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.res-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; align-items: end; }
+.res-podium .pc { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.res-podium .pc.p1 { border: 2px solid var(--brand-gold); background: var(--brand-gold-100); padding-top: 22px; }
+.res-podium .place { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.res-podium .team { font-family: var(--font-heading); font-weight: 700; color: var(--text-strong); margin-top: 2px; }
+.res-podium .score { font-family: var(--font-heading); font-size: 1.6rem; font-weight: 800; color: var(--brand-ink); font-variant-numeric: tabular-nums; }
+.res-podium .lead { font-size: var(--fs-sm); color: var(--text-muted); }
+@media (max-width: 575.98px) { .res-podium { grid-template-columns: 1fr; } .res-podium .p1 { order: -1; } }
+.rank-cell { width: 70px; font-family: var(--font-heading); font-weight: 800; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rank-cell.top { color: var(--brand-ink); }
+.score-col { width: 34%; }
+.score-line { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.score-bar { flex: 1; max-width: 220px; height: 6px; background: var(--surface-sunken); border-radius: 3px; overflow: hidden; }
+.score-bar > span { display: block; height: 100%; background: var(--brand-navy); border-radius: 3px; }
+.score-num { font-family: var(--font-heading); font-weight: 800; color: var(--text-strong); min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.unscored-list { columns: 3 220px; column-gap: 24px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); }
+.unscored-list li { break-inside: avoid; padding: 3px 0; color: var(--text); }
+</style>
 {% endblock %}
-{% block body %}
-    <div class="container py-5">
-        
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <a href="/spoc/dashboard" class="text-decoration-none text-muted mb-2 d-block"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-                <h2 class="fw-bold">{{ event.title }} <span class="text-primary">Results</span></h2>
-            </div>
-            
-            {% if not event.results_published %}
-            <form action="/spoc/publish_results/{{ event.id }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-success fw-bold px-4">
-                    <i class="fas fa-bullhorn me-2"></i> Publish Results
-                </button>
-            </form>
-            {% else %}
-                <a href="/feedback/analytics/{{ event.id }}" class="btn btn-outline-secondary fw-bold px-3">
-                    <i class="fas fa-chart-pie me-1"></i> Feedback Analytics
-                </a>
-                <button class="btn btn-secondary" disabled>Results Published</button>
-            {% endif %}
-        </div>
+{% block content %}
+<div class="res-stats">
+  {{ ui.stat_tile('fa-ranking-star', summary.scored, 'Teams scored') }}
+  {{ ui.stat_tile('fa-hourglass-half', summary.unscored, 'Not scored yet') }}
+  {{ ui.stat_tile('fa-trophy', summary.top, 'Top score') }}
+  {{ ui.stat_tile('fa-chart-simple', summary.average if summary.average is not none else '—', 'Average score') }}
+</div>
 
-        <div class="card bg-dark border-secondary overflow-hidden">
-            <div class="card-header-custom">
-                <h5 class="m-0"><i class="fas fa-list-ol text-warning me-2"></i> Final Standings</h5>
-                <span class="badge bg-primary">{{ leaderboard|length }} Teams Evaluated</span>
+{% if podium %}
+{%- set names = {1: '1st place', 2: '2nd place', 3: '3rd place'} -%}
+{%- set ordered = ([leaderboard[1]] if leaderboard|length > 1 else []) + [leaderboard[0]] + ([leaderboard[2]] if leaderboard|length > 2 else []) -%}
+<div class="res-podium" aria-label="Top three">
+  {% for row in ordered %}
+  <div class="pc{{ ' p1' if row is sameas leaderboard[0] }}">
+    <div class="place">{{ 'Joint ' if row.tied }}{{ names.get(row.rank, 'Place ' ~ row.rank) }}</div>
+    <div class="team">{{ row.team_name }}</div>
+    <div class="score">{{ row.score_text }}</div>
+    <div class="lead">{{ row.lead_name }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card overflow-hidden mb-3">
+  <div class="card-header justify-content-between">
+    <span><i class="fas fa-list-ol" aria-hidden="true"></i> Final standings</span>
+    <span class="se-badge se-badge--brand se-badge--plain">{{ leaderboard|length }} teams evaluated</span>
+  </div>
+  {% if leaderboard %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th class="ps-4" scope="col">Rank</th>
+          <th scope="col">Team / participant</th>
+          <th scope="col">Lead email</th>
+          <th scope="col">Judges</th>
+          <th class="text-end pe-4 score-col" scope="col">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in leaderboard %}
+        <tr>
+          <td class="ps-4 rank-cell{{ ' top' if row.rank <= 3 }}">{% if row.rank == 1 %}<i class="fas fa-crown text-gold me-1" aria-hidden="true"></i>{% endif %}{% if row.tied %}<span title="Shared place">={{ row.rank }}</span>{% else %}{{ row.rank }}{% endif %}</td>
+          <td>
+            <div class="fw-bold">{{ row.team_name }}</div>
+            <div class="small text-muted">{{ row.lead_name }}{% if row.members %} · {{ row.members + 1 }} people{% endif %}</div>
+          </td>
+          <td class="text-muted small">{{ row.lead_email }}</td>
+          <td><span class="se-badge se-badge--neutral se-badge--plain">{{ row.judges }} judge{{ 's' if row.judges != 1 }}</span></td>
+          <td class="pe-4">
+            <div class="score-line">
+              <span class="score-bar" aria-hidden="true"><span style="width: {{ ((row.score / summary.max) * 100)|round|int if summary.max else 0 }}%"></span></span>
+              <span class="score-num">{{ row.score_text }}</span>
             </div>
-            <div class="table-responsive">
-                <table class="table table-dark table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th class="ps-4">Rank</th>
-                            <th>Team / Participant</th>
-                            <th>Lead Email</th>
-                            <th>Judges Evaluated</th>
-                            <th class="text-end pe-4">Final Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in leaderboard %}
-                        <tr>
-                            <td class="ps-4">
-                                {% if loop.index == 1 %}<i class="fas fa-crown rank-1"></i>
-                                {% elif loop.index == 2 %}<span class="rank-2">#2</span>
-                                {% elif loop.index == 3 %}<span class="rank-3">#3</span>
-                                {% else %}<span class="text-muted">#{{ loop.index }}</span>{% endif %}
-                            </td>
-                            <td>
-                                <div class="fw-bold">{{ row.team_name }}</div>
-                                <div class="small text-muted">{{ row.members|length }} Members</div>
-                            </td>
-                            <td class="text-muted small">{{ row.lead_email }}</td>
-                            <td><span class="badge bg-secondary">{{ row.judge_count }} Judges</span></td>
-                            <td class="text-end pe-4">
-                                <span class="fs-5 fw-bold {% if loop.index == 1 %}text-warning{% endif %}">{{ row.final_score }}</span>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5" class="text-center py-5 text-muted">No scores available yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <!-- Share results -->
-        <div class="container mt-3 mb-5">
-          {% set share_title = "Results are live for " ~ event.title ~ " at Sapthagiri NPS University! #SapthaEvent" %}
-          {% set share_label = "Share results" %}
-          {% include 'includes/share_strip.html' %}
-        </div>
-    </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ ui.empty_state('fa-gavel', 'No scores yet', 'Teams appear here as judges score them.') }}
+  {% endif %}
+</div>
+
+{% if unscored %}
+<details class="panel mb-3">
+  <summary class="fw-semibold">Not scored yet · {{ unscored|length }}</summary>
+  <p class="small text-muted mt-2 mb-2">Registered and not eliminated, but no judge has scored them. They aren't ranked.</p>
+  <ul class="unscored-list">
+    {% for row in unscored %}<li>{{ row.team_name }}{% if row.lead_name and row.lead_name != row.team_name %} <span class="text-muted">· {{ row.lead_name }}</span>{% endif %}</li>{% endfor %}
+  </ul>
+</details>
+{% endif %}
+
+<p class="small text-muted">A team's score is the average of its judges' scores. Equal scores share a place (shown with “=”).</p>
+
+<div class="mt-3 mb-5">
+  {% set share_title = "Results are live for " ~ event.title ~ " at Sapthagiri NPS University! #SapthaEvent" %}
+  {% set share_label = "Share results" %}
+  {% include 'includes/share_strip.html' %}
+</div>
 {% endblock %}

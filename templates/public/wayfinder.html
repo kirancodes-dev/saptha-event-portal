@@ -1,238 +1,44 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23a. -#}
-{% block head %}
-    <title>Campus Wayfinder | SapthaEvent</title>
-    {% include "layouts/_fontawesome.html" %}
-    {% include "layouts/_bootstrap_css.html" %}
+{% extends "base_classic.html" %}
+{#- Campus wayfinder (UPG-63): app layout; the plan is drawn by public__wayfinder.js on Leaflet. -#}
+{% block robots %}index, follow{% endblock %}
+{% block title %}SapthaEvent Wayfinder{% endblock %}
+{% block page_title %}Campus Wayfinder{% endblock %}
+{% block page_sub %}Choose a starting point and a destination to see the route across campus.{% endblock %}
+{% block extra_css %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    
     <style>
-        :root {
-            --bg-dark: #0b0f19;
-            --card-bg: rgba(17, 24, 39, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary: #3b82f6;
-            --accent: #10b981;
-            --accent-glow: rgba(16, 185, 129, 0.15);
-            --text-muted: #94a3b8;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
-            color: #f8fafc;
-            margin: 0;
-            overflow-x: hidden;
-            background-image: radial-gradient(circle at 5% 5%, rgba(59, 130, 246, 0.1) 0%, transparent 35%),
-                              radial-gradient(circle at 95% 95%, rgba(16, 185, 129, 0.08) 0%, transparent 35%);
-            min-height: 100vh;
-        }
-
-        .glass-panel {
-            background: var(--card-bg);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-        }
-
-        .wayfinder-container {
-            padding: 30px 15px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .page-header h1 {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 800;
-            background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .search-sidebar {
-            padding: 24px;
-            height: calc(100vh - 180px);
-            min-height: 550px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-select, .form-control {
-            background-color: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            color: #fff;
-            padding: 12px;
-            border-radius: 10px;
-        }
-        .form-select:focus, .form-control:focus {
-            background-color: rgba(15, 23, 42, 0.8);
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
-            color: #fff;
-        }
-
-        .location-item {
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 8px;
-            background: rgba(255, 255, 255, 0.02);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .location-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-        .location-item.active {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: var(--primary);
-        }
-
-        .location-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--primary);
-        }
-
-        .map-wrapper {
-            height: calc(100vh - 180px);
-            min-height: 550px;
-            position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-            background: #090d16;
-        }
-
-        /* Customize Leaflet style */
-        .leaflet-bar {
-            border: 1px solid var(--border-color) !important;
-            box-shadow: none !important;
-            border-radius: 10px !important;
-            overflow: hidden;
-        }
-        .leaflet-bar a {
-            background-color: var(--card-bg) !important;
-            color: #fff !important;
-            border-bottom: 1px solid var(--border-color) !important;
-        }
-        .leaflet-bar a:hover {
-            background-color: rgba(255, 255, 255, 0.1) !important;
-        }
-
-        .venue-popup {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 8px;
-            color: #fff;
-        }
-
-        /* Leaflet popup overrides */
-        .leaflet-popup-content-wrapper {
-            background: rgba(15, 23, 42, 0.95) !important;
-            backdrop-filter: blur(8px);
-            border: 1px solid var(--border-color) !important;
-            color: #fff !important;
-            border-radius: 12px !important;
-        }
-        .leaflet-popup-tip {
-            background: rgba(15, 23, 42, 0.95) !important;
-            border: 1px solid var(--border-color) !important;
-        }
-
-        .legend-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 500;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border-color);
-        }
-
-        .direction-arrow-animation {
-            stroke-dasharray: 8, 8;
-            animation: dash 1.5s linear infinite;
-        }
-
-        @keyframes dash {
-            to {
-                stroke-dashoffset: -16;
-            }
-        }
-
-        .btn-direction {
-            background: linear-gradient(135deg, var(--primary), #1e40af);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-        .btn-direction:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-            color: white;
-        }
-
-        .route-instruction-panel {
-            margin-top: 15px;
-            background: rgba(15, 23, 42, 0.4);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 13px;
-        }
+        .search-sidebar { height: calc(100vh - 230px); min-height: 520px; display: flex; flex-direction: column; }
+        .location-item { padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: pointer; margin-bottom: 8px; background: var(--surface-card); display: flex; align-items: center; justify-content: space-between; }
+        .location-item:hover { background: var(--hover-bg); }
+        .location-item.active { background: var(--brand-navy-50); border-color: var(--brand-navy); }
+        .location-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; margin-right: 12px; background: var(--brand-navy-50); color: var(--brand-ink); }
+        .location-name { font-weight: 700; color: var(--text-strong); font-size: var(--fs-sm); }
+        .location-sub { color: var(--text-subtle); font-size: var(--fs-xs); }
+        .map-wrapper { height: calc(100vh - 230px); min-height: 520px; position: relative; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+        #map { width: 100%; height: 100%; background: var(--surface-muted); }
+        .leaflet-bar { border: 1px solid var(--border) !important; box-shadow: var(--shadow-sm) !important; border-radius: var(--radius-sm) !important; overflow: hidden; }
+        .leaflet-bar a { color: var(--brand-ink) !important; }
+        .leaflet-popup-content-wrapper { border-radius: var(--radius) !important; }
+        .custom-div-icon { background: none; border: 0; }
+        .direction-arrow-animation { stroke-dasharray: 8, 8; animation: dash 1.5s linear infinite; }
+        @keyframes dash { to { stroke-dashoffset: -16; } }
+        .route-instruction-panel { margin-top: 12px; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: var(--fs-sm); }
+        @media (max-width: 767.98px) { .search-sidebar, .map-wrapper { height: auto; min-height: 0; } .map-wrapper { height: 420px; } }
     </style>
-<script src="/static/js/escape.js"></script>
 {% endblock %}
-{% block body %}
-    <!-- Navbar partial can be integrated or custom simple header -->
-    <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-2">
-        <div class="container d-flex justify-content-between align-items-center">
-            <a href="/" class="text-white text-decoration-none d-flex align-items-center gap-2">
-                <i class="fas fa-compass fs-4 text-primary"></i>
-                <span class="fw-bold font-monospace tracking-wide">SapthaEvent Wayfinder</span>
-            </a>
-            <a href="/" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                <i class="fas fa-arrow-left me-1"></i> Exit Map
-            </a>
-        </div>
-    </div>
-
-    <div class="wayfinder-container">
+{% block content %}
         <div class="row g-4">
             <!-- Sidebar controls -->
             <div class="col-lg-4 col-md-5">
-                <div class="glass-panel search-sidebar">
-                    <h4 class="fw-bold mb-3"><i class="fas fa-route text-primary me-2"></i>Find Your Venue</h4>
-                    <p class="text-muted small mb-4">Select starting point and destination to find the optimal campus path.</p>
+                <div class="panel search-sidebar">
+                    <h2 class="h5 mb-3"><i class="fas fa-route text-gold me-2" aria-hidden="true"></i>Find your venue</h2>
 
                     <!-- Direction Form -->
                     <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">STARTING POINT</label>
+                        <label class="form-label" for="start-node">Starting point</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-primary"><i class="fas fa-location-dot"></i></span>
-                            <select aria-label="STARTING POINT" id="start-node" class="form-select border-opacity-25">
+                            <span class="input-group-text"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
+                            <select id="start-node" class="form-select">
                                 <option value="entrance">Main Entrance (Gate 1)</option>
                                 <option value="lobby">Admin Block Lobby</option>
                                 <option value="canteen">Food Court / Cafeteria</option>
@@ -243,10 +49,10 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold">DESTINATION VENUE</label>
+                        <label class="form-label" for="end-node">Destination</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-success"><i class="fas fa-flag-checkered"></i></span>
-                            <select aria-label="DESTINATION VENUE" id="end-node" class="form-select border-opacity-25">
+                            <span class="input-group-text"><i class="fas fa-flag-checkered" aria-hidden="true"></i></span>
+                            <select id="end-node" class="form-select">
                                 <option value="auditorium" selected>Main Auditorium (Tech Fest)</option>
                                 <option value="lab1">Advanced CS Labs (Hackathon)</option>
                                 <option value="seminar">Seminar Hall Block (Seminars)</option>
@@ -256,65 +62,65 @@
                         </div>
                     </div>
 
-                    <button id="get-directions" class="btn btn-direction w-100 mb-3">
-                        <i class="fas fa-location-arrow me-2"></i>Draw Pathfinder Route
+                    <button type="button" id="get-directions" class="btn btn-primary w-100 mb-3">
+                        <i class="fas fa-location-arrow" aria-hidden="true"></i> Show route
                     </button>
 
                     <!-- Path description box -->
                     <div id="instructions-container" class="route-instruction-panel d-none">
-                        <h6 class="fw-bold mb-2 text-white"><i class="fas fa-walking text-primary me-2"></i>Route Instructions</h6>
-                        <div id="instructions-content" class="text-muted text-start" style="max-height: 120px; overflow-y: auto;">
+                        <h3 class="h6 mb-2"><i class="fas fa-walking text-gold me-2" aria-hidden="true"></i>Route</h3>
+                        <div id="instructions-content" class="text-start" style="max-height: 120px; overflow-y: auto;">
                             <!-- populated by script -->
                         </div>
                     </div>
 
-                    <hr class="my-3 border-secondary border-opacity-20">
+                    <hr class="my-3">
 
                     <!-- Venue Quick List -->
-                    <h6 class="fw-bold text-muted small mb-2">QUICK VENUE SELECT</h6>
+                    <h3 class="eyebrow mb-2">Quick venue select</h3>
                     <div class="flex-grow-1 overflow-y-auto pe-1" style="max-height: 250px;">
-                        <div class="location-item" data-h-click="public/wayfinder:1">
+                        <div class="location-item" role="button" tabindex="0" data-h-click="public/wayfinder:1">
                             <div class="d-flex align-items-center">
-                                <div class="location-icon"><i class="fas fa-university"></i></div>
+                                <div class="location-icon" aria-hidden="true"><i class="fas fa-university"></i></div>
                                 <div>
-                                    <div class="fw-bold text-white small">Main Auditorium</div>
-                                    <div class="text-muted" style="font-size: 11px;">Cultural & Inaugurals</div>
+                                    <div class="location-name">Main Auditorium</div>
+                                    <div class="location-sub">Cultural & Inaugurals</div>
                                 </div>
                             </div>
-                            <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 font-monospace" style="font-size: 9px;">ZONE A</span>
+                            <span class="se-badge se-badge--neutral se-badge--plain">Zone A</span>
                         </div>
 
-                        <div class="location-item" data-h-click="public/wayfinder:2">
+                        <div class="location-item" role="button" tabindex="0" data-h-click="public/wayfinder:2">
                             <div class="d-flex align-items-center">
-                                <div class="location-icon text-info bg-info bg-opacity-15"><i class="fas fa-laptop-code"></i></div>
+                                <div class="location-icon" aria-hidden="true"><i class="fas fa-laptop-code"></i></div>
                                 <div>
-                                    <div class="fw-bold text-white small">Advanced CS Labs</div>
-                                    <div class="text-muted" style="font-size: 11px;">Hackathons & Coding</div>
+                                    <div class="location-name">Advanced CS Labs</div>
+                                    <div class="location-sub">Hackathons & Coding</div>
                                 </div>
                             </div>
-                            <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25 font-monospace" style="font-size: 9px;">ZONE C</span>
+                            <span class="se-badge se-badge--neutral se-badge--plain">Zone C</span>
                         </div>
 
-                        <div class="location-item" data-h-click="public/wayfinder:3">
+                        <div class="location-item" role="button" tabindex="0" data-h-click="public/wayfinder:3">
                             <div class="d-flex align-items-center">
-                                <div class="location-icon text-warning bg-warning bg-opacity-15"><i class="fas fa-chalkboard-user"></i></div>
+                                <div class="location-icon" aria-hidden="true"><i class="fas fa-chalkboard-user"></i></div>
                                 <div>
-                                    <div class="fw-bold text-white small">Seminar Hall Block</div>
-                                    <div class="text-muted" style="font-size: 11px;">Keynotes & Presentation</div>
+                                    <div class="location-name">Seminar Hall Block</div>
+                                    <div class="location-sub">Keynotes & Presentation</div>
                                 </div>
                             </div>
-                            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 font-monospace" style="font-size: 9px;">ZONE B</span>
+                            <span class="se-badge se-badge--neutral se-badge--plain">Zone B</span>
                         </div>
 
-                        <div class="location-item" data-h-click="public/wayfinder:4">
+                        <div class="location-item" role="button" tabindex="0" data-h-click="public/wayfinder:4">
                             <div class="d-flex align-items-center">
-                                <div class="location-icon text-success bg-success bg-opacity-15"><i class="fas fa-running"></i></div>
+                                <div class="location-icon" aria-hidden="true"><i class="fas fa-running"></i></div>
                                 <div>
-                                    <div class="fw-bold text-white small">Sports Stadium</div>
-                                    <div class="text-muted" style="font-size: 11px;">Sports & Concerts</div>
+                                    <div class="location-name">Sports Stadium</div>
+                                    <div class="location-sub">Sports & Concerts</div>
                                 </div>
                             </div>
-                            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 font-monospace" style="font-size: 9px;">ZONE D</span>
+                            <span class="se-badge se-badge--neutral se-badge--plain">Zone D</span>
                         </div>
                     </div>
                 </div>
@@ -322,14 +128,14 @@
 
             <!-- Map Viewport -->
             <div class="col-lg-8 col-md-7">
-                <div class="map-wrapper glass-panel">
+                <div class="map-wrapper">
                     <div id="map"></div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Leaflet JS -->
+{% endblock %}
+{% block extra_js %}
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="/static/js/pages/public__wayfinder.js"></script>
 {% endblock %}

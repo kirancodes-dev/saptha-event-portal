@@ -1,17 +1,18 @@
 {% extends "layouts/standalone.html" %}
 {#- On the shared document since UPG-23h. -#}
 {% set site_footer_fixed = true %}
-{% block html_attrs %}lang="en" class="dark-mode"{% endblock %}
+{% block html_attrs %}lang="en"{% endblock %}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
 {% block head %}
   <title>Setup Wizard | SapthaEvent SaaS</title>
   
   {% include "layouts/_bootstrap_css.html" %}
   {% include "layouts/_fontawesome.html" %}
-  <link href="/static/css/marketing.css" rel="stylesheet">
+  <link href="/static/css/global.css" rel="stylesheet">
   <style>
+    /* Tenant onboarding (UPG-63): the auth card style on the light page */
     body {
-      background: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
+      background: var(--surface-page);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -19,15 +20,14 @@
       padding: 40px 20px;
     }
     .wizard-card {
-      background: rgba(255, 255, 255, 0.03);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 24px;
-      padding: 40px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--brand-gold);
+      border-radius: var(--radius-lg);
+      padding: clamp(24px, 5vw, 40px);
       max-width: 600px;
       width: 100%;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+      box-shadow: var(--shadow-md);
     }
     .step-indicator {
       display: flex;
@@ -42,7 +42,7 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--border);
       z-index: 1;
     }
     .step-indicator-bar {
@@ -50,7 +50,7 @@
       top: 15px;
       left: 0;
       height: 2px;
-      background: var(--orange, #c9a45e);
+      background: var(--brand-gold);
       z-index: 1;
       width: 0%;
       transition: width 0.3s ease;
@@ -59,25 +59,26 @@
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: #111827;
-      border: 2px solid rgba(255, 255, 255, 0.1);
+      background: var(--surface-card);
+      border: 2px solid var(--border-strong);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 2;
       font-size: 0.85rem;
       font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--text-subtle);
       transition: border-color 0.3s, background 0.3s, color 0.3s;
     }
     .step-dot.active {
-      border-color: var(--orange, #c9a45e);
-      background: var(--orange, #c9a45e);
-      color: #000;
+      border-color: var(--orange, #c69d67);
+      background: var(--brand-navy);
+      border-color: var(--brand-navy);
+      color: #fff;
     }
     .step-dot.completed {
-      border-color: #10b981;
-      background: #10b981;
+      border-color: var(--success);
+      background: var(--success);
       color: #fff;
     }
     .wizard-step {
@@ -89,7 +90,7 @@
   </style>
 <script src="/static/js/escape.js"></script>
 {% endblock %}
-{% block body_attrs %} class="mkt-page"{% endblock %}
+{% block body_attrs %}{% endblock %}
 {% block body %}
 
   <div class="wizard-card text-center">
@@ -104,19 +105,19 @@
 
     <!-- Step 1: Branding -->
     <div class="wizard-step active" id="step-1">
-      <h3 class="text-white fw-bold mb-2">University Branding</h3>
-      <p class="text-white-50 small mb-4">Set your primary organization logo and highlight colors.</p>
+      <h3 class="fw-bold mb-2">University Branding</h3>
+      <p class="text-muted small mb-4">Set your primary organization logo and highlight colors.</p>
       
       <div class="mb-4 text-start">
-        <label class="form-label small text-white-50">Logo Image Link (URL)</label>
-        <input aria-label="Logo Image Link (URL)" type="url" id="logoUrl" class="form-control bg-dark text-white border-secondary" placeholder="https://example.com/logo.png" value="/static/snpsu-logo.png">
+        <label class="form-label small text-muted">Logo Image Link (URL)</label>
+        <input aria-label="Logo Image Link (URL)" type="url" id="logoUrl" class="form-control" placeholder="https://example.com/logo.png" value="/static/snpsu-logo.png">
       </div>
 
       <div class="mb-4 text-start">
-        <label class="form-label small text-white-50 font-semibold d-block">Branding Highlight Color</label>
+        <label class="form-label small text-muted font-semibold d-block">Branding Highlight Color</label>
         <div class="d-flex align-items-center gap-3 mt-2">
-          <input aria-label="Branding Highlight Color" type="color" id="primaryColor" class="form-control form-control-color bg-dark border-secondary p-1" value="#1a2557" style="width: 60px; height: 46px;">
-          <span class="text-white-50 small">This color sets the theme highlight button profiles.</span>
+          <input aria-label="Branding Highlight Color" type="color" id="primaryColor" class="form-control form-control-color p-1" value="#00185e" style="width: 60px; height: 46px;">
+          <span class="text-muted small">This color sets the theme highlight button profiles.</span>
         </div>
       </div>
 
@@ -127,13 +128,13 @@
 
     <!-- Step 2: Departments -->
     <div class="wizard-step" id="step-2">
-      <h3 class="text-white fw-bold mb-2">College Departments</h3>
-      <p class="text-white-50 small mb-4">Define university departments for target event categorization.</p>
+      <h3 class="fw-bold mb-2">College Departments</h3>
+      <p class="text-muted small mb-4">Define university departments for target event categorization.</p>
       
       <div class="mb-4 text-start">
-        <label class="form-label small text-white-50">Department Name</label>
+        <label class="form-label small text-muted">Department Name</label>
         <div class="d-flex gap-2">
-          <input aria-label="Department Name" type="text" id="deptInput" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Computer Science">
+          <input aria-label="Department Name" type="text" id="deptInput" class="form-control" placeholder="e.g. Computer Science">
           <button type="button" data-h-click="onboarding/wizard:2" class="btn btn-warning fw-bold text-dark px-3">+</button>
         </div>
       </div>
@@ -156,8 +157,8 @@
 
     <!-- Step 3: Finish & Deploy -->
     <div class="wizard-step" id="step-3">
-      <h3 class="text-white fw-bold mb-2">Ready to Launch!</h3>
-      <p class="text-white-50 small mb-4">Confirm configurations and initialize your university dashboard portal.</p>
+      <h3 class="fw-bold mb-2">Ready to Launch!</h3>
+      <p class="text-muted small mb-4">Confirm configurations and initialize your university dashboard portal.</p>
       
       <div class="alert alert-success bg-opacity-10 text-success border-success border-opacity-25 text-start p-3 mb-4">
         <i class="fas fa-circle-check me-2"></i> Custom branding and isolated tenant profiles will be automatically provisioned on the active host scope.

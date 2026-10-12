@@ -1,30 +1,19 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23d. -#}
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% set app_active = 'dashboard' %}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
-{% block head %}
-<title>Club Dashboard | SapthaEvent</title>
-{% include "layouts/_bootstrap_css.html" %}
-<link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
+{% set hide_page_head = true %}
+{% set app_cta = ('/spoc/create_event', 'fa-plus', 'Create event') %}
+{% block title %}Club SPOC console{% endblock %}
+{% block extra_css %}
 <style>
-html {
-  overflow-x: hidden;
-}
-body {
-  background-color: var(--bg-app);
-  color: var(--ink-800);
-  font-family: 'Inter', sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   color: var(--ink-900);
 }
-
 /* TOPNAV */
 .topnav {
-  background: rgba(26, 37, 87, 0.92);
+  background: rgba(0,24,94, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: 0 24px;
@@ -38,13 +27,6 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-sm);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.brand { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #fff; margin-left: 10px; }
-.nav-links { display: flex; align-items: center; gap: 6px; }
-.nav-link-item { color: rgba(255, 255, 255, 0.75); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: var(--radius-sm); transition: var(--t-fast); font-weight: 500; }
-.nav-link-item:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
-.nav-link-item.btn-orange { background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color: #fff; font-weight: 700; border: none; }
-.nav-link-item.btn-orange:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold); color: #fff; }
-
 /* Dashboard Two-Column Layout */
 .dashboard-layout {
   display: grid;
@@ -60,7 +42,6 @@ h1, h2, h3, h4, h5, h6 {
     overflow: visible;
   }
 }
-
 /* Sidebar Column */
 .sidebar-column {
   background: var(--bg-card);
@@ -94,7 +75,6 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 13.5px !important;
   border-radius: var(--radius-sm) !important;
 }
-
 /* Filter pills */
 .filter-pills-row {
   display: flex;
@@ -121,16 +101,15 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--ink-800);
 }
 .filter-pill-btn.active {
-  background: var(--snpsu-blue);
+  background: var(--brand-navy);
   color: #fff;
-  border-color: var(--snpsu-blue);
+  border-color: var(--brand-navy);
 }
 [data-theme="dark"] .filter-pill-btn.active {
-  background: var(--snpsu-gold);
+  background: var(--brand-gold);
   color: var(--snpsu-blue-dark);
-  border-color: var(--snpsu-gold);
+  border-color: var(--brand-gold);
 }
-
 /* Scrollable events list */
 .sidebar-events-list {
   flex: 1;
@@ -144,10 +123,9 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--ink-300);
   border-radius: var(--radius-pill);
 }
-
 /* Global Overview button */
 .global-control-card {
-  background: linear-gradient(135deg, var(--snpsu-blue-dark), var(--snpsu-blue));
+  background: linear-gradient(135deg, var(--snpsu-blue-dark), var(--brand-navy));
   color: #ffffff !important;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
@@ -166,24 +144,23 @@ h1, h2, h3, h4, h5, h6 {
 }
 .global-control-card.active {
   background: var(--bg-card);
-  color: var(--snpsu-blue) !important;
-  border-color: var(--snpsu-blue);
-  box-shadow: var(--shadow-md), 0 0 0 3px rgba(26,37,87,0.15);
+  color: var(--brand-ink) !important;
+  border-color: var(--brand-navy);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(0,24,94,0.15);
 }
 [data-theme="dark"] .global-control-card {
   background: linear-gradient(135deg, #151b2e, #1e2540);
   border-color: rgba(255, 255, 255, 0.05);
 }
 [data-theme="dark"] .global-control-card.active {
-  color: var(--snpsu-gold) !important;
-  border-color: var(--snpsu-gold);
-  box-shadow: var(--shadow-md), 0 0 0 3px rgba(201,164,94,0.15);
+  color: var(--brand-gold) !important;
+  border-color: var(--brand-gold);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(198,157,103,0.15);
 }
 .global-card-icon {
   font-size: 18px;
-  color: var(--snpsu-gold);
+  color: var(--brand-gold);
 }
-
 /* Event List Card */
 .sidebar-event-card {
   background: var(--bg-soft);
@@ -205,12 +182,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-event-card.active {
   background: var(--bg-card);
-  border-color: var(--snpsu-blue);
-  box-shadow: var(--shadow-md), 0 0 0 3px rgba(26, 37, 87, 0.15);
+  border-color: var(--brand-navy);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(0,24,94, 0.15);
 }
 [data-theme="dark"] .sidebar-event-card.active {
-  border-color: var(--snpsu-gold);
-  box-shadow: var(--shadow-md), 0 0 0 3px rgba(201, 164, 94, 0.15);
+  border-color: var(--brand-gold);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(198,157,103, 0.15);
 }
 .sidebar-event-title {
   font-size: 13.5px;
@@ -248,11 +225,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 .sidebar-event-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--snpsu-blue), var(--snpsu-gold));
+  background: linear-gradient(90deg, var(--brand-navy), var(--brand-gold));
   border-radius: var(--radius-pill);
 }
 [data-theme="dark"] .sidebar-event-fill {
-  background: linear-gradient(90deg, var(--snpsu-gold), var(--info));
+  background: linear-gradient(90deg, var(--brand-gold), var(--info));
 }
 .sidebar-event-count {
   font-size: 11px;
@@ -260,7 +237,6 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--ink-800);
   white-space: nowrap;
 }
-
 /* Detail Column */
 .detail-column {
   background: var(--bg-card);
@@ -282,7 +258,6 @@ h1, h2, h3, h4, h5, h6 {
     overflow: visible;
   }
 }
-
 /* Segmented Tabs Control */
 .tabs-navigation {
   display: flex;
@@ -321,21 +296,21 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--ink-900);
 }
 .tab-btn.active {
-  background: var(--snpsu-blue);
+  background: var(--brand-navy);
   color: #ffffff !important;
   box-shadow: var(--shadow-sm);
 }
 .tab-btn.active:hover {
-  background: var(--snpsu-blue);
+  background: var(--brand-navy);
   color: #ffffff !important;
 }
 [data-theme="dark"] .tab-btn.active {
-  background: var(--snpsu-gold);
+  background: var(--brand-gold);
   color: var(--snpsu-blue-dark) !important;
   box-shadow: var(--shadow-sm);
 }
 [data-theme="dark"] .tab-btn.active:hover {
-  background: var(--snpsu-gold);
+  background: var(--brand-gold);
   color: var(--snpsu-blue-dark) !important;
 }
 .tab-pane {
@@ -345,12 +320,10 @@ h1, h2, h3, h4, h5, h6 {
 .tab-pane.active {
   display: block;
 }
-
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 /* Stats Mini cards */
 .event-stats-grid {
   display: grid;
@@ -400,13 +373,12 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 2px;
 }
 .event-stat-val {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   font-size: 18px;
   font-weight: 800;
   color: var(--ink-900);
   line-height: 1.1;
 }
-
 /* Blueprint SVG Map Visuals */
 .wayfinder-card-wrapper {
   border: 1px solid var(--ink-200);
@@ -427,16 +399,16 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--bg-soft);
   border: 1px solid var(--ink-200);
   border-radius: var(--radius-sm);
-  color: var(--snpsu-blue);
+  color: var(--brand-ink);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
 }
 .wayfinder-toggle-btn:hover {
-  background: var(--snpsu-blue);
+  background: var(--brand-navy);
   color: #fff;
-  border-color: var(--snpsu-blue);
+  border-color: var(--brand-navy);
 }
 [data-theme="dark"] .wayfinder-toggle-btn {
   background: rgba(255,255,255,0.02);
@@ -444,9 +416,9 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--snpsu-gold-light);
 }
 [data-theme="dark"] .wayfinder-toggle-btn:hover {
-  background: var(--snpsu-gold);
+  background: var(--brand-gold);
   color: var(--snpsu-blue-dark);
-  border-color: var(--snpsu-gold);
+  border-color: var(--brand-gold);
 }
 .wayfinder-collapsible-content {
   display: none;
@@ -474,15 +446,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 .wayfinder-room-g:hover .wayfinder-room-rect {
   fill-opacity: 0.35 !important;
-  stroke: var(--snpsu-gold) !important;
+  stroke: var(--brand-gold) !important;
 }
 .wayfinder-room-g.active .wayfinder-room-rect {
   fill-opacity: 0.45 !important;
-  stroke: var(--snpsu-gold) !important;
+  stroke: var(--brand-gold) !important;
   stroke-width: 2.5;
 }
 .wayfinder-room-text {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   font-weight: 700;
   fill: #ffffff;
 }
@@ -490,12 +462,8 @@ h1, h2, h3, h4, h5, h6 {
   font-family: monospace;
   font-weight: bold;
 }
-
 /* Global Stats grid */
-.stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 24px; }
-@media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 14px; margin-bottom: 24px; }
 .stat-card {
   background: var(--bg-card);
   border-radius: var(--radius);
@@ -512,29 +480,23 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-md);
 }
 .stat-icon { width: 48px; height: 48px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-.si-blue { background: rgba(59, 130, 246, 0.15); color: var(--info); }
-.si-green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-.si-orange { background: rgba(201, 164, 94, 0.2); color: var(--snpsu-gold); }
-.si-purple { background: rgba(124, 58, 237, 0.15); color: #8b5cf6; }
-.si-cyan { background: rgba(8, 145, 178, 0.15); color: #0891b2; }
+/* One icon well for every metric (UPG-63) */
+.si-blue, .si-green, .si-purple, .si-cyan { background: var(--brand-navy-50); color: var(--brand-ink); }
+.si-orange { background: var(--brand-gold-100); color: var(--brand-gold-700); }
 .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-500); font-weight: 600; margin-bottom: 4px; }
-.stat-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--ink-900); line-height: 1; }
-
+.stat-val { font-family: var(--font-heading); font-size: 24px; font-weight: 800; color: var(--ink-900); line-height: 1; }
 /* Chart and Wayfinder Containers */
 .chart-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--ink-200); padding: 20px 24px; box-shadow: var(--shadow-xs); }
-.chart-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink-900); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-
+.chart-title { font-family: var(--font-heading); font-size: 14px; font-weight: 700; color: var(--ink-900); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 /* General tables */
 .ev-table-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--ink-200); overflow: hidden; box-shadow: var(--shadow-xs); }
-.ev-table-header { background: var(--snpsu-blue); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
-.ev-table-header h6 { color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; margin: 0; font-size: 14px; }
-
+.ev-table-header { background: var(--brand-navy); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+.ev-table-header h6 { color: #fff; font-family: var(--font-heading); font-weight: 700; margin: 0; font-size: 14px; }
 /* Status badges */
 .badge-active { background: rgba(16, 185, 129, 0.15); color: var(--success); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill); }
 .badge-completed { background: rgba(59, 130, 246, 0.15); color: var(--info); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill); }
 .status-active { display: inline-flex; align-items: center; background: rgba(16, 185, 129, 0.12); color: var(--success); font-size: 11.5px; font-weight: 700; padding: 4px 12px; border-radius: var(--radius-pill); white-space: nowrap; }
 .status-completed { display: inline-flex; align-items: center; background: rgba(100, 116, 139, 0.12); color: var(--ink-600); font-size: 11.5px; font-weight: 700; padding: 4px 12px; border-radius: var(--radius-pill); white-space: nowrap; }
-
 /* Action Buttons */
 .action-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; border: 1.5px solid transparent; cursor: pointer; text-decoration: none; transition: var(--t-fast); white-space: nowrap; font-family: 'Inter', sans-serif; line-height: 1.2; }
@@ -547,7 +509,7 @@ h1, h2, h3, h4, h5, h6 {
 .btn-outline {
   background: var(--bg-soft) !important;
   border: 1px solid var(--ink-200) !important;
-  color: var(--snpsu-blue) !important;
+  color: var(--brand-ink) !important;
 }
 [data-theme="dark"] .btn-forms-builder,
 [data-theme="dark"] .btn-purple-outline,
@@ -559,16 +521,15 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(255,255,255,0.08) !important;
   color: var(--snpsu-gold-light) !important;
 }
-
 .btn-forms-builder:hover,
 .btn-purple-outline:hover,
 .btn-blue-outline:hover,
 .btn-sky-outline:hover,
 .btn-green-outline:hover,
 .btn-outline:hover {
-  background: var(--snpsu-blue) !important;
+  background: var(--brand-navy) !important;
   color: #fff !important;
-  border-color: var(--snpsu-blue) !important;
+  border-color: var(--brand-navy) !important;
 }
 [data-theme="dark"] .btn-forms-builder:hover,
 [data-theme="dark"] .btn-purple-outline:hover,
@@ -576,15 +537,14 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="dark"] .btn-sky-outline:hover,
 [data-theme="dark"] .btn-green-outline:hover,
 [data-theme="dark"] .btn-outline:hover {
-  background: var(--snpsu-gold) !important;
+  background: var(--brand-gold) !important;
   color: var(--snpsu-blue-dark) !important;
-  border-color: var(--snpsu-gold) !important;
+  border-color: var(--brand-gold) !important;
 }
-
 /* Solid/accent colored buttons */
 .btn-green, .btn-emerald, .btn-teal-on, .btn-cyan, .btn-purple, .btn-amber {
-  background: var(--snpsu-blue) !important;
-  border-color: var(--snpsu-blue) !important;
+  background: var(--brand-navy) !important;
+  border-color: var(--brand-navy) !important;
   color: #fff !important;
 }
 [data-theme="dark"] .btn-green, 
@@ -593,11 +553,10 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="dark"] .btn-cyan, 
 [data-theme="dark"] .btn-purple, 
 [data-theme="dark"] .btn-amber {
-  background: var(--snpsu-gold) !important;
-  border-color: var(--snpsu-gold) !important;
+  background: var(--brand-gold) !important;
+  border-color: var(--brand-gold) !important;
   color: var(--snpsu-blue-dark) !important;
 }
-
 .btn-green:hover, .btn-emerald:hover, .btn-teal-on:hover, .btn-cyan:hover, .btn-purple:hover, .btn-amber:hover {
   background: var(--snpsu-blue-light) !important;
   border-color: var(--snpsu-blue-light) !important;
@@ -613,7 +572,6 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--snpsu-gold-light) !important;
   color: var(--snpsu-blue-dark) !important;
 }
-
 /* Danger actions remain red/soft red */
 .btn-red, .btn-delete-event {
   background: rgba(239, 68, 68, 0.08) !important;
@@ -637,25 +595,21 @@ h1, h2, h3, h4, h5, h6 {
   color: #fff !important;
   border-color: #ef4444 !important;
 }
-
 /* Modals & Popups styling */
 .spoc-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 16px; }
 .spoc-modal.open { display: flex !important; }
 .spoc-modal-box { background: var(--bg-card); border-radius: var(--radius-lg); width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--ink-200); color: var(--ink-800); }
-.spoc-modal-hdr { padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.spoc-modal-hdr { padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-family: var(--font-heading); font-weight: 700; font-size: 14px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 .spoc-modal-close { background: rgba(255, 255, 255, 0.2); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 18px; cursor: pointer; line-height: 1; transition: background var(--t-fast); display: flex; align-items: center; justify-content: center; }
 .spoc-modal-close:hover { background: rgba(255, 255, 255, 0.3); }
-.modal-btn-primary { background: var(--snpsu-blue) !important; color: #fff !important; border: none !important; border-radius: var(--radius-sm) !important; padding: 10px 22px !important; font-weight: 600 !important; font-size: 13.5px !important; cursor: pointer !important; transition: var(--t-fast) !important; }
+.modal-btn-primary { background: var(--brand-navy) !important; color: #fff !important; border: none !important; border-radius: var(--radius-sm) !important; padding: 10px 22px !important; font-weight: 600 !important; font-size: 13.5px !important; cursor: pointer !important; transition: var(--t-fast) !important; }
 .modal-btn-primary:hover { background: var(--snpsu-blue-light) !important; }
 .modal-btn-secondary { background: var(--bg-soft) !important; color: var(--ink-700) !important; border: 1px solid var(--ink-300) !important; border-radius: var(--radius-sm) !important; padding: 10px 18px !important; font-weight: 600 !important; font-size: 13.5px !important; cursor: pointer !important; transition: var(--t-fast) !important; }
 .modal-btn-secondary:hover { background: var(--bg-muted) !important; }
-
 /* Coordinator chip */
 .coord-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--info); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-pill); }
-
 /* Danger Zone */
 .danger-zone { background: var(--danger-soft); padding: 18px; border: 1px solid rgba(239, 68, 68, 0.2) !important; border-radius: var(--radius); }
-
 /* Guided Onboarding Tour Styles */
 #tour-overlay {
   position: fixed;
@@ -686,12 +640,12 @@ h1, h2, h3, h4, h5, h6 {
 .tour-highlight {
   position: relative;
   z-index: 1055 !important;
-  box-shadow: 0 0 0 4px var(--snpsu-gold), 0 8px 30px rgba(0,0,0,0.2) !important;
+  box-shadow: 0 0 0 4px var(--brand-gold), 0 8px 30px rgba(0,0,0,0.2) !important;
   pointer-events: none !important;
   background: var(--bg-card) !important;
 }
 [data-theme="dark"] .tour-highlight {
-  box-shadow: 0 0 0 4px var(--snpsu-gold), 0 8px 30px rgba(0,0,0,0.45) !important;
+  box-shadow: 0 0 0 4px var(--brand-gold), 0 8px 30px rgba(0,0,0,0.45) !important;
 }
 .tour-tooltip-actions {
   display: flex;
@@ -709,14 +663,14 @@ h1, h2, h3, h4, h5, h6 {
   transition: all var(--t-fast);
 }
 .tour-tooltip-btn.primary {
-  background: var(--snpsu-blue);
+  background: var(--brand-navy);
   color: white;
 }
 .tour-tooltip-btn.primary:hover {
   background: var(--snpsu-blue-light);
 }
 [data-theme="dark"] .tour-tooltip-btn.primary {
-  background: var(--snpsu-gold);
+  background: var(--brand-gold);
   color: var(--snpsu-blue-dark);
 }
 [data-theme="dark"] .tour-tooltip-btn.primary:hover {
@@ -730,11 +684,9 @@ h1, h2, h3, h4, h5, h6 {
 .tour-tooltip-btn.secondary:hover {
   background: var(--bg-muted);
 }
-
 /* ==========================================
    MOBILE & RESPONSIVE REFINEMENTS
    ========================================== */
-
 /* Topnav Refinements on Mobile */
 @media (max-width: 768px) {
   .topnav {
@@ -761,7 +713,6 @@ h1, h2, h3, h4, h5, h6 {
     display: none !important; /* Hide portal link on very narrow mobile screens */
   }
 }
-
 /* Horizontal Scrollable Segmented Tabs on Mobile */
 @media (max-width: 768px) {
   .tabs-navigation {
@@ -778,7 +729,6 @@ h1, h2, h3, h4, h5, h6 {
     flex: 0 0 auto !important;
   }
 }
-
 @media (max-width: 576px) {
   .tab-btn {
     padding: 6px 10px !important;
@@ -786,7 +736,6 @@ h1, h2, h3, h4, h5, h6 {
     min-width: auto !important;
   }
 }
-
 /* Announcement Form on Mobile */
 @media (max-width: 576px) {
   #ann-form > div {
@@ -803,7 +752,6 @@ h1, h2, h3, h4, h5, h6 {
     margin-top: 8px;
   }
 }
-
 /* Stat Cards adjustments on small screens */
 @media (max-width: 576px) {
   .event-stat-card {
@@ -822,7 +770,6 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 9px !important;
   }
 }
-
 /* Responsive Modal Grids & Rows */
 .modal-grid-body {
   padding: 24px;
@@ -838,7 +785,6 @@ h1, h2, h3, h4, h5, h6 {
     padding: 16px;
   }
 }
-
 .modal-row-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -849,7 +795,6 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr !important;
   }
 }
-
 /* Modal Buttons Stack on Mobile */
 @media (max-width: 576px) {
   .modal-btn-row {
@@ -862,12 +807,10 @@ h1, h2, h3, h4, h5, h6 {
   .modal-btn-row > a {
     width: 100% !important;
   }
-  
   .spoc-modal-box {
     max-height: 95vh !important;
   }
 }
-
 /* Action Buttons wrapping text on mobile */
 @media (max-width: 576px) {
   .action-btn {
@@ -876,8 +819,7 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: flex-start !important;
   }
 }
-
-  /* CSS-based display toggling for Master-Detail Layout on Mobile */
+/* CSS-based display toggling for Master-Detail Layout on Mobile */
   @media (max-width: 992px) {
     .dashboard-layout:not(.show-detail) .sidebar-column {
       display: flex !important;
@@ -896,17 +838,16 @@ h1, h2, h3, h4, h5, h6 {
       gap: 16px !important;
     }
   }
-
-  /* ── PREMIUM GLASSMORPHISM & TRANSITIONS ── */
+/* ── PREMIUM GLASSMORPHISM & TRANSITIONS ── */
   .sidebar-column, .detail-column, .stat-card, .chart-card, .ev-table-card {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(26, 37, 87, 0.08) !important;
+    border: 1px solid rgba(0,24,94, 0.08) !important;
     box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04) !important;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  [data-theme="dark"] .sidebar-column, 
+[data-theme="dark"] .sidebar-column, 
   [data-theme="dark"] .detail-column, 
   [data-theme="dark"] .stat-card, 
   [data-theme="dark"] .chart-card, 
@@ -915,20 +856,18 @@ h1, h2, h3, h4, h5, h6 {
     border: 1px solid rgba(255, 255, 255, 0.06) !important;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25) !important;
   }
-  
-  .stat-card:hover, .sidebar-event-card:hover, .global-control-card:hover {
+.stat-card:hover, .sidebar-event-card:hover, .global-control-card:hover {
     transform: translateY(-4px) scale(1.02);
     box-shadow: 0 12px 24px rgba(31, 38, 135, 0.08) !important;
-    border-color: rgba(26, 37, 87, 0.2) !important;
+    border-color: rgba(0,24,94, 0.2) !important;
   }
-  [data-theme="dark"] .stat-card:hover, 
+[data-theme="dark"] .stat-card:hover, 
   [data-theme="dark"] .sidebar-event-card:hover, 
   [data-theme="dark"] .global-control-card:hover {
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
-    border-color: rgba(201, 164, 94, 0.4) !important;
+    border-color: rgba(198,157,103, 0.4) !important;
   }
-
-  /* ── FLOATING SPEED DIAL QUICK ACTIONS ── */
+/* ── FLOATING SPEED DIAL QUICK ACTIONS ── */
   .speed-dial {
     position: fixed;
     bottom: 24px;
@@ -939,37 +878,36 @@ h1, h2, h3, h4, h5, h6 {
     align-items: flex-end;
     gap: 12px;
   }
-  .speed-dial-trigger {
+.speed-dial-trigger {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--snpsu-blue-lighter), var(--snpsu-blue));
+    background: var(--brand-navy);
     color: #fff;
-    border: none;
-    outline: none;
+    border: 2px solid var(--brand-gold);
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(26, 37, 87, 0.35);
+    box-shadow: 0 4px 15px rgba(0,24,94, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
   }
-  [data-theme="dark"] .speed-dial-trigger {
-    background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark));
+[data-theme="dark"] .speed-dial-trigger {
+    background: linear-gradient(135deg, var(--brand-gold), var(--snpsu-gold-dark));
     color: var(--snpsu-blue-dark);
-    box-shadow: 0 4px 15px rgba(201, 164, 94, 0.3);
+    box-shadow: 0 4px 15px rgba(198,157,103, 0.3);
   }
-  .speed-dial-trigger:hover {
-    transform: scale(1.1) rotate(15deg);
+.speed-dial-trigger:hover {
+    background: var(--brand-navy-700);
   }
-  .speed-dial.open .speed-dial-trigger {
+.speed-dial.open .speed-dial-trigger {
     transform: rotate(45deg);
     background: var(--danger);
     color: #fff;
     box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
   }
-  .speed-dial-menu {
+.speed-dial-menu {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -979,12 +917,12 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(20px) scale(0.9);
     transition: opacity 0.25s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .speed-dial.open .speed-dial-menu {
+.speed-dial.open .speed-dial-menu {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0) scale(1);
   }
-  .speed-dial-item {
+.speed-dial-item {
     height: 40px;
     padding: 0 16px;
     border-radius: var(--radius-pill);
@@ -997,15 +935,17 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 12.5px;
     font-weight: 700;
     text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
+    background: var(--surface-card);
+    color: var(--text-strong);
+    border: 1px solid var(--border);
   }
-  .speed-dial-item:hover {
-    transform: translateX(-4px) scale(1.05);
-    box-shadow: var(--shadow-md);
+.speed-dial-item:hover {
+    background: var(--hover-bg);
+    color: var(--brand-ink);
   }
-  
-  /* ── CSS TOAST SYSTEM ── */
+.speed-dial-item i { color: var(--brand-gold-600); }
+/* ── CSS TOAST SYSTEM ── */
   .toast-container {
     position: fixed;
     top: 24px;
@@ -1018,7 +958,7 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
     pointer-events: none;
   }
-  .custom-toast {
+.custom-toast {
     background: var(--bg-card);
     border: 1px solid var(--ink-200);
     border-radius: var(--radius);
@@ -1032,11 +972,11 @@ h1, h2, h3, h4, h5, h6 {
     pointer-events: auto;
     transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s;
   }
-  .custom-toast.show {
+.custom-toast.show {
     transform: translateX(0);
     opacity: 1;
   }
-  .toast-icon {
+.toast-icon {
     font-size: 16px;
     width: 28px;
     height: 28px;
@@ -1046,24 +986,23 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: center;
     flex-shrink: 0;
   }
-  .toast-success .toast-icon { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-  .toast-error .toast-icon { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-  .toast-info .toast-icon { background: rgba(59, 130, 246, 0.15); color: var(--info); }
-  .toast-content {
+.toast-success .toast-icon { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.toast-error .toast-icon { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+.toast-info .toast-icon { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+.toast-content {
     font-size: 13px;
     font-weight: 600;
     color: var(--ink-800);
     flex: 1;
     line-height: 1.4;
   }
-
-  /* ── LIVE ACTIVITY TIMELINE ── */
+/* ── LIVE ACTIVITY TIMELINE ── */
   .activity-timeline {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
-  .activity-item {
+.activity-item {
     display: flex;
     align-items: center;
     gap: 14px;
@@ -1073,11 +1012,11 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: var(--radius);
     transition: transform var(--t), background var(--t);
   }
-  .activity-item:hover {
+.activity-item:hover {
     transform: translateX(6px);
     background: var(--bg-muted);
   }
-  .activity-icon-badge {
+.activity-icon-badge {
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -1088,35 +1027,34 @@ h1, h2, h3, h4, h5, h6 {
     flex-shrink: 0;
     box-shadow: var(--shadow-xs);
   }
-  .activity-icon-checkin {
+.activity-icon-checkin {
     background: rgba(16, 185, 129, 0.15);
     color: var(--success);
   }
-  .activity-icon-reg {
+.activity-icon-reg {
     background: rgba(59, 130, 246, 0.15);
     color: var(--info);
   }
-  .activity-details {
+.activity-details {
     flex: 1;
     font-size: 13px;
     color: var(--ink-800);
   }
-  .activity-time {
+.activity-time {
     font-size: 11px;
     color: var(--ink-500);
     font-family: monospace;
     font-weight: 700;
   }
-  .anim-pulse {
+.anim-pulse {
     animation: pulse 2s infinite;
   }
-  @keyframes pulse {
+@keyframes pulse {
     0% { opacity: 0.6; }
     50% { opacity: 1; transform: scale(1.05); }
     100% { opacity: 0.6; }
   }
-
-  /* ── INTERACTIVE COMMAND PALETTE (SPOTLIGHT) ── */
+/* ── INTERACTIVE COMMAND PALETTE (SPOTLIGHT) ── */
   .cmd-palette-backdrop {
     position: fixed;
     inset: 0;
@@ -1131,42 +1069,42 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 0;
     transition: opacity 0.2s var(--ease);
   }
-  .cmd-palette-backdrop.open {
+.cmd-palette-backdrop.open {
     display: flex;
     opacity: 1;
   }
-  .cmd-palette-box {
+.cmd-palette-box {
     width: 100%;
     max-width: 600px;
     background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(26, 37, 87, 0.12);
+    border: 1px solid rgba(0,24,94, 0.12);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg), 0 20px 25px -5px rgba(0,0,0,0.1);
     overflow: hidden;
     transform: translateY(-20px) scale(0.98);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .cmd-palette-backdrop.open .cmd-palette-box {
+.cmd-palette-backdrop.open .cmd-palette-box {
     transform: translateY(0) scale(1);
   }
-  [data-theme="dark"] .cmd-palette-box {
+[data-theme="dark"] .cmd-palette-box {
     background: rgba(26, 32, 56, 0.95);
     border-color: rgba(255, 255, 255, 0.08);
   }
-  .cmd-palette-search-wrapper {
+.cmd-palette-search-wrapper {
     position: relative;
     border-bottom: 1px solid var(--ink-200);
     display: flex;
     align-items: center;
   }
-  .cmd-palette-search-icon {
+.cmd-palette-search-icon {
     position: absolute;
     left: 18px;
     color: var(--ink-500);
     font-size: 16px;
     pointer-events: none;
   }
-  .cmd-palette-input {
+.cmd-palette-input {
     width: 100%;
     padding: 16px 16px 16px 48px;
     background: transparent;
@@ -1176,10 +1114,10 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--ink-900);
     font-weight: 500;
   }
-  .cmd-palette-input::placeholder {
+.cmd-palette-input::placeholder {
     color: var(--ink-500);
   }
-  .cmd-palette-results {
+.cmd-palette-results {
     max-height: 380px;
     overflow-y: auto;
     padding: 10px;
@@ -1187,7 +1125,7 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     gap: 4px;
   }
-  .cmd-section-header {
+.cmd-section-header {
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -1195,7 +1133,7 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--ink-500);
     margin: 8px 0 4px 8px;
   }
-  .cmd-item {
+.cmd-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1210,35 +1148,35 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
     text-align: left;
   }
-  .cmd-item:hover, .cmd-item.active {
+.cmd-item:hover, .cmd-item.active {
     background: var(--bg-soft);
     color: var(--ink-900);
   }
-  [data-theme="dark"] .cmd-item:hover, [data-theme="dark"] .cmd-item.active {
+[data-theme="dark"] .cmd-item:hover, [data-theme="dark"] .cmd-item.active {
     background: rgba(255, 255, 255, 0.05);
   }
-  .cmd-item-left {
+.cmd-item-left {
     display: flex;
     align-items: center;
     gap: 12px;
   }
-  .cmd-item-icon {
+.cmd-item-icon {
     font-size: 14px;
     color: var(--ink-500);
     width: 20px;
     text-align: center;
   }
-  .cmd-item.active .cmd-item-icon, .cmd-item:hover .cmd-item-icon {
+.cmd-item.active .cmd-item-icon, .cmd-item:hover .cmd-item-icon {
     color: var(--snpsu-blue-lighter);
   }
-  [data-theme="dark"] .cmd-item.active .cmd-item-icon, [data-theme="dark"] .cmd-item:hover .cmd-item-icon {
-    color: var(--snpsu-gold);
+[data-theme="dark"] .cmd-item.active .cmd-item-icon, [data-theme="dark"] .cmd-item:hover .cmd-item-icon {
+    color: var(--brand-gold);
   }
-  .cmd-item-title {
+.cmd-item-title {
     font-size: 13px;
     font-weight: 600;
   }
-  .cmd-item-badge {
+.cmd-item-badge {
     font-size: 9.5px;
     font-weight: 700;
     padding: 2px 6px;
@@ -1246,7 +1184,7 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--bg-muted);
     color: var(--ink-600);
   }
-  .cmd-item-shortcut {
+.cmd-item-shortcut {
     font-family: monospace;
     font-size: 10.5px;
     font-weight: bold;
@@ -1255,11 +1193,11 @@ h1, h2, h3, h4, h5, h6 {
     padding: 1px 5px;
     border-radius: 4px;
   }
-  [data-theme="dark"] .cmd-item-shortcut {
+[data-theme="dark"] .cmd-item-shortcut {
     background: rgba(255,255,255,0.06);
     color: var(--ink-500);
   }
-  .cmd-palette-footer {
+.cmd-palette-footer {
     padding: 10px 16px;
     border-top: 1px solid var(--ink-200);
     background: var(--bg-soft);
@@ -1269,19 +1207,19 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 11px;
     color: var(--ink-500);
   }
-  [data-theme="dark"] .cmd-palette-footer {
+[data-theme="dark"] .cmd-palette-footer {
     background: rgba(0,0,0,0.1);
   }
-  .cmd-palette-keys {
+.cmd-palette-keys {
     display: flex;
     gap: 12px;
   }
-  .cmd-key-helper {
+.cmd-key-helper {
     display: inline-flex;
     align-items: center;
     gap: 4px;
   }
-  .cmd-key {
+.cmd-key {
     font-family: monospace;
     font-weight: bold;
     background: var(--bg-card);
@@ -1291,43 +1229,17 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 1px 0 rgba(0,0,0,0.1);
   }
 </style>
-<script src="/static/js/escape.js"></script>
 {% endblock %}
-{% block body %}
-
+{% block content %}
 {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
-<div class="super-admin-banner" style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-  <span style="display: inline-flex; align-items: center; gap: 6px;">
-    <i class="fas fa-crown" style="color: #c9a45e;"></i>
-    Logged in as <strong style="color: #c9a45e;">Super Admin</strong> (Wildcard Mode)
-  </span>
-  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" data-h-mouseover="spoc/dashboard:1" data-h-mouseout="spoc/dashboard:2">
-    Return to Admin HQ <i class="fas fa-arrow-right"></i>
-  </a>
+<div class="callout callout--brand d-flex flex-wrap align-items-center justify-content-between gap-2">
+  <span><i class="fas fa-crown" aria-hidden="true"></i> You are viewing the Club SPOC console as <strong>Super Admin</strong>.</span>
+  <a href="/admin/dashboard" class="btn btn-primary btn-sm">Return to admin <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
 </div>
 {% endif %}
 
 <!-- TOPNAV -->
-<div class="topnav">
-  <div class="d-flex align-items-center gap-2">
-    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="topnav-logo" style="height:36px;width:auto;object-fit:contain;" onerror="this.src='/static/app-icon.png'">
-    <span class="brand d-none d-sm-inline">Club SPOC Console</span>
-    <span class="badge" style="background:rgba(201,164,94,0.2);color:var(--snpsu-gold);font-size:11px;font-weight:600;">{{ category or 'Campus' }}</span>
-  </div>
-  <div class="nav-links">
-    <button class="nav-link-item" data-h-click="spoc/dashboard:3" title="Command Palette (Cmd+K)" style="background:none; border:none; cursor:pointer; color:rgba(255,255,255,.75); display:inline-flex; align-items:center; gap:4px;">
-      <i class="fas fa-terminal"></i><span class="d-none d-lg-inline ms-1" style="font-size:11px; opacity:0.6; background:rgba(255,255,255,0.15); padding:1px 5px; border-radius:4px; font-weight:bold;">⌘K</span>
-    </button>
-    <a href="/" class="nav-link-item" title="Events Portal"><i class="fas fa-home"></i><span class="d-none d-sm-inline ms-1">Portal</span></a>
-    <a href="/calendar" class="nav-link-item" title="Calendar"><i class="fas fa-calendar-alt"></i><span class="d-none d-sm-inline ms-1">Calendar</span></a>
-    <a href="/spoc/profile" class="nav-link-item" title="My Profile"><i class="fas fa-user-circle"></i><span class="d-none d-sm-inline ms-1">Profile</span></a>
-    {% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
-    <a href="/admin/dashboard" class="nav-link-item" style="color:var(--snpsu-gold);font-weight:700;" title="Admin HQ"><i class="fas fa-crown"></i><span class="d-none d-sm-inline ms-1">Admin</span></a>
-    {% endif %}
-    <a href="/spoc/create_event" class="nav-link-item btn-orange" title="Create Event"><i class="fas fa-plus"></i><span class="d-none d-sm-inline ms-1">Create Event</span></a>
-    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
-  </div>
-</div>
+
 
 <div class="container-fluid px-3 px-sm-4 py-3">
   <!-- Master-Detail Grid Container -->
@@ -1371,7 +1283,7 @@ h1, h2, h3, h4, h5, h6 {
           <div class="sidebar-event-card" id="card-{{ event.id }}" data-title="{{ event.title | e }}" data-category="{{ event.category | e }}" data-venue="{{ event.venue | e }}" data-status="{{ event.status }}" data-h-click="spoc/dashboard:7" data-h-a0="{{ event.id }}">
             <div class="sidebar-event-title">{{ event.title }}</div>
             <div class="sidebar-event-meta">
-              <span><i class="fas fa-tag" style="color:var(--snpsu-gold);"></i>{{ event.category }}</span>
+              <span><i class="fas fa-tag" style="color:var(--brand-gold);"></i>{{ event.category }}</span>
               <span><i class="fas fa-calendar" style="color:var(--snpsu-blue-lighter);"></i>{{ event.date | default('TBA') }}</span>
             </div>
             
@@ -1400,11 +1312,11 @@ h1, h2, h3, h4, h5, h6 {
       <div id="global-panel" class="event-detail-panel-container">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h4 class="mb-1" style="color:var(--ink-900);font-weight:800;">{{ session.get('name', 'SPOC') }}'s Console</h4>
+            <h1 class="h4 mb-1" id="page-title">{{ session.get('name', 'SPOC') }}'s console</h1>
             <p class="text-muted mb-0" style="font-size:13px;">{{ category }} Division · {{ events | length }} event{{ 's' if events | length != 1 }}</p>
           </div>
-          <a href="/spoc/create_event" class="btn btn-sm" style="background:var(--snpsu-blue);color:#fff;font-weight:700;border-radius:var(--radius-sm);padding:8px 14px;font-size:12.5px;border:none;">
-            <i class="fas fa-plus me-1"></i> Create Event
+          <a href="/spoc/create_event" class="btn btn-primary">
+            <i class="fas fa-plus" aria-hidden="true"></i> Create event
           </a>
         </div>
         
@@ -1437,7 +1349,7 @@ h1, h2, h3, h4, h5, h6 {
             </div>
             <div>
               <div class="stat-label">Revenue</div>
-              <div class="stat-val" style="font-size:20px;">₹{{ "{:,}".format(stats.total_revenue | default(0)) }}</div>
+              <div class="stat-val" style="font-size:20px;">₹{{ "{:,.0f}".format((stats.total_revenue | default(0)) | float) }}</div>
             </div>
           </div>
           <div class="stat-card">
@@ -1462,25 +1374,22 @@ h1, h2, h3, h4, h5, h6 {
           </div>
         </div>
         
-        <!-- CHARTS ROW -->
+        <!-- CHARTS ROW (ECharts, UPG-83; the full picture is on /spoc/analytics) -->
         {% if events %}
         <div class="row g-4 mb-4">
           <div class="col-lg-7">
             <div class="chart-card h-100">
-              <div class="chart-title"><i class="fas fa-chart-bar" style="color:var(--orange);"></i> Registrations per Event</div>
-              <canvas id="regChart" height="200"></canvas>
+              <div class="d-flex justify-content-between align-items-center gap-2">
+                <div class="chart-title mb-0"><i class="fas fa-chart-bar" style="color:var(--brand-gold);" aria-hidden="true"></i> Registrations per event</div>
+                <a href="/spoc/analytics" class="small fw-semibold">Full analytics <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+              </div>
+              <div id="regChart" style="height:300px" role="img" aria-label="Registrations per event, split into attended, no-show, not held yet and other"></div>
             </div>
           </div>
           <div class="col-lg-5">
             <div class="chart-card h-100">
-              <div class="chart-title"><i class="fas fa-chart-pie" style="color:#7c3aed;"></i> Attendance Overview</div>
-              <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
-                <canvas id="attChart"></canvas>
-                <div id="attCenter" style="position:absolute;text-align:center;pointer-events:none;">
-                  <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">{{ stats.present_count | default(0) }}</div>
-                  <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Present</div>
-                </div>
-              </div>
+              <div class="chart-title"><i class="fas fa-user-check" style="color:var(--brand-gold);" aria-hidden="true"></i> Attendance overview</div>
+              <div id="attChart" style="height:300px" role="img" aria-label="All registrations: attended, no-show, not held yet and other"></div>
             </div>
           </div>
         </div>
@@ -1570,7 +1479,7 @@ h1, h2, h3, h4, h5, h6 {
         {% if events %}
         <!-- Live Announcement Panel -->
         <div class="ev-table-card">
-          <div class="ev-table-header" style="background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-dark)); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+          <div class="ev-table-header" style="background: linear-gradient(135deg, var(--brand-navy), var(--snpsu-blue-dark)); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
             <h6><i class="fas fa-bullhorn me-2"></i>Post Live Announcement</h6>
             <span style="font-size:12px;color:rgba(255,255,255,.6);">Appears instantly on participant dashboards</span>
           </div>
@@ -1634,7 +1543,7 @@ h1, h2, h3, h4, h5, h6 {
                 <span class="badge bg-primary me-2">{{ event.category }}</span> 
                 <span>Venue: <strong>{{ event.venue | default('TBA') }}</strong></span>
               </div>
-              <h3 class="fw-extrabold mb-1" style="color:var(--ink-900); font-family:'Plus Jakarta Sans'; font-size:24px;">{{ event.title }}</h3>
+              <h3 class="fw-extrabold mb-1" style="color:var(--ink-900); font-family: var(--font-heading); font-size:24px;">{{ event.title }}</h3>
               <div class="small text-muted">
                 <i class="fas fa-calendar-alt me-1"></i>{{ event.date }} &nbsp;·&nbsp; <i class="fas fa-clock me-1"></i>{{ event.time or "Time to be announced" }}
               </div>
@@ -1645,13 +1554,21 @@ h1, h2, h3, h4, h5, h6 {
                 <i class="fas fa-{{ 'circle fa-xs' if event.status in ('active', 'published', 'registration_open') else 'check-circle' }} me-1"></i>
                 {{ event.status | replace('_', ' ') | title }}
               </span>
+              <div class="d-flex gap-2 flex-wrap justify-content-end">
+                {# Review, edit in the wizard, and publish (UPG-73); a fest adds its events there (UPG-74) #}
+                <a href="/spoc/event/{{ event.id }}/review" class="btn btn-sm {{ 'btn-gold' if event.status in ('draft', 'published') else 'btn-outline-primary' }}">
+                  <i class="fas fa-{{ 'rocket' if event.status in ('draft', 'published') else 'eye' }}" aria-hidden="true"></i>
+                  {{ 'Review & publish' if event.status == 'draft' else ('Open registration' if event.status == 'published' and not event.is_fest else ('Fest & its events' if event.is_fest else 'Review')) }}
+                </a>
+                <a href="/spoc/event/{{ event.id }}/setup" class="btn btn-sm btn-outline-secondary"><i class="fas fa-pen" aria-hidden="true"></i> Edit</a>
+              </div>
               {% if event.allowed_transitions %}
               <div class="d-flex gap-2 flex-wrap justify-content-end">
                 {% for next_state in event.allowed_transitions %}
                 <form action="/spoc/event/{{ event.id }}/transition" method="POST" style="margin:0;">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <input type="hidden" name="target_state" value="{{ next_state }}">
-                  <button type="submit" class="btn btn-sm" style="background:var(--snpsu-blue);color:#fff;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:6px;border:none;">
+                  <button type="submit" class="btn btn-sm" style="background:var(--brand-navy);color:#fff;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:6px;border:none;">
                     <i class="fas fa-arrow-right me-1"></i>Advance to {{ next_state | replace('_', ' ') | title }}
                   </button>
                 </form>
@@ -1909,7 +1826,7 @@ h1, h2, h3, h4, h5, h6 {
                       <i class="fas fa-paper-plane"></i> Bulk Email Broadcast (AI Assist)
                     </button>
                     <a href="/forms/builder/{{ event.id }}" class="action-btn btn-forms-builder justify-content-start">
-                      <i class="fas fa-wpforms"></i> {{ 'Edit Registration Form Builder' if event.get('has_custom_form') else 'Build Custom Registration Form' }}
+                      <i class="fas fa-rectangle-list"></i> {{ 'Edit Registration Form Builder' if event.get('has_custom_form') else 'Build Custom Registration Form' }}
                     </a>
                     <a href="/spoc/agenda/{{ event.id }}" class="action-btn btn-outline justify-content-start">
                       <i class="fas fa-calendar-check"></i> Edit Public Agenda / Schedule
@@ -2047,7 +1964,7 @@ h1, h2, h3, h4, h5, h6 {
         <!-- ── ASSIGN COORDINATOR MODAL ── -->
         <div id="assignCoordModal-{{ event.id }}" class="spoc-modal" style="display:none;">
           <div class="spoc-modal-box" style="max-width:480px;">
-            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+            <div class="spoc-modal-hdr" style="background:var(--brand-navy);">
               <span><i class="fas fa-user-plus me-2"></i>Assign Coordinator — {{ event.title }}</span>
               <button data-h-click="spoc/dashboard:35" data-h-a13="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
@@ -2090,7 +2007,7 @@ h1, h2, h3, h4, h5, h6 {
         <!-- ── JUDGE MODAL ── -->
         <div id="judgeModal-{{ event.id }}" class="spoc-modal" style="display:none;">
           <div class="spoc-modal-box" style="max-width:520px;">
-            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+            <div class="spoc-modal-hdr" style="background:var(--brand-navy);">
               <span><i class="fas fa-users-cog me-2"></i>Manage Judges — {{ event.title }}</span>
               <button data-h-click="spoc/dashboard:38" data-h-a16="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
@@ -2114,7 +2031,7 @@ h1, h2, h3, h4, h5, h6 {
               <p style="font-size:13px;color:var(--ink-600);margin-bottom:16px;">Upload a CSV with columns: <code>name,email,expertise</code>. New judges get an email with a link to set their password.</p>
               <form method="POST" action="/spoc/upload_judges_csv/{{ event.id }}" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <label style="font-size:12px;font-weight:700;color:var(--snpsu-blue);display:block;margin-bottom:6px;">CSV File</label>
+                <label style="font-size:12px;font-weight:700;color: var(--brand-ink);display:block;margin-bottom:6px;">CSV File</label>
                 <input aria-label="CSV File" type="file" name="judges_csv" accept=".csv" required class="form-control mb-3">
                 <button type="submit" class="modal-btn-primary w-100">
                   <i class="fas fa-upload me-1"></i> Upload &amp; Create Judge Logins
@@ -2140,7 +2057,7 @@ h1, h2, h3, h4, h5, h6 {
         <!-- ── ROOM SETUP MODAL ── -->
         <div id="roomModal-{{ event.id }}" class="spoc-modal" style="display:none;">
           <div class="spoc-modal-box" style="max-width:540px;">
-            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+            <div class="spoc-modal-hdr" style="background:var(--brand-navy);">
               <span><i class="fas fa-door-open me-2"></i>Room Setup — {{ event.title }}</span>
               <button data-h-click="spoc/dashboard:39" data-h-a17="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
@@ -2173,7 +2090,7 @@ h1, h2, h3, h4, h5, h6 {
         <!-- ── CERT TEMPLATES MODAL ── -->
         <div id="certModal-{{ event.id }}" class="spoc-modal" style="display:none;">
           <div class="spoc-modal-box" style="max-width:560px;">
-            <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+            <div class="spoc-modal-hdr" style="background:var(--brand-navy);">
               <span><i class="fas fa-certificate me-2"></i>Certificate Templates — {{ event.title }}</span>
               <button data-h-click="spoc/dashboard:41" data-h-a19="{{ event.id }}" class="spoc-modal-close">×</button>
             </div>
@@ -2203,7 +2120,7 @@ h1, h2, h3, h4, h5, h6 {
                 </div>
                 {% endfor %}
                 <div style="margin-bottom:14px;padding:12px;background:var(--bg-soft);border-radius:8px;border:1px solid var(--ink-200);">
-                  <label style="font-size:12px;font-weight:700;color:var(--snpsu-blue);display:block;margin-bottom:6px;">Name Position (% from top of certificate)</label>
+                  <label style="font-size:12px;font-weight:700;color: var(--brand-ink);display:block;margin-bottom:6px;">Name Position (% from top of certificate)</label>
                   <div class="modal-row-grid">
                     <div>
                       <label style="font-size:11px;color:var(--ink-500);">Horizontal % (50 = centre)</label>
@@ -2241,8 +2158,8 @@ h1, h2, h3, h4, h5, h6 {
 <div id="endEventModal" class="spoc-modal" style="display:none;">
   <div class="spoc-modal-box" style="max-width:750px;width:95%;padding:0;">
     <!-- Header -->
-    <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;color:#fff;">
+    <div class="spoc-modal-hdr" style="background:var(--brand-navy);padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-family: var(--font-heading);font-weight:700;font-size:15px;color:#fff;">
         <i class="fas fa-flag-checkered me-2"></i>End Event &amp; Configure Certificates
       </span>
       <button type="button" data-h-click="spoc/dashboard:42" style="background:transparent;border:none;color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>
@@ -2253,12 +2170,12 @@ h1, h2, h3, h4, h5, h6 {
       <!-- Left side: Form options -->
       <div style="display:flex;flex-direction:column;gap:18px;text-align:left;">
         <div>
-          <h5 style="font-family:'Outfit',sans-serif;font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
+          <h5 style="font-family: var(--font-heading);font-weight:700;margin:0 0 6px;color:#0f172a;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">Event Name</h5>
           <div style="font-weight:600;font-size:16px;color:#1e293b;" id="modalEventTitle">Event Title</div>
         </div>
         
         <div>
-          <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
+          <label style="font-family: var(--font-heading);font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Certificate Template Style</label>
           <select aria-label="Certificate Template Style" id="certTemplateSelect" data-h-change="spoc/dashboard:43" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
             <option value="1">Classic Navy (Default SNPSU)</option>
             <option value="2">Tech Blue (Hackathons)</option>
@@ -2270,19 +2187,19 @@ h1, h2, h3, h4, h5, h6 {
         </div>
         
         <div>
-          <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
+          <label style="font-family: var(--font-heading);font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:6px;display:block;letter-spacing:0.5px;">Authorized Signatory Name</label>
           <input aria-label="Authorized Signatory Name" type="text" id="certSignatoryInput" data-h-input="spoc/dashboard:44" value="Dean of Student Affairs" placeholder="e.g. Dean of Student Affairs" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#1e293b;">
         </div>
         
         <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2e8f0;font-size:12px;color:#64748b;line-height:1.5;">
-          <i class="fas fa-info-circle me-1" style="color:var(--orange);"></i>
+          <i class="fas fa-info-circle me-1" style="color:var(--brand-gold);"></i>
           This action will mark the event as <strong>completed</strong>, award XP/badges, and bulk email PDF certificates to all checked-in attendees.
         </div>
       </div>
       
       <!-- Right side: Visual Live Preview -->
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-        <label style="font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
+        <label style="font-family: var(--font-heading);font-weight:700;font-size:11px;text-transform:uppercase;color:#475569;margin-bottom:8px;align-self:flex-start;letter-spacing:0.5px;">Visual Template Preview</label>
         
         <!-- CSS Cert Preview Card -->
         <div id="certPreviewCard" style="width:100%;max-width:380px;aspect-ratio:1.414/1;border:8px solid #0d2d62;background:#ffffff;border-radius:8px;padding:16px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-sizing:border-box;">
@@ -2299,11 +2216,11 @@ h1, h2, h3, h4, h5, h6 {
           
           <!-- Content -->
           <div style="text-align:center;margin:6px 0;display:flex;flex-direction:column;gap:3px;">
-            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family:'Outfit',sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
+            <div id="previewCertType" style="font-size:11px;font-weight:800;color:#0d2d62;font-family: var(--font-heading);text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;">Certificate of Participation</div>
             <div style="font-size:6px;color:#64748b;font-style:italic;">This is to certify that</div>
             <div style="font-size:11px;font-weight:700;color:#1e293b;border-bottom:1px solid #cbd5e1;width:fit-content;margin:0 auto;padding-bottom:1px;min-width:110px;line-height:1.2;">John Doe</div>
             <div style="font-size:6px;color:#64748b;">has successfully participated in</div>
-            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family:'Outfit',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
+            <div id="previewEventTitle" style="font-size:8.5px;font-weight:700;color:#0d2d62;font-family: var(--font-heading);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;line-height:1.2;">Saptha Mega Hackathon 2026</div>
           </div>
           
           <!-- Footer -->
@@ -2339,9 +2256,9 @@ h1, h2, h3, h4, h5, h6 {
 <div id="blastModal" class="spoc-modal" style="display:none;">
   <div class="spoc-modal-box" style="max-width:520px;">
     <!-- Header -->
-    <div class="spoc-modal-hdr" style="background:var(--snpsu-blue);">
+    <div class="spoc-modal-hdr" style="background:var(--brand-navy);">
       <div>
-        <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+        <span style="font-family: var(--font-heading);font-weight:800;font-size:16px;color:#fff;">
           <i class="fas fa-paper-plane me-2"></i>Email All Registrants
         </span>
         <div id="blastEventName" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;"></div>
@@ -2355,21 +2272,21 @@ h1, h2, h3, h4, h5, h6 {
         <label class="form-label" style="display:block;margin-bottom:6px;">Audience</label>
         <div style="display:flex;gap:16px;">
           <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink-800);">
-            <input type="radio" name="audience" value="confirmed" checked style="accent-color:var(--snpsu-blue);"> Confirmed only
+            <input type="radio" name="audience" value="confirmed" checked style="accent-color:var(--brand-navy);"> Confirmed only
           </label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink-800);">
-            <input type="radio" name="audience" value="all" style="accent-color:var(--snpsu-blue);"> All registrants
+            <input type="radio" name="audience" value="all" style="accent-color:var(--brand-navy);"> All registrants
           </label>
         </div>
       </div>
       <!-- AI Copywriter Assistant -->
-      <div style="margin-bottom:16px; padding:10px; background:rgba(59,130,246,0.05); border:1px dashed rgba(59,130,246,0.2); border-radius:8px;">
-        <label style="font-size:11px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">
+      <div class="callout callout--brand" style="margin-bottom:16px;">
+        <label class="form-label" for="ai-copy-prompt">
           <i class="fas fa-wand-magic-sparkles me-1"></i>AI Copywriter Assistant
         </label>
         <div style="display:flex;gap:6px;">
-          <input aria-label="AI Copywriter Assistant" type="text" id="ai-copy-prompt" placeholder="e.g. Friendly reminder to complete profiles..." class="form-control form-control-sm" style="font-size:12px; height:32px;">
-          <button type="button" class="btn btn-primary btn-sm px-3" style="border-radius:20px; font-size:12px; height:32px; background:#3b82f6; border:none;" data-h-click="spoc/dashboard:48">Generate</button>
+          <input aria-label="AI Copywriter Assistant" type="text" id="ai-copy-prompt" placeholder="e.g. Friendly reminder to complete profiles..." class="form-control form-control-sm">
+          <button type="button" class="btn btn-primary btn-sm" data-h-click="spoc/dashboard:48">Generate</button>
         </div>
       </div>
 
@@ -2389,7 +2306,7 @@ h1, h2, h3, h4, h5, h6 {
         </div>
       </div>
       <div class="modal-btn-row" style="display:flex;gap:10px;margin-bottom:12px;">
-        <button type="button" data-h-click="spoc/dashboard:49" class="modal-btn-primary flex-1" style="background:#0284c7 !important;">
+        <button type="button" data-h-click="spoc/dashboard:49" class="btn btn-secondary flex-1">
           <i class="fas fa-eye me-2"></i>Preview
         </button>
         <button type="submit" class="modal-btn-primary flex-1">
@@ -2408,8 +2325,8 @@ h1, h2, h3, h4, h5, h6 {
 <!-- ── BLAST PREVIEW MODAL ── -->
 <div id="blastPreviewModal" class="spoc-modal" style="display:none; z-index: 2000;">
   <div class="spoc-modal-box" style="max-width:680px; width:95%; height:80vh; padding:0; display:flex; flex-direction:column;">
-    <div class="spoc-modal-hdr" style="background:var(--snpsu-blue); display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;color:#fff;">
+    <div class="spoc-modal-hdr" style="background:var(--brand-navy); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-family: var(--font-heading);font-weight:800;font-size:16px;color:#fff;">
         <i class="fas fa-eye me-2"></i>Email Broadcast Live Preview
       </span>
       <button data-h-click="spoc/dashboard:51" class="spoc-modal-close">×</button>
@@ -2438,8 +2355,9 @@ h1, h2, h3, h4, h5, h6 {
 </div>
 
 {% include "layouts/_bootstrap_js.html" %}
-<script integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script id="spoc-chart-data" type="application/json">{"labels":{{ chart_labels | tojson }},"regs":{{ chart_regs | tojson }},"present":{{ stats.present_count | default(0) }},"totalRegs":{{ stats.total_regs | default(0) }},"hasEvents":{{ 'true' if events else 'false' }}}</script>
+<script integrity="sha384-Mx5lkUEQPM1pOJCwFtUICyX45KNojXbkWdYhkKUKsbv391mavbfoAmONbzkgYPzR" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="/static/js/se-echarts.js"></script>
+<script id="spoc-chart-data" type="application/json">{"breakdown":{{ breakdown | default([]) | tojson }},"hasEvents":{{ 'true' if events else 'false' }}}</script>
 
 <script src="/static/js/pages/spoc__dashboard.js"></script>
 
@@ -2461,13 +2379,13 @@ h1, h2, h3, h4, h5, h6 {
     <i class="fas fa-bolt" id="speed-dial-trigger-icon"></i>
   </button>
   <div class="speed-dial-menu">
-    <a href="/spoc/create_event" class="speed-dial-item text-white" style="background:#3b82f6;" title="Create Event">
+    <a href="/spoc/create_event" class="speed-dial-item" title="Create event">
       <i class="fas fa-plus"></i> <span>Create Event</span>
     </a>
-    <button data-h-click="spoc/dashboard:58" class="speed-dial-item text-white" style="background:#f59e0b;" title="Guided Onboarding">
+    <button type="button" data-h-click="spoc/dashboard:58" class="speed-dial-item" title="Guided onboarding">
       <i class="fas fa-flag"></i> <span>Onboarding Tour</span>
     </button>
-    <button data-h-click="spoc/dashboard:59" class="speed-dial-item text-white" style="background:#10b981;" title="Sync Live Stats">
+    <button type="button" data-h-click="spoc/dashboard:59" class="speed-dial-item" title="Sync live stats">
       <i class="fas fa-sync-alt"></i> <span>Sync Live Stats</span>
     </button>
   </div>
@@ -2497,6 +2415,7 @@ h1, h2, h3, h4, h5, h6 {
 <!-- TOAST CONTAINER FOR FLOATING NOTIFICATIONS -->
 <div class="toast-container" id="toast-container-holder"></div>
 
-<script src="/static/js/global.js"></script>
+
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__dashboard.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__dashboard.js"></script>
+{% endblock %}

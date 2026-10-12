@@ -50,22 +50,22 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 
 | Feature | Status | Evidence | Notes |
 |---|---|---|---|
-| Home / event discovery / catalogue | WORKING [R] | `app.py:550`, `app.py:739`, crawl 200 | Home shows a hard-coded fake hackathon when no events exist (`app.py:709-720`). |
+| Home / event discovery / catalogue | WORKING [T, R at UPG-86] | `app.py:564-735`, `templates/index.html`, `university_info.py` | The home page shows live events (a "Coming up" list of the next open ones) and the university's real details from `university_info.py` (schools and programmes, highlights, official social accounts, contacts, links checked to open real pages); nothing invented. The old fake fallback hackathon is gone (re-verified at UPG-86). |
 | University calendar + event `.ics` | WORKING [R] | `app.py:1093`, `app.py:794` | Department-only visibility filter at `app.py:1011-1014`. |
 | Personal calendar feed | WORKING [R at BLK-04b] | `app.py:1135-1210`, `services_accounts.py:143,149` | Own events when logged in; calendar apps use a signed, resettable per-user token; `?user=` is ignored (BLK-04). |
 | Student sign-up / login | WORKING [R at UPG-35] | `routes_auth.py:272`, `routes_auth.py:66` | USN now persists (document shadow, `db_adapter.py` `extra_json`) [R at `1f4cdc8`]; it wasn't stored at `694c729`. Failed logins and reset requests answer the same for every email (UPG-35); sign-up still tells an existing email to log in. |
 | Google / Microsoft login | NOT CONNECTED [C] | `auth_oauth.py:32-135` | Login page has no link to `/auth/google` (`templates/login.html`). |
 | 2FA (TOTP) | NOT CONNECTED [C] | `auth_2fa.py:42-155` | No template links to `/auth/2fa/*`. `totp_*` keys now persist [R round-trip at `1f4cdc8`]. |
-| Event creation from template (SPOC) | WORKING [R at `1f4cdc8`] | `routes_spoc.py:119-297` | All settings now persist, e.g. a ₹500 fee and team 2–4 (`tests/test_integration_flow.py:56-83`) [R]. Presets only applied for seminar/workshop (`routes_spoc.py:154`). |
+| Event creation (SPOC) | WORKING [T, R headless at UPG-73] | `services_event_types.py`, `routes_spoc.py:224-540`, `templates/spoc/create_event.html`, `templates/spoc/review_event.html` | One 7-step wizard for 27 kinds of event in 8 groups (talks, competitions, cultural, sports, community, career, fests, custom), each with its own details; every event starts as a draft, is checked on a review page and published (or sent for approval) through the workflow; editing uses the same wizard; fees per participant group; fests hold sub-events (UPG-73, UPG-74). |
 | Approval workflow (unit → admin) | WORKING [R] | `services_workflow.py:130-217`, `routes_admin.py:913` | Admin approval sets `published`; SPOC must still move it to `registration_open` (`published` is a closed status, `routes_forms.py:86`). |
 | Registration form (custom fields) | WORKING [R at UPG-01] | `routes_forms.py:99-154` | Every form, template, seeded or SPOC-built, is normalised on read: each field has a name and the identity fields appear once. Answers are stored and shown on the responses page (UPG-45 fixed postgres mode). |
-| Form builder | WORKING (page load and save [R at BLK-04b]) | `routes_forms.py:353-435` | Only the event's owner (or admins) can edit the form; assigned staff can see responses (BLK-04). |
+| Form builder | WORKING [T, R at UPG-79] | `routes_forms.py:361-406`, `templates/coordinator/form_builder.html` | Only the event's owner (or admins) can edit the form; assigned staff can see responses (BLK-04). Back returns to the page that opened it; the page says which fields every form gets and what a team event adds; unsaved changes are guarded (UPG-79). The coordinator dashboard links coordinators to it, but they get 403 (UPG-68). |
 | Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:526-572`, `routes_auth.py:236` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
 | Waitlist | PARTLY BUILT [R at BLK-03] | `routes_forms.py`, `routes_waitlist.py:185-300`, `tasks/waitlist_tasks.py` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
 | Paid registration (Razorpay) | WORKING in tests [R at UPG-30] | `routes_payment.py`, `services_payments.py`, `routes_admin.py:486-560` | Server-side price, recorded orders, single-use payment IDs (BLK-03). A receipt email after payment. Capacity is re-checked at completion; a paid order that can't complete stays paid and is listed for the admin to complete or refund (Razorpay refund with confirmation). A signed `payment.captured` webhook completes registrations whose browser closed. Admins mark registrations refunded or cancelled, and those tickets stop checking in. Not yet run against Razorpay test mode (criterion 4). Cancelling a paid event offers "Refund all through Razorpay" (once per payment, failures retryable, emailed, audited; UPG-51, built, untested). |
 | Stripe payments | REMOVED | None (removed by UPG-14) | Removed in favor of Razorpay as the single payment provider. |
 | Coupons | NOT CONNECTED in the UI [C] | `routes_coupons.py`, `services_payments.py:36-73` | `create_order` applies a coupon validated on the server if one is sent (BLK-03), but no template or JS sends one or calls `/coupons/*`. Since UPG-36 each order holds a use when it's created (race-free), so `max_uses` holds even when payers check out together. |
-| Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:224-281` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:243`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. |
+| Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:224-281` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:243`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. Re-run 2026-10-12 [R, SQLite dev seed]: the owner is sent back "not your ticket" again, because `to_dict()` returns only `leadEmail` (UPG-69). The page is restyled on the brand (UPG-63). |
 | Camera QR check-in (coordinator, SPOC, HUD) | WORKING [R at UPG-02] | `routes_ticket.py:123-217`, `templates/coordinator/scan.html:238`, `templates/spoc/scan.html:454`, `templates/coordinator/scan_hud.html:340` | Every scanner posts the scanned ticket to `POST /ticket/api/checkin`: signed tokens only, assigned staff only (`can`, BLK-18), one payment rule (free/waived/paid in any case; a free event owes nothing), idempotent with the first check-in time, refuses another event's ticket and a ticket whose event is gone. Tested on the real database and against the page scripts; not yet driven with a phone camera. Scanner list shows events in every event-day status since UPG-43 (built, untested). |
 | Manual check-in (SPOC list) | WORKING on event day [R at BLK-05] | `routes_spoc.py:481-555` | Locked until event date (intended). Names read back since BLK-09; BLK-05's journey test checks in through this route on the real database. |
 | Kiosk check-in | WORKING in the root app [R at UPG-02] | `routes_checkin.py:236-349`, `templates/public/kiosk.html:700` | Login + coordinator role + `check_in` on the event; search returns no email or phone (BLK-12). Confirm after a name search uses the shared check-in (payment rule, "already checked in at HH:MM"); a USB scanner can scan tickets into the search box (UPG-02). Search results insert names with `innerHTML` (BLK-19). **The `functions/saptha_app` copy's kiosk has no login at all** (BLK-12); removed in Phase 5 (UPG-15, D-1). |
@@ -77,11 +77,11 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Judge scoring | PARTLY BUILT [R] | `routes_judge.py:158`, `templates/spoc/create_event.html:1117` | Criteria from the create form are objects; scoring crashes (`'dict' object has no attribute 'replace'` / 500) [R]. Works with string criteria [R]. |
 | Rounds, lock scoring, advance round | not re-run [C at `1f4cdc8`] | `routes_spoc.py` round panel / lock / advance | The `spoc_id` gate is now satisfiable (the field persists), so these are likely unblocked; not re-run. |
 | AI judge↔team matching | PARTLY BUILT [C] | `routes_ai_matching.py:87-116` | Reads `form_answers`/`team_name`, which persist since BLK-09/BLK-06 [R round-trip]; matching not re-run. |
-| Results + public leaderboard | WORKING [R] | `routes_spoc.py:800`, `routes_live.py:161` | Team and lead names read back since BLK-09 [R round-trip]; leaderboard not re-run. |
+| Results + public leaderboard | WORKING [T, R at UPG-84] | `services_leaderboard.py`, `routes_spoc.py:651`, `routes_live.py:27`, `routes_participant.py:258`, `routes_judge.py:360`, `routes_coordinator.py:426` | One ranking for every board, results publishing and exports: both score fields, 2 decimals, shared places for ties, cancelled and eliminated left out; the results page lists scored teams with unscored ones apart (UPG-84). |
 | Certificates | WORKING [R at UPG-06] | `utils_certificate.py:778`, `tasks/cert_tasks.py:25`, `routes_spoc.py:579,1894` | One issuing path for end-event and the bulk button: a PDF per attendee marked Present (winner certificates for the top three scores), a certificate ID and verify URL on the registration, an emailed PDF; never issued twice. PDFs are drawn again on download, not stored (UPG-17). |
 | Certificate public verification | WORKING [R at UPG-06] | `routes_verification.py:21-185` | `/verify/<certificate_id>` shows the issued certificate and offers the PDF; an unknown ID shows invalid (404). Certificates from API v1's `CertificateService` aren't found there (UPG-14). |
 | Feedback | WORKING [R at UPG-05] | `routes_feedback.py`, `routes_participant.py:290-340` | Opens after check-in; each attendee (lead or team member) answers once; the event's staff see the summary and export it (others 403). An optional rule requires each person's feedback before their certificate. |
-| Hackathon submission + kanban | WORKING (page load) [R] | `routes_hackathon.py:20-206` | Pipeline and project pages are public (`routes_hackathon.py:107,137`). |
+| Hackathon submission + kanban | WORKING (page load) [R] | `routes_hackathon.py:20-206` | Pipeline and project pages are public (`routes_hackathon.py:107,137`). Submitting should be refused [C]: the form posts without a CSRF token (UPG-66). |
 | Teams (create/join by code) | WORKING [R at UPG-08] | `routes_teams.py`, `routes_forms.py:156-225` | A team is one registration: the form asks for members within the event's limits, others join with the lead's invite code, the lead removes members and replaces the code; tickets, judging and check-in read its members. Joining is atomic on PostgreSQL since UPG-52 (built, untested). |
 | Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:772` | Session-level attendance not found. |
 | Announcements | not run [C] | `routes_spoc.py:696-771` | — |
@@ -90,7 +90,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | In-app notifications | BUILT (untested) [UPG-14] | `routes_notifications_v2.py:22-150` | Consolidated onto `notifications_v2` with dashboard feed (`/notifications/feed`), `mark_read`, and bulk operations; v1 removed. |
 | Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:534`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders read every event-day status since UPG-43 (built, untested); the ticket-email signature was fixed in UPG-31. |
 | Registration exports (CSV/Excel) | WORKING [R at UPG-03] | `services_export.py`, `routes_spoc.py:346,355`, `routes_coordinator.py:523,533`, `routes_admin.py:285` | One export for SPOC, coordinator and admin: lead name, USN, department, year, email, phone, team, members, attendance, payment, amount, score, rank, certificate ID. 403 without `export_data` on the event. Department and year are inferred from the profile, form or USN when not asked. |
-| Admin dashboard / analytics / report | WORKING (page load) [R] | `routes_admin.py:38,123,690` | Figures come from records that keep every field since BLK-06; not re-run. |
+| Admin dashboard / analytics / report | WORKING [T, R at UPG-83] | `routes_admin.py:44,143`, `routes_spoc.py:630`, `services_insights.py`, `templates/analytics/hub.html`, `static/js/se-echarts.js` | Analytics for the Super Admin (every event) and SPOCs (their events): period and category filters, an adjustable comparison of every event with a table view, trend, heatmap, funnel, revenue and no-shows on Apache ECharts; dashboards count real registrations (UPG-81, UPG-83). `/analytics` redirects by role. |
 | Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:429-467`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. 25 a page with search since UPG-19 (built, untested). |
 | Org units, scoped roles | WORKING [R at BLK-07] | `routes_admin.py:756-950` | Viewing never migrates; "Migrate roles" previews first, and migrated SuperAdmin and SPOC accounts keep access (BLK-07). |
 | Venues, rooms, conflict check | PARTLY BUILT [C] | `routes_admin.py:957-1153`, `routes_spoc.py:1138-1144`, `services_workflow.py:190-218` | Admin CRUD page loads [R]; the create-event form has no room field, so conflicts are only checked on edit/publish. |
@@ -98,7 +98,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | XP / gamification leaderboard | not re-run [C] | `routes_gamification.py` | `xp`/`badges` now persist [R round-trip at `1f4cdc8`]; leaderboard not re-run. |
 | Referrals | not re-run [C] | `routes_referrals.py:39` | Filters on document-only fields now apply (`tests/test_db_documents.py:95`); referral page not re-run. |
 | Teammate matchmaker | Demo only [C] | `routes_matchmaker.py:12,115` | Suggests hard-coded `MOCK_STUDENTS`. |
-| Online exams / proctoring | PARTLY BUILT [R at `1f4cdc8`] | `templates/spoc/proctor_monitor.html:1` | SPOC proctor page now 200 [R]; exam flow not run. |
+| Online exams / proctoring | PARTLY BUILT [R at `1f4cdc8`] | `templates/spoc/proctor_monitor.html:1` | SPOC proctor page now 200 [R]; exam flow not run. Submitting should be refused [C]: the form posts without a CSRF token (UPG-66). |
 | Privacy (DPDP export/delete/consent) | BUILT (untested) [R by hand at UPG-22] | `services_privacy.py`, `routes_compliance.py`, `templates/profile/dashboard.html` | Consent (time and notice version) required at registration and sign-up; own-data download and account deletion (30-day grace, then anonymised by the cron clean-up) from the profile page; privacy notice linked in the shared footer. Retention of payment and audit records: D-7. |
 | Audit log | WORKING [R at BLK-06a] | `utils.py` `log_action`, `templates/admin/audit_log.html` | The page shows the actor again (reads the document's `user` key, now preserved). The SQL `actorEmail` column holds the acting user since BLK-06a [R]. |
 | REST API v1 (JWT) + multi-tenant control plane | NOT CONNECTED [C] | `routes_api_v1.py` | Only the AI copilot endpoints are called from a template. Finance, analytics, evaluation, certificate and control-plane services are used only here. |
@@ -114,7 +114,11 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Error monitoring (Sentry) | BUILT (untested) [C at UPG-20] | `app.py:102` | On when `SENTRY_DSN` is set, no personal data, release = Cloud Run revision; documented in `.env.example`. Logs are JSON lines with `severity` in production (UPG-20). |
 | Database backups | BUILT (untested) [R by hand at UPG-21] | `scripts/backup_db.sh`, `scripts/restore_db.sh`, `.github/workflows/backup.yml` | Daily `pg_dump` to a private bucket with 30-day retention; restore into an empty database only; documented drill in `docs/DEPLOY.md` (UPG-21). |
 | Pagination on web lists | BUILT (untested) [R by hand at UPG-19] | `utils_pagination.py`, `templates/includes/pagination.html` | 25 a page with search on users, audit log, payments, the admin/SPOC/coordinator dashboards' events, event registrations and form responses; page and filters in the URL; users and the audit log page in SQL (UPG-19). |
-| Shared page layout | BUILT (untested) [R crawl at UPG-23] | `templates/layouts/document.html`, `templates/base_classic.html` | Every template a route renders extends the shared document (app layout, standalone or full-screen child); only unrendered templates remain standalone (UPG-15) (UPG-23). |
+| Shared page layout | BUILT (untested) [R crawl at UPG-23] | `templates/layouts/document.html`, `templates/base_classic.html` | Every template a route renders extends the shared document (app layout, standalone or full-screen child); only unrendered templates remain standalone (UPG-15) (UPG-23). Since UPG-63 (built, untested), signed-in pages use one app bar, page head and flash (`templates/base_classic.html`, `templates/includes/ui.html`), and status pages use `templates/layouts/status.html`. |
+| Portal design system | BUILT (untested) [R headless sweep at UPG-63] | `static/css/global.css` (v9), `static/js/chart-theme.js`, `docs/FRONTEND_CHECKLIST.md` | One navy-and-gold token set, light by default with an optional dark theme, one heading and one body font, shared components, and a validated chart palette. Every rendered template is on it (56 rebuilt on the app/status layout, 49 restyled in place). Checked at 1280px and 360px for every role (UPG-63). |
+| Super Admin control centre | BUILT (untested) [R dev server at UPG-75] | `routes_admin.py:1588-1920`, `templates/admin/{events,user_detail,registrations,system}.html` | Every event (approvals, any workflow status, hand to another SPOC), every account (add any role, edit role/department/category, deactivate; login refuses deactivated accounts), every registration (search, attendance, cancel), system status (integrations yes/no, failed jobs, retry), announcements in the app; dashboard "needs attention" (UPG-75). |
+| Coordinator view (Super Admin) | WORKING [T, R at UPG-80] | `routes_coordinator.py:80-125`, `templates/coordinator/dashboard.html` | Labelled "Coordinator view · Seen as Super Admin" with a way back to the admin dashboard; counts real registrations. Events are created only in the wizard; the old coordinator form and route are retired (UPG-78). |
+| Profile photos | BUILT (untested) [R headless at UPG-71] | `routes_profile.py:119-221`, `static/img/avatars/`, `templates/profile/dashboard.html` | Every role can upload a photo (validated and re-encoded as a 512px WebP) or choose one of 8 brand avatars; shown in the app bar and on the profile; a Google/Microsoft photo is used when nothing was chosen (UPG-71). |
 
 ---
 
@@ -145,7 +149,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Step | Result | Where it breaks |
 |---|---|---|
-| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, built, untested). |
+| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, built, untested). Since UPG-73: every kind of event, saved as a draft, then reviewed and published. |
 | Build form | Page OK [R] | — |
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
 | Manage registrations / waitlist | Partly [R] | Exports work since UPG-03 (CSV and Excel with every column); no waitlist screen. |
@@ -193,18 +197,18 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Event type | Works today | Done outside the app | Needed |
 |---|---|---|---|
-| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), feedback (UPG-05), calendar | — | — |
-| Workshop | Same as seminar; preset applied (`routes_spoc.py:154`) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
-| Guest lecture | Same as seminar (no own template) | Speaker invite and attendance list | Seminar items |
-| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08) | Rubric scoring, round shortlists | UPG-04 |
-| Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings (UPG-13, built, untested) | Whiteboard/Excel replaced | — |
-| Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06) | Slots, judging sheets | UPG-04 |
-| Club activities | Org units can be clubs (`routes_admin.py:812`) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
-| Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, built, untested) | Company communication | — |
-| FDPs | Faculty-only events: faculty register with designation and institution (UPG-12, built, untested); hours credited in the ledger (UPG-11) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
-| NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a | Volunteer hours register, unit rolls, hours certificates | UPG-11 |
-| Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R] | Same as seminar | Seminar items |
-| Conference / webinar | Templates exist; their forms work since UPG-01 [R]; faculty and external participants register (UPG-12, built, untested) | — | — |
+| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), feedback (UPG-05), calendar; Own type with speaker details (UPG-73) | — | — |
+| Workshop | Same as seminar; preset applied (`routes_spoc.py:154`); Own type with trainer, prerequisites, what to bring (UPG-73) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
+| Guest lecture | Same as seminar (no own template); Own type (UPG-73) | Speaker invite and attendance list | Seminar items |
+| Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08); Own type: duration, themes, judging criteria, rounds, prizes in the wizard (UPG-73) | Rubric scoring, round shortlists | UPG-04; + UPG-66 (the project submission form posts without a CSRF token) |
+| Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings (UPG-13, built, untested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74) | Whiteboard/Excel replaced | — |
+| Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06); Cultural competition (discipline, solo/group, time on stage) and show/concert types; a cultural fest holds them as sub-events (UPG-73, UPG-74) | Slots, judging sheets | UPG-04 |
+| Club activities | Org units can be clubs (`routes_admin.py:812`); Club activity type (UPG-73) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
+| Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, built, untested); Placement drive type with company and eligibility in the wizard (UPG-73) | Company communication | — |
+| FDPs | Faculty-only events: faculty register with designation and institution (UPG-12, built, untested); hours credited in the ledger (UPG-11); FDP type: faculty and external by default, resource persons, multi-day dates (UPG-73) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
+| NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a; NSS/NCC activity and social drive types with volunteer hours (UPG-73) | Volunteer hours register, unit rolls, hours certificates | UPG-11 |
+| Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R]; "My department only" visibility in the wizard; listings respect it (UPG-73) | Same as seminar | Seminar items |
+| Conference / webinar | Templates exist; their forms work since UPG-01 [R]; faculty and external participants register (UPG-12, built, untested); Own types; webinar is online with a meeting link shown to registrants (UPG-73) | — | — |
 
 ---
 
@@ -2232,6 +2236,675 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Effort:** S · **Depends on:** UPG-14, UPG-15 · **Risk:** low.
 - **Acceptance criteria:**
   1. Full pytest passes, except tests the owner retires under D-9.
+- **2026-10-11 baseline (UPG-63 start, Python 3.11, SQLite):** **20 failed, 791 passed, 1 skipped** at `0fd9f3a`. The 19 above plus `tests/test_seminar_e2e.py::test_seminar_full_lifecycle_and_certificate_guards`: `/participant/certificate/<reg>` now checks attendance before completion (`routes_participant.py:232` before `:238`), so a registrant who hasn't attended gets "Certificates are only issued to students who attended." and the test's `b"completed"` check fails. That is backend order, not a template. Running the suite rewrote `capacitor.config.json` again (restored).
+- **2026-10-12 (full pytest, Python 3.11, SQLite):** **19 failed, 848 passed, 1 skipped.** The 19 are: Stripe (2) and matchmaker (3), both D-9; seed safety (12); `test_seminar_full_lifecycle_and_certificate_guards` (certificate order) and `test_capacity_waitlist_and_promotion_guard` (promoted waitlist entry gets no ticket). `tests/test_no_html_injection.py` now passes, and so does `tests/test_admin_users.py`. Running the suite still rewrites `capacitor.config.json` (restored).
+- **Progress 2026-10-11 (frontend part only; the owner's UPG-63 run keeps backend files unchanged):** the `maxScore` escaping bug is fixed in `templates/judge/teams.html:201-206` (`escapeHtml(maxScore)`), so `test_no_html_injection.py` should pass again (not re-run: the owner asked for no test runs in this session). Still open and **blocked by the frontend-only rule**: the waitlist promotion bugs (`routes_waitlist.auto_promote`), the certificate guard order, the seed-safety test's script list; the Stripe and matchmaker tests wait on D-9.
+
+#### UPG-63 — Portal-wide design system and visual consistency
+- **Status:** DONE (full pytest 2026-10-13: 892 passed, 1 skipped, 21 failed = the 19 UPG-62 failures, UPG-90's time-of-day failure and one order-dependent new home test, since fixed; no regression from this item)
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed)
+- **Problem:** [R, headless Chromium screenshots of every role at `0fd9f3a`] The portal looks like several products. The home page hero is navy and gold, but its lower half is a near-black "aurora" theme with purple, blue, green and amber glows; the student dashboard is a light LMS with royal-blue accents; the SPOC, coordinator and admin dashboards are dark consoles where some text is unreadable (navy headings on dark navy on `/coordinator/dashboard`; near-white text on white table rows on `/admin/dashboard`); `base_classic.html` pages render dark because `static/js/global.js:14` defaults the theme to dark, and they load no Bootstrap CSS though their content uses its grid. Counted at `0fd9f3a`: 57 templates define their own `:root` palette, 88 have an inline `<style>`, about 30 don't load `static/css/global.css`, headings use three fonts (Plus Jakarta Sans, Outfit, Inter), there are about ten different page headers, and the logo appears in four treatments. `global.js` turns **every** `.alert` on a page into a toast and deletes it, so static guidance (modal hints, form notes) disappears into a pile of toasts (13 on `/admin/dashboard`). `static/css/mobile.css` gives every link a 44px minimum height and `inline-flex` on phones (text links break lines) and is loaded only by the home page, while `base_classic.html` includes the mobile bottom bar it styles.
+- **Who benefits:** every user of every role; the university's credibility.
+- **What to build (frontend only: `templates/`, `static/`; no route, service, schema or auth change):**
+  1. One design system in `static/css/global.css` (v9): tokens from the official lockup (`static/snpsu-logo.jpg`: navy `#00185e`, gold `#c69d67`), neutral light surfaces, one heading and one body font, semantic status colours, spacing, radius, control heights, motion; Bootstrap's CSS variables mapped to the brand; the optional dark theme only swaps tokens.
+  2. Logo: the reversed transparent logo is used only on navy, through a tight crop of the same artwork (`static/img/snpsu-logo-reversed.png`; the original keeps 35% empty padding); light surfaces show it on a navy tile.
+  3. Shared pieces: `includes/ui.html` (app bar with role links, page header, stat tile, status badge, empty state), `includes/flash_messages.html`, `base_classic.html` rebuilt as the app layout on the app bar; mobile bottom bar styled in `global.css`.
+  4. Every rendered template moved onto the system, area by area: public, participant, SPOC, coordinator, judge, admin, developer/marketing/other, tickets and certificates; page palettes replaced by tokens; dark consoles turned light; retired decorative layers (aurora, liquid blobs, ripple) removed.
+  5. Responsive and accessibility pass at 1440, 1280, 1024, 768, 390 and 360px.
+- **Inventory:** 129 templates (123 pages and partials rendered by 179 GET routes; 6 never rendered, UPG-64), 8 roles (anonymous, Student/Participant, Club SPOC, Event Coordinator, Volunteer, Judge, Super Admin, and the tenant/marketing pages). Per-template status: `docs/FRONTEND_CHECKLIST.md`.
+- **Files touched:** `static/css/global.css`, `static/css/{analytics,developer,marketing}.css`, `static/js/global.js`, `static/js/command-palette.js`, `static/js/chart-theme.js` (new), `static/js/notifications.js` (new), page scripts under `static/js/pages/` and `static/js/handlers/` (colours, labels, null-safe charts), `static/js/proctor.js`, `static/sw.js` (cache version), `static/img/snpsu-logo-reversed.png` (new), `templates/**` (114 files, 3 of them new), `docs/FRONTEND_CHECKLIST.md` (new). `static/css/mobile.css` is no longer loaded by any page; its rules moved into `global.css` §33 and the file was left in place.
+- **Effort:** XL · **Depends on:** UPG-23 (shared document) · **Risk:** lost page-specific behaviour; every page keeps its ids, `data-h-*` handlers, forms and URLs, and each area is checked in headless Chromium before and after.
+- **Acceptance criteria:**
+  1. Test: every template a route renders loads `/static/css/global.css` (directly or through `base_classic.html`) and none defines its own `:root` colour palette.
+  2. Test: no template uses the retired decorative classes (`aurora-*`, `liquid-blob`, `grid-overlay`) or the `Outfit` font.
+  3. Test: each role's dashboard and key pages render the shared app bar with `/static/img/snpsu-logo-reversed.png`.
+  4. Test: flash messages render through `includes/flash_messages.html` (`data-flash`); headless: a static `.alert` stays on the page after `global.js` runs.
+  5. Headless: at 1280, 768, 390 and 360px no key page scrolls horizontally, logs a page error or misses a `/static/` file.
+  6. Full pytest shows no new failure against the 2026-10-11 baseline (20 failed, UPG-62).
+- **What was built (2026-10-11 to 2026-10-12, development-only run; no pytest at the owner's request):**
+  - **Design system v9:** `static/css/global.css:1-2519`, 41 numbered sections.
+    - Tokens are at §1 (`:26`) and dark tokens at §2 (`:223`). `--brand-ink` keeps navy text legible in dark mode.
+    - The logo is §3 (`:267`), the app bar §6 (`:422`), page head §7, stat tiles §9, buttons §10 and status pages §37.
+    - §33 (`:2301`) is the mobile bar. On phones it hides the app bar's duplicated workspace links (`body:has(.mobile-nav-bar) .app-bar__link--ws`).
+    - Focus: `--focus-ring` (`:67`) is two-tone, and `:focus-visible` uses `--brand-gold-700` (at least 3:1 on white and on navy).
+  - **Light by default:** `static/js/global.js:12-15` uses dark only when chosen (`ds-theme`). Flash conversion touches only `[data-flash]`/`.flash`, so static `.alert` guidance stays.
+  - **Shared pieces:**
+    - `templates/includes/ui.html:18` is `app_bar`, with role links, the admin "More" menu (which now includes Email diagnostics) and the user chip. Next to it are `page_head` (`:114`), `stat_tile` (`:131`), `status_badge` (`:142`) and `empty_state` (`:158`).
+    - `templates/includes/flash_messages.html` uses `data-flash` and `striptags`.
+    - `templates/layouts/status.html` is the status card.
+    - `templates/base_classic.html:35` is the app bar, `:61-69` the page head and `:72` the flash include.
+    - `templates/components/mobile_nav.html:1-30` shows role-aware links (SPOC, coordinator, volunteer, judge, admin); students and visitors keep the original links.
+  - **Charts:**
+    - `static/js/chart-theme.js:11` holds the palette, validated with the dataviz validator in light mode.
+    - Admin (`static/js/pages/admin__dashboard.js`, `static/js/pages/admin__analytics.js`), SPOC and analytics charts assign hues in a fixed order, fold categories beyond five into "Other", use one hue per series and a single-hue ramp for magnitude, and use status colours only for status.
+  - **Pages:** every rendered template is on the system; per-template status is in `docs/FRONTEND_CHECKLIST.md`. 56 were rebuilt on the app or status layout, including:
+    - the admin dashboard (sidebar removed; its links are in the app bar), analytics, audit log, org units, venues, sponsors and send email;
+    - the coordinator dashboard, scanner selector, helpdesk, form responses, AI matching and AI results;
+    - the judge panel and scoring;
+    - the four certificate-verification pages;
+    - the status pages.
+
+    49 were restyled on their own layout, including:
+    - the full-screen scanners (camera stays dark, chrome on navy and gold);
+    - the ticket and wallet pass (QR codes eager-loaded, unscaled);
+    - the A4 report;
+    - the form builder;
+    - the marketing pages.
+  - **Campus photo shown in full (2026-10-12, owner request):**
+    - `profile_hero` (`templates/includes/ui.html:182`, `static/css/global.css` §43) shows the whole `static/campus.jpg` at its own 1347:533 ratio. It used to be a 132px strip under a 90% navy overlay.
+    - It's served as WebP (`static/img/campus.webp` 158 KB, `campus-800.webp` 59 KB for phones; the JPEG is 826 KB and remains the fallback).
+    - It's used on the student dashboard and on `/profile/`, which every role uses.
+  - **Inaccurate or invented content removed (frontend only):**
+    - The wallet pass (`templates/tickets/digital_wallet.html`) invented "Gate 1", "General Open", "Main Venue", "Delegate" and a fake "HMAC: Verified-2026-Saptha". It now shows "Not assigned" or "—", and the hash row only appears when a hash exists.
+    - The verification pages' "Generated / Delivered / Claimed" tracker was hard-coded; it's removed.
+    - `templates/public/verify_success.html` (the legacy registration-ID path) no longer claims a cryptographic signature that path never checks.
+    - The scan HUD's fallback total of 100 is gone.
+    - The student dashboard's personal-looking fallbacks (name, personal email, USN, batch) now show "—".
+    - The feedback page's NPS badge only appears when there are responses.
+  - **Accessibility:**
+    - Emoji used as UI were replaced with labelled icons.
+    - The helpdesk's payment choice and the feedback stars are keyboard-reachable.
+    - Live regions were added to scan results and copy toasts.
+    - Tables got `scope` and abbreviation titles.
+    - Confetti is skipped for reduced motion.
+  - **Regressions found when the suite was run on 2026-10-12, all fixed:**
+    - The verify page's "Certificate Verified" text (`test_certificates.py`).
+    - The toast built from an HTML string (`static/js/global.js`, now DOM nodes).
+    - `notifications.js` relying on `safeUrl` from another file (it now checks links itself). Both of these are `test_no_html_injection.py`.
+  - **Existing tests kept intact (checked without running pytest):** every string literal the tests assert (289 positive, 59 negative) was compared with the old and new templates. The 12 pages whose wording the redesign had changed now carry the exact text again:
+    - "Verification Failed", "QR Scanner & Check-in", "RFID Scan Terminal", "Student PASS", "Ticket Valid";
+    - "Registration Closed", "Campus Wayfinder", "SapthaEvent Wayfinder", "SapthaEvent LiveStream";
+    - "Schedule &amp; Timetable Optimizer", "Hackathon Innovation Pipeline", "Campus Venues &amp; Room Bookings".
+
+    No test was changed.
+  - **Checked [R] in headless Chromium with seeded data on 2026-10-12:**
+    - 45 pages at 1280px across six roles: all 200, no page or console error, no failed `/static/` file.
+    - 48 pages at 360px: none scrolls horizontally.
+    - Dark mode on four dashboards.
+    - Render check: 125/132 with a stand-in context; the 7 others need real data and were loaded in Chromium.
+    - Every edited script passes `node --check`.
+- **Known exceptions to criterion 1** (a test written as stated will flag them). These rendered templates still declare `:root` variables:
+  - Aliases that point at tokens: `coordinator/ai_matching`, `coordinator/results_summary`, `coordinator/form_builder`, `participant/ticket`, `public/verify_certificate`, `public/verify_success`.
+  - Device screens with a dark camera surface: `spoc/scan`, `spoc/nfc_scanner`.
+  - The per-event theme override on `tickets/digital_wallet`.
+  - The A4 report's heading font: `admin/report` doesn't load `global.css`, so it prints standalone.
+  - Medal colours on the projector board `live/leaderboard` (gold, silver and bronze).
+  - The glass-panel effect variables in `gamification/leaderboard`.
+
+  The test needs to allow token aliases and these cases, or the pages need scoped variables. That's a decision for whoever writes the test, not a reason to drop the criterion.
+- **To test later:** criteria 1–6. For criterion 6, run the full pytest against the 2026-10-11 baseline (20 failed); templates now render through `base_classic.html`, so tests that match old page text (for example "Super Admin HQ", "Club SPOC HQ", "Entry Granted", "Certificate Claimed") may need checking against the new wording rather than weakening. Also, by hand:
+  - the admin "More" menu on touch devices;
+  - the role-aware bottom bar for each role;
+  - the confetti and copy-link behaviour on the verification pages;
+  - printing the ticket, the wallet pass and the A4 report.
+
+#### UPG-64 — Six templates are still never rendered
+- **Status:** TODO
+- **Last verified:** 2026-10-11, commit `0fd9f3a`
+- **Problem:** Found starting UPG-63 [C, every `render_template`/`include`/`extends` and every Python string checked]: `templates/admin/leaderboard.html`, `templates/includes/chatbot.html`, `templates/participant/success.html`, `templates/payment/success.html`, `templates/public/login.html` and `templates/public/register.html` are not rendered or included anywhere. UPG-15 removed 17 such templates; these remain. They are full HTML documents outside the shared layout with their own palettes, so they would look wrong if anything rendered them again. UPG-63 leaves them unchanged.
+- **What to build:** delete them, or wire them up if a route should render them.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: every file under `templates/` is rendered by a route or included/extended by a rendered template.
+
+#### UPG-65 — Fabricated figures and simulated features on live pages
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found during UPG-63 [C, templates read; R, pages loaded]. Several pages show numbers or behaviour that no data or backend supports:
+  - **Hard-coded figures:**
+    - ~~Home page credibility figures, shown as count-ups (`data-count="2400"` and others), and the hero's "₹0" entry-fee tile~~: removed in UPG-86, with the invented testimonials and the "Saptha 2026 – The Grand College Fest" card.
+    - The platform landing page's "50+ colleges, 10K+, 500K+, 99.9%" (`templates/marketing/landing.html`).
+    - ~~The analytics KPI trend text "+12%", "+28%", "+45%", "+2.4%"~~: removed with the page in UPG-83; the new analytics computes its comparisons.
+    - The SLA page's metrics and mock uptime ticks (`templates/compliance/sla.html`).
+  - **Simulated features:**
+    - The live-streams page's simulated viewer and like counts and its bot chat lines (`templates/public/live_streams.html`, `static/js/pages/public__live_streams.js`).
+    - Comment and share buttons on reels that do nothing (`templates/public/reels.html`).
+    - The NFC terminal's 1.2 s artificial "RFID parsing" delay and its "Using emulator" alert, though there is no emulator (`templates/spoc/nfc_scanner.html`).
+  - **Backend default:** `routes_participant.py:176` falls back to `or 20` XP when a student has none.
+  - **Hard-coded contact:** `support@snpsu.edu.in` is written into `templates/public/verify_success.html`, `templates/public/verify_certificate.html` and `chatbot_routes.py:180`. A `SUPPORT_EMAIL` setting already reaches every template as `support_email` (`app.py:446`), but these pages don't use it, and the address itself is unconfirmed.
+  - **Event page defaults** (`app.py`, `event_details`): an event without a venue shows "SNPSU Campus", and one without limits shows 200 seats. These are invented values, left for this item.
+  - **Already removed in UPG-63 (frontend only):** the wallet pass's invented values, the certificate status tracker, the student dashboard's fake fallbacks and push-notification stub, and the scan HUD's total of 100.
+- **Who benefits:** the university's credibility; visitors and students who read the numbers as real.
+- **What to build:** either compute each figure from data (counts already exist in the admin dashboard queries) or remove it. Give demo-only pages an owner decision (D-8 covers the reels and streams pages). Move the support address to configuration after confirming it.
+- **Effort:** M · **Depends on:** D-8 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the home page and the platform landing page show no figure that isn't computed from the database or configuration.
+  2. Test: no template has a hard-coded `data-count` figure or the strings "99.9%", "500K+" or "Verified-2026".
+  3. Test: the verification pages and the chatbot take the support address from `SUPPORT_EMAIL`.
+
+#### UPG-66 — Two forms post without a CSRF token
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found during UPG-63 [C]. `templates/public/exam_interface.html:49` (`examForm`, also submitted by `static/js/proctor.js:99`) and `templates/hackathon/submit_project.html:29` post plain forms with no `csrf_token` field. `CSRFProtect` is on for the whole app (`app.py:146`), and the fetch helper (`static/js/pages/includes__csrf_fetch.js`) only covers `fetch()`. So both submissions should be refused with 400: an exam that is submitted (or force-submitted by the proctor) is lost, and a hackathon project can't be submitted.
+- **Who benefits:** students taking proctored exams; hackathon teams.
+- **What to build:** add `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` to both forms (frontend only), with a test.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: posting each form as rendered (token included) succeeds, and posting without the token is refused.
+  2. Test: every `<form method="POST">` in `templates/` contains a `csrf_token` field, except the routes that are exempt.
+
+#### UPG-67 — The coordinator scanner throws a script error when it is locked
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found during UPG-63 [R, headless Chromium]. `templates/coordinator/scan.html` calls `startCamera()` on `DOMContentLoaded` even when `scanning_open` is false. In that state the camera elements (`#cam-placeholder`, `#cam-error`) aren't rendered, so the page logs "Cannot read properties of null (reading 'style')" on every locked event.
+- **What to build:** only start the camera when the scanner view exists (frontend only).
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Headless: `/coordinator/scan/<event>` for an event on another day logs no page error.
+
+#### UPG-68 — The coordinator dashboard links to a form builder coordinators can't open
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found during UPG-63 [R]. "Build registration form" on each event card of `/coordinator/dashboard` links to `/forms/builder/<event>`. That URL answers 403 for the seeded Event Coordinator (`coord1`) on their own assigned event, while the Club SPOC can open it. Either coordinators should be allowed to build forms (a permission change) or the button shouldn't be shown to them (a template change). That is an owner decision.
+- **Effort:** S · **Depends on:** owner decision · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: for each role that sees the button, the link answers 200; roles that can't use it don't see it.
+
+#### UPG-69 — The legacy certificate check and the digital ticket lose the lead's name and email on the SQL adapter
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` [R, SQLite dev database from `seed.py --all`]
+- **Problem:** Found during UPG-63. `registrations` `document(id).get().to_dict()` returns `leadEmail` and `leadName` but not `lead_email` and `lead_name`. As a result:
+  - `/ticket/<reg_id>` sends the student who owns the registration back to the dashboard with "Unauthorised — this is not your ticket." The check is `routes_ticket.py:243`, `is_lead = reg.get('lead_email') == user_email`.
+  - `/verify/<reg_id>` greets an empty name.
+  - `/verify/<reg_id>/preview` prints "Participant" (`routes_verification.py:103`).
+
+  This contradicts the "Digital ticket page" inventory note that the key reads back correctly at `1f4cdc8`. Also on this path:
+  - The legacy `/verify/<reg_id>` route (`routes_verification.py:36-57`) checks attendance only, with no signature. The page now says exactly that (UPG-63).
+  - `services_certificate.py:46-50` documents `generate_verification_hash` as HMAC-SHA256, but it is a truncated SHA-256 of the payload with the secret appended.
+- **What to build:** return the snake_case keys from the adapter for registrations, or read both forms in the routes. Decide whether the legacy registration-ID verification should stay. Make the certificate hash a real HMAC, or correct its documentation.
+- **Effort:** M · **Depends on:** none · **Risk:** medium (touches the adapter that many routes use).
+- **Acceptance criteria:**
+  1. Test: on SQLite and PostgreSQL, a student opens `/ticket/<own reg_id>` (200) and sees their name.
+  2. Test: `/verify/<present reg_id>` and its preview show the lead's name.
+
+#### UPG-70 — The confetti library's worker is blocked by the CSP
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found during UPG-63 [R]. `canvas-confetti` on the certificate verification pages creates a `blob:` worker, and the CSP's `script-src`/`worker-src` refuse it. The browser console shows a CSP violation on every successful verification. The celebration is decorative; UPG-63 brands it and skips it for reduced motion.
+- **What to build:** pass `useWorker: false` (frontend), allow `worker-src blob:` (CSP change), or drop the effect.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Headless: `/verify/<valid id>` logs no CSP violation.
+
+#### UPG-71 — A profile photo for every role
+- **Status:** DONE (full pytest 2026-10-13: 892 passed, 1 skipped, 21 failed = the 19 UPG-62 failures, UPG-90's time-of-day failure and one order-dependent new home test, since fixed; no regression from this item)
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed)
+- **Problem:** Owner request during UPG-63. Every account showed only initials, and nobody could add a photo or choose an image. Google/Microsoft sign-in already stored the provider's `avatar_url` (`auth_oauth.py:232`), but no page showed it. `/profile/update` (`routes_profile.py:62`) accepts only name, phone and USN.
+- **Who benefits:** every role; a recognisable face or image in the app bar and on the profile.
+- **Owner decision (2026-10-12):** allow a small backend change, outside UPG-63's frontend-only rule: photo upload plus preset avatars.
+- **What was built:**
+  - **Route:** `POST /profile/avatar` (`routes_profile.py:160`) has three actions:
+    - `preset` saves `users.avatar = 'preset:<key>'` for one of the 8 keys in `AVATAR_PRESETS` (`:119`).
+    - `upload` checks the file is JPEG, PNG or WebP, at most 2 MB and 6000 px (`_square_webp`, `:135`). It crops to 512×512 and re-encodes as WebP, which drops EXIF data such as location and camera. Then it stores it through the existing `utils_storage.upload_file`, as `avatars/<hash of the email>-<random>.webp`, so the address isn't in the public name.
+    - `remove` goes back to initials.
+    - It needs a signed-in session and CSRF, writes an audit line (`PROFILE_PHOTO_UPDATED`), and needs no schema change, because `users.extra_json` keeps the field.
+  - **Display:**
+    - `avatar_value` (`:124`) picks the chosen photo, then a provider photo (https only), then initials.
+    - A blueprint context processor (`:210`) gives every template `current_avatar`. It reads the user once per session and then caches it, so the login code is unchanged.
+  - **Presets:** 8 brand avatars in `static/img/avatars/` (campus, cap, book, code, trophy, music, sport, star), on the validated chart palette.
+  - **Templates:**
+    - `avatar` macro (`templates/includes/ui.html:169`, CSS `static/css/global.css` §42), used in the app bar for every role, on the `profile_hero` and on the profile page.
+    - "Profile photo" card at `/profile/#photo`, with the upload form, a keyboard-reachable preset radio grid and a remove button (`templates/profile/dashboard.html`).
+    - Camera button on the hero linking to it.
+  - **Checked [R] on 2026-10-12** in headless Chromium as a student on the SQLite dev database:
+    - A preset showed in the app bar.
+    - A text file was refused ("isn't an image we can read").
+    - A 1600×1000 JPEG with EXIF was stored as a 512×512 WebP with no EXIF, and showed on the dashboard hero.
+    - Remove went back to initials.
+    - No page errors.
+    - `/profile/` answered 200 with the picker for ClubSPOC, EventCoordinator, Judge and SuperAdmin.
+- **Tests (written, not run, at the owner's request):** `tests/test_profile_avatar.py` covers criteria 1–4.
+- **To test later:**
+  - Run `tests/test_profile_avatar.py` and the full suite.
+  - Upload to S3 in staging. The bucket must allow public-read on `avatars/`, as for certificates.
+  - Set `MAX_CONTENT_LENGTH`: the route reads at most 2 MB, but Flask has no app-wide request size limit, so the whole body is received first.
+- **Effort:** M · **Depends on:** UPG-17 (storage), UPG-63 (shared components) · **Risk:** low; uploaded images are re-encoded, never served as uploaded.
+- **Acceptance criteria:**
+  1. Test: choosing a preset saves `preset:<key>` and the app bar shows that avatar; an unknown key is refused.
+  2. Test: an upload is stored as a 512×512 WebP without EXIF under `avatars/`, with no email address in the path. A non-image, a GIF and a file over 2 MB are refused and nothing is stored.
+  3. Test: removing the photo shows initials again; a provider photo is used only when nothing was chosen, and only over https.
+  4. Test: ClubSPOC, EventCoordinator and Judge accounts can set a photo; a signed-out request changes nothing.
+
+#### UPG-72 — The first page view loads twice when the service worker installs
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found during UPG-71 [R, headless Chromium navigation log]. `static/js/pages/includes__pwa_head.js:82-85` reloads the page on `controllerchange`. On a first visit the new service worker claims the page, so the page the person just opened loads a second time. That costs a whole extra page load, and anything typed in the meantime is lost.
+- **What to build:** reload only when an *existing* controller is replaced (an update the person accepted), not when the first one takes control.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Headless: a first visit to `/profile/` in a fresh browser profile navigates once.
+
+#### UPG-73 — Event creation that fits every kind of event
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed); full pytest 19 failed (the UPG-62 set), 848 passed, 1 skipped
+- **Problem:** Found 2026-10-12 [C, `routes_spoc.py:137-374`, `templates/spoc/create_event.html`, `services_templates.py`; R, headless].
+  - **Types:**
+    - The wizard offers four types (Hackathon, Seminar, Workshop, Custom). `create_event` applies a preset only for seminar and workshop; anything else is saved as `event_type='hackathon'`. The catalogue's sports, cultural, conference and webinar presets are never used.
+    - Guest lectures, FDPs, NSS/NCC, social drives, club activities, quizzes, debates, coding contests, paper presentations, project expos, esports, athletics, career fairs and exhibitions have no entry point. Placement is a checkbox inside step 3.
+  - **Lost or invented data:**
+    - The wizard collects a map link, prize pool and sponsors that the route never saves.
+    - No end date or time is stored, so multi-day events aren't possible.
+    - `event_mode`, `end_datetime`, `total_rounds` and `max_teams` exist on the model but are never set.
+    - The organiser's phone is saved as `9999999999` with a group link of `#`.
+    - The banner falls back to an external placeholder image.
+    - The category list sends `Tech` and `Workshop`, which aren't model categories.
+  - **No validation:** an empty title, a date in the past, a deadline after the event, or team minimum > maximum are all accepted, and errors show as raw exception text.
+  - **Publishing:** competitions go live immediately, while seminars and workshops start as drafts.
+  - **Visibility:** the public catalogue (`app.py:747`) lists every event, including drafts, private (link-only), department-only and cancelled ones. The home page hides drafts but not private events.
+  - **Fees:** there's one fee for everyone; faculty and external participants can't be charged differently.
+- **Who benefits:** SPOCs creating any event, from a club meeting to a multi-day tournament; students, who see correct and complete event pages and never see unpublished events.
+- **Owner decisions (2026-10-12):** every new event is a **draft** the SPOC reviews and then publishes (or sends for approval where the unit requires it); fests hold sub-events (UPG-74); backend changes allowed; tests written and run.
+- **What to build:**
+  1. **Type registry:** one registry of event types (`services_event_types.py`), grouped as talks & learning, competitions, cultural, sports, community & clubs, career, fests and custom. Each type has:
+     - a default category, participation, team size, mode and audience;
+     - whether it's judged;
+     - the catalogue preset it uses (workflow, evaluation and certificate settings, but never the preset's ticket prices);
+     - its own required details: sport, format and gender for tournaments; discipline, solo/group and time limit for cultural; and so on.
+  2. **The wizard rebuilt** around the registry: type → basics → when & where (mode; start and end date/time; registration window; venue/room or online link) → who can take part (audience, years, capacity, team rules, fees per group) → type details and competition setup (rounds, judging criteria, prizes, submission) → form, team & extras (coordinators, sponsors, contact, activity points) → review. Every field the wizard shows is saved.
+  3. **`create_event` rebuilt** on the registry:
+     - Validation returns every error at once, without losing what was typed.
+     - Every event is saved as `draft`; there are no placeholder phone, link or banner values.
+     - End date/time and mode are stored.
+     - Fees are kept per participant group.
+  4. **Review page** (`/spoc/event/<id>/review`) showing what participants will see and a checklist of what's missing. **Publish** goes through `WorkflowEngine` (draft → published → registration open, or → pending approval for unit events, with the existing room-conflict guard).
+  5. The edit page covers the new fields.
+  6. The public catalogue and home page show only published, publicly visible events; draft and private events stay hidden except to their owners.
+  7. Checkout charges the fee for the registrant's group (`server_price`), falling back to the regular fee.
+- **Effort:** XL · **Depends on:** UPG-01, UPG-12, UPG-13, UPG-57 · **Risk:** medium; event creation feeds registration, payments, check-in and certificates.
+- **Acceptance criteria:**
+  1. Test: every type in the registry can be created from the wizard's form; the event stores its type, category, mode, dates, audience, team rules, fees and type details, and its status is `draft`.
+  2. Test: invalid input (missing title, deadline after the event, end before start, team minimum above maximum, a sport missing for a tournament, an http online link) is refused with every message shown and nothing saved. *(Changed while building: a past start date is a **warning**, not an error. Recording a past event for attendance, hours or certificates is a real need, and `tests/test_cron.py` creates past events.)*
+  3. Test: the map link, prize pool, sponsors and contact details the wizard sends are stored; no event gets `9999999999`, `#` or an external placeholder banner.
+  4. Test: publishing a central event opens registration; a unit event goes to `pending_approval`; a registrant can't register while the event is a draft.
+  5. Test: `/events` and `/` list neither drafts nor private events; the owner can still open a draft's review page.
+  6. Test: with a faculty fee set, a faculty registrant is charged that fee and a student the regular fee.
+- **What was built:**
+  - **Type registry:** `services_event_types.py` holds 27 kinds of event in 8 groups (`GROUPS` `:24`, `TYPES` `:59`), each with its defaults, judged or not, preset, and own details.
+    - **Learning:** seminar, guest lecture, workshop, conference, webinar, FDP, orientation.
+    - **Competitions:** hackathon, coding contest, quiz, paper presentation, project expo, debate, case/business plan.
+    - **Cultural:** cultural competition, show/concert.
+    - **Sports:** tournament, athletics, e-sports.
+    - **Community, clubs & exhibitions:** NSS/NCC, social drive, club activity, exhibition.
+    - **Career:** placement drive, career fair.
+    - **Big events:** fest.
+    - **Anything else:** custom.
+
+    `parse_form` (`:287`) checks everything at once and returns errors and warnings. Each type's fields are named `detail_<type>__<field>`.
+  - **Wizard:** `templates/spoc/create_event.html` and `static/js/pages/spoc__create_event.js` (no `innerHTML`). Seven steps:
+    1. kind of event, and whether it's part of a fest;
+    2. basics, with the AI description writer;
+    3. when and where: mode, start and end date/time, registration window, room or venue, map and online links;
+    4. who can take part: audience, years, seats, team rules, fees per group;
+    5. details and judging: the type's fields, placement, rounds, criteria, prizes, submission;
+    6. form and extras: extra questions, coordinators, contact, activity points and hours, sponsors;
+    7. check and save.
+
+    It works without JavaScript, and a failed save shows every message with the typed values kept.
+  - **Routes:**
+    - `create_event` (`routes_spoc.py:224`) always saves a `draft`. It keeps the room-conflict check and form seeding, applies the preset's workflow, evaluation, notification and certificate settings (never its ticket prices), and takes the contact phone from the SPOC's profile; there are no placeholders. `_owner_unit` (`:146`) uses a unit only if it exists.
+    - `review_event` (`:394`) shows what participants will see plus a checklist (`_review_checklist` `:361`).
+    - `event_setup` (`:422`) edits in the same wizard (`form_values` `services_event_types.py:602`).
+    - `publish_event` (`:485`) goes draft → published → registration open through `WorkflowEngine`, or to `pending_approval` in a unit.
+    - The console shows "Review & publish" and "Edit" on each event (`templates/spoc/dashboard.html`).
+  - **Listings:** `is_listed` (`services_event_types.py:582`) is used by the home page (`app.py:634`), the public calendar and the catalogue (`app.py:774`), which used to list drafts, private and cancelled events.
+  - **Fees per group:** `fee_for` (`services_payments.py:77`) is used by registration's paid/free decision (`routes_forms.py`) and by `server_price` (`:90`) on order creation, checkout, simulated payment and the price preview (`routes_payment.py`).
+  - **Public page** (`templates/public/event_details.html`) shows the kind, mode, date range, type details, fees per group and sponsors; the meeting link appears only to registered participants.
+  - **Found and fixed on the way** (both blocked acceptance criteria):
+    - A SPOC whose `department` isn't an `org_units` id (the seeded SPOC, "Computer Science & Engineering") could not save any event: foreign-key error, in the old route too.
+    - Every catalogue preset defines `stages` without `pending_approval`, so a unit event using a preset could never be sent for approval, nor published. `services_workflow.py:129` now lets any staged draft go to `pending_approval`.
+- **Tests:** `tests/test_event_creation.py` (36 tests, 46 cases) covers criteria 1–6. One existing helper's setup changed: `tests/test_integration_flow.py::_create_event` now checks that the event is a draft, then puts it in the live `active` state those 33 callers were written against. No assertion was changed or removed.
+- **Checked [R]** in headless Chromium as the seeded SPOC:
+  - invalid sports tournament → 4 messages, title kept;
+  - fixed → draft → review → publish → listed in `/events`;
+  - fest → "Add an event to this fest" → cultural competition inside it → the fest's public programme lists it;
+  - wizard at 360px with no horizontal scroll;
+  - no page errors.
+
+#### UPG-74 — Fests: one big event that holds many sub-events
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed)
+- **Problem:** Owner request 2026-10-12. A college fest, such as a cultural fest with 20 competitions or a sports meet with ten sports, has to be created today as unrelated events. Nothing groups them, shows the fest's programme, or keeps the competitions inside the fest's dates.
+- **What to build:**
+  - A **fest** type (theme, kind, dates, venue, banner; no registration of its own).
+  - "Add an event to this fest" from the fest's review page opens the wizard with the fest set as parent. Sub-events must fall inside the fest's dates and inherit its unit.
+  - The fest's public page lists its published sub-events by day. Each sub-event links back to its fest, and the SPOC's review page lists the sub-events with their status and a publish action.
+  - Only the fest's owner (or someone who can edit it) can add sub-events.
+- **Effort:** L · **Depends on:** UPG-73 · **Risk:** medium.
+- **Acceptance criteria:**
+  1. Test: a fest is created as a draft without registration; a sub-event created with the fest as parent stores `parent_event_id`, and its dates must fall within the fest's.
+  2. Test: someone who can't edit the fest can't add a sub-event to it.
+  3. Test: the fest's public page lists its published sub-events and not its drafts; a sub-event's page links to its fest.
+- **What was built:**
+  - **The `fest` type** (`services_event_types.py`) has a kind (Cultural, Technical, Sports meet, Management, Multi-category) and a theme, and no registration.
+  - **Adding events:** the fest's review page has "Add an event to this fest" (`/spoc/create_event?parent=<id>`, also "Part of a fest?" in step 1).
+    - `_fest_for` (`routes_spoc.py:174`) allows it only for someone who can edit the fest.
+    - `parse_form` keeps the sub-event within the fest's dates, refuses a fest inside a fest, and the sub-event inherits the fest's unit, department and visibility.
+  - **The fest's review page** lists its events with their status.
+  - **The fest's public page** shows a programme of published events by day, with no registration bar. Each event shows "Part of <fest>".
+  - **Ids:** `id_variants` (`services_event_types.py:561`) matches the parent id with or without dashes, since links use both forms.
+- **Tests:** `tests/test_event_creation.py` covers criteria 1–3, including opening the fest by its dash-less id.
+
+
+#### UPG-75 — Super Admin control centre: see and control everything
+- **Status:** DONE (full pytest 2026-10-13: 892 passed, 1 skipped, 21 failed = the 19 UPG-62 failures, UPG-90's time-of-day failure and one order-dependent new home test, since fixed; no regression from this item)
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed). Its own 9 tests pass; the full pytest was deferred by the owner ("test the full thing at the last").
+- **Problem:** Owner request 2026-10-12: the Super Admin is the person with access to everything, and the pages must let them run the whole portal. Found [C, `routes_admin.py`, `templates/admin/*`]:
+  - Access itself is not the gap: `role_required` and `can()` already let `SuperAdmin` through everywhere.
+  - **No overview:**
+    - There is no page listing **every event**, in every status and from every SPOC.
+    - Events waiting for approval are reachable only from the org-units page (`/admin/events/approve/<id>`).
+    - An admin can't change an event's status or hand it to another SPOC.
+    - The dashboard's "New event" posts to the old `/coordinator/create_event`, which bypasses the UPG-73 draft flow.
+  - **Users:** the page can list, import students and resend set-password links, but can't **add a user of any role**, **change a role, name, department or category**, or **deactivate** someone. `is_active` is never checked at login (`routes_auth.py`, `auth_oauth.py`), so deactivation would do nothing.
+  - **Registrations:** there's no way to find a registration across events, or to mark attendance or cancel from one place.
+  - **System:** nothing shows whether email, payments, storage and sign-in are configured, or lists background jobs that failed (`outbox`).
+  - **Announcements:** reach email only, never the in-app bell.
+- **Who benefits:** the Super Admin, and everyone who waits on them (approvals, fixes, account problems).
+- **What to build:**
+  1. **All events** (`/admin/events`), with search, filters (status, kind) and pages:
+     - an approval queue on top (approve, or return to draft);
+     - per event: review, edit in the wizard, change status through `WorkflowEngine`, hand to another SPOC, registrations, refunds, delete;
+     - "New event" opens the UPG-73 wizard.
+  2. **Users:** add a user of any role (they get a set-password email); a page per user to change name, phone, role, department and category, deactivate or reactivate, and see their registrations and events. An admin can't remove their own Super Admin role or deactivate themselves. Login refuses deactivated accounts (password and Google/Microsoft).
+  3. **Registrations** (`/admin/registrations`): search every registration by name, email, USN, team or id, with filters (event, status, attendance); mark present or absent, cancel with a reason, open the ticket.
+  4. **System** (`/admin/system`): database check; which integrations are configured (yes/no only, never values); background jobs by status, with failed ones listed and a "retry now".
+  5. **Announcements:** the send-email page can also post an in-app notification.
+  6. **Dashboard and navigation:** a "needs attention" panel (approvals waiting, failed jobs, drafts) and the admin menu covering every admin page.
+- **Effort:** L · **Depends on:** UPG-19, UPG-40, UPG-73 · **Risk:** medium (account state and login).
+- **Acceptance criteria:**
+  1. Test: `/admin/events` lists events of every status and SPOC; a non-admin gets 403. An admin can approve a pending event, change a status through the workflow, and hand an event to another SPOC (only to a ClubSPOC account).
+  2. Test: an admin adds a user of a given role (set-password email sent), changes their role and department, and deactivates them; a deactivated account can't log in, and reactivating restores login. An admin can't deactivate or demote themselves.
+  3. Test: `/admin/registrations` finds a registration by email and USN across events; marking attendance and cancelling with a reason are saved and logged.
+  4. Test: `/admin/system` shows integration status without any secret value; failed background jobs are listed.
+  5. Test: an announcement with "also in-app" creates a notification for each recipient.
+- **What was built:**
+  - **All events:** `all_events` (`routes_admin.py:1588`, `templates/admin/events.html`).
+    - Every event of every status and owner, with status counts, search, status and kind filters, and pages.
+    - Approval queue on top: approve and publish, or send back to draft. The existing approve route now returns to the page it came from.
+    - Per event:
+      - review, edit in the wizard, registrations, refunds, delete (with a confirm);
+      - "move to" any status the event's workflow allows, including a preset's own stages (`set_event_status` `:1615`);
+      - hand to another Club SPOC (`set_event_owner` `:1641`; refused for other roles).
+    - "New event" opens the UPG-73 wizard; the dashboard's old modal posted to `/coordinator/create_event`.
+  - **Users:** `add_user` (`:1668`) adds any of the five roles the login accepts, with category and department; the account is locked until its set-password link is used. `user_detail` (`:1706`, `templates/admin/user_detail.html`):
+    - edit name, phone, role, department and category;
+    - deactivate or reactivate;
+    - see their registrations and the events they own;
+    - resend the set-password link, open the academic record, delete.
+
+    The users list gains a role filter (including "Deactivated"), an Add form, a badge and an Open link. The row markup the existing tests read is unchanged.
+
+    An admin can't deactivate, demote or delete themselves (`delete_user` `:452` gained the guard). Login refuses deactivated accounts, both with a password (`routes_auth.py:158`) and through Google/Microsoft (`auth_oauth.py:223`).
+  - **Registrations:** `all_registrations` (`:1773`, `templates/admin/registrations.html`) searches by name, email, USN, team or id across events, with event, status and attendance filters. It can set attendance (`set_attendance` `:1807`) and cancel with a required reason (`cancel_registration` `:1828`); both are logged.
+  - **System:** `system_status` (`:1889`, `templates/admin/system.html`) shows a database check and totals, 11 integrations as set up / not set up (`_integrations` `:1852`; names only, never values), background jobs by status with failed and waiting ones and their errors, and "retry due jobs now" (`services_outbox.retry_due`).
+  - **Announcements:** the send-email page has "Send by: email, in-app notification or both" (`:1020`), using `create_notification`.
+  - **Dashboard and navigation:**
+    - The dashboard gains a "Needs your attention" panel (approvals waiting, failed jobs, drafts, deactivated accounts) and 15 "Everything you can manage" cards.
+    - The admin app bar is Admin · Events · Users · Registrations, plus a More menu with every other admin page (`templates/includes/ui.html`). The phone bar has the same four links.
+- **Tests:** `tests/test_admin_control.py`, 9 tests covering criteria 1–5 (they pass when run on their own).
+- **Checked [R]** on the dev server as the seeded Super Admin: every page 200; add user → edit role → deactivate → login refused; self-deactivate refused; hand-over to a student refused, to a SPOC done; registration found and marked present; in-app announcement to 2 judges; the system page contains no key values.
+- **Known limits:** deactivation stops new logins only. Someone already logged in stays in until their session ends (UPG-76). The admin acts as themselves everywhere; there is no "log in as another user" (deliberately: every action stays in the audit log under the admin's name).
+- **To test later:** the full pytest.
+
+#### UPG-76 — A deactivated account keeps its open session
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found building UPG-75 [C]. Deactivating an account (UPG-75) is checked only at login. A session that's already open (up to its lifetime, or 30 days with "remember me") keeps working, because `login_required` (`utils.py`) doesn't look at the account again.
+- **What to build:** on deactivation, delete that user's server-side sessions (the `sessions` table), or have `login_required` refuse a session whose account is inactive (cached per request).
+- **Effort:** S · **Depends on:** UPG-75 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a logged-in user who is then deactivated is sent to the login page on their next request.
+
+#### UPG-77 — The admin's announcement email puts the message into HTML unescaped
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found building UPG-75 [C]. `send_bulk_email` (`routes_admin.py`) builds the email body with `f'...{message}</div>'`, so whatever the admin types is sent as HTML. Only Super Admins can send, but a pasted `<` or a stray tag breaks the email, and nothing stops markup.
+- **What to build:** escape the message (`markupsafe.escape`) and keep the line breaks.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a message containing `<b>` arrives as the text `<b>`, and line breaks are kept.
+
+#### UPG-78 — Coordinators still create events through an old form that skips the draft flow
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed) [T, R dev server]
+- **Problem:** Found building UPG-75 [C].
+  - `templates/coordinator/dashboard.html`'s "Create event" modal posted to `/coordinator/create_event`, which created live events without UPG-73's types, validation, draft status or review.
+  - The admin dashboard still held a copy of that modal (no longer opened, and missing a closing `</div>`, so the AI copilot modal sat inside it).
+  - The wizard itself is `ClubSPOC`-only (`role_required`; Super Admin passes everywhere).
+- **Owner decision (2026-10-12):** "keep the one and remove the other": the wizard stays, the old form goes. Coordinators ask their SPOC.
+- **Scope note:** the original criterion ("no route creates an event except through `parse_form`") also covers `/api/v1/events` and `/api/v1/events/from-template`, which are API behaviour, not this form. They are split out as UPG-82.
+- **Built:**
+  - `routes_coordinator.py:160-172`: `/coordinator/create_event` no longer saves anything. A SPOC or Super Admin is sent to `/spoc/create_event`; a coordinator goes back with a message to ask their SPOC.
+  - `templates/coordinator/dashboard.html`: the old 4-step modal is removed; "Create event" links to the wizard and is shown only to roles that can use it.
+  - `templates/admin/dashboard.html`: the dead `#createEventModal` is removed, which also un-nests the AI copilot modal.
+- **Effort:** S · **Depends on:** UPG-73 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: posting to `/coordinator/create_event` as Super Admin, SPOC or coordinator creates no event; the first two are sent to the wizard [T `tests/test_builder_and_coordinator_view.py::test_the_old_coordinator_create_route_no_longer_creates_events`].
+  2. Test: the coordinator dashboard (as admin and as coordinator) and the admin dashboard have no form posting to the old route; the admin's "Create event" links to the wizard and a coordinator sees none [T `::test_dashboards_have_no_old_create_form_and_send_creators_to_the_wizard`].
+
+#### UPG-79 — The form builder's Back goes to the wrong page
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed) [T, R dev server]
+- **Problem:** Owner report 2026-10-12 (screenshot). In `templates/coordinator/form_builder.html` Back was hard-coded: `/spoc/dashboard` for a ClubSPOC, `/coordinator/dashboard` for everyone else. A Super Admin who opened the builder from an event's review page or `/admin/events` landed on the coordinator dashboard instead. Checking the builder against what registration actually does also found:
+  - "Load Simple Template" added an optional "Team Name" to every form, solo or team. Team events already get a required team name and member rows from `team_fields`, so solo forms gained a stray question and team names could be skipped.
+  - An event with no saved form opened to an empty canvas, though registrants see the standard form.
+  - Nothing said that name, email, phone and USN are always added (`normalise_fields`) or that team rows come from the event's team size.
+  - Leaving with unsaved changes lost them silently.
+  - A refused save (403/404 answer `{'error': …}`) showed "Error: undefined".
+  - The per-field buttons were icons with only a `title`.
+- **Built:**
+  - `routes_forms.py:386-408` `_builder_back_url`: Back is the same-site page that opened the builder (`?next=` or the referrer). Other hosts, `//`, backslashes, non-http schemes and the builder itself are ignored. "Same site" means `BASE_URL`, not the request's Host (changed at UPG-86 after `tests/test_public_links.py` flagged `request.host`, BLK-16). The fallback is `/admin/events` for a Super Admin, the event's review page for a SPOC, and the coordinator dashboard otherwise.
+  - `templates/coordinator/form_builder.html`:
+    - a note on what every form gets, plus the team size for team events;
+    - the standard template without a team-name field, preloaded when there's no saved form;
+    - the AI generator told whether the event is a team event;
+    - a leave-page warning when there are unsaved changes;
+    - the server's message shown when a save is refused;
+    - `aria-label`s on the field buttons.
+- **Effort:** S · **Depends on:** UPG-01, UPG-08 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: Back returns to the referring page or `?next=` [T `tests/test_builder_and_coordinator_view.py::test_builder_back_returns_to_the_page_that_opened_it`]; never to another site [T `::test_builder_back_never_leaves_the_site`, 4 cases]; without an origin, it goes to the role's page for the event [T `::test_builder_back_without_an_origin_goes_to_the_roles_page_for_the_event`].
+  2. Test: the builder states what every form gets and the team size for team events only; the template has no optional team name; the unsaved-changes guard and preload are on the page [T `::test_builder_says_what_every_form_gets_and_team_rows_come_from_the_event`].
+
+#### UPG-80 — A Super Admin's "Coordinator view" looks like a second admin home
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed) [T, R dev server]
+- **Problem:** Owner report 2026-10-12 (screenshots). `/coordinator/dashboard`, opened from the admin's "Coordinator view", was titled "Welcome, <name> (Super Admin)" under an "Admin console" bar with Admin highlighted, and had its own create-event form (UPG-78). It read as an older admin dashboard rather than the coordinators' page. Its "Total registrations" added up the cached `registration_count` on each event. That counter can be stale: it showed 658, then 13 after another page reconciled the counters (`routes_spoc.py:2085-2100`).
+- **Built:**
+  - `templates/coordinator/dashboard.html`: for a Super Admin the page and app bar say "Coordinator view · Seen as Super Admin", the Admin link isn't marked current, and the callout points back to the admin dashboard. Coordinators still see "Welcome, <name>".
+  - `routes_coordinator.py:100-108`: the totals and each card's participants count the event's registrations, which the route already reads.
+- **Effort:** S · **Depends on:** UPG-63 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: as Super Admin the page is titled "Coordinator view", not "Welcome, …", and the Admin link isn't current; a coordinator still sees "Welcome, <name>" [T `tests/test_builder_and_coordinator_view.py::test_super_admin_coordinator_view_is_labelled_as_that_view`].
+  2. Test: a stale counter (645) isn't shown; the real count is [T `::test_coordinator_view_counts_registrations_not_the_cached_counter`].
+
+#### UPG-81 — The admin dashboard and analytics add up a cached registration counter that can be stale
+- **Status:** DONE (with UPG-83)
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed) [T, R dev server]
+- **Problem:** Found doing UPG-80 [C, owner screenshot]. The admin dashboard (`routes_admin.py:58`) and analytics (`:1085`) summed each event's `registration_count`, with revenue as that count times the fee. Seeded values, and any path that doesn't reconcile the counter, leave it wrong: the owner's dashboard showed 658 registrations and ₹7,550 while the events held 13. The SPOC analytics page rewrites the counters from real registrations (`routes_spoc.py:2085-2100`), so the figures changed depending on which page was opened last. The SPOC dashboard did the same (it counted only when the counter was missing).
+- **Built:**
+  - `routes_admin.py:44-75`: the admin dashboard counts each event's registrations and adds up `amount_paid` (refunds excluded).
+  - `routes_spoc.py:54-90`: the SPOC dashboard does the same.
+  - The analytics pages count from the records (UPG-83).
+- **Acceptance criteria:**
+  1. Test: with a stale counter (645), the admin dashboard's chart and the SPOC dashboard's breakdown show the real 5 [T `tests/test_analytics_and_leaderboards.py::test_dashboards_count_registrations_not_the_cached_counter`]; the analytics page counts real registrations and paid revenue [T `::test_admin_analytics_counts_real_registrations_and_filters`, `::test_build_counts_registrations_not_the_cached_counter_and_compares_periods`].
+
+#### UPG-82 — The API creates live events that skip the draft and review flow
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Split from UPG-78 [C]. `POST /api/v1/events` (`routes_api_v1.py:270-310`) saves `status: 'active'` from a few fields, and `POST /api/v1/events/from-template` goes through `services_event.create_event` (`:165`, also `active`). Neither uses `services_event_types.parse_form` or starts as a draft. Changing them is API behaviour, so it needs the owner's decision.
+- **What to build:** either validate API input with `parse_form` and save a draft, or remove the endpoints if nothing uses them.
+- **Effort:** S–M · **Depends on:** UPG-73, owner decision · **Risk:** medium (API clients).
+- **Acceptance criteria:**
+  1. Test: an event created through the API starts as a draft and is refused with the same errors as the wizard.
+
+
+#### UPG-83 — Analytics pages that are correct, comparable and adjustable
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed) [T, R dev server, seeded 14 events / 1,087 registrations]
+- **Problem:** Owner request 2026-10-12: the analytics look jumbled; use the best tools, make a multi-event bar chart that can be adjusted and viewed, and fix the leaderboard (UPG-84). Found [R, C]:
+  - **Wrong figures on `/admin/analytics`:**
+    - The funnel's "Confirmed" was always 0 and the no-show rate 0%: it compared `'Confirmed'` with the stored `'confirmed'`.
+    - "Active events" counted only the legacy `active` status, not the UPG-43 live statuses.
+    - A revenue bar was labelled "Unknown".
+  - **No way to compare events:** fixed top-10 bar charts with titles cut at 22 characters, no period or category filter, no table.
+  - **A second analytics page:** `/analytics`, open to SPOCs and coordinators, showed every event with made-up trend text ("+12% vs last semester", UPG-65). Its `/analytics/api/stats` (names and payments of the 20 latest registrations, portal-wide) answered any logged-in user, students included.
+  - **No analytics for SPOCs** beyond two dashboard charts. The SPOC dashboard's "Attendance overview" labelled everyone not present as "Pending", including no-shows.
+  - **Errors:** `/spoc/api/stats` answered 500 whenever someone was marked present without a check-in time (`routes_spoc.py:2108`). The feedback star chart used a red-to-green scale for an ordered rating, and its cards were hard-coded white in dark mode.
+  - **Charts:** Chart.js 4.4 with no zoom, no table view and no download; colours not checked across all pairs.
+- **Built:**
+  - `services_insights.py`: one `build()` that counts everything from the registrations (UPG-81) and returns:
+    - headline figures with the previous period beside them (computed, not invented);
+    - one row per event (registered, confirmed, attended, no-show, not held yet, waitlisted, pending, cancelled, attendance rate, capacity filled, revenue);
+    - a daily or weekly trend in total and by category, a weekday × hour heatmap, the funnel, categories, participant types and no-shows.
+
+    Statuses are compared case-insensitively and the workflow statuses are folded in; refunds don't count as revenue.
+  - `templates/analytics/hub.html` and `static/js/pages/analytics__hub.js`, served at `/admin/analytics` (every event, `routes_admin.py:143`) and the new `/spoc/analytics` (only events the SPOC may view, `routes_spoc.py:630`):
+    - filters for period (7, 30, 90 days, 12 months, all time) and category;
+    - **Compare events:** pick up to four measures; sort by registrations, attendance, attendance rate, no-shows, revenue, date or name; show top 10, top 25 or all; side by side, or a breakdown whose parts add up to the registrations; search; a slider and scroll for long lists; click an event to open it; a sortable table view of every event;
+    - the trend with a zoom slider and a total or by-category split, the heatmap, the funnel with shares, revenue and no-show charts (status colours with text labels and a 30% line), and participant types.
+  - `static/js/se-echarts.js`: Apache ECharts 5.5.1 (jsDelivr, SRI-pinned):
+    - theme from the design tokens, redrawn when the dark-mode toggle flips;
+    - four categorical hues that pass the dataviz validator on **every** pair in light and dark mode (the old six did not: teal/cyan and blue/purple were too close), with a fifth series folding into a grey "Other";
+    - a validated single-hue ramp for magnitude;
+    - "Show as table" (built from DOM nodes) and "Download PNG" on every chart, with shorter labels and fewer ticks on phones.
+  - **Dashboards:** the admin dashboard's charts (most registrations, events by category) and the SPOC dashboard's charts (per-event breakdown, attendance overview) are on ECharts with real counts. The feedback star chart uses one hue with counts and shares. Chart.js and `chart-theme.js` are no longer loaded anywhere.
+  - **`/analytics` retired** (`routes_analytics.py:13`): it redirects the Super Admin to `/admin/analytics` and a SPOC to `/spoc/analytics`. Its stats API answers only a Super Admin. Removed: `templates/analytics/dashboard.html`, `static/js/analytics.js`, `static/css/analytics.css`, `templates/admin/analytics.html`, `static/js/pages/admin__analytics.js`. The SPOC top bar gains "Analytics".
+  - `/spoc/api/stats` sorts check-in times that may be missing.
+- **Effort:** L · **Depends on:** UPG-43, UPG-63 · **Risk:** medium (dashboards stream all registrations; fine at university scale, see UPG-19 for very large data).
+- **Acceptance criteria:**
+  1. Test: figures fold status case and workflow statuses; the period comparison, refunds, held/not-held split and the breakdown add up [T `tests/test_analytics_and_leaderboards.py::test_registration_states_fold_case_and_new_statuses`, `::test_build_counts_registrations_not_the_cached_counter_and_compares_periods`, `::test_build_filters_by_category_and_all_time`, `::test_heatmap_and_no_shows`].
+  2. Test: `/admin/analytics` counts real registrations and applies the period and category filters; a SPOC gets 403 there; `/spoc/analytics` shows only the SPOC's events [T `::test_admin_analytics_counts_real_registrations_and_filters`, `::test_spoc_analytics_shows_only_their_events`].
+  3. Test: `/analytics` redirects by role and its stats API refuses students and SPOCs [T `::test_the_old_analytics_page_is_retired`]; `/spoc/api/stats` answers 200 with a present registration that has no check-in time [T `::test_spoc_live_stats_survive_attendance_without_a_checkin_time`].
+  4. Every value the new scripts put into HTML is escaped [T `tests/test_no_html_injection.py`, run against an index that includes the new files and the deletions; it passes once they are committed].
+
+#### UPG-84 — Leaderboards disagree with each other and drop the evaluation engine's scores
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed) [T, R dev server]
+- **Problem:** Owner request 2026-10-12 ("fix the leaderboard"). Found [R, C]:
+  - **Seven copies of the ranking**, each different: the projector board (`routes_participant.py:257`), the live board (`routes_live.py:27`), the judges' board (`routes_judge.py:357`), the SPOC results (`routes_spoc.py:627`), results publishing (`routes_coordinator.py:422`), the AI report (`routes_spoc.py:1076`) and the event report export (`services_export.py:47-58`).
+  - **Wrong scores:**
+    - All seven read only a judge's `total`. Scores saved through the evaluation engine (`services_evaluation.py:147`) store `final_score`, so they counted as 0 and dragged teams down.
+    - The projector board and results publishing cut scores to whole numbers (`safe_int`), so the published winners and certificate ranks could differ from the results page. The same team showed 89.3, 89.7 and 89.67 on three pages.
+  - **Ties:** equal scores got different places, and the boards labelled the podium by position, so a tie for 2nd showed one team as "3rd place".
+  - **SPOC results page:** listed every registration (180 rows, unscored and cancelled teams at 0).
+- **Built:**
+  - `services_leaderboard.py`: `rank()` / `for_event()` read `total`, `final_score` or `score`; average across judges to 2 decimals; give equal scores a shared place (1, 2, 2, 4) ordered by the innovation/impact/clarity/presentation criteria and then name; leave out eliminated and cancelled registrations; and optionally list unscored teams last without a place. `score_text()` is the one display format.
+  - All seven places use it. Results publishing writes the 2-decimal score and the shared place, and notifies everyone placed 1st to 3rd.
+  - **Boards:** the projector, live and judges' boards show "Joint 2nd place" and "=2" for shared places. The SPOC results page has score tiles, a podium, a score bar per team, only scored teams in the standings, and unscored teams in a collapsed "Not scored yet" list, plus a link to the projector board.
+- **Effort:** M · **Depends on:** UPG-08 · **Risk:** medium (published ranks and certificates).
+- **Acceptance criteria:**
+  1. Test: a team's score reads both fields and keeps decimals; equal scores share a place; cancelled and eliminated teams are left out; ties follow the criteria, then the name [T `tests/test_analytics_and_leaderboards.py::test_score_reads_both_fields_and_keeps_decimals`, `::test_ranking_shares_places_and_leaves_out_cancelled_and_eliminated`, `::test_ties_are_ordered_by_criteria_then_name`].
+  2. Test: the projector board, live board and SPOC results show the same scores and places, the evaluation engine's `final_score` included [T `::test_every_board_shows_the_same_scores_and_places`].
+  3. Test: publishing results stores the 2-decimal score and shared place, and every team sharing a top-3 place is a winner [T `::test_publishing_results_keeps_decimals_and_shared_places`].
+
+#### UPG-85 — AI summaries after publishing results never run
+- **Status:** TODO
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Problem:** Found testing UPG-84 [T, traceback in the test log]. `routes_coordinator.py` starts a thread for `_bg_summaries`, which calls `current_app.app_context()` inside the thread. There is no app context there, so it raises `RuntimeError: Working outside of application context` every time, and the summaries the flash message promises ("AI summaries generating in background") are never made.
+- **What to build:** pass the real app object into the thread (`current_app._get_current_object()`) or queue it through the outbox (UPG-18); show the message only when the job was queued.
+- **Effort:** S · **Depends on:** UPG-18 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: after publishing, the summary job runs (or is queued) without an error.
+
+
+#### UPG-86 — A production home page with the university's real details
+- **Status:** DONE
+- **Last verified:** 2026-10-12, working tree on `0fd9f3a` (not committed) [T, R dev server at 1280 and 390 px]
+- **Problem:** Owner request 2026-10-12: use snpsu.edu.in for real data (Instagram and the rest); remove the entry-fee display at the top, the "60 seconds" steps and the "0 Registrations"; align everything, because the home page is going to production. Found [R, C]:
+  - **Hero card:** an invented "Saptha 2026 – The Grand College Fest", a fixed "₹0 Entry Fee", and "Registrations" that read a field the route never sets, so it was always 0.
+  - **Invented content:** a "Register in Under 60 Seconds" section, three made-up student testimonials, and count-ups of 2400 / 150 / 98% / 8500 (UPG-65).
+  - **Event cards:** each showed the cached counter as "N registered" (UPG-81).
+  - **Footer:**
+    - The Instagram, LinkedIn and YouTube buttons linked to `#`.
+    - One phone number differed from the university's site.
+    - Four university links (`/about-us/`, `/departments/`, `/news-events/`, `/human-resource-development-hrd/`) only reach the site's catch-all page: same content as a made-up address.
+    - A second, shared footer was drawn under the page's own.
+  - **Navbar:** "Dashboard" sent SPOCs and Super Admins to the coordinator page.
+  - **Scripts:** the hero category chips called `filterByCategory`, which was never defined. The page showed every script error, and a "Clicked event" debug message on each card click, as a pop-up to visitors.
+  - **Language switcher:** it can put back the old hero text ("Saptha — The Grand College Fest", `i18n.py:90`).
+- **Built:**
+  - `university_info.py`: the university's facts, taken from snpsu.edu.in on 2026-10-12. Each link was checked to open a real page:
+    - name and tagline, address, phones, admissions email, WhatsApp;
+    - the five official social accounts;
+    - the four schools with their programmes as listed;
+    - six highlights (hospital, 19 international partners, industry MoUs, ISO 9001:2015, Centre for Innovation Leadership, arts and sport);
+    - eight university links.
+
+    Placement claims are left out. `app.py:735-747` passes it, the next three open events and the open count.
+  - `templates/index.html`:
+    - **hero:** the full campus photograph (`static/img/campus.webp`, smaller on phones), "Every campus event. One place to join in.", calls to Explore events and Event calendar, and a **Coming up** card listing the next three events open for registration (date chip, category, venue; each opens the event) with category chips that work;
+    - **events section:** unchanged apart from the copy and the cached count;
+    - **gallery:** the university's photos, with links to its gallery and Instagram;
+    - **About the university:** school cards, highlights and a source note;
+    - **Follow SNPSU:** branded cards for Instagram, YouTube, LinkedIn, Facebook and X;
+    - **footer:** real social links, portal links (including certificate verification), the eight university links and tappable phone, email and WhatsApp contacts, with the shared footer turned off for this page;
+    - navbar links Events, Calendar and About SNPSU, with each role's own dashboard; `sameAs` added to the organisation's structured data; data-i18n removed from the changed hero text.
+  - `static/js/pages/index.js`: `filterByCategory()` added, script errors go to the console only, and the event dialog no longer shows a registration count.
+- **Effort:** M · **Depends on:** UPG-63 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the hero has no entry fee or registrations figure, and the page has no 60-second steps, testimonials, count-ups or cached counts [T `tests/test_home_page.py::test_nothing_invented_is_left_on_the_home_page`].
+  2. Test: "Coming up" lists the next open events and leaves out past and closed ones [T `::test_coming_up_lists_the_next_open_events_from_the_database`].
+  3. Test: every official account, university link, school, the tagline and email appear; no social button points to `#`; the four dead links are gone; structured data lists the accounts [T `::test_real_university_details_and_links`].
+  4. Test: one footer; the hero chips' function exists; no error pop-ups [T `::test_one_footer_and_working_category_chips`].
+
+
+#### UPG-87 — Home page: no calendar, and "Coming up" stays inside its card
+- **Status:** DONE
+- **Last verified:** 2026-10-13, working tree on `0fd9f3a` (not committed) [T, R at 1440 px with long titles]
+- **Problem:** Owner report 2026-10-13 (screenshot):
+  - The calendar isn't wanted on the home page (navbar, hero button, footer link).
+  - Long event titles and venues pushed the "Coming up" rows past the right edge of the card: the list's grid track sized itself to its content (`min-width: auto`).
+- **Built:** `templates/index.html`:
+  - the calendar links are removed; the hero's second button goes to "About SNPSU";
+  - the list is one `minmax(0, 1fr)` column, rows and card have `min-width: 0`, and titles and venues end with an ellipsis.
+- **Acceptance criteria:**
+  1. Test: the home page has no link to `/calendar` [T `tests/test_home_page.py::test_nothing_invented_is_left_on_the_home_page`]; checked in the browser at 1440 px.
+
+#### UPG-88 — A clean, realistic demo dataset
+- **Status:** DONE
+- **Last verified:** 2026-10-13, working tree on `0fd9f3a` (not committed) [R: every role's pages load on the seeded database, 0 problems]
+- **Problem:** Owner request 2026-10-13: clean all the data and create proper demo data for the final submission: two events a day for the next 20 days, 3 SPOCs, students and the rest, with a PDF of the details. The local database held months of test leftovers: probe organisations, stale counters (UPG-81), half-made events.
+- **Built:** `seed_showcase.py`, guarded by `seed_safety.guard()` (refuses production-looking databases). It:
+  - empties every table except `alembic_version` and recreates the default organisation and central unit;
+  - creates the people: 1 Super Admin, 3 Club SPOCs (Technical & Careers, Cultural, Sports), 3 coordinators, 4 judges, 1 volunteer and 60 students with USN, programme, year and batch;
+  - creates the campus, 4 buildings and 13 rooms through the admin pages;
+  - creates **40 upcoming events (2 a day for 20 days)** and **8 finished events** through the SPOC wizard and publishing, with room bookings, coordinators and judges appointed through the staff route;
+  - registers students through the real form (answering each event's own questions; teams with members). Paid events are recorded as paid by UPI, because the demo has no payment gateway;
+  - for finished events, writes attendance and judges' scores, publishes results through the shared ranking, issues certificates and collects feedback through the student form;
+  - posts two in-app announcements, sets one spelling for registration statuses, and leaves the outbox, login attempts and sessions empty.
+
+  Email, WhatsApp, push and AI are off for the run. Every account uses `@snpsu.test`, a reserved domain that never delivers. Passwords come from `seed_password` and are printed once. The owner's database was backed up first, to `saptha_fallback.backup-2026-10-12-before-demo.db` (gitignored).
+- **Result on the owner's database:** 72 accounts, 48 events and 544 registrations. Every upcoming registration has a ticket; 4 judged events have results; certificates and feedback are in place. A demo guide PDF (accounts, the 20-day schedule, results and a tour per role) was generated outside git.
+- **Acceptance criteria:**
+  1. Run: the seed ends without errors and every registration it attempts is saved [R, `scratchpad/real_seed.log`: no "not registered" lines].
+  2. Run: logged in as each role, every main page answers 200 with no script error [R, 25 pages].
+
+#### UPG-89 — Repository clean-up and README
+- **Status:** DONE
+- **Last verified:** 2026-10-13, working tree on `0fd9f3a` (not committed)
+- **Problem:** Owner request 2026-10-13: remove the PDFs and old documents from git, keep only what is needed, and rewrite the README.
+- **Built:**
+  - **Removed from git** (owner's choice "old reports + plans"; all of it stays in git history):
+    - the 7 PDFs and the `reports/` folder;
+    - the generated HTML reports (`MARKETING_REPORT.html`, `SapthaEvent_Project_Report.html`, `scratch_audit_out.html`) and `test_event_id.txt`;
+    - the root planning notes (`CURRENT_ARCHITECTURE`, `DATABASE_EVOLUTION_PLAN`, `GAP_ANALYSIS`, `GEMINI`, `HANDOFF`, `MOBILE_UX_PLAN`, `PHASED_IMPLEMENTATION_PLAN`, `SECURITY_HARDENING_PLAN`, `UNIVERSAL_EVENT_ENGINE_PLAN`, `upgrade-log`);
+    - the 115 unrelated `.agents/` skill files.
+  - **Kept:** `README.md`, `CLAUDE.md`, `AGENTS.md`, `privacy_policy.md`, `.github/` and `docs/`.
+  - **`.gitignore`:** now ignores `*.pdf`, `*.docx`, `*.pptx`, `static/uploads/` (user uploads) and `test_event_id.txt`.
+  - **`README.md`:** rewritten: why the portal exists, what each role can do, highlights, how to run it and the one-command demo, how it is built, tests, links to the docs, and the licence unchanged.
+- **Acceptance criteria:**
+  1. `git ls-files` lists no `.pdf`, `.docx` or `.pptx` file, nothing under `reports/` or `.agents/`, and none of the removed notes.
+
+
+#### UPG-90 — Events turn "completed" up to 5½ hours late, and a test fails after midnight
+- **Status:** TODO
+- **Last verified:** 2026-10-13, working tree on `0fd9f3a`
+- **Problem:** Found in the full run at UPG-89 [T]. `scheduler_enhanced.py:149` compares event dates, which are local (IST), with today's date in **UTC**. Between 00:00 and 05:30 IST, yesterday's events don't count as past yet. `tests/test_event_maintenance.py::test_event_auto_transition_job` builds "yesterday" from the local date, so it fails in that window (seen at 00:30 IST) and passes the rest of the day.
+- **What to build:** use the university's timezone (a `TIMEZONE` setting, default Asia/Kolkata) for "today" in the scheduler and wherever dates are compared.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with the clock at 00:30 IST, an active event dated yesterday is transitioned.
 
 ---
 
@@ -2548,5 +3221,11 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-10 | "UPG-57: …" (parent `9abcb79`) | UPG-57 | **UPG-57 BUILT (untested).** Placement drives: company details and eligibility rules on the event; CGPA and backlogs from the roster CSV (read-only for students, editable by admins); registration refuses ineligible students with the reason; `/placement/<event>` shows eligible vs registered, rounds, shortlist/reject moves that notify each student once, and per-round CSV/Excel exports; the ticket shows the current round. Checked by hand; related tests pass (two `test_admin_users` cases fail only after other tests add accounts, as on the previous commit: noted in UPG-62); ruff clean; app starts. |
 | 2026-10-10 | "UPG-13: …" (parent `a26b6b2`) | UPG-13 | **UPG-13 BUILT (untested).** Sports tournaments: team rosters from confirmed registrations (`services_sports.confirmed_teams`); fixture generator for knockout (single elimination with byes auto-advancing to next power of 2) and league (circle method round-robin with configurable win/draw/loss points); match date/time/venue scheduling; result entry restricted to SPOC and assigned coordinators; automatic winner advancement in knockout; live league standings table; public fixtures page (`/tournament/fixtures/<event_id>`, `/sports/fixtures/<event_id>`) and event details embed without login; SPOC tournament management dashboard; no certificate/medal work. Checked by hand on temporary database; ruff clean; app starts. |
 | 2026-10-10 | "docs: …" (parent `efb33f3`) | Phase 6 summary | **Phase 6 (university features) built, development-only run (rules 5 and 8 suspended by the owner; certificate work deferred).** **BUILT (untested):** UPG-04 (rubric judging), UPG-09 (room bookings & conflict check on publish), UPG-10 (student roster CSV import & Google sign-in domain restriction), UPG-11 (participation ledger, activity points/hours on attendance, department export), UPG-12 (faculty and external participants, participant types, allowed types per event, affiliation fields, type analytics), UPG-57 (placement drives, company details, roster eligibility rules, shortlist rounds, notifications, round exports), UPG-13 (sports tournaments, knockout with byes, league round-robin, results entry, points table, public fixtures). Built alongside in Part 1: UPG-42 (support email), UPG-44 (empty payment status), UPG-46 (BASE_URL links in emails), UPG-47 (TBA times), UPG-48 (team member notices), UPG-49 (WhatsApp automation via Twilio), UPG-50 (email HTML escaping), UPG-59 (five 500 pages fixed), UPG-60 (frontend browser pass fixes), UPG-61 (dev startup schema sync). **Deferred:** certificate portions of UPG-11, UPG-12, UPG-50 (owner instruction: no certificate work). **Checks at the end of the phase:** `ruff check .` clean; app starts cleanly and serves `/` with status 200. **Next:** Phase 7 (release check, UPG-32), stopped before starting as instructed. |
-
-
+| 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-63, UPG-65..70, UPG-62 | **UPG-63 BUILT (untested); development-only run (no pytest, at the owner's request).** Built: the portal design system v9 (`static/css/global.css`), shared app bar, page head, flash and status layout (`templates/includes/ui.html`, `templates/layouts/status.html`), a role-aware mobile bar, and a validated chart palette (`static/js/chart-theme.js`). Every rendered template is on the system: 56 rebuilt on the app/status layout, 49 restyled in place, 6 brand pass only; per-template status is in `docs/FRONTEND_CHECKLIST.md`. Only `templates/`, `static/` and `docs/` changed. Removed invented content: the wallet pass's fake gate, seat, venue and HMAC values, the certificate status tracker, and an inaccurate signature claim on the legacy verification page. Checked [R] in headless Chromium with seeded data: 45 pages at 1280px with no page or console error and no missing `/static/` file; 48 pages at 360px with no horizontal scroll; dark mode on four dashboards. Render check 125/132 (the other 7 need real data and were loaded in Chromium). I checked every string the tests assert (289 positive, 59 negative) against the new templates without running pytest, and restored the exact wording 12 pages need (for example "Verification Failed", "QR Scanner & Check-in", "Student PASS", "Ticket Valid"). New items: UPG-65 (fabricated figures and simulated features), UPG-66 (two forms without a CSRF token), UPG-67 (locked coordinator scanner script error), UPG-68 (coordinator form-builder link answers 403), UPG-69 (registration `to_dict` lacks `lead_email`/`lead_name` on SQL, so the owner can't open their ticket; legacy verification), UPG-70 (confetti worker blocked by the CSP). Inventory: Digital ticket page, Form builder, Hackathon submission, Online exams, Shared page layout, and a new Portal design system row. Event types: Hackathon and Sports. Not done this run: the rule 8 full re-verification of open items and the full pytest (both owner-deferred; the UPG-63 "To test later" covers them). |
+| 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-71, UPG-72, UPG-63, UPG-65 | **UPG-71 BUILT (untested)**, at the owner's request and with their approval for a small backend change: profile photos for every role. Added `POST /profile/avatar` (upload validated and re-encoded to a 512px WebP with no EXIF, stored through `utils_storage.upload_file`; 8 brand presets; remove), a cached `current_avatar` context processor, the `avatar` macro in the app bar, and a photo card on `/profile/`. Checked [R] end to end in headless Chromium. Tests are written in `tests/test_profile_avatar.py` but not run. UPG-63: the whole campus photo now shows in a shared `profile_hero` on the student dashboard and on `/profile/` for every role, served as WebP (826 KB → 158 KB). New UPG-72: the service worker's first install reloads the page. UPG-65 corrected: a `SUPPORT_EMAIL` setting exists, but the verification pages ignore it. Backend files changed: `routes_profile.py` only. |
+| 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-73, UPG-74, UPG-62, UPG-63, UPG-65 | **UPG-73 and UPG-74 DONE** (owner's request: a complete event-creation flow for every kind of event, small to big; owner decisions: draft-then-publish, fests with sub-events, backend changes and test runs allowed). New: `services_event_types.py` (27 types in 8 groups, validation, listing rule), the 7-step wizard, a review page and publish (through `WorkflowEngine`), editing in the wizard, fees per participant group, a fest programme on the public page. The public catalogue no longer lists drafts, private or cancelled events. Fixed on the way: a SPOC with a non-unit department couldn't save events (foreign key); preset stages had no approval step. Tests: `tests/test_event_creation.py` (46 cases); `_create_event` helper setup adjusted, no assertion changed. Full pytest: 19 failed (UPG-62 set), 848 passed, 1 skipped. UPG-63 regressions found by the run fixed (certificate wording; HTML built from strings in `global.js`, `notifications.js`). UPG-65 gains the event page's invented venue/seat defaults. Rule 8's full re-verification of open items was not run in this change. |
+| 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-75, UPG-76, UPG-77, UPG-78 | **UPG-75 BUILT (untested)** at the owner's request (the Super Admin can see and control everything; full test run deferred to the end by the owner). New admin pages: all events (approval queue, any workflow status, hand to another SPOC), add/edit/deactivate accounts with login refusing deactivated ones (password and OAuth), cross-event registration search with attendance and cancel, system status (integrations yes/no, failed jobs, retry), announcements to the in-app bell; dashboard "needs attention" and the full admin menu. Admins can't deactivate, demote or delete themselves. `tests/test_admin_control.py` (9 tests) passes on its own; checked on the dev server. New items: UPG-76 (open sessions survive deactivation), UPG-77 (announcement email HTML), UPG-78 (coordinators' old create form). |
+| 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-78, UPG-79, UPG-80, UPG-81, UPG-82 | **UPG-78, UPG-79, UPG-80 DONE** from the owner's screenshots. Form builder Back returns to the page that opened it (same-site only); the builder states the fields every form gets and the team rows, preloads the standard form, drops the stray optional team name, and guards unsaved changes. The old coordinator create-event modal and route are retired (owner: keep the wizard, remove the other); the dead admin-dashboard copy is removed, which un-nests the AI copilot modal. The Super Admin's coordinator view is labelled as that view and counts real registrations. 14 new tests in `tests/test_builder_and_coordinator_view.py`; with the admin, coordinator, forms, integration and event-creation files, 155 passed (before the preload assertion). Full pytest still deferred by the owner. New items: UPG-81 (stale registration counter on the admin dashboard and analytics), UPG-82 (API creates live events). |
+| 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-81, UPG-83, UPG-84, UPG-85 | **UPG-81, UPG-83, UPG-84 DONE** at the owner's request ("make the analytics pro; an adjustable multi-event bar chart; fix the leaderboard"). Analytics on Apache ECharts 5.5.1: one page for the Super Admin and a new one for SPOCs, with period and category filters, a comparison of every event (choose measures, sort, top N or all, side by side or a breakdown, slider, click-through, sortable table), trend, heatmap, funnel, revenue and no-shows. Every figure is counted from registrations: the funnel's always-zero "Confirmed" and 0% no-show (case mismatch) are fixed, and dashboards no longer add up the stale counter. Palette re-validated on every pair in light and dark mode. `/analytics` (invented trends; its API open to any user) is retired. One ranking (`services_leaderboard.py`) for all seven leaderboard and results paths: the evaluation engine's `final_score` now counts, scores keep 2 decimals, ties share a place. Fixed on the way: the SPOC live-stats 500, and the dead admin "Create event" modal no longer nests the AI copilot. 14 new tests in `tests/test_analytics_and_leaderboards.py`; with the HTML-injection, export, feedback, evaluation, permission, integration and admin files, all pass except the known Stripe ×2 (UPG-62). The HTML-injection test needs the new files and deletions in git to see them (checked with a scratch index). New item: UPG-85 (AI summaries thread never runs). |
+| 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-86, UPG-65, UPG-79 | **UPG-86 DONE** at the owner's request (production home page with snpsu.edu.in's real details). Removed the invented content: the hero's "Saptha 2026" card with ₹0 entry fee and always-0 registrations, the 60-second steps, three made-up testimonials and the count-ups (UPG-65's home-page part). Added: the full campus photo hero with a live "Coming up" list of the next open events, About the university (four schools and programmes, highlights), Follow SNPSU (five official accounts) and a footer with real links and contacts; dead and `#` links are gone. Fixed on the page: the undefined hero filter, error and debug pop-ups shown to visitors, the duplicate footer, and SPOC/admin dashboard links. UPG-79's Back check now compares with BASE_URL instead of the request's Host (BLK-16). 4 new tests in `tests/test_home_page.py`; with the auth, mobile, public-links, HTML-injection, sessions, event-creation, analytics, builder and forms files, 140 passed. |
+| 2026-10-13 | uncommitted (working tree on `0fd9f3a`) | UPG-87, UPG-88, UPG-89 | **UPG-87, UPG-88, UPG-89 DONE** for the final submission. Home page: calendar links removed and "Coming up" kept inside its card. `seed_showcase.py` rebuilt the owner's local database (backed up first) through the portal's own routes: 72 accounts, 48 events (2 a day for 20 days plus 8 finished with results, certificates and feedback), 544 registrations; a demo guide PDF generated outside git. Old reports, PDFs, planning notes and `.agents/` removed from git (owner's choice), `.gitignore` covers generated documents and uploads, README rewritten. |

@@ -1,50 +1,27 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23d. -#}
-{% block head %}
-<title>Event Schedule | {{ event.title }}</title>
-{% include "layouts/_bootstrap_css.html" %}
-<link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% block title %}Schedule — {{ event.title }}{% endblock %}
+{% block page_title %}Event schedule{% endblock %}
+{% block page_sub %}{{ event.title }}{% endblock %}
+{% block page_actions %}<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
+{% block extra_css %}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;}
-body{background:#f1f5f9;font-family:'Inter',sans-serif;}
-.topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;}
-.brand{font-weight:700;font-size:15px;color:#fff;}
-.card-custom{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;}
-.card-header-custom{background:var(--blue);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
-.card-header-custom h6{color:#fff;font-weight:700;margin:0;font-size:14px;}
-.row-num{width:28px;height:28px;border-radius:50%;background:var(--orange);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.remove-row{background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:0;transition:.15s;}
-.remove-row:hover{color:#ef4444;}
-.add-row-btn{background:var(--orange);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;}
-.save-btn{background:var(--blue);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;}
+.row-num { width: 28px; height: 28px; border-radius: 50%; background: var(--brand-navy); color: #fff; font-size: var(--fs-xs); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 4px; }
+.remove-row { background: none; border: 0; color: var(--text-subtle); cursor: pointer; font-size: 15px; padding: 6px; border-radius: var(--radius-xs); }
+.remove-row:hover { color: var(--danger); background: var(--danger-soft); }
 </style>
-<script src="/static/js/escape.js"></script>
 {% endblock %}
-{% block body %}
-
-<div class="topnav">
-  <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;">
-  <span class="brand">Schedule Builder — {{ event.title }}</span>
-  <a href="/spoc/dashboard" class="ms-auto" style="color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
-</div>
-
-<div class="container py-4" style="max-width:780px;">
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div class="alert alert-{{ cat }} mb-3" style="border-radius:10px;font-size:13px;">{{ msg }}</div>
-    {% endfor %}{% endif %}
-  {% endwith %}
+{% block content %}
+  
 
   <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <div class="card-custom mb-4">
-      <div class="card-header-custom">
-        <h6><i class="fas fa-calendar-check me-2"></i>Event Timeline</h6>
-        <button type="button" class="add-row-btn" data-h-click="spoc/agenda:1">
-          <i class="fas fa-plus me-1"></i> Add Item
+    <div class="card mb-4" style="max-width:820px;">
+      <div class="card-header justify-content-between">
+        <span><i class="fas fa-calendar-check" aria-hidden="true"></i> Event timeline</span>
+        <button type="button" class="btn btn-gold btn-sm" data-h-click="spoc/agenda:1">
+          <i class="fas fa-plus" aria-hidden="true"></i> Add item
         </button>
       </div>
       <div style="padding:20px;" id="rows-container">
@@ -68,26 +45,27 @@ body{background:#f1f5f9;font-family:'Inter',sans-serif;}
                        class="form-control form-control-sm">
               </div>
             </div>
-            <button type="button" class="remove-row" data-h-click="spoc/agenda:2">
-              <i class="fas fa-trash-alt"></i>
+            <button type="button" class="remove-row" data-h-click="spoc/agenda:2" aria-label="Remove this item">
+              <i class="fas fa-trash-alt" aria-hidden="true"></i>
             </button>
           </div>
           {% endfor %}
         {% else %}
-          <p style="text-align:center;color:#94a3b8;font-size:13.5px;padding:24px 0;">
+          <p class="text-center text-subtle py-4 mb-0">
             No schedule items yet. Click <strong>Add Item</strong> to start building the timeline.
           </p>
         {% endif %}
       </div>
     </div>
 
-    <div class="d-flex gap-2 justify-content-end">
-      <a href="/spoc/dashboard" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">Cancel</a>
-      <button type="submit" class="save-btn"><i class="fas fa-save me-1"></i>Save Schedule</button>
+    <div class="d-flex gap-2 justify-content-end" style="max-width:820px;">
+      <a href="/spoc/dashboard" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save schedule</button>
     </div>
   </form>
-</div>
+
 
 <script src="/static/js/pages/spoc__agenda.js"></script>
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__agenda.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__agenda.js"></script>
+{% endblock %}

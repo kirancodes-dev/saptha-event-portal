@@ -1,52 +1,12 @@
-{% extends "layouts/standalone.html" %}
-{% block head %}
-<title>Participation Ledger | SapthaEvent</title>
-{% include "layouts/_bootstrap_css.html" %}
-<link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
-<style>
-:root { --blue: #1a2557; --gold: #c9a45e; --navy: #0f172a; }
-body { background: #f8fafc; font-family: 'Inter', sans-serif; min-height: 100vh; color: #1e293b; }
-.topnav { background: var(--blue); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; }
-.brand { font-weight: 700; font-size: 15px; color: #fff; }
-.nav-link-item { color: rgba(255,255,255,.75); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: 7px; transition: .15s; }
-.nav-link-item:hover, .nav-link-item.active { color: #fff; background: rgba(255,255,255,.1); }
-.stat-card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
-.table-card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden; }
-</style>
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% block title %}Participation ledger{% endblock %}
+{% block page_title %}Participation ledger{% endblock %}
+{% block page_sub %}Official activity credit records for <strong>{{ user_data.name or user_email }}</strong>{% if user_data.usn %} · USN <code>{{ user_data.usn }}</code>{% endif %}{% if user_data.department %} · {{ user_data.department }}{% endif %}{% endblock %}
+{% block page_actions %}<a href="/participant/ledger?format=json" class="btn btn-secondary"><i class="fas fa-code" aria-hidden="true"></i> Export JSON</a>{% endblock %}
+{% block extra_css %}
 {% endblock %}
-
-{% block body %}
-<nav class="topnav">
-    <a href="/" class="brand text-decoration-none">
-        <i class="fas fa-graduation-cap me-2 text-warning"></i>SapthaEvent
-    </a>
-    <div class="ms-auto d-flex align-items-center gap-2">
-        <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-home me-1"></i> Dashboard</a>
-        <a href="/participant/my_events" class="nav-link-item"><i class="fas fa-calendar-check me-1"></i> My Events</a>
-        <a href="/participant/ledger" class="nav-link-item active"><i class="fas fa-award me-1"></i> Ledger</a>
-        <a href="/profile/" class="nav-link-item"><i class="fas fa-user me-1"></i> Profile</a>
-        <a href="/logout" class="nav-link-item text-danger"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
-    </div>
-</nav>
-
-<div class="container py-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
-        <div>
-            <h1 class="h3 fw-bold mb-1">Student Participation Ledger</h1>
-            <p class="text-muted mb-0">
-                Official activity credit records for <strong>{{ user_data.name or user_email }}</strong>
-                {% if user_data.usn %}&middot; USN: <code>{{ user_data.usn }}</code>{% endif %}
-                {% if user_data.department %}&middot; Dept: {{ user_data.department }}{% endif %}
-            </p>
-        </div>
-        <div>
-            <a href="/participant/ledger?format=json" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-code me-1"></i> Export JSON
-            </a>
-        </div>
-    </div>
-
+{% block content %}
     <!-- Summary Stats -->
     <div class="row g-3 mb-4">
         <div class="col-md-4">
@@ -137,5 +97,4 @@ body { background: #f8fafc; font-family: 'Inter', sans-serif; min-height: 100vh;
             </table>
         </div>
     </div>
-</div>
 {% endblock %}

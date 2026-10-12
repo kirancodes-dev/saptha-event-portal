@@ -1,412 +1,128 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23a. -#}
-{% block head %}
-    <title>{{ event.title }} | SapthaEvent</title>
-    {% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include "layouts/_fontawesome.html" %}
+{% extends "base_classic.html" %}
+{#- Public event page (UPG-63): app layout, navy event hero, light content. -#}
+{% set hide_page_head = true %}
+{% set app_active = 'events' %}
+{% block robots %}index, follow{% endblock %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block meta_description %}{{ (event.description or event.title)|truncate(155) }}{% endblock %}
+{% block extra_css %}
     <style>
-        :root {
-            --bg-dark: #040715;
-            --bg-card: rgba(255, 255, 255, 0.02);
-            --border-light: rgba(255, 255, 255, 0.08);
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --orange-glow: #f59e0b;
-            --blue-neon: #3b82f6;
-            --purple-neon: #a78bfa;
-        }
-        body {
-            background: var(--bg-dark) !important;
-            font-family: 'Inter', sans-serif;
-            color: var(--text-secondary) !important;
-            padding-bottom: 100px;
-            overflow-x: hidden;
+        /* Event hero */
+        .ev-hero {
             position: relative;
-        }
-
-        /* ── TOPNAV ── */
-        .topnav {
-            background: rgba(4, 7, 21, 0.55) !important;
-            backdrop-filter: blur(25px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
-            padding: 0 24px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 200;
-        }
-        .topnav-brand {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 800;
-            font-size: 16px;
-            color: var(--text-primary) !important;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .topnav-brand img {
-            background: transparent !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-        }
-        .topnav-links {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .topnav-link {
-            color: rgba(255, 255, 255, 0.7) !important;
-            font-size: 13px;
-            text-decoration: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-        .topnav-link:hover {
-            color: #fff !important;
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .topnav-link.btn-reg {
-            background: var(--orange-glow) !important;
-            color: #030712 !important;
-            font-weight: 700;
-            border-radius: 10px;
-            border: none;
-        }
-        .topnav-link.btn-reg:hover {
-            background: #d97706 !important;
-        }
-
-        /* ── HERO ── */
-        .hero {
-            position: relative;
-            min-height: 380px;
-            display: flex;
-            align-items: flex-end;
-            background: linear-gradient(135deg, rgba(4, 7, 21, 0.8) 0%, rgba(13, 27, 62, 0.4) 100%) !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            margin: calc(var(--sp-6) * -1) calc(var(--safe-pad-x) * -1) var(--sp-6);
+            background: var(--brand-navy);
+            color: #fff;
             overflow: hidden;
+            border-bottom: 3px solid var(--brand-gold);
         }
-        .hero-bg {
-            position: absolute;
-            inset: 0;
-            background-size: cover;
-            background-position: center;
-            opacity: 0.35;
+        .ev-hero__bg { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0.25; }
+        .ev-hero__body { position: relative; z-index: 1; max-width: var(--page-max); margin: 0 auto; padding: clamp(32px, 6vw, 56px) var(--safe-pad-x) clamp(24px, 4vw, 36px); }
+        .ev-hero__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .ev-hero__chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+            padding: 4px 11px; border-radius: var(--radius-pill);
+            background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        .hero-gradient {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to top, #040715 0%, rgba(4, 7, 21, 0.4) 100%) !important;
-        }
-        .hero-body {
-            position: relative;
-            z-index: 1;
-            padding: 60px 24px 40px;
-            width: 100%;
-        }
-        .hero-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: clamp(24px, 5vw, 42px);
-            font-weight: 900;
-            color: #fff !important;
-            margin: 0 0 16px;
-            line-height: 1.1;
-            letter-spacing: -0.02em;
-        }
-        .hero-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.8px;
-            text-transform: uppercase;
-            padding: 5px 12px;
-            border-radius: 100px;
-            backdrop-filter: blur(4px);
-        }
-        .chip-cat {
-            background: rgba(37, 99, 235, 0.2) !important;
-            color: #60a5fa !important;
-            border: 1px solid rgba(37, 99, 235, 0.4) !important;
-        }
-        .chip-type {
-            background: rgba(255, 255, 255, 0.05) !important;
-            color: rgba(255, 255, 255, 0.85) !important;
-            border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        }
-        .chip-free {
-            background: rgba(16, 185, 129, 0.15) !important;
-            color: #a7f3d0 !important;
-            border: 1px solid rgba(16, 185, 129, 0.3) !important;
-        }
-        .chip-paid {
-            background: rgba(245, 158, 11, 0.15) !important;
-            color: var(--orange-glow) !important;
-            border: 1px solid rgba(245, 158, 11, 0.3) !important;
-        }
-        .hero-meta-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.8) !important;
-        }
-        .hero-meta-item i {
-            color: var(--orange-glow) !important;
-        }
+        .ev-hero__chip--fee { background: var(--brand-gold); color: var(--brand-navy-900); border-color: var(--brand-gold); }
+        .ev-hero__title { font-family: var(--font-heading); font-size: clamp(1.75rem, 4.5vw, 2.6rem); font-weight: 800; color: #fff; margin: 0 0 14px; line-height: 1.15; letter-spacing: -0.02em; }
+        .ev-hero__meta { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+        .ev-hero__meta span { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-base); color: rgba(255, 255, 255, 0.88); }
+        .ev-hero__meta i { color: var(--brand-gold-300); }
 
-        /* ── COUNTDOWN BAND ── */
-        .cd-band {
-            background: rgba(4, 7, 21, 0.6) !important;
-            padding: 14px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-            backdrop-filter: blur(25px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-        }
-        .cd-inner {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .cd-unit {
-            text-align: center;
-            min-width: 50px;
-        }
-        .cd-num {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #fff !important;
-            line-height: 1;
-            font-family: 'Outfit', sans-serif;
-        }
-        .cd-label {
-            font-size: 9px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.4) !important;
-            margin-top: 2px;
-        }
-        .cd-colon {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: var(--orange-glow) !important;
-            line-height: 1;
-            margin-bottom: 12px;
-        }
-        .cd-live {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--orange-glow) !important;
-            letter-spacing: .5px;
-        }
+        /* Countdown */
+        .cd-band { display: flex; justify-content: center; margin-bottom: var(--sp-6); }
+        .cd-inner { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 18px; }
+        .cd-unit { text-align: center; min-width: 52px; }
+        .cd-num { font-family: var(--font-heading); font-size: 1.6rem; font-weight: 800; color: var(--brand-ink); line-height: 1; font-variant-numeric: tabular-nums; }
+        .cd-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle); margin-top: 3px; }
+        .cd-colon { font-size: 1.4rem; font-weight: 800; color: var(--brand-gold); line-height: 1; margin-bottom: 12px; }
+        .cd-live { font-size: var(--fs-sm); font-weight: 700; color: var(--success-text); }
+        .cd-live i { font-size: 0.6rem; vertical-align: middle; }
 
-        /* ── LAYOUT ── */
-        .page-grid {
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 24px;
-            padding: 40px 20px;
-            max-width: 1100px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 5;
+        /* Two-column body */
+        .ev-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--grid-gap); align-items: start; }
+        @media (max-width: 991.98px) { .ev-layout { grid-template-columns: 1fr; } }
+        .ev-layout .panel { margin-bottom: var(--grid-gap); }
+        .ev-section-title {
+            font-family: var(--font-heading); font-size: var(--fs-md); font-weight: 700; color: var(--text-strong);
+            margin: 0 0 var(--sp-4); display: flex; align-items: center; gap: 0.6rem;
         }
-        @media(max-width:900px){.page-grid{grid-template-columns:1fr;}}
+        .ev-section-title i { color: var(--brand-gold-600); }
+        .desc-text, .rules-text { font-size: var(--fs-base); line-height: 1.75; color: var(--text); white-space: pre-line; margin: 0; }
 
-        /* ── CARDS ── */
-        .card {
-            background: rgba(255, 255, 255, 0.02) !important;
-            border-radius: 20px !important;
-            border: 1px solid rgba(255, 255, 255, 0.06) !important;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25) !important;
-            backdrop-filter: blur(25px) saturate(180%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%);
-            color: var(--text-secondary) !important;
-            transition: all 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(255, 255, 255, 0.12) !important;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
-        }
-        .card-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            color: #fff !important;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding-left: 12px;
-            border-left: 3px solid var(--orange-glow) !important;
-            margin-bottom: 18px;
-        }
-        .desc-text, .rules-text {
-            font-size: 14.5px;
-            line-height: 1.8;
-            color: rgba(255, 255, 255, 0.7) !important;
-        }
-
-        /* Agenda timeline */
+        /* Agenda */
         .agenda-timeline { position: relative; padding-left: 20px; }
-        .agenda-timeline::before {
-            content: '';
-            position: absolute;
-            left: 6px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: rgba(255, 255, 255, 0.08) !important;
-            border-radius: 2px;
-        }
-        .agenda-item { position: relative; margin-bottom: 18px; padding-left: 20px; }
-        .agenda-dot {
-            position: absolute;
-            left: -6px;
-            top: 5px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--orange-glow) !important;
-            border: 2px solid #040715 !important;
-            box-shadow: 0 0 0 2px var(--orange-glow) !important;
-        }
-        .agenda-time { font-size: 11px; font-weight: 700; color: var(--orange-glow) !important; letter-spacing: .5px; margin-bottom: 2px; }
-        .agenda-name { font-size: 14px; font-weight: 700; color: #fff !important; }
-        .agenda-desc { font-size: 12.5px; color: rgba(255, 255, 255, 0.5) !important; margin-top: 2px; }
+        .agenda-timeline::before { content: ''; position: absolute; left: 6px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
+        .agenda-item { position: relative; margin-bottom: 16px; padding-left: 16px; }
+        .agenda-dot { position: absolute; left: -20px; top: 5px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface-card); border: 3px solid var(--brand-gold); }
+        .agenda-time { font-size: var(--fs-xs); font-weight: 700; color: var(--brand-gold-700); letter-spacing: 0.03em; }
+        .agenda-name { font-size: var(--fs-base); font-weight: 700; color: var(--text-strong); }
+        .agenda-desc { font-size: var(--fs-sm); color: var(--text-muted); margin-top: 2px; }
 
         /* Prizes */
-        .prizes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .prize-card { border-radius: 12px; padding: 16px 12px; text-align: center; backdrop-filter: blur(10px); }
-        .prize-card.gold {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)) !important;
-            border: 1px solid rgba(245, 158, 11, 0.25) !important;
-        }
-        .prize-card.silver {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)) !important;
-            border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        }
-        .prize-card.bronze {
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(249, 115, 22, 0.02)) !important;
-            border: 1px solid rgba(249, 115, 22, 0.2) !important;
-        }
-        .prize-icon { font-size: 24px; margin-bottom: 6px; }
-        .prize-rank { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255, 255, 255, 0.5) !important; margin-bottom: 4px; }
-        .prize-val { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 800; color: #fff !important; }
+        .prizes-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .prize-card { border-radius: var(--radius); padding: 16px 12px; text-align: center; border: 1px solid var(--border); background: var(--surface-sunken); }
+        .prize-card.gold { background: var(--brand-gold-100); border-color: rgba(198, 157, 103, 0.45); }
+        .prize-icon { font-size: 1.4rem; margin-bottom: 6px; }
+        .prize-card.gold .prize-icon { color: var(--brand-gold-600); }
+        .prize-card.silver .prize-icon { color: #94a3b8; }
+        .prize-card.bronze .prize-icon { color: #b0703a; }
+        .prize-rank { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-subtle); margin-bottom: 4px; }
+        .prize-val { font-family: var(--font-heading); font-size: var(--fs-base); font-weight: 800; color: var(--text-strong); }
+        @media (max-width: 479.98px) { .prizes-grid { grid-template-columns: 1fr; } }
 
         /* Capacity */
-        .cap-bar { height: 8px; background: rgba(255, 255, 255, 0.06) !important; border-radius: 100px; overflow: hidden; margin: 8px 0 6px; }
-        .cap-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, #3b82f6, var(--orange-glow)) !important; transition: width .4s; }
-        .cap-fill.full { background: linear-gradient(90deg, #ef4444, #dc2626) !important; }
-        .cap-top { display: flex; justify-content: space-between; align-items: center; }
-        .cap-count { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: #fff !important; }
-        .cap-max { font-size: 12px; color: rgba(255, 255, 255, 0.4) !important; }
-        .cap-msg { font-size: 12px; margin-top: 4px; }
+        .cap-top { display: flex; justify-content: space-between; align-items: baseline; }
+        .cap-count { font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-strong); }
+        .cap-max { font-size: var(--fs-sm); color: var(--text-subtle); }
+        .cap-bar { height: 8px; background: var(--surface-muted); border-radius: var(--radius-pill); overflow: hidden; margin: 8px 0 6px; }
+        .cap-fill { height: 100%; border-radius: var(--radius-pill); background: var(--brand-navy); }
+        .cap-fill.full { background: var(--danger); }
+        .cap-msg { font-size: var(--fs-sm); margin: 4px 0 0; color: var(--text-muted); }
+        .cap-msg--full { color: var(--danger-text); font-weight: 700; }
 
-        /* Timeline */
-        .tl-item { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important; }
-        .tl-item:last-child { border-bottom: none; }
-        .tl-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; background: rgba(255, 255, 255, 0.04) !important; }
-        .tl-icon i { color: #fff !important; }
-        .tl-label { font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: .5px; color: rgba(255, 255, 255, 0.4); margin-bottom: 2px; }
-        .tl-val { font-size: 14px; font-weight: 700; color: #fff !important; }
-        .tl-sub { font-size: 12px; color: rgba(255, 255, 255, 0.5) !important; margin-top: 1px; }
+        /* Key dates */
+        .tl-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--divider); }
+        .tl-item:last-child { border-bottom: 0; padding-bottom: 0; }
+        .tl-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--brand-navy-50); color: var(--brand-ink); }
+        .tl-icon--deadline { background: var(--danger-soft); color: var(--danger-text); }
+        .tl-label { font-size: var(--fs-xs); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; color: var(--text-subtle); }
+        .tl-val { font-size: var(--fs-base); font-weight: 700; color: var(--text-strong); }
+        .tl-sub { font-size: var(--fs-sm); color: var(--text-muted); }
 
         /* Organizer */
-        .org-avatar { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #1e3a8a, #0d9488) !important; color: #fff !important; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 18px; flex-shrink: 0; }
-        .org-name { font-size: 15px; font-weight: 700; color: #fff !important; }
-        .org-role { font-size: 11.5px; color: rgba(255, 255, 255, 0.5) !important; margin-top: 1px; }
-        .btn-wa { display: flex; align-items: center; justify-content: center; gap: 8px; background: #22c55e; color: #fff; border-radius: 10px; padding: 10px 0; font-size: 13px; font-weight: 700; text-decoration: none; margin-top: 14px; transition: .15s; }
-        .btn-wa:hover { background: #16a34a; color: #fff; }
-        .org-links { display: flex; gap: 8px; margin-top: 10px; }
-        .org-link { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none; background: rgba(255, 255, 255, 0.04) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; transition: .15s; }
-        .org-link:hover { background: rgba(255, 255, 255, 0.08) !important; color: #fff !important; }
+        .org-avatar { width: 46px; height: 46px; border-radius: var(--radius-sm); background: var(--brand-navy); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-weight: 800; font-size: 1.1rem; flex-shrink: 0; }
+        .org-name { font-size: var(--fs-base); font-weight: 700; color: var(--text-strong); }
+        .org-role { font-size: var(--fs-sm); color: var(--text-subtle); }
+        .org-links { display: flex; gap: 8px; margin-top: 12px; }
+        .org-links .btn { flex: 1; }
 
         /* Share */
         .share-strip { display: flex; flex-wrap: wrap; gap: 8px; }
-        .share-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; transition: .15s; }
-        .share-btn:hover { opacity: .85; transform: translateY(-1px); }
-        .s-li { background: #0a66c2; color: #fff; }
-        .s-wa { background: #25d366; color: #fff; }
-        .s-tw { background: #000; color: #fff; }
-        .s-cp { background: rgba(255, 255, 255, 0.04) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; }
-        .s-cp.copied { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+        .share-strip .btn { flex: 1 1 calc(50% - 8px); }
+        .s-cp.copied { background: var(--success-soft) !important; color: var(--success-text) !important; border-color: rgba(22, 163, 74, 0.35) !important; }
 
-        /* ── STICKY ACTION BAR ── */
-        .action-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(4, 7, 21, 0.75) !important;
-            backdrop-filter: blur(25px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-            padding: 12px 20px;
-            z-index: 150;
-            box-shadow: 0 -8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+        /* Sticky registration bar */
+        .reg-bar {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 1035;
+            background: var(--surface-card);
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -4px 16px rgba(11, 21, 48, 0.08);
+            padding: 10px var(--safe-pad-x);
         }
-        .action-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-        .action-fee-label { font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: .5px; color: rgba(255, 255, 255, 0.4); }
-        .action-fee { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; color: #fff !important; }
-        .action-fee .free { color: #22c55e; }
-        .btn-register {
-            background: var(--orange-glow) !important;
-            color: #030712 !important;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 36px;
-            font-family: 'Outfit', sans-serif;
-            font-size: 15px;
-            font-weight: 800;
-            cursor: pointer;
-            transition: .2s;
-            white-space: nowrap;
+        .reg-bar__inner { max-width: var(--page-max); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .reg-bar__label { font-size: var(--fs-xs); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; color: var(--text-subtle); }
+        .reg-bar__fee { font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; color: var(--text-strong); }
+        .reg-bar__fee .free { color: var(--success-text); }
+        .reg-bar .btn { min-width: 220px; }
+        body { padding-bottom: 80px; }
+        @media (max-width: 767.98px) {
+            .reg-bar { bottom: 62px; }
+            .reg-bar .btn { flex: 1; min-width: 0; }
+            body:has(.mobile-nav-bar) { padding-bottom: 150px; }
         }
-        .btn-register:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4) !important; }
-        .btn-registered { background: rgba(16, 185, 129, 0.08); color: #22c55e; border: 2px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 12px 36px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 800; cursor: default; }
-
-        /* Modal overrides */
-        .modal-content {
-            background: rgba(11, 15, 25, 0.8) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            backdrop-filter: blur(30px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7) !important;
-            border-radius: 16px;
-            overflow: hidden;
-        }
-        .modal-hdr { background: rgba(255, 255, 255, 0.02) !important; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; }
-        .modal-hdr-title { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: #fff; margin: 0; }
-        .modal-hdr-close { background: rgba(255, 255, 255, 0.15); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; line-height: 1; display: flex; align-items: center; justify-content: center; }
-        .modal-body { padding: 24px; }
-        .form-section-title { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #fff !important; border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; padding-bottom: 8px; margin: 0 0 16px; }
-        .form-label-sm { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255, 255, 255, 0.6) !important; margin-bottom: 6px; display: block; }
-        .modal-body .form-control { background: rgba(255, 255, 255, 0.03)!important; border: 1.5px solid rgba(255, 255, 255, 0.08)!important; color: #fff!important; border-radius: 9px; padding: 10px 14px; font-size: 13.5px; }
-        .modal-body .form-control:focus { background: rgba(255, 255, 255, 0.05)!important; border-color: rgba(255, 255, 255, 0.25)!important; box-shadow: 0 0 15px rgba(255, 255, 255, 0.1)!important; color: #fff!important; }
-        .modal-body .form-control::placeholder { color: rgba(255, 255, 255, 0.35)!important; }
-        .btn-submit { background: var(--orange-glow) !important; color: #030712 !important; border: none; border-radius: 10px; padding: 14px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 800; width: 100%; cursor: pointer; transition: .2s; margin-top: 8px; }
-        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); }
-        .btn-add-member { background: rgba(255, 255, 255, 0.02); color: #fff; border: 2px dashed rgba(255, 255, 255, 0.1); border-radius: 9px; padding: 10px; font-size: 13px; font-weight: 700; width: 100%; cursor: pointer; transition: .15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .btn-add-member:hover { background: rgba(255, 255, 255, 0.06); }
-
-        .flash-wrap { max-width: 1100px; margin: 16px auto 0; padding: 0 20px; }
     </style>
     <!-- JSON-LD Event Schema Metadata for SEO -->
     <script type="application/ld+json">
@@ -443,273 +159,288 @@
     }
     </script>
 {% endblock %}
-{% block body %}
-
-<div class="grid-bg"></div>
-<div class="liquid-blob blob-1"></div>
-<div class="liquid-blob blob-2"></div>
-<div class="liquid-blob blob-3"></div>
-<div class="liquid-blob blob-4"></div>
-
-<!-- TOPNAV -->
-<div class="topnav">
-    <a href="/" class="topnav-brand">
-        <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU"
-             style="height:32px;width:auto;object-fit:contain;background:#fff;border-radius:5px;padding:2px 5px;"
-             data-h-error="public/event_details:1">
-        SapthaEvent
-    </a>
-    <div class="topnav-links">
-        <a href="/" class="topnav-link"><i class="fas fa-home me-1"></i>Home</a>
-        {% if session.get('role') %}
-            <a href="/dashboard" class="topnav-link">
-                <i class="fas fa-th-large me-1"></i>Dashboard
-            </a>
-        {% else %}
-            <a href="/login" class="topnav-link">Login</a>
-        {% endif %}
-        {% if not is_registered %}
-        <a href="/forms/register/{{ event.id }}" class="topnav-link btn-reg">
-            Register <i class="fas fa-arrow-right ms-1"></i>
-        </a>
-        {% endif %}
-    </div>
-</div>
-
+{% block content %}
 <!-- HERO -->
-<div class="hero">
+<section class="ev-hero" aria-label="Event summary">
     {% if event.banner_url %}
-    <div class="hero-bg" style="background-image:url('{{ event.banner_url }}');"></div>
+    <div class="ev-hero__bg" style="background-image:url('{{ event.banner_url }}');" aria-hidden="true"></div>
     {% endif %}
-    <div class="hero-gradient"></div>
-    <div class="hero-body">
-        <div style="max-width:1100px;margin:0 auto;padding:0 4px;">
-            <div class="hero-chips">
-                <span class="chip chip-cat"><i class="fas fa-tag"></i> {{ event.category }}</span>
-                <span class="chip chip-type"><i class="fas fa-users"></i> {{ event.participation_type or 'Individual' }}</span>
-                {% if event.fees and event.fees.regular and event.fees.regular|int > 0 %}
-                <span class="chip chip-paid"><i class="fas fa-rupee-sign"></i> ₹{{ event.fees.regular }}</span>
-                {% else %}
-                <span class="chip chip-free"><i class="fas fa-ticket-alt"></i> Free Entry</span>
-                {% endif %}
-            </div>
-            <h1 class="hero-title">{{ event.title }}</h1>
-            <div class="hero-meta">
-                <div class="hero-meta-item"><i class="fas fa-calendar-alt"></i> {{ event.date }}</div>
-                <div class="hero-meta-item"><i class="fas fa-clock"></i> {{ event.time or "Time to be announced" }}</div>
-                {% if event.venue %}<div class="hero-meta-item"><i class="fas fa-map-marker-alt"></i> {{ event.venue }}</div>{% endif %}
-            </div>
+    <div class="ev-hero__body">
+        <nav aria-label="Breadcrumb"><ol class="crumbs" style="--text-muted: rgba(255,255,255,.75); --text-subtle: rgba(255,255,255,.6); --text-strong: #fff; --border-strong: rgba(255,255,255,.35);">
+            <li><a href="/">Home</a></li><li><a href="/events">Events</a></li><li><span aria-current="page">{{ event.title }}</span></li>
+        </ol></nav>
+        <div class="ev-hero__chips">
+            {% if spec and spec.key != 'custom' %}<span class="ev-hero__chip"><i class="fas {{ spec.icon }}" aria-hidden="true"></i> {{ spec.name }}</span>{% endif %}
+            <span class="ev-hero__chip"><i class="fas fa-tag" aria-hidden="true"></i> {{ event.category }}</span>
+            {% if not event.is_fest %}<span class="ev-hero__chip"><i class="fas fa-users" aria-hidden="true"></i> {{ {'Team': 'Teams', 'Both': 'Individuals or teams'}.get(event.participation_type, 'Individuals') }}</span>{% endif %}
+            {% if event.event_mode in ('online', 'hybrid') %}<span class="ev-hero__chip"><i class="fas fa-video" aria-hidden="true"></i> {{ 'Online' if event.event_mode == 'online' else 'In person and online' }}</span>{% endif %}
+            {% if parent_fest %}<a class="ev-hero__chip" href="/event/{{ parent_fest.id }}"><i class="fas fa-flag" aria-hidden="true"></i> Part of {{ parent_fest.title }}</a>{% endif %}
+            {% if event.fees and event.fees.regular and event.fees.regular|int > 0 %}
+            <span class="ev-hero__chip ev-hero__chip--fee"><i class="fas fa-rupee-sign" aria-hidden="true"></i> ₹{{ event.fees.regular }}</span>
+            {% else %}
+            <span class="ev-hero__chip ev-hero__chip--fee"><i class="fas fa-ticket-alt" aria-hidden="true"></i> Free entry</span>
+            {% endif %}
+        </div>
+        <h1 class="ev-hero__title">{{ event.title }}</h1>
+        <div class="ev-hero__meta">
+            <span><i class="fas fa-calendar-alt" aria-hidden="true"></i> {{ event.date }}{% if event.end_date and event.end_date != event.date %} – {{ event.end_date }}{% endif %}</span>
+            {% if not event.is_fest %}<span><i class="fas fa-clock" aria-hidden="true"></i> {{ event.time or "Time to be announced" }}{% if event.end_time %} – {{ event.end_time }}{% endif %}</span>{% endif %}
+            {% if event.venue %}<span><i class="fas fa-map-marker-alt" aria-hidden="true"></i> {{ event.venue }}</span>{% endif %}
         </div>
     </div>
-</div>
+</section>
 
-<!-- COUNTDOWN BAND -->
-<div class="cd-band" id="cd-band">
+<!-- COUNTDOWN -->
+<div class="cd-band" id="cd-band" aria-label="Time until the event">
     <div class="cd-inner" id="cd-inner">
         <div class="cd-unit"><div class="cd-num" id="cd-d">--</div><div class="cd-label">Days</div></div>
-        <span class="cd-colon">:</span>
+        <span class="cd-colon" aria-hidden="true">:</span>
         <div class="cd-unit"><div class="cd-num" id="cd-h">--</div><div class="cd-label">Hrs</div></div>
-        <span class="cd-colon">:</span>
+        <span class="cd-colon" aria-hidden="true">:</span>
         <div class="cd-unit"><div class="cd-num" id="cd-m">--</div><div class="cd-label">Min</div></div>
-        <span class="cd-colon">:</span>
+        <span class="cd-colon" aria-hidden="true">:</span>
         <div class="cd-unit"><div class="cd-num" id="cd-s">--</div><div class="cd-label">Sec</div></div>
     </div>
 </div>
 
-<!-- FLASH MESSAGES -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-<div class="flash-wrap">
-{% for cat, msg in messages %}
-<div class="alert alert-{{ cat }} rounded-3 border-0 fw-semibold">{{ msg }}</div>
-{% endfor %}
-</div>
-{% endif %}
-{% endwith %}
-
-<!-- PAGE GRID -->
-<div class="page-grid">
-
-    <!-- LEFT: MAIN CONTENT -->
+<div class="ev-layout">
+    <!-- MAIN -->
     <div>
-        <!-- About -->
-        <div class="card">
-            <p class="card-title"><i class="fas fa-align-left me-2" style="color:var(--orange);"></i>About This Event</p>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-align-left" aria-hidden="true"></i>About this event</h2>
             <p class="desc-text">{{ event.description }}</p>
-        </div>
+        </section>
 
-        <!-- Tournament Fixtures & Standings (UPG-13) -->
+        {% if event.is_fest %}
+        <!-- The fest's programme (UPG-74) -->
+        <section class="panel" id="programme">
+            <h2 class="ev-section-title"><i class="fas fa-flag" aria-hidden="true"></i>Programme</h2>
+            {% if fest_events %}
+            {% for day, items in fest_events|groupby('date') %}
+            <h3 class="h6 fw-bold mt-3 mb-2">{{ day }}</h3>
+            <ul class="list-unstyled mb-0">
+                {% for e in items %}
+                <li class="d-flex flex-wrap justify-content-between gap-2 py-2 border-bottom">
+                    <span><a href="/event/{{ e.id }}" class="fw-semibold">{{ e.title }}</a>{% if e.time %} <span class="text-muted small">· {{ e.time }}</span>{% endif %}{% if e.venue %} <span class="text-muted small">· {{ e.venue }}</span>{% endif %}</span>
+                    <a href="/event/{{ e.id }}" class="btn btn-sm btn-outline-primary">Details &amp; register</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endfor %}
+            {% else %}
+            <p class="text-muted mb-0">The programme will be announced soon.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if spec and spec.details and event.details %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-circle-info" aria-hidden="true"></i>Event details</h2>
+            <dl class="row mb-0">
+                {% for f in spec.details if event.details.get(f.name) %}
+                <dt class="col-sm-4 text-muted">{{ f.label }}</dt><dd class="col-sm-8" style="white-space:pre-wrap">{{ event.details[f.name] }}</dd>
+                {% endfor %}
+            </dl>
+        </section>
+        {% endif %}
+
+        {% if event.online_link and is_registered %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-video" aria-hidden="true"></i>Join online</h2>
+            <p class="mb-2">You're registered. Join with this link when the event starts:</p>
+            <a class="btn btn-primary" href="{{ event.online_link }}" target="_blank" rel="noopener">Open the meeting <i class="fas fa-up-right-from-square" aria-hidden="true"></i></a>
+        </section>
+        {% endif %}
+
+        {% set gfees = event.fees or {} %}
+        {% if gfees.get('student') is not none or gfees.get('faculty') is not none or gfees.get('external') is not none %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-indian-rupee-sign" aria-hidden="true"></i>Fees</h2>
+            <ul class="list-unstyled mb-0">
+                {% for g, label in [('student', 'Students'), ('faculty', 'Faculty'), ('external', 'External participants')] %}
+                {% set amount = gfees.get(g) if gfees.get(g) is not none else gfees.get('regular', 0) %}
+                <li class="py-1">{{ label }}: <strong>{{ '₹' ~ (amount|int) if amount|float > 0 else 'Free' }}</strong></li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if event.sponsors %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-handshake" aria-hidden="true"></i>Sponsors</h2>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+                {% for sp in event.sponsors %}
+                {% set inner %}{% if sp.logo_url %}<img src="{{ sp.logo_url }}" alt="{{ sp.name }}" style="height:48px;width:auto;max-width:160px;object-fit:contain">{% else %}<span class="fw-semibold">{{ sp.name }}</span>{% endif %}{% if sp.tier %} <span class="se-badge se-badge--gold ms-1">{{ sp.tier }}</span>{% endif %}{% endset %}
+                {% if sp.website %}<a href="{{ sp.website }}" target="_blank" rel="noopener sponsored" class="text-decoration-none">{{ inner }}</a>{% else %}<span>{{ inner }}</span>{% endif %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Tournament fixtures & standings (UPG-13) -->
         {% if event.get('tournament') %}
-        <div class="card" id="tournament">
+        <section class="panel" id="tournament">
             {% include "includes/tournament.html" %}
-        </div>
+        </section>
         {% endif %}
 
-        <!-- Rules -->
         {% if event.rules %}
-        <div class="card">
-            <p class="card-title"><i class="fas fa-list-check me-2" style="color:var(--orange);"></i>Rules &amp; Guidelines</p>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-list-check" aria-hidden="true"></i>Rules &amp; guidelines</h2>
             <div class="rules-text">{{ event.rules }}</div>
-        </div>
+        </section>
         {% endif %}
 
-        <!-- Agenda -->
         {% if event.get('agenda') %}
-        <div class="card">
-            <p class="card-title"><i class="fas fa-calendar-check me-2" style="color:var(--orange);"></i>Event Schedule</p>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-calendar-check" aria-hidden="true"></i>Event schedule</h2>
             <div class="agenda-timeline">
                 {% for item in event.agenda %}
                 <div class="agenda-item">
-                    <span class="agenda-dot"></span>
+                    <span class="agenda-dot" aria-hidden="true"></span>
                     <div class="agenda-time">{{ item.time }}</div>
                     <div class="agenda-name">{{ item.title }}</div>
                     {% if item.desc %}<div class="agenda-desc">{{ item.desc }}</div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
-        </div>
+        </section>
         {% endif %}
 
-        <!-- Prizes -->
         {% if event.prizes %}
-        <div class="card">
-            <p class="card-title"><i class="fas fa-trophy me-2" style="color:var(--orange);"></i>Prizes &amp; Rewards</p>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-trophy" aria-hidden="true"></i>Prizes &amp; rewards</h2>
             <div class="prizes-grid">
                 <div class="prize-card gold">
-                    <div class="prize-icon">🥇</div>
+                    <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
                     <div class="prize-rank">Winner</div>
                     <div class="prize-val">{{ event.prizes.get('1st', '—') }}</div>
                 </div>
                 <div class="prize-card silver">
-                    <div class="prize-icon">🥈</div>
-                    <div class="prize-rank">Runner Up</div>
+                    <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
+                    <div class="prize-rank">Runner-up</div>
                     <div class="prize-val">{{ event.prizes.get('2nd', '—') }}</div>
                 </div>
                 <div class="prize-card bronze">
-                    <div class="prize-icon">🥉</div>
-                    <div class="prize-rank">3rd Place</div>
+                    <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
+                    <div class="prize-rank">Third place</div>
                     <div class="prize-val">{{ event.prizes.get('3rd', '—') }}</div>
                 </div>
             </div>
-        </div>
+        </section>
         {% endif %}
     </div>
 
-    <!-- RIGHT: SIDEBAR -->
-    <div>
-        <!-- Capacity -->
+    <!-- SIDEBAR -->
+    <aside aria-label="Event information">
         {% set max_p = event.limits.max_participants if event.limits and event.limits.max_participants else 0 %}
         {% if max_p and max_p|int > 0 %}
         {% set pct = [[((reg_count / max_p|int) * 100)|int, 100]|min, 0]|max %}
-        <div class="card">
-            <p class="card-title"><i class="fas fa-users me-2" style="color:var(--orange);"></i>Registrations</p>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-users" aria-hidden="true"></i>Registrations</h2>
             <div class="cap-top">
                 <span class="cap-count">{{ reg_count }}</span>
                 <span class="cap-max">of {{ max_p }} seats</span>
             </div>
-            <div class="cap-bar">
+            <div class="cap-bar" role="progressbar" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Seats filled">
                 <div class="cap-fill {{ 'full' if reg_count >= max_p|int else '' }}" style="width:{{ pct }}%;"></div>
             </div>
             {% if reg_count >= max_p|int %}
-            <p class="cap-msg" style="color:#ef4444;font-weight:700;"><i class="fas fa-ban me-1"></i>Fully booked</p>
+            <p class="cap-msg cap-msg--full"><i class="fas fa-ban" aria-hidden="true"></i> Fully booked</p>
             {% else %}
-            <p class="cap-msg" style="color:#64748b;">{{ max_p|int - reg_count }} spot{{ 's' if (max_p|int - reg_count) != 1 }} remaining</p>
+            <p class="cap-msg">{{ max_p|int - reg_count }} spot{{ 's' if (max_p|int - reg_count) != 1 }} remaining</p>
             {% endif %}
-        </div>
+        </section>
         {% endif %}
 
-        <!-- Timeline -->
-        <div class="card">
-            <p class="card-title"><i class="fas fa-calendar-clock me-2" style="color:var(--orange);"></i>Key Dates</p>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-calendar-days" aria-hidden="true"></i>Key dates</h2>
             {% if event.reg_deadline %}
             <div class="tl-item">
-                <div class="tl-icon" style="background:#fff0f0;color:#ef4444;"><i class="fas fa-hourglass-end"></i></div>
+                <div class="tl-icon tl-icon--deadline" aria-hidden="true"><i class="fas fa-hourglass-end"></i></div>
                 <div>
-                    <div class="tl-label">Registration Deadline</div>
+                    <div class="tl-label">Registration deadline</div>
                     <div class="tl-val">{{ event.reg_deadline }}</div>
                 </div>
             </div>
             {% endif %}
             <div class="tl-item">
-                <div class="tl-icon" style="background:#f0f9ff;color:#0891b2;"><i class="fas fa-rocket"></i></div>
+                <div class="tl-icon" aria-hidden="true"><i class="fas fa-calendar-day"></i></div>
                 <div>
-                    <div class="tl-label">Event Date</div>
+                    <div class="tl-label">Event date</div>
                     <div class="tl-val">{{ event.date }}</div>
-                    <div class="tl-sub"><i class="fas fa-clock me-1" style="color:var(--orange);font-size:10px;"></i>{{ event.time or "Time to be announced" }}</div>
+                    <div class="tl-sub">{{ event.time or "Time to be announced" }}</div>
                 </div>
             </div>
             {% if event.venue %}
             <div class="tl-item">
-                <div class="tl-icon" style="background:#f0fdf4;color:#22c55e;"><i class="fas fa-map-marker-alt"></i></div>
+                <div class="tl-icon" aria-hidden="true"><i class="fas fa-map-marker-alt"></i></div>
                 <div>
                     <div class="tl-label">Venue</div>
                     <div class="tl-val">{{ event.venue }}</div>
                 </div>
             </div>
             {% endif %}
-        </div>
+        </section>
 
-        <!-- Add to Calendar -->
-        <div class="card">
-            <p class="card-title"><i class="fas fa-calendar-plus me-2" style="color:var(--orange);"></i>Add to Calendar</p>
-            <div class="d-flex flex-column gap-2" style="gap:8px;">
-                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ (event.title or event.name)|urlencode }}&dates={{ (event.date|replace('-', '')) if event.date else '20260901' }}T090000Z/{{ (event.date|replace('-', '')) if event.date else '20260901' }}T180000Z&details={{ (event.description or '')|urlencode }}&location={{ (event.venue or '')|urlencode }}" 
-                   target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary w-100 text-center" style="border-radius:6px; font-weight:600; padding:8px;">
-                    <i class="fab fa-google me-1"></i> Google Calendar
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-calendar-plus" aria-hidden="true"></i>Add to calendar</h2>
+            <div class="d-flex flex-column gap-2">
+                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ (event.title or event.name)|urlencode }}&dates={{ (event.date|replace('-', '')) if event.date else '20260901' }}T090000Z/{{ (event.date|replace('-', '')) if event.date else '20260901' }}T180000Z&details={{ (event.description or '')|urlencode }}&location={{ (event.venue or '')|urlencode }}"
+                   target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary w-100">
+                    <i class="fab fa-google" aria-hidden="true"></i> Google Calendar
                 </a>
-                <a href="/events/{{ event.slug or event.id }}/calendar.ics" class="btn btn-sm btn-outline-secondary w-100 text-center" style="border-radius:6px; font-weight:600; padding:8px;">
-                    <i class="fas fa-download me-1"></i> Download .ICS File
+                <a href="/events/{{ event.slug or event.id }}/calendar.ics" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-download" aria-hidden="true"></i> Download .ics file
                 </a>
             </div>
-        </div>
+        </section>
 
-        <!-- Organizer -->
         {% if event.organizer %}
-        <div class="card">
-            <p class="card-title"><i class="fas fa-id-badge me-2" style="color:var(--orange);"></i>Organizer</p>
-            <div class="d-flex align-items-center gap-12" style="gap:12px;">
-                <div class="org-avatar">{{ (event.organizer.name or 'O')[0].upper() }}</div>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-id-badge" aria-hidden="true"></i>Organiser</h2>
+            <div class="d-flex align-items-center gap-3">
+                <div class="org-avatar" aria-hidden="true">{{ (event.organizer.name or 'O')[0].upper() }}</div>
                 <div>
                     <div class="org-name">{{ event.organizer.name }}</div>
-                    <div class="org-role">Event Organizer</div>
+                    <div class="org-role">Event organiser</div>
                 </div>
             </div>
             {% if event.organizer.group_link %}
-            <a href="{{ event.organizer.group_link }}" target="_blank" rel="noopener" class="btn-wa">
-                <i class="fab fa-whatsapp"></i> Join WhatsApp Group
+            <a href="{{ event.organizer.group_link }}" target="_blank" rel="noopener" class="btn btn-success w-100 mt-3">
+                <i class="fab fa-whatsapp" aria-hidden="true"></i> Join the WhatsApp group
             </a>
             {% endif %}
             <div class="org-links">
                 {% if event.organizer.email %}
-                <a href="mailto:{{ event.organizer.email }}" class="org-link"><i class="fas fa-envelope"></i> Email</a>
+                <a href="mailto:{{ event.organizer.email }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-envelope" aria-hidden="true"></i> Email</a>
                 {% endif %}
                 {% if event.organizer.phone %}
-                <a href="tel:{{ event.organizer.phone }}" class="org-link"><i class="fas fa-phone"></i> Call</a>
+                <a href="tel:{{ event.organizer.phone }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-phone" aria-hidden="true"></i> Call</a>
                 {% endif %}
             </div>
-        </div>
+        </section>
         {% endif %}
 
-        <!-- Share -->
-        <div class="card">
-            <p class="card-title"><i class="fas fa-share-nodes me-2" style="color:var(--orange);"></i>Share Event</p>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-share-nodes" aria-hidden="true"></i>Share this event</h2>
             <div class="share-strip">
-                <a class="share-btn s-wa" id="s-wa" href="#" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>
-                <a class="share-btn s-li" id="s-li" href="#" target="_blank" rel="noopener"><i class="fab fa-linkedin-in"></i> LinkedIn</a>
-                <a class="share-btn s-tw" id="s-tw" href="#" target="_blank" rel="noopener"><i class="fab fa-x-twitter"></i> Twitter</a>
-                <button class="share-btn s-cp" id="s-cp" data-h-click="public/event_details:2"><i class="fas fa-link"></i> Copy Link</button>
+                <a class="btn btn-outline-secondary btn-sm" id="s-wa" href="#" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i> WhatsApp</a>
+                <a class="btn btn-outline-secondary btn-sm" id="s-li" href="#" target="_blank" rel="noopener"><i class="fab fa-linkedin-in" aria-hidden="true"></i> LinkedIn</a>
+                <a class="btn btn-outline-secondary btn-sm" id="s-tw" href="#" target="_blank" rel="noopener"><i class="fab fa-x-twitter" aria-hidden="true"></i> X</a>
+                <button type="button" class="btn btn-outline-secondary btn-sm s-cp" id="s-cp" data-h-click="public/event_details:2"><i class="fas fa-link" aria-hidden="true"></i> Copy link</button>
             </div>
-        </div>
-    </div>
-
+        </section>
+    </aside>
 </div>
 
-<!-- STICKY ACTION BAR -->
-<div class="action-bar">
-    <div class="action-inner">
+<!-- STICKY REGISTRATION BAR (a fest has none: people register for its events) -->
+{% if not event.is_fest %}
+<div class="reg-bar">
+    <div class="reg-bar__inner">
         <div class="d-none d-md-block">
-            <div class="action-fee-label">Registration Fee</div>
-            <div class="action-fee">
+            <div class="reg-bar__label">Registration fee</div>
+            <div class="reg-bar__fee">
                 {% if event.fees and event.fees.regular and event.fees.regular|int > 0 %}
                 ₹{{ event.fees.regular }}
                 {% else %}
@@ -718,18 +449,20 @@
             </div>
         </div>
         {% if is_registered %}
-        <button class="btn-registered" disabled>
-            <i class="fas fa-check-circle me-2"></i> Already Registered
+        <button type="button" class="btn btn-lg btn-outline-success" disabled>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> Already registered
         </button>
         {% else %}
         {# The event's own registration form, which checks the event is open (UPG-34) #}
-        <a class="btn-register" href="/forms/register/{{ event.id }}" style="display:block;text-align:center;text-decoration:none;">
-            Register Now <i class="fas fa-arrow-right ms-2"></i>
+        <a class="btn btn-lg btn-gold" href="/forms/register/{{ event.id }}">
+            Register now <i class="fas fa-arrow-right" aria-hidden="true"></i>
         </a>
         {% endif %}
     </div>
 </div>
-
+{% endif %}
+{% endblock %}
+{% block extra_js %}
 {% include "layouts/_bootstrap_js.html" %}
 <script nonce="{{ csp_nonce() }}">
 // ── COUNTDOWN ────────────────────────────────────────
@@ -739,7 +472,7 @@
     function tick(){
         var diff = t - new Date();
         if(diff <= 0){
-            document.getElementById('cd-inner').innerHTML = '<span class="cd-live">🟢 Event is Live / Completed</span>';
+            document.getElementById('cd-inner').innerHTML = '<span class="cd-live"><i class="fas fa-circle" aria-hidden="true"></i> Event is live or completed</span>';
             return;
         }
         var d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000),
@@ -763,11 +496,10 @@
 function copyLink(){
     navigator.clipboard.writeText(window.location.href).then(function(){
         var b=document.getElementById('s-cp');
-        b.classList.add('copied'); b.innerHTML='<i class="fas fa-check"></i> Copied!';
-        setTimeout(function(){b.classList.remove('copied');b.innerHTML='<i class="fas fa-link"></i> Copy Link';},2000);
+        b.classList.add('copied'); b.innerHTML='<i class="fas fa-check" aria-hidden="true"></i> Copied';
+        setTimeout(function(){b.classList.remove('copied');b.innerHTML='<i class="fas fa-link" aria-hidden="true"></i> Copy link';},2000);
     });
 }
 </script>
-<script src="/static/js/global.js"></script>
 {% endblock %}
 {% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__event_details.js"></script>{% endblock %}

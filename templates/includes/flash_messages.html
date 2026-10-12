@@ -1,0 +1,15 @@
+{#- Flash messages on every page (UPG-63). Rendered as alerts, so they show
+    without JavaScript; global.js turns the ones marked data-flash into
+    toasts. Categories: success, danger/error, warning, info/message.
+    Messages are shown as text: one route flashes a link (routes_spoc.py,
+    room allocation); striptags keeps its words, as global.js always did. -#}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-stack">
+  {% for cat, msg in messages %}
+  {% set c = 'danger' if cat in ('error', 'danger') else (cat if cat in ('success', 'warning', 'info') else 'info') %}
+  <div class="alert alert-{{ c }}" role="{{ 'alert' if c in ('danger', 'warning') else 'status' }}" data-flash data-flash-type="{{ c }}">{{ msg | striptags }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}

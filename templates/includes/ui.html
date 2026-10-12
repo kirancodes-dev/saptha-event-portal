@@ -1,0 +1,204 @@
+{#- Shared UI macros (UPG-63). Styles live in static/css/global.css.
+    Import with context so the app bar can read the session:
+      {% from "includes/ui.html" import app_bar, page_head, stat_tile, status_badge, empty_state with context %}
+
+    app_bar(title=None, subtitle=None, active=None, back=None, cta=None)
+      The navy header on every signed-in page: official logo, the role's
+      workspace name (or `title`),
+      the links for the signed-in role, the person and log out. `back` is
+      (url, label); `cta` is (url, icon, label) for the page's one accent
+      action. A caller block adds page-specific buttons before the account.
+    page_head(title, sub=None, crumbs=None)  — crumbs: [(url or None, label)];
+      a caller block fills the actions on the right.
+    stat_tile(icon, value, label, meta=None, id=None) — a dashboard metric.
+    status_badge(status, label=None) — semantic colour from the status word.
+    empty_state(icon, title, text=None) — caller block adds an action.
+-#}
+
+{% macro app_bar(title=None, subtitle=None, active=None, back=None, cta=None) -%}
+{%- set role = session.get('role', '') -%}
+{%- set signed_in = session.get('user_id') -%}
+{%- set workspaces = {'Student': 'Student portal', 'Participant': 'Student portal',
+    'ClubSPOC': 'SPOC console', 'SPOC': 'SPOC console', 'UnitAdmin': 'SPOC console', 'EventOrganizer': 'SPOC console',
+    'EventCoordinator': 'Coordinator', 'Coordinator': 'Coordinator', 'Volunteer': 'Event volunteer',
+    'Judge': 'Judge panel', 'SuperAdmin': 'Admin console', 'Super Admin': 'Admin console', 'Admin': 'Admin console',
+    'UniversityAdmin': 'Admin console'} -%}
+{%- set title = title or (workspaces.get(role, 'SapthaEvent') if signed_in else 'SapthaEvent') -%}
+{%- if not signed_in -%}
+  {%- set links = [('/', 'fa-home', 'Home', 'home'), ('/events', 'fa-compass', 'Events', 'events'),
+                   ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar')] -%}
+{%- elif role in ('Student', 'Participant') -%}
+  {%- set links = [('/participant/dashboard', 'fa-th-large', 'Dashboard', 'dashboard'),
+                   ('/participant/my_events', 'fa-ticket-alt', 'My events', 'my_events'),
+                   ('/events', 'fa-compass', 'Events', 'events'),
+                   ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar')] -%}
+{%- elif role in ('ClubSPOC', 'SPOC', 'UnitAdmin', 'EventOrganizer') -%}
+  {%- set links = [('/spoc/dashboard', 'fa-th-large', 'Console', 'dashboard'),
+                   ('/spoc/analytics', 'fa-chart-column', 'Analytics', 'analytics'),
+                   ('/events', 'fa-compass', 'Events', 'events'),
+                   ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar'),
+                   ('/spoc/profile', 'fa-id-badge', 'SPOC profile', 'profile')] -%}
+{%- elif role in ('EventCoordinator', 'Coordinator') -%}
+  {%- set links = [('/coordinator/dashboard', 'fa-th-large', 'Dashboard', 'dashboard'),
+                   ('/coordinator/scanner', 'fa-qrcode', 'Scanner', 'scanner'),
+                   ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar')] -%}
+{%- elif role == 'Volunteer' -%}
+  {%- set links = [('/coordinator/scanner', 'fa-qrcode', 'Scanner', 'scanner')] -%}
+{%- elif role == 'Judge' -%}
+  {%- set links = [('/judge/dashboard', 'fa-gavel', 'Judge panel', 'dashboard'),
+                   ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar')] -%}
+{%- elif role in ('SuperAdmin', 'Super Admin', 'Admin', 'UniversityAdmin') -%}
+  {%- set links = [('/admin/dashboard', 'fa-th-large', 'Admin', 'dashboard'),
+                   ('/admin/events', 'fa-calendar-check', 'Events', 'events'),
+                   ('/admin/users', 'fa-users', 'Users', 'users'),
+                   ('/admin/registrations', 'fa-ticket', 'Registrations', 'registrations')] -%}
+{%- else -%}
+  {%- set links = [('/dashboard', 'fa-th-large', 'Dashboard', 'dashboard')] -%}
+{%- endif -%}
+<header class="app-bar" role="banner">
+  <div class="app-bar__inner">
+    <a href="/" class="app-bar__brand" aria-label="SapthaEvent — Sapthagiri NPS University home">
+      <img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36">
+    </a>
+    <span class="app-bar__divider" aria-hidden="true"></span>
+    <div class="app-bar__title">
+      <span class="app-bar__name">{{ title }}</span>
+      {%- if subtitle %}<span class="app-bar__sub">{{ subtitle }}</span>{% endif %}
+    </div>
+    <nav class="app-bar__nav" aria-label="Main navigation">
+      {%- if back %}
+      <a href="{{ back[0] }}" class="app-bar__link"><i class="fas fa-arrow-left" aria-hidden="true"></i><span class="app-bar__label">{{ back[1] }}</span></a>
+      {%- endif %}
+      {%- for href, icon, label, key in links %}
+      <a href="{{ href }}" class="app-bar__link app-bar__link--ws{% if key == active %} is-active{% endif %}"{% if key == active %} aria-current="page"{% endif %} title="{{ label }}">
+        <i class="fas {{ icon }}" aria-hidden="true"></i><span class="app-bar__label">{{ label }}</span>
+      </a>
+      {%- endfor %}
+      {%- if signed_in and role in ('SuperAdmin', 'Super Admin', 'Admin', 'UniversityAdmin') %}
+      <details class="app-bar__more">
+        <summary class="app-bar__link" title="More admin pages"><i class="fas fa-ellipsis-h" aria-hidden="true"></i><span class="app-bar__label">More</span></summary>
+        <div class="app-bar__menu" role="menu">
+          <a role="menuitem" href="/admin/analytics"><i class="fas fa-chart-line" aria-hidden="true"></i>Analytics</a>
+          <a role="menuitem" href="/admin/payments"><i class="fas fa-receipt" aria-hidden="true"></i>Payments &amp; refunds</a>
+          <a role="menuitem" href="/admin/send_email"><i class="fas fa-bullhorn" aria-hidden="true"></i>Announcements</a>
+          <a role="menuitem" href="/admin/report"><i class="fas fa-file-alt" aria-hidden="true"></i>A4 report</a>
+          <a role="menuitem" href="/admin/org_units"><i class="fas fa-sitemap" aria-hidden="true"></i>Units &amp; roles</a>
+          <a role="menuitem" href="/admin/venues"><i class="fas fa-map-marker-alt" aria-hidden="true"></i>Venues</a>
+          <a role="menuitem" href="/admin/sponsors"><i class="fas fa-handshake" aria-hidden="true"></i>Sponsors</a>
+          <a role="menuitem" href="/admin/system"><i class="fas fa-server" aria-hidden="true"></i>System status</a>
+          <a role="menuitem" href="/admin/audit_log"><i class="fas fa-clipboard-list" aria-hidden="true"></i>Audit log</a>
+          <a role="menuitem" href="/diag/email"><i class="fas fa-stethoscope" aria-hidden="true"></i>Email diagnostics</a>
+          <hr>
+          <a role="menuitem" href="/spoc/dashboard"><i class="fas fa-briefcase" aria-hidden="true"></i>SPOC console</a>
+          <a role="menuitem" href="/coordinator/dashboard"><i class="fas fa-clipboard-check" aria-hidden="true"></i>Coordinator view</a>
+          <a role="menuitem" href="/judge/dashboard"><i class="fas fa-gavel" aria-hidden="true"></i>Judge panel</a>
+          <a role="menuitem" href="/participant/dashboard"><i class="fas fa-user-graduate" aria-hidden="true"></i>Student view</a>
+        </div>
+      </details>
+      {%- endif %}
+      {%- if caller %}{{ caller() }}{% endif %}
+      {%- if cta %}
+      <a href="{{ cta[0] }}" class="app-bar__link app-bar__link--cta" title="{{ cta[2] }}"><i class="fas {{ cta[1] }}" aria-hidden="true"></i><span class="app-bar__label">{{ cta[2] }}</span></a>
+      {%- endif %}
+      {%- if signed_in %}
+      {%- set uname = session.get('name') or session.get('user_id') or '' %}
+      <a href="/profile/" class="app-bar__user" title="Your profile">
+        {{ avatar(current_avatar, uname, 'app-bar__avatar') }}
+        <span>{{ uname.split('(')[0] | trim }}</span>
+      </a>
+      <a href="/logout" class="app-bar__link" title="Log out"><i class="fas fa-sign-out-alt" aria-hidden="true"></i><span class="visually-hidden">Log out</span></a>
+      {%- else %}
+      <a href="/login" class="app-bar__link app-bar__link--cta"><i class="fas fa-sign-in-alt" aria-hidden="true"></i><span class="app-bar__label">Log in</span></a>
+      {%- endif %}
+    </nav>
+  </div>
+</header>
+{%- endmacro %}
+
+{% macro page_head(title, sub=None, crumbs=None) -%}
+<div class="page-head">
+  <div class="page-head__text">
+    {%- if crumbs %}
+    <ol class="crumbs" aria-label="Breadcrumb">
+      {%- for url, label in crumbs %}
+      <li>{% if url and not loop.last %}<a href="{{ url }}">{{ label }}</a>{% else %}<span{% if loop.last %} aria-current="page"{% endif %}>{{ label }}</span>{% endif %}</li>
+      {%- endfor %}
+    </ol>
+    {%- endif %}
+    <h1 class="page-head__title">{{ title }}</h1>
+    {%- if sub %}<p class="page-head__sub">{{ sub }}</p>{% endif %}
+  </div>
+  {%- if caller %}<div class="page-head__actions">{{ caller() }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro stat_tile(icon, value, label, meta=None, id=None) -%}
+<div class="stat-tile">
+  <span class="stat-tile__icon" aria-hidden="true"><i class="fas {{ icon }}"></i></span>
+  <div class="stat-tile__body">
+    <div class="stat-tile__value"{% if id %} id="{{ id }}"{% endif %}>{{ value }}</div>
+    <div class="stat-tile__label">{{ label }}</div>
+    {%- if meta %}<div class="stat-tile__meta">{{ meta }}</div>{% endif %}
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro status_badge(status, label=None) -%}
+{%- set s = (status or '') | string | lower | replace(' ', '_') -%}
+{%- if s in ('active', 'registration_open', 'open', 'published', 'approved', 'confirmed', 'registered', 'present', 'checked_in', 'attended', 'completed', 'paid', 'success', 'verified', 'issued', 'live', 'valid', 'scored', 'resolved', 'set') -%}
+  {%- set v = 'success' -%}
+{%- elif s in ('pending', 'draft', 'pending_payment', 'pending_approval', 'waitlist', 'waitlisted', 'submitted', 'review', 'in_review', 'under_review', 'scheduled', 'upcoming', 'in_progress', 'not_set', 'unverified') -%}
+  {%- set v = 'warning' -%}
+{%- elif s in ('cancelled', 'canceled', 'rejected', 'failed', 'absent', 'expired', 'invalid', 'revoked', 'refunded', 'disqualified', 'blocked') -%}
+  {%- set v = 'danger' -%}
+{%- elif s in ('closed', 'ended', 'archived', 'registration_closed') -%}
+  {%- set v = 'neutral' -%}
+{%- else -%}
+  {%- set v = 'info' -%}
+{%- endif -%}
+<span class="se-badge se-badge--{{ v }}">{{ label or (status | string | replace('_', ' ') | title) }}</span>
+{%- endmacro %}
+
+{% macro empty_state(icon, title, text=None) -%}
+<div class="empty-state">
+  <i class="fas {{ icon }}" aria-hidden="true"></i>
+  <h3>{{ title }}</h3>
+  {%- if text %}<p>{{ text }}</p>{% endif %}
+  {%- if caller %}{{ caller() }}{% endif %}
+</div>
+{%- endmacro %}
+
+{#- Profile photo (UPG-71): `value` is '' (initials), 'preset:<key>' (a brand
+    avatar in static/img/avatars/) or a photo URL. Decorative next to a name. -#}
+{% macro avatar(value, name='', cls='') -%}
+{%- set initials = (((name or '').split('(')[0].split() | map('first') | list)[:2] | join('') | upper) or 'U' -%}
+{%- if value and value.startswith('preset:') -%}
+<span class="se-avatar {{ cls }}" aria-hidden="true"><img src="/static/img/avatars/{{ value[7:] }}.svg" alt="" width="128" height="128"></span>
+{%- elif value -%}
+<span class="se-avatar {{ cls }}" aria-hidden="true"><img src="{{ value }}" alt="" referrerpolicy="no-referrer" loading="lazy" width="128" height="128"></span>
+{%- else -%}
+<span class="se-avatar se-avatar--initials {{ cls }}" aria-hidden="true">{{ initials }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{#- Profile header (UPG-63/UPG-71): the whole campus photo, the person's photo and
+    name; page-specific details go in the caller block. -#}
+{% macro profile_hero(name, email=None, avatar_value='', change_link=True) -%}
+<section class="profile-hero" aria-label="Profile">
+  <picture class="profile-hero__banner">
+    <source type="image/webp" srcset="/static/img/campus-800.webp 800w, /static/img/campus.webp 1347w" sizes="(max-width: 860px) 100vw, 1347px">
+    <img src="/static/campus.jpg" alt="Sapthagiri NPS University campus" width="1347" height="533">
+  </picture>
+  <div class="profile-hero__body">
+    <div class="profile-hero__avatar-wrap">
+      {{ avatar(avatar_value, name, 'profile-hero__avatar') }}
+      {%- if change_link %}
+      <a href="/profile/#photo" class="profile-hero__photo-btn" title="Change profile photo"><i class="fas fa-camera" aria-hidden="true"></i><span class="visually-hidden">Change profile photo</span></a>
+      {%- endif %}
+    </div>
+    <h2 class="profile-hero__name">{{ name }}</h2>
+    {%- if email %}<p class="profile-hero__email">{{ email }}</p>{% endif %}
+    {%- if caller %}{{ caller() }}{% endif %}
+  </div>
+</section>
+{%- endmacro %}

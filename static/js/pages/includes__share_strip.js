@@ -18,9 +18,9 @@ function shareCopy(btn){
   var url = btn.dataset.url || window.location.href;
   navigator.clipboard.writeText(url).then(function(){
     var origHtml = btn.innerHTML;
-    btn.style.background = '#d1fae5'; btn.style.color = '#065f46';
-    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-    setTimeout(function(){ btn.style.background=''; btn.style.color=''; btn.innerHTML=origHtml; }, 2000);
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Copied';
+    setTimeout(function(){ btn.classList.remove('copied'); btn.innerHTML=origHtml; }, 2000);
   });
 }
 

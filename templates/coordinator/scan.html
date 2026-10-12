@@ -8,12 +8,27 @@
     {% include "layouts/_fontawesome.html" %}
     <script integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
-        body { background-color: #1a2557; color: white; font-family: sans-serif; }
-        #reader { width: 100%; min-height: 320px; border-radius: 15px; overflow: hidden; border: 4px solid #c9a45e; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+        /* Coordinator entry scanner (UPG-63): navy device screen, gold accents */
+        body { background-color: var(--brand-navy); color: white; font-family: var(--font-body); }
+        .scan-brand { height: 36px; width: auto; }
+        .scan-title { font-size: 1.5rem; font-weight: 700; color: var(--brand-gold); }
+        .scan-event { color: rgba(255,255,255,.82); font-size: 1.05rem; }
+        .scan-narrow { max-width: 500px; }
+        .scan-wide { max-width: 600px; }
+        .scan-locked { max-width: 480px; margin: auto; }
+        .scan-locked__icon { width: 72px; height: 72px; margin: 0 auto; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--brand-gold); }
+        .scan-locked h2 { color: #fff; font-size: 1.25rem; }
+        .attendance-card { border-top: 4px solid var(--brand-gold); }
+        .attendance-card #t_team { color: var(--brand-navy); }
+        .room-banner { background: var(--success-soft); border: 2px solid #86efac; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; text-align: center; }
+        .room-banner__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #15803d; margin-bottom: 4px; }
+        .room-banner__name { font-family: var(--font-mono, monospace); font-size: 28px; font-weight: 800; color: #14532d; }
+        .btn-cam-start:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+        #reader { width: 100%; min-height: 320px; border-radius: 15px; overflow: hidden; border: 4px solid #c69d67; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
         #reader video { width: 100% !important; height: auto !important; display: block; }
-        #cam-placeholder { color: #c9a45e; text-align: center; padding: 30px 16px; }
+        #cam-placeholder { color: #c69d67; text-align: center; padding: 30px 16px; }
         #cam-error { display:none; background:#7f1d1d; color:#fee2e2; padding:12px 16px; border-radius:10px; margin-top:14px; font-size:14px; text-align:center; }
-        .btn-cam-start { background:#c9a45e; color:#1a2557; border:none; border-radius:10px; padding:12px 28px; font-weight:700; font-size:15px; cursor:pointer; }
+        .btn-cam-start { background:#c69d67; color:#00185e; border:none; border-radius:10px; padding:12px 28px; font-weight:700; font-size:15px; cursor:pointer; }
         .btn-cam-start:hover { background:#e1b970; }
         .member-row { background: white; color: #1e293b; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #10b981;}
         .form-check-input { width: 25px; height: 25px; cursor: pointer; accent-color: #10b981; border: 2px solid #cbd5e1; }
@@ -23,14 +38,15 @@
 {% block body %}
 
     <div class="text-center mb-4">
-        <h2 class="fw-bold text-warning"><i class="fas fa-qrcode me-2"></i>Entry Scanner</h2>
-        <p class="fs-5">{{ event_title }}</p>
+        <img src="/static/img/snpsu-logo-reversed.png" alt="SNPSU" class="brand-logo scan-brand mb-3">
+        <h1 class="scan-title mb-1"><i class="fas fa-qrcode me-2" aria-hidden="true"></i>Entry scanner</h1>
+        <p class="scan-event mb-0">{{ event_title }}</p>
     </div>
 
     {% if not scanning_open %}
-    <div class="text-center px-3 py-5" style="max-width:480px;margin:auto;">
-      <div style="font-size:56px;">🔒</div>
-      <h4 class="fw-bold text-warning mt-3">Scanner Locked</h4>
+    <div class="text-center px-3 py-5 scan-locked">
+      <div class="scan-locked__icon" aria-hidden="true"><i class="fas fa-lock"></i></div>
+      <h2 class="fw-bold mt-3">Scanner locked</h2>
       <p class="text-white-50">
         Scanning opens on <strong class="text-white">{{ event_date }}</strong>.
         {% if today < event_date %}
@@ -42,36 +58,36 @@
       <a href="/coordinator/scanner" class="btn btn-outline-light mt-3"><i class="fas fa-arrow-left me-2"></i>Back</a>
     </div>
     {% else %}
-    <div id="scanner-view" class="w-100" style="max-width: 500px;">
+    <div id="scanner-view" class="w-100 scan-narrow">
         <div id="reader" class="shadow-lg">
             <div id="cam-placeholder">
-                <i class="fas fa-camera fa-2x mb-3"></i>
+                <i class="fas fa-camera fa-2x mb-3" aria-hidden="true"></i>
                 <p class="mb-3 fw-bold">Tap below to start the camera</p>
                 <button class="btn-cam-start" data-h-click="coordinator/scan:1">
-                    <i class="fas fa-video me-2"></i>Start Camera
+                    <i class="fas fa-video me-2" aria-hidden="true"></i>Start camera
                 </button>
             </div>
         </div>
-        <div id="cam-error"></div>
+        <div id="cam-error" role="alert"></div>
         <div class="mt-4 text-center">
             <p>Or paste the ticket link or code:</p>
             <div class="input-group">
                 <input aria-label="Ticket link or code" type="text" id="manual_id" class="form-control form-control-lg" placeholder="Ticket link or code">
-                <button class="btn btn-warning fw-bold px-4" data-h-click="coordinator/scan:2">Fetch</button>
+                <button type="button" class="btn btn-gold px-4" data-h-click="coordinator/scan:2">Fetch</button>
             </div>
-            <a href="/coordinator/scanner" class="btn btn-outline-light mt-4"><i class="fas fa-arrow-left me-2"></i>Back to Scanner Menu</a>
+            <a href="/coordinator/scanner" class="btn btn-outline-light mt-4"><i class="fas fa-arrow-left me-2"></i>Back to scanner menu</a>
         </div>
     </div>
-    <div id="attendance-view" class="w-100 d-none" style="max-width: 600px;">
-        <div class="bg-white text-dark p-4 rounded-4 shadow-lg">
-            <h4 class="fw-bold mb-1 text-primary" id="t_team">Team Name</h4>
+    <div id="attendance-view" class="w-100 d-none scan-wide">
+        <div class="bg-white text-dark p-4 rounded-4 shadow-lg attendance-card">
+            <h2 class="h4 fw-bold mb-1" id="t_team">Team name</h2>
             <p class="fw-bold mb-1" id="t_status"></p>
             <p class="text-muted border-bottom pb-3 mb-3">Ticket ID: <span id="t_id" class="fw-bold"></span></p>
 
             <!-- Room assignment banner -->
-            <div id="room-banner" style="display:none;background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;">
-              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#15803d;margin-bottom:4px;"><i class="fas fa-door-open me-1"></i>Assigned Room</div>
-              <div id="room-name" style="font-family:monospace;font-size:28px;font-weight:800;color:#14532d;"></div>
+            <div id="room-banner" class="room-banner" style="display:none;">
+              <div class="room-banner__label"><i class="fas fa-door-open me-1" aria-hidden="true"></i>Assigned room</div>
+              <div id="room-name" class="room-banner__name"></div>
             </div>
 
             <div class="alert alert-warning border-warning">
@@ -83,8 +99,8 @@
                 <div id="members-list"></div>
                 
                 <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                    <button type="button" class="btn btn-outline-light text-dark border px-4 fw-bold" data-h-click="coordinator/scan:3">Next scan</button>
-                    <button type="button" id="save-members" class="btn btn-success px-5 fw-bold fs-5 shadow" data-h-click="coordinator/scan:4">Save member attendance <i class="fas fa-check-circle ms-2"></i></button>
+                    <button type="button" class="btn btn-secondary px-4" data-h-click="coordinator/scan:3">Next scan</button>
+                    <button type="button" id="save-members" class="btn btn-success px-4 fw-bold" data-h-click="coordinator/scan:4">Save member attendance <i class="fas fa-check-circle ms-2" aria-hidden="true"></i></button>
                 </div>
             </form>
         </div>
@@ -242,7 +258,7 @@
                 data = await response.json();
             } catch (err) {
                 playScanSound('error');
-                alert("❌ Network error. Try again.");
+                alert("Network error. Try again.");
                 resumeCamera();
                 return;
             }
@@ -254,8 +270,8 @@
 
                 document.getElementById('t_team').innerText = (data.team && data.team !== 'Individual') ? data.team : data.name;
                 document.getElementById('t_status').innerText = data.status === 'success'
-                    ? '✅ Checked in at ' + (data.checkin_time || '').slice(0, 5)
-                    : '⚠️ ' + data.message;
+                    ? 'Checked in at ' + (data.checkin_time || '').slice(0, 5)
+                    : '' + data.message;
                 document.getElementById('t_id').innerText = data.reg_id;
                 document.getElementById('submit_reg_id').value = data.reg_id;
 
@@ -296,7 +312,7 @@
                 document.getElementById('save-members').classList.toggle('d-none', members.length === 0);
             } else {
                 playScanSound('error');
-                alert("❌ " + data.message);
+                alert("" + data.message);
                 resumeCamera();
             }
         }

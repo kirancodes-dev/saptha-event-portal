@@ -1,0 +1,260 @@
+{% extends "base_classic.html" %}
+{#- Analytics (UPG-83): one page for the Super Admin (every event) and the SPOC
+    (their events). Figures come from services_insights.build(); charts are
+    Apache ECharts through static/js/se-echarts.js. -#}
+{% import 'includes/ui.html' as ui with context %}
+{% set app_active = 'analytics' %}
+{% set k = data.kpis %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block page_sub %}{{ 'Every event on the portal' if scope == 'admin' else 'Your events' }} · {{ data.period_label }}{% if data.category %} · {{ data.category }}{% endif %}{% if data.range.start %} ({{ data.range.start }} to {{ data.range.end }}){% endif %}{% endblock %}
+{% block page_actions %}
+{% if scope == 'admin' %}
+<div class="dropdown">
+  <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-file-csv" aria-hidden="true"></i> Export</button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="/admin/analytics/export/registrations">Registrations (CSV)</a></li>
+    <li><a class="dropdown-item" href="/admin/analytics/export/events">Events (CSV)</a></li>
+    <li><a class="dropdown-item" href="/admin/analytics/export/revenue">Revenue (CSV)</a></li>
+  </ul>
+</div>
+{% endif %}
+<button type="button" class="btn btn-secondary" data-h-click="analytics/hub:print"><i class="fas fa-print" aria-hidden="true"></i> Print</button>
+{% endblock %}
+{% block extra_css %}
+<style>
+/* Analytics (UPG-83) */
+.an-filters { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin-bottom: 18px; }
+.an-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-card); }
+.an-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.an-seg label { padding: 7px 12px; font-size: var(--fs-sm); font-weight: 600; color: var(--text-muted); cursor: pointer; border-right: 1px solid var(--border); margin: 0; }
+.an-seg label:last-of-type { border-right: 0; }
+.an-seg input:checked + label { background: var(--brand-navy); color: #fff; }
+.an-seg input:focus-visible + label { box-shadow: inset 0 0 0 2px var(--brand-gold-700); }
+.an-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.an-kpi { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+.an-kpi__label { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.an-kpi__value { font-family: var(--font-heading); font-size: 1.75rem; font-weight: 800; color: var(--text-strong); line-height: 1.15; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.an-kpi__meta { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 4px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.an-delta { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+.an-delta.up { background: var(--success-soft); color: var(--success-text); }
+.an-delta.down { background: var(--danger-soft); color: var(--danger-text); }
+.an-delta.flat { background: var(--surface-sunken); color: var(--text-muted); }
+.an-card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 20px; }
+.an-card__head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; align-items: start; margin-bottom: 10px; }
+.an-card__title { font-family: var(--font-heading); font-size: var(--fs-md); font-weight: 700; color: var(--text-strong); margin: 0; }
+.an-card__sub { font-size: var(--fs-xs); color: var(--text-muted); margin: 2px 0 0; }
+.an-chart { width: 100%; height: 320px; }
+.an-chart--tall { height: 460px; }
+.an-chart--short { height: 260px; }
+.an-tools { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 10px 12px; background: var(--surface-sunken); border-radius: var(--radius-sm); margin-bottom: 12px; }
+.an-tools .form-select, .an-tools .form-control { width: auto; font-size: var(--fs-sm); padding-top: 4px; padding-bottom: 4px; }
+.an-tools .form-select, .an-filters .form-select { padding-right: 2.25rem; background-position: right .6rem center; min-width: 0; }
+.an-filters .form-select { min-width: 190px; }
+.an-tools__group { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-muted); }
+.an-measures { display: flex; flex-wrap: wrap; gap: 6px; }
+.an-measures label { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-card); font-size: var(--fs-sm); color: var(--text); cursor: pointer; margin: 0; }
+.an-measures .sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.an-measures input { accent-color: var(--brand-navy); margin: 0; }
+.an-views { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.an-views button { border: 0; background: var(--surface-card); padding: 5px 12px; font-size: var(--fs-sm); font-weight: 600; color: var(--text-muted); }
+.an-views button[aria-pressed="true"] { background: var(--brand-navy); color: #fff; }
+.an-table { max-height: 520px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.an-table table { margin: 0; font-size: var(--fs-sm); }
+.an-table thead th { position: sticky; top: 0; background: var(--surface-sunken); z-index: 1; white-space: nowrap; }
+.an-table th button { all: unset; cursor: pointer; font-weight: 700; }
+.an-table th button:focus-visible { outline: 2px solid var(--brand-gold-700); outline-offset: 2px; }
+.an-table td.num, .an-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.an-table td { white-space: nowrap; }
+.an-table td:first-child { white-space: normal; min-width: 220px; }
+.an-hint { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; }
+.se-ec-table { padding: 12px; max-height: 100%; overflow: auto; }
+.se-ec-table table { font-size: 12px; }
+@media print { .an-filters, .an-tools, .app-bar, .page-head__actions { display: none !important; } .an-card { break-inside: avoid; } }
+</style>
+{% endblock %}
+{% block content %}
+<form method="get" action="{{ action_url }}" class="an-filters" id="an-filters" aria-label="Filters">
+  <fieldset class="m-0">
+    <legend class="form-label mb-1">Period</legend>
+    <div class="an-seg">
+      {% for key, label in [('7', '7 days'), ('30', '30 days'), ('90', '90 days'), ('365', '12 months'), ('all', 'All time')] %}
+      <input type="radio" name="period" id="p-{{ key }}" value="{{ key }}" {{ 'checked' if data.period == key }}><label for="p-{{ key }}">{{ label }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div>
+    <label class="form-label mb-1" for="an-cat">Category</label>
+    <select class="form-select" id="an-cat" name="category">
+      <option value="">All categories</option>
+      {% for c in data.categories_available %}<option value="{{ c }}" {{ 'selected' if data.category == c }}>{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <noscript><button class="btn btn-primary" type="submit">Apply</button></noscript>
+</form>
+
+{%- macro delta(value, compared) -%}
+  {%- if not compared -%}
+  {%- elif value is none -%}<span class="an-delta flat">no earlier data</span>
+  {%- elif value > 0 -%}<span class="an-delta up"><i class="fas fa-arrow-up" aria-hidden="true"></i>{{ value }}%<span class="visually-hidden"> up</span></span>
+  {%- elif value < 0 -%}<span class="an-delta down"><i class="fas fa-arrow-down" aria-hidden="true"></i>{{ value|abs }}%<span class="visually-hidden"> down</span></span>
+  {%- else -%}<span class="an-delta flat">no change</span>{%- endif -%}
+{%- endmacro %}
+{% set prev_label = 'vs previous ' ~ (data.period ~ ' days' if data.period != '365' else '12 months') %}
+<div class="an-kpis">
+  <div class="an-kpi">
+    <div class="an-kpi__label">Registrations</div>
+    <div class="an-kpi__value">{{ "{:,}".format(k.registrations) }}</div>
+    <div class="an-kpi__meta">{{ delta(k.registrations_delta, k.compared) }}{% if k.compared %} {{ prev_label }}{% else %}all time{% endif %}</div>
+  </div>
+  <div class="an-kpi">
+    <div class="an-kpi__label">Attendance rate</div>
+    <div class="an-kpi__value">{{ (k.attendance_rate ~ '%') if k.attendance_rate is not none else '—' }}</div>
+    <div class="an-kpi__meta">{{ "{:,}".format(k.attended) }} attended · events already held</div>
+  </div>
+  <div class="an-kpi">
+    <div class="an-kpi__label">Revenue</div>
+    <div class="an-kpi__value">₹{{ "{:,.0f}".format(k.revenue) }}</div>
+    <div class="an-kpi__meta">{{ delta(k.revenue_delta, k.compared) }} {{ "{:,}".format(k.paid) }} paid registration{{ 's' if k.paid != 1 }}</div>
+  </div>
+  <div class="an-kpi">
+    <div class="an-kpi__label">Live events</div>
+    <div class="an-kpi__value">{{ k.live_events }}</div>
+    <div class="an-kpi__meta">of {{ k.events }} event{{ 's' if k.events != 1 }}{{ ' in ' ~ data.category if data.category }}</div>
+  </div>
+  <div class="an-kpi">
+    <div class="an-kpi__label">Events in this period</div>
+    <div class="an-kpi__value">{{ k.events_in_period }}</div>
+    <div class="an-kpi__meta">with registrations or held in the period</div>
+  </div>
+</div>
+
+{% if not data.events %}
+<div class="panel">{{ ui.empty_state('fa-chart-column', 'Nothing to show for this period', 'Try a longer period or another category.') }}</div>
+{% else %}
+
+<section class="an-card" aria-labelledby="cmp-h">
+  <div class="an-card__head">
+    <div>
+      <h2 class="an-card__title" id="cmp-h">Compare events</h2>
+      <p class="an-card__sub">Pick the measures, sort and how many events to show. Drag the slider or scroll over the chart to move through long lists; click an event to open it.</p>
+    </div>
+    <div class="an-views" role="group" aria-label="View">
+      <button type="button" aria-pressed="true" data-view="chart"><i class="fas fa-chart-bar me-1" aria-hidden="true"></i>Chart</button>
+      <button type="button" aria-pressed="false" data-view="table"><i class="fas fa-table me-1" aria-hidden="true"></i>Table</button>
+    </div>
+  </div>
+  <div class="an-tools">
+    <div class="an-tools__group" role="group" aria-label="Measures"><span>Show</span>
+      <div class="an-measures" id="cmp-measures"></div>
+    </div>
+    <label class="an-tools__group">Sort by
+      <select class="form-select" id="cmp-sort">
+        <option value="registered">Registrations</option>
+        <option value="attended">Attended</option>
+        <option value="attendance_rate">Attendance rate</option>
+        <option value="no_show">No-shows</option>
+        <option value="revenue">Revenue</option>
+        <option value="date">Event date</option>
+        <option value="title">Name</option>
+      </select>
+    </label>
+    <label class="an-tools__group">Events
+      <select class="form-select" id="cmp-limit">
+        <option value="10">Top 10</option>
+        <option value="25">Top 25</option>
+        <option value="0">All ({{ data.events|length }})</option>
+      </select>
+    </label>
+    <label class="an-tools__group">Bars
+      <select class="form-select" id="cmp-stack">
+        <option value="group">Side by side</option>
+        <option value="stack">Breakdown of registrations</option>
+      </select>
+    </label>
+    <label class="an-tools__group"><span class="visually-hidden">Find an event</span>
+      <input class="form-control" type="search" id="cmp-find" placeholder="Find an event…">
+    </label>
+  </div>
+  <div data-pane="chart"><div class="an-chart an-chart--tall" id="ch-compare" role="img" aria-label="Events compared by the selected measures; the Table view lists the same numbers"></div></div>
+  <div data-pane="table" hidden>
+    <div class="an-table"><table class="table table-hover align-middle" id="cmp-table"><thead></thead><tbody></tbody></table></div>
+    <p class="an-hint">Click a column heading to sort. No-shows count only events that have already happened.</p>
+  </div>
+</section>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-8">
+    <section class="an-card h-100" aria-labelledby="trend-h">
+      <div class="an-card__head">
+        <div>
+          <h2 class="an-card__title" id="trend-h">Registrations over time</h2>
+          <p class="an-card__sub">{{ 'Weekly' if data.trend.weekly else 'Daily' }} registrations. Drag the slider to zoom into a range.</p>
+        </div>
+        <div class="an-views" role="group" aria-label="Split">
+          <button type="button" aria-pressed="true" data-split="total">Total</button>
+          <button type="button" aria-pressed="false" data-split="category">By category</button>
+        </div>
+      </div>
+      <div class="an-chart" id="ch-trend" role="img" aria-label="Registrations over time"></div>
+    </section>
+  </div>
+  <div class="col-12 col-xl-4">
+    <section class="an-card h-100" aria-labelledby="cat-h">
+      <div class="an-card__head"><div><h2 class="an-card__title" id="cat-h">By category</h2><p class="an-card__sub">Registrations in each category.</p></div></div>
+      <div class="an-chart" id="ch-category" role="img" aria-label="Registrations by category"></div>
+    </section>
+  </div>
+  <div class="col-12 col-lg-6">
+    <section class="an-card h-100" aria-labelledby="fun-h">
+      <div class="an-card__head"><div><h2 class="an-card__title" id="fun-h">Registration to certificate</h2><p class="an-card__sub">How many registrations reached each step; the label shows the share of all registrations.</p></div></div>
+      <div class="an-chart an-chart--short" id="ch-funnel" role="img" aria-label="Funnel from registered to certified"></div>
+    </section>
+  </div>
+  <div class="col-12 col-lg-6">
+    <section class="an-card h-100" aria-labelledby="heat-h">
+      <div class="an-card__head"><div><h2 class="an-card__title" id="heat-h">When people register</h2><p class="an-card__sub">Registrations by weekday and hour; darker is busier. Useful for timing announcements.</p></div></div>
+      <div class="an-chart an-chart--short" id="ch-heat" role="img" aria-label="Registrations by weekday and hour"></div>
+    </section>
+  </div>
+  <div class="col-12 col-lg-6">
+    <section class="an-card h-100" aria-labelledby="rev-h">
+      <div class="an-card__head"><div><h2 class="an-card__title" id="rev-h">Revenue by event</h2><p class="an-card__sub">Fees collected (refunds excluded), highest first.</p></div></div>
+      <div class="an-chart" id="ch-revenue" role="img" aria-label="Revenue by event"></div>
+    </section>
+  </div>
+  <div class="col-12 col-lg-6">
+    <section class="an-card h-100" aria-labelledby="ns-h">
+      <div class="an-card__head"><div><h2 class="an-card__title" id="ns-h">No-show rate</h2><p class="an-card__sub">Share of confirmed registrations that didn't attend, for events already held. Over 30% is flagged.</p></div></div>
+      <div class="an-chart" id="ch-noshow" role="img" aria-label="No-show rate by event"></div>
+    </section>
+  </div>
+</div>
+
+{% if data.participants %}
+<section class="an-card" aria-labelledby="pt-h">
+  <div class="an-card__head"><div><h2 class="an-card__title" id="pt-h">Who registered</h2><p class="an-card__sub">By participant type.</p></div></div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th scope="col">Participant type</th><th scope="col" class="text-end">Registered</th><th scope="col" class="text-end">Attended</th><th scope="col" class="text-end">Share</th></tr></thead>
+      <tbody>
+        {% for row in data.participants %}
+        <tr><td>{{ row.type }}</td><td class="text-end">{{ "{:,}".format(row.registered) }}</td><td class="text-end">{{ "{:,}".format(row.attended) }}</td><td class="text-end">{{ ((row.registered * 100 / k.registrations)|round(1)) if k.registrations else 0 }}%</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endif %}
+
+<script type="application/json" id="analytics-data">{{ data|tojson }}</script>
+<script type="application/json" id="analytics-config">{{ {'scope': scope}|tojson }}</script>
+{% endblock %}
+{% block extra_js %}
+{% include "layouts/_bootstrap_js.html" %}
+<script integrity="sha384-Mx5lkUEQPM1pOJCwFtUICyX45KNojXbkWdYhkKUKsbv391mavbfoAmONbzkgYPzR" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="/static/js/se-echarts.js"></script>
+<script src="/static/js/pages/analytics__hub.js"></script>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/analytics__hub.js"></script>{% endblock %}

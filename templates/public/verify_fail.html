@@ -1,52 +1,26 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23a. -#}
-{% set site_footer_fixed = true %}
-{% block head %}
-<title>Verification Failed | SapthaEvent</title>
-{% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
-<style>
-body{background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
-.card{max-width:420px;width:100%;border:none;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.08);}
-</style>
-{% endblock %}
-{% block body %}
-<div class="card">
-  <div style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:32px;text-align:center;">
-    <div style="width:72px;height:72px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-      <i class="fas fa-times fa-2x text-white"></i>
-    </div>
-    <h2 style="color:#fff;margin:0 0 6px;font-size:22px;">Verification Failed</h2>
-    <p style="color:rgba(255,255,255,.7);margin:0;font-size:14px;">
-      This certificate could not be verified
-    </p>
+{% extends "layouts/status.html" %}
+{#- Certificate verification failure on the status layout (UPG-63). -#}
+{% set status_tone = 'danger' %}
+{% set status_icon = 'fa-circle-xmark' %}
+{% block title %}Verification Failed{% endblock %}
+{% block status %}
+  <h1>Verification Failed</h1>
+  <p>This certificate could not be verified.</p>
+  <p class="small">
+    {% if reason == 'Absent' %}
+      This registration exists but the participant was marked <strong>Absent</strong>
+      at the event. Certificates are only issued to participants who attended.
+    {% else %}
+      The certificate ID <code>{{ reg_id }}</code> was not found in our records.
+      This certificate may be invalid or forged.
+    {% endif %}
+  </p>
+  <div class="alert alert-danger small mb-0" role="status">
+    <i class="fas fa-exclamation-triangle me-1" aria-hidden="true"></i>
+    Not a valid SapthaEvent certificate
   </div>
-
-  <div style="padding:28px;text-align:center;">
-    <p style="color:#475569;font-size:14px;line-height:1.7;">
-      {% if reason == 'Absent' %}
-        This registration exists but the participant was marked <strong>Absent</strong>
-        at the event. Certificates are only issued to participants who attended.
-      {% else %}
-        The certificate ID <code style="font-size:12px;">{{ reg_id }}</code>
-        was not found in our records. This certificate may be invalid or forged.
-      {% endif %}
-    </p>
-
-    <div class="mt-3 p-3 rounded-3"
-         style="background:#fef2f2;border:1px solid #fca5a5;">
-      <i class="fas fa-exclamation-triangle text-danger me-2"></i>
-      <span style="font-size:13px;color:#991b1b;font-weight:600;">
-        Not a valid SapthaEvent certificate
-      </span>
-    </div>
-
-    <div class="text-center mt-4">
-      <a href="/" class="btn btn-sm btn-outline-secondary rounded-pill px-4">
-        <i class="fas fa-home me-1"></i>Back to Portal
-      </a>
-    </div>
+  <div class="status-actions">
+    <a href="/verify" class="btn btn-primary"><i class="fas fa-shield-halved" aria-hidden="true"></i> Check another ID</a>
+    <a href="/" class="btn btn-secondary"><i class="fas fa-home" aria-hidden="true"></i> Back to the portal</a>
   </div>
-</div>
 {% endblock %}

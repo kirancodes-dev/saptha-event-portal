@@ -154,6 +154,12 @@ def login():
                 log_action("LOGIN_FAILED", f"Bad credentials for {email} (role={role})")
                 return redirect('/login')
 
+            # A Super Admin can deactivate an account (UPG-75)
+            if user.get('is_active') is False:
+                flash('This account has been deactivated. Contact the portal administrator.', 'danger')
+                log_action("LOGIN_BLOCKED_INACTIVE", f"Deactivated account {email} tried to log in")
+                return redirect('/login')
+
             user_name = user.get('name', 'User')
             user_category = user.get('category', 'General')
             if hasattr(user_category, 'value'):

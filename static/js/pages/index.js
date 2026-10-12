@@ -59,20 +59,11 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a){
   });
 });
 
-// ── DEBUG TOAST (shows errors visibly on screen) ───────────────────────────
+// Script errors go to the console only: visitors never see a developer
+// message on the public home page (UPG-86)
 function _dbgToast(msg, isErr){
-  var t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;max-width:90vw;word-break:break-all;box-shadow:0 4px 20px rgba(0,0,0,.4);';
-  t.style.background = isErr ? '#ef4444' : '#10b981';
-  t.style.color = '#fff';
-  t.textContent = (isErr ? '❌ ERROR: ' : '✅ ') + msg;
-  document.body.appendChild(t);
-  setTimeout(function(){ t.remove(); }, 8000);
   console.log(isErr ? 'ERROR:' : 'DEBUG:', msg);
 }
-window.onerror = function(msg, src, line, col, err){
-  _dbgToast(msg + ' (line ' + line + ')', true);
-};
 
 // ── EVENT CARD CLICK (event delegation) ────────────────────────────────────
 document.addEventListener('click', function(e){
@@ -153,7 +144,6 @@ function showEventModalFromCol(col){
     var dateText    = (col.querySelector('[data-info="date"]')?.textContent  || evDate || 'TBA').trim();
     var venue       = (col.querySelector('[data-info="venue"]')?.textContent || 'TBA').trim();
     var fee         = (col.querySelector('[data-info="fee"]')?.textContent   || 'Free').trim();
-    var regCount    = (col.querySelector('.ev-reg-count')?.textContent       || '0 registered').trim();
     var bannerSrc   = col.querySelector('.ev-banner img')?.src || '';
     
     // Update modal title
@@ -162,16 +152,16 @@ function showEventModalFromCol(col){
     
     // Banner image
     var bannerHtml = bannerSrc
-      ? '<div style="margin:-24px -24px 20px;border-radius:12px 12px 0 0;overflow:hidden;max-height:200px;"><img src="' + safeUrl(bannerSrc) + '" style="width:100%;height:200px;object-fit:cover;display:block;" alt=""></div>'
+      ? '<img src="' + safeUrl(bannerSrc) + '" class="event-modal-banner" alt="">'
       : '';
     
     // Category badge colour
-    var catColour = {technical:'#3b82f6',cultural:'#a855f7',sports:'#10b981',management:'#f59e0b'};
-    var badgeBg = catColour[evCat.toLowerCase()] || '#6b7280';
+    var catColour = {technical:'var(--cat-technical)',cultural:'var(--cat-cultural)',sports:'var(--cat-sports)',management:'var(--cat-management)'};
+    var badgeBg = catColour[evCat.toLowerCase()] || 'var(--text-muted)';
     
     // Register button (the card's text and IDs are escaped into the HTML: BLK-19)
     var regBtnHtml = evReg && evRegId
-      ? '<button class="modal-btn" style="background:#10b981;color:#fff;border:none;" data-h-click="se:go" data-href="' + safeUrl('/ticket/' + encodeURIComponent(evRegId)) + '"><i class="fas fa-ticket-alt me-1"></i>View My Ticket</button>'
+      ? '<button class="modal-btn btn-success" data-h-click="se:go" data-href="' + safeUrl('/ticket/' + encodeURIComponent(evRegId)) + '"><i class="fas fa-ticket-alt me-1"></i>View My Ticket</button>'
       : '<button class="modal-btn modal-btn-primary" data-h-click="se:go" data-href="' + safeUrl('/forms/register/' + encodeURIComponent(evId)) + '"><i class="fas fa-arrow-right me-1"></i>Register Now</button>';
     
     // Calendar section (only if we have a valid date)
@@ -191,10 +181,9 @@ function showEventModalFromCol(col){
         + '<div class="event-modal-meta-item"><i class="fas fa-calendar-alt"></i><span>' + escapeHtml(dateText) + '</span></div>'
         + '<div class="event-modal-meta-item"><i class="fas fa-map-marker-alt"></i><span>' + escapeHtml(venue) + '</span></div>'
         + '<div class="event-modal-meta-item"><i class="fas fa-tag"></i><span style="text-transform:capitalize;color:' + escapeHtml(badgeBg) + ';font-weight:700;">' + escapeHtml(evCat) + '</span></div>'
-        + '<div class="event-modal-meta-item"><i class="fas fa-users"></i><span>' + escapeHtml(regCount) + '</span></div>'
       + '</div>'
       + '<div class="event-modal-section"><h5>About This Event</h5><p>' + escapeHtml(description) + '</p></div>'
-      + '<div class="event-modal-section"><h5>Entry Fee</h5><p style="font-size:18px;font-weight:800;color:var(--orange);">' + escapeHtml(fee) + '</p></div>'
+      + '<div class="event-modal-section"><h5>Entry Fee</h5><p style="font-size:18px;font-weight:800;color:var(--brand-navy);">' + escapeHtml(fee) + '</p></div>'
       + calHtml
       + '<div class="event-modal-section"><h5>Event Highlights</h5><p>\uD83C\uDFAF Competitive spirit \u2022 \uD83C\uDFC6 Amazing prizes \u2022 \uD83E\uDD1D Networking opportunities \u2022 \uD83C\uDF93 Skill development</p></div>'
       + '<div class="modal-btn-group">' + regBtnHtml + '<button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
@@ -370,6 +359,16 @@ function setCategoryFilter(cat, btn) {
   activeCategory = cat;
   visibleCount = 9; // Reset pagination
   applyFiltersAndPagination();
+}
+
+// The hero's category chips: pick the matching tab and bring the events into view (UPG-86)
+function filterByCategory(cat) {
+  var tab = Array.prototype.find.call(document.querySelectorAll('.ftab'), function (b) {
+    return b.textContent.trim().toLowerCase() === String(cat).toLowerCase();
+  });
+  if (tab) setCategoryFilter(cat, tab);
+  var events = document.getElementById('events');
+  if (events) events.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 
 function filterEvs() {

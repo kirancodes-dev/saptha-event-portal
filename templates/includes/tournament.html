@@ -2,22 +2,18 @@
 {% if t %}
 <div class="tournament-section">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h4 class="mb-0" style="font-size:18px; font-weight:700; color:#1a2557;">
-            <i class="fas fa-trophy me-2" style="color:var(--orange);"></i> Tournament: {{ t.format|title }}
-        </h4>
+        <h2 class="h5 mb-0"><i class="fas fa-trophy me-2 text-gold" aria-hidden="true"></i>Tournament: {{ t.format|title }}</h2>
         {% if champion %}
-        <span class="badge bg-success p-2 fs-6">
-            🏆 Champion: {{ names.get(champion, champion) if names else champion }}
-        </span>
+        <span class="se-badge se-badge--gold se-badge--plain"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) if names else champion }}</span>
         {% endif %}
     </div>
 
     {% if t.format == 'league' and table %}
     <div class="mb-4">
-        <h5 class="text-muted small fw-bold text-uppercase mb-2">Points Table / Standings</h5>
+        <h3 class="eyebrow mb-2">Points table</h3>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped table-sm align-middle mb-0">
-                <thead class="table-dark">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
                     <tr>
                         <th style="width:40px;">#</th>
                         <th>Team</th>
@@ -50,24 +46,24 @@
 
     {% if t.matches %}
     <div>
-        <h5 class="text-muted small fw-bold text-uppercase mb-2">Fixtures &amp; Match Results</h5>
+        <h3 class="eyebrow mb-2">Fixtures &amp; results</h3>
         <div class="row g-2">
             {% for m in t.matches %}
             <div class="col-md-6 col-12">
-                <div class="p-2 border rounded {% if m.winner %}bg-light{% endif %}" style="font-size:13px;">
+                <div class="match-card{% if m.winner %} match-card--done{% endif %}">
                     <div class="d-flex justify-content-between text-muted mb-1" style="font-size:11px;">
                         <span>Match {{ m.id|upper }} · Round {{ m.round }}</span>
                         {% if m.venue or m.date or m.time %}
                         <span>{{ m.venue }} {% if m.date %}· {{ m.date }}{% endif %}</span>
                         {% endif %}
                     </div>
-                    <div class="d-flex justify-content-between align-items-center {% if m.winner and m.winner == m.home %}fw-bold text-success{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center {% if m.winner and m.winner == m.home %}fw-bold text-success match-winner{% endif %}">
                         <span>{{ (names.get(m.home, m.home) if names else m.home) if m.home else 'TBD' }}</span>
-                        <span class="badge bg-secondary">{{ m.home_score if m.home_score is not none else '-' }}</span>
+                        <span class="match-score">{{ m.home_score if m.home_score is not none else '–' }}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-1 {% if m.winner and m.winner == m.away %}fw-bold text-success{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mt-1 {% if m.winner and m.winner == m.away %}fw-bold text-success match-winner{% endif %}">
                         <span>{{ (names.get(m.away, m.away) if names else m.away) if m.away else 'TBD' }}</span>
-                        <span class="badge bg-secondary">{{ m.away_score if m.away_score is not none else '-' }}</span>
+                        <span class="match-score">{{ m.away_score if m.away_score is not none else '–' }}</span>
                     </div>
                 </div>
             </div>

@@ -7,16 +7,17 @@
     <link href="/static/css/global.css" rel="stylesheet">
 {% include "layouts/_fontawesome.html" %}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;--bg:#f4f7f6;}
+:root{--blue:var(--brand-navy);--orange:var(--brand-gold);--bg:var(--surface-page);}
+/* Form builder (UPG-63): full-screen three-panel tool on the brand tokens */
 *{box-sizing:border-box;}
-body{background:var(--bg);font-family:'Inter',sans-serif;color:#1e293b;}
-h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
+body{background:var(--bg);font-family:var(--font-body);color:var(--text);}
+h1,h2,h3,h4,h5{font-family: var(--font-heading);}
 
 /* Layout */
 .builder-wrap{display:grid;grid-template-columns:260px 1fr 320px;gap:0;min-height:100vh;}
-.panel{background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;}
-.panel-header{background:var(--blue);color:white;padding:16px 20px;position:sticky;top:0;z-index:10;}
-.panel-header h6{margin:0;font-size:14px;font-weight:700;letter-spacing:.5px;}
+.panel{background:#fff;border:0;border-right:1px solid var(--border);border-radius:0;box-shadow:none;padding:0;overflow-y:auto;}
+.panel-header{background:var(--surface-card);color:var(--text-strong);border-bottom:2px solid var(--brand-gold);padding:14px 20px;position:sticky;top:0;z-index:10;}
+.panel-header h6{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color: var(--brand-ink);}
 
 /* Left — Field palette */
 .field-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 16px;
@@ -33,7 +34,7 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
   border:1px solid #e2e8f0;margin-bottom:20px;}
 .canvas-drop{min-height:300px;border:2px dashed #cbd5e1;border-radius:12px;
   padding:16px;background:#fff;transition:.2s;}
-.canvas-drop.drag-over{border-color:var(--orange);background:#fff8f4;}
+.canvas-drop.drag-over{border-color:var(--orange);background:var(--brand-gold-100);}
 .canvas-empty{text-align:center;padding:60px 24px;color:#94a3b8;}
 .canvas-empty i{font-size:3rem;margin-bottom:12px;display:block;opacity:.3;}
 
@@ -41,8 +42,8 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 .field-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;
   padding:14px 16px;margin-bottom:10px;cursor:grab;display:flex;
   align-items:flex-start;gap:12px;transition:.15s;position:relative;}
-.field-card:hover{border-color:var(--blue);box-shadow:0 2px 8px rgba(26, 37, 87,.08);}
-.field-card.selected{border-color:var(--orange);box-shadow:0 0 0 3px rgba(201,164,94,.15);}
+.field-card:hover{border-color:var(--blue);box-shadow:0 2px 8px rgba(0,24,94,.08);}
+.field-card.selected{border-color:var(--orange);box-shadow:0 0 0 3px rgba(198,157,103,.15);}
 .field-card.dragging{opacity:.4;}
 .field-card .drag-handle{color:#cbd5e1;padding-top:2px;cursor:grab;flex-shrink:0;}
 .field-card .field-meta{flex:1;min-width:0;}
@@ -66,10 +67,10 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 .prop-label{font-size:12px;font-weight:600;color:#64748b;
   text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
 .prop-input{width:100%;padding:8px 12px;border:1px solid #e2e8f0;
-  border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;
+  border-radius:8px;font-size:13px;font-family:var(--font-body);
   background:#f8fafc;transition:.15s;}
 .prop-input:focus{outline:none;border-color:var(--blue);
-  box-shadow:0 0 0 3px rgba(26, 37, 87,.1);background:#fff;}
+  box-shadow:0 0 0 3px rgba(0,24,94,.1);background:#fff;}
 .prop-toggle{display:flex;align-items:center;gap:10px;
   font-size:13px;color:#334155;cursor:pointer;}
 .prop-toggle input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);}
@@ -80,7 +81,7 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
   border-bottom:1px solid #f1f5f9;}
 .option-item:last-child{border-bottom:none;}
 .option-item input{flex:1;border:none;font-size:13px;background:transparent;
-  font-family:'Inter',sans-serif;}
+  font-family:var(--font-body);}
 .option-item input:focus{outline:none;}
 .option-item button{border:none;background:none;color:#94a3b8;cursor:pointer;
   font-size:12px;padding:2px 4px;}
@@ -91,15 +92,17 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 .btn-add-option:hover{border-color:var(--blue);color:var(--blue);}
 
 /* Top bar */
-.topbar{background:var(--blue);color:white;padding:14px 24px;
+.topbar{background:var(--blue);color:white;padding:12px 24px;gap:16px;flex-wrap:wrap;border-bottom:3px solid var(--brand-gold);
   display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:100;}
-.topbar h5{margin:0;font-size:16px;}
+.topbar h1{margin:0;font-size:16px;color:#fff;}
+.topbar .brand-logo{height:30px;width:auto;}
 .topbar .event-sub{font-size:12px;opacity:.7;margin-top:2px;}
-.btn-save{background:var(--orange);color:white;border:none;
-  padding:9px 24px;border-radius:20px;font-weight:700;font-size:13px;
+.btn-save{background:var(--orange);color:var(--brand-navy);border:none;
+  padding:9px 22px;border-radius:var(--radius-sm);font-weight:700;font-size:13px;
   cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px;}
-.btn-save:hover{background:#d95f0f;transform:scale(1.03);}
+.btn-save:hover{background:var(--brand-gold-300,#d8b98c);}
+.btn-save:focus-visible,.field-btn:focus-visible,.type-card:focus-visible{outline:2px solid var(--brand-gold);outline-offset:2px;}
 .btn-save:disabled{background:#94a3b8;cursor:not-allowed;transform:none;}
 
 /* Form type switcher */
@@ -107,8 +110,8 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 .type-card{flex:1;padding:16px;border:2px solid #e2e8f0;border-radius:12px;
   cursor:pointer;transition:.2s;text-align:center;background:#fff;}
 .type-card:hover{border-color:var(--blue);}
-.type-card.active{border-color:var(--orange);background:#fff8f4;}
-.type-card .type-icon{font-size:28px;margin-bottom:8px;display:block;}
+.type-card.active{border-color:var(--orange);background:var(--brand-gold-100);}
+.type-card .type-icon{font-size:26px;margin-bottom:8px;display:block;color: var(--brand-ink);}
 .type-card h6{margin:0;font-size:13px;font-weight:700;}
 .type-card p{margin:4px 0 0;font-size:11px;color:#64748b;}
 
@@ -121,10 +124,12 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 .toast-msg.error{border-left:4px solid #ef4444;}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
+/* What every form gets (UPG-79) */
+.fb-note{font-size:12.5px;color:var(--text-muted);background:var(--surface-sunken);border-radius:var(--radius-sm);padding:8px 12px;}
 /* Preview modal */
 .preview-form input,.preview-form select,.preview-form textarea{
   width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;
-  font-size:13px;font-family:'Inter',sans-serif;margin-top:4px;}
+  font-size:13px;font-family:var(--font-body);margin-top:4px;}
 .preview-form label{font-size:13px;font-weight:600;color:#334155;}
 .preview-form .required-star{color:#ef4444;}
 
@@ -143,20 +148,23 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div>
-    <h5><i class="fas fa-wpforms me-2"></i>Form Builder</h5>
+  <div class="d-flex align-items-center gap-3">
+    <img src="/static/img/snpsu-logo-reversed.png" alt="SNPSU" class="brand-logo d-none d-md-block">
+    <div>
+    <h1><i class="fas fa-rectangle-list me-2" aria-hidden="true"></i>Form builder</h1>
     <div class="event-sub">{{ event.title }} &nbsp;·&nbsp; {{ event.get('date','') }}</div>
+    </div>
   </div>
   <div class="d-flex align-items-center gap-3">
-    <button class="btn btn-outline-light btn-sm rounded-pill px-3"
+    <button type="button" class="btn btn-outline-light btn-sm"
             data-h-click="coordinator/form_builder:1">
-      <i class="fas fa-eye me-1"></i> Preview
+      <i class="fas fa-eye me-1" aria-hidden="true"></i> Preview
     </button>
-    <button class="btn-save" id="btn-save" data-h-click="coordinator/form_builder:2">
-      <i class="fas fa-save"></i> Save Form
+    <button type="button" class="btn-save" id="btn-save" data-h-click="coordinator/form_builder:2">
+      <i class="fas fa-save" aria-hidden="true"></i> Save form
     </button>
-    <a href="{{ '/spoc/dashboard' if session.get('role') == 'ClubSPOC' else '/coordinator/dashboard' }}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-      <i class="fas fa-arrow-left me-1"></i> Back
+    <a href="{{ back_url }}" class="btn btn-outline-light btn-sm" id="btn-back">
+      <i class="fas fa-arrow-left me-1" aria-hidden="true"></i> Back
     </a>
   </div>
 </div>
@@ -250,12 +258,12 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
           <div class="prop-label mb-2">Registration Type</div>
           <div class="type-switcher">
             <div class="type-card" id="type-simple" data-h-click="coordinator/form_builder:18">
-              <span class="type-icon">📋</span>
+              <span class="type-icon" aria-hidden="true"><i class="fas fa-clipboard-list"></i></span>
               <h6>Simple Registration</h6>
               <p>Pre-built form with standard fields</p>
             </div>
             <div class="type-card" id="type-custom" data-h-click="coordinator/form_builder:19">
-              <span class="type-icon">🎨</span>
+              <span class="type-icon" aria-hidden="true"><i class="fas fa-palette"></i></span>
               <h6>Custom Form Builder</h6>
               <p>Design your own form with any fields</p>
             </div>
@@ -270,6 +278,12 @@ h1,h2,h3,h4,h5{font-family:'Outfit',sans-serif;}
           <label class="prop-label">Form Description (optional)</label>
           <input aria-label="Form Description (optional)" type="text" id="form-desc" class="prop-input"
                  placeholder="Shown to participants at the top of the form">
+        </div>
+        <div class="col-12">
+          <p class="fb-note mb-0"><i class="fas fa-circle-info me-1" aria-hidden="true"></i>
+            Name, email, phone and USN are always asked: they're added if the form leaves them out.
+            {%- if team[1] > 1 %} This is a team event ({{ team[0] }}–{{ team[1] }} people), so the team name and a name, email and USN row for each member are added below your questions.{% endif %}
+          </p>
         </div>
         <!-- AI prompt builder -->
         <div class="col-12 mt-3 pt-3 border-top border-secondary border-opacity-10">
@@ -363,6 +377,7 @@ let formType     = 'simple';
 let dragSrcIndex = null;
 
 const EVENT_ID   = "{{ event.id }}";
+const IS_TEAM    = {{ 'true' if team[1] > 1 else 'false' }};
 const existingForm = {{ form_json | safe }};
 
 // ── INIT ───────────────────────────────────────────────
@@ -372,9 +387,23 @@ document.addEventListener('DOMContentLoaded', () => {
     formType = existingForm.form_type || 'simple';
     document.getElementById('form-title').value = existingForm.form_title || '';
     document.getElementById('form-desc').value  = existingForm.form_desc  || '';
+  } else {
+    // No saved form yet: registrants get the standard one, so start from it (UPG-79)
+    loadSimpleTemplate(false);
   }
   setFormType(formType, false);
   renderCanvas();
+  savedState = currentState();
+});
+
+// ── UNSAVED CHANGES (UPG-79) ───────────────────────────
+let savedState = '';
+function currentState() {
+  return JSON.stringify([formType, document.getElementById('form-title').value,
+                         document.getElementById('form-desc').value, fields]);
+}
+window.addEventListener('beforeunload', e => {
+  if (currentState() !== savedState) { e.preventDefault(); e.returnValue = ''; }
 });
 
 // ── FORM TYPE ──────────────────────────────────────────
@@ -387,16 +416,15 @@ function setFormType(type, load = true) {
   }
 }
 
-function loadSimpleTemplate() {
+function loadSimpleTemplate(announce = true) {
   fields = [
     { id:'full_name', type:'text',  label:'Full Name',    placeholder:'Enter your full name', required:true,  options:[], help_text:'' },
     { id:'email',     type:'email', label:'Email Address',placeholder:'you@example.com',      required:true,  options:[], help_text:'' },
     { id:'phone',     type:'tel',   label:'Phone Number', placeholder:'10-digit mobile',      required:true,  options:[], help_text:'' },
-    { id:'usn',       type:'text',  label:'USN / Roll No',placeholder:'e.g. 1SN21CS001',      required:false, options:[], help_text:'' },
-    { id:'team_name', type:'text',  label:'Team Name',    placeholder:'Leave blank if solo',  required:false, options:[], help_text:'Only for team events' },
-  ];
+    { id:'usn',       type:'text',  label:'USN / Roll Number', placeholder:'e.g. 1SN21CS001', required:false, options:[], help_text:'' },
+  ];  // team events get the team name and member rows automatically (UPG-79)
   renderCanvas();
-  toast('Simple template loaded!', 'success');
+  if (announce) toast('Simple template loaded!', 'success');
 }
 
 // ── ADD FIELD ──────────────────────────────────────────
@@ -489,10 +517,10 @@ function renderCanvas() {
         <div class="field-type-badge">${escapeHtml(typeLabel(f.type))}${escapeHtml(f.help_text ? ' · ' + f.help_text : '')}</div>
       </div>
       <div class="field-actions">
-        <button title="Duplicate" data-h-click="se:call" data-call="duplicateField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-copy"></i></button>
-        <button title="Move up"   data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, -1]))}"><i class="fas fa-arrow-up"></i></button>
-        <button title="Move down" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, 1]))}"><i class="fas fa-arrow-down"></i></button>
-        <button class="del" title="Delete" data-h-click="se:call" data-call="deleteField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-trash"></i></button>
+        <button title="Duplicate" aria-label="Duplicate ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="duplicateField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-copy"></i></button>
+        <button title="Move up" aria-label="Move ${escapeHtml(f.label || f.type)} up" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, -1]))}"><i class="fas fa-arrow-up"></i></button>
+        <button title="Move down" aria-label="Move ${escapeHtml(f.label || f.type)} down" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, 1]))}"><i class="fas fa-arrow-down"></i></button>
+        <button class="del" title="Delete" aria-label="Delete ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="deleteField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-trash"></i></button>
       </div>
       ${f.required ? '<span class="required-dot" title="Required"></span>' : ''}
     `;
@@ -691,7 +719,7 @@ function openPreview() {
   const title = document.getElementById('form-title').value || 'Registration Form';
   const desc  = document.getElementById('form-desc').value  || '';
   let html    = `<div class="preview-form">
-    <h5 class="fw-bold mb-1" style="color:var(--blue);">${escapeHtml(title)}</h5>
+    <h5 class="fw-bold mb-1" style="color: var(--brand-ink);">${escapeHtml(title)}</h5>
     ${desc ? `<p class="text-muted mb-4" style="font-size:13px;">${escapeHtml(desc)}</p>` : '<div class="mb-4"></div>'}`;
 
   fields.forEach(f => {
@@ -769,15 +797,16 @@ async function saveForm() {
     });
     const data = await res.json();
     if (data.status === 'ok') {
+      savedState = currentState();
       toast('Form saved successfully! ✓', 'success');
     } else {
-      toast('Error: ' + data.message, 'error');
+      toast('Not saved: ' + (data.message || data.error || 'please try again.'), 'error');
     }
   } catch(e) {
     toast('Network error — please try again.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-save"></i> Save Form';
+    btn.innerHTML = '<i class="fas fa-save" aria-hidden="true"></i> Save form';
   }
 }
 
@@ -796,7 +825,7 @@ async function generateFromAI() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         description: promptVal,
-        is_team: fields.some(f => f.id === 'team_name') || promptVal.toLowerCase().includes('team')
+        is_team: IS_TEAM || fields.some(f => f.id === 'team_name') || promptVal.toLowerCase().includes('team')
       })
     });
     const data = await res.json();

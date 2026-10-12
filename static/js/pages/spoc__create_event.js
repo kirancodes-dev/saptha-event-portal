@@ -1,465 +1,344 @@
-/* Moved unchanged from an inline <script> in templates/spoc/create_event.html so the CSP
-   needs no inline script (UPG-25). */
-        let currentStep = 1;
-        const totalSteps = 6;
-        const visitedSteps = new Set([1]);
-        let cr_step2_init = false;
-        let fb_step4_init = false;
+/* Create-event wizard (UPG-73, UPG-74). The page works without this script (all
+   steps show and the server checks everything); with it, the steps show one at a
+   time, each kind of event shows only its own fields, and the judging, sponsor and
+   question builders fill their hidden JSON fields. Every node is built with the
+   DOM, never from HTML strings (BLK-19). */
+(function () {
+  'use strict';
+  var form = document.getElementById('wz-form');
+  if (!form) return;
+  var root = form.closest('.wz');
+  var TYPES = JSON.parse(document.getElementById('wz-types').textContent || '{}');
+  var steps = Array.prototype.slice.call(form.querySelectorAll('.wz-step'));
+  var nav = document.getElementById('wz-nav');
+  var pager = document.getElementById('wz-pager');
+  var back = document.getElementById('wz-back');
+  var next = document.getElementById('wz-next');
+  var current = 1;
+  var hadErrors = !!document.getElementById('wz-errors');
 
-        // ── Template selection logic ──────────────────────────
-        function selectTemplate(templateId) {
-            document.querySelectorAll('.template-card').forEach(el => el.classList.remove('selected'));
-            const card = document.getElementById('tpl-card-' + templateId);
-            if (card) card.classList.add('selected');
+  function $(sel, scope) { return (scope || form).querySelector(sel); }
+  function $$(sel, scope) { return Array.prototype.slice.call((scope || form).querySelectorAll(sel)); }
+  function el(tag, attrs, children) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === 'text') n.textContent = attrs[k];
+      else if (k === 'value') n.value = attrs[k];
+      else if (k === 'checked') n.checked = !!attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function toast(msg, type) { if (window.showToast) window.showToast(msg, type || 'info'); }
+  function selectedType() {
+    var r = $('input[name="event_type"]:checked');
+    return r ? r.value : '';
+  }
+  function spec() { return TYPES[selectedType()] || TYPES.custom || {}; }
 
-            const hiddenInput = document.getElementById('selectedTemplateId');
-            if (hiddenInput) hiddenInput.value = templateId;
-            const eventTypeInput = document.getElementById('selectedEventType');
-            if (eventTypeInput) eventTypeInput.value = templateId;
+  // ── Steps ──────────────────────────────────────────────────────────────
+  root.classList.add('js');
+  nav.hidden = false;
+  pager.hidden = false;
 
-            const labelEl = document.getElementById('selectedTemplateLabel');
-            if (labelEl) {
-                const names = {
-                    'hackathon': 'Hackathon',
-                    'seminar': 'Seminar',
-                    'workshop': 'Workshop',
-                    'custom': 'Custom'
-                };
-                labelEl.textContent = names[templateId] || 'Hackathon';
-            }
+  function show(n) {
+    current = Math.max(1, Math.min(steps.length, n));
+    steps.forEach(function (s) { s.classList.toggle('is-active', +s.dataset.step === current); });
+    $$('[data-step-go]', nav).forEach(function (b) {
+      var i = +b.dataset.stepGo;
+      if (i === current) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+      b.classList.toggle('is-done', i < current);
+    });
+    back.disabled = current === 1;
+    next.hidden = current === steps.length;
+    if (current === steps.length) buildSummary();
+    var h = steps[current - 1].querySelector('h2');
+    if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+    window.scrollTo({ top: Math.max(0, root.getBoundingClientRect().top + window.scrollY - 90), behavior: 'smooth' });
+  }
 
-            const isNonCompetition = (templateId === 'seminar' || templateId === 'workshop');
+  function problem(field, msg) {
+    toast(msg, 'warning');
+    if (field) field.focus();
+    return false;
+  }
 
-            // Hide or show judging criteria
-            const criteriaCard = document.getElementById('judgingCriteriaCard');
-            if (criteriaCard) {
-                criteriaCard.style.display = isNonCompetition ? 'none' : 'block';
-            }
+  function stepOk(n) {
+    var s = spec();
+    if (n === 1 && !selectedType()) return problem($('input[name="event_type"]'), 'Choose the kind of event.');
+    if (n === 2 && !$('#f-title').value.trim()) return problem($('#f-title'), 'Give the event a title.');
+    if (n === 3) {
+      if (!$('#f-date').value) return problem($('#f-date'), 'Choose the date it starts.');
+      if (!s.fest && !$('#f-deadline').value) return problem($('#f-deadline'), 'Choose the last date to register.');
+      var mode = ($('input[name="event_mode"]:checked') || {}).value || 'offline';
+      if (mode !== 'online' && !$('#f-venue').value.trim() && !$('#f-room').value)
+        return problem($('#f-venue'), 'Add a venue or pick a room.');
+    }
+    if (n === 5) {
+      var missing = $$('.type-details:not([disabled]) [required]').filter(function (f) { return !f.value.trim(); })[0];
+      if (missing) return problem(missing, 'Fill in the required details for this kind of event.');
+    }
+    return true;
+  }
 
-            // Hide or show participation logic & team fields
-            const partContainer = document.getElementById('partStyleContainer');
-            const teamFields = document.querySelectorAll('.team-field');
-            if (partContainer) {
-                partContainer.style.display = isNonCompetition ? 'none' : 'block';
-            }
-            teamFields.forEach(el => {
-                el.style.display = isNonCompetition ? 'none' : (document.getElementById('partType')?.value !== 'Individual' ? 'block' : 'none');
-            });
+  back.addEventListener('click', function () { show(current - 1); });
+  next.addEventListener('click', function () { if (stepOk(current)) show(current + 1); });
+  $$('[data-step-go]', nav).forEach(function (b) {
+    b.addEventListener('click', function () {
+      var target = +b.dataset.stepGo;
+      for (var i = current; i < target; i++) { if (!stepOk(i)) { show(i); return; } }
+      show(target);
+    });
+  });
 
-            // Set Individual defaults for non-competition
-            if (isNonCompetition) {
-                const partSelect = document.getElementById('partType');
-                if (partSelect) partSelect.value = 'Individual';
-                const teamMin = document.querySelector('input[name="team_min"]');
-                const teamMax = document.querySelector('input[name="team_max"]');
-                if (teamMin) teamMin.value = 1;
-                if (teamMax) teamMax.value = 1;
+  // ── The kind of event ──────────────────────────────────────────────────
+  function setIf(sel, value, force) {
+    var f = $(sel);
+    if (f && (force || !f.value)) f.value = value;
+  }
 
-                // Clear criteria for non-competitions
-                const critRows = document.getElementById('criteriaRows');
-                if (critRows) critRows.innerHTML = '';
-                const critJson = document.getElementById('judgingCriteriaJson');
-                if (critJson) critJson.value = '[]';
-            }
-        }
+  function applyType(initial) {
+    var key = selectedType();
+    var s = spec();
+    // Each type's own fields; the others are disabled so they don't submit
+    $$('.type-details').forEach(function (fs) {
+      var on = fs.dataset.forType === key;
+      fs.hidden = !on;
+      fs.disabled = !on;
+    });
+    var hasDetails = !!$('.type-details[data-for-type="' + key + '"]');
+    var fest = !!s.fest;
+    $$('[data-hide-for-fest]').forEach(function (n) { n.hidden = fest; });
+    $$('[data-show-for-fest]').forEach(function (n) { n.hidden = !fest; });
+    var competitive = !!s.competitive || key === 'custom';
+    $('#competition-block').hidden = !competitive || fest;
+    $('#judging-block').hidden = s.group === 'sports';
+    $('#nothing-specific').hidden = hasDetails || competitive;
+    if (!initial) {
+      // Defaults for the newly chosen kind; the SPOC can change them
+      setIf('#f-category', s.category, true);
+      setIf('#f-participation', s.participation, true);
+      setIf('#f-team-min', (s.team || [1, 1])[0], true);
+      setIf('#f-team-max', (s.team || [1, 1])[1], true);
+      setIf('#f-submission', s.submission || 'none', true);
+      var mode = $('#mode-' + (s.mode || 'offline'));
+      if (mode) mode.checked = true;
+      $$('input[name="allowed_participants"]').forEach(function (c) {
+        c.checked = (s.audience || ['student']).indexOf(c.value) !== -1;
+      });
+    }
+    applyMode();
+    applyParticipation();
+  }
 
-        // ── Toast ─────────────────────────────────────────────
-        function showToast(msg, type) {
-            const t = document.createElement('div');
-            t.textContent = msg;
-            t.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
-                background:${type==='error'?'#dc2626':'#10b981'};color:#fff;padding:10px 22px;
-                border-radius:8px;font-weight:600;font-size:14px;z-index:9999;
-                box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:1;transition:.3s;`;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 2800);
-        }
+  function applyMode() {
+    var mode = ($('input[name="event_mode"]:checked') || {}).value || 'offline';
+    $$('[data-mode]').forEach(function (n) { n.hidden = n.dataset.mode.split(' ').indexOf(mode) === -1; });
+  }
+  function applyParticipation() {
+    var p = $('#f-participation').value;
+    $('#team-row').hidden = p === 'Individual';
+  }
 
-        // ── Navigate to a specific step directly ─────────────
-        function goToStep(n) {
-            if (n === currentStep) return;
-            currentStep = n;
-            _updateUI();
-        }
+  $$('input[name="event_type"]').forEach(function (r) { r.addEventListener('change', function () { applyType(false); }); });
+  $$('input[name="event_mode"]').forEach(function (r) { r.addEventListener('change', applyMode); });
+  $('#f-participation').addEventListener('change', applyParticipation);
 
-        // ── Next / Back buttons ───────────────────────────────
-        function changeStep(direction) {
-            if (direction === -1 && currentStep === 1) {
-                window.location.href = '/spoc/dashboard';
-                return;
-            }
-            const next = currentStep + direction;
-            if (next < 1 || next > totalSteps) return;
-            currentStep = next;
-            _updateUI();
-        }
+  // ── Banner preview (https only) ────────────────────────────────────────
+  var banner = $('#f-banner');
+  var preview = document.getElementById('banner-preview');
+  function previewBanner() {
+    var u = banner.value.trim();
+    var ok = /^https:\/\//i.test(u);
+    preview.hidden = !ok;
+    if (ok) preview.src = u; else preview.removeAttribute('src');
+  }
+  banner.addEventListener('change', previewBanner);
+  preview.addEventListener('error', function () { preview.hidden = true; });
 
-        // ── Central UI updater ────────────────────────────────
-        function _updateUI() {
-            visitedSteps.add(currentStep);
+  // ── AI writer (description and rules) ──────────────────────────────────
+  var aiBox = document.getElementById('ai-box');
+  document.getElementById('ai-toggle').addEventListener('click', function () { aiBox.hidden = !aiBox.hidden; });
+  document.getElementById('ai-go').addEventListener('click', function () {
+    var btn = this;
+    var title = $('#f-title').value.trim();
+    if (!title) return problem($('#f-title'), 'Enter the event title first.');
+    btn.disabled = true;
+    var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    fetch('/spoc/marketing/event_writer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ title: title, prompt: document.getElementById('ai-prompt').value.trim(),
+                             event_type: spec().name || '' })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.description) $('#f-description').value = d.description;
+      if (d.rules) $('#f-rules').value = d.rules;
+      if (d.description || d.rules) { toast('Written. Read it through and edit before saving.', 'success'); aiBox.hidden = true; }
+      else toast(d.error || "The assistant couldn't write this now.", 'danger');
+    }).catch(function () { toast("The assistant couldn't be reached.", 'danger'); })
+      .finally(function () { btn.disabled = false; });
+  });
 
-            // Show correct step content
-            document.querySelectorAll('.wizard-step-content').forEach(el => el.classList.remove('active'));
-            document.getElementById('step-' + currentStep).classList.add('active');
+  // ── Builders: judging criteria, sponsors, extra questions ──────────────
+  function readJson(id) {
+    try { var v = JSON.parse(document.getElementById(id).value || '[]'); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function removeBtn(label, onClick) {
+    var b = el('button', { type: 'button', 'class': 'btn btn-outline-danger btn-sm', 'aria-label': label },
+               [el('i', { 'class': 'fas fa-xmark', 'aria-hidden': 'true' })]);
+    b.addEventListener('click', onClick);
+    return b;
+  }
 
-            // Step indicator states
-            for (let i = 1; i <= totalSteps; i++) {
-                const el = document.getElementById('ind-' + i);
-                el.classList.remove('active', 'visited');
-                if (i === currentStep) el.classList.add('active');
-                else if (visitedSteps.has(i)) el.classList.add('visited');
-            }
+  // Judging criteria
+  var crit = readJson('crit-json');
+  var critRows = document.getElementById('crit-rows');
+  function syncCrit() { document.getElementById('crit-json').value = JSON.stringify(crit.filter(function (c) { return (c.name || '').trim(); })); }
+  function drawCrit() {
+    critRows.textContent = '';
+    crit.forEach(function (c, i) {
+      var name = el('input', { 'class': 'form-control', placeholder: 'Criterion, e.g. Innovation', 'aria-label': 'Criterion ' + (i + 1), value: c.name || '' });
+      var max = el('input', { 'class': 'form-control', type: 'number', min: '1', max: '1000', 'aria-label': 'Maximum score', value: c.max_score || 10 });
+      var desc = el('input', { 'class': 'form-control', placeholder: 'What judges look for', 'aria-label': 'Description', value: c.description || '' });
+      name.addEventListener('input', function () { c.name = name.value; syncCrit(); });
+      max.addEventListener('input', function () { c.max_score = +max.value || 10; syncCrit(); });
+      desc.addEventListener('input', function () { c.description = desc.value; syncCrit(); });
+      critRows.appendChild(el('div', { 'class': 'builder-row' }, [name, max, desc,
+        removeBtn('Remove criterion', function () { crit.splice(i, 1); drawCrit(); syncCrit(); })]));
+    });
+  }
+  var RUBRICS = {
+    competition: [['Innovation', 10], ['Technical execution', 10], ['Impact', 10], ['Presentation', 10]],
+    cultural: [['Performance', 10], ['Creativity', 10], ['Stage presence', 10], ['Overall impression', 10]],
+    learning: [['Content', 10], ['Delivery', 10]],
+    other: [['Overall', 10]]
+  };
+  document.getElementById('crit-add').addEventListener('click', function () { crit.push({ name: '', max_score: 10, description: '' }); drawCrit(); critRows.lastChild.querySelector('input').focus(); });
+  document.getElementById('crit-defaults').addEventListener('click', function () {
+    var set = RUBRICS[spec().group] || RUBRICS.competition;
+    crit = set.map(function (p) { return { name: p[0], max_score: p[1], description: '' }; });
+    drawCrit(); syncCrit();
+  });
 
-            // Footer buttons
-            const btnNext    = document.getElementById('btnNext');
-            const btnPrev    = document.getElementById('btnPrev');
-            const btnPublish = document.getElementById('btnPublish');
-            btnPrev.innerText = currentStep === 1 ? 'Cancel' : 'Back';
-            if (currentStep === totalSteps) {
-                btnNext.style.display    = 'none';
-                btnPublish.style.display = 'block';
-            } else {
-                btnNext.style.display    = 'block';
-                btnPublish.style.display = 'none';
-            }
+  // Sponsors
+  var sponsors = readJson('sponsors-json');
+  var sponsorRows = document.getElementById('sponsor-rows');
+  function syncSponsors() { document.getElementById('sponsors-json').value = JSON.stringify(sponsors.filter(function (s) { return (s.name || '').trim(); })); }
+  function drawSponsors() {
+    sponsorRows.textContent = '';
+    sponsors.forEach(function (s, i) {
+      var name = el('input', { 'class': 'form-control', placeholder: 'Sponsor name', 'aria-label': 'Sponsor ' + (i + 1), value: s.name || '' });
+      var tier = el('select', { 'class': 'form-select', 'aria-label': 'Tier' }, ['Title', 'Gold', 'Silver', 'Partner', 'Media'].map(function (t) {
+        return el('option', { value: t, text: t });
+      }));
+      tier.value = s.tier || 'Partner';
+      var logo = el('input', { 'class': 'form-control', type: 'url', placeholder: 'Logo https://…', 'aria-label': 'Logo address', value: s.logo_url || '' });
+      var site = el('input', { 'class': 'form-control', type: 'url', placeholder: 'Website https://…', 'aria-label': 'Website', value: s.website || '' });
+      [[name, 'name'], [tier, 'tier'], [logo, 'logo_url'], [site, 'website']].forEach(function (p) {
+        p[0].addEventListener('input', function () { s[p[1]] = p[0].value; syncSponsors(); });
+        p[0].addEventListener('change', function () { s[p[1]] = p[0].value; syncSponsors(); });
+      });
+      sponsorRows.appendChild(el('div', { 'class': 'builder-row sponsor' }, [name, tier, logo, site,
+        removeBtn('Remove sponsor', function () { sponsors.splice(i, 1); drawSponsors(); syncSponsors(); })]));
+    });
+  }
+  document.getElementById('sponsor-add').addEventListener('click', function () { sponsors.push({ tier: 'Partner' }); drawSponsors(); syncSponsors(); sponsorRows.lastChild.querySelector('input').focus(); });
 
-            // Auto-init judging criteria on first visit to step 3 (Logistics)
-            if (currentStep === 3 && !cr_step2_init) {
-                cr_step2_init = true;
-                const tpl = document.getElementById('selectedTemplateId')?.value;
-                if (tpl !== 'seminar' && tpl !== 'workshop') {
-                    if (document.querySelectorAll('#criteriaRows .criteria-row').length === 0) {
-                        loadDefaultCriteria();
-                    }
-                }
-            }
-            // Auto-init form builder with default template on first visit to step 5 (Form)
-            if (currentStep === 5 && !fb_step4_init) {
-                fb_step4_init = true;
-                if (fb_fields.length === 0) fb_loadTemplate();
-            }
+  // Extra registration questions (the standard four are always first)
+  var BASE = [
+    { id: 'full_name', type: 'text', label: 'Full Name', placeholder: 'Enter your full name', required: true, options: [], help_text: '' },
+    { id: 'email', type: 'email', label: 'Email Address', placeholder: 'you@example.com', required: true, options: [], help_text: '' },
+    { id: 'phone', type: 'tel', label: 'Phone Number', placeholder: '10-digit mobile', required: true, options: [], help_text: '' },
+    { id: 'usn', type: 'text', label: 'USN / Roll Number', placeholder: 'e.g. 1SN21CS001', required: false, options: [], help_text: '' }
+  ];
+  var baseIds = BASE.map(function (f) { return f.id; });
+  var extras = readJson('form-json').filter(function (f) { return baseIds.indexOf(f.id) === -1; });
+  var fieldRows = document.getElementById('field-rows');
+  var KINDS = [['text', 'Short answer'], ['textarea', 'Long answer'], ['number', 'Number'], ['url', 'Link'],
+               ['select', 'Dropdown'], ['radio', 'One choice'], ['checkbox', 'Checkboxes'], ['date', 'Date']];
+  function syncFields() {
+    var real = extras.filter(function (f) { return (f.label || '').trim(); });
+    document.getElementById('form-json').value = real.length ? JSON.stringify(BASE.concat(real)) : '';
+  }
+  function drawFields() {
+    fieldRows.textContent = '';
+    extras.forEach(function (f, i) {
+      var label = el('input', { 'class': 'form-control', placeholder: 'Question, e.g. T-shirt size', 'aria-label': 'Question ' + (i + 1), value: f.label || '' });
+      var kind = el('select', { 'class': 'form-select', 'aria-label': 'Answer type' }, KINDS.map(function (k) { return el('option', { value: k[0], text: k[1] }); }));
+      kind.value = f.type || 'text';
+      var opts = el('input', { 'class': 'form-control', placeholder: 'Choices, comma-separated', 'aria-label': 'Choices', value: (f.options || []).join(', ') });
+      var reqId = 'req-' + f.id;
+      var req = el('input', { type: 'checkbox', 'class': 'form-check-input', id: reqId, checked: f.required });
+      var reqWrap = el('div', { 'class': 'form-check pt-2' }, [req, el('label', { 'class': 'form-check-label', 'for': reqId, text: 'Required' })]);
+      function needOpts() { opts.hidden = ['select', 'radio', 'checkbox'].indexOf(kind.value) === -1; }
+      label.addEventListener('input', function () { f.label = label.value; syncFields(); });
+      kind.addEventListener('change', function () { f.type = kind.value; needOpts(); syncFields(); });
+      opts.addEventListener('input', function () { f.options = opts.value.split(',').map(function (o) { return o.trim(); }).filter(Boolean); syncFields(); });
+      req.addEventListener('change', function () { f.required = req.checked; syncFields(); });
+      needOpts();
+      fieldRows.appendChild(el('div', { 'class': 'builder-row field' }, [label, kind, opts, reqWrap,
+        removeBtn('Remove question', function () { extras.splice(i, 1); drawFields(); syncFields(); })]));
+    });
+  }
+  document.getElementById('field-add').addEventListener('click', function () {
+    extras.push({ id: 'q_' + Math.random().toString(36).slice(2, 8), type: 'text', label: '', placeholder: '', required: false, options: [], help_text: '' });
+    drawFields(); fieldRows.lastChild.querySelector('input').focus();
+  });
 
-            window.scrollTo(0, 0);
-        }
+  // ── Summary (step 7) ───────────────────────────────────────────────────
+  function buildSummary() {
+    var s = spec();
+    var dl = document.getElementById('summary');
+    dl.textContent = '';
+    function row(label, value) {
+      if (value === undefined || value === null || value === '') return;
+      dl.appendChild(el('dt', { text: label }));
+      dl.appendChild(el('dd', { text: String(value) }));
+    }
+    function v(id) { var f = document.getElementById(id); return f ? f.value.trim() : ''; }
+    var mode = ($('input[name="event_mode"]:checked') || {}).value || 'offline';
+    var start = v('f-date') + (v('f-time') ? ' ' + v('f-time') : '');
+    var end = v('f-end-date') ? v('f-end-date') + (v('f-end-time') ? ' ' + v('f-end-time') : '') : '';
+    row('Kind', s.name);
+    row('Title', v('f-title') || '(missing)');
+    row('Category', v('f-category'));
+    row('When', end && end !== start ? start + ' to ' + end : start || '(missing)');
+    row('How', { offline: 'In person', online: 'Online', hybrid: 'In person and online' }[mode]);
+    row('Where', mode === 'online' ? 'Online' : (v('f-venue') || ($('#f-room').selectedOptions[0] || {}).textContent || '(missing)'));
+    if (!s.fest) {
+      row('Registration', (v('f-reg-opens') ? 'From ' + v('f-reg-opens') + ' ' : '') + 'until ' + (v('f-deadline') || '(missing)'));
+      var who = $$('input[name="allowed_participants"]:checked').map(function (c) { return c.nextElementSibling.textContent; });
+      row('Who can register', who.length ? who.join(', ') : 'Default for this kind');
+      row('Seats', v('f-capacity') && v('f-capacity') !== '0' ? v('f-capacity') : 'No limit');
+      var p = v('f-participation');
+      row('Taking part as', p === 'Individual' ? 'Individuals' : p + ' (' + v('f-team-min') + '–' + v('f-team-max') + ' members)');
+      row('Fee', +v('f-fee') > 0 ? '₹' + v('f-fee') : 'Free');
+      var crits = readJson('crit-json');
+      if (!$('#competition-block').hidden) {
+        row('Rounds', v('f-rounds'));
+        row('Judging', crits.length ? crits.map(function (c) { return c.name + ' (/' + c.max_score + ')'; }).join(', ') : 'No criteria yet');
+        row('Prizes', [v('f-prize1'), v('f-prize2'), v('f-prize3')].filter(Boolean).join(' · '));
+      }
+      row('Extra questions', extras.filter(function (f) { return (f.label || '').trim(); }).length || 'None');
+    } else {
+      row('Registration', 'None for the fest itself; add its events after saving.');
+    }
+    row('Sponsors', sponsors.filter(function (x) { return (x.name || '').trim(); }).map(function (x) { return x.name; }).join(', '));
+  }
 
-        // 3. Dynamic Rows: SPONSORS
-        function addSponsorRow() {
-            const tbody = document.getElementById('sponsorBody');
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><input type="text" class="form-control sp-name" placeholder="Company Name"></td>
-                <td><select class="form-select sp-tier"><option>Gold</option><option>Silver</option><option>Bronze</option></select></td>
-                <td><input type="url" class="form-control sp-logo" placeholder="Logo URL"></td>
-                <td><button type="button" class="btn-remove" data-h-click="se:remove-closest" data-closest="tr"><i class="fas fa-trash"></i></button></td>
-            `;
-            tbody.appendChild(row);
-        }
+  form.addEventListener('submit', function (e) {
+    syncCrit(); syncSponsors(); syncFields();
+    for (var i = 1; i < steps.length; i++) {
+      if (!stepOk(i)) { e.preventDefault(); show(i); return; }
+    }
+  });
 
-        // ── Data Aggregation & Submit ─────────────────────────
-        function submitForm() {
-            // Collect sponsors
-            const sponsors = [];
-            document.querySelectorAll('#sponsorBody tr').forEach(tr => {
-                sponsors.push({
-                    name: tr.querySelector('.sp-name').value,
-                    tier: tr.querySelector('.sp-tier').value,
-                    logo: tr.querySelector('.sp-logo').value
-                });
-            });
-            document.getElementById('sponsorsJson').value = JSON.stringify(sponsors);
-            // Sync form builder fields
-            document.getElementById('autoFormJson').value = JSON.stringify(fb_fields);
-            document.getElementById('mainForm').submit();
-        }
-
-        // ── Judging Criteria ──────────────────────────────────
-        // (cr_step2_init is declared once, at the top: a second `let` stopped
-        // this whole script from running, UPG-60)
-
-        function addCriteria(name, desc, maxScore) {
-            const container = document.getElementById('criteriaRows');
-            const uid = 'cr_' + Date.now() + '_' + Math.random().toString(36).slice(2,5);
-            const row = document.createElement('div');
-            row.className = 'criteria-row';
-            row.id = uid;
-            row.innerHTML = `
-                <i class="fas fa-grip-vertical" style="color:#cbd5e1;flex-shrink:0;"></i>
-                <input type="text" class="form-control cr-input criteria-name"
-                       placeholder="Criterion name (e.g. Innovation)" value="${escapeHtml(name || '')}"
-                       data-h-input="se:call" data-call="syncCriteria" style="flex:2;">
-                <input type="text" class="form-control cr-input criteria-desc"
-                       placeholder="What judges look for (optional)" value="${escapeHtml(desc || '')}"
-                       data-h-input="se:call" data-call="syncCriteria" style="flex:3;">
-                <div class="input-group cr-pts-group" style="max-width:120px;flex-shrink:0;">
-                    <input type="number" class="form-control cr-input criteria-max"
-                           value="${escapeHtml(maxScore || 10)}" min="1" max="100" data-h-input="se:call" data-call="syncCriteria">
-                    <span class="input-group-text" style="background:#f8fafc;border:1.5px solid #e2e8f0;color:#64748b;font-size:11px;font-weight:700;">pts</span>
-                </div>
-                <button type="button" class="fb-type-btn danger" style="padding:7px 12px;flex-shrink:0;"
-                        data-h-click="spoc/create_event:remove-criterion">
-                    <i class="fas fa-trash"></i>
-                </button>`;
-            container.appendChild(row);
-            syncCriteria();
-        }
-
-        function syncCriteria() {
-            const criteria = [];
-            document.querySelectorAll('#criteriaRows .criteria-row').forEach(function(row) {
-                const name = row.querySelector('.criteria-name').value.trim();
-                const desc = row.querySelector('.criteria-desc').value.trim();
-                const max  = parseInt(row.querySelector('.criteria-max').value) || 10;
-                if (name) criteria.push({ name: name, description: desc, max_score: max });
-            });
-            document.getElementById('judgingCriteriaJson').value = JSON.stringify(criteria);
-        }
-
-        function loadDefaultCriteria() {
-            document.getElementById('criteriaRows').innerHTML = '';
-            addCriteria('Innovation',      'Originality and creativity of the idea',          10);
-            addCriteria('Technical Depth', 'Quality and complexity of implementation',         10);
-            addCriteria('Presentation',    'Clarity and quality of demo or pitch',              5);
-            addCriteria('Impact',          'Real-world usefulness and potential scalability',   5);
-        }
-
-        function clearCriteria() {
-            if (document.querySelectorAll('#criteriaRows .criteria-row').length === 0) return;
-            if (!confirm('Remove all judging criteria?')) return;
-            document.getElementById('criteriaRows').innerHTML = '';
-            syncCriteria();
-        }
-
-        // 5. Helpers
-        function previewBanner(url) {
-            const img = document.getElementById('bannerPreview');
-            if(url.length > 5) { img.src = url; img.style.display = 'block'; }
-            else img.style.display = 'none';
-        }
-
-        function toggleTeams() {
-            const val = document.getElementById('partType').value;
-            const fields = document.querySelectorAll('.team-field');
-            fields.forEach(f => f.style.display = (val === 'Individual') ? 'none' : 'block');
-        }
-
-        toggleTeams();
-
-        // ── MANUAL FORM BUILDER ──────────────────────────────
-        let fb_fields = [];
-        let fb_selectedId = null;
-
-        const FB_TYPE_LABELS = {
-            text:'Short Text', textarea:'Long Text', email:'Email', tel:'Phone',
-            number:'Number', date:'Date', url:'URL', select:'Dropdown',
-            radio:'Multiple Choice', checkbox:'Checkbox', heading:'Heading', divider:'Divider'
-        };
-        const FB_DEFAULTS = {
-            text:     { label:'Short Answer',    placeholder:'Type your answer' },
-            textarea: { label:'Long Answer',     placeholder:'Type your answer here...' },
-            email:    { label:'Email Address',   placeholder:'you@example.com' },
-            tel:      { label:'Phone Number',    placeholder:'e.g. 9876543210' },
-            number:   { label:'Number',          placeholder:'Enter a number' },
-            date:     { label:'Date',            placeholder:'' },
-            url:      { label:'Website / Link',  placeholder:'https://' },
-            select:   { label:'Dropdown',        placeholder:'Select option', options:['Option 1','Option 2','Option 3'] },
-            radio:    { label:'Multiple Choice', placeholder:'', options:['Option 1','Option 2','Option 3'] },
-            checkbox: { label:'I agree to the terms', placeholder:'' },
-            heading:  { label:'Section Heading', placeholder:'' },
-            divider:  { label:'', placeholder:'' },
-        };
-
-        function fb_uid() { return 'f_' + Math.random().toString(36).slice(2, 8); }
-
-        function fb_addField(type) {
-            const def = FB_DEFAULTS[type] || {};
-            fb_fields.push({
-                id: fb_uid(), type, required: false,
-                label: def.label || type,
-                placeholder: def.placeholder || '',
-                options: (def.options || []).slice(),
-                help_text: ''
-            });
-            fb_renderCanvas();
-            fb_selectField(fb_fields[fb_fields.length - 1].id);
-            fb_sync();
-        }
-
-        function fb_renderCanvas() {
-            const canvas = document.getElementById('fb_canvas');
-            canvas.querySelectorAll('.fb-field-row').forEach(el => el.remove());
-            document.getElementById('fb_empty').style.display = fb_fields.length ? 'none' : 'block';
-            fb_fields.forEach((f, idx) => {
-                const row = document.createElement('div');
-                row.className = 'fb-field-row' + (f.id === fb_selectedId ? ' fb-selected' : '');
-                row.dataset.id = f.id;
-                row.draggable = true;
-                row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', String(idx)); setTimeout(() => row.style.opacity = '0.5', 0); });
-                row.addEventListener('dragend', () => { row.style.opacity = '1'; });
-                row.addEventListener('dragover', e => { e.preventDefault(); row.style.borderColor = 'var(--orange)'; });
-                row.addEventListener('dragleave', () => { row.style.borderColor = ''; });
-                row.addEventListener('drop', e => {
-                    e.preventDefault(); row.style.borderColor = '';
-                    const from = parseInt(e.dataTransfer.getData('text/plain'));
-                    if (from !== idx) { const m = fb_fields.splice(from, 1)[0]; fb_fields.splice(idx, 0, m); fb_renderCanvas(); fb_sync(); }
-                });
-                row.innerHTML = `
-                    <span class="fb-drag-handle"><i class="fas fa-grip-vertical"></i></span>
-                    <div class="fb-field-info" style="cursor:pointer;" data-h-click="se:call" data-call="fb_selectField" data-args="${escapeHtml(JSON.stringify([f.id]))}">
-                        <span class="fb-field-lbl">${escapeHtml(f.label || f.type)}</span>
-                        <span class="fb-field-typ">${escapeHtml(FB_TYPE_LABELS[f.type] || f.type)}</span>
-                    </div>
-                    ${f.required ? '<span class="fb-req-badge">Required</span>' : ''}
-                    <div class="fb-actions">
-                        <button type="button" title="Edit" data-h-click="se:call" data-call="fb_selectField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-edit"></i></button>
-                        <button type="button" title="Delete" class="fb-del" data-h-click="se:call" data-call="fb_deleteField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-trash"></i></button>
-                    </div>`;
-                canvas.appendChild(row);
-            });
-            const countEl = document.getElementById('fb_field_count');
-            if (countEl) countEl.textContent = fb_fields.length + ' field' + (fb_fields.length !== 1 ? 's' : '');
-        }
-
-        function fb_selectField(id) {
-            fb_selectedId = id;
-            fb_renderCanvas();
-            fb_renderProps();
-        }
-
-        function fb_closeProps() {
-            fb_selectedId = null;
-            document.getElementById('fb_props_wrap').style.display = 'none';
-            fb_renderCanvas();
-        }
-
-        function fb_renderProps() {
-            const f = fb_fields.find(x => x.id === fb_selectedId);
-            if (!f) { document.getElementById('fb_props_wrap').style.display = 'none'; return; }
-            document.getElementById('fb_props_wrap').style.display = 'block';
-            const needsOptions = ['select','radio','checkbox_group'].includes(f.type);
-            const isLayout = ['heading','divider'].includes(f.type);
-            let html = '<div class="row g-3">';
-            if (f.type !== 'divider') {
-                html += `<div class="col-md-6"><label class="form-label">Label</label><input type="text" class="form-control" value="${escapeHtml(f.label)}" data-h-input="spoc/create_event:set-prop" data-prop="label" placeholder="Field label"></div>`;
-            }
-            if (!isLayout && f.type !== 'checkbox') {
-                html += `<div class="col-md-6"><label class="form-label">Placeholder</label><input type="text" class="form-control" value="${escapeHtml(f.placeholder)}" data-h-input="spoc/create_event:set-prop" data-prop="placeholder" placeholder="Hint shown inside field"></div>`;
-            }
-            if (!isLayout) {
-                html += `<div class="col-md-6"><label class="form-label">Help Text</label><input type="text" class="form-control" value="${escapeHtml(f.help_text || '')}" data-h-input="spoc/create_event:set-prop" data-prop="help_text" placeholder="Optional description"></div>`;
-                html += `<div class="col-md-6 d-flex align-items-end pb-1">
-                           <div class="form-check form-switch mb-0">
-                             <input type="checkbox" id="fb_req_chk" class="form-check-input" style="width:40px;height:22px;cursor:pointer;" ${f.required?'checked':''} data-h-change="spoc/create_event:set-prop-checked" data-prop="required">
-                             <label for="fb_req_chk" class="fb-req-label ms-2">Required field</label>
-                           </div>
-                         </div>`;
-            }
-            html += '</div>';
-            if (needsOptions) {
-                html += `<div class="mt-3"><label class="form-label d-block" style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#475569;">Options</label><div id="fb_opt_list">`;
-                f.options.forEach((opt, i) => {
-                    html += `<div class="d-flex gap-2 mb-2"><input type="text" class="form-control form-control-sm" style="background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important;" value="${escapeHtml(opt)}" data-h-input="spoc/create_event:set-opt" data-i="${escapeHtml(String(i))}"><button type="button" class="fb-type-btn danger" style="padding:4px 10px;" data-h-click="se:call" data-call="fb_removeOpt" data-args="${escapeHtml(JSON.stringify([i]))}"><i class="fas fa-times"></i></button></div>`;
-                });
-                html += `</div><button type="button" class="fb-type-btn info mt-1" data-h-click="se:call" data-call="fb_addOpt"><i class="fas fa-plus me-1"></i>Add Option</button></div>`;
-            }
-            document.getElementById('fb_props_body').innerHTML = html;
-        }
-
-        function fb_setProp(key, val) {
-            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
-            f[key] = val; fb_renderCanvas(); fb_sync();
-        }
-        function fb_addOpt() {
-            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
-            f.options.push('Option ' + (f.options.length + 1)); fb_renderProps(); fb_sync();
-        }
-        function fb_removeOpt(idx) {
-            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
-            f.options.splice(idx, 1); fb_renderProps(); fb_sync();
-        }
-        function fb_setOpt(idx, val) {
-            const f = fb_fields.find(x => x.id === fb_selectedId); if (!f) return;
-            f.options[idx] = val; fb_sync();
-        }
-        function fb_deleteField(id) {
-            fb_fields = fb_fields.filter(f => f.id !== id);
-            if (fb_selectedId === id) { fb_selectedId = null; document.getElementById('fb_props_wrap').style.display = 'none'; }
-            fb_renderCanvas(); fb_sync();
-        }
-        function fb_clearAll() {
-            if (fb_fields.length && !confirm('Remove all fields?')) return;
-            fb_fields = []; fb_selectedId = null;
-            fb_renderCanvas();
-            document.getElementById('fb_props_wrap').style.display = 'none';
-            fb_sync();
-        }
-        function fb_loadTemplate() {
-            fb_fields = [
-                { id:'full_name', type:'text',  label:'Full Name',    placeholder:'Enter your full name', required:true,  options:[], help_text:'' },
-                { id:'email',     type:'email', label:'Email Address', placeholder:'you@example.com',    required:true,  options:[], help_text:'' },
-                { id:'phone',     type:'tel',   label:'Phone Number',  placeholder:'10-digit mobile',    required:true,  options:[], help_text:'' },
-                { id:'usn',       type:'text',  label:'USN / Roll No', placeholder:'e.g. 1SN21CS001',    required:false, options:[], help_text:'' },
-            ];
-            fb_renderCanvas(); fb_sync();
-            showToast('Template loaded!', 'success');
-        }
-        function fb_sync() {
-            document.getElementById('autoFormJson').value = JSON.stringify(fb_fields);
-        }
-        // ── GEMINI AI EVENT WRITER JS ──
-        function toggleAIGenerator() {
-            var card = document.getElementById('ai-generator-card');
-            if (card) {
-                card.classList.toggle('d-none');
-            }
-        }
-
-        function generateEventOutline() {
-            var titleInput = document.getElementById('event-title-input');
-            var promptInput = document.getElementById('ai-prompt-input');
-            var submitBtn = document.getElementById('ai-gen-submit-btn');
-            
-            var title = titleInput ? titleInput.value.trim() : '';
-            var prompt = promptInput ? promptInput.value.trim() : '';
-            
-            if (!title) {
-                showToast('Please enter an Event Title first!', 'error');
-                return;
-            }
-            
-            var oldHtml = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            
-            var csrfToken = document.querySelector('input[name="csrf_token"]').value;
-            
-            fetch('/spoc/marketing/event_writer', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({ title: title, prompt: prompt })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.description && data.rules) {
-                    var descArea = document.querySelector('textarea[name="description"]');
-                    var rulesArea = document.querySelector('textarea[name="rules"]');
-                    if (descArea) descArea.value = data.description;
-                    if (rulesArea) rulesArea.value = data.rules;
-                    
-                    showToast('Event details generated successfully!', 'success');
-                    toggleAIGenerator();
-                } else {
-                    showToast(data.error || 'Failed to generate details', 'error');
-                }
-            })
-            .catch(function() {
-                showToast('Network error generating details', 'error');
-            })
-            .finally(function() {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = oldHtml;
-            });
-        }
-    
+  // ── Start ──────────────────────────────────────────────────────────────
+  drawCrit(); drawSponsors(); drawFields(); previewBanner();
+  applyType(true);
+  if (!hadErrors && !$('#f-team-min').value) applyType(false);
+  show(hadErrors ? 2 : (selectedType() && selectedType() !== 'custom' && /[?&]type=/.test(location.search) ? 2 : 1));
+  if (hadErrors) { var box = document.getElementById('wz-errors'); if (box) box.focus(); }
+})();

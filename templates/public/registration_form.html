@@ -1,341 +1,58 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23a. -#}
-{% block head %}
-<meta name="theme-color" content="#1a2557">
-<title>Register — {{ event.title }}</title>
-{% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
+{% extends "base_classic.html" %}
+{#- Event registration form (UPG-63): app layout, one focused column. Field names,
+    ids and error hooks are unchanged; the route builds `schema.fields`. -#}
+{% set hide_page_head = true %}
+{% set app_active = 'events' %}
+{% block robots %}index, follow{% endblock %}
+{% block title %}Register — {{ event.title }}{% endblock %}
+{% block extra_css %}
 <style>
-:root {
-  --bg-void: #030712;
-  --bg-surface: rgba(255,255,255,0.015);
-  --bg-elevated: rgba(255,255,255,0.035);
-  --bg-hover: rgba(255,255,255,0.06);
-  --border-subtle: rgba(255,255,255,0.06);
-  --border-medium: rgba(255,255,255,0.10);
-  --border-strong: rgba(255,255,255,0.18);
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-tertiary: #6b7280;
-  --accent-amber: #f59e0b;
-  --accent-amber-glow: rgba(245,158,11,0.15);
-  --accent-blue: #3b82f6;
-  --accent-violet: #8b5cf6;
-  --accent-emerald: #10b981;
-  --accent-rose: #f43f5e;
-  --accent-cyan: #06b6d4;
-  --glass-blur: blur(20px) saturate(180%);
-  --radius-card: 20px;
-  --radius-pill: 100px;
-  --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
-  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+.reg-wrap { max-width: 680px; margin: 0 auto; }
+.event-banner {
+  background: var(--brand-navy);
+  color: #fff;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 22px 26px 20px;
+  border-bottom: 3px solid var(--brand-gold);
 }
-
-*{box-sizing:border-box;}
-html,body{min-height:100%;font-family:'Inter',sans-serif;background: var(--bg-void);color: var(--text-secondary);}
-h1,h2,h3,h4,h5,h6{font-family:'Plus Jakarta Sans',sans-serif;font-weight: 700;color: var(--text-primary);}
-
-body{
-  padding:env(safe-area-inset-top) env(safe-area-inset-right)
-          env(safe-area-inset-bottom) env(safe-area-inset-left);
-  display:flex;flex-direction:column;align-items:center;
-  padding-top:24px;padding-bottom:40px;
-  position: relative;
-  overflow-x: hidden;
+.event-banner .cat { font-size: var(--fs-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--brand-gold-300); font-weight: 700; margin-bottom: 6px; }
+.event-banner h1 { font-size: clamp(1.25rem, 4vw, 1.6rem); margin: 0 0 10px; line-height: 1.2; color: #fff; }
+.event-banner .meta { font-size: var(--fs-sm); color: rgba(255,255,255,0.85); display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.event-banner .meta span { display: inline-flex; align-items: center; gap: 6px; }
+.event-banner .meta i { color: var(--brand-gold-300); }
+.fee-free { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22); border-radius: var(--radius-pill); padding: 1px 10px; font-weight: 600; }
+.form-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: 26px 22px 28px;
+  box-shadow: var(--shadow-sm);
 }
-
-/* ── AURORA BACKGROUND ── */
-.aurora-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-.aurora-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.12;
-  animation: aurora-float 20s ease-in-out infinite alternate;
-}
-.aurora-orb:nth-child(1) { width:60vw; height:60vw; top:-20%; left:-10%; background:var(--accent-violet); animation-delay:0s; }
-.aurora-orb:nth-child(2) { width:50vw; height:50vw; top:30%; right:-15%; background:var(--accent-blue); animation-delay:-5s; }
-.aurora-orb:nth-child(3) { width:45vw; height:45vw; bottom:-10%; left:20%; background:var(--accent-emerald); animation-delay:-10s; opacity:0.08; }
-.aurora-orb:nth-child(4) { width:35vw; height:35vw; top:50%; left:50%; background:var(--accent-amber); animation-delay:-15s; opacity:0.06; }
-
-@keyframes aurora-float {
-  0%   { transform: translate(0,0) scale(1); }
-  33%  { transform: translate(5vw,-3vh) scale(1.1); }
-  66%  { transform: translate(-3vw,5vh) scale(0.95); }
-  100% { transform: translate(2vw,-2vh) scale(1.05); }
-}
-
-/* ── GRID OVERLAY ── */
-.grid-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
-}
-
-/* ── Wrapper ─────────────────────────────────────────── */
-.page-wrap{width:100%;max-width:640px;padding:0 16px;z-index: 10;position: relative;}
-
-/* ── Back link ───────────────────────────────────────── */
-.back-link{color:rgba(255,255,255,.6);font-size:13px;text-decoration:none;
-  display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;transition: all 0.2s;}
-.back-link:hover{color:#fff;}
-
-/* ── Flash messages ──────────────────────────────────── */
-.flash{padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;
-  display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;backdrop-filter: blur(10px);}
-.flash i{margin-top:2px;flex-shrink:0;}
-.flash-info   {background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.25);}
-.flash-danger {background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.25);}
-.flash-warning{background:rgba(245,158,11,0.15);color:#fde047;border:1px solid rgba(245,158,11,0.25);}
-.flash-success{background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.25);}
-
-/* ── Event banner ────────────────────────────────────── */
-.event-banner{
-  background: linear-gradient(135deg, rgba(26, 37, 87, 0.4) 0%, rgba(26, 79, 160, 0.2) 100%);
-  border: 1px solid var(--border-medium);
-  border-bottom: none;
-  border-radius: 20px 20px 0 0;padding: 24px 28px 20px;color:#fff;
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-.event-banner .cat{font-size:11px;letter-spacing:2px;text-transform:uppercase;
-  color: var(--accent-amber);font-weight: 700;margin-bottom:8px;}
-.event-banner h3{font-size:clamp(18px,4.5vw,24px);margin:0 0 8px;line-height:1.2;font-family:'Plus Jakarta Sans',sans-serif;font-weight: 800;}
-.event-banner .meta{font-size:12.5px;color:var(--text-secondary);display:flex;flex-wrap:wrap;gap:12px;}
-.event-banner .meta span{display:flex;align-items:center;gap:6px;}
-.event-banner .meta span i {color: var(--text-tertiary);}
-.fee-free{background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.25);
-  color:#6ee7b7;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;}
-
-/* ── Form card ───────────────────────────────────────── */
-.form-card{
-  background: var(--bg-surface);
-  border: 1px solid var(--border-medium);
-  border-radius: 0 0 20px 20px;
-  padding: 28px 24px 32px;
-  box-shadow: 0 32px 64px rgba(0,0,0,0.5);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-@media(min-width:480px){.form-card{padding:32px 32px 40px;}}
-
-/* ── Form meta ───────────────────────────────────────── */
-.form-title{font-size:20px;font-weight:800;color:#fff;margin:0 0 6px;}
-.form-desc {font-size:13.5px;color:var(--text-secondary);margin:0 0 24px;}
-
-/* ── Section headings (from heading field type) ──────── */
-.field-heading{
-  font-size:14px;font-weight:800;color:#fff;
-  border-left:3px solid var(--accent-amber);padding-left:10px;
-  margin:28px 0 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.field-paragraph{color:var(--text-secondary);font-size:13.5px;margin-bottom:14px;line-height: 1.5;}
-.field-divider{border:none;border-top:1px solid var(--border-subtle);margin:24px 0;}
-
-/* ── Form groups ─────────────────────────────────────── */
-.form-group{margin-bottom:20px;}
-.form-group label{
-  display:block;font-size:13px;font-weight:600;
-  color:#fff;margin-bottom:6px;
-}
-.form-group label .req{color:var(--accent-rose);margin-left:2px;}
-.help-text{font-size:11.5px;color:var(--text-tertiary);margin-top:5px;}
-
-/* ── Inputs ──────────────────────────────────────────── */
-.form-card .form-control,
-.form-card .form-select {
-  width: 100% !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  font-family: 'Inter', sans-serif !important;
-  border: 1px solid var(--border-medium) !important;
-  border-radius: 12px !important;
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  background-image: none !important;
-  transition: all 0.2s ease !important;
-  color: #ffffff !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-}
-
-.form-card .form-control::placeholder {
-  color: var(--text-tertiary) !important;
-}
-
-.form-card .form-control:focus,
-.form-card .form-select:focus {
-  outline: none !important;
-  border-color: var(--accent-blue) !important;
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
-  color: #ffffff !important;
-}
-
-.form-card .form-control.error {
-  border-color: var(--accent-rose) !important;
-  background-color: rgba(244, 63, 94, 0.05) !important;
-}
-
-.form-card textarea.form-control {
-  resize: vertical !important;
-  min-height: 100px !important;
-}
-
-/* Autofill override to preserve dark theme */
-.form-card .form-control:-webkit-autofill,
-.form-card .form-control:-webkit-autofill:hover, 
-.form-card .form-control:-webkit-autofill:focus, 
-.form-card .form-control:-webkit-autofill:active {
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: #ffffff !important;
-  transition: background-color 5000s ease-in-out 0s !important;
-  box-shadow: inset 0 0 20px 20px rgba(3, 7, 18, 0.6) !important;
-}
-
-/* ── Select arrow ────────────────────────────────────── */
-.select-wrap{position:relative;}
-.select-wrap::after{
-  content:'\f078';font-family:'Font Awesome 6 Free';font-weight:900;
-  position:absolute;right:16px;top:50%;transform:translateY(-50%);
-  color:var(--text-tertiary);font-size:11px;pointer-events:none;
-}
-.select-wrap select{padding-right:40px;}
-
-/* ── Radio / Checkbox groups ─────────────────────────── */
-.choice-list{display:flex;flex-direction:column;gap:10px;}
-.choice-item{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 16px;border:1px solid var(--border-subtle);border-radius:12px;
-  cursor:pointer;transition: all 0.2s;user-select:none;
-  background: rgba(255,255,255,0.01);
-}
-.choice-item:hover{border-color:var(--border-medium);background:rgba(255,255,255,0.03);}
-.choice-item input{
-  width:18px;height:18px;accent-color:var(--accent-amber);
-  flex-shrink:0;cursor:pointer;
-}
-.choice-item span{font-size:14px;color:var(--text-secondary);}
-.choice-item:has(input:checked){
-  border-color:var(--accent-amber);background:rgba(245,158,11,0.06);
-}
-.choice-item:has(input:checked) span{color:#fff;font-weight:600;}
-
-/* ── Single checkbox ─────────────────────────────────── */
-.single-check{
-  display:flex;align-items:center;gap:12px;
-  padding:14px 16px;border:1px solid var(--border-subtle);border-radius:12px;
-  cursor:pointer;transition: all 0.2s;
-  background: rgba(255,255,255,0.01);
-}
-.single-check:hover{border-color:var(--border-medium);background:rgba(255,255,255,0.03);}
-.single-check:has(input:checked){border-color:var(--accent-amber);background:rgba(245,158,11,0.06);}
-.single-check input{width:18px;height:18px;accent-color:var(--accent-amber);flex-shrink:0;}
-.single-check span{font-size:13.5px;color:var(--text-secondary);}
-.single-check:has(input:checked) span {color:#fff;}
-
-/* ── Submit button ───────────────────────────────────── */
-.btn-submit{
-  width:100%;padding:14px;
-  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-violet) 100%);
-  color:#fff;
-  border:none;border-radius:12px;font-size:15px;font-weight:700;
-  cursor:pointer;transition: all 0.25s var(--ease-out-expo);margin-top:12px;
-  font-family:'Plus Jakarta Sans',sans-serif;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25);
-  -webkit-tap-highlight-color:transparent;
-}
-.btn-submit:hover{
-  transform:translateY(-2px);
-  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.35);
-  filter: brightness(1.1);
-}
-.btn-submit:active{transform:scale(.98) translateY(0);}
-.btn-submit:disabled{background:#4b5563;cursor:not-allowed;transform:none;box-shadow:none;opacity:0.6;}
-
-/* ── Already registered ──────────────────────────────── */
-.already-card{
-  background: var(--bg-surface);
-  border: 1px solid var(--border-medium);
-  border-radius: 20px;padding:48px 32px;
-  text-align:center;max-width:460px;width:100%;
-  box-shadow:0 32px 64px rgba(0,0,0,0.5);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-.already-card h4 { color: #fff; }
-
-/* ── Security note ───────────────────────────────────── */
-.security-note{
-  text-align:center;color:var(--text-tertiary);
-  font-size:12px;margin-top:20px;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-
-/* ── Mobile tweaks ───────────────────────────────────── */
-@media(max-width:400px){
-  .choice-item{padding:10px 12px;}
-  .form-control,.form-select{font-size:16px;} /* prevent iOS zoom */
-  .btn-submit{font-size:14px;padding:13px;}
-}
-.field-error { color: #dc2626; font-size: 13px; margin-top: 4px; font-weight: 500; }
-[aria-invalid="true"] { border-color: #dc2626 !important; }
+@media (min-width: 480px) { .form-card { padding: 30px 32px 34px; } }
+.form-title { font-size: var(--fs-xl); margin: 0 0 6px; }
+.form-desc { font-size: var(--fs-base); color: var(--text-muted); margin: 0 0 22px; }
+.form-group label:not(.choice-item):not(.single-check), .form-group .group-label { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); margin-bottom: 6px; }
+.req { color: var(--danger); margin-left: 2px; }
+.help-text { font-size: var(--fs-xs); color: var(--text-subtle); margin: -2px 0 6px; }
+.already-card { max-width: 480px; margin: 0 auto; text-align: center; }
+.already-card i.big { font-size: 2.75rem; color: var(--success); margin-bottom: 12px; display: block; }
+.security-note { text-align: center; color: var(--text-subtle); font-size: var(--fs-sm); margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+@media (max-width: 400px) { .form-control, .form-select { font-size: 16px; } }
 </style>
 {% endblock %}
-{% block body %}
-  <!-- Aurora background -->
-  <div class="aurora-bg">
-    <div class="aurora-orb"></div>
-    <div class="aurora-orb"></div>
-    <div class="aurora-orb"></div>
-    <div class="aurora-orb"></div>
-  </div>
-  <div class="grid-overlay"></div>
-
-  <div class="page-wrap">
-
-  <!-- Back -->
-  <a href="/event/{{ event.id }}" class="back-link">
-    <i class="fas fa-arrow-left"></i>Back to event
-  </a>
-
-  <!-- Flash -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for cat, msg in messages %}
-      <div class="flash flash-{{ cat }}">
-        <i class="fas fa-info-circle"></i>
-        <span>{{ msg | safe }}</span>
-      </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+{% block content %}
+<div class="reg-wrap">
+  <a href="/event/{{ event.id }}" class="btn btn-link px-0 mb-3"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to event</a>
 
   {% if is_registered %}
   <!-- ── Already registered ── -->
-  <div class="already-card">
-    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-    <h4 class="fw-bold">Already Registered!</h4>
+  <div class="panel already-card">
+    <i class="fas fa-check-circle big" aria-hidden="true"></i>
+    <h1 class="h4">You're already registered</h1>
     <p class="text-muted">You have already registered for <strong>{{ event.title }}</strong>.</p>
-    <a href="/participant/dashboard"
-       class="btn btn-primary rounded-pill px-4 mt-2">
-      <i class="fas fa-ticket-alt me-2"></i>View My Tickets
+    <a href="/participant/dashboard" class="btn btn-primary mt-2">
+      <i class="fas fa-ticket-alt" aria-hidden="true"></i> View my tickets
     </a>
   </div>
 
@@ -346,18 +63,18 @@ body{
     {% if event.get('category') %}
     <div class="cat">{{ event.category }}</div>
     {% endif %}
-    <h3>{{ event.title }}</h3>
+    <h1>{{ event.title }}</h1>
     <div class="meta">
       {% if event.get('date') %}
-      <span><i class="fas fa-calendar-alt"></i>{{ event.date }}</span>
+      <span><i class="fas fa-calendar-alt" aria-hidden="true"></i>{{ event.date }}</span>
       {% endif %}
       {% if event.get('venue') %}
-      <span><i class="fas fa-map-marker-alt"></i>{{ event.venue }}</span>
+      <span><i class="fas fa-map-marker-alt" aria-hidden="true"></i>{{ event.venue }}</span>
       {% endif %}
       {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
-      <span><i class="fas fa-rupee-sign"></i>{{ event.entry_fee }} entry fee</span>
+      <span><i class="fas fa-rupee-sign" aria-hidden="true"></i>{{ event.entry_fee }} entry fee</span>
       {% else %}
-      <span class="fee-free"><i class="fas fa-star me-1"></i>Free event</span>
+      <span class="fee-free">Free event</span>
       {% endif %}
     </div>
   </div>
@@ -371,8 +88,8 @@ body{
     {% endif %}
 
     {% if is_waitlist %}
-      <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size: 13px; border-radius: 10px; background:#fffbeb; color:#d97706; border:1px solid #fde68a;">
-        <i class="fas fa-hourglass-half text-warning"></i>
+      <div class="alert alert-warning mb-3">
+        <i class="fas fa-hourglass-half" aria-hidden="true"></i>
         <div><strong>Waitlist Only:</strong> This event is currently full. Submitting this form will place you on the waitlist.</div>
       </div>
     {% endif %}
@@ -388,7 +105,7 @@ body{
         {% set chosen = values.get('participant_type') or ptypes[0] %}
         {% if ptypes|length > 1 %}
         <div class="form-group">
-          <span class="d-block mb-1" style="font-weight:600;">I'm registering as<span class="req">*</span></span>
+          <span class="group-label">I'm registering as<span class="req">*</span></span>
           <div class="choice-list mt-1">
             {% for t in ptypes %}
             <label class="choice-item">
@@ -553,15 +270,15 @@ body{
       </div>
 
       <!-- Submit -->
-      <button type="submit" class="btn-submit" id="submit-btn" data-no-loader>
-        <i class="fas fa-paper-plane"></i>
+      <button type="submit" class="btn btn-gold btn-lg w-100 mt-2" id="submit-btn" data-no-loader>
+        <i class="fas fa-paper-plane" aria-hidden="true"></i>
         {% if is_waitlist %}
-          Join Waitlist (Event is Full)
+          Join the waitlist (event is full)
         {% else %}
           {% if event.get('entry_fee') and event.entry_fee|int > 0 %}
-            Continue to Payment — ₹{{ event.entry_fee }}
+            Continue to payment — ₹{{ event.entry_fee }}
           {% else %}
-            Register Now — Free
+            Register now — free
           {% endif %}
         {% endif %}
       </button>
@@ -570,15 +287,15 @@ body{
   </div>
 
   <p class="security-note">
-    <i class="fas fa-lock"></i>
-    Your data is secure and used only for event management.
+    <i class="fas fa-lock" aria-hidden="true"></i>
+    Your details are used only to run this event.
   </p>
 
   {% endif %}
 
-</div><!-- /page-wrap -->
-
-<script src="/static/js/global.js"></script>
+</div>
+{% endblock %}
+{% block extra_js %}
 <script src="/static/js/pages/public__registration_form.js"></script>
 {% endblock %}
 {% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__registration_form.js"></script>{% endblock %}

@@ -3,7 +3,7 @@
    elements marked data-h-<event>="<key>"; `this` and `event` are as before. */
 Object.assign(window.SE_H = window.SE_H || {}, {
   "spoc/dashboard:1": function (event) { with (document) { with (this.form || {}) { with (this) {
-    this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(201, 164, 94, 0.4)';
+    this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(198,157,103, 0.4)';
   } } } },
   "spoc/dashboard:2": function (event) { with (document) { with (this.form || {}) { with (this) {
     this.style.transform='none'; this.style.boxShadow='none';

@@ -1,200 +1,74 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23e. -#}
-{% block head %}
-    <title>SPOC HQ | Sapthagiri NPS University</title>
-
-    {% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include "layouts/_fontawesome.html" %}
-
-    <style>
-        body { background-color: var(--bg-app); color: var(--ink-800); font-family: 'Inter', sans-serif; min-height: 100vh; }
-        h1,h2,h3,h4,h5,h6 { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--ink-900); }
-
-        .topnav {
-            background: rgba(26, 37, 87, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 0 24px;
-            height: 56px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow-sm);
-        }
-        .brand { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #fff; margin-left: 10px; }
-        .nav-links { display: flex; align-items: center; gap: 6px; }
-        .nav-link-item { color: rgba(255,255,255,.75); font-size: 12.5px; text-decoration: none; padding: 5px 11px; border-radius: var(--radius-sm); transition: var(--t-fast); font-weight: 500; }
-        .nav-link-item:hover { color: #fff; background: rgba(255,255,255,.1); }
-        .nav-link-item.btn-orange { background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color: #fff; font-weight: 700; border: none; }
-        .nav-link-item.btn-orange:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold); color: #fff; }
-
-        .stat-card {
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            padding: 25px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--ink-200);
-            border-top: 4px solid var(--snpsu-blue);
-            transition: transform var(--t), box-shadow var(--t);
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-        .event-card {
-            background: var(--bg-card);
-            border: 1px solid var(--ink-200);
-            border-radius: var(--radius);
-            overflow: hidden;
-            box-shadow: var(--shadow-xs);
-            transition: transform var(--t), box-shadow var(--t);
-        }
-        .event-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .modal-content { border: none; border-radius: var(--radius-lg); background-color: var(--bg-card); }
-        .modal-header { background: linear-gradient(135deg, var(--snpsu-blue-dark), var(--snpsu-blue)); color: white; border-bottom: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
-        .btn-close { filter: var(--btn-close-white-filter, invert(1) brightness(200%)); opacity: 0.8; }
-        [data-theme="dark"] .btn-close { filter: invert(1) brightness(200%); }
-
-        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue-light); text-transform: uppercase; margin-bottom: 6px; }
-        [data-theme="dark"] .form-label { color: var(--snpsu-gold-light); }
-        .form-control, .form-select { background-color: var(--bg-soft) !important; color: var(--ink-900) !important; border: 1px solid var(--ink-300) !important; border-radius: var(--radius-sm); padding: 12px; }
-        .form-control:focus, .form-select:focus { background-color: var(--bg-card) !important; border-color: var(--snpsu-blue) !important; box-shadow: 0 0 0 3px rgba(26, 37, 87, 0.15) !important; }
-
-        .btn-snpsu-blue { background: linear-gradient(135deg, var(--snpsu-blue), var(--snpsu-blue-dark)); color: white; border: none; font-weight: bold; border-radius: var(--radius-sm); transition: var(--t-fast); }
-        .btn-snpsu-blue:hover { transform: translateY(-1px); box-shadow: var(--shadow-brand); color: white; }
-        .btn-snpsu-orange { background: linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color: white; border: none; font-weight: bold; border-radius: var(--radius-sm); transition: var(--t-fast); }
-        .btn-snpsu-orange:hover { transform: translateY(-1px); box-shadow: var(--shadow-gold); color: white; }
-
-        /* ── WIZARD ────────────────────────────────────── */
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% import 'includes/ui.html' as ui with context %}
+{#- A Super Admin opens this page from "Coordinator view": it is labelled as that
+    view, not as a second admin home (UPG-80). -#}
+{%- set as_admin = session.get('role') in ('SuperAdmin', 'Super Admin') -%}
+{% set app_active = 'coordinator' if as_admin else 'dashboard' %}
+{% if as_admin %}{% set app_title = 'Coordinator view' %}{% set app_subtitle = 'Seen as Super Admin' %}{% endif %}
+{% block title %}{{ 'Coordinator view' if as_admin else 'Coordinator dashboard' }}{% endblock %}
+{% block page_title %}{% if as_admin %}Coordinator view{% else %}Welcome, {{ user_name }}{% endif %}{% endblock %}
+{% block page_sub %}{% if as_admin %}What event coordinators work with: registrations, staff, rooms, rounds and results for every event.{% else %}{% if club_category %}<span class="se-badge se-badge--gold me-2"><i class="fas fa-tags" aria-hidden="true"></i> {{ club_category }} division</span>{% endif %}Manage registrations, staff, room allocations, rounds and results.{% endif %}{% endblock %}
+{#- Events are created in the event wizard, which saves a draft for review (UPG-78);
+    coordinators who can't use it ask their SPOC. -#}
+{% block page_actions %}{% if session.get('role') in ('ClubSPOC', 'SuperAdmin', 'Super Admin') %}<a href="/spoc/create_event" class="btn btn-gold"><i class="fas fa-plus" aria-hidden="true"></i> Create event</a>{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+/* Coordinator dashboard (UPG-63) */
+.ev-status { position: absolute; top: 12px; right: 12px; z-index: 3; }
+.form-builder-badge.none { background: var(--surface-sunken); color: var(--text-muted); }
+.ev-counts { display: flex; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; }
+.ev-counts > div { flex: 1; text-align: center; }
+.ev-counts > div + div { border-left: 1px solid var(--border); }
+.ev-counts__label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.coord-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px; }
+.btn-snpsu-blue { background: var(--brand-navy); color: #fff; border: 1px solid var(--brand-navy); font-weight: 600; border-radius: var(--radius-sm); }
+.btn-snpsu-blue:hover, .btn-snpsu-blue:focus-visible { background: var(--brand-navy-900, #000f3d); color: #fff; }
+.btn-snpsu-orange { background: var(--brand-gold); color: var(--brand-navy); border: 1px solid var(--brand-gold); font-weight: 600; border-radius: var(--radius-sm); }
+.btn-snpsu-orange:hover, .btn-snpsu-orange:focus-visible { background: var(--brand-gold-700); border-color: var(--brand-gold-700); color: #fff; }
+/* ── WIZARD ────────────────────────────────────── */
         .wizard-step { display: none; }
-        .wizard-step.active { display: block; animation: fadeIn 0.4s; }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; }
-        .step-indicator::before { content:''; position:absolute; top:15px; left:0; width:100%; height:3px; background:var(--ink-200); z-index:1; }
-        .step-dot { width:35px; height:35px; border-radius:50%; background:var(--ink-200); color:var(--ink-600); display:flex; align-items:center; justify-content:center; font-weight:bold; z-index:2; position:relative; transition:0.3s; }
-        .step-dot.active { background:linear-gradient(135deg, var(--snpsu-gold), var(--snpsu-gold-dark)); color:white; box-shadow:0 0 0 5px rgba(201,164,94,0.25); }
-        .step-dot.completed { background:var(--snpsu-blue); color:white; }
-
-        /* ── FORM TYPE CARDS (Step 3) ───────────────────── */
+.wizard-step.active { display: block; animation: fadeIn 0.4s; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; }
+.step-indicator::before { content:''; position:absolute; top:15px; left:0; width:100%; height:3px; background:var(--ink-200); z-index:1; }
+.step-dot { width:35px; height:35px; border-radius:50%; background:var(--ink-200); color:var(--ink-600); display:flex; align-items:center; justify-content:center; font-weight:bold; z-index:2; position:relative; transition:0.3s; }
+.step-dot.active { background:var(--brand-gold); color:var(--brand-navy); box-shadow:0 0 0 5px rgba(198,157,103,0.25); }
+.step-dot.completed { background:var(--brand-navy); color:white; }
+/* ── FORM TYPE CARDS (Step 3) ───────────────────── */
         .reg-type-card { border: 2px solid var(--ink-200); border-radius: 14px; padding: 20px 18px; cursor: pointer; transition: 0.2s; text-align: center; background: var(--bg-card); color: var(--ink-800); }
-        .reg-type-card:hover { border-color: var(--snpsu-blue); background: var(--bg-soft); color: var(--ink-900); }
-        .reg-type-card.selected { border-color: var(--snpsu-gold); background: var(--warning-soft); box-shadow: 0 0 0 3px rgba(201,164,94,0.2); }
-        .reg-type-card .big-icon { font-size: 2.2rem; margin-bottom: 10px; display: block; }
-        .reg-type-card h6 { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: var(--ink-900); }
-        .reg-type-card p { font-size: 11px; color: var(--ink-500); margin: 0; }
-
-        /* ── FORM BUILDER BADGE on event card ───────────── */
+.reg-type-card:hover { border-color: var(--brand-navy); background: var(--bg-soft); color: var(--ink-900); }
+.reg-type-card.selected { border-color: var(--brand-gold); background: var(--brand-gold-100); box-shadow: 0 0 0 3px rgba(198,157,103,0.2); }
+.reg-type-card .big-icon { font-size: 2.2rem; margin-bottom: 10px; display: block; }
+.reg-type-card h6 { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: var(--ink-900); }
+.reg-type-card p { font-size: 11px; color: var(--ink-500); margin: 0; }
+/* ── FORM BUILDER BADGE on event card ───────────── */
         .form-builder-badge { display: inline-flex; align-items: center; gap: 5px;
-            background: var(--info-soft); color: var(--info); border-radius: 20px;
+            background: var(--info-soft); color: var(--info-text, var(--info)); border-radius: 20px;
             padding: 3px 10px; font-size: 11px; font-weight: 700; }
-        .form-builder-badge.custom { background: var(--warning-soft); color: var(--warning); }
-
-        /* ── Theme Adaptations ── */
-        .bg-light { background-color: var(--bg-soft) !important; color: var(--ink-700) !important; }
-        .border { border-color: var(--ink-200) !important; }
-        .text-muted { color: var(--ink-500) !important; }
-        .alert { background-color: var(--bg-soft) !important; border-color: var(--ink-200) !important; color: var(--ink-800) !important; }
-        .alert-warning { background-color: var(--warning-soft) !important; border-color: var(--warning) !important; color: var(--ink-900) !important; }
-        .alert-info { background-color: var(--info-soft) !important; border-color: var(--info) !important; color: var(--ink-900) !important; }
-        .alert-danger { background-color: var(--danger-soft) !important; border-color: var(--danger) !important; color: var(--ink-900) !important; }
-    </style>
+.form-builder-badge.custom { background: var(--brand-gold-100); color: var(--brand-gold-700); }
+</style>
 {% endblock %}
-{% block body %}
-
-{% if session.get('role') in ('SuperAdmin', 'Super Admin') %}
-<div class="super-admin-banner" style="background: linear-gradient(90deg, #1a2557, #1e293b); border-bottom: 3px solid #c9a45e; color: #ffffff; padding: 12px 24px; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 12px; z-index: 10000; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-  <span style="display: inline-flex; align-items: center; gap: 6px;">
-    <i class="fas fa-crown" style="color: #c9a45e;"></i>
-    Logged in as <strong style="color: #c9a45e;">Super Admin</strong> (Wildcard Mode)
-  </span>
-  <a href="/admin/dashboard" class="btn btn-sm text-white fw-bold px-3 py-1 rounded" style="background: #c9a45e; border: none; font-size: 12.5px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 6px;" data-h-mouseover="coordinator/dashboard:1" data-h-mouseout="coordinator/dashboard:2">
-    Return to Admin HQ <i class="fas fa-arrow-right"></i>
-  </a>
+{% block content %}
+{% if as_admin %}
+<div class="callout callout--brand d-flex flex-wrap align-items-center justify-content-between gap-2">
+  <span><i class="fas fa-crown" aria-hidden="true"></i> This is the page event coordinators use. Your own home is the admin dashboard.</span>
+  <a href="/admin/dashboard" class="btn btn-primary btn-sm">Return to admin <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
 </div>
 {% endif %}
 
-<!-- ── TOPNAV ──────────────────────────────────────────── -->
-<div class="topnav">
-    <div class="d-flex align-items-center gap-2">
-        <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University"
-             style="height:36px;width:auto;object-fit:contain;"
-             data-h-error="coordinator/dashboard:3">
-        <span class="brand">Club SPOC HQ</span>
-    </div>
-    <div class="nav-links">
-        <span style="color:rgba(255,255,255,.75);font-size:12.5px;padding:5px 11px;">
-            <i class="fas fa-tags me-1" style="color:var(--snpsu-gold-light);"></i> {{ club_category }} Division
-        </span>
-        <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
-        <button class="nav-link-item btn-orange border-0"
-                data-bs-toggle="modal" data-bs-target="#createEventWizard">
-            <i class="fas fa-plus me-1"></i>Create Event
-        </button>
-        <!-- Theme Toggle -->
-        <button class="nav-link-item" data-h-click="coordinator/dashboard:4" aria-label="Toggle dark/light theme" id="theme-toggle" type="button" style="background: none; border: none; cursor: pointer; position: relative; padding: 5px 10px;">
-          <span id="theme-toggle-icon"><i class="fas fa-moon"></i></span>
-        </button>
-        <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.6);"><i class="fas fa-sign-out-alt"></i></a>
-    </div>
-</div>
-
-<div class="container py-5">
-
-    <!-- Header row -->
-    <div class="d-flex justify-content-between align-items-end mb-4 border-bottom pb-4">
-        <div>
-            <h2 class="fw-bold mb-1" style="color:var(--snpsu-blue);">Welcome, {{ user_name }}</h2>
-            <p class="text-muted m-0">Create events, broadcast updates, and manage room allocations.</p>
-        </div>
-        <button class="btn btn-snpsu-orange btn-lg px-4 shadow-sm"
-                data-bs-toggle="modal" data-bs-target="#createEventWizard">
-            <i class="fas fa-plus-circle me-2"></i> Create New Event
-        </button>
-    </div>
-
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}{% for category, message in messages %}
-        <div class="alert alert-{{ category }} fw-bold shadow-sm">
-            <i class="fas fa-info-circle me-2"></i>{{ message | safe }}
-        </div>
-        {% endfor %}{% endif %}
-    {% endwith %}
+<div>
 
     <!-- Stats -->
-    <div class="row g-4 mb-5">
-        <div class="col-md-4">
-            <div class="stat-card">
-                <p class="text-muted fw-bold text-uppercase mb-2">Events Managed</p>
-                <h2>{{ events|length }}</h2>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="stat-card" style="border-top-color:#10b981;">
-                <p class="text-muted fw-bold text-uppercase mb-2">Total Registrations</p>
-                <h2 style="color:#10b981;">{{ total_regs }}</h2>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="stat-card" style="border-top-color:var(--snpsu-orange);">
-                <p class="text-muted fw-bold text-uppercase mb-2">Staff Appointed</p>
-                <h2 style="color:var(--snpsu-orange);">{{ total_staff }}</h2>
-            </div>
-        </div>
+    <div class="coord-stats">
+        {{ ui.stat_tile('fa-calendar-check', events|length, 'Events managed') }}
+        {{ ui.stat_tile('fa-users', total_regs, 'Total registrations') }}
+        {{ ui.stat_tile('fa-user-tie', total_staff, 'Staff appointed') }}
     </div>
 
-    <h4 class="fw-bold mb-4" style="color:var(--snpsu-blue);">
-        <i class="fas fa-tasks me-2 text-warning"></i> Event Control Center
-    </h4>
+    <h2 class="h5 fw-bold mb-3">
+        <i class="fas fa-tasks me-2 text-gold" aria-hidden="true"></i> Event control centre
+    </h2>
     {% set search_label = 'Search events by title, venue or category' %}
     {% include "includes/list_search.html" %}
 
@@ -205,48 +79,48 @@
             <div class="ev-card d-flex flex-column h-100">
 
                 <!-- Card Banner (matches Home Page UI) -->
-                <div class="ev-banner" aria-hidden="true" style="height: 160px; position: relative;">
+                <div class="ev-banner" aria-hidden="true">
                     {% if event.get('banner_url') %}
                         <img src="{{ event.banner_url }}" alt="" loading="lazy" data-h-error="coordinator/dashboard:5">
                         <div class="ev-overlay"></div>
                     {% endif %}
                     {% set cat = event.get('category','General') %}
-                    {% if   cat == 'Technical'  %}<div class="ev-banner-icon" style="font-size: 2.5rem;">💻</div>
-                    {% elif cat == 'Cultural'   %}<div class="ev-banner-icon" style="font-size: 2.5rem;">🎭</div>
-                    {% elif cat == 'Sports'     %}<div class="ev-banner-icon" style="font-size: 2.5rem;">⚽</div>
-                    {% elif cat == 'Management' %}<div class="ev-banner-icon" style="font-size: 2.5rem;">📊</div>
-                    {% else                     %}<div class="ev-banner-icon" style="font-size: 2.5rem;">🌟</div>{% endif %}
+                    {% if   cat == 'Technical'  %}<div class="ev-banner-icon"><i class="fas fa-laptop-code" aria-hidden="true"></i></div>
+                    {% elif cat == 'Cultural'   %}<div class="ev-banner-icon"><i class="fas fa-masks-theater" aria-hidden="true"></i></div>
+                    {% elif cat == 'Sports'     %}<div class="ev-banner-icon"><i class="fas fa-futbol" aria-hidden="true"></i></div>
+                    {% elif cat == 'Management' %}<div class="ev-banner-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></div>
+                    {% else                     %}<div class="ev-banner-icon"><i class="fas fa-star" aria-hidden="true"></i></div>{% endif %}
                     <span class="ev-cat cat-{{ cat|lower }}">{{ cat }}</span>
                     {% if event.status == 'active' %}
-                        <span class="badge bg-success" style="position: absolute; top: 12px; right: 12px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; padding: 4px 10px; z-index: 3;">
+                        <span class="se-badge se-badge--success ev-status">
                             Live (Round {{ event.active_round | default(1) }})
                         </span>
                     {% else %}
-                        <span class="badge bg-secondary" style="position: absolute; top: 12px; right: 12px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; padding: 4px 10px; z-index: 3;">
+                        <span class="se-badge se-badge--neutral ev-status">
                             Closed
                         </span>
                     {% endif %}
                 </div>
 
                 <!-- Card body (matches Home Page ev-body style but with coordinator actions) -->
-                <div class="ev-body d-flex flex-column flex-grow-1" style="padding: 24px;">
+                <div class="ev-body d-flex flex-column flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <h5 class="ev-title fw-bold m-0" style="color:var(--snpsu-blue); font-size: 1.15rem;">{{ event.title }}</h5>
+                        <h3 class="ev-title m-0">{{ event.title }}</h3>
                     </div>
                     
                     <!-- Form type badge -->
                     <div class="mb-3">
                         {% if event.get('form_type') == 'custom' %}
                             <span class="form-builder-badge custom">
-                                <i class="fas fa-paint-brush"></i> Custom Form
+                                <i class="fas fa-paint-brush" aria-hidden="true"></i> Custom form
                             </span>
                         {% elif event.get('has_custom_form') %}
                             <span class="form-builder-badge">
-                                <i class="fas fa-wpforms"></i> Simple Form
+                                <i class="fas fa-rectangle-list" aria-hidden="true"></i> Simple form
                             </span>
                         {% else %}
-                            <span class="form-builder-badge" style="background:#f1f5f9;color:#94a3b8;">
-                                <i class="fas fa-exclamation-circle"></i> No Form Yet
+                            <span class="form-builder-badge none">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i> No form yet
                             </span>
                         {% endif %}
                     </div>
@@ -257,19 +131,19 @@
                             <strong>Event:</strong> {{ event.date }}
                         </p>
                         <p class="text-danger small mb-0">
-                            <i class="fas fa-exclamation-circle me-1"></i>
-                            <strong>Deadline:</strong> {{ event.deadline if event.deadline else 'Not Set' }}
+                            <i class="fas fa-hourglass-end me-1" aria-hidden="true"></i>
+                            <strong>Deadline:</strong> {{ event.deadline if event.deadline else 'Not set' }}
                         </p>
                     </div>
 
-                    <div class="d-flex justify-content-between mb-4 bg-light rounded p-2 border">
-                        <div class="text-center w-50 border-end">
-                            <small class="text-muted d-block fw-bold" style="font-size: 11px;">Participants</small>
+                    <div class="ev-counts mb-3">
+                        <div class="text-center w-50">
+                            <small class="ev-counts__label">Participants</small>
                             <span class="fw-bold fs-5">{{ event.registration_count }}</span>
                         </div>
                         <div class="text-center w-50">
-                            <small class="text-muted d-block fw-bold" style="font-size: 11px;">Staff</small>
-                            <span class="fw-bold fs-5 text-warning">{{ event.staff|length }}</span>
+                            <small class="ev-counts__label">Staff</small>
+                            <span class="fw-bold fs-5">{{ event.staff|length }}</span>
                         </div>
                     </div>
 
@@ -278,127 +152,126 @@
 
                             <!-- ★ FORM BUILDER BUTTON ★ -->
                             <a href="/forms/builder/{{ event.id }}"
-                               class="btn btn-primary fw-bold"
-                               style="background:var(--snpsu-blue);border:none;border-radius:8px;">
-                                <i class="fas fa-wpforms me-1"></i>
+                               class="btn btn-primary">
+                                <i class="fas fa-rectangle-list me-1" aria-hidden="true"></i>
                                 {% if event.get('has_custom_form') %}
-                                    Edit Registration Form
+                                    Edit registration form
                                 {% else %}
-                                    Build Registration Form
+                                    Build registration form
                                 {% endif %}
                             </a>
 
                             <!-- View Responses -->
                             {% if event.get('has_custom_form') %}
                             <a href="/forms/responses/{{ event.id }}"
-                               class="btn btn-outline-primary fw-bold" style="border-radius:8px;">
-                                <i class="fas fa-table me-1"></i>
-                                View Form Responses
+                               class="btn btn-outline-primary">
+                                <i class="fas fa-table me-1" aria-hidden="true"></i>
+                                View form responses
                                 {% if event.registration_count > 0 %}
-                                <span class="badge bg-primary ms-1">{{ event.registration_count }}</span>
+                                <span class="se-badge se-badge--brand ms-1">{{ event.registration_count }}</span>
                                 {% endif %}
                             </a>
                             {% endif %}
 
                             <div class="btn-group w-100">
-                                <button class="btn btn-outline-dark fw-bold w-50"
+                                <button type="button" class="btn btn-outline-secondary w-50"
                                         data-bs-toggle="modal"
                                         data-bs-target="#editModal{{ event.id }}">
-                                    <i class="fas fa-edit"></i> Edit
+                                    <i class="fas fa-edit" aria-hidden="true"></i> Edit
                                 </button>
                                 <a href="/coordinator/export_registrations/{{ event.id }}"
-                                   class="btn btn-success fw-bold w-50">
-                                    <i class="fas fa-file-excel"></i> Export
+                                   class="btn btn-outline-secondary w-50">
+                                    <i class="fas fa-file-export" aria-hidden="true"></i> Export
                                 </a>
                             </div>
 
-                            <!-- View Students + Export Excel — NEW -->
+                            <!-- View students + Export Excel — NEW -->
                             <div class="btn-group w-100 mt-1 mb-1">
                                 <a href="/coordinator/registrations/{{ event.id }}"
-                                   class="btn btn-primary fw-bold w-50">
-                                    <i class="fas fa-users me-1"></i> View Students
+                                   class="btn btn-primary w-50">
+                                    <i class="fas fa-users me-1" aria-hidden="true"></i> View students
                                 </a>
                                 <a href="/coordinator/export_excel/{{ event.id }}"
-                                   class="btn btn-success fw-bold w-50">
-                                    <i class="fas fa-file-excel me-1"></i> Excel
+                                   class="btn btn-outline-secondary w-50">
+                                    <i class="fas fa-file-excel me-1" aria-hidden="true"></i> Excel
                                 </a>
                             </div>
 
-                            <button class="btn btn-outline-primary fw-bold"
+                            <button type="button" class="btn btn-outline-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#staffModal{{ event.id }}">
-                                <i class="fas fa-user-shield me-1"></i> Appoint Staff / Judges
+                                <i class="fas fa-user-shield me-1" aria-hidden="true"></i> Appoint staff / judges
                             </button>
 
-                            <div class="btn-group w-100 mt-1 mb-1">
-                                <!-- AI Judge Matching button -->
-                                <a href="/ai/match_page/{{ event.id }}"
-                                   class="btn fw-bold text-white w-100 mb-2"
-                                   style="background:#7c3aed;border-color:#7c3aed;">
-                                    <i class="fas fa-brain me-1"></i> AI Judge Match
-                                    {% if event.get('ai_match_applied') %}
-                                    <span style="background:rgba(255,255,255,.2);font-size:10px;padding:1px 7px;border-radius:100px;margin-left:4px;">Applied</span>
-                                    {% endif %}
-                                </a>
-                                <button class="btn btn-dark fw-bold text-white w-50"
+                            <!-- AI judge matching button -->
+                            <a href="/ai/match_page/{{ event.id }}"
+                               class="btn btn-outline-primary">
+                                <i class="fas fa-brain me-1" aria-hidden="true"></i> AI judge match
+                                {% if event.get('ai_match_applied') %}
+                                <span class="se-badge se-badge--success ms-1">Applied</span>
+                                {% endif %}
+                            </a>
+
+                            <div class="btn-group w-100">
+                                <button type="button" class="btn btn-outline-secondary w-50"
                                         data-bs-toggle="modal"
                                         data-bs-target="#allocateModal{{ event.id }}">
-                                    <i class="fas fa-network-wired"></i> Allocate
+                                    <i class="fas fa-network-wired" aria-hidden="true"></i> Allocate
                                 </button>
                                 <form method="POST" action="/coordinator/trigger_reminders/{{ event.id }}" class="w-50 m-0"
                                       data-h-submit="coordinator/dashboard:6">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-info fw-bold text-dark w-100">
-                                        <i class="fas fa-paper-plane"></i> Remind
+                                    <button type="submit" class="btn btn-outline-secondary w-100">
+                                        <i class="fas fa-paper-plane" aria-hidden="true"></i> Remind
                                     </button>
                                 </form>
                             </div>
 
-                            <button class="btn btn-danger fw-bold text-white mb-1"
+                            <button type="button" class="btn btn-outline-danger mb-1"
                                     data-bs-toggle="modal"
                                     data-bs-target="#eliminateModal{{ event.id }}">
-                                <i class="fas fa-filter me-1"></i> Next Round / Eliminate
+                                <i class="fas fa-filter me-1" aria-hidden="true"></i> Next round / eliminate
                             </button>
 
-                            <button class="btn btn-danger fw-bold mt-1"
+                            <button type="button" class="btn btn-outline-secondary mt-1"
                                     data-bs-toggle="modal"
                                     data-bs-target="#broadcastModal{{ event.id }}">
-                                <i class="fas fa-bullhorn me-1"></i> Broadcast Message
+                                <i class="fas fa-bullhorn me-1" aria-hidden="true"></i> Broadcast message
                             </button>
 
-                            <button class="btn btn-warning fw-bold text-dark mt-2"
+                            <button type="button" class="btn btn-gold mt-2"
                                     data-bs-toggle="modal"
                                     data-bs-target="#publishModal{{ event.id }}">
-                                <i class="fas fa-trophy me-1"></i> End Event &amp; Publish
+                                <i class="fas fa-trophy me-1" aria-hidden="true"></i> End event &amp; publish
                             </button>
 
                         {% else %}
                             <a href="/coordinator/export_registrations/{{ event.id }}"
-                               class="btn btn-success fw-bold w-100 mb-2">
-                                <i class="fas fa-file-excel me-1"></i> Export Final Data
+                               class="btn btn-primary w-100 mb-2">
+                                <i class="fas fa-file-excel me-1" aria-hidden="true"></i> Export final data
                             </a>
                             <div class="btn-group w-100 mb-2">
                                 <a href="/coordinator/registrations/{{ event.id }}"
-                                   class="btn btn-primary fw-bold w-50">
-                                    <i class="fas fa-users me-1"></i> View Students
+                                   class="btn btn-primary w-50">
+                                    <i class="fas fa-users me-1" aria-hidden="true"></i> View students
                                 </a>
                                 <a href="/coordinator/export_excel/{{ event.id }}"
-                                   class="btn btn-success fw-bold w-50">
-                                    <i class="fas fa-file-excel me-1"></i> Excel
+                                   class="btn btn-outline-secondary w-50">
+                                    <i class="fas fa-file-excel me-1" aria-hidden="true"></i> Excel
                                 </a>
                             </div>
                             <a href="/forms/responses/{{ event.id }}"
-                               class="btn btn-outline-secondary fw-bold w-100 mb-2">
-                                <i class="fas fa-table me-1"></i> View Form Responses
+                               class="btn btn-outline-secondary w-100 mb-2">
+                                <i class="fas fa-table me-1" aria-hidden="true"></i> View form responses
                             </a>
-                            <button class="btn btn-secondary fw-bold" disabled>Event Concluded</button>
+                            <button type="button" class="btn btn-secondary" disabled>Event concluded</button>
                         {% endif %}
 
                         <form method="POST" action="/coordinator/delete_event/{{ event.id }}" class="text-center mt-2 m-0"
                               data-h-submit="coordinator/dashboard:7">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-link text-danger small fw-bold text-decoration-none p-0">
-                                <i class="fas fa-trash me-1"></i> Delete Event
+                                <i class="fas fa-trash me-1" aria-hidden="true"></i> Delete event
                             </button>
                         </form>
                     </div>
@@ -411,16 +284,16 @@
         <!-- Eliminate modal -->
         <div class="modal fade" id="eliminateModal{{ event.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-danger">
+                <div class="modal-content">
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title"><i class="fas fa-filter me-2"></i>Manage Rounds &amp; Eliminations</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title"><i class="fas fa-filter me-2"></i>Manage rounds &amp; eliminations</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="modal-body p-4">
                             <div class="alert alert-warning border-warning bg-light text-center">
-                                <h6 class="fw-bold mb-1" style="color:var(--snpsu-blue);">
+                                <h6 class="fw-bold mb-1">
                                     Current Active Round: {{ event.active_round | default(1) }}
                                 </h6>
                                 <small class="text-muted">
@@ -451,9 +324,9 @@
         <div class="modal fade" id="allocateModal{{ event.id }}" tabindex="-1">
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content border-dark">
-                    <div class="modal-header bg-dark text-white">
-                        <h5 class="modal-title"><i class="fas fa-network-wired me-2"></i>Smart Auto-Allocation</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <div class="modal-header on-brand">
+                        <h5 class="modal-title"><i class="fas fa-network-wired me-2"></i>Smart auto-allocation</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="/coordinator/allocate_rooms/{{ event.id }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -495,9 +368,9 @@
         <div class="modal fade" id="editModal{{ event.id }}" tabindex="-1">
             <div class="modal-dialog modal-xl modal-dialog-centered">
                 <div class="modal-content">
-                    <div class="modal-header bg-dark text-white">
+                    <div class="modal-header on-brand">
                         <h5 class="modal-title">Edit — {{ event.title }}</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="/coordinator/edit_event/{{ event.id }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -598,8 +471,8 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Appoint Staff</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title">Appoint staff</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4">
                         <form action="/coordinator/assign_staff/{{ event.id }}" method="POST">
@@ -631,12 +504,12 @@
         <!-- Broadcast modal -->
         <div class="modal fade" id="broadcastModal{{ event.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-danger">
-                    <div class="modal-header bg-danger">
-                        <h5 class="modal-title text-white">
-                            <i class="fas fa-bullhorn me-2"></i>Broadcast Alert
+                <div class="modal-content">
+                    <div class="modal-header on-brand">
+                        <h5 class="modal-title">
+                            <i class="fas fa-bullhorn me-2" aria-hidden="true"></i>Broadcast alert
                         </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4">
                         <form action="/coordinator/broadcast/{{ event.id }}" method="POST">
@@ -662,24 +535,23 @@
         <!-- Publish modal -->
         <div class="modal fade" id="publishModal{{ event.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-warning">
+                <div class="modal-content">
                     <div class="modal-body text-center p-5">
-                        <i class="fas fa-trophy fa-4x text-warning mb-3"></i>
-                        <h4 class="fw-bold">Conclude Event?</h4>
+                        <i class="fas fa-trophy fa-3x text-gold mb-3" aria-hidden="true"></i>
+                        <h2 class="h4 fw-bold">Conclude event?</h2>
                         <form action="/coordinator/publish_results/{{ event.id }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-warning w-100 py-3 fw-bold">
-                                Publish Final Results
+                            <button type="submit" class="btn btn-gold btn-lg w-100">
+                                Publish final results
                             </button>
                         </form>
                         {% if event.get('status') == 'completed' %}
                         <a href="/ai/results_page/{{ event.id }}"
-                           class="btn w-100 py-2 fw-bold mt-2 text-white"
-                           style="background:#7c3aed;border-color:#7c3aed;">
+                           class="btn btn-outline-primary w-100 mt-2">
                             <i class="fas fa-brain me-1"></i>
-                            View AI Result Summaries
+                            View AI result summaries
                             {% if event.get('ai_summaries_generated') %}
-                            <span style="background:rgba(255,255,255,.2);font-size:10px;padding:1px 7px;border-radius:100px;margin-left:4px;">Ready</span>
+                            <span class="se-badge se-badge--success ms-1">Ready</span>
                             {% endif %}
                         </a>
                         {% endif %}
@@ -695,219 +567,12 @@
     {% include "includes/pagination.html" %}
 
 
-    <!-- ══════════════════════════════════════════════════
-         CREATE EVENT WIZARD (4 steps — added Step 4: Form Type)
-    ══════════════════════════════════════════════════ -->
-    <div class="modal fade" id="createEventWizard" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header pb-4 border-0">
-                    <h4 class="modal-title fw-bold">Build Elite Event</h4>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <form action="/coordinator/create_event" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="modal-body p-4 pt-0">
-
-                        <!-- Step indicator — now 4 steps -->
-                        <div class="step-indicator px-4">
-                            <div class="step-dot active" id="dot1">1</div>
-                            <div class="step-dot" id="dot2">2</div>
-                            <div class="step-dot" id="dot3">3</div>
-                            <div class="step-dot" id="dot4">4</div>
-                        </div>
-
-                        <!-- STEP 1: Basic Info -->
-                        <div class="wizard-step active" id="step1">
-                            <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Basic Information</h5>
-                            <div class="mb-3">
-                                <label class="form-label">Event Title</label>
-                                <input aria-label="Event Title" type="text" name="title" class="form-control"
-                                       placeholder="Hackathon 2026" required>
-                            </div>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Event Date &amp; Time</label>
-                                    <input aria-label="Event Date &amp; Time" type="text" name="date" class="form-control"
-                                           placeholder="Oct 15, 10:00 AM" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-danger">Registration Deadline</label>
-                                    <input aria-label="Registration Deadline" type="text" name="deadline" class="form-control border-danger"
-                                           placeholder="Oct 12, 11:59 PM" required>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Venue</label>
-                                    <input aria-label="Venue" type="text" name="venue" class="form-control"
-                                           placeholder="Main Auditorium" required>
-                                </div>
-                            </div>
-                            <div class="text-end mt-4">
-                                <button type="button" class="btn btn-snpsu-blue px-4"
-                                        data-h-click="coordinator/dashboard:13">
-                                    Next Step <i class="fas fa-arrow-right ms-2"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- STEP 2: Brochure Content -->
-                        <div class="wizard-step" id="step2">
-                            <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Brochure Content</h5>
-                            <div class="mb-3">
-                                <label class="form-label text-primary">Overview / Description</label>
-                                <textarea aria-label="Overview / Description" name="overview" class="form-control" rows="3" required></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label text-danger">Rules &amp; Guidelines</label>
-                                <textarea aria-label="Rules &amp; Guidelines" name="rules" class="form-control" rows="3"
-                                          placeholder="- Rule 1&#10;- Rule 2"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label text-warning">Prizes</label>
-                                <textarea aria-label="Prizes" name="prizes" class="form-control" rows="2"></textarea>
-                            </div>
-                            <div class="mb-3 p-3 bg-light border border-success rounded">
-                                <label class="form-label text-success">
-                                    <i class="fas fa-balance-scale me-2"></i>
-                                    Judging Criteria (Comma Separated)
-                                </label>
-                                <input aria-label="Judging Criteria (Comma Separated)" type="text" name="criteria" class="form-control border-success"
-                                       placeholder="Innovation, Code Quality, Presentation" required>
-                            </div>
-                            <div class="d-flex justify-content-between mt-4">
-                                <button type="button" class="btn btn-outline-secondary" data-h-click="coordinator/dashboard:14">Back</button>
-                                <button type="button" class="btn btn-snpsu-blue px-4" data-h-click="coordinator/dashboard:15">
-                                    Next Step <i class="fas fa-arrow-right ms-2"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- STEP 3: Registration Settings -->
-                        <div class="wizard-step" id="step3">
-                            <h5 class="fw-bold mb-4" style="color:var(--snpsu-blue);">Registration Settings</h5>
-                            <div class="mb-3">
-                                <label class="form-label">Entry Fee (₹)</label>
-                                <input aria-label="Entry Fee (₹)" type="number" name="entry_fee" class="form-control" value="0" required>
-                            </div>
-                            <div class="col-12 mb-4">
-                                <label class="form-label text-primary">
-                                    <i class="fas fa-images me-2"></i>Event Media Gallery
-                                </label>
-                                <div id="createMediaContainer">
-                                    <div class="input-group mb-2">
-                                        <input aria-label="Event Media Gallery" type="url" name="media_urls[]" class="form-control border-primary"
-                                               placeholder="Image or Video URL (.mp4)" required>
-                                        <button class="btn btn-primary px-4" type="button"
-                                                data-h-click="coordinator/dashboard:16">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="form-text text-muted small mt-1">
-                                    Multiple links generate a carousel on the public portal.
-                                </div>
-                            </div>
-                            <div class="p-3 bg-light border rounded mb-4">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input ms-0 me-3"
-                                           style="width:40px;height:20px;"
-                                           type="checkbox" name="is_team" id="teamCheck">
-                                    <label class="form-check-label fw-bold pt-1" for="teamCheck">
-                                        This is a Team Event
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="d-flex justify-content-between mt-4">
-                                <button type="button" class="btn btn-outline-secondary" data-h-click="coordinator/dashboard:17">Back</button>
-                                <button type="button" class="btn btn-snpsu-blue px-4" data-h-click="coordinator/dashboard:18">
-                                    Next Step <i class="fas fa-arrow-right ms-2"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- ★ STEP 4: Registration Form Type (NEW) ★ -->
-                        <div class="wizard-step" id="step4">
-                            <h5 class="fw-bold mb-2" style="color:var(--snpsu-blue);">
-                                Registration Form Type
-                            </h5>
-                            <p class="text-muted mb-4" style="font-size:13px;">
-                                Choose how participants will register for this event.
-                                You can always change or customise this later from the dashboard.
-                            </p>
-
-                            <!-- Hidden input that stores the chosen type -->
-                            <input type="hidden" name="form_type" id="form_type_input" value="simple">
-
-                            <div class="row g-3 mb-4">
-                                <!-- Simple -->
-                                <div class="col-md-6">
-                                    <div class="reg-type-card selected" id="card-simple"
-                                         data-h-click="coordinator/dashboard:19">
-                                        <span class="big-icon">📋</span>
-                                        <h6>Simple Registration</h6>
-                                        <p>Pre-built form: Name, Email, Phone, USN, Team Name. Ready instantly.</p>
-                                        <div class="mt-3 d-flex flex-wrap gap-1 justify-content-center">
-                                            <span class="badge bg-light text-dark border" style="font-size:10px;">Name</span>
-                                            <span class="badge bg-light text-dark border" style="font-size:10px;">Email</span>
-                                            <span class="badge bg-light text-dark border" style="font-size:10px;">Phone</span>
-                                            <span class="badge bg-light text-dark border" style="font-size:10px;">USN</span>
-                                            <span class="badge bg-light text-dark border" style="font-size:10px;">Team</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Custom -->
-                                <div class="col-md-6">
-                                    <div class="reg-type-card" id="card-custom"
-                                         data-h-click="coordinator/dashboard:20">
-                                        <span class="big-icon">🎨</span>
-                                        <h6>Custom Form Builder</h6>
-                                        <p>Design your own form with dropdowns, checkboxes, file uploads, and more.</p>
-                                        <div class="mt-3 d-flex flex-wrap gap-1 justify-content-center">
-                                            <span class="badge bg-warning text-dark border" style="font-size:10px;">14 Field Types</span>
-                                            <span class="badge bg-warning text-dark border" style="font-size:10px;">Drag &amp; Drop</span>
-                                            <span class="badge bg-warning text-dark border" style="font-size:10px;">Live Preview</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Callout based on selection -->
-                            <div id="type-info-simple"
-                                 class="alert alert-info border-info bg-light"
-                                 style="font-size:13px;">
-                                <i class="fas fa-bolt me-2 text-primary"></i>
-                                <strong>Simple form activates immediately.</strong>
-                                Participants can register as soon as the event is published.
-                                You can customise it later from the Form Builder.
-                            </div>
-                            <div id="type-info-custom"
-                                 class="alert alert-warning border-warning bg-light"
-                                 style="font-size:13px;display:none;">
-                                <i class="fas fa-paint-brush me-2 text-warning"></i>
-                                <strong>Custom builder opens after you publish.</strong>
-                                A "Build Registration Form" button will appear on the event card —
-                                design your form before sharing the link.
-                            </div>
-
-                            <div class="d-flex justify-content-between mt-3">
-                                <button type="button" class="btn btn-outline-secondary" data-h-click="coordinator/dashboard:21">Back</button>
-                                <button type="submit" class="btn btn-snpsu-orange px-5 fw-bold fs-5">
-                                    Publish Event <i class="fas fa-rocket ms-2"></i>
-                                </button>
-                            </div>
-                        </div><!-- /step4 -->
-
-                    </div><!-- /modal-body -->
-                </form>
-            </div>
-        </div>
-    </div><!-- /createEventWizard -->
 
 </div><!-- /container -->
 
 {% include "layouts/_bootstrap_js.html" %}
 <script src="/static/js/pages/coordinator__dashboard.js"></script>
-<script src="/static/js/global.js"></script>
+
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__dashboard.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__dashboard.js"></script>
+{% endblock %}

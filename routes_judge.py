@@ -359,33 +359,12 @@ def score_inline(reg_id):
 @role_required(JUDGE_ROLES)
 def leaderboard(event_id):
     """Returns JSON leaderboard for AJAX refresh on teams page."""
-    regs = (db.collection('registrations')
-              .where(filter=_ff('event_id', '==', event_id))
-              .stream())
-
-    board = []
-    for r in regs:
-        d = r.to_dict()
-        if d.get('is_eliminated'):
-            continue
-        scores = d.get('scores', {})
-        if not scores:
-            continue
-        avg = round(
-            sum(float(s.get('total', 0)) for s in scores.values()) / len(scores), 1
-        )
-        avg = int(avg) if avg == int(avg) else avg
-        board.append({
-            'team_name': d.get('team_name', '—'),
-            'lead_name': d.get('lead_name', ''),
-            'score':     avg,
-            'judges':    len(scores),
-            'room':      d.get('assigned_room', '—'),
-        })
-
-    board.sort(key=lambda x: x['score'], reverse=True)
-    for i, row in enumerate(board):
-        row['rank'] = i + 1
+    # One ranking for every board (UPG-84)
+    from services_leaderboard import for_event
+    board = [{'team_name': row['team_name'], 'lead_name': row['lead_name'], 'score': row['score'],
+              'score_text': row['score_text'], 'judges': row['judges'], 'room': row['room'] or '—',
+              'rank': row['rank'], 'tied': row['tied']}
+             for row in for_event(db, event_id)]
 
     return jsonify({'status': 'ok', 'data': board})
 

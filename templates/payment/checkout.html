@@ -1,94 +1,95 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23c. -#}
+{% extends "base_classic.html" %}
+{#- Checkout (UPG-63): app layout; the Razorpay script and coupon logic are unchanged. -#}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
-{% block head %}
-    <title>Secure Checkout | SapthaEvent</title>
-    {% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include "layouts/_fontawesome.html" %}
+{% block title %}Secure checkout{% endblock %}
+{% set hide_page_head = true %}
+{% block extra_css %}
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
-        body { background: #f8fafc; font-family: 'Segoe UI', sans-serif; }
-        .checkout-card { max-width: 900px; margin: 50px auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; }
-        .left-panel { background: #0f172a; color: white; padding: 40px; }
-        .right-panel { padding: 40px; }
-        .secure-badge { background: #e0f2fe; color: #0284c7; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; }
-        .rzp-btn { background: #1a2557; color: #fff; border: none; border-radius: 12px; padding: 16px 32px; font-size: 1.1rem; font-weight: 700; width: 100%; cursor: pointer; transition: .2s; }
-        .rzp-btn:hover { background: #c9a45e; }
-        .rzp-btn:disabled { opacity: .6; cursor: not-allowed; }
-        .sim-note { background: #fef9c3; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #78350f; }
+        /* Checkout (UPG-63) */
+        .checkout-card { max-width: 920px; margin: 0 auto; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+        .left-panel { background: var(--brand-navy); color: #fff; padding: 32px; border-right: 3px solid var(--brand-gold); }
+        .left-panel h2, .left-panel h3 { color: #fff; }
+        .left-panel .lbl { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.65); margin-bottom: 2px; }
+        .left-panel .muted { color: rgba(255,255,255,.7); }
+        .left-panel .rule { border-top: 1px solid rgba(255,255,255,.18); }
+        .left-panel .form-control { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: #fff; }
+        .left-panel .form-control::placeholder { color: rgba(255,255,255,.55); }
+        .left-panel .text-danger { color: #fca5a5 !important; }
+        .left-panel .text-success { color: #86efac !important; }
+        .right-panel { padding: 32px; }
+        .secure-badge { background: var(--success-soft); color: var(--success-text); padding: 4px 10px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+        .rzp-btn { width: 100%; }
+        @media (max-width: 767.98px) { .left-panel { border-right: 0; border-bottom: 3px solid var(--brand-gold); padding: 24px; } .right-panel { padding: 24px; } }
     </style>
-<script src="/static/js/escape.js"></script>
 {% endblock %}
-{% block body %}
-
+{% block content %}
 <div class="checkout-card row g-0">
     <div class="col-md-5 left-panel d-flex flex-column justify-content-between">
         <div>
-            <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;margin-bottom:24px;">
-            <h4 class="fw-bold mb-4"><i class="fas fa-shopping-cart me-2"></i> Order Summary</h4>
+            <h1 class="h4 mb-4" id="page-title"><i class="fas fa-shopping-cart me-2" aria-hidden="true"></i>Order summary</h1>
             <div class="mb-3">
-                <p class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Event</p>
-                <h5 class="fw-bold">{{ event.title }}</h5>
+                <p class="lbl">Event</p>
+                <h2 class="h5 fw-bold">{{ event.title }}</h2>
             </div>
             <div class="mb-3">
-                <p class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Date</p>
-                <h6>{{ event.date }}</h6>
+                <p class="lbl">Date</p>
+                <div class="fw-semibold">{{ event.date }}</div>
             </div>
             <div class="mb-3">
-                <p class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Participant</p>
-                <h6 class="mb-0">{{ user.name }}</h6>
-                <small class="text-secondary">{{ user.email }}</small>
+                <p class="lbl">Participant</p>
+                <div class="fw-semibold">{{ user.name }}</div>
+                <small class="muted">{{ user.email }}</small>
             </div>
         </div>
-        <div class="mt-4 pt-4 border-top border-secondary">
+        <div class="mt-4 pt-4 rule">
             <!-- Coupon Code Section -->
             <div class="mb-3">
-                <label for="coupon-input" class="text-secondary mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Coupon Code</label>
+                <label for="coupon-input" class="lbl d-block">Coupon code</label>
                 <div class="input-group">
-                    <input type="text" id="coupon-input" class="form-control form-control-sm text-uppercase" placeholder="Have a coupon code?" aria-label="Coupon code" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff;">
-                    <button class="btn btn-sm btn-outline-warning" type="button" id="apply-coupon-btn" style="border-radius: 0 6px 6px 0;">Apply</button>
+                    <input type="text" id="coupon-input" class="form-control form-control-sm text-uppercase" placeholder="Have a coupon code?" aria-label="Coupon code">
+                    <button class="btn btn-sm btn-gold" type="button" id="apply-coupon-btn">Apply</button>
                 </div>
                 <div id="coupon-feedback" class="small mt-1 d-none"></div>
             </div>
 
             <!-- Price Breakdown -->
             <div id="price-breakdown">
-                <div class="d-flex justify-content-between align-items-center mb-1 text-light small opacity-75">
+                <div class="d-flex justify-content-between align-items-center mb-1 small muted">
                     <span>Base Fee</span>
                     <span id="base-fee-display">₹{{ amount }}</span>
                 </div>
-                <div id="discount-row" class="d-flex justify-content-between align-items-center mb-1 text-success small d-none">
+                <div id="discount-row" class="d-flex justify-content-between align-items-center mb-1 small d-none" style="color:#86efac;">
                     <span>Discount</span>
                     <span id="discount-display">-₹0</span>
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary">
+            <div class="d-flex justify-content-between align-items-center pt-2 rule">
                 <span>Total Amount</span>
-                <span class="fs-3 fw-bold" id="total-amount-display" style="color:#c9a45e;">₹{{ amount }}</span>
+                <span class="fs-3 fw-bold" id="total-amount-display" style="color: var(--brand-gold-300);">₹{{ amount }}</span>
             </div>
         </div>
     </div>
 
     <div class="col-md-7 right-panel">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold m-0">Secure Payment</h4>
-            <span class="secure-badge"><i class="fas fa-lock me-1"></i> SSL Secure</span>
+            <h2 class="h4 m-0">Secure payment</h2>
+            <span class="secure-badge"><i class="fas fa-lock" aria-hidden="true"></i> Secure</span>
         </div>
 
         <div id="rzp-section">
             <p class="text-muted mb-4">Click below to open the secure Razorpay payment window. You can pay via UPI, Card, Net Banking, or Wallet.</p>
             <div class="d-flex gap-3 mb-4 flex-wrap">
                 {# Razorpay's logo files refuse outside requests (403), so the methods are named (UPG-60) #}
-                <span class="badge text-bg-light border" style="font-size:13px;">UPI</span>
-                <span class="badge text-bg-light border" style="font-size:13px;">Cards</span>
-                <span class="badge text-bg-light border" style="font-size:13px;">Netbanking</span>
+                <span class="chip">UPI</span>
+                <span class="chip">Cards</span>
+                <span class="chip">Net banking</span>
             </div>
-            <button id="pay-btn" class="rzp-btn mb-3">
+            <button id="pay-btn" type="button" class="btn btn-gold btn-lg rzp-btn mb-3">
                 <i class="fas fa-shield-alt me-2"></i> <span id="pay-btn-text">Pay ₹{{ amount }} Securely</span>
             </button>
-            <div id="sim-note" class="sim-note d-none">
+            <div id="sim-note" class="callout callout--warning d-none">
                 <i class="fas fa-info-circle me-2"></i>
                 <strong>Test mode:</strong> Razorpay keys not configured — payment will be simulated.
             </div>
@@ -102,7 +103,7 @@
         </form>
 
         <div class="text-center mt-3">
-            <a href="/event/{{ event_id }}" class="text-decoration-none text-muted small">
+            <a href="/event/{{ event_id }}" class="btn btn-link btn-sm">
                 <i class="fas fa-arrow-left me-1"></i> Cancel & go back
             </a>
         </div>
@@ -221,7 +222,7 @@
                 description: "{{ event.title }}",
                 image:       '/static/snpsu-logo.png',
                 prefill:     { name: data.name, email: data.email },
-                theme:       { color: '#1a2557' },
+                theme:       { color: '#00185e' },
                 handler: function (response) {
                     fetch('/payment/verify', {
                         method: 'POST',

@@ -1,7 +1,7 @@
 {% extends "layouts/standalone.html" %}
 {#- On the shared document since UPG-23a. -#}
 {% block head %}
-    <meta name="theme-color" content="#0d1b3e">
+    <meta name="theme-color" content="#00185e">
     <!-- ═══ SEO Meta Tags ═══ -->
     <meta name="description" content="Login to SapthaEvent: Official event management portal for Sapthagiri NPS University. Access your event registrations, manage tickets, and sign up for campus events.">
     <meta name="keywords" content="login, event registration, SNPSU, Sapthagiri NPS University, event tickets, campus events">
@@ -22,89 +22,59 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     {% include 'includes/pwa_head.html' %}
     <title>Login | SapthaEvent - Sapthagiri NPS University</title>
-    <!-- Stylesheets -->
     {% include "layouts/_bootstrap_css.html" %}
     {% include "layouts/_fontawesome.html" %}
-    <link href="/static/css/global.css?v=1.0.2" rel="stylesheet">
-    <!-- Scripts -->
+    <link href="/static/css/global.css" rel="stylesheet">
     {% include "layouts/_bootstrap_js.html" %}
-    <script src="/static/js/global.js?v=1.0.2" defer></script>
+    <script src="/static/js/global.js" defer></script>
 {% endblock %}
-{% block body_attrs %} class="auth zero-scroll"{% endblock %}
+{% block body_attrs %} class="auth"{% endblock %}
 {% block body %}
-    <!-- Aurora background elements -->
-    <div class="aurora-bg">
-        <div class="aurora-orb"></div>
-        <div class="aurora-orb"></div>
-        <div class="aurora-orb"></div>
-        <div class="aurora-orb"></div>
-    </div>
-    <div class="grid-overlay"></div>
+    <a href="#main-content" class="skip-link">Skip to the sign-in form</a>
 
-    <a href="#main-content" class="skip-link">Skip to Login Form</a>
-    
-    <div class="auth-shell">
-        <div class="auth-container">
-            <!-- Left Info Panel (visible on laptop/desktop only) -->
-            <div class="auth-info-panel">
-                <div class="auth-info-content">
-                    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University Logo" class="info-logo img-fluid">
-                    <h1 class="info-title">SapthaEvent Portal</h1>
-                    <p class="info-subtitle">Unmatched Excellence, Unlimited Potential</p>
-                    
-                    <div class="feature-list">
-                        <div class="feature-item">
-                            <div class="feature-icon"><i class="fas fa-qrcode"></i></div>
-                            <div>
-                                <h4 class="feature-title">Instant QR Tickets</h4>
-                                <p class="feature-desc">Scan and enter events instantly with personal QR codes.</p>
-                            </div>
+    <div class="auth-container">
+        <!-- Brand panel (laptop and desktop) -->
+        <div class="auth-info-panel">
+            <div class="auth-info-content">
+                <img loading="eager" src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="info-logo">
+                <h1 class="info-title">SapthaEvent</h1>
+                <p class="info-subtitle">The official event portal of Sapthagiri NPS University</p>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-icon" aria-hidden="true"><i class="fas fa-qrcode"></i></div>
+                        <div>
+                            <h2 class="feature-title">Instant QR tickets</h2>
+                            <p class="feature-desc">Show your personal QR code at the door and walk in.</p>
                         </div>
-                        <div class="feature-item">
-                            <div class="feature-icon"><i class="fas fa-trophy"></i></div>
-                            <div>
-                                <h4 class="feature-title">Live Leaderboards</h4>
-                                <p class="feature-desc">Track scores, rounds, and judging updates in real-time.</p>
-                            </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon" aria-hidden="true"><i class="fas fa-trophy"></i></div>
+                        <div>
+                            <h2 class="feature-title">Live leaderboards</h2>
+                            <p class="feature-desc">Follow scores, rounds and judging as they happen.</p>
                         </div>
-                        <div class="feature-item">
-                            <div class="feature-icon"><i class="fas fa-bell"></i></div>
-                            <div>
-                                <h4 class="feature-title">Personalized Dashboards</h4>
-                                <p class="feature-desc">Manage registrations, feed updates, and download certificates.</p>
-                            </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon" aria-hidden="true"><i class="fas fa-certificate"></i></div>
+                        <div>
+                            <h2 class="feature-title">Your dashboard</h2>
+                            <p class="feature-desc">Registrations, updates and verifiable certificates in one place.</p>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Right Form Panel -->
-            <div class="auth-form-panel">
-                <div class="login-card">
-                    <!-- Header (Mobile Only) -->
-                    <div class="text-center mb-4 d-lg-none">
-                        <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" class="img-fluid mb-2" style="max-width: 260px; height: auto; object-fit: contain;">
-                        <p class="text-uppercase text-muted small fw-bold tracking-wider mb-0" style="letter-spacing: 2px;">Event Portal</p>
-                    </div>
-                    
-                    <!-- Header (Desktop Only) -->
-                    <div class="text-center mb-4 d-none d-lg-block">
-                        <h2 class="auth-card-title">Welcome Back</h2>
-                        <p class="text-muted small">Sign in to access your event dashboard</p>
-                    </div>
+        </div>
 
-                    <!-- Messages -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }} alert-dismissible fade show mb-3" role="alert">
-                                    <i class="fas fa-info-circle me-2 mt-1"></i>
-                                    <span>{{ message }}</span>
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                </div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
+        <!-- Form panel -->
+        <div class="auth-form-panel">
+            <div class="login-card">
+                <div class="auth-brand d-lg-none">
+                    <img loading="eager" src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University">
+                </div>
+                <h2 class="auth-card-title">Welcome back</h2>
+                <p class="auth-card-sub">Sign in to your SapthaEvent account.</p>
+
+                {% include 'includes/flash_messages.html' %}
 
                     <!-- Skeleton Loading State -->
                     <div id="formSkeleton" role="status" aria-live="polite" aria-label="Loading login form" class="p-1">
@@ -130,17 +100,17 @@
 
                         <div class="form-group mb-3">
                             <label class="form-label" for="roleSelect">
-                                Select Role <span class="text-danger" aria-label="required">*</span>
+                                Role <span class="req" aria-hidden="true">*</span>
                             </label>
                             <div class="input-icon-wrap">
-                                <i class="fas fa-user-shield inp-icon"></i>
+                                <i class="fas fa-user-shield inp-icon" aria-hidden="true"></i>
                                 <select name="role" id="roleSelect" class="form-select" required aria-required="true" aria-describedby="roleHint">
                                     <option value="">Choose your role...</option>
-                                    <option value="Student">🎓 Student / Participant</option>
-                                    <option value="EventCoordinator">📱 Event Coordinator</option>
-                                    <option value="ClubSPOC">👥 Club SPOC (Manager)</option>
-                                    <option value="Judge">⚖️ Event Judge</option>
-                                    <option value="SuperAdmin">👑 Super Admin</option>
+                                    <option value="Student">Student / participant</option>
+                                    <option value="EventCoordinator">Event coordinator</option>
+                                    <option value="ClubSPOC">Club SPOC (manager)</option>
+                                    <option value="Judge">Event judge</option>
+                                    <option value="SuperAdmin">Super admin</option>
                                 </select>
                             </div>
                             <span id="roleHint" class="visually-hidden">Select your role in the Sapthagiri event portal</span>
@@ -148,22 +118,22 @@
 
                         <div class="form-group mb-3">
                             <label class="form-label" for="emailInput">
-                                Email Address <span class="text-danger" aria-label="required">*</span>
+                                Email address <span class="req" aria-hidden="true">*</span>
                             </label>
                             <div class="input-icon-wrap">
-                                <i class="fas fa-envelope inp-icon"></i>
-                                <input type="email" id="emailInput" name="email" class="form-control" required aria-required="true" aria-describedby="emailHint" placeholder="your.email@university.edu">
+                                <i class="fas fa-envelope inp-icon" aria-hidden="true"></i>
+                                <input type="email" id="emailInput" name="email" class="form-control" required aria-required="true" aria-describedby="emailHint" placeholder="you@snpsu.edu.in" autocomplete="email">
                             </div>
                             <span id="emailHint" class="visually-hidden">Enter your registered email address</span>
                         </div>
 
                         <div class="form-group mb-3">
                             <label class="form-label" for="passwordInput">
-                                Password <span class="text-danger" aria-label="required">*</span>
+                                Password <span class="req" aria-hidden="true">*</span>
                             </label>
                             <div class="pw-wrap input-icon-wrap">
-                                <i class="fas fa-lock inp-icon"></i>
-                                <input type="password" id="passwordInput" name="password" class="form-control" required placeholder="••••••••">
+                                <i class="fas fa-lock inp-icon" aria-hidden="true"></i>
+                                <input type="password" id="passwordInput" name="password" class="form-control" required placeholder="Your password" autocomplete="current-password">
                                 <button type="button" class="pw-toggle" data-h-click="login:1" tabindex="-1" aria-label="Toggle password visibility">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -173,10 +143,10 @@
                         <div class="secret-key-group" id="secretKeyDiv">
                             <div class="form-group mb-3">
                                 <label class="form-label" for="secretKeyInput">
-                                    Master Secret Key <span class="text-danger">*</span>
+                                    Master secret key <span class="req" aria-hidden="true">*</span>
                                 </label>
                                 <div class="input-icon-wrap">
-                                    <i class="fas fa-key inp-icon"></i>
+                                    <i class="fas fa-key inp-icon" aria-hidden="true"></i>
                                     <input type="password" name="secret_key" id="secretKeyInput" class="form-control" placeholder="Required for Super Admin access">
                                 </div>
                             </div>
@@ -186,108 +156,87 @@
                         <div class="d-flex align-items-center justify-content-between mt-2 mb-1">
                             <div class="form-check m-0">
                                 <input class="form-check-input" type="checkbox" name="remember_me" id="rememberMe" checked>
-                                <label class="form-check-label small fw-semibold" for="rememberMe"
-                                       style="cursor:pointer; color: var(--color-text-secondary, #6b7280);">
-                                    <i class="fas fa-mobile-alt me-1" style="color:#c9a45e;"></i>
-                                    Keep me logged in
+                                <label class="form-check-label small" for="rememberMe">
+                                    Keep me signed in
                                 </label>
                             </div>
                             <div id="forgotPasswordWrap">
-                                <a href="/forgot_password" class="text-decoration-none fw-bold text-primary small">
-                                    <i class="fas fa-unlock-alt me-1"></i> Forgot Password?
+                                <a href="/forgot_password" class="small fw-semibold">
+                                    Forgot password?
                                 </a>
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100 mt-3 py-2" data-loading-text="Signing in…">
-                            <i class="fas fa-sign-in-alt me-2"></i> Login to Portal
+                        <button type="submit" class="btn btn-primary btn-lg w-100 mt-3" data-loading-text="Signing in…">
+                            <i class="fas fa-sign-in-alt" aria-hidden="true"></i> Sign in
                         </button>
 
                         {% if google_oauth_configured %}
                         <div class="position-relative my-3 text-center">
                             <hr class="text-muted opacity-25">
-                            <span class="position-absolute top-50 start-50 translate-middle px-2 small text-muted" style="background: var(--bg-card, #fff);">or</span>
+                            <span class="position-absolute top-50 start-50 translate-middle px-2 small text-muted" style="background: var(--surface-card);">or</span>
                         </div>
-                        <a href="/auth/google" class="btn btn-outline-secondary w-100 py-2 d-flex align-items-center justify-content-center gap-2" style="border-radius: var(--radius-md, 8px);">
-                            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                        <a href="/auth/google" class="btn btn-outline-secondary w-100">
+                            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                             <span class="fw-semibold">Sign in with Google</span>
                         </a>
                         {% endif %}
 
                         <div class="text-center mt-4 pt-3 border-top text-muted small">
-                            New Student? <a href="/register" class="text-decoration-none fw-bold text-primary">Register Here</a>
+                            New student? <a href="/register" class="fw-semibold">Create an account</a>
                         </div>
                     </form>
 
-                    <!-- Footer -->
-                    <div class="text-center mt-4 pt-2 text-muted" style="font-size: 0.78rem;">
-                        <p class="mb-0">Sapthagiri NPS University &copy; 2026</p>
-                        <p class="mb-1 text-muted-opacity">SapthaEvent Portal &bull; Premium Experience</p>
-                        <!-- Install App link — always visible -->
-                        <button data-h-click="login:2"
-                                style="background:none;border:none;cursor:pointer;color:#c9a45e;font-size:12px;font-weight:700;padding:2px 0;"
-                                id="loginInstallBtn">
-                            <i class="fas fa-download me-1"></i>Add to Home Screen
+                    <div class="text-center mt-4 text-subtle small">
+                        <p class="mb-1">© 2026 Sapthagiri NPS University</p>
+                        <button type="button" data-h-click="login:2" class="btn btn-link btn-sm" id="loginInstallBtn">
+                            <i class="fas fa-download" aria-hidden="true"></i> Add to home screen
                         </button>
                     </div>
-                </div>
             </div>
         </div>
     </div>
 
-    <!-- ══ PWA Install Modal (same component as mobile_nav) ══ -->
-    <div id="pwaInstallModal" style="
-        display:none; position:fixed; inset:0; z-index:100000;
-        background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);
-        align-items:flex-end; justify-content:center;"
-        data-h-click="login:3">
-      <div id="pwaModalSheet" style="
-          background:linear-gradient(160deg,#0c122b 0%,#1a2557 100%);
-          border-radius:24px 24px 0 0; border-top:3px solid #c9a45e;
-          padding:28px 24px 40px; width:100%; max-width:500px;
-          box-shadow:0 -8px 40px rgba(0,0,0,0.5);
-          transform:translateY(100%);
-          transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);">
-        <div style="width:40px;height:4px;background:rgba(201,164,94,0.4);border-radius:2px;margin:0 auto 20px;"></div>
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-          <img loading="lazy" src="/static/app-icon.png" width="52" height="52" style="border-radius:13px;border:2px solid #c9a45e;" alt="SapthaEvent">
+    <!-- PWA install sheet (same markup and styles as components/mobile_nav.html) -->
+    <div id="pwaInstallModal" class="pwa-sheet-backdrop" data-h-click="login:3">
+      <div id="pwaModalSheet" class="pwa-sheet" role="dialog" aria-modal="true" aria-labelledby="pwaSheetTitle">
+        <div class="pwa-sheet__handle" aria-hidden="true"></div>
+        <div class="pwa-sheet__head">
+          <img loading="lazy" src="/static/app-icon.png" width="52" height="52" alt="">
           <div>
-            <h3 style="margin:0;color:#fff;font-size:18px;font-weight:800;">Install SapthaEvent</h3>
-            <p style="margin:0;color:#c9a45e;font-size:13px;">Add to your home screen</p>
+            <h3 class="pwa-sheet__title" id="pwaSheetTitle">Install SapthaEvent</h3>
+            <p class="pwa-sheet__sub">Add the portal to your home screen</p>
           </div>
-          <button data-h-click="login:4" style="margin-left:auto;background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:34px;height:34px;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;">×</button>
+          <button type="button" class="pwa-sheet__close" data-h-click="login:4" aria-label="Close">&times;</button>
         </div>
-        <div style="background:rgba(255,255,255,0.05);border-radius:14px;padding:14px 16px;margin-bottom:20px;">
-          <div style="display:flex;flex-direction:column;gap:9px;">
-            <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;"><span style="color:#c9a45e;">⚡</span>Opens instantly — no browser bar, feels native</div>
-            <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;"><span style="color:#c9a45e;">🔐</span>Stay logged in for 30 days — no re-entering password</div>
-            <div style="display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;"><span style="color:#c9a45e;">🔔</span>Get push alerts for events and results</div>
-          </div>
+        <div class="pwa-sheet__list">
+          <div><i class="fas fa-bolt" aria-hidden="true"></i>Opens instantly, without the browser bar</div>
+          <div><i class="fas fa-lock" aria-hidden="true"></i>Stay signed in for 30 days</div>
+          <div><i class="fas fa-bell" aria-hidden="true"></i>Get push alerts for events and results</div>
         </div>
         <div id="pwaAndroidSection">
-          <button data-h-click="login:5" style="display:block;width:100%;background:linear-gradient(135deg,#c9a45e,#a8843f);color:#fff;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;">
-            <i class="fas fa-download me-2"></i>Install App Now
+          <button type="button" class="btn btn-gold btn-lg w-100" data-h-click="login:5">
+            <i class="fas fa-download" aria-hidden="true"></i> Install app now
           </button>
         </div>
         <div id="pwaIosSection" style="display:none;">
-          <p style="color:#94a3b8;font-size:12px;text-align:center;margin-bottom:12px;">Follow these steps:</p>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;"><div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">1</div><div><p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap the Share button</p><p style="margin:0;color:#94a3b8;font-size:12px;">The <strong style="color:#c9a45e;">⬆ Share</strong> icon in Safari</p></div></div>
-            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;"><div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">2</div><div><p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap <strong style="color:#c9a45e;">"Add to Home Screen"</strong></p></div></div>
-            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;"><div style="width:28px;height:28px;background:#c9a45e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0c122b;font-weight:800;font-size:13px;flex-shrink:0;">3</div><div><p style="margin:0;color:#fff;font-size:13px;font-weight:600;">Tap <strong style="color:#c9a45e;">Add</strong> — done!</p></div></div>
+          <p class="text-subtle small text-center mb-3">Follow these steps:</p>
+          <div class="d-flex flex-column gap-2">
+            <div class="pwa-step"><div class="pwa-step__num">1</div><p><strong>Tap the Share button</strong> in Safari</p></div>
+            <div class="pwa-step"><div class="pwa-step__num">2</div><p>Tap <strong>“Add to Home Screen”</strong></p></div>
+            <div class="pwa-step"><div class="pwa-step__num">3</div><p>Tap <strong>Add</strong></p></div>
           </div>
-          <div id="pwaChromeFallback" style="display:none;margin-top:12px;background:rgba(255,255,255,0.06);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;">
-            <span style="color:#c9a45e;font-size:20px;">⋮</span>
-            <p style="margin:0;color:#e2e8f0;font-size:13px;">On Chrome: tap <strong style="color:#c9a45e;">⋮ menu</strong> → <strong style="color:#c9a45e;">Add to Home screen</strong></p>
+          <div id="pwaChromeFallback" class="pwa-step mt-3" style="display:none;">
+            <div class="pwa-step__num"><i class="fas fa-ellipsis-v" aria-hidden="true"></i></div>
+            <p>On Chrome: open the <strong>⋮ menu</strong>, then <strong>Add to Home screen</strong></p>
           </div>
         </div>
-        <p style="text-align:center;margin-top:14px;margin-bottom:0;">
-          <button data-h-click="login:6" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;">Not now</button>
+        <p class="text-center mt-3 mb-0">
+          <button type="button" class="btn btn-link btn-sm text-subtle" data-h-click="login:6">Not now</button>
         </p>
       </div>
     </div>
 
     <script src="/static/js/pages/login.js"></script>
-
 {% endblock %}
 {% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/login.js"></script>{% endblock %}

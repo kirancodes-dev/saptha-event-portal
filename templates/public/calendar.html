@@ -1,95 +1,49 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23a. -#}
-{% block head %}
-<title>University Events Calendar | SapthaEvent</title>
-{% include "layouts/_bootstrap_css.html" %}
-<link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
+{% extends "base_classic.html" %}
+{#- University calendar (UPG-63): app layout; FullCalendar themed with brand tokens. -#}
+{% set app_active = 'calendar' %}
+{% block robots %}index, follow{% endblock %}
+{% block title %}University events calendar{% endblock %}
+{% block page_sub %}Official schedule of campus workshops, competitions, cultural fests and conferences.{% endblock %}
+{% block page_actions %}
+  <a href="{{ calendar_feed_url() }}" class="btn btn-outline-primary" title="Subscribe to your registered events in Apple, Google or Outlook calendar">
+    <i class="fas fa-rss" aria-hidden="true"></i> Personal .ics feed
+  </a>
+  <a href="/calendar" class="btn btn-secondary"><i class="fas fa-redo" aria-hidden="true"></i> Reset filters</a>
+{% endblock %}
+{% block extra_css %}
 {# FullCalendar 6 adds its own styles; the old CSS link pointed at a file that doesn't exist (UPG-60) #}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;--navy:#0f172a;}
-body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1e293b;}
-.topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
-.brand{font-weight:700;font-size:15px;color:#fff;}
-.nav-link-item{color:rgba(255,255,255,.75);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
-.nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
-.cal-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
-.filter-bar{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px 18px;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,0.03);}
+/* FullCalendar on brand tokens */
+.fc { --fc-border-color: var(--border); --fc-page-bg-color: var(--surface-card); --fc-neutral-bg-color: var(--surface-sunken); --fc-today-bg-color: var(--brand-gold-100); }
+.fc-toolbar-title { font-family: var(--font-heading); font-size: 1.1rem !important; font-weight: 800; color: var(--text-strong); }
+.fc .fc-button { background: var(--surface-card) !important; border: 1px solid var(--border-strong) !important; color: var(--text) !important; font-size: var(--fs-sm) !important; font-weight: 600; border-radius: var(--radius-sm) !important; box-shadow: none !important; text-transform: capitalize; }
+.fc .fc-button:hover { background: var(--hover-bg) !important; }
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { background: var(--brand-navy) !important; border-color: var(--brand-navy) !important; color: #fff !important; }
+.fc .fc-today-button { background: var(--brand-gold) !important; border-color: var(--brand-gold) !important; color: var(--brand-navy-900) !important; }
+.fc .fc-col-header-cell-cushion, .fc .fc-daygrid-day-number { color: var(--text-muted); text-decoration: none; font-size: var(--fs-sm); }
+.fc-event { border-radius: var(--radius-xs) !important; border: none !important; font-size: 0.72rem !important; font-weight: 600 !important; padding: 2px 6px !important; cursor: pointer; }
+.fc-daygrid-event-dot { display: none; }
 
-/* FullCalendar overrides */
-.fc-toolbar-title{font-family:'Outfit',sans-serif;font-size:17px !important;font-weight:800;color:var(--blue);}
-.fc-button{background:var(--blue) !important;border-color:var(--blue) !important;font-size:12px !important;border-radius:6px !important;}
-.fc-button:hover{background:#0f1a3e !important;}
-.fc-today-button{background:var(--orange) !important;border-color:var(--orange) !important;color:#fff !important;}
-.fc-day-today{background:#fefce8 !important;}
-.fc-event{border-radius:6px !important;border:none !important;font-size:11.5px !important;font-weight:600 !important;padding:3px 6px !important;cursor:pointer;}
-.fc-daygrid-event-dot{display:none;}
+/* Event list beside the calendar */
+.ev-list-item { background: var(--surface-card); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 10px; }
+.ev-cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ev-list-title { font-size: var(--fs-base); font-weight: 700; color: var(--brand-ink); }
+.ev-list-meta { font-size: var(--fs-xs); color: var(--text-subtle); margin-top: 4px; }
+.ev-list-fee { font-size: var(--fs-xs); font-weight: 700; color: var(--brand-gold-700); }
 
-/* Sidebar event list */
-.ev-list-item{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px 16px;margin-bottom:12px;transition:.15s;text-decoration:none;display:block;color:inherit;}
-.ev-list-item:hover{box-shadow:0 4px 16px rgba(26,37,87,.08);transform:translateY(-2px);color:inherit;}
-.ev-cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.ev-title{font-size:13.5px;font-weight:700;color:var(--blue);}
-.ev-meta{font-size:11.5px;color:#64748b;margin-top:4px;}
-.ev-fee{font-size:11.5px;font-weight:700;color:var(--orange);}
-
-/* Action buttons */
-.btn-xs{font-size:11px;padding:3px 8px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;}
-
-/* Tooltip */
-#cal-tooltip{position:fixed;background:#0f172a;color:#fff;padding:12px 16px;border-radius:10px;font-size:12px;max-width:260px;z-index:9999;pointer-events:none;box-shadow:0 10px 25px rgba(0,0,0,.3);display:none;line-height:1.5;}
-
-@media (max-width: 768px) {
-  .fc-toolbar{flex-direction:column;gap:10px;}
-  .filter-bar .row > div{margin-bottom:8px;}
-}
+#cal-tooltip { position: fixed; background: var(--brand-navy-900); color: #fff; padding: 10px 14px; border-radius: var(--radius-sm); font-size: var(--fs-xs); max-width: 260px; z-index: 9999; pointer-events: none; box-shadow: var(--shadow-md); display: none; line-height: 1.5; }
+@media (max-width: 768px) { .fc-toolbar { flex-direction: column; gap: 10px; } }
 </style>
-<script src="/static/js/escape.js"></script>
 {% endblock %}
-{% block body %}
-
-<nav class="topnav">
-  <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:38px;width:auto;object-fit:contain;">
-  <span class="brand">SapthaEvent</span>
-  <div class="ms-auto d-flex gap-1 align-items-center">
-    <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Home</a>
-    <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-    <a href="/participant/my_events" class="nav-link-item"><i class="fas fa-ticket-alt me-1"></i>My Events</a>
-    <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-outline-light ms-2 d-none d-md-inline-flex" title="Subscribe to your registered events in Apple/Google/Outlook calendar">
-      <i class="fas fa-rss me-1"></i> Personal .ics Feed
-    </a>
-  </div>
-</nav>
-
-<div class="container-fluid px-3 px-md-4 py-4" style="max-width:1380px;">
-  <!-- Title & Feed Header -->
-  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-    <div>
-      <h4 style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--blue);margin:0;">
-        <i class="fas fa-calendar-alt text-primary me-2"></i>University Events Calendar
-      </h4>
-      <p style="font-size:13px;color:#64748b;margin:3px 0 0;">
-        Official schedule of campus workshops, competitions, cultural fests &amp; conferences.
-      </p>
-    </div>
-    <div class="d-flex gap-2">
-      <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-primary d-md-none">
-        <i class="fas fa-rss me-1"></i> .ics Feed
-      </a>
-      <a href="/calendar" class="btn btn-sm btn-outline-secondary">
-        <i class="fas fa-redo me-1"></i> Reset Filters
-      </a>
-    </div>
-  </div>
-
+{% block content %}
   <!-- Filter Bar -->
-  <div class="filter-bar">
+  <div class="panel mb-4">
     <form method="GET" action="/calendar" id="calFilterForm">
-      <div class="row g-2 align-items-center">
+      <div class="row g-3 align-items-end">
         <!-- Department / Club Filter -->
         <div class="col-6 col-md-3">
-          <label class="form-label small fw-semibold text-muted mb-1">Department / Club</label>
-          <select aria-label="Department / Club" name="dept" id="filter-dept" class="form-select form-select-sm">
+          <label class="form-label" for="filter-dept">Department / club</label>
+          <select name="dept" id="filter-dept" class="form-select">
             <option value="">All Departments &amp; Clubs</option>
             {% for u in org_units %}
             <option value="{{ u.slug or u.id }}" {% if filters.get('dept') in (u.slug, u.id) %}selected{% endif %}>
@@ -101,8 +55,8 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
 
         <!-- Event Type Filter -->
         <div class="col-6 col-md-2">
-          <label class="form-label small fw-semibold text-muted mb-1">Event Type</label>
-          <select aria-label="Event Type" name="event_type" id="filter-type" class="form-select form-select-sm">
+          <label class="form-label" for="filter-type">Event type</label>
+          <select name="event_type" id="filter-type" class="form-select">
             <option value="">All Types</option>
             <option value="Technical" {% if filters.get('event_type') == 'Technical' %}selected{% endif %}>Technical</option>
             <option value="Cultural" {% if filters.get('event_type') == 'Cultural' %}selected{% endif %}>Cultural</option>
@@ -115,8 +69,8 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
 
         <!-- Mode Filter -->
         <div class="col-6 col-md-2">
-          <label class="form-label small fw-semibold text-muted mb-1">Mode</label>
-          <select aria-label="Mode" name="mode" id="filter-mode" class="form-select form-select-sm">
+          <label class="form-label" for="filter-mode">Mode</label>
+          <select name="mode" id="filter-mode" class="form-select">
             <option value="">All Modes</option>
             <option value="offline" {% if filters.get('mode') == 'offline' %}selected{% endif %}>Offline (Campus)</option>
             <option value="online" {% if filters.get('mode') == 'online' %}selected{% endif %}>Online (Virtual)</option>
@@ -125,8 +79,8 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
 
         <!-- Fee Filter -->
         <div class="col-6 col-md-2">
-          <label class="form-label small fw-semibold text-muted mb-1">Fee</label>
-          <select aria-label="Fee" name="fee" id="filter-fee" class="form-select form-select-sm">
+          <label class="form-label" for="filter-fee">Fee</label>
+          <select name="fee" id="filter-fee" class="form-select">
             <option value="">All Pricing</option>
             <option value="free" {% if filters.get('fee') == 'free' %}selected{% endif %}>Free Events</option>
             <option value="paid" {% if filters.get('fee') == 'paid' %}selected{% endif %}>Paid Events</option>
@@ -134,17 +88,17 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         </div>
 
         <!-- My Events Toggle & Submit -->
-        <div class="col-12 col-md-3 d-flex align-items-center justify-content-between pt-md-3">
+        <div class="col-12 col-md-3 d-flex align-items-center justify-content-between gap-2">
           <div class="form-check form-switch mb-0">
             <input class="form-check-input" type="checkbox" name="my_events" value="1" id="filter-my-events"
                    {% if filters.get('my_events') in ('1', 'true', 'yes') %}checked{% endif %}
                    data-h-change="public/calendar:1">
-            <label class="form-check-label small fw-bold text-primary" for="filter-my-events">
-              <i class="fas fa-user-check me-1"></i>My Events
+            <label class="form-check-label fw-semibold" for="filter-my-events">
+              <i class="fas fa-user-check me-1" aria-hidden="true"></i>My events only
             </label>
           </div>
-          <button type="submit" class="btn btn-sm btn-primary px-3">
-            <i class="fas fa-filter me-1"></i>Filter
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-filter" aria-hidden="true"></i> Filter
           </button>
         </div>
       </div>
@@ -154,7 +108,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
   <div class="row g-4">
     <!-- Main Interactive Calendar -->
     <div class="col-lg-8">
-      <div class="cal-card">
+      <div class="panel">
         <div id="calendar"></div>
       </div>
     </div>
@@ -162,10 +116,8 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
     <!-- Sidebar: Event List & Calendar Sync Links -->
     <div class="col-lg-4">
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:var(--blue);">
-          <i class="fas fa-list me-2" style="color:var(--orange);"></i>Filtered Events
-        </div>
-        <span class="badge bg-light text-dark border">{{ events|length }} Events</span>
+        <h2 class="h6 m-0"><i class="fas fa-list me-2 text-gold" aria-hidden="true"></i>Filtered events</h2>
+        <span class="se-badge se-badge--neutral se-badge--plain">{{ events|length }} events</span>
       </div>
 
       {% if events %}
@@ -173,28 +125,28 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         <div class="ev-list-item">
           <div class="d-flex align-items-start gap-2">
             <div class="ev-cat-dot mt-1"
-              style="background:{{ {'Technical':'#f37021','Cultural':'#7c3aed','Sports':'#10b981','Management':'#0891b2'}.get(ev.get('category',''),'#1a2557') }};"></div>
+              style="background:{{ {'Technical':'var(--cat-technical)','Cultural':'var(--cat-cultural)','Sports':'var(--cat-sports)','Management':'var(--cat-management)'}.get(ev.get('category',''),'var(--brand-navy)') }};"></div>
             <div style="flex:1;min-width:0;">
-              <a href="/forms/register/{{ ev.id }}" class="ev-title text-decoration-none d-block">
+              <a href="/forms/register/{{ ev.id }}" class="ev-list-title text-decoration-none d-block">
                 {{ ev.get('title','Event') }}
               </a>
-              <div class="ev-meta">
-                <i class="fas fa-calendar-alt me-1"></i>{{ ev.get('date','TBD') }}
+              <div class="ev-list-meta">
+                <i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>{{ ev.get('date','TBD') }}
                 &nbsp;·&nbsp;
                 <i class="fas fa-map-marker-alt me-1"></i>{{ ev.get('room_name') or ev.get('venue','SNPSU Campus') }}
               </div>
               <div class="d-flex align-items-center justify-content-between mt-2 flex-wrap gap-1">
                 <div>
-                  <span class="badge bg-light text-secondary border me-1">{{ ev.get('category','General') }}</span>
-                  <span class="ev-fee">{{ '₹' ~ ev.fee if ev.get('fee') and ev.fee|float > 0 else 'Free' }}</span>
+                  <span class="se-badge se-badge--neutral se-badge--plain me-1">{{ ev.get('category','General') }}</span>
+                  <span class="ev-list-fee">{{ '₹' ~ ev.fee if ev.get('fee') and ev.fee|float > 0 else 'Free' }}</span>
                 </div>
                 <div class="d-flex gap-1">
                   {% if ev.get('google_calendar_url') %}
-                  <a href="{{ ev.google_calendar_url }}" target="_blank" class="btn btn-xs btn-outline-primary" title="Add to Google Calendar">
+                  <a href="{{ ev.google_calendar_url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Add to Google Calendar" aria-label="Add to Google Calendar">
                     <i class="fab fa-google"></i>
                   </a>
                   {% endif %}
-                  <a href="{{ ev.get('ics_url', '/events/' ~ ev.id ~ '/calendar.ics') }}" class="btn btn-xs btn-outline-secondary" title="Download .ics file">
+                  <a href="{{ ev.get('ics_url', '/events/' ~ ev.id ~ '/calendar.ics') }}" class="btn btn-sm btn-outline-secondary" title="Download .ics file">
                     <i class="fas fa-download"></i> .ics
                   </a>
                 </div>
@@ -204,17 +156,17 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         </div>
         {% endfor %}
       {% else %}
-        <div style="text-align:center;padding:50px 20px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;color:#94a3b8;font-size:13.5px;">
-          <i class="fas fa-calendar-times" style="font-size:36px;display:block;margin-bottom:12px;opacity:0.6;"></i>
-          No events match the selected criteria or visibility scope.
+        <div class="empty-state">
+          <i class="fas fa-calendar-times" aria-hidden="true"></i>
+          <p class="mb-0">No events match the selected filters.</p>
         </div>
       {% endif %}
     </div>
   </div>
-</div>
 
-<div id="cal-tooltip"></div>
-
+<div id="cal-tooltip" role="tooltip"></div>
+{% endblock %}
+{% block extra_js %}
 {% include "layouts/_bootstrap_js.html" %}
 <script integrity="sha384-5JIwZN3kuxX2zKsavvNmbZ3zhZZMUtu/eQiK3BbXukpSXp0Cd2ZP4OAYKx7mrPgI" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 <script id="cal-events-data" type="application/json">{{ calendar_events | tojson }}</script>

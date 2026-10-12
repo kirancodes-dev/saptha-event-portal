@@ -2,14 +2,23 @@
 {#- On the shared document since UPG-23e (full-screen: no footer). -#}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
 {% block head %}
-    <title>High-Speed Entry Scanner HUD | {{ event.title }}</title>
+    <title>Entry scanner HUD | {{ event.title }}</title>
     {% include "layouts/_fontawesome.html" %}
+    <link href="/static/css/global.css" rel="stylesheet">
     <script integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/static/js/offline-sync.js"></script>
     <style>
+        /* High-speed entry HUD (UPG-63): camera stays black; chrome uses the brand navy and gold */
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        .hud-header .brand-logo { height: 24px; margin-bottom: 4px; }
+        .hud-exit { color: #c9d3ff; text-decoration: none; font-size: 0.75rem; }
+        .hud-exit:hover { color: #fff; }
+        #detail-tier { font-weight: 700; color: var(--brand-gold); }
+        .hud-counter { white-space: nowrap; }
+        .btn-hud:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { .scan-laser { animation: none; top: 50%; } }
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: var(--font-body);
             background: #000000;
             color: #ffffff;
             height: 100vh;
@@ -41,7 +50,7 @@
             text-overflow: ellipsis;
         }
         .hud-counter {
-            background: rgba(15, 23, 42, 0.85);
+            background: rgba(0, 24, 94, 0.88);
             border: 1px solid rgba(255, 255, 255, 0.15);
             padding: 6px 14px;
             border-radius: 9999px;
@@ -98,7 +107,7 @@
             position: absolute;
             width: 32px;
             height: 32px;
-            border-color: #3b82f6;
+            border-color: var(--brand-gold);
             border-style: solid;
         }
         .top-left { top: 0; left: 0; border-width: 4px 0 0 4px; border-top-left-radius: 12px; }
@@ -109,8 +118,7 @@
             position: absolute;
             width: 100%;
             height: 2px;
-            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
-            box-shadow: 0 0 12px #3b82f6;
+            background: linear-gradient(90deg, transparent, var(--brand-gold), transparent);
             animation: scanLaser 2s ease-in-out infinite;
         }
         @keyframes scanLaser {
@@ -126,9 +134,9 @@
             right: 0;
             z-index: 50;
             padding: 20px 20px env(safe-area-inset-bottom, 24px);
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(0, 24, 94, 0.96);
             backdrop-filter: blur(20px);
-            border-top: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--brand-gold);
             transform: translateY(100%);
             transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -160,7 +168,7 @@
         }
         .banner-subtitle {
             font-size: 0.85rem;
-            color: #94a3b8;
+            color: #c9d3ff;
         }
         .banner-details {
             background: rgba(255, 255, 255, 0.05);
@@ -182,7 +190,7 @@
             gap: 16px;
         }
         .btn-hud {
-            background: rgba(30, 41, 59, 0.85);
+            background: rgba(0, 24, 94, 0.88);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: #fff;
@@ -204,13 +212,14 @@
 <!-- Header -->
 <div class="hud-header">
     <div class="hud-event-info">
-        <a href="/coordinator/scanner" style="color:#94a3b8; text-decoration:none; font-size:0.75rem;"><i class="fas fa-arrow-left"></i> Exit HUD</a>
+        <img src="/static/img/snpsu-logo-reversed.png" alt="SNPSU" class="brand-logo d-block">
+        <a href="/coordinator/scanner" class="hud-exit"><i class="fas fa-arrow-left" aria-hidden="true"></i> Exit HUD</a>
         <h1>{{ event.title }}</h1>
     </div>
     <div class="hud-counter">
         <div class="status-dot" id="net-dot"></div>
-        <span>Checked In:</span>
-        <span class="counter-badge"><span id="count-in">{{ event.checkin_count or 0 }}</span> / <span id="count-total">{{ event.registration_count or event.capacity or 100 }}</span></span>
+        <span>Checked in</span>
+        <span class="counter-badge"><span id="count-in">{{ event.checkin_count or 0 }}</span> / <span id="count-total">{{ event.registration_count or event.capacity or '—' }}</span></span>
     </div>
 </div>
 
@@ -228,22 +237,22 @@
 
 <!-- Bottom Control Floating Buttons -->
 <div class="hud-actions" id="hud-actions-bar">
-    <button class="btn-hud" data-h-click="coordinator/scan_hud:1"><i class="fas fa-keyboard"></i> Manual Code</button>
-    <button class="btn-hud" data-h-click="coordinator/scan_hud:2"><i class="fas fa-sync"></i> Sync (<span id="sync-count">0</span>)</button>
+    <button type="button" class="btn-hud" data-h-click="coordinator/scan_hud:1"><i class="fas fa-keyboard" aria-hidden="true"></i> Manual code</button>
+    <button type="button" class="btn-hud" data-h-click="coordinator/scan_hud:2"><i class="fas fa-sync" aria-hidden="true"></i> Sync (<span id="sync-count">0</span>)</button>
 </div>
 
 <!-- Slide-Up Result HUD Banner -->
-<div class="feedback-banner" id="feedback-banner">
+<div class="feedback-banner" id="feedback-banner" role="status" aria-live="assertive">
     <div class="banner-header">
         <div class="banner-icon" id="banner-icon"><i class="fas fa-check"></i></div>
         <div>
-            <div class="banner-title" id="banner-title">Entry Granted</div>
-            <div class="banner-subtitle" id="banner-msg">Verification successful</div>
+            <div class="banner-title" id="banner-title"></div>
+            <div class="banner-subtitle" id="banner-msg"></div>
         </div>
     </div>
     <div class="banner-details">
-        <span id="detail-name">Attendee: John Doe</span>
-        <span id="detail-tier" style="font-weight:700; color:#38bdf8;">VIP Pass</span>
+        <span id="detail-name"></span>
+        <span id="detail-tier"></span>
     </div>
 </div>
 

@@ -1,93 +1,45 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23d. -#}
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
-{% block head %}
-<title>Room Allocation — {{ event.title }}</title>
-{% include "layouts/_bootstrap_css.html" %}
-<link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
+{% block title %}Room allocation — {{ event.title }}{% endblock %}
+{% block page_title %}Room allocation{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ registrations | length }} registrants · {{ rooms | length }} room(s){% endblock %}
+{% block page_actions %}<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
+{% block extra_css %}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;}
-body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1e293b;}
-h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
-
-.topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-.brand{font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-left:10px;}
-.nav-link-item{color:rgba(255,255,255,.7);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
-.nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
-
-.page-header{background:var(--blue);color:#fff;padding:28px 0 24px;margin-bottom:28px;}
-.page-header h2{font-size:1.5rem;font-weight:800;margin:0;}
-.page-header p{font-size:13px;color:rgba(255,255,255,.6);margin:4px 0 0;}
-
+h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 .card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px 24px;margin-bottom:20px;}
-.section-title{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-
+.section-title{font-family: var(--font-heading);font-size:13px;font-weight:700;color: var(--brand-ink);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
 .room-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
 .room-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 12px;border-radius:100px;border:1.5px solid;}
-
 .alloc-table{width:100%;border-collapse:collapse;font-size:13px;}
-.alloc-table thead th{background:var(--blue);color:#fff;font-weight:600;padding:10px 14px;white-space:nowrap;font-family:'Outfit',sans-serif;font-size:11.5px;letter-spacing:.3px;}
+.alloc-table thead th{background:var(--brand-navy);color:#fff;font-weight:600;padding:10px 14px;white-space:nowrap;font-family: var(--font-heading);font-size:11.5px;letter-spacing:.3px;}
 .alloc-table tbody tr{border-bottom:1px solid #f1f5f9;transition:.15s;}
 .alloc-table tbody tr:hover{background:#f8faff;}
 .alloc-table td{padding:10px 14px;vertical-align:middle;}
-
 .room-select{font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:7px;padding:5px 10px;color:#334155;outline:none;background:#f8fafc;cursor:pointer;transition:.15s;}
-.room-select:focus{border-color:var(--blue);}
-
+.room-select:focus{border-color:var(--brand-navy);}
 .stat-pill{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;text-align:center;}
-.stat-val{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--blue);}
+.stat-val{font-family: var(--font-heading);font-size:22px;font-weight:800;color: var(--brand-ink);}
 .stat-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;}
-
 .btn-action{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;text-decoration:none;transition:.15s;}
-.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue{background:var(--brand-navy);color:#fff;}
 .btn-blue:hover{background:#141d42;color:#fff;}
 .btn-green{background:#15803d;color:#fff;}
 .btn-green:hover{background:#166534;color:#fff;}
 .btn-outline{background:#fff;border:1.5px solid #e2e8f0;color:#475569;}
-.btn-outline:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
-
+.btn-outline:hover{background:var(--brand-navy);color:#fff;border-color:var(--brand-navy);}
 .saved-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:100px;background:#dcfce7;color:#166534;}
 .unassigned-badge{background:#fee2e2;color:#991b1b;}
 </style>
 {% endblock %}
-{% block body %}
+{% block content %}
 
-<!-- TOPNAV -->
-<div class="topnav">
-  <div class="d-flex align-items-center gap-2">
-    <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" data-h-error="spoc/room_allocation:1">
-    <span class="brand">Room Allocation</span>
-  </div>
-  <div class="d-flex align-items-center gap-2">
-    <a href="/spoc/dashboard" class="nav-link-item"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
-    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
-  </div>
-</div>
 
-<!-- PAGE HEADER -->
-<div class="page-header">
-  <div class="container">
-    <div class="d-flex align-items-center gap-3">
-      <div style="width:48px;height:48px;background:rgba(255,255,255,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;">
-        <i class="fas fa-door-open" style="font-size:22px;color:var(--orange);"></i>
-      </div>
-      <div>
-        <h2>Room Allocation</h2>
-        <p>{{ event.title }} &nbsp;·&nbsp; {{ registrations | length }} registrants &nbsp;·&nbsp; {{ rooms | length }} room(s)</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="container pb-5">
+<div>
 
 <!-- Flash messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}{% for cat, msg in messages %}
-    <div class="alert alert-{{ cat }} mb-3" style="border-radius:10px;font-size:13.5px;">{{ msg | safe }}</div>
-  {% endfor %}{% endif %}
-{% endwith %}
+
 
 <!-- STATS ROW -->
 {% set assigned_count = registrations | selectattr('assigned_room') | list | length %}
@@ -113,7 +65,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-pill">
-      <div class="stat-val" style="color:var(--orange);">{{ rooms | length }}</div>
+      <div class="stat-val" style="color:var(--brand-gold);">{{ rooms | length }}</div>
       <div class="stat-label">Rooms</div>
     </div>
   </div>
@@ -121,7 +73,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 
 <!-- ACTIONS CARD -->
 <div class="card">
-  <div class="section-title"><i class="fas fa-bolt" style="color:var(--orange);"></i>Actions</div>
+  <div class="section-title"><i class="fas fa-bolt" style="color:var(--brand-gold);"></i>Actions</div>
   <div class="d-flex flex-wrap gap-3 align-items-center">
     <form method="POST" action="/spoc/send_room_emails/{{ event.id }}"
           data-h-submit="spoc/room_allocation:2" data-h-a0="{{ assigned_count }}">
@@ -150,7 +102,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 {% if rooms %}
 <div class="card">
   <div class="section-title"><i class="fas fa-map-marker-alt" style="color:#dc2626;"></i>Room Capacities</div>
-  {% set palette = ['#1a2557','#15803d','#0891b2','#7c3aed','#dc2626','#d97706','#0f766e','#be185d'] %}
+  {% set palette = ['#00185e','#15803d','#0891b2','#7c3aed','#dc2626','#d97706','#0f766e','#be185d'] %}
   <div class="room-legend">
     {% for room in rooms %}
     {% set col = palette[loop.index0 % palette|length] %}
@@ -167,7 +119,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 <!-- ALLOCATION TABLE -->
 <div class="card" style="padding:0;overflow:hidden;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9;">
-    <div class="section-title mb-0"><i class="fas fa-list-ol" style="color:var(--blue);"></i>Participant Allocation</div>
+    <div class="section-title mb-0"><i class="fas fa-list-ol" style="color: var(--brand-ink);"></i>Participant Allocation</div>
     <input aria-label="Search name or room" type="text" id="searchBox" placeholder="Search name or room…"
            style="font-size:12.5px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 12px;outline:none;width:220px;"
            data-h-input="spoc/room_allocation:3" data-h-focus="spoc/room_allocation:4" data-h-blur="spoc/room_allocation:5">
@@ -188,7 +140,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
         <tr data-search="{{ (reg.lead_name ~ ' ' ~ reg.lead_email ~ ' ' ~ (reg.assigned_room or '')) | lower }}">
           <td style="color:#94a3b8;font-size:12px;">{{ loop.index }}</td>
           <td>
-            <div style="font-weight:600;color:var(--blue);">{{ reg.lead_name or '—' }}</div>
+            <div style="font-weight:600;color: var(--brand-ink);">{{ reg.lead_name or '—' }}</div>
             {% if reg.team_name and reg.team_name != reg.lead_name %}
             <div style="font-size:11.5px;color:#94a3b8;">{{ reg.team_name }}</div>
             {% endif %}
@@ -232,4 +184,5 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 {% include "layouts/_bootstrap_js.html" %}
 <script src="/static/js/pages/spoc__room_allocation.js"></script>
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__room_allocation.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__room_allocation.js"></script>
+{% endblock %}

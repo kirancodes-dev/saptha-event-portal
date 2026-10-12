@@ -1,189 +1,88 @@
 {% extends "layouts/fullscreen.html" %}
 {#- On the shared document since UPG-23d (full-screen: no footer). -#}
 {% block head %}
-    <title>NFC RFID Simulator checkin | SapthaEvent SPOC</title>
+    <title>NFC / RFID Scan Terminal | {{ event.title }} | SapthaEvent</title>
     {% include "layouts/_fontawesome.html" %}
     {% include "layouts/_bootstrap_css.html" %}
     
+    <link href="/static/css/global.css" rel="stylesheet">
     <style>
+        /* NFC check-in terminal (UPG-63): a dark device screen on the brand navy */
         :root {
-            --bg-dark: #0b0f19;
-            --card-bg: rgba(17, 24, 39, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary: #3b82f6;
-            --emerald: #10b981;
-            --accent: #8b5cf6;
-            --text-muted: #94a3b8;
+            --bg-dark: #070f3a;
+            --card-bg: #0f1d5c;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary: var(--brand-gold);
+            --emerald: #22c55e;
+            --nfc-muted: #b4bee0;
         }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
-            color: #f8fafc;
-            margin: 0;
-            overflow-x: hidden;
-            background-image: radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
-                              radial-gradient(circle at 90% 90%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
-            min-height: 100vh;
-        }
-
-        .glass-panel {
-            background: var(--card-bg);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-        }
-
-        .scanner-container {
-            padding: 40px 15px;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        /* simulated camera viewfinder styling */
-        .viewfinder-wrapper {
-            position: relative;
-            background: #000;
-            border-radius: 20px;
-            overflow: hidden;
-            border: 2px solid rgba(255,255,255,0.1);
-            aspect-ratio: 4/3;
-            max-width: 500px;
-            margin: 0 auto;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-        }
-
-        .scanner-beam {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, var(--primary), transparent);
-            box-shadow: 0 0 15px var(--primary);
-            animation: scanning 3s linear infinite;
-            z-index: 10;
-        }
-
-        @keyframes scanning {
-            0% { top: 0%; }
-            50% { top: 100%; }
-            100% { top: 0%; }
-        }
-
-        .camera-simulation {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            background: radial-gradient(circle at 50% 50%, #111827 0%, #030712 100%);
-            color: rgba(255,255,255,0.25);
-            font-size: 80px;
-        }
-
-        .sim-overlay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            bottom: 20px;
-            border: 2px dashed rgba(255,255,255,0.25);
-            border-radius: 12px;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 5;
-        }
-
-        .sim-status-box {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            border: 1px solid var(--border-color);
-            color: #fff;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 15;
-            min-width: 160px;
-            justify-content: center;
-        }
-
-        .wristband-nfc-hotspot {
-            cursor: pointer;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.2s;
-            margin-top: 15px;
-        }
-        .wristband-nfc-hotspot:hover {
-            transform: translateY(-2px);
-            border-color: var(--emerald);
-            background: rgba(16, 185, 129, 0.05);
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.15);
-        }
-
-        .attendee-row {
-            padding: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 13px;
-        }
-        .attendee-row:last-child {
-            border-bottom: none;
-        }
+        body { font-family: var(--font-body); background: var(--bg-dark); color: #f8fafc; margin: 0; overflow-x: hidden; min-height: 100vh; }
+        .glass-panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-lg); }
+        .glass-panel .text-muted, .nfc-muted { color: var(--nfc-muted) !important; }
+        .glass-panel h2 { font-size: 1.15rem; }
+        .scanner-container { padding: 32px 15px; max-width: 1100px; margin: 0 auto; }
+        .viewfinder-wrapper { position: relative; background: #000; border-radius: 20px; overflow: hidden; border: 2px solid var(--border-color); aspect-ratio: 4/3; max-width: 500px; margin: 0 auto; }
+        .scanner-beam { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, transparent, var(--primary), transparent); animation: scanning 3s linear infinite; z-index: 10; }
+        @keyframes scanning { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+        @media (prefers-reduced-motion: reduce) { .scanner-beam { animation: none; top: 50%; } }
+        .camera-simulation { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; background: radial-gradient(circle at 50% 50%, #13256b 0%, #040a2a 100%); color: rgba(255,255,255,0.25); font-size: 80px; }
+        .sim-overlay { position: absolute; inset: 20px; border: 2px dashed rgba(198,157,103,0.45); border-radius: 12px; pointer-events: none; z-index: 5; }
+        .sim-status-box { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(4, 10, 42, 0.9); border: 1px solid var(--border-color); color: #fff; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; z-index: 15; min-width: 160px; justify-content: center; white-space: nowrap; }
+        .nfc-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--nfc-muted); }
+        .nfc-input-icon { background: var(--bg-dark); border-color: var(--border-color); color: var(--brand-gold); }
+        .nfc-select { background-color: var(--bg-dark); color: #fff; border-color: var(--border-color); }
+        .nfc-select:focus { background-color: var(--bg-dark); color: #fff; }
+        .wristband-nfc-hotspot { margin-top: 15px; }
+        .btn-nfc-outline { color: #fff; border: 1px solid rgba(255,255,255,.35); background: transparent; }
+        .btn-nfc-outline:hover { background: rgba(255,255,255,.08); color: #fff; }
+        .attendees-list { max-height: 400px; }
+        .attendee-row { padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+        .attendee-row:last-child { border-bottom: none; }
+        .attendee-id { font-size: 11px; }
+        .badge-absent { background: rgba(255,255,255,.08); color: var(--nfc-muted); border: 1px solid var(--border-color); }
+        .glass-panel .spinner-grow { color: var(--brand-gold); }
     </style>
 <script src="/static/js/escape.js"></script>
 {% endblock %}
 {% block body %}
-    <div class="container-fluid py-3 border-bottom border-secondary border-opacity-10 glass-panel mb-4">
-        <div class="container d-flex justify-content-between align-items-center">
-            <a href="/spoc/dashboard" class="text-white text-decoration-none d-flex align-items-center gap-2">
-                <i class="fas fa-chart-line fs-4 text-primary"></i>
-                <span class="fw-bold font-monospace tracking-wide">SapthaEvent SPOC Console</span>
-            </a>
-            <a href="/spoc/dashboard" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                <i class="fas fa-arrow-left me-1"></i> SPOC Dashboard
-            </a>
-        </div>
-    </div>
+    <header class="topbar">
+        <a href="/spoc/dashboard" class="d-flex align-items-center gap-3 text-white text-decoration-none">
+            <img src="/static/img/snpsu-logo-reversed.png" alt="SNPSU" class="brand-logo">
+            <span class="brand d-none d-sm-inline">SPOC console</span>
+        </a>
+        <a href="/spoc/dashboard" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> Dashboard
+        </a>
+    </header>
 
     <div class="scanner-container">
         <div class="row g-4 justify-content-center">
             <!-- Left Panel: Viewfinder -->
             <div class="col-md-6 text-center">
                 <div class="glass-panel p-4 h-100">
-                    <h4 class="fw-bold text-white mb-2"><i class="fas fa-wifi text-emerald-500 me-2" style="color:var(--emerald);"></i>NFC / RFID Scan Terminal</h4>
-                    <p class="text-muted small mb-4">Simulate check-in scanning by placing student RFID wristband payload elements near terminal antenna.</p>
+                    <h1 class="h4 fw-bold text-white mb-1">NFC check-in</h1>
+                    <p class="text-muted small mb-4">{{ event.title }} — scan an NFC wristband on a supported device, or check an attendee in from the list.</p>
 
                     <div class="viewfinder-wrapper">
                         <div class="scanner-beam"></div>
                         <div class="sim-overlay"></div>
                         
                         <div class="camera-simulation" id="viewfinder-content">
-                            <i class="fas fa-nfc-symbol"></i>
+                            <i class="fas fa-wifi" aria-hidden="true"></i>
                         </div>
 
-                        <div class="sim-status-box" id="scan-status">
-                            <span class="spinner-grow spinner-grow-sm text-primary" role="status"></span>
-                            <span>Awaiting RFID Signal</span>
+                        <div class="sim-status-box" id="scan-status" role="status" aria-live="polite">
+                            <span class="spinner-grow spinner-grow-sm" aria-hidden="true"></span>
+                            <span>Awaiting NFC signal</span>
                         </div>
                     </div>
 
                     <!-- Simulator Payload Trigger -->
                     <div class="mt-4 text-start">
-                        <label class="form-label text-muted small fw-bold">SIMULATE ACTIVE WRISTBAND PAYLOAD</label>
+                        <label class="form-label nfc-label" for="student-payload">Attendee to check in</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-emerald"><i class="fas fa-address-card"></i></span>
-                            <select aria-label="SIMULATE ACTIVE WRISTBAND PAYLOAD" id="student-payload" class="form-select border-opacity-25 bg-dark text-white">
+                            <span class="input-group-text nfc-input-icon"><i class="fas fa-address-card" aria-hidden="true"></i></span>
+                            <select id="student-payload" class="form-select nfc-select">
                                 {% for r in registrations %}
                                     {% if r.attendance != 'Present' %}
                                     <option value="{{ r.id }}">{{ r.name }} ({{ r.email }})</option>
@@ -192,12 +91,12 @@
                             </select>
                         </div>
                         
-                        <button class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3 wristband-nfc-hotspot" data-h-click="spoc/nfc_scanner:1">
-                            <i class="fas fa-rss me-2 text-white"></i> Tap Mock Wristband (Check-in)
+                        <button type="button" class="btn btn-gold btn-lg w-100 wristband-nfc-hotspot" data-h-click="spoc/nfc_scanner:1">
+                            <i class="fas fa-user-check" aria-hidden="true"></i> Check in selected attendee
                         </button>
 
-                        <button class="btn btn-outline-info w-100 py-2 rounded-pill fw-bold mt-2" data-h-click="spoc/nfc_scanner:2">
-                            <i class="fas fa-mobile-screen-button me-2"></i> Start WebNFC Hardware Scan
+                        <button type="button" class="btn btn-nfc-outline w-100 mt-2" data-h-click="spoc/nfc_scanner:2">
+                            <i class="fas fa-mobile-screen-button" aria-hidden="true"></i> Start NFC hardware scan
                         </button>
                     </div>
                 </div>
@@ -206,17 +105,17 @@
             <!-- Right Panel: Attendee Status list -->
             <div class="col-md-5">
                 <div class="glass-panel p-4 h-100">
-                    <h5 class="fw-bold text-white mb-3"><i class="fas fa-users-viewfinder text-primary me-2"></i>Checked-in Attendees</h5>
-                    <p class="text-muted small">Live stream of participant registrations checkin state.</p>
+                    <h2 class="fw-bold text-white mb-1"><i class="fas fa-users text-gold me-2" aria-hidden="true"></i>Attendees</h2>
+                    <p class="text-muted small">Check-in status for every registration on this event.</p>
 
-                    <div class="attendees-list flex-grow-1 overflow-y-auto" style="max-height: 400px;" id="attendees-container">
+                    <div class="attendees-list flex-grow-1 overflow-y-auto" id="attendees-container">
                         {% for r in registrations %}
                         <div class="attendee-row d-flex justify-content-between align-items-center" id="reg-row-{{ r.id }}">
                             <div>
                                 <div class="fw-bold text-white">{{ r.name }}</div>
-                                <div class="text-muted small" style="font-size:11px;">ID: {{ r.id }}</div>
+                                <div class="text-muted attendee-id">ID: {{ r.id }}</div>
                             </div>
-                            <span class="badge {% if r.attendance == 'Present' %}bg-success{% else %}bg-secondary bg-opacity-20 text-white-50 border border-secondary border-opacity-15{% endif %}" id="status-badge-{{ r.id }}">
+                            <span class="badge {% if r.attendance == 'Present' %}bg-success{% else %}badge-absent{% endif %}" id="status-badge-{{ r.id }}">
                                 {{ r.attendance }}
                             </span>
                         </div>
@@ -239,8 +138,8 @@
             var select = document.getElementById('student-payload');
 
             // Set scanning visual feedback
-            statusBox.innerHTML = `<span class="spinner-border spinner-border-sm text-warning"></span> Reading NFC Card...`;
-            viewfinder.style.color = "var(--warning)";
+            statusBox.innerHTML = `<span class="spinner-border spinner-border-sm text-warning"></span> Reading NFC card…`;
+            viewfinder.style.color = "var(--brand-gold)";
 
             // Delay check-in action slightly to simulate RFID parsing
             setTimeout(function() {
@@ -260,7 +159,7 @@
 
                         // Update viewfinder visual UI
                         viewfinder.style.color = "var(--emerald)";
-                        statusBox.innerHTML = `<i class="fas fa-circle-check text-success"></i> Checked In: ${escapeHtml(studentName)}`;
+                        statusBox.innerHTML = `<i class="fas fa-circle-check text-success"></i> Checked in: ${escapeHtml(studentName)}`;
                         
                         // Update status list badges
                         var badge = document.getElementById(`status-badge-${regId}`);
@@ -317,7 +216,7 @@
                             if (record.recordType === "text") {
                                 const textDecoder = new TextDecoder(record.encoding);
                                 const regId = textDecoder.decode(record.data);
-                                performCheckIn(regId, "RFID Participant");
+                                performCheckIn(regId, "NFC participant");
                             }
                         }
                     });
@@ -334,7 +233,7 @@
             var viewfinder = document.getElementById('viewfinder-content');
             
             viewfinder.style.color = "rgba(255,255,255,0.25)";
-            statusBox.innerHTML = `<span class="spinner-grow spinner-grow-sm text-primary" role="status"></span> Awaiting RFID Signal`;
+            statusBox.innerHTML = `<span class="spinner-grow spinner-grow-sm" aria-hidden="true"></span> Awaiting NFC signal`;
         }
 
         function playRFIDBeep() {

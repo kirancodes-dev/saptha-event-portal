@@ -86,7 +86,7 @@
             icon.style.setProperty('--drift', drift);
             
             // random color variation
-            var colors = ["#ec4899", "#f43f5e", "#d946ef", "#a855f7"];
+            var colors = ["#c69d67", "#dcc199", "#b08550", "#ffffff"];
             icon.style.color = colors[Math.floor(Math.random() * colors.length)];
             
             container.appendChild(icon);

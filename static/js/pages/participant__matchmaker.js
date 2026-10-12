@@ -67,7 +67,7 @@
             if (currentMatchIdx >= activeMatches.length) {
                 container.innerHTML = `<div class="text-center p-3 text-muted">
                                             <i class="fas fa-circle-check text-success fs-3 mb-2"></i>
-                                            <h6 class="fw-bold text-white">All Caught Up!</h6>
+                                            <h6 class="fw-bold text-strong">All caught up!</h6>
                                             <p class="small m-0">You have reviewed all compatible participant matches.</p>
                                         </div>`;
                 return;
@@ -80,10 +80,10 @@
             card.id = 'current-active-card';
             
             // Build Skills list
-            var skillsHtml = m.skills.slice(0, 3).map(s => `<span class="badge bg-secondary bg-opacity-25 text-white-50 mr-1" style="font-size:10px;">${escapeHtml(s)}</span>`).join(' ');
+            var skillsHtml = m.skills.slice(0, 3).map(s => `<span class="se-badge se-badge--neutral se-badge--plain me-1">${escapeHtml(s)}</span>`).join(' ');
             
             var reasonHtml = m.match_reason ? `
-                <div class="mt-2 pt-2 border-top border-secondary border-opacity-20" style="font-size: 11px; color: #c084fc;">
+                <div class="mt-2 pt-2 border-top small text-gold">
                     <i class="fas fa-wand-magic-sparkles me-1"></i><strong>AI Match Insight:</strong> ${escapeHtml(m.match_reason)}
                 </div>
             ` : '';
@@ -96,7 +96,7 @@
 
                 <div class="text-center my-3">
                     <img class="avatar-circle mb-3" src="${safeUrl(m.avatar)}">
-                    <h5 class="fw-bold text-white m-0">${escapeHtml(m.name)}</h5>
+                    <h5 class="fw-bold text-strong m-0">${escapeHtml(m.name)}</h5>
                     <p class="text-muted small m-0">${escapeHtml(m.college)}</p>
                 </div>
 

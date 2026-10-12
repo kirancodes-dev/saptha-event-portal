@@ -6,17 +6,12 @@
 {% block content %}
 <div class="card">
     <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
-        <h2 style="font-size:18px;">{{ user.get('name') or email }}</h2>
+        <h2 class="h5">{{ user.get('name') or email }}</h2>
         <p class="text-muted">{{ email }} · {{ user.get('usn') or 'No USN' }} · {{ user.get('department') or 'No branch' }}
             · Year {{ user.get('year') or '—' }}</p>
         <p>Placement drives check these (UPG-57). The roster CSV sets them too (columns <code>cgpa</code> and
            <code>backlogs</code>); students see them on their profile but can't change them.</p>
-        <form method="POST" class="row g-3" style="max-width:480px;">
+        <form method="POST" class="row g-3 form-narrow">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="col-6">
                 <label for="cgpa" class="form-label">CGPA</label>

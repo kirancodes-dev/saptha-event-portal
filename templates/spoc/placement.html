@@ -1,17 +1,15 @@
 {% extends "base_classic.html" %}
 
 {% block title %}Placement — {{ event.title }}{% endblock %}
+{#- On the app layout and portal design system (UPG-63). -#}
 {% block page_title %}Placement drive{% endblock %}
+{% block page_sub %}{{ event.title }}{% endblock %}
+{% block page_actions %}<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
 
 {% block content %}
 <div class="card mb-3">
     <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
-        <h2 style="font-size:20px;">{{ rules.company or event.title }}{% if rules.role %} · {{ rules.role }}{% endif %}</h2>
+        <h2 class="h5">{{ rules.company or event.title }}{% if rules.role %} · {{ rules.role }}{% endif %}</h2>
         <p class="mb-1">{% if rules.package %}Package: <strong>{{ rules.package }}</strong>{% endif %}
             {% if rules.jd_link %} · <a href="{{ rules.jd_link }}" target="_blank" rel="noopener">Job description</a>{% endif %}</p>
         <p class="text-muted mb-2">Eligibility:
@@ -26,7 +24,7 @@
 
 <div class="card mb-3">
     <div class="card-body">
-        <h3 style="font-size:17px;">Rounds</h3>
+        <h3 class="h6 fw-bold">Rounds</h3>
         {% if rounds %}
         <ul>
             {% for r in rounds %}
@@ -50,7 +48,7 @@
 
 <div class="card">
     <div class="card-body">
-        <h3 style="font-size:17px;">Registrants</h3>
+        <h3 class="h6 fw-bold">Registrants</h3>
         <form method="POST" action="/placement/{{ event.id }}/move">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% if can_edit and rounds %}

@@ -8,15 +8,15 @@
     {% include 'includes/pwa_head.html' %}
     {% include "layouts/_fontawesome.html" %}
     <style>
-        :root{--blue:#1a2557;--orange:#c9a45e;}
+        :root{--blue: var(--brand-navy); --orange: var(--brand-gold);}
         body {
-            background: linear-gradient(135deg, var(--blue), #1a4fa0);
+            background: #040b33;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px 16px;
-            font-family: 'Segoe UI', sans-serif;
+            padding: 24px 16px 56px;  /* room for the fixed site footer */
+            font-family: var(--font-body);
         }
 
         /* ---- Ticket 3D Flipping Card ---- */
@@ -87,11 +87,13 @@
 
         /* ---- Top banner ---- */
         .ticket-header {
-            background: linear-gradient(135deg, #1a2557 0%, #1a4fa0 100%);
+            background: #00185e;
+            border-bottom: 3px solid #c69d67;
             padding: 28px 28px 20px;
             color: white;
             position: relative;
         }
+        .ticket-header .org { padding-right: 150px; }
         .ticket-header .org {
             font-size: 11px;
             letter-spacing: 2px;
@@ -112,7 +114,7 @@
         .ticket-header .category-badge {
             position: absolute;
             top: 20px;
-            right: 20px;
+            right: 60px;
             background: rgba(255,255,255,0.15);
             border: 1px solid rgba(255,255,255,0.25);
             color: white;
@@ -161,13 +163,13 @@
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            background: #e8f0fe;
+            background: var(--brand-navy-50);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
             font-weight: 700;
-            color: #1a2557;
+            color: #00185e;
             flex-shrink: 0;
         }
         .holder-name {
@@ -191,7 +193,7 @@
             font-size: 10px;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: #94a3b8;
+            color: var(--text-muted);
             margin-bottom: 3px;
         }
         .info-item .value {
@@ -211,7 +213,7 @@
             font-size: 10px;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: #94a3b8;
+            color: var(--text-muted);
             margin-bottom: 8px;
         }
         .member-row {
@@ -255,14 +257,14 @@
         }
         .qr-label {
             font-size: 11px;
-            color: #94a3b8;
+            color: var(--text-muted);
             margin-bottom: 4px;
         }
         .ticket-id {
-            font-family: 'Courier New', monospace;
+            font-family: var(--font-mono);
             font-size: 13px;
             font-weight: 700;
-            color: #1a2557;
+            color: #00185e;
             letter-spacing: 1px;
         }
 
@@ -290,7 +292,7 @@
             padding: 14px 28px;
             text-align: center;
             font-size: 11px;
-            color: #94a3b8;
+            color: var(--text-muted);
             letter-spacing: 0.5px;
         }
 
@@ -302,7 +304,7 @@
             margin-top: 24px;
         }
         .btn-download {
-            background: #1a2557;
+            background: #00185e;
             color: white;
             border: none;
             padding: 10px 22px;
@@ -313,11 +315,11 @@
             transition: 0.2s;
             text-decoration: none;
         }
-        .btn-download:hover { background: #1a4fa0; color: white; }
+        .btn-download:hover { background: var(--brand-navy-900); color: white; }
         .btn-back {
             background: transparent;
-            color: #64748b;
-            border: 1px solid #e2e8f0;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,.35);
             padding: 10px 22px;
             border-radius: 50px;
             font-size: 13px;
@@ -326,7 +328,8 @@
             transition: 0.2s;
             text-decoration: none;
         }
-        .btn-back:hover { background: #f1f5f9; color: #334155; }
+        .btn-back:hover { background: rgba(255,255,255,.12); color: #fff; }
+        .btn-back:focus-visible { outline: 2px solid #c69d67; outline-offset: 2px; }
 
         @media print {
             body { background: white; padding: 0; }
@@ -346,7 +349,7 @@
                     <!-- Header -->
                     <div class="ticket-header">
                         {% if event.get('category') %}
-                        <span class="category-badge" style="right: 60px;">{{ event.category }}</span>
+                        <span class="category-badge">{{ event.category }}</span>
                         {% endif %}
                         <button class="flip-trigger-btn" data-h-click="participant/ticket:1" aria-label="Flip card for guidelines" type="button">
                           <i class="fas fa-info"></i>
@@ -354,9 +357,9 @@
                         <div class="org">Sapthagiri NPS University</div>
                         <div class="event-name">{{ event.get('title', 'Event') }}</div>
                         <div class="event-meta">
-                            <i class="fas fa-calendar-alt me-1"></i>{{ event.get('date', 'TBD') }}
+                            <i class="fas fa-calendar-alt me-1"></i>{{ event.get('date') or 'Date to be announced' }}
                             &nbsp;·&nbsp;
-                            <i class="fas fa-map-marker-alt me-1"></i>{{ event.get('venue', 'SNPSU Campus') }}
+                            <i class="fas fa-map-marker-alt me-1"></i>{{ event.get('venue') or 'Venue to be announced' }}
                         </div>
                     </div>
 
@@ -373,8 +376,8 @@
                                 {{ reg.lead_name[0].upper() if reg.lead_name else '?' }}
                             </div>
                             <div>
-                                <div class="holder-name">{{ reg.get('lead_name', 'Participant') }}</div>
-                                <div class="holder-sub">{{ reg.get('lead_email') }}</div>
+                                <div class="holder-name">{{ reg.get('lead_name') or 'Participant' }}</div>
+                                {% if reg.get('lead_email') %}<div class="holder-sub">{{ reg.get('lead_email') }}</div>{% endif %}
                             </div>
                         </div>
 
@@ -409,7 +412,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="label">Registered</div>
-                                <div class="value">{{ reg.get('registered_at', '')[:10] if reg.get('registered_at') else 'N/A' }}</div>
+                                <div class="value">{{ reg.get('registered_at', '')[:10] if reg.get('registered_at') else '—' }}</div>
                             </div>
                         </div>
 
@@ -433,15 +436,15 @@
                         <div class="qr-section">
                             <div class="qr-label">Scan at venue entry</div>
                             <div class="qr-wrapper">
-                                <img loading="lazy" src="data:image/png;base64,{{ qr_b64 }}"
+                                <img loading="eager" src="data:image/png;base64,{{ qr_b64 }}"
                                      alt="Ticket QR code for {{ reg.get('reg_id') }}">
                             </div>
-                            <div class="ticket-id">{{ reg.get('reg_id', 'N/A') }}</div>
+                            <div class="ticket-id">{{ reg.get('reg_id') or reg.get('id') or '—' }}</div>
                         </div>
                         {% else %}
                         <div style="text-align:center;padding:20px 0;">
-                            <div style="font-size:40px;margin-bottom:10px;">🔒</div>
-                            <div style="font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+                            <div class="mb-2" aria-hidden="true"><i class="fas fa-lock fa-2x text-gold"></i></div>
+                            <div style="font-size:13px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
                                 Entry Ticket Locked
                             </div>
                             <div style="font-size:13px;color:#64748b;margin-top:8px;line-height:1.6;">
@@ -476,7 +479,7 @@
                 <!-- BACK FACE -->
                 <div class="card-face card-face-back">
                     <!-- Header -->
-                    <div class="ticket-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <div class="ticket-header">
                         <button class="flip-trigger-btn" data-h-click="participant/ticket:3" aria-label="Flip card for ticket" type="button">
                           <i class="fas fa-ticket-alt"></i>
                         </button>
@@ -495,7 +498,7 @@
                     <!-- Body -->
                     <div class="ticket-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; background: #ffffff;">
                         <div>
-                            <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; font-weight: 700;">
+                            <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 700;">
                                 Venue Guidelines
                             </div>
                             <ul style="font-size: 13px; color: #475569; padding-left: 20px; margin-bottom: 20px; line-height: 1.6;">
@@ -505,11 +508,11 @@
                                 <li>No food or beverages allowed inside the laboratories.</li>
                             </ul>
 
-                            <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; font-weight: 700;">
+                            <div style="font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 700;">
                                 Club Coordinator (SPOC)
                             </div>
                             <div class="d-flex align-items-center gap-3" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #e8f0fe; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #1a2557; flex-shrink: 0; font-weight: 700;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--brand-navy-50); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #00185e; flex-shrink: 0; font-weight: 700;">
                                     {{ event.get('spoc_name', 'Student Coordinator')[0].upper() if event.get('spoc_name') else 'S' }}
                                 </div>
                                 <div style="overflow: hidden;">
@@ -523,7 +526,7 @@
                             </div>
                         </div>
 
-                        <div style="text-align: center; margin-top: 15px; font-size: 11px; color: #94a3b8; font-weight: 500;">
+                        <div style="text-align: center; margin-top: 15px; font-size: 11px; color: var(--text-muted); font-weight: 500;">
                             <i class="fas fa-sync-alt me-1"></i> Tap card anywhere to flip
                         </div>
                     </div>
@@ -547,7 +550,7 @@
                 <i class="fas fa-share-alt me-1"></i> Share
             </button>
             {% endif %}
-            <button class="btn-back" id="copyLinkBtn" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;">
+            <button type="button" class="btn-back" id="copyLinkBtn">
                 <i class="fas fa-link me-1"></i> Copy Link
             </button>
             <a href="/participant/dashboard" class="btn-back">

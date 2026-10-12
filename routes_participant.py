@@ -260,33 +260,12 @@ def leaderboard(event_id):
     Public JSON leaderboard — participants open this on the projector.
     GET /participant/leaderboard/<event_id>
     """
-    regs = (db.collection('registrations')
-              .where(filter=_ff('event_id', '==', event_id))
-              .stream())
-
-    board = []
-    for r in regs:
-        d = r.to_dict()
-        if d.get('is_eliminated'):
-            continue
-        scores = d.get('scores', {})
-        if not scores:
-            continue
-        avg = round(
-            sum(safe_int(s.get('total', 0)) for s in scores.values()) / len(scores), 1
-        )
-        board.append({
-            'team_name': d.get('team_name', '—'),
-            'lead_name': d.get('lead_name', ''),
-            'score':     avg,
-            'room':      d.get('assigned_room', ''),
-            'round':     d.get('current_round', 1),
-            'judges_count': len(scores),
-        })
-
-    board.sort(key=lambda x: x['score'], reverse=True)
-    for i, row in enumerate(board):
-        row['rank'] = i + 1
+    # One ranking for every board (UPG-84)
+    from services_leaderboard import for_event
+    board = [{'team_name': row['team_name'], 'lead_name': row['lead_name'], 'score': row['score'],
+              'score_text': row['score_text'], 'room': row['room'], 'round': row['round'],
+              'judges_count': row['judges'], 'rank': row['rank'], 'tied': row['tied']}
+             for row in for_event(db, event_id)]
 
     # Also render a nice HTML page for projector display
     if request.headers.get('Accept', '').startswith('text/html'):

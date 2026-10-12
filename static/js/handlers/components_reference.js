@@ -6,10 +6,10 @@ Object.assign(window.SE_H = window.SE_H || {}, {
     toggleTheme()
   } } } },
   "components_reference:2": function (event) { with (document) { with (this.form || {}) { with (this) {
-    copyHex('#0f1c4d')
+    copyHex('#00185e')
   } } } },
   "components_reference:3": function (event) { with (document) { with (this.form || {}) { with (this) {
-    copyHex('#c9a45e')
+    copyHex('#c69d67')
   } } } },
   "components_reference:4": function (event) { with (document) { with (this.form || {}) { with (this) {
     copyHex('#6366f1')

@@ -74,11 +74,25 @@ def coupon_discount(coupon: dict, amount: float) -> float:
 
 # ── Price ──────────────────────────────────────────────────────────────────
 
-def server_price(db, event_id: str, event_data: dict, coupon_code: str = '') -> dict:
+def fee_for(event_data: dict, participant_type: str = '') -> float:
+    """The fee for one registrant: their group's fee when the event sets one
+    (student, faculty, external; UPG-73), else the regular fee."""
+    fees = event_data.get('fees') if isinstance(event_data.get('fees'), dict) else {}
+    group = (participant_type or '').strip().lower()
+    if group and fees.get(group) is not None:
+        try:
+            return max(0.0, float(fees[group]))
+        except (TypeError, ValueError):
+            pass
+    return float(event_data.get('entry_fee', 0) or fees.get('regular', 0) or 0)
+
+
+def server_price(db, event_id: str, event_data: dict, coupon_code: str = '',
+                 participant_type: str = '') -> dict:
     """The amount to charge, computed only from server-side data."""
     from routes_dynamic_pricing import calculate_surge_price
 
-    fee = float(event_data.get('entry_fee', 0) or 0)
+    fee = fee_for(event_data, participant_type)
     discount, coupon = 0.0, None
     if coupon_code:
         coupon, error = find_valid_coupon(db, coupon_code, event_id)

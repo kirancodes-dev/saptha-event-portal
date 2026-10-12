@@ -1,47 +1,44 @@
-/* Moved unchanged from an inline <script> in templates/admin/dashboard.html so the CSP
+/* Charts on Apache ECharts via SE_EC (UPG-83). Otherwise moved unchanged from an inline <script> in templates/admin/dashboard.html so the CSP
    needs no inline script (UPG-25). */
-// ── CHARTS ──
+// ── CHARTS (Apache ECharts via SE_EC, UPG-83) ──
 var _chartData = JSON.parse(document.getElementById('adminChartData').textContent);
-
-if (_chartData.labels.length) {
-  var labels = _chartData.labels.map(function(l){ return l.length>18?l.slice(0,18)+'…':l; });
-  var rc = document.getElementById('adminRegChart');
-  
-  // Theme check
-  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(11, 21, 48, 0.06)';
-  var textColor = isDark ? '#cbd5e1' : '#64748b';
-  
-  if (rc) {
-    new Chart(rc, {
-      type: 'bar',
-      data: { labels: labels, datasets: [{
-        label: 'Registrations', data: _chartData.regs,
-        backgroundColor: labels.map(function(_,i){ return i%2===0?'rgba(26,37,87,.85)':'rgba(201,164,94,.85)'; }),
-        borderRadius: 6, borderSkipped: false
-      }]},
-      options: { responsive:true, plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{display:false},ticks:{color:textColor,font:{size:10}}},
-          y:{grid:{color:gridColor},ticks:{color:textColor,stepSize:1,font:{size:10}},beginAtZero:true}
-        } }
+if (window.SE_EC && _chartData.labels.length) {
+  // The ten events with the most registrations (counted from registrations, UPG-81)
+  var _topEvents = _chartData.labels.map(function (l, i) { return { title: l, id: _chartData.ids[i], regs: _chartData.regs[i] || 0 }; })
+    .sort(function (a, b) { return b.regs - a.regs; }).slice(0, 10).reverse();
+  var regChart = SE_EC.mount(document.getElementById('adminRegChart'), function (t) {
+    return SE_EC.base(t, {
+      legend: { show: false }, toolbox: { show: false },
+      grid: { left: 14, right: 44, top: 12, bottom: 8, containLabel: true },
+      tooltip: Object.assign(SE_EC.base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: function (items) { var e = _topEvents[items[0].dataIndex];
+          return '<b>' + escapeHtml(e.title) + '</b><br>' + escapeHtml(SE_EC.fmt(e.regs)) + ' registrations<br><span style="opacity:.6">Click to open</span>'; } }),
+      xAxis: SE_EC.valueAxis(t, { minInterval: 1 }),
+      yAxis: SE_EC.categoryAxis(t, _topEvents.map(function (e) { return e.title; }),
+        { axisLabel: { color: t.inkStrong, width: t.narrow ? 110 : 170, overflow: 'truncate' } }),
+      series: [{ name: 'Registrations', type: 'bar', barMaxWidth: 16, data: _topEvents.map(function (e) { return e.regs; }),
+                 itemStyle: { color: t.palette[0], borderRadius: [0, 4, 4, 0] },
+                 label: { show: true, position: 'right', color: t.ink } }],
     });
-  }
-  var cc = document.getElementById('adminCatChart');
-  if (cc && Object.keys(_chartData.cats).length) {
-    var catLabels = Object.keys(_chartData.cats);
-    var catVals   = Object.values(_chartData.cats);
-    new Chart(cc, {
-      type: 'doughnut',
-      data: { labels: catLabels, datasets: [{
-        data: catVals,
-        backgroundColor: ['#1a2557','#c9a45e','#10b981','#6366f1','#0891b2'],
-        borderWidth: 0, hoverOffset: 4
-      }]},
-      options: { responsive:true, cutout:'68%',
-        plugins:{legend:{position:'bottom',labels:{color:textColor,font:{size:11},boxWidth:10}}} }
+  });
+  if (regChart) regChart.chart.on('click', function (p) {
+    var e = _topEvents[p.dataIndex]; if (e) window.location.href = '/spoc/event/' + encodeURIComponent(e.id) + '/review';
+  });
+  // Events per category: bars, largest first (easier to compare than slices)
+  var cats = Object.keys(_chartData.cats).map(function (k) { return [k, _chartData.cats[k]]; })
+    .sort(function (a, b) { return a[1] - b[1]; });
+  if (cats.length) SE_EC.mount(document.getElementById('adminCatChart'), function (t) {
+    return SE_EC.base(t, {
+      legend: { show: false }, toolbox: { show: false },
+      grid: { left: 14, right: 36, top: 12, bottom: 8, containLabel: true },
+      tooltip: Object.assign(SE_EC.base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'shadow' } }),
+      xAxis: SE_EC.valueAxis(t, { minInterval: 1 }),
+      yAxis: SE_EC.categoryAxis(t, cats.map(function (c) { return c[0]; }), { axisLabel: { color: t.inkStrong } }),
+      series: [{ name: 'Events', type: 'bar', barMaxWidth: 18, data: cats.map(function (c) { return c[1]; }),
+                 itemStyle: { color: t.palette[0], borderRadius: [0, 4, 4, 0] },
+                 label: { show: true, position: 'right', color: t.ink } }],
     });
-  }
+  });
 }
 
 // Search and the status filter run on the server (UPG-19).

@@ -33,40 +33,12 @@ def _compute_leaderboard(event_id: str) -> "dict | None":
 
     cur_round = int(event.get('active_round', 1) or 1)
 
-    regs = (db.collection('registrations')
-              .where(filter=FieldFilter('event_id', '==', event_id))
-              .stream())
-
-    entries = []
-    for r in regs:
-        d = r.to_dict() or {}
-        if d.get('is_eliminated'):
-            continue
-        if d.get('attendance') not in ('Present', None, ''):
-            pass  # include everyone — unattended show as pending
-
-        scores_map = d.get('scores', {})
-        if scores_map:
-            vals = [float(s.get('total', 0)) for s in scores_map.values()]
-            avg  = round(sum(vals) / len(vals), 1)
-        else:
-            avg = None
-
-        entries.append({
-            'reg_id':   r.id,
-            'team':     (d.get('team_name') or d.get('lead_name') or '—').strip(),
-            'lead':     (d.get('lead_name') or '').strip(),
-            'members':  len(d.get('members', [])),
-            'score':    avg,
-            'judges':   len(scores_map),
-            'attended': d.get('attendance') == 'Present',
-            'round':    int(d.get('current_round', 1) or 1),
-        })
-
-    # Sort: scored first (desc), unscored last
-    entries.sort(key=lambda x: (x['score'] is None, -(x['score'] or 0)))
-    for i, e in enumerate(entries):
-        e['rank'] = i + 1
+    # One ranking for every board (UPG-84); unscored teams follow, unranked
+    from services_leaderboard import for_event
+    entries = [{'reg_id': row['id'], 'team': row['team'], 'lead': row['lead_name'], 'members': row['members'],
+                'score': row['score'], 'score_text': row['score_text'], 'judges': row['judges'],
+                'attended': row['attended'], 'round': row['round'], 'rank': row['rank'], 'tied': row['tied']}
+               for row in for_event(db, event_id, include_unscored=True)]
 
     total_rounds = int(event.get('total_rounds', 1) or 1)
     return {

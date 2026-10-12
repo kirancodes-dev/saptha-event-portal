@@ -6,62 +6,18 @@
     <link href="/static/css/global.css" rel="stylesheet">
     {% include "layouts/_fontawesome.html" %}
     <style>
-        body {
-            background-color: #0d1117;
-            color: #c9d1d9;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        .exam-header {
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-            padding: 12px 24px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .timer-box {
-            background: #21262d;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 700;
-            color: #58a6ff;
-        }
-        .question-card {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-        }
-        .option-label {
-            display: flex;
-            align-items: center;
-            background: #21262d;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .option-label:hover {
-            border-color: #58a6ff;
-            background: #2d333b;
-        }
-        .option-label input[type="radio"] {
-            margin-right: 12px;
-        }
-        .proctor-shield {
-            background: rgba(235, 87, 87, 0.1);
-            border: 1px solid rgba(235, 87, 87, 0.3);
-            color: #f85149;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-size: 0.85rem;
-        }
+        /* Online assessment (UPG-63): calm, high-contrast exam surface on the portal system */
+        body { background: var(--surface-page); user-select: none; -webkit-user-select: none; }
+        .exam-header { background: var(--brand-navy); color: #fff; border-bottom: 3px solid var(--brand-gold); padding: 10px clamp(16px, 3vw, 28px); position: sticky; top: 0; z-index: 1000; flex-wrap: wrap; gap: 10px; }
+        .exam-header h1 { color: #fff; font-size: 1rem; margin: 0; }
+        .timer-box { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-sm); padding: 6px 14px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+        .question-card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; }
+        .question-text { font-size: 1.1rem; color: var(--text-strong); margin-bottom: 18px; }
+        .option-label { display: flex; align-items: center; gap: 12px; background: var(--surface-card); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 10px; cursor: pointer; }
+        .option-label:hover { border-color: var(--brand-navy); }
+        .option-label:has(input:checked) { border-color: var(--brand-navy); background: var(--brand-navy-50); }
+        .option-label input[type="radio"] { accent-color: var(--brand-navy); width: 18px; height: 18px; }
+        .proctor-shield { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: var(--radius-sm); padding: 6px 12px; font-size: var(--fs-sm); }
     </style>
 {% endblock %}
 {% block body %}
@@ -69,22 +25,23 @@
     <!-- EXAM HEADER BANNER -->
     <header class="exam-header d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
-            <h5 class="mb-0 text-white font-weight-bold"><i class="fas fa-shield-alt text-warning me-2"></i>{{ event.title }}</h5>
-            <span class="badge bg-secondary">Online Assessment</span>
+            <img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo brand-logo--sm d-none d-md-block" width="111" height="28">
+            <h1><i class="fas fa-shield-alt me-2" aria-hidden="true"></i>{{ event.title }}</h1>
+            <span class="se-badge se-badge--gold se-badge--plain">Online assessment</span>
         </div>
 
         <div class="d-flex align-items-center gap-3">
             <div class="proctor-shield">
-                <i class="fas fa-lock me-1"></i> Anti-Cheat Active
+                <i class="fas fa-lock me-1" aria-hidden="true"></i> Proctoring on
             </div>
             <div class="timer-box">
                 <i class="fas fa-clock me-1"></i> <span id="countdownTimer">30:00</span>
             </div>
-            <span id="proctorViolationBadge" class="badge bg-warning px-3 py-2 fs-6">0 / 5 Warnings</span>
+            <span id="proctorViolationBadge" class="se-badge se-badge--warning se-badge--plain" aria-live="polite">0 / 5 warnings</span>
         </div>
     </header>
 
-    <div class="container my-4">
+    <main class="container my-4" id="main-content">
         <div class="row">
 
             <!-- MAIN QUESTION FORM -->
@@ -95,10 +52,10 @@
                     {% for q in questions %}
                     <div class="question-card" id="q_card_{{ loop.index }}">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="text-info mb-0 font-weight-bold">Question {{ loop.index }} of {{ questions|length }}</h6>
-                            <span class="badge bg-dark border border-secondary">{{ q.points }} Marks</span>
+                            <h2 class="h6 mb-0 text-primary">Question {{ loop.index }} of {{ questions|length }}</h2>
+                            <span class="se-badge se-badge--neutral se-badge--plain">{{ q.points }} marks</span>
                         </div>
-                        <p class="fs-5 text-white mb-4">{{ q.text }}</p>
+                        <p class="question-text">{{ q.text }}</p>
 
                         {% if q.type == 'mcq' %}
                             {% for option in q.options %}
@@ -108,15 +65,15 @@
                             </label>
                             {% endfor %}
                         {% else %}
-                            <textarea aria-label="Type your answer here" name="ans_{{ q.id }}" class="form-control bg-dark text-light border-secondary" rows="4" placeholder="Type your answer here..."></textarea>
+                            <textarea aria-label="Type your answer here" name="ans_{{ q.id }}" class="form-control" rows="4" placeholder="Type your answer here..."></textarea>
                         {% endif %}
                     </div>
                     {% endfor %}
 
                     <div class="d-flex justify-content-between align-items-center mt-4">
                         <span class="text-muted small"><i class="fas fa-info-circle me-1"></i> Your answers are saved continuously.</span>
-                        <button type="submit" class="btn btn-success btn-lg px-5 font-weight-bold">
-                            <i class="fas fa-paper-plane me-2"></i> Submit Assessment
+                        <button type="submit" class="btn btn-gold btn-lg px-5">
+                            <i class="fas fa-paper-plane" aria-hidden="true"></i> Submit assessment
                         </button>
                     </div>
                 </form>
@@ -125,7 +82,7 @@
             <!-- SIDEBAR NAVIGATOR -->
             <div class="col-lg-4">
                 <div class="question-card sticky-top" style="top: 80px;">
-                    <h6 class="text-white font-weight-bold mb-3"><i class="fas fa-th me-2"></i> Question Overview</h6>
+                    <h2 class="h6 mb-3"><i class="fas fa-th me-2 text-gold" aria-hidden="true"></i>Question overview</h2>
                     <div class="d-flex flex-wrap gap-2 mb-4">
                         {% for q in questions %}
                         <a href="#q_card_{{ loop.index }}" class="btn btn-outline-secondary btn-sm px-3 py-2" id="q_nav_{{ loop.index }}">
@@ -133,8 +90,8 @@
                         </a>
                         {% endfor %}
                     </div>
-                    <hr class="border-secondary">
-                    <div class="small text-secondary">
+                    <hr>
+                    <div class="small text-muted">
                         <p class="mb-1"><i class="fas fa-shield-alt text-warning me-1"></i> Do not switch tabs or exit fullscreen mode.</p>
                         <p class="mb-0"><i class="fas fa-exclamation-triangle text-danger me-1"></i> Exceeding 5 warnings will auto-submit your test.</p>
                     </div>
@@ -142,7 +99,7 @@
             </div>
 
         </div>
-    </div>
+    </main>
 
     <!-- PROCTORING SCRIPT -->
     <script src="/static/js/proctor.js"></script>

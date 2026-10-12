@@ -1,42 +1,10 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23g. -#}
-{% block head %}
-    <title>OrgUnits & Scoped Roles | Admin HQ</title>
-    {% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include "layouts/_fontawesome.html" %}
-    <style>
-        :root { --blue: #1a2557; --orange: #c9a45e; }
-        body { background-color: #f8f9fa; color: #1e293b; font-family: 'Inter', sans-serif; }
-        .navbar { background: var(--blue); border-bottom: 1px solid #e2e8f0; }
-        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }
-        .form-control, .form-select { background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; }
-        .table-dark th { background-color: var(--blue); border-bottom: 2px solid var(--orange); color: #ffffff; }
-        .table td { border-color: #e2e8f0; vertical-align: middle; }
-        .badge-dept { background-color: #0284c7; color: #fff; }
-        .badge-club { background-color: #7c3aed; color: #fff; }
-        .badge-central { background-color: #1a2557; color: #fff; }
-    </style>
-{% endblock %}
-{% block body %}
-
-    <nav class="navbar navbar-expand-lg navbar-dark px-4 py-3">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/admin/dashboard">
-                <i class="fas fa-arrow-left me-2"></i> Back to Admin Dashboard
-            </a>
-            <span class="text-light opacity-75 small">Sapthagiri NPS University — Scoped Governance</span>
-        </div>
-    </nav>
-
-    <div class="container py-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold mb-1"><i class="fas fa-sitemap text-primary me-2"></i> OrgUnits & Scoped Roles</h2>
-                <p class="text-muted mb-0">Manage university departments, clubs, scoped permissions, and approval workflows.</p>
-            </div>
-            <div>
-                <form action="/admin/migrate_roles" method="POST" class="d-inline">
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% block title %}OrgUnits & Scoped Roles | Admin HQ{% endblock %}
+{% block page_title %}Org units &amp; scoped roles{% endblock %}
+{% block page_sub %}Manage university departments, clubs, scoped permissions, and approval workflows.{% endblock %}
+{% block page_actions %}
+<form action="/admin/migrate_roles" method="POST" class="d-inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline-primary">
                         <i class="fas fa-sync-alt me-1"></i> Preview role migration
@@ -51,19 +19,23 @@
                     </button>
                 </form>
                 {% endif %}
-            </div>
-        </div>
+{% endblock %}
+{% block extra_css %}
+<style>
+.table-dark th { background-color: var(--brand-navy); border-bottom: 2px solid var(--brand-gold); color: #ffffff; }
+.table td { border-color: var(--border); vertical-align: middle; }
+.badge-dept { background-color: var(--info-soft); color: var(--info-text); }
+.badge-club { background-color: var(--brand-gold-100); color: var(--brand-gold-700); }
+.badge-central { background-color: var(--brand-navy-50); color: var(--brand-ink); }
+</style>
+{% endblock %}
+{% block content %}
+    
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+    <div>
+        
+
+        
 
         <!-- PENDING APPROVAL EVENTS (IF ANY) -->
         {% if pending_events %}
@@ -265,13 +237,13 @@
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Role</label>
                             <select aria-label="Role" name="role" class="form-select fw-bold" required>
-                                <option value="UniversityAdmin">🏛️ UniversityAdmin</option>
-                                <option value="UnitAdmin">🏢 UnitAdmin (Dept/Club Head)</option>
-                                <option value="EventOrganizer">📋 EventOrganizer</option>
-                                <option value="EventCoordinator">🎯 EventCoordinator</option>
-                                <option value="Judge">⚖️ Judge</option>
-                                <option value="Volunteer">🤝 Volunteer</option>
-                                <option value="Participant">🎓 Participant</option>
+                                <option value="UniversityAdmin">UniversityAdmin</option>
+                                <option value="UnitAdmin">UnitAdmin (Dept/Club Head)</option>
+                                <option value="EventOrganizer">EventOrganizer</option>
+                                <option value="EventCoordinator">EventCoordinator</option>
+                                <option value="Judge">Judge</option>
+                                <option value="Volunteer">Volunteer</option>
+                                <option value="Participant">Participant</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -309,4 +281,5 @@
     {% include "layouts/_bootstrap_js.html" %}
     <script src="/static/js/pages/admin__org_units.js"></script>
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__org_units.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__org_units.js"></script>
+{% endblock %}

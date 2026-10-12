@@ -95,7 +95,8 @@ def create_order():
 
     try:
         coupon_val = body.get('coupon') or body.get('coupon_code', '')
-        price = server_price(_db(), event_id, event_doc.to_dict() or {}, coupon_val)
+        price = server_price(_db(), event_id, event_doc.to_dict() or {}, coupon_val,
+                             reg_data.get('participant_type', ''))
     except PaymentError as exc:
         return jsonify({'error': str(exc)}), exc.status
     if price['amount_paise'] < 100:
@@ -243,11 +244,15 @@ def price_preview():
         return jsonify({'valid': False, 'error': 'Event not found'}), 404
 
     event_data = event_doc.to_dict() or {}
-    base_fee = float(event_data.get('entry_fee', 0) or 0)
+    # The pending registrant's group decides the fee (UPG-73)
+    pending = session.get('pending_reg_data') or {}
+    ptype = pending.get('participant_type', '') if str(pending.get('event_id')) == event_id else ''
+    from services_payments import fee_for
+    base_fee = fee_for(event_data, ptype)
 
     if not coupon_code:
         try:
-            price = server_price(_db(), event_id, event_data, '')
+            price = server_price(_db(), event_id, event_data, '', ptype)
             return jsonify({
                 'valid': True,
                 'fee': price['fee'],
@@ -260,7 +265,7 @@ def price_preview():
             return jsonify({'valid': False, 'error': str(exc)}), exc.status
 
     try:
-        price = server_price(_db(), event_id, event_data, coupon_code)
+        price = server_price(_db(), event_id, event_data, coupon_code, ptype)
         return jsonify({
             'valid': True,
             'fee': price['fee'],
@@ -308,7 +313,8 @@ def checkout(event_id):
 
     event  = event_doc.to_dict()
     try:
-        amount = server_price(_db(), event_id, event)['amount_inr']
+        amount = server_price(_db(), event_id, event,
+                              participant_type=reg_data.get('participant_type', ''))['amount_inr']
     except PaymentError:
         amount = event.get('entry_fee', 0)
     user   = {
@@ -511,7 +517,8 @@ def process_payment():
     if not event_doc.exists:
         flash("Event not found.", "danger")
         return redirect('/')
-    price = server_price(_db(), event_id, event_doc.to_dict() or {})
+    price = server_price(_db(), event_id, event_doc.to_dict() or {},
+                         participant_type=reg_data.get('participant_type', ''))
 
     result = _complete_registration(
         event_id=event_id,

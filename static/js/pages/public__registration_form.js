@@ -7,7 +7,7 @@ document.getElementById('reg-form').addEventListener('submit', function(e) {
   this.querySelectorAll('[data-required-radio]').forEach(function(grp) {
     const name = grp.dataset.requiredRadio;
     if (!document.querySelector('[name="'+name+'"]:checked')) {
-      grp.style.borderColor = '#ef4444';
+      grp.style.borderColor = 'var(--danger)';
       ok = false;
     }
   });
@@ -31,6 +31,6 @@ document.querySelectorAll('.choice-item input').forEach(function(inp) {
         r.closest('.choice-item').style.borderColor = '';
       });
     }
-    this.closest('.choice-item').style.borderColor = 'var(--orange)';
+    this.closest('.choice-item').style.borderColor = 'var(--brand-navy)';
   });
 });

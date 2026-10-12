@@ -2,11 +2,14 @@
 {#- On the shared document since UPG-23a. -#}
 {% set site_footer_fixed = true %}
 {% block head %}
-    <title>{{ ticket.ticket_type or 'General' }} Pass — {{ event.title or 'Event Pass' }}</title>
+    <title>{{ ticket.ticket_type or 'General' }} pass — {{ event.title or 'Event pass' }}</title>
+    {% include "layouts/_fontawesome.html" %}
+    <link href="/static/css/global.css" rel="stylesheet">
     <style>
+        /* Digital wallet pass (UPG-63): navy pass, gold tier; an event theme still overrides */
         :root {
-            --primary: {{ theme.primary or '#3b82f6' }};
-            --card-bg: {{ theme.bg or '#0f172a' }};
+            --primary: {{ theme.primary or '#c69d67' }};
+            --card-bg: {{ theme.bg or '#00185e' }};
             --text: {{ theme.text or '#ffffff' }};
         }
         * {
@@ -16,13 +19,13 @@
             -webkit-tap-highlight-color: transparent;
         }
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #090d16 0%, #111827 50%, #030712 100%);
+            font-family: var(--font-body);
+            background: #040b33;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1.25rem;
+            padding: 1.25rem 1.25rem 3.5rem;  /* room for the fixed site footer */
             color: #f8fafc;
         }
         .wallet-container {
@@ -31,13 +34,12 @@
             perspective: 1000px;
         }
         .ticket-card {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 28px;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-top: 4px solid var(--primary);
+            border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 40px rgba(59, 130, 246, 0.15);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
             position: relative;
         }
         .card-header {
@@ -63,8 +65,7 @@
             letter-spacing: 0.08em;
             text-transform: uppercase;
             background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
+            color: #00185e;
         }
         .status-pill {
             display: inline-flex;
@@ -75,7 +76,7 @@
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
             background: {% if ticket.status == 'checked_in' %}rgba(16, 185, 129, 0.2){% else %}rgba(59, 130, 246, 0.2){% endif %};
-            color: {% if ticket.status == 'checked_in' %}#34d399{% else %}#60a5fa{% endif %};
+            color: {% if ticket.status == 'checked_in' %}#4ade80{% else %}#dcc199{% endif %};
             border: 1px solid currentColor;
         }
         .status-dot {
@@ -83,7 +84,6 @@
             height: 6px;
             border-radius: 50%;
             background: currentColor;
-            box-shadow: 0 0 8px currentColor;
         }
         .event-title {
             font-size: 1.35rem;
@@ -95,7 +95,7 @@
         }
         .event-meta {
             font-size: 0.875rem;
-            color: #94a3b8;
+            color: #c9d3ff;
             display: flex;
             flex-direction: column;
             gap: 0.25rem;
@@ -153,7 +153,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: #64748b;
+            color: #b4bee0;
             margin-bottom: 0.25rem;
         }
         .info-value {
@@ -185,10 +185,12 @@
             border: none;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: #ffffff;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+            background: var(--primary);
+            color: #00185e;
         }
+        .btn-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+        .wallet-brand { display: flex; justify-content: center; margin-bottom: 1rem; }
+        .wallet-brand .brand-logo { height: 32px; }
         .btn-primary:hover {
             opacity: 0.95;
             transform: translateY(-1px);
@@ -196,7 +198,7 @@
         .security-hash {
             font-family: ui-monospace, Menlo, monospace;
             font-size: 0.65rem;
-            color: #475569;
+            color: #8f9bc4;
             text-align: center;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -207,28 +209,29 @@
 {% endblock %}
 {% block body %}
 
-<div class="wallet-container">
+<main class="wallet-container" id="main-content">
+    <div class="wallet-brand"><img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36"></div>
     <div class="ticket-card">
         <!-- Header -->
         <div class="card-header">
             <div class="badge-row">
                 <span class="tier-badge">{{ ticket.ticket_type or 'General' }} PASS</span>
                 <span class="status-pill">
-                    <span class="status-dot"></span>
-                    {% if ticket.status == 'checked_in' %}CHECKED IN{% else %}READY FOR ENTRY{% endif %}
+                    <span class="status-dot" aria-hidden="true"></span>
+                    {% if ticket.status == 'checked_in' %}Checked in{% else %}Ready for entry{% endif %}
                 </span>
             </div>
-            <h1 class="event-title">{{ event.title or 'Event Pass' }}</h1>
+            <h1 class="event-title">{{ event.title or 'Event pass' }}</h1>
             <div class="event-meta">
-                <span>🗓️ {{ event.date or event.start_datetime or 'Schedule Pending' }}</span>
-                <span>📍 {{ event.venue or 'Main Venue' }}</span>
+                <span><i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>{{ event.date or event.start_datetime or 'Date to be announced' }}</span>
+                <span><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ event.venue or 'Venue to be announced' }}</span>
             </div>
         </div>
 
         <!-- Body & QR -->
         <div class="card-body">
             <div class="qr-wrapper">
-                <img loading="lazy" src="data:image/png;base64,{{ qr_b64 }}" alt="QR Ticket" id="qr-image">
+                <img loading="eager" src="data:image/png;base64,{{ qr_b64 }}" alt="Entry QR code for ticket {{ ticket.ticket_code }}" id="qr-image" width="200" height="200">
             </div>
 
             <div class="ticket-code">{{ ticket.ticket_code }}</div>
@@ -236,18 +239,18 @@
             <div class="grid-info">
                 <div class="info-cell">
                     <div class="info-label">Attendee</div>
-                    <div class="info-value">{{ ticket.lead_name or 'Delegate' }}</div>
+                    <div class="info-value">{{ ticket.lead_name or '—' }}</div>
                 </div>
                 <div class="info-cell">
                     <div class="info-label">Gate</div>
-                    <div class="info-value">{{ ticket.gate_assignment or 'Gate 1' }}</div>
+                    <div class="info-value">{{ ticket.gate_assignment or 'Not assigned' }}</div>
                 </div>
                 <div class="info-cell">
                     <div class="info-label">Seat / Area</div>
-                    <div class="info-value">{{ ticket.seat_assignment or 'General Open' }}</div>
+                    <div class="info-value">{{ ticket.seat_assignment or 'Not assigned' }}</div>
                 </div>
                 <div class="info-cell">
-                    <div class="info-label">Pass Tier</div>
+                    <div class="info-label">Pass tier</div>
                     <div class="info-value">{{ ticket.ticket_type or 'General' }}</div>
                 </div>
             </div>
@@ -255,15 +258,17 @@
 
         <!-- Footer -->
         <div class="card-footer">
-            <button class="btn-action btn-primary" data-h-click="tickets/digital_wallet:1">
-                <span>🖨️ Save or Print Pass</span>
+            <button type="button" class="btn-action btn-primary" data-h-click="tickets/digital_wallet:1">
+                <i class="fas fa-print" aria-hidden="true"></i><span>Save or print pass</span>
             </button>
-            <div class="security-hash" title="HMAC Signature Verification Hash">
-                HMAC: {{ ticket.qr_token_hash or 'Verified-2026-Saptha' }}
+            {% if ticket.qr_token_hash %}
+            <div class="security-hash" title="Ticket verification hash">
+                Verification hash: {{ ticket.qr_token_hash }}
             </div>
+            {% endif %}
         </div>
     </div>
-</div>
+</main>
 
 {% endblock %}
 {% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/tickets__digital_wallet.js"></script>{% endblock %}

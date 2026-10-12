@@ -1,47 +1,31 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23b. -#}
-{% block head %}
-<title>Event Feedback | SapthaEvent</title>
-{% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% set hide_page_head = true %}
+{% block title %}Event feedback{% endblock %}
+{% block extra_css %}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;}
-body{font-family:'Inter',sans-serif;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:24px 16px;}
-.card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:28px;max-width:560px;width:100%;}
-.card-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--blue);margin-bottom:4px;}
-.card-sub{font-size:13px;color:#64748b;margin-bottom:20px;}
-.label{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:6px;display:block;}
-/* Star rating */
-.stars{display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:4px;}
-.stars input{display:none;}
-.stars label{font-size:36px;cursor:pointer;color:#e2e8f0;transition:.1s;}
-.stars input:checked ~ label,
-.stars label:hover,
-.stars label:hover ~ label{color:#fbbf24;}
-/* Tags */
-.tag-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
-.tag-opt{display:none;}
-.tag-label{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:500;border:1.5px solid #e2e8f0;background:#f8fafc;color:#64748b;cursor:pointer;transition:.15s;}
-.tag-opt:checked + .tag-label{background:var(--blue);border-color:var(--blue);color:#fff;}
-textarea.form-control{border-radius:10px;border:1.5px solid #e2e8f0;font-size:13.5px;resize:none;}
-textarea.form-control:focus{border-color:var(--orange);box-shadow:none;}
-.btn-submit{background:var(--orange);color:#fff;font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;padding:12px 32px;border-radius:10px;border:none;width:100%;cursor:pointer;transition:.15s;margin-top:8px;}
-.btn-submit:hover{background:#d95f0f;}
-.back-link{font-size:13px;color:#94a3b8;text-decoration:none;margin-top:16px;display:inline-flex;align-items:center;gap:5px;}
-.back-link:hover{color:var(--blue);}
+/* Event feedback (UPG-63) */
+.fb-card { max-width: 600px; margin: 0 auto; }
+.fb-icon { width: 52px; height: 52px; background: var(--brand-gold-100); color: var(--brand-gold-700); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 1.3rem; }
+.fb-label { font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); margin-bottom: 8px; display: block; }
+.stars { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; border: 0; padding: 0; margin: 0; }
+.stars input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.stars label { font-size: 2.2rem; line-height: 1; cursor: pointer; color: var(--border-strong); padding: 0 2px; border-radius: var(--radius-xs); }
+.stars input:checked ~ label, .stars label:hover, .stars label:hover ~ label { color: var(--brand-gold); }
+.stars input:focus-visible + label { box-shadow: var(--focus-ring); }
+.tag-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-opt { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tag-label { padding: 6px 14px; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 500; border: 1px solid var(--border-strong); background: var(--surface-card); color: var(--text-muted); cursor: pointer; }
+.tag-opt:checked + .tag-label { background: var(--brand-navy); border-color: var(--brand-navy); color: #fff; }
+.tag-opt:focus-visible + .tag-label { box-shadow: var(--focus-ring); }
 </style>
 {% endblock %}
-{% block body %}
-
-<div class="card">
+{% block content %}
+<div class="panel fb-card">
   <div class="text-center mb-4">
-    <div style="width:52px;height:52px;background:var(--orange);border-radius:12px;
-                display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-      <i class="fas fa-star" style="color:#fff;font-size:22px;"></i>
-    </div>
-    <h2 class="card-title">Rate This Event</h2>
-    <p class="card-sub">{{ event.get('title','Event') }} — Your feedback helps us improve future events.</p>
+    <div class="fb-icon" aria-hidden="true"><i class="fas fa-star"></i></div>
+    <h2 class="h4 mb-1">Rate this event</h2>
+    <p class="text-muted mb-0">{{ event.get('title','Event') }} — your feedback helps us improve future events.</p>
   </div>
 
   <form method="POST">
@@ -49,19 +33,21 @@ textarea.form-control:focus{border-color:var(--orange);box-shadow:none;}
 
     <!-- Star rating -->
     <div class="mb-4">
-      <span class="label">Overall rating</span>
+      <fieldset>
+      <legend class="fb-label">Overall rating</legend>
       <div class="stars">
-        <input type="radio" name="rating" id="s5" value="5"><label for="s5">★</label>
-        <input type="radio" name="rating" id="s4" value="4"><label for="s4">★</label>
-        <input type="radio" name="rating" id="s3" value="3"><label for="s3">★</label>
-        <input type="radio" name="rating" id="s2" value="2"><label for="s2">★</label>
-        <input type="radio" name="rating" id="s1" value="1"><label for="s1">★</label>
+        <input type="radio" name="rating" id="s5" value="5"><label for="s5" title="5 stars"><span aria-hidden="true">★</span><span class="visually-hidden">5 stars</span></label>
+        <input type="radio" name="rating" id="s4" value="4"><label for="s4" title="4 stars"><span aria-hidden="true">★</span><span class="visually-hidden">4 stars</span></label>
+        <input type="radio" name="rating" id="s3" value="3"><label for="s3" title="3 stars"><span aria-hidden="true">★</span><span class="visually-hidden">3 stars</span></label>
+        <input type="radio" name="rating" id="s2" value="2"><label for="s2" title="2 stars"><span aria-hidden="true">★</span><span class="visually-hidden">2 stars</span></label>
+        <input type="radio" name="rating" id="s1" value="1"><label for="s1" title="1 star"><span aria-hidden="true">★</span><span class="visually-hidden">1 star</span></label>
       </div>
+      </fieldset>
     </div>
 
     <!-- Quick tags -->
     <div class="mb-4">
-      <span class="label">What stood out? (select all that apply)</span>
+      <span class="fb-label">What stood out? <span class="text-subtle fw-normal">(select all that apply)</span></span>
       <div class="tag-grid">
         {% for tag in ['Well organised', 'Great venue', 'Excellent judges', 'Clear rules',
                        'Good problem statement', 'Inspiring', 'Needs improvement',
@@ -75,19 +61,16 @@ textarea.form-control:focus{border-color:var(--orange);box-shadow:none;}
 
     <!-- Comments -->
     <div class="mb-4">
-      <span class="label">Comments (optional)</span>
-      <textarea aria-label="Share your experience" name="comments" class="form-control" rows="3"
+      <label class="fb-label" for="fb-comments">Comments <span class="text-subtle fw-normal">(optional)</span></label>
+      <textarea id="fb-comments" name="comments" class="form-control" rows="3"
                 placeholder="Share your experience..."></textarea>
     </div>
 
-    <button type="submit" class="btn-submit">
-      <i class="fas fa-paper-plane me-2"></i>Submit Feedback
+    <button type="submit" class="btn btn-gold btn-lg w-100">
+      <i class="fas fa-paper-plane" aria-hidden="true"></i> Submit feedback
     </button>
   </form>
 </div>
 
-<a href="/participant/dashboard" class="back-link">
-  <i class="fas fa-arrow-left"></i> Back to Dashboard
-</a>
-
+<div class="text-center mt-3"><a href="/participant/dashboard" class="btn btn-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to dashboard</a></div>
 {% endblock %}

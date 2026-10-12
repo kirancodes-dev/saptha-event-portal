@@ -377,8 +377,35 @@ def builder(event_id):
         'coordinator/form_builder.html',
         event=event,
         existing_form=existing,
-        form_json=json.dumps(existing) if existing else 'null'
+        form_json=json.dumps(existing) if existing else 'null',
+        back_url=_builder_back_url(event_id),
+        team=team_limits(event),
     )
+
+
+def _builder_back_url(event_id: str) -> str:
+    """Where the builder's Back goes: the page on this site that opened it,
+    else the event's page for the user's role (UPG-79). "This site" is
+    BASE_URL, never the request's Host, which a client can forge (BLK-16);
+    only the path is kept."""
+    from urllib.parse import urlparse
+    from utils_email import _base_url
+    site = urlparse(_base_url()).netloc
+    for candidate in (request.args.get('next'), request.referrer):
+        if not candidate or '\\' in candidate:
+            continue
+        url = urlparse(candidate)
+        if (url.scheme and url.scheme not in ('http', 'https')) or (url.netloc and url.netloc != site):
+            continue
+        if not url.path.startswith('/') or url.path.startswith('//') or url.path.startswith('/forms/builder/'):
+            continue
+        return url.path + (f'?{url.query}' if url.query else '')
+    role = session.get('role')
+    if role in ('SuperAdmin', 'Super Admin'):
+        return '/admin/events'
+    if role == 'ClubSPOC':
+        return f'/spoc/event/{event_id}/review'
+    return '/coordinator/dashboard'
 
 
 # =========================================================
@@ -687,7 +714,8 @@ def submit_form(event_id):
             reg_data['team_code'] = new_team_code(db)  # others join with it (UPG-08)
 
         # Free vs paid fee calculation
-        fee = safe_int(event_data.get('entry_fee', 0))
+        from services_payments import fee_for
+        fee = fee_for(event_data, ptype)   # the registrant's group fee when set (UPG-73)
 
         # Capacity check — if event is at capacity, add to waitlists instead
         max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0)) or safe_int(event_data.get('capacity', 0))

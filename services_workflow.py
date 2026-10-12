@@ -123,6 +123,11 @@ class WorkflowEngine:
                     # Strictly allow next stage (prevents state skipping)
                     if idx + 1 < len(stages_lower):
                         allowed.append(stages_lower[idx + 1])
+                    # Approval is an organisation rule, not a stage: a draft in a unit
+                    # can always be sent for approval, whatever its stages (UPG-73).
+                    # From pending_approval the global map applies.
+                    if c_state == "draft" and "pending_approval" not in allowed:
+                        allowed.append("pending_approval")
                     # Revert to draft from published
                     if c_state == "published" and "draft" in stages_lower and "draft" not in allowed:
                         allowed.append("draft")

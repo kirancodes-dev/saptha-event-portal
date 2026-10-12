@@ -1,36 +1,32 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23f. -#}
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% set app_active = 'dashboard' %}
 {% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
-{% block head %}
-<title>Score Teams — {{ event.title }} | SapthaEvent</title>
-{% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-{% include "layouts/_fontawesome.html" %}
+{% block title %}Score teams — {{ event.title }}{% endblock %}
+{% block page_title %}Score teams{% endblock %}
+{% block page_sub %}{{ event.title }} · Round {{ event.active_round or 1 }}{% if open_hall %} <span class="se-badge se-badge--gold ms-1"><i class="fas fa-door-open" aria-hidden="true"></i> Open hall mode</span>{% endif %}{% endblock %}
+{% block page_actions %}<a href="/judge/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Judge panel</a>{% endblock %}
+{% block extra_css %}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;}
-body{font-family:'Inter',sans-serif;background:#f1f5f9;}
-h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
-.topbar{background:var(--blue);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-.logo-sq{width:36px;height:36px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:800;font-size:14px;color:#fff;}
-.brand{font-family:'Outfit',sans-serif;font-weight:700;font-size:16px;color:#fff;}
-.content{padding:24px;}
+h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
+.content{}
 .team-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px 18px;transition:border-color .15s;}
-.team-card:hover{border-color:var(--orange);}
+.team-card:hover{border-color:var(--brand-gold);}
 .team-card.scored{border-left:4px solid #22c55e;}
 .team-card.unscored{border-left:4px solid #e2e8f0;}
-.team-name{font-family:'Outfit',sans-serif;font-size:14.5px;font-weight:700;color:var(--blue);}
+.team-name{font-family: var(--font-heading);font-size:14.5px;font-weight:700;color: var(--brand-ink);}
 .lead-name{font-size:12.5px;color:#64748b;}
-.room-tag{font-size:11.5px;color:#94a3b8;}
-.score-badge{background:var(--orange);color:#fff;font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;padding:6px 14px;border-radius:9px;}
-.score-badge.done{background:#22c55e;}
-.btn-score-sm{background:var(--orange);color:#fff;border:none;font-size:12.5px;font-weight:600;padding:7px 18px;border-radius:8px;cursor:pointer;transition:.15s;}
-.btn-score-sm:hover{background:#d95f0f;}
-.btn-edit-sm{background:transparent;color:var(--blue);border:1.5px solid var(--blue);font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;cursor:pointer;transition:.15s;}
-.btn-edit-sm:hover{background:var(--blue);color:#fff;}
+.room-tag{font-size:11.5px;color:var(--text-muted);}
+.score-badge{background:var(--brand-gold);color:var(--brand-navy);font-family: var(--font-heading);font-size:16px;font-weight:800;padding:6px 14px;border-radius:9px;}
+.score-badge.done{background:var(--success-soft);color:var(--success-text);}
+.btn-score-sm{background:var(--brand-gold);color:var(--brand-navy);border:none;font-size:12.5px;font-weight:600;padding:7px 18px;border-radius:8px;cursor:pointer;transition:.15s;}
+.btn-score-sm:hover{background:var(--brand-gold-700);}
+.btn-edit-sm{background:transparent;color: var(--brand-ink);border:1.5px solid var(--brand-navy);font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;cursor:pointer;transition:.15s;}
+.btn-edit-sm:hover{background:var(--brand-navy);color:#fff;}
 .criteria-slider{-webkit-appearance:none;height:5px;border-radius:3px;background:#e2e8f0;outline:none;width:100%;}
-.criteria-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--orange);cursor:pointer;}
-.score-input{width:70px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:14px;font-weight:600;color:var(--blue);text-align:center;}
-.score-input:focus{border-color:var(--orange);outline:none;}
+.criteria-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--brand-gold);cursor:pointer;}
+.score-input{width:70px;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:14px;font-weight:600;color: var(--brand-ink);text-align:center;}
+.score-input:focus{border-color:var(--brand-gold);outline:none;}
 .leaderboard-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;}
 .rank-badge{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
 .rank-1{background:#fef9c3;color:#854d0e;}
@@ -38,41 +34,19 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 .rank-3{background:#fef2f2;color:#991b1b;}
 .rank-other{background:#f1f5f9;color:#64748b;}
 </style>
-<script src="/static/js/escape.js"></script>
 {% endblock %}
-{% block body %}
-
-<div class="topbar">
-  <div class="d-flex align-items-center gap-2">
-    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
-    <span class="brand">{{ event.title }}</span>
-  </div>
-  <a href="/judge/dashboard" style="color:rgba(255,255,255,.7);font-size:13px;text-decoration:none;">
-    <i class="fas fa-arrow-left me-1"></i> Dashboard
-  </a>
-</div>
-
+{% block content %}
 <div class="content">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div class="alert alert-{{ cat }} alert-dismissible fade show mb-3">
-      {{ msg|safe }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% endfor %}{% endif %}
-  {% endwith %}
+  
 
   <div class="row g-4">
     <!-- Left: teams list -->
     <div class="col-12 col-xl-8">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h4 style="color:var(--blue);margin:0;">Teams to Score</h4>
-          <p style="font-size:13px;color:#64748b;margin:0;">
-            Round {{ event.active_round or 1 }}
-            {% if open_hall %}&nbsp;·&nbsp;<span style="color:#7c3aed;font-weight:600;">Open Hall Mode</span>{% endif %}
-          </p>
+          <h2 class="h5 m-0">Teams</h2>
         </div>
-        <span style="font-size:13px;color:#94a3b8;">
+        <span class="se-badge se-badge--neutral">
           {{ teams|selectattr('my_score')|list|length }} / {{ teams|length }} scored
         </span>
       </div>
@@ -93,7 +67,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
                 {% endif %}
               </div>
               {% if team.my_score and team.my_score.remarks %}
-              <div style="font-size:11.5px;color:#64748b;margin-top:4px;font-style:italic;">
+              <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;font-style:italic;">
                 "{{ team.my_score.remarks }}"
               </div>
               {% endif %}
@@ -130,13 +104,13 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
     <div class="col-12 col-xl-4">
       <div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:18px;position:sticky;top:72px;">
         <div class="d-flex align-items-center justify-content-between mb-3">
-          <h6 style="font-family:'Outfit',sans-serif;font-weight:700;color:var(--blue);margin:0;">
-            <i class="fas fa-trophy me-2" style="color:var(--orange);"></i>Live Leaderboard
+          <h6 style="font-family: var(--font-heading);font-weight:700;color: var(--brand-ink);margin:0;">
+            <i class="fas fa-trophy me-2" style="color:var(--brand-gold);"></i>Live Leaderboard
           </h6>
-          <span id="lb-updated" style="font-size:10.5px;color:#94a3b8;"></span>
+          <span id="lb-updated" style="font-size:10.5px;color:var(--text-muted);"></span>
         </div>
         <div id="leaderboard-container">
-          <p style="font-size:13px;color:#94a3b8;text-align:center;padding:20px 0;">
+          <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0;">
             Loading scores...
           </p>
         </div>
@@ -152,7 +126,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
 <div class="modal fade" id="scoreModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius:16px;border:none;">
-      <div class="modal-header" style="background:var(--blue);border-radius:16px 16px 0 0;">
+      <div class="modal-header" style="background:var(--brand-navy);border-radius:16px 16px 0 0;">
         <h5 class="modal-title text-white" id="scoreModalTitle">Score Team</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -162,7 +136,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;}
       <div class="modal-footer border-0 pb-4 px-4 pt-0">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn text-white fw-bold px-4"
-                style="background:var(--orange);border-radius:9px;"
+                style="background:var(--brand-gold);border-radius:9px;"
                 id="submitScoreBtn" data-h-click="judge/teams:4">
           <i class="fas fa-check me-1"></i> Save Score
         </button>
@@ -197,13 +171,13 @@ function openScoreModal(regId) {
     html += `
       <div class="mb-3">
         <div class="d-flex justify-content-between align-items-center mb-1">
-          <label style="font-size:12px;font-weight:700;color:#64748b;
-                        text-transform:uppercase;letter-spacing:.6px;">${escapeHtml(cName)} (Max: ${maxScore})</label>
+          <label style="font-size:12px;font-weight:700;color:var(--text-muted);
+                        text-transform:uppercase;letter-spacing:.6px;">${escapeHtml(cName)} (Max: ${escapeHtml(maxScore)})</label>
           <input type="number" class="score-input" id="${escapeHtml('score-' + cSlug)}"
-                 min="0" max="${maxScore}" value="${escapeHtml(val)}"
+                 min="0" max="${escapeHtml(maxScore)}" value="${escapeHtml(val)}"
                  data-h-input="se:call" data-call="updateTotal">
         </div>
-        <input type="range" class="criteria-slider" min="0" max="${maxScore}" value="${escapeHtml(val)}"
+        <input type="range" class="criteria-slider" min="0" max="${escapeHtml(maxScore)}" value="${escapeHtml(val)}"
                data-h-input="judge/teams:sync-slider" data-target="${escapeHtml('score-' + cSlug)}">
       </div>`;
   });
@@ -211,12 +185,12 @@ function openScoreModal(regId) {
   html += `
     <div style="background:#f8fafc;border-radius:10px;padding:12px 14px;
                 display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-      <span style="font-size:13px;color:#64748b;font-weight:600;">Average</span>
-      <span id="totalDisplay" style="font-family:'Outfit',sans-serif;font-size:22px;
-            font-weight:800;color:var(--orange);">${escapeHtml(existing.total || 0)}</span>
+      <span style="font-size:13px;color:var(--text-muted);font-weight:600;">Average</span>
+      <span id="totalDisplay" style="font-family: var(--font-heading);font-size:22px;
+            font-weight:800;color:var(--brand-gold);">${escapeHtml(existing.total || 0)}</span>
     </div>
     <div class="mt-3">
-      <label style="font-size:12px;font-weight:700;color:#64748b;
+      <label style="font-size:12px;font-weight:700;color:var(--text-muted);
                     text-transform:uppercase;letter-spacing:.6px;">Remarks (optional)</label>
       <textarea class="form-control mt-1" id="remarksField" rows="2"
                 placeholder="Optional feedback for this team..."
@@ -320,7 +294,7 @@ async function fetchLeaderboard() {
     const data = await res.json();
     const el   = document.getElementById('leaderboard-container');
     if (!data.data || data.data.length === 0) {
-      el.innerHTML = '<p style="font-size:13px;color:#94a3b8;text-align:center;padding:16px 0;">No scores yet.</p>';
+      el.innerHTML = '<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:16px 0;">No scores yet.</p>';
       return;
     }
     let html = '';
@@ -328,16 +302,16 @@ async function fetchLeaderboard() {
       const rankClass = row.rank <= 3 ? `rank-${row.rank}` : 'rank-other';
       html += `
         <div class="leaderboard-row">
-          <div class="rank-badge ${escapeHtml(rankClass)}">${escapeHtml(row.rank)}</div>
+          <div class="rank-badge ${escapeHtml(rankClass)}" title="${row.tied ? 'Shared place' : ''}">${escapeHtml((row.tied ? '=' : '') + row.rank)}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:#1e293b;
+            <div style="font-size:13px;font-weight:600;color:var(--text-strong);
                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
               ${escapeHtml(row.team_name)}
             </div>
-            <div style="font-size:11px;color:#94a3b8;">${escapeHtml(row.judges)} judge${row.judges !== 1 ? 's' : ''}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(row.judges)} judge${row.judges !== 1 ? 's' : ''}</div>
           </div>
-          <div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;
-                      color:var(--orange);">${escapeHtml(row.score)}</div>
+          <div style="font-family: var(--font-heading);font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;
+                      color:var(--brand-ink);">${escapeHtml(row.score_text)}</div>
         </div>`;
     });
     el.innerHTML = html;
@@ -447,4 +421,5 @@ setInterval(fetchLeaderboard, 20000);
 </script>
 <script src="/static/js/pages/judge__teams.js"></script>
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/judge__teams.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/judge__teams.js"></script>
+{% endblock %}

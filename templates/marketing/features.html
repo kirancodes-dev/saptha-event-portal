@@ -1,10 +1,11 @@
 {% extends "layouts/standalone.html" %}
 {#- On the shared document since UPG-23h. -#}
-{% block html_attrs %}lang="{{ current_locale }}" dir="{{ locale_dir }}" class="dark-mode"{% endblock %}
+{% block html_attrs %}lang="{{ current_locale }}" dir="{{ locale_dir }}"{% endblock %}
 {% block head %}
   <title>Features & Integrations | SapthaEvent</title>
   {% include "layouts/_bootstrap_css.html" %}
   {% include "layouts/_fontawesome.html" %}
+  <link href="/static/css/global.css" rel="stylesheet">
   <link href="/static/css/marketing.css" rel="stylesheet">
 {% endblock %}
 {% block body_attrs %} class="mkt-page"{% endblock %}
@@ -14,18 +15,18 @@
   <nav class="navbar navbar-expand-lg mkt-nav scrolled">
     <div class="container-xl">
       <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-        <img loading="eager" src="/static/snpsu-logo.png" alt="SapthaEvent" style="height: 40px;">
-        <span class="fw-bold text-white fs-4" style="font-family: var(--font-heading);">Saptha<span class="text-warning">Event</span></span>
+        <img loading="eager" src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="159" height="40">
+        <span class="visually-hidden">SapthaEvent</span>
       </a>
       <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mktNavbar">
         <i class="fas fa-bars"></i>
       </button>
       <div class="collapse navbar-collapse" id="mktNavbar">
         <ul class="navbar-nav ms-auto align-items-center gap-3">
-          <li class="nav-item"><a class="nav-link text-white-50" href="/platform">Home</a></li>
-          <li class="nav-item"><a class="nav-link text-warning" href="/features">Features</a></li>
-          <li class="nav-item"><a class="nav-link text-white-50" href="/pricing">Pricing</a></li>
-          <li class="nav-item"><a class="nav-link text-white-50" href="/developer/docs">API Docs</a></li>
+          <li class="nav-item"><a class="nav-link" href="/platform">Home</a></li>
+          <li class="nav-item"><a class="nav-link active" aria-current="page" href="/features">Features</a></li>
+          <li class="nav-item"><a class="nav-link" href="/pricing">Pricing</a></li>
+          <li class="nav-item"><a class="nav-link" href="/developer/docs">API Docs</a></li>
           <li class="nav-item">{% include 'components/language_selector.html' %}</li>
         </ul>
       </div>
@@ -36,8 +37,8 @@
   <section class="mkt-section text-center pt-5 mt-5">
     <div class="container-xl pt-5">
       <span class="section-badge">Deep-Dive features</span>
-      <h1 class="section-title text-white">Platform Features</h1>
-      <p class="section-subtitle text-white-50">Explore the advanced event management and analytics capabilities of SapthaEvent.</p>
+      <h1 class="section-title">Platform Features</h1>
+      <p class="section-subtitle">Explore the advanced event management and analytics capabilities of SapthaEvent.</p>
     </div>
   </section>
 
@@ -46,30 +47,30 @@
     <div class="container-xl">
       <div class="row g-4">
         <div class="col-md-4">
-          <div class="p-4 bg-dark rounded-4 border border-secondary border-opacity-25 h-100 text-start">
+          <div class="panel h-100 text-start p-4">
             <div class="feature-icon-wrap fi-blue mb-3">
               <i class="fas fa-id-card"></i>
             </div>
-            <h4 class="text-white fs-5 fw-bold mb-2">SSO & Identity</h4>
-            <p class="text-white-50 small mb-0">Single Sign-On (SSO) integration for active directories including Microsoft Azure, Google Workspace, and SAML/LDAP protocols.</p>
+            <h2 class="fs-5 fw-bold mb-2">SSO & Identity</h2>
+            <p class="text-muted small mb-0">Single Sign-On (SSO) integration for active directories including Microsoft Azure, Google Workspace, and SAML/LDAP protocols.</p>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="p-4 bg-dark rounded-4 border border-secondary border-opacity-25 h-100 text-start">
+          <div class="panel h-100 text-start p-4">
             <div class="feature-icon-wrap fi-orange mb-3">
               <i class="fas fa-shield-halved"></i>
             </div>
-            <h4 class="text-white fs-5 fw-bold mb-2">GDPR & Compliance</h4>
-            <p class="text-white-50 small mb-0">Complete data masking on student telemetry, immutable logging trails, and full control over right-to-be-forgotten requests.</p>
+            <h2 class="fs-5 fw-bold mb-2">GDPR & Compliance</h2>
+            <p class="text-muted small mb-0">Complete data masking on student telemetry, immutable logging trails, and full control over right-to-be-forgotten requests.</p>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="p-4 bg-dark rounded-4 border border-secondary border-opacity-25 h-100 text-start">
+          <div class="panel h-100 text-start p-4">
             <div class="feature-icon-wrap fi-green mb-3">
               <i class="fas fa-qrcode"></i>
             </div>
-            <h4 class="text-white fs-5 fw-bold mb-2">Encrypted Ticketing</h4>
-            <p class="text-white-50 small mb-0">Secure double-hashed QR codes generated inside digital tickets, preventing validation spoofing and gate forgery.</p>
+            <h2 class="fs-5 fw-bold mb-2">Encrypted Ticketing</h2>
+            <p class="text-muted small mb-0">Secure double-hashed QR codes generated inside digital tickets, preventing validation spoofing and gate forgery.</p>
           </div>
         </div>
       </div>
@@ -77,7 +78,7 @@
   </section>
 
   <!-- FOOTER -->
-  <footer class="bg-black text-white-50 py-5" style="border-top: 1px solid rgba(255,255,255,0.05);">
+  <footer class="site-ft py-4">
     <div class="container-xl text-center small">
       &copy; 2026 SapthaEvent — SNPSU. All rights reserved.
     </div>

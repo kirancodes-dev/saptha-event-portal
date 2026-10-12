@@ -1,7 +1,8 @@
 {% extends "base_classic.html" %}
 
 {% block title %}Leaderboard & Engagement{% endblock %}
-{% block page_title %}Engagement & Rankings{% endblock %}
+{% block page_title %}Leaderboard &amp; activity{% endblock %}
+{% set app_active = 'ranks' %}
 
 {% block extra_css %}
 <style>
@@ -9,7 +10,7 @@
     :root {
         --glass-bg: rgba(255, 255, 255, 0.7);
         --glass-border: rgba(226, 232, 240, 0.8);
-        --gold-glow: 0 0 15px rgba(201, 164, 94, 0.4);
+        --gold-glow: 0 0 15px rgba(198,157,103, 0.4);
         --silver-glow: 0 0 15px rgba(148, 163, 184, 0.3);
         --bronze-glow: 0 0 15px rgba(180, 83, 9, 0.2);
     }
@@ -87,7 +88,7 @@
     .podium-card.rank-1 {
         height: 320px;
         order: 2;
-        border-color: #c9a45e;
+        border-color: #c69d67;
         box-shadow: var(--gold-glow);
     }
     .podium-card.rank-2 {
@@ -122,7 +123,7 @@
         font-size: 1.5rem;
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
-    .rank-1 .podium-badge { background: linear-gradient(135deg, #fef08a, #c9a45e); color: #78350f; }
+    .rank-1 .podium-badge { background: linear-gradient(135deg, #fef08a, #c69d67); color: #78350f; }
     .rank-2 .podium-badge { background: linear-gradient(135deg, #f1f5f9, #94a3b8); color: #1e293b; }
     .rank-3 .podium-badge { background: linear-gradient(135deg, #ffedd5, #b45309); color: #7c2d12; }
 
@@ -141,7 +142,7 @@
         margin-bottom: 1rem;
         border: 3px solid var(--glass-border);
     }
-    .rank-1 .podium-avatar { border-color: #c9a45e; }
+    .rank-1 .podium-avatar { border-color: #c69d67; }
     .rank-2 .podium-avatar { border-color: #94a3b8; }
     .rank-3 .podium-avatar { border-color: #b45309; }
 
@@ -156,9 +157,9 @@
     }
     
     [data-theme="dark"] .xp-badge {
-        background-color: rgba(30, 41, 59, 0.5);
+        background-color: var(--surface-sunken);
         color: var(--primary-300);
-        border-color: rgba(59, 130, 246, 0.2);
+        border-color: var(--brand-navy-100);
     }
 
     /* Leaderboard Table Glassmorphism */
@@ -189,7 +190,7 @@
     }
     
     .row-highlight {
-        background-color: rgba(59, 130, 246, 0.05) !important;
+        background-color: var(--brand-navy-50) !important;
         font-weight: 600;
     }
     
@@ -240,24 +241,24 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-2">
+<div>
     <!-- Quick Stats -->
     <div class="row g-4 mb-4">
         <div class="col-md-6 col-lg-3">
-            <div class="card p-3 shadow-sm border-0 bg-gradient text-white" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6);">
+            <div class="card p-3 border-0 text-white h-100" style="background: var(--brand-navy); border-bottom: 3px solid var(--brand-gold) !important;">
                 <div class="d-flex align-items-center">
                     <div class="avatar-lg bg-white-opacity-20 rounded-circle p-3 text-white me-3">
                         <i class="fas fa-medal fa-2x"></i>
                     </div>
                     <div>
-                        <h6 class="text-white-50 mb-1">Your Engagement</h6>
-                        <h4 class="mb-0 fw-bold">{{ session.get('name', 'Participant') }}</h4>
+                        <h6 class="mb-1" style="color: rgba(255,255,255,.75);">Your engagement</h6>
+                        <h4 class="mb-0 fw-bold text-white">{{ session.get('name', 'Participant') }}</h4>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
-            <div class="card p-3 shadow-sm border-0" style="background: var(--glass-bg); border: 1px solid var(--glass-border);">
+            <div class="card p-3 h-100">
                 <div class="d-flex align-items-center">
                     <div class="avatar-lg bg-primary-light rounded-circle p-3 text-primary me-3">
                         <i class="fas fa-bolt fa-2x"></i>
@@ -276,7 +277,7 @@
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
-            <div class="card p-3 shadow-sm border-0" style="background: var(--glass-bg); border: 1px solid var(--glass-border);">
+            <div class="card p-3 h-100">
                 <div class="d-flex align-items-center">
                     <div class="avatar-lg bg-success-light rounded-circle p-3 text-success me-3">
                         <i class="fas fa-trophy fa-2x"></i>
@@ -295,27 +296,27 @@
             </div>
         </div>
         <div class="col-md-6 col-lg-3">
-            <div class="card p-3 shadow-sm border-0" style="background: var(--glass-bg); border: 1px solid var(--glass-border);">
+            <div class="card p-3 h-100">
                 <div class="d-flex align-items-center">
                     <div class="avatar-lg bg-warning-light rounded-circle p-3 text-warning me-3">
                         <i class="fas fa-crown fa-2x"></i>
                     </div>
                     <div>
                         <h6 class="text-muted mb-1">XP Level</h6>
-                        {% set ns3 = namespace(lvl_name='Freshman', lvl_emoji='🌱') %}
+                        {% set ns3 = namespace(lvl_name='Freshman', lvl_emoji='fa-seedling') %}
                         {% set current_xp = ns.found_xp %}
                         {% if current_xp >= 2000 %}
-                            {% set ns3.lvl_name = 'Grandmaster' %}{% set ns3.lvl_emoji = '💎' %}
+                            {% set ns3.lvl_name = 'Grandmaster' %}{% set ns3.lvl_emoji = 'fa-gem' %}
                         {% elif current_xp >= 1000 %}
-                            {% set ns3.lvl_name = 'Legend' %}{% set ns3.lvl_emoji = '👑' %}
+                            {% set ns3.lvl_name = 'Legend' %}{% set ns3.lvl_emoji = 'fa-crown' %}
                         {% elif current_xp >= 600 %}
-                            {% set ns3.lvl_name = 'Champion' %}{% set ns3.lvl_emoji = '🏆' %}
+                            {% set ns3.lvl_name = 'Champion' %}{% set ns3.lvl_emoji = 'fa-trophy' %}
                         {% elif current_xp >= 300 %}
-                            {% set ns3.lvl_name = 'Achiever' %}{% set ns3.lvl_emoji = '⭐' %}
+                            {% set ns3.lvl_name = 'Achiever' %}{% set ns3.lvl_emoji = 'fa-star' %}
                         {% elif current_xp >= 100 %}
-                            {% set ns3.lvl_name = 'Explorer' %}{% set ns3.lvl_emoji = '🔍' %}
+                            {% set ns3.lvl_name = 'Explorer' %}{% set ns3.lvl_emoji = 'fa-compass' %}
                         {% endif %}
-                        <h4 class="mb-0 fw-bold">{{ ns3.lvl_emoji }} {{ ns3.lvl_name }}</h4>
+                        <h4 class="mb-0 fw-bold"><i class="fas {{ ns3.lvl_emoji }} text-gold me-1" aria-hidden="true"></i>{{ ns3.lvl_name }}</h4>
                     </div>
                 </div>
             </div>
@@ -423,7 +424,7 @@
                                                 <div>
                                                     <span class="fw-bold">{{ student.name }}</span>
                                                     {% if student.email == current_user_email %}
-                                                        <span class="badge bg-primary ms-1" style="font-size:0.65rem;">You</span>
+                                                        <span class="se-badge se-badge--brand ms-1">You</span>
                                                     {% endif %}
                                                 </div>
                                             </div>

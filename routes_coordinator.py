@@ -102,13 +102,16 @@ def dashboard():
                 event_date = d.get('date', '9999-99-99')
                 if event_date < current_date:
                     continue
-            total_regs  += d.get('registration_count', 0)
             total_staff += len(d.get('staff', []))
-            regs = (db.collection('registrations')
-                      .where(filter=_ff('event_id', '==', e.id)).stream())
+            regs = [r.to_dict() or {} for r in (db.collection('registrations')
+                      .where(filter=_ff('event_id', '==', e.id)).stream())]
+            # Count the registrations themselves: the cached counter on the event
+            # can be stale (seeded or never reconciled) (UPG-80)
+            d['registration_count'] = len(regs)
+            total_regs += len(regs)
             d['scored_teams'] = sum(
                 1 for r in regs
-                if not r.to_dict().get('is_eliminated') and r.to_dict().get('scores'))
+                if not r.get('is_eliminated') and r.get('scores'))
             events.append(d)
     except Exception as exc:
         flash(f"Dashboard error: {exc}", "danger")
@@ -154,47 +157,18 @@ def view_registrations(event_id):
         return redirect('/coordinator/dashboard')
 
 
-# 3. CREATE EVENT
+# 3. CREATE EVENT: retired (UPG-78). This used to save a live event straight
+# from the coordinator dashboard's old modal, skipping the event types,
+# validation, draft and review. Events are made in the wizard now.
 @coord_bp.route('/create_event', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
 def create_event():
-    try:
-        overview = request.form.get('overview', '').strip()
-        criteria_list = [c.strip() for c in
-            request.form.get('criteria', 'Overall Score').split(',') if c.strip()] or ['Overall Score']
-        media_urls = [u.strip() for u in request.form.getlist('media_urls[]') if u.strip()]
-        category = (session.get('category') if session.get('category') not in (None, 'All')
-                    else request.form.get('category', 'General'))
-        db.collection('events').add({
-            # Length caps — prevent oversized Firestore documents
-            'title':              request.form.get('title', '').strip()[:100],
-            'date':               request.form.get('date'),
-            'deadline':           request.form.get('deadline'),
-            'venue':              request.form.get('venue', '').strip()[:200],
-            'description':        overview[:120] + '...' if len(overview) > 120 else overview,
-            'overview':           overview[:3000],
-            'rules':              request.form.get('rules', '')[:5000],
-            'prizes':             request.form.get('prizes', '')[:1000],
-            'category':           category,
-            'media_urls':         media_urls[:5],   # max 5 media URLs
-            'banner_url':         media_urls[0] if media_urls else '',
-            'entry_fee':          safe_int(request.form.get('entry_fee', 0)),
-            'is_team_event':      request.form.get('is_team') == 'on',
-            'judging_criteria':   criteria_list,
-            'status':             'active',
-            'active_round':       1,
-            'registration_count': 0,
-            'staff':              [],
-            'created_by':         session.get('name'),
-            'created_by_email':   session.get('user_id'),
-            'created_at':         datetime.datetime.now(datetime.timezone.utc),
-        })
-        log_action(db, "EVENT_CREATED",
-                   f"{session.get('user_id')} created '{request.form.get('title')}'")
-        flash("Event created successfully!", "success")
-    except Exception as exc:
-        flash(f"Error creating event: {exc}", "danger")
+    if session.get('role') in ('ClubSPOC', 'SuperAdmin', 'Super Admin'):
+        flash("Events are created in the event wizard: it saves a draft you can review before publishing.", "info")
+        return redirect('/spoc/create_event')
+    flash("Event coordinators don't create events. Ask your club SPOC to create it; "
+          "they can then add you to its staff.", "warning")
     return redirect('/coordinator/dashboard')
 
 
@@ -455,44 +429,33 @@ def publish_results(event_id):
         event_ref   = db.collection('events').document(event_id)
         event_data  = event_ref.get().to_dict() or {}
         event_title = event_data.get('title', 'Event')
-        leaderboard = []
+        # The shared ranking (UPG-84): the same scores and places as every board.
+        # Scores keep their decimals; equal scores share a place.
+        from services_leaderboard import for_event
+        regs = {}
         for r in (db.collection('registrations')
                     .where(filter=_ff('event_id', '==', event_id)).stream()):
-            d = r.to_dict()
-            if d.get('is_eliminated'): continue
-            scores = d.get('scores', {})
-            if not scores: continue
-            avg = round(sum(safe_int(s.get('total', 0)) for s in scores.values()) / len(scores), 2)
-            leaderboard.append({'team_name': d.get('team_name'), 'lead_name': d.get('lead_name'),
-                                 'email': d.get('lead_email'), 'phone': _phone(d), 'score': avg})
-        leaderboard.sort(key=lambda x: x['score'], reverse=True)
+            regs[r.id] = r.to_dict() or {}
+        ranked = for_event(db, event_id)
+        leaderboard = [{'team_name': row['team_name'], 'lead_name': row['lead_name'],
+                        'email': row['lead_email'], 'phone': _phone(regs.get(row['id'], {})),
+                        'score': row['score'], 'rank': row['rank']} for row in ranked]
 
         # Write final_rank + final_score to every scored registration
-        for reg in (db.collection('registrations')
-                      .where(filter=_ff('event_id', '==', event_id)).stream()):
-            d = reg.to_dict()
-            if d.get('is_eliminated') or not d.get('scores'):
-                continue
-            reg_scores = d.get('scores', {})
-            reg_avg    = round(
-                sum(safe_int(s.get('total', 0)) for s in reg_scores.values()) / len(reg_scores), 2
-            ) if reg_scores else 0
-            rank = next(
-                (i + 1 for i, lb in enumerate(leaderboard)
-                 if lb.get('email') == d.get('lead_email')), None
-            )
-            db.collection('registrations').document(reg.id).update({
-                'final_score': reg_avg,
-                'final_rank':  rank,
+        for row in ranked:
+            db.collection('registrations').document(row['id']).update({
+                'final_score': row['score'],
+                'final_rank':  row['rank'],
             })
 
-        for idx, winner in enumerate(leaderboard[:3], start=1):
-            send_result_email(str(winner['email']), str(winner['lead_name']), event_title, idx, winner['score'])
+        winners = [w for w in leaderboard if w['rank'] <= 3]
+        for winner in winners:
+            send_result_email(str(winner['email']), str(winner['lead_name']), event_title, winner['rank'], winner['score'])
             if winner.get('phone'):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
-                    event_title, idx, winner['score'])
+                    event_title, winner['rank'], winner['score'])
 
-        event_ref.update({'status': 'completed', 'winners': leaderboard[:3],
+        event_ref.update({'status': 'completed', 'winners': winners,
                           'completed_at': datetime.datetime.now(datetime.timezone.utc)})
 
         # Kick off AI summaries in background (best-effort — won't block publish)

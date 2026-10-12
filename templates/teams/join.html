@@ -4,21 +4,16 @@
 {% block page_title %}Join a team{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
-        <p>Enter the 6-character code your team lead shared. You'll be added to their registration and get the team ticket.</p>
-        <form method="POST" action="/teams/join">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label for="join_code">Invite code</label>
-            <input id="join_code" name="join_code" maxlength="6" required value="{{ code }}"
-                   style="font-family:monospace;font-size:18px;text-transform:uppercase;" autocomplete="off">
+<div class="panel" style="max-width:520px;">
+    <p class="text-muted">Enter the 6-character code your team lead shared. You'll be added to their registration and get the team ticket.</p>
+    <form method="POST" action="/teams/join">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="join_code" class="form-label">Invite code</label>
+        <div class="d-flex gap-2 flex-wrap">
+            <input id="join_code" name="join_code" maxlength="6" required value="{{ code }}" class="form-control font-monospace text-uppercase"
+                   style="max-width:200px;font-size:1.15rem;letter-spacing:.15em;" autocomplete="off">
             <button type="submit" class="btn btn-primary">Join team</button>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 {% endblock %}

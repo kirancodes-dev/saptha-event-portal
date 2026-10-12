@@ -4,20 +4,12 @@
     <title>SapthaEvent Highlight Reels</title>
     {% include "layouts/_fontawesome.html" %}
     {% include "layouts/_bootstrap_css.html" %}
+    <link href="/static/css/global.css" rel="stylesheet">
     
     <style>
-        :root {
-            --bg-dark: #070913;
-            --card-bg: rgba(15, 23, 42, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary: #3b82f6;
-            --pink-accent: #ec4899;
-            --text-muted: #94a3b8;
-        }
-
+        /* Highlight reels (UPG-63): a full-screen video viewer on the brand's deepest navy */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
+            background: var(--brand-navy-950);
             color: #f8fafc;
             margin: 0;
             padding: 0;
@@ -26,17 +18,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background-image: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 50%),
-                              radial-gradient(circle at 10% 90%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
         }
 
         /* Glassmorphic back navigation */
         .reels-header {
             position: absolute;
-            top: 20px;
+            top: 16px;
             left: 20px;
+            right: 20px;
             z-index: 100;
-            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
         }
 
         /* Reel Container - Mobile aspect ratio */
@@ -47,8 +41,8 @@
             height: 100%;
             max-height: 820px;
             background: #000;
-            border-radius: 28px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            border: 3px solid rgba(255, 255, 255, 0.12);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
             overflow: hidden;
             display: flex;
@@ -131,8 +125,8 @@
             border-color: rgba(255, 255, 255, 0.25);
         }
         .action-btn.active {
-            color: var(--pink-accent);
-            border-color: var(--pink-accent);
+            color: var(--brand-gold);
+            border-color: var(--brand-gold);
             animation: bounce-heart 0.3s ease-out;
         }
 
@@ -169,7 +163,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            border: 1.5px solid var(--primary);
+            border: 1.5px solid var(--brand-gold);
             background: rgba(255,255,255,0.1);
             display: flex;
             align-items: center;
@@ -193,9 +187,9 @@
         }
 
         .reel-tag {
-            background: rgba(59, 130, 246, 0.2);
-            color: var(--primary);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            background: rgba(198, 157, 103, 0.18);
+            color: var(--brand-gold-300);
+            border: 1px solid rgba(198, 157, 103, 0.4);
             border-radius: 4px;
             padding: 2px 6px;
             font-size: 11px;
@@ -264,8 +258,11 @@
 {% endblock %}
 {% block body %}
     <div class="reels-header">
-        <a href="/live/streams" class="btn btn-outline-light rounded-pill px-3 py-2 btn-sm bg-dark bg-opacity-40 border-secondary border-opacity-35">
-            <i class="fas fa-arrow-left me-1"></i> Back to Stream Portal
+        <a href="/live/streams" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to live streams
+        </a>
+        <a href="/" class="d-none d-md-inline-flex" aria-label="SapthaEvent home">
+            <img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36">
         </a>
     </div>
 
@@ -273,8 +270,8 @@
     <div class="reel-viewport">
         {# No external sample videos: the CSP only plays this site's media; event images show instead (UPG-60) #}
         <!-- Next/Prev Buttons for Desktop -->
-        <div class="nav-overlay-arrow arrow-up" data-h-click="public/reels:1"><i class="fas fa-chevron-up"></i></div>
-        <div class="nav-overlay-arrow arrow-down" data-h-click="public/reels:2"><i class="fas fa-chevron-down"></i></div>
+        <div class="nav-overlay-arrow arrow-up" role="button" tabindex="0" aria-label="Previous reel" data-h-click="public/reels:1"><i class="fas fa-chevron-up"></i></div>
+        <div class="nav-overlay-arrow arrow-down" role="button" tabindex="0" aria-label="Next reel" data-h-click="public/reels:2"><i class="fas fa-chevron-down"></i></div>
 
         <div class="play-indicator" id="play-splash"><i class="fas fa-play"></i></div>
 
@@ -286,7 +283,7 @@
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
-                        <div class="action-btn" data-h-click="public/reels:4"><i class="fas fa-heart"></i></div>
+                        <div class="action-btn" role="button" tabindex="0" aria-label="Like" data-h-click="public/reels:4"><i class="fas fa-heart"></i></div>
                         <span class="action-label">1.2K</span>
                     </div>
                     <div class="d-flex flex-column align-items-center">
@@ -300,7 +297,7 @@
                 </div>
                 <div class="reel-details">
                     <div class="author-badge">
-                        <div class="author-avatar bg-primary text-white">CE</div>
+                        <div class="author-avatar">CE</div>
                         <span class="author-name">Cultural Event Comm.</span>
                     </div>
                     <p class="reel-title">Highlights from the opening group dance at SNPSU Auditorium! What a performance! #sapthafest2026</p>
@@ -314,7 +311,7 @@
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
-                        <div class="action-btn" data-h-click="public/reels:6"><i class="fas fa-heart"></i></div>
+                        <div class="action-btn" role="button" tabindex="0" aria-label="Like" data-h-click="public/reels:6"><i class="fas fa-heart"></i></div>
                         <span class="action-label">956</span>
                     </div>
                     <div class="d-flex flex-column align-items-center">
@@ -328,7 +325,7 @@
                 </div>
                 <div class="reel-details">
                     <div class="author-badge">
-                        <div class="author-avatar bg-info text-white">HC</div>
+                        <div class="author-avatar">HC</div>
                         <span class="author-name">Hackathon Organisers</span>
                     </div>
                     <p class="reel-title">Final seconds of the 24hr Hackathon pitch rounds inside CS Labs Block. The exhaustion is real but the products are epic! 💻🔥</p>
@@ -342,7 +339,7 @@
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
-                        <div class="action-btn" data-h-click="public/reels:8"><i class="fas fa-heart"></i></div>
+                        <div class="action-btn" role="button" tabindex="0" aria-label="Like" data-h-click="public/reels:8"><i class="fas fa-heart"></i></div>
                         <span class="action-label">2.4K</span>
                     </div>
                     <div class="d-flex flex-column align-items-center">
@@ -356,7 +353,7 @@
                 </div>
                 <div class="reel-details">
                     <div class="author-badge">
-                        <div class="author-avatar bg-success text-white">RW</div>
+                        <div class="author-avatar">RW</div>
                         <span class="author-name">RoboWars SPOC</span>
                     </div>
                     <p class="reel-title">Absolute destruction at the RoboWars arena today. Team DeathGrid takes home the cup with a brutal flip! 🤖💥</p>

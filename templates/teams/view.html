@@ -4,26 +4,20 @@
 {% block page_title %}{{ reg.team_name or 'Team' }}{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
+<div class="panel" style="max-width:760px;">
 
-        <p>{{ event.title or reg.event_title or 'Event' }}{% if event.date %} · {{ event.date }}{% endif %}</p>
+        <p class="text-muted mb-1">{{ event.title or reg.event_title or 'Event' }}{% if event.date %} · {{ event.date }}{% endif %}</p>
         <p>{{ reg.members | length }} of {{ team_max }} people (at least {{ team_min }}).</p>
         <p><a class="btn btn-primary" href="/ticket/{{ reg_id }}">Open the team ticket</a></p>
 
-        <h2 style="font-size:16px;margin-top:20px;">Members</h2>
-        <ul style="list-style:none;padding:0;">
+        <h2 class="h6 mt-4 mb-2">Members</h2>
+        <ul class="list-unstyled mb-0">
             {% for m in reg.members %}
-            <li style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;">
-                <span>{{ m.name }} <span style="color:#64748b;">{{ m.email }}{% if m.usn %} · {{ m.usn }}{% endif %}</span>
-                    {% if m.role == 'Lead' %}<span class="badge badge-primary">Lead</span>{% endif %}</span>
+            <li class="d-flex justify-content-between align-items-center gap-2 py-2 border-bottom">
+                <span><span class="fw-semibold text-strong">{{ m.name }}</span> <span class="text-subtle small">{{ m.email }}{% if m.usn %} · {{ m.usn }}{% endif %}</span>
+                    {% if m.role == 'Lead' %}<span class="se-badge se-badge--gold se-badge--plain ms-1">Lead</span>{% endif %}</span>
                 {% if is_lead and m.role != 'Lead' %}
-                <form method="POST" action="/teams/{{ reg_id }}/remove" style="margin:0;">
+                <form method="POST" action="/teams/{{ reg_id }}/remove" class="m-0">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="email" value="{{ m.email }}">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
@@ -34,18 +28,17 @@
         </ul>
 
         {% if is_lead %}
-        <h2 style="font-size:16px;margin-top:20px;">Invite code</h2>
-        <p>Teammates join at <strong>/teams/join</strong> with code <strong style="font-family:monospace;font-size:18px;">{{ reg.team_code }}</strong>.</p>
+        <h2 class="h6 mt-4 mb-2">Invite code</h2>
+        <p>Teammates join at <strong>/teams/join</strong> with code <strong class="font-monospace fs-5 text-strong" style="letter-spacing:.12em;">{{ reg.team_code }}</strong>.</p>
         <form method="POST" action="/teams/{{ reg_id }}/regenerate">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-outline-secondary">Make a new code (the old one stops working)</button>
         </form>
         {% else %}
-        <form method="POST" action="/teams/{{ reg_id }}/leave" style="margin-top:20px;">
+        <form method="POST" action="/teams/{{ reg_id }}/leave" class="mt-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-outline-danger">Leave this team</button>
         </form>
         {% endif %}
-    </div>
 </div>
 {% endblock %}

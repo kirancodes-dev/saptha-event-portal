@@ -23,7 +23,7 @@ var cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
     // Organisers typed the title, venue and category (BLK-19)
     var venueHtml = info.event.extendedProps.venue ? '<i class="fas fa-map-marker-alt me-1"></i>' + escapeHtml(info.event.extendedProps.venue) + '<br>' : '';
     var catHtml = info.event.extendedProps.category ? '<span class="badge bg-secondary">' + escapeHtml(info.event.extendedProps.category) + '</span>' : '';
-    tooltip.innerHTML = '<strong style="color:#fbbf24;">' + escapeHtml(info.event.title) + '</strong><br>' + venueHtml + catHtml;
+    tooltip.innerHTML = '<strong style="color:#dcc199;">' + escapeHtml(info.event.title) + '</strong><br>' + venueHtml + catHtml;
     tooltip.style.display = 'block';
   },
   eventMouseLeave: function() { tooltip.style.display = 'none'; },

@@ -1,103 +1,70 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23d. -#}
-{% block head %}
-  <title>My Profile | SapthaEvent</title>
-  {% include "layouts/_bootstrap_css.html" %}
-  <link href="/static/css/global.css" rel="stylesheet">
-  {% include "layouts/_fontawesome.html" %}
-  <style>
-    :root { --blue:#1a2557; --orange:#c9a45e; }
-    body { background:#f1f5f9; font-family:'Inter',sans-serif; min-height:100vh; padding-bottom:60px; }
-    h1,h2,h3,h4,h5,h6 { font-family:'Outfit',sans-serif; }
-
-    /* topnav */
-    .topnav { background:var(--blue); padding:0 24px; height:56px; display:flex; align-items:center;
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% block title %}SPOC profile{% endblock %}
+{% set app_active = 'profile' %}
+{% block page_title %}SPOC profile{% endblock %}
+{% block page_actions %}<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>{% endblock %}
+{% block extra_css %}
+<style>
+h1,h2,h3,h4,h5,h6 { font-family: var(--font-heading); }
+/* topnav */
+    .topnav { background:var(--brand-navy); padding:0 24px; height:56px; display:flex; align-items:center;
               justify-content:space-between; position:sticky; top:0; z-index:100;
               box-shadow:0 2px 8px rgba(0,0,0,.2); }
-    .brand { font-family:'Outfit',sans-serif; font-weight:700; font-size:15px; color:#fff; margin-left:10px; }
-    .nav-link-item { color:rgba(255,255,255,.7); font-size:12.5px; text-decoration:none; padding:5px 11px;
-                     border-radius:7px; transition:.15s; }
-    .nav-link-item:hover { color:#fff; background:rgba(255,255,255,.1); }
-
-    /* card */
+/* card */
     .profile-card { background:#fff; border-radius:16px; border:1px solid #e2e8f0;
-                    box-shadow:0 2px 12px rgba(26,37,87,.06); overflow:hidden; }
-    .card-header-band { background:var(--blue); padding:28px 32px; display:flex; align-items:center; gap:20px; }
-    .avatar { width:72px; height:72px; border-radius:50%; background:var(--orange);
-              display:flex; align-items:center; justify-content:center; font-family:'Outfit',sans-serif;
+                    box-shadow:0 2px 12px rgba(0,24,94,.06); overflow:hidden; }
+.card-header-band { background:var(--brand-navy); padding:28px 32px; display:flex; align-items:center; gap:20px; }
+.avatar { width:72px; height:72px; border-radius:50%; background:var(--brand-gold);
+              display:flex; align-items:center; justify-content:center; font-family: var(--font-heading);
               font-weight:800; font-size:26px; color:#fff; flex-shrink:0; }
-    .card-body-pad { padding:28px 32px; }
-
-    /* form */
+.card-body-pad { padding:28px 32px; }
+/* form */
     .field-label { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
                    color:#64748b; margin-bottom:6px; display:block; }
-    .field-input { width:100%; padding:11px 14px; border:1.5px solid #e2e8f0; border-radius:9px;
+.field-input { width:100%; padding:11px 14px; border:1.5px solid #e2e8f0; border-radius:9px;
                    font-size:14px; font-family:'Inter',sans-serif; background:#f8fafc;
                    color:#1e293b; transition:.15s; outline:none; }
-    .field-input:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(201,164,94,.15); background:#fff; }
-    .field-hint { font-size:11.5px; color:#94a3b8; margin-top:4px; }
-
-    /* read-only info box */
+.field-input:focus { border-color:var(--brand-gold); box-shadow:0 0 0 3px rgba(198,157,103,.15); background:#fff; }
+.field-hint { font-size:11.5px; color:#94a3b8; margin-top:4px; }
+/* read-only info box */
     .info-box { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:9px;
                 padding:11px 14px; font-size:14px; color:#475569; }
-    .info-label { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+.info-label { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
                   color:#94a3b8; margin-bottom:4px; }
-
-    .btn-save { background:var(--blue); color:#fff; font-weight:700; border:none;
+.btn-save { background:var(--brand-navy); color:#fff; font-weight:700; border:none;
                 border-radius:10px; padding:11px 32px; font-size:14.5px; cursor:pointer;
-                font-family:'Outfit',sans-serif; transition:.2s; }
-    .btn-save:hover { background:#0f1b44; transform:translateY(-1px); }
-    .btn-back-link { display:inline-flex; align-items:center; gap:6px; color:#64748b;
+                font-family: var(--font-heading); transition:.2s; }
+.btn-save:hover { background:#0f1b44; transform:translateY(-1px); }
+.btn-back-link { display:inline-flex; align-items:center; gap:6px; color:#64748b;
                      font-size:13px; font-weight:600; text-decoration:none; padding:10px 20px;
                      border:1.5px solid #e2e8f0; border-radius:9px; background:#fff; transition:.15s; }
-    .btn-back-link:hover { border-color:#1a2557; color:#1a2557; }
-
-    /* stat pills */
+.btn-back-link:hover { border-color:#00185e; color:#00185e; }
+/* stat pills */
     .stat-pill { display:inline-flex; flex-direction:column; align-items:center;
                  background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;
                  padding:14px 24px; min-width:110px; }
-    .stat-pill-val { font-family:'Outfit',sans-serif; font-size:22px; font-weight:800; color:var(--blue); }
-    .stat-pill-lbl { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#94a3b8; font-weight:600; }
-  </style>
+.stat-pill-val { font-family: var(--font-heading); font-size:22px; font-weight:800; color: var(--brand-ink); }
+.stat-pill-lbl { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#94a3b8; font-weight:600; }
+</style>
 {% endblock %}
-{% block body %}
+{% block content %}
+<div style="max-width:760px;">
 
-<!-- TOPNAV -->
-<div class="topnav">
-  <div class="d-flex align-items-center gap-2">
-    <img loading="eager" src="/static/snpsu-logo.png" alt="Sapthagiri NPS University" style="height:38px;width:auto;object-fit:contain;">
-    <span class="brand">My Profile</span>
-  </div>
-  <div class="d-flex align-items-center gap-2">
-    <a href="/spoc/dashboard" class="nav-link-item"><i class="fas fa-arrow-left me-1"></i>Back to Dashboard</a>
-    <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
-  </div>
-</div>
-
-<div class="container" style="max-width:720px;margin:36px auto;padding:0 16px;">
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}
-    <div class="alert alert-{{ 'success' if cat == 'success' else 'danger' }} alert-dismissible fade show mb-4" role="alert"
-         style="border-radius:10px;font-size:13.5px;">
-      {{ msg }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% endfor %}
-  {% endwith %}
+  
 
   <div class="profile-card mb-4">
     <!-- Header band with avatar -->
     <div class="card-header-band">
       <div class="avatar">{{ (user.get('name') or 'S')[0].upper() }}</div>
       <div>
-        <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:20px;color:#fff;margin-bottom:2px;">
+        <div style="font-family: var(--font-heading);font-weight:800;font-size:20px;color:#fff;margin-bottom:2px;">
           {{ user.get('name', 'SPOC') }}
         </div>
         <div style="font-size:13px;color:rgba(255,255,255,.6);">
           <i class="fas fa-envelope me-1"></i>{{ user.get('email', user.id) }}
           &nbsp;·&nbsp;
-          <span style="background:var(--orange);color:#fff;padding:2px 10px;border-radius:100px;font-size:11px;font-weight:700;">
+          <span style="background:var(--brand-gold);color:#fff;padding:2px 10px;border-radius:100px;font-size:11px;font-weight:700;">
             {{ user.get('role','ClubSPOC') }}
           </span>
         </div>
@@ -168,8 +135,8 @@
   <!-- Quick stats card -->
   <div class="profile-card">
     <div class="card-body-pad">
-      <h6 style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--blue);margin-bottom:20px;">
-        <i class="fas fa-chart-bar me-2" style="color:var(--orange);"></i>Your Activity
+      <h6 style="font-family: var(--font-heading);font-weight:800;color: var(--brand-ink);margin-bottom:20px;">
+        <i class="fas fa-chart-bar me-2" style="color:var(--brand-gold);"></i>Your Activity
       </h6>
       <div class="d-flex flex-wrap gap-3">
         <div class="stat-pill">

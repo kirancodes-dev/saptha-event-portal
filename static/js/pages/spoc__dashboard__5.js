@@ -3,51 +3,51 @@
 const tourSteps = [
   {
     element: '#tour-global-btn',
-    title: 'Global Overview Hub 🌐',
+    title: 'Global Overview Hub',
     content: 'Click this button to see the cumulative statistics across all your events, active room allocations, and visual charts.'
   },
   {
     element: '#event-search',
-    title: 'Instant Search 🔍',
+    title: 'Instant Search',
     content: 'Type any title, category, or venue to search and filter your events list in real-time as you type.'
   },
   {
     element: '.filter-pill-btn[data-filter="active"]',
-    title: 'Event Filters 📊',
+    title: 'Event Filters',
     content: 'Quickly narrow down your events to view only Active or Completed configurations.'
   },
   {
     element: '.sidebar-event-card',
-    title: 'Master Event Cards 📇',
+    title: 'Master Event Cards',
     content: 'Select an event from the list to load its dedicated Event Command Center details.'
   },
   {
     element: '#tour-stats-row',
-    title: 'Live Statistics Gauge 📈',
+    title: 'Live Statistics Gauge',
     content: 'Monitor real-time registrations, present attendees count, revenue, and staff assigned specifically to this event.',
     requiresEvent: true
   },
   {
     element: '#tour-tabs-nav',
-    title: 'Event Management Tabs 🛠️',
+    title: 'Event Management Tabs',
     content: 'Switch tabs to access QR scanning, logistical maps, communication tools, judge configurations, and settings.',
     requiresEvent: true
   },
   {
     element: '.tab-btn[data-tab="logistics"]',
-    title: 'Logistics & QR Scanning 🎫',
+    title: 'Logistics & QR Scanning',
     content: 'Manage real-time ticket scanning, venue codes, round qualifications, NFC simulations, and room setups here.',
     requiresEvent: true
   },
   {
     element: '.tab-btn[data-tab="certs"]',
-    title: 'Judges & Certifications 🎓',
+    title: 'Judges & Certifications',
     content: 'Manage judge rosters, open-hall grading modes, visual certificate templates, and bulk certificate delivery.',
     requiresEvent: true
   },
   {
     element: '#theme-toggle',
-    title: 'Adaptive Themes 🌓',
+    title: 'Adaptive Themes',
     content: 'Toggle between dark and light modes. The dashboard is optimized to remain clear and high-contrast in either setting.'
   }
 ];

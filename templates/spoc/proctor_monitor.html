@@ -1,23 +1,22 @@
 {% extends "base_classic.html" %}
 
-{% block title %}{{ event.title }} — Live Proctoring Monitor | SapthaEvent{% endblock %}
+{% block title %}Live proctoring — {{ event.title }}{% endblock %}
+{% set hide_page_head = true %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div>
 
     <!-- HEADER & SUMMARY -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="text-white font-weight-bold mb-1">
-                <i class="fas fa-desktop text-warning me-2"></i>Live Proctoring Control Room
-            </h3>
-            <p class="text-muted mb-0">Real-time anti-cheat monitoring for <strong>{{ event.title }}</strong></p>
+    <div class="page-head">
+        <div class="page-head__text">
+            <h1 class="page-head__title" id="page-title">Live proctoring</h1>
+            <p class="page-head__sub">Real-time exam monitoring for <strong>{{ event.title }}</strong></p>
         </div>
         <div class="d-flex gap-3">
-            <span class="badge bg-primary px-3 py-2 fs-6">
+            <span class="se-badge se-badge--brand se-badge--plain">
                 <i class="fas fa-user-clock me-1"></i> Active Testers: <strong id="activeCount">{{ active_count }}</strong>
             </span>
-            <span class="badge bg-success px-3 py-2 fs-6">
+            <span class="se-badge se-badge--success se-badge--plain">
                 <i class="fas fa-check-circle me-1"></i> Completed: <strong id="completedCount">{{ completed_count }}</strong>
             </span>
         </div>
@@ -27,16 +26,16 @@
 
         <!-- LIVE PROCTORING ALERT CONSOLE -->
         <div class="col-lg-7 mb-4">
-            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
-                <div class="card-header bg-secondary bg-opacity-10 border-secondary d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 text-warning font-weight-bold">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-warning fw-bold">
                         <i class="fas fa-exclamation-triangle me-2"></i>Real-Time Violation Feed (SSE Push)
                     </h6>
                     <span class="badge bg-danger animate-pulse">LIVE FEED</span>
                 </div>
                 <div class="card-body p-0" style="max-height: 480px; overflow-y: auto;">
-                    <ul class="list-group list-group-flush bg-dark" id="violationFeed">
-                        <li class="list-group-item bg-dark text-muted text-center py-4" id="emptyFeedMessage">
+                    <ul class="list-group list-group-flush" id="violationFeed">
+                        <li class="list-group-item text-muted text-center py-4" id="emptyFeedMessage">
                             <i class="fas fa-shield-alt fa-2x mb-2 text-secondary"></i>
                             <p class="mb-0">Monitoring candidate sessions. Proctoring alerts will stream here live...</p>
                         </li>
@@ -47,16 +46,16 @@
 
         <!-- CANDIDATE STATUS GRID -->
         <div class="col-lg-5 mb-4">
-            <div class="card bg-dark text-light border-secondary h-100 shadow-sm">
-                <div class="card-header bg-secondary bg-opacity-10 border-secondary">
-                    <h6 class="mb-0 text-white font-weight-bold">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0 text-strong fw-bold">
                         <i class="fas fa-users-cog me-2"></i>Candidate Session Overview
                     </h6>
                 </div>
                 <div class="card-body p-0" style="max-height: 480px; overflow-y: auto;">
-                    <table class="table table-dark table-hover mb-0 align-middle">
+                    <table class="table table-hover mb-0 align-middle">
                         <thead>
-                            <tr class="text-secondary border-secondary">
+                            <tr class="text-secondary">
                                 <th>Candidate</th>
                                 <th>Status</th>
                                 <th>Violations</th>
@@ -64,9 +63,9 @@
                         </thead>
                         <tbody>
                             {% for a in attempts %}
-                            <tr class="border-secondary">
+                            <tr>
                                 <td>
-                                    <span class="text-white font-weight-bold d-block">{{ a.user_email }}</span>
+                                    <span class="text-strong fw-bold d-block">{{ a.user_email }}</span>
                                     <span class="text-muted small">Started: {{ a.started_at[:16] if a.started_at else 'N/A' }}</span>
                                 </td>
                                 <td>
@@ -118,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.innerHTML = `
                     <div>
                         <span class="badge bg-danger me-2">${escapeHtml(data.violation_type)}</span>
-                        <strong class="text-white">${escapeHtml(data.user_email)}</strong>
+                        <strong class="text-strong">${escapeHtml(data.user_email)}</strong>
                         <p class="mb-0 text-muted small mt-1">${escapeHtml(data.detail)}</p>
                     </div>
                     <div class="text-end">

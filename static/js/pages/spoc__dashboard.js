@@ -3,83 +3,65 @@
 // CSRF configuration for ajax requests
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-// Load initial chart data
+// ── CHARTS (Apache ECharts via SE_EC, UPG-83) ──
+// Each event's registrations split into parts that add up: attended, no-show,
+// not held yet, and waitlisted / pending / cancelled.
 var _cd = JSON.parse(document.getElementById('spoc-chart-data').textContent);
-
-if (_cd.hasEvents) {
-  // ── REGISTRATION BAR CHART ──
-  var regCtx = document.getElementById('regChart');
-  if (regCtx) {
-    const ctx = regCtx.getContext('2d');
-    // Create blue gradient
-    const gradientBlue = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientBlue.addColorStop(0, 'rgba(59, 130, 246, 0.9)');
-    gradientBlue.addColorStop(1, 'rgba(26, 37, 87, 0.7)');
-    
-    // Create gold gradient
-    const gradientGold = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientGold.addColorStop(0, 'rgba(245, 158, 11, 0.9)');
-    gradientGold.addColorStop(1, 'rgba(201, 164, 94, 0.7)');
-
-    new Chart(regCtx, {
-      type: 'bar',
-      data: {
-        labels: _cd.labels,
-        datasets: [{
-          label: 'Registrations',
-          data: _cd.regs,
-          backgroundColor: _cd.labels.map(function(_, i) {
-            return i % 2 === 0 ? gradientBlue : gradientGold;
-          }),
-          borderRadius: 8,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: 'rgba(226, 232, 240, 0.4)' }, ticks: { stepSize: 1, font: { size: 11 } }, beginAtZero: true }
-        }
-      }
+var SPOC_PARTS = [
+  { key: 'attended', name: 'Attended', slot: 2 },
+  { key: 'no_show', name: 'No-show', slot: 3 },
+  { key: 'upcoming', name: 'Not held yet', slot: 0 },
+  { key: 'other', name: 'Waitlisted, pending or cancelled', other: true },
+];
+if (_cd.hasEvents && window.SE_EC && _cd.breakdown.length) {
+  var _top = _cd.breakdown.slice(0, 8).reverse();     // most registrations at the top
+  var _regChart = SE_EC.mount(document.getElementById('regChart'), function (t) {
+    return SE_EC.base(t, {
+      toolbox: { show: false },
+      grid: { left: 14, right: 16, top: 52, bottom: 8, containLabel: true },
+      tooltip: Object.assign(SE_EC.base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: function (items) {
+          var e = _top[items[0].dataIndex];
+          var html = '<b>' + escapeHtml(e.title) + '</b><br>Registered: <b>' + escapeHtml(SE_EC.fmt(e.registered)) + '</b><br>';
+          items.forEach(function (it) { var markerHtml = it.marker; html += markerHtml + escapeHtml(it.seriesName) + ': ' + escapeHtml(SE_EC.fmt(it.value)) + '<br>'; });
+          return html;
+        } }),
+      xAxis: SE_EC.valueAxis(t, { minInterval: 1 }),
+      yAxis: SE_EC.categoryAxis(t, _top.map(function (e) { return e.title; }),
+        { axisLabel: { color: t.inkStrong, width: t.narrow ? 100 : 150, overflow: 'truncate' } }),
+      series: SPOC_PARTS.map(function (m, i) {
+        return { name: m.name, type: 'bar', stack: 'all', barMaxWidth: 18,
+                 itemStyle: { color: m.other ? t.other : t.palette[m.slot], borderColor: t.surface, borderWidth: 1,
+                              borderRadius: i === SPOC_PARTS.length - 1 ? [0, 4, 4, 0] : 0 },
+                 data: _top.map(function (e) { return e[m.key]; }) };
+      }),
     });
-  }
+  });
+  if (_regChart) _regChart.chart.on('click', function (p) {
+    var e = _top[p.dataIndex]; if (e) window.location.href = '/spoc/event/' + encodeURIComponent(e.id) + '/review';
+  });
 
-  // ── ATTENDANCE DONUT ──
-  var present = _cd.present;
-  var pending  = Math.max(0, _cd.totalRegs - present);
-  var attCtx   = document.getElementById('attChart');
-  if (attCtx) {
-    const ctx = attCtx.getContext('2d');
-    // Create green gradient
-    const gradientGreen = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientGreen.addColorStop(0, 'rgba(16, 185, 129, 0.95)');
-    gradientGreen.addColorStop(1, 'rgba(4, 120, 87, 0.8)');
-
-    // Create grey gradient
-    const gradientGrey = ctx.createLinearGradient(0, 0, 0, 200);
-    gradientGrey.addColorStop(0, 'rgba(226, 232, 240, 0.9)');
-    gradientGrey.addColorStop(1, 'rgba(203, 213, 225, 0.8)');
-
-    new Chart(attCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Present', 'Pending'],
-        datasets: [{
-          data: [present, pending],
-          backgroundColor: [gradientGreen, gradientGrey],
-          borderWidth: 0,
-          hoverOffset: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        cutout: '72%',
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, boxWidth: 12 } } }
-      }
+  // Totals across every event, as one labelled bar per part
+  var _sum = SPOC_PARTS.map(function (m) {
+    return _cd.breakdown.reduce(function (t, e) { return t + (e[m.key] || 0); }, 0);
+  });
+  var _all = _sum.reduce(function (a, b) { return a + b; }, 0);
+  SE_EC.mount(document.getElementById('attChart'), function (t) {
+    var names = SPOC_PARTS.map(function (m) { return m.name === 'Waitlisted, pending or cancelled' ? 'Other' : m.name; });
+    return SE_EC.base(t, {
+      legend: { show: false }, toolbox: { show: false },
+      grid: { left: 14, right: 70, top: 12, bottom: 8, containLabel: true },
+      tooltip: Object.assign(SE_EC.base(t).tooltip, { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: function (items) { var i = items[0].dataIndex;
+          return '<b>' + escapeHtml(SPOC_PARTS[i].name) + '</b><br>' + escapeHtml(SE_EC.fmt(_sum[i])) + ' of ' + escapeHtml(SE_EC.fmt(_all)) + ' registrations'; } }),
+      xAxis: SE_EC.valueAxis(t, { minInterval: 1 }),
+      yAxis: SE_EC.categoryAxis(t, names, { inverse: true, axisLabel: { color: t.inkStrong, fontWeight: 600 } }),
+      series: [{ name: 'Registrations', type: 'bar', barMaxWidth: 24,
+                 data: SPOC_PARTS.map(function (m, i) { return { value: _sum[i], itemStyle: { color: m.other ? t.other : t.palette[m.slot], borderRadius: [0, 4, 4, 0] } }; }),
+                 label: { show: true, position: 'right', color: t.ink,
+                          formatter: function (p) { return SE_EC.fmt(p.value) + (_all ? '  ·  ' + Math.round(p.value * 100 / _all) + '%' : ''); } } }],
     });
-  }
+  });
 }
 
 // ── MASTER-DETAIL & TAB LOGIC ──

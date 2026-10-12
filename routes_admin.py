@@ -8,10 +8,9 @@ import re
 import uuid
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, jsonify
-try:
-    from google.cloud import firestore
-except ImportError:
-    firestore = None
+# Newest-first ordering: the SQL layer and Firestore both use this string
+# (google.cloud.firestore.Query.DESCENDING == 'DESCENDING').
+DESCENDING = 'DESCENDING'
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -43,9 +42,10 @@ SUPER_ROLES = ['SuperAdmin', 'Super Admin', 'UniversityAdmin']
 @login_required
 @role_required(SUPER_ROLES)
 def dashboard():
+    from services_insights import paid_amount
     try:
         events_ref = (db.collection('events')
-                        .order_by('created_at', direction=firestore.Query.DESCENDING)
+                        .order_by('created_at', direction=DESCENDING)
                         .stream())
         events          = []
         total_regs      = 0
@@ -56,22 +56,22 @@ def dashboard():
         for e in events_ref:
             d       = e.to_dict()
             d['id'] = e.id
-            rc = int(d.get('registration_count', 0) or 0)
-            total_regs += rc
-            # Revenue: fee × confirmed registrations
-            fee = int((d.get('fees') or {}).get('regular', 0) or d.get('entry_fee', 0) or 0)
-            total_revenue += fee * rc
             # Unique staff (deduplicate across events)
             for s in d.get('staff', []):
                 if s.get('email'):
                     unique_staff_emails.add(s['email'])
             cat = d.get('category', 'Other')
             cat_counts[cat] = cat_counts.get(cat, 0) + 1
-            regs = db.collection('registrations').where('event_id', '==', e.id).stream()
+            regs = [r.to_dict() or {} for r in
+                    db.collection('registrations').where('event_id', '==', e.id).stream()]
+            # Counted from the registrations, not the cached counter, which can
+            # be stale; revenue is what was actually paid (UPG-81)
+            d['registration_count'] = len(regs)
+            total_regs += len(regs)
+            total_revenue += sum(paid_amount(r) for r in regs)
             d['scored_teams'] = sum(
                 1 for r in regs
-                if not r.to_dict().get('is_eliminated', False)
-                and r.to_dict().get('scores')
+                if not r.get('is_eliminated', False) and r.get('scores')
             )
             events.append(d)
 
@@ -96,7 +96,7 @@ def dashboard():
         audit_log = []
         try:
             logs = (db.collection('audit_log')
-                      .order_by('timestamp', direction=firestore.Query.DESCENDING)
+                      .order_by('timestamp', direction=DESCENDING)
                       .limit(20).stream())
             audit_log = [l.to_dict() for l in logs]
         except Exception:
@@ -108,8 +108,18 @@ def dashboard():
         unique_staff_emails, user_stats, audit_log, cat_counts = set(), {}, [], {}
 
     from utils_pagination import paginate_events
+    # What needs the Super Admin's attention (UPG-75)
+    statuses = collections.Counter(str(e.get('status') or 'active').lower() for e in events)
+    jobs = _outbox_rows() or []
+    attention = {
+        'pending': statuses.get('pending_approval', 0),
+        'drafts': statuses.get('draft', 0),
+        'failed_jobs': sum(1 for j in jobs if j['status'] == 'failed'),
+        'inactive': sum(1 for d in db.collection('users').stream() if (d.to_dict() or {}).get('is_active') is False),
+    }
     return render_template(
         'admin/dashboard.html',
+        attention=attention,
         events=events,
         page=paginate_events(events),   # the table shows 25 a page; stats and charts use every event (UPG-19)
         status_filter=(request.args.get('status') or '').strip().lower(),
@@ -131,163 +141,17 @@ def dashboard():
 @login_required
 @role_required(SUPER_ROLES)
 def analytics():
-    try:
-        # Fetch all registrations and events
-        all_regs   = [r.to_dict() for r in db.collection('registrations').stream()]
-        events_map = {}
-        for e in db.collection('events').stream():
-            d = e.to_dict(); d['id'] = e.id
-            events_map[e.id] = d
-
-        # ── 1. Registrations over last 30 days ──────────────
-        today      = datetime.date.today()
-        date_range = [(today - datetime.timedelta(days=i)).strftime('%Y-%m-%d')
-                      for i in range(29, -1, -1)]
-        reg_by_day = collections.Counter()
-        for r in all_regs:
-            day = str(r.get('registered_at', ''))[:10]
-            if day in date_range:
-                reg_by_day[day] += 1
-
-        regs_over_time = {
-            'labels': date_range,
-            'data':   [reg_by_day.get(d, 0) for d in date_range],
-        }
-
-        # ── 2. Category breakdown ────────────────────────────
-        cat_counter = collections.Counter()
-        for r in all_regs:
-            cat = events_map.get(r.get('event_id', ''), {}).get('category', 'General')
-            cat_counter[cat] += 1
-
-        category_breakdown = {
-            'labels': list(cat_counter.keys()),
-            'data':   list(cat_counter.values()),
-        }
-
-        # ── 3. Revenue per event (top 10) ────────────────────
-        rev_by_event = collections.defaultdict(int)
-        for r in all_regs:
-            amount = int(r.get('amount_paid', 0) or 0)
-            if amount > 0:
-                title = events_map.get(r.get('event_id', ''), {}).get('title', 'Unknown')
-                rev_by_event[title] += amount
-
-        sorted_rev = sorted(rev_by_event.items(), key=lambda x: x[1], reverse=True)[:10]
-        revenue_per_event = {
-            'labels': [i[0] for i in sorted_rev],
-            'data':   [i[1] for i in sorted_rev],
-        }
-
-        # ── 4. Peak registration hours ───────────────────────
-        hour_counter = collections.Counter()
-        for r in all_regs:
-            raw = str(r.get('registered_at', ''))
-            if len(raw) >= 13 and raw[10] == ' ':
-                try:
-                    hour_counter[int(raw[11:13])] += 1
-                except ValueError:
-                    pass
-
-        peak_hours = {
-            'labels': [f"{h:02d}:00" for h in range(24)],
-            'data':   [hour_counter.get(h, 0) for h in range(24)],
-        }
-
-        # ── 5. Registrations per event (top 10) ──────────────
-        rpe_raw = collections.Counter(r.get('event_id', '') for r in all_regs)
-        rpe_sorted = sorted(
-            [(events_map.get(eid, {}).get('title', eid[:14]), cnt)
-             for eid, cnt in rpe_raw.items()],
-            key=lambda x: x[1], reverse=True
-        )[:10]
-        regs_per_event = {
-            'labels': [i[0] for i in rpe_sorted],
-            'data':   [i[1] for i in rpe_sorted],
-        }
-
-        # ── 6. Free vs paid split ────────────────────────────
-        paid_regs = sum(1 for r in all_regs if int(r.get('amount_paid', 0) or 0) > 0)
-        free_regs = len(all_regs) - paid_regs
-
-        # ── 7. Conversion funnel ─────────────────────────────
-        f_registered = len(all_regs)
-        f_confirmed  = sum(1 for r in all_regs if r.get('status') == 'Confirmed')
-        f_attended   = sum(1 for r in all_regs if r.get('attendance') == 'Present')
-        f_certified  = sum(
-            1 for r in all_regs
-            if r.get('attendance') == 'Present'
-            and events_map.get(r.get('event_id', ''), {}).get('status') == 'completed'
-        )
-        funnel = {
-            'labels': ['Registered', 'Confirmed', 'Attended', 'Certified'],
-            'data':   [f_registered, f_confirmed, f_attended, f_certified],
-        }
-
-        # ── 8. No-show rate per completed event (top 10) ─────
-        no_show_rows = []
-        for eid, evt in events_map.items():
-            if evt.get('status') != 'completed':
-                continue
-            evt_regs = [r for r in all_regs if r.get('event_id') == eid]
-            if not evt_regs:
-                continue
-            attended = sum(1 for r in evt_regs if r.get('attendance') == 'Present')
-            total    = len(evt_regs)
-            rate     = round((total - attended) * 100 / total, 1) if total else 0
-            no_show_rows.append({
-                'title':       evt.get('title', eid[:14]),
-                'total':       total,
-                'attended':    attended,
-                'no_show':     total - attended,
-                'rate':        rate,
-            })
-        no_show_rows.sort(key=lambda x: x['rate'], reverse=True)
-        no_show_rows = no_show_rows[:10]
-        no_show_chart = {
-            'labels': [row['title'] for row in no_show_rows],
-            'data':   [row['rate']  for row in no_show_rows],
-        }
-
-        stats = {
-            'total_regs':    len(all_regs),
-            'total_revenue': sum(int(r.get('amount_paid', 0) or 0) for r in all_regs),
-            'active_events': sum(1 for e in events_map.values() if e.get('status') == 'active'),
-            'total_events':  len(events_map),
-            'paid_regs':     paid_regs,
-            'free_regs':     free_regs,
-            'attended':      f_attended,
-            'no_show_pct':   round((f_confirmed - f_attended) * 100 / f_confirmed, 1) if f_confirmed else 0,
-            'conv_pct':      round(f_attended * 100 / f_registered, 1) if f_registered else 0,
-        }
-        # Registrations and attendance by participant type (UPG-12)
-        from services_participants import PARTICIPANT_TYPES, type_of
-        stats['by_participant_type'] = [
-            {'type': t,
-             'registered': sum(1 for r in all_regs if type_of(r) == t),
-             'present': sum(1 for r in all_regs if type_of(r) == t and r.get('attendance') == 'Present')}
-            for t in PARTICIPANT_TYPES]
-
-    except Exception as exc:
-        flash(f"Analytics error: {exc}", "danger")
-        regs_over_time = category_breakdown = revenue_per_event = {}
-        peak_hours = regs_per_event = funnel = no_show_chart = {}
-        no_show_rows = []
-        stats = {}
-
-    return render_template(
-        'admin/analytics.html',
-        user_name          = session.get('name'),
-        stats              = stats,
-        regs_over_time     = json.dumps(regs_over_time),
-        category_breakdown = json.dumps(category_breakdown),
-        revenue_per_event  = json.dumps(revenue_per_event),
-        peak_hours         = json.dumps(peak_hours),
-        regs_per_event     = json.dumps(regs_per_event),
-        funnel             = json.dumps(funnel),
-        no_show_chart      = json.dumps(no_show_chart),
-        no_show_rows       = no_show_rows,
-    )
+    """Every event's figures, with period and category filters (UPG-83)."""
+    from services_insights import build
+    events = []
+    for e in db.collection('events').stream():
+        d = e.to_dict() or {}
+        d['id'] = e.id
+        events.append(d)
+    regs = [r.to_dict() or {} for r in db.collection('registrations').stream()]
+    data = build(events, regs, period=request.args.get('period', '30'),
+                 category=(request.args.get('category') or '').strip())
+    return render_template('analytics/hub.html', data=data, scope='admin', action_url='/admin/analytics')
 
 
 # =========================================================
@@ -440,6 +304,9 @@ def appoint_spoc():
 @login_required
 @role_required(SUPER_ROLES)
 def delete_user(email):
+    if email.strip().lower() == (session.get('user_id') or '').lower():
+        flash("You can't delete your own account.", "danger")   # UPG-75
+        return redirect('/admin/users')
     try:
         db.collection('users').document(email).delete()
         log_action(db, "USER_DELETED",
@@ -447,7 +314,7 @@ def delete_user(email):
         flash(f"User {email} deleted.", "warning")
     except Exception as exc:
         flash(f"Delete error: {exc}", "danger")
-    return redirect('/admin/dashboard')
+    return redirect('/admin/users')
 
 
 # =========================================================
@@ -487,7 +354,18 @@ def users():
             'role':       role,
             'waiting':    waiting,
             'can_resend': waiting and role not in SUPER_ROLE_NAMES,
+            'active':     u.get('is_active', True) is not False,   # UPG-75
         }
+
+    # A role filter (UPG-75) loads and filters like a search
+    role_filter = (request.args.get('role') or '').strip()
+    if role_filter:
+        accounts = sorted((a for a in (account(d) for d in db.collection('users').stream())
+                           if a['role'] == role_filter or (role_filter == 'inactive' and not a['active'])),
+                          key=lambda a: a['email'])
+        page = paginate_items(accounts, search_fields=('name', 'email', 'usn', 'department', 'role'))
+        return render_template('admin/users.html', accounts=page.items, page=page, current_page='users',
+                               roles=ASSIGNABLE_ROLES, categories=SPOC_CATEGORIES, role_filter=role_filter)
 
     # 25 a page in email order, paged in SQL; a search loads and filters (UPG-19).
     if page_args()[2]:
@@ -495,7 +373,8 @@ def users():
         page = paginate_items(accounts, search_fields=('name', 'email', 'usn', 'department', 'role'))
     else:
         page = paginate_query(db.collection('users').order_by('email'), transform=account)
-    return render_template('admin/users.html', accounts=page.items, page=page, current_page='users')
+    return render_template('admin/users.html', accounts=page.items, page=page, current_page='users',
+                           roles=ASSIGNABLE_ROLES, categories=SPOC_CATEGORIES, role_filter='')
 
 
 @admin_bp.route('/users/import_csv', methods=['POST'])
@@ -892,7 +771,7 @@ def view_audit_log():
     from utils_pagination import Page, page_args, paginate_items, paginate_query
     role = (request.args.get('role') or '').strip()
     action = (request.args.get('action') or '').strip().upper()
-    newest_first = db.collection('audit_log').order_by('timestamp', direction=firestore.Query.DESCENDING)
+    newest_first = db.collection('audit_log').order_by('timestamp', direction=DESCENDING)
     try:
         if page_args()[2] or role or action:
             # Filters and search run on the loaded entries; the page stays in the URL (UPG-19).
@@ -991,6 +870,20 @@ def send_bulk_email():
             f'white-space:pre-line;">{message}</div>',
             subject
         )
+        # Email, the in-app bell, or both (UPG-75)
+        channel = request.form.get('channel', 'email')
+        posted = 0
+        if channel in ('app', 'both'):
+            from routes_notifications_v2 import create_notification
+            for addr in emails:
+                create_notification(db, user_email=addr, notif_type='announcement', title=subject[:200],
+                                    message=message[:1000], metadata={'from': session.get('user_id')})
+                posted += 1
+            log_action(db, 'ANNOUNCEMENT_POSTED', f"{session.get('user_id')} → in-app {posted} | {subject}")
+        if channel == 'app':
+            flash(f'Posted in the app to {posted} recipient(s).', 'success')
+            return render_template('admin/send_email.html', events=events,
+                                   last_sent={'count': posted, 'subject': subject, 'audience': audience})
         sent_ok, sent_fail = 0, 0
         failed_addrs = []
         for addr in emails:
@@ -1014,7 +907,8 @@ def send_bulk_email():
                   f'({", ".join(failed_addrs[:5])}{"…" if len(failed_addrs)>5 else ""})',
                   'warning')
         else:
-            flash(f'✅ Email delivered to {sent_ok} recipient(s).', 'success')
+            flash(f'✅ Email delivered to {sent_ok} recipient(s).'
+                  + (f' Also posted in the app to {posted}.' if posted else ''), 'success')
 
         return render_template('admin/send_email.html',
                                events=events,
@@ -1260,14 +1154,14 @@ def approve_event(event_id):
             db,
             event_id=event_id,
             target_state='published',
-            actor_id=session.get('user_id'),
+            actor_id=session.get('user_id') or '',
             actor=session,
             metadata={'source': 'admin_approval'}
         )
-        flash("✅ Event approved and published!", "success")
+        flash("Event approved and published.", "success")
     except Exception as exc:
         flash(f"Approval error: {exc}", "danger")
-    return redirect('/admin/org_units')
+    return _back('/admin/org_units')
 
 
 @admin_bp.route('/migrate_roles', methods=['POST'])
@@ -1505,3 +1399,371 @@ def delete_room(room_id):
         flash(f"Error deleting room: {exc}", "danger")
     return redirect('/admin/venues')
 
+
+
+# =========================================================
+# SUPER ADMIN CONTROL CENTRE (UPG-75)
+# One place to see and control every event, account, registration and the
+# system itself. Access was never the gap (role_required and can() let a
+# Super Admin through everywhere); these pages make it usable.
+# =========================================================
+ASSIGNABLE_ROLES = [('Student', 'Student / participant'), ('EventCoordinator', 'Event coordinator'),
+                    ('ClubSPOC', 'Club SPOC'), ('Judge', 'Judge'), ('SuperAdmin', 'Super Admin')]
+SPOC_CATEGORIES = ('Technical', 'Cultural', 'Sports', 'Management', 'All')
+EVENT_STATUSES = ('draft', 'pending_approval', 'published', 'registration_open', 'registration_closed',
+                  'in_progress', 'evaluation', 'active', 'completed', 'certified', 'cancelled', 'archived')
+
+
+def _back(default):
+    """Return to the page the action came from when it's on this site."""
+    from services_accounts import is_safe_next
+    target = (request.form.get('next') or '').strip()
+    return redirect(target if target and is_safe_next(target) else default)
+
+
+def _events_index():
+    """Every event with the facts the control centre lists."""
+    from services_event_types import type_label
+    rows = []
+    for d in db.collection('events').stream():
+        ev = dict(d.to_dict() or {}, id=d.id)
+        ev['type_label'] = type_label(ev)
+        ev['status'] = str(ev.get('status') or 'active').lower()
+        ev['owner'] = (ev.get('spoc_id') or (ev.get('organizer') or {}).get('email') or ev.get('created_by_email')
+                       or (ev.get('created_by') if '@' in str(ev.get('created_by') or '') else '')
+                       or ev.get('coordinator_id') or '')
+        rows.append(ev)
+    return rows
+
+
+@admin_bp.route('/events')
+@login_required
+@role_required(SUPER_ROLES)
+def all_events():
+    from utils_pagination import paginate_items
+    from services_event_types import GROUPS, TYPES
+    from services_workflow import WorkflowEngine
+    status = (request.args.get('status') or '').strip().lower()
+    kind = (request.args.get('kind') or '').strip()
+    rows = _events_index()
+    counts = collections.Counter(e['status'] for e in rows)
+    pending = sorted([e for e in rows if e['status'] == 'pending_approval'], key=lambda e: str(e.get('date') or ''))
+    if status:
+        rows = [e for e in rows if e['status'] == status]
+    if kind:
+        rows = [e for e in rows if (e.get('event_type') or '') == kind]
+    rows.sort(key=lambda e: str(e.get('created_at') or e.get('date') or ''), reverse=True)
+    page = paginate_items(rows, search_fields=('title', 'venue', 'owner', 'category', 'type_label', 'id'))
+    for ev in page.items:
+        ev['next_states'] = WorkflowEngine.get_allowed_transitions(event_data=ev)
+    spocs = sorted((d.id for d in db.collection('users').stream()
+                    if _role_name(d.to_dict() or {}) in ('ClubSPOC', 'SPOC')), key=str.lower)
+    return render_template('admin/events.html', page=page, events=page.items, pending=pending, counts=counts,
+                           statuses=EVENT_STATUSES, status=status, kind=kind, groups=GROUPS, types=TYPES,
+                           spocs=spocs, current_page='events')
+
+
+@admin_bp.route('/events/<event_id>/status', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def set_event_status(event_id):
+    """Move an event through its lifecycle; the workflow's own rules still apply."""
+    from services_workflow import WorkflowEngine, WorkflowError
+    target = (request.form.get('target_state') or '').strip().lower()
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        flash("Event not found.", "warning")
+        return _back('/admin/events')
+    # Whatever this event's workflow allows next, including a preset's own stages
+    allowed = WorkflowEngine.get_allowed_transitions(event_data=dict(doc.to_dict() or {}, id=doc.id))
+    if target not in allowed and target not in EVENT_STATUSES:
+        flash("Choose a status from the list.", "warning")
+        return _back('/admin/events')
+    try:
+        WorkflowEngine.transition_event(db, event_id=event_id, target_state=target, actor_id=session.get('user_id') or '',
+                                        actor=session, metadata={'source': 'admin_control_centre'})
+        log_action(db, "ADMIN_EVENT_STATUS", f"{session.get('user_id')} moved {event_id} to {target}")
+        flash(f"Status changed to {target.replace('_', ' ')}.", "success")
+    except WorkflowError as exc:
+        flash(str(exc), "danger")
+    return _back('/admin/events')
+
+
+@admin_bp.route('/events/<event_id>/owner', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def set_event_owner(event_id):
+    """Hand an event to another SPOC (only to a Club SPOC account)."""
+    email = (request.form.get('spoc_email') or '').strip().lower()
+    doc = db.collection('events').document(event_id).get()
+    user = db.collection('users').document(email).get() if email else None
+    if not doc.exists:
+        flash("Event not found.", "warning")
+        return _back('/admin/events')
+    if not user or not user.exists or _role_name(user.to_dict() or {}) not in ('ClubSPOC', 'SPOC'):
+        flash("Choose a Club SPOC account to hand the event to.", "danger")
+        return _back('/admin/events')
+    u = user.to_dict() or {}
+    ev = doc.to_dict() or {}
+    organizer = dict(ev.get('organizer') or {})
+    previous = ev.get('spoc_id', '')
+    organizer.update(name=u.get('name', email), email=email, phone=u.get('phone') or organizer.get('phone', ''))
+    db.collection('events').document(event_id).update({'spoc_id': email, 'organizer': organizer})
+    log_action(db, "ADMIN_EVENT_OWNER", f"{session.get('user_id')} handed {event_id} from {previous} to {email}")
+    flash(f"'{ev.get('title', 'Event')}' now belongs to {u.get('name') or email}.", "success")
+    return _back('/admin/events')
+
+
+# ── Users ───────────────────────────────────────────────────────────────────
+
+@admin_bp.route('/users/add', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def add_user():
+    """Add an account of any role; it stays locked until its set-password link is used."""
+    name = (request.form.get('name') or '').strip()[:200]
+    email = (request.form.get('email') or '').strip().lower()
+    role = (request.form.get('role') or '').strip()
+    phone = re.sub(r'[^\d+ ]', '', request.form.get('phone') or '')[:20]
+    department = (request.form.get('department') or '').strip()[:100]
+    category = (request.form.get('category') or '').strip()
+    problems = []
+    if not name:
+        problems.append("Enter the person's name.")
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        problems.append("Enter a valid email address.")
+    if role not in dict(ASSIGNABLE_ROLES):
+        problems.append("Choose a role.")
+    if category and category not in SPOC_CATEGORIES:
+        problems.append("Choose a category from the list.")
+    if email and db.collection('users').document(email).get().exists:
+        problems.append(f"{email} already has an account. Open it from the list to change it.")
+    if problems:
+        for p in problems:
+            flash(p, "danger")
+        return redirect('/admin/users')
+    fields = {'department': department}
+    if category:
+        fields['category'] = category
+    create_unverified_account(db, email, name, phone, role=role, **fields)
+    sent = send_set_password_link(db, email, name, reason=f"by the portal administrator as {dict(ASSIGNABLE_ROLES)[role]}")
+    log_action(db, "ADMIN_USER_ADDED", f"{session.get('user_id')} added {email} as {role}")
+    flash(f"Account created for {email}." + (" A set-password link was emailed." if sent else
+                                             " The set-password email couldn't be sent; resend it from their page."),
+          "success" if sent else "warning")
+    return redirect(f'/admin/users/{email}')
+
+
+@admin_bp.route('/users/<path:email>', methods=['GET', 'POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def user_detail(email):
+    """One account: details, role, active or not, their registrations and events."""
+    email = email.strip().lower()
+    ref = db.collection('users').document(email)
+    doc = ref.get()
+    if not doc.exists:
+        flash("No account with that email.", "warning")
+        return redirect('/admin/users')
+    user = doc.to_dict() or {}
+    me = (session.get('user_id') or '').lower()
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        if action in ('deactivate', 'activate'):
+            if email == me:
+                flash("You can't deactivate your own account.", "danger")
+                return redirect(f'/admin/users/{email}')
+            active = action == 'activate'
+            ref.update({'is_active': active})
+            log_action(db, "ADMIN_USER_ACTIVE" if active else "ADMIN_USER_DEACTIVATED",
+                       f"{me} {'reactivated' if active else 'deactivated'} {email}")
+            flash(f"{email} {'can log in again' if active else 'is deactivated and can no longer log in'}.", "success")
+            return redirect(f'/admin/users/{email}')
+        role = (request.form.get('role') or '').strip()
+        category = (request.form.get('category') or '').strip()
+        updates = {
+            'name': (request.form.get('name') or user.get('name') or '').strip()[:200],
+            'phone': re.sub(r'[^\d+ ]', '', request.form.get('phone') or '')[:20],
+            'department': (request.form.get('department') or '').strip()[:100],
+        }
+        if role and role not in dict(ASSIGNABLE_ROLES):
+            flash("Choose a role from the list.", "danger")
+            return redirect(f'/admin/users/{email}')
+        if email == me and role and role not in ('SuperAdmin',) and _role_name(user) in SUPER_ROLE_NAMES:
+            flash("You can't remove your own Super Admin role. Ask another admin.", "danger")
+            return redirect(f'/admin/users/{email}')
+        if role:
+            updates['role'] = role
+        if category in SPOC_CATEGORIES:
+            updates['category'] = category
+        old_role = _role_name(user)
+        ref.update(updates)
+        log_action(db, "ADMIN_USER_UPDATED", f"{me} updated {email}" +
+                   (f" (role {old_role} → {role})" if role and role != old_role else ''))
+        flash("Account saved." + (" Role changes apply at their next login." if role and role != old_role else ''),
+              "success")
+        return redirect(f'/admin/users/{email}')
+
+    regs = []
+    for r in db.collection('registrations').where('lead_email', '==', email).stream():
+        rd = dict(r.to_dict() or {}, id=r.id)
+        regs.append(rd)
+    regs.sort(key=lambda r: str(r.get('registered_at') or ''), reverse=True)
+    owned = sorted([dict(d.to_dict() or {}, id=d.id) for d in
+                    db.collection('events').where('spoc_id', '==', email).stream()],
+                   key=lambda e: str(e.get('date') or ''), reverse=True)
+    return render_template('admin/user_detail.html', u=user, email=email, role=_role_name(user),
+                           active=user.get('is_active', True) is not False, regs=regs, owned=owned,
+                           roles=ASSIGNABLE_ROLES, categories=SPOC_CATEGORIES, is_me=email == me,
+                           waiting=_waiting_for_password(user), current_page='users')
+
+
+# ── Registrations ───────────────────────────────────────────────────────────
+
+@admin_bp.route('/registrations')
+@login_required
+@role_required(SUPER_ROLES)
+def all_registrations():
+    """Find any registration across every event."""
+    from utils_pagination import paginate_items
+    event_filter = (request.args.get('event') or '').strip()
+    status_filter = (request.args.get('status') or '').strip().lower()
+    attendance_filter = (request.args.get('attendance') or '').strip().lower()
+    titles = {d.id: (d.to_dict() or {}).get('title', 'Event') for d in db.collection('events').stream()}
+    rows = []
+    query = db.collection('registrations')
+    if event_filter:
+        query = query.where('event_id', '==', event_filter)
+    for d in query.stream():
+        r = dict(d.to_dict() or {}, id=d.id)
+        r['event_title'] = titles.get(r.get('event_id'), r.get('event_title') or '—')
+        r['lead_email'] = r.get('lead_email') or r.get('leadEmail') or ''
+        r['lead_name'] = r.get('lead_name') or r.get('leadName') or ''
+        r['team_name'] = r.get('team_name') or r.get('teamName') or ''
+        if status_filter and str(r.get('status') or '').lower() != status_filter:
+            continue
+        if attendance_filter and str(r.get('attendance') or 'pending').lower() != attendance_filter:
+            continue
+        rows.append(r)
+    rows.sort(key=lambda r: str(r.get('registered_at') or ''), reverse=True)
+    page = paginate_items(rows, search_fields=('lead_name', 'lead_email', 'usn', 'team_name', 'id',
+                                               'event_title', 'reg_id'))
+    events = sorted(titles.items(), key=lambda kv: kv[1].lower())
+    return render_template('admin/registrations.html', page=page, regs=page.items, events=events,
+                           event_filter=event_filter, status_filter=status_filter,
+                           attendance_filter=attendance_filter, current_page='registrations')
+
+
+@admin_bp.route('/registrations/<reg_id>/attendance', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def set_attendance(reg_id):
+    value = (request.form.get('attendance') or '').strip().capitalize()
+    if value not in ('Present', 'Absent', 'Pending'):
+        flash("Choose present, absent or pending.", "warning")
+        return _back('/admin/registrations')
+    ref = db.collection('registrations').document(reg_id)
+    if not ref.get().exists:
+        flash("Registration not found.", "warning")
+        return _back('/admin/registrations')
+    updates = {'attendance': value, 'attended': value == 'Present'}
+    if value == 'Present':
+        updates['checkin_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ref.update(updates)
+    log_action(db, "ADMIN_ATTENDANCE", f"{session.get('user_id')} marked {reg_id} {value}")
+    flash(f"Attendance set to {value.lower()}.", "success")
+    return _back('/admin/registrations')
+
+
+@admin_bp.route('/registrations/<reg_id>/cancel', methods=['POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def cancel_registration(reg_id):
+    reason = (request.form.get('reason') or '').strip()[:300]
+    if not reason:
+        flash("Give a reason for cancelling.", "warning")
+        return _back('/admin/registrations')
+    ref = db.collection('registrations').document(reg_id)
+    if not ref.get().exists:
+        flash("Registration not found.", "warning")
+        return _back('/admin/registrations')
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    ref.update({'status': 'cancelled', 'cancel_reason': reason, 'cancelled_at': now,
+                'cancelled_by': session.get('user_id')})
+    log_action(db, "REGISTRATION_CANCELLED", f"{reg_id} cancelled by {session.get('user_id')}: {reason}")
+    flash("Registration cancelled. If it was paid, refund it from Payments.", "success")
+    return _back('/admin/registrations')
+
+
+# ── System ──────────────────────────────────────────────────────────────────
+
+def _configured(*names):
+    import os
+    return all((os.environ.get(n) or '').strip() for n in names)
+
+
+def _integrations():
+    """Which outside services are configured: yes/no only, never a value."""
+    import os
+    storage = (os.environ.get('STORAGE_TYPE') or '').strip().lower() or 'local (development only)'
+    return [
+        ('Email (Brevo)', _configured('BREVO_API_KEY'), 'Account emails, tickets, certificates'),
+        ('Email (SMTP fallback)', _configured('MAIL_USER', 'MAIL_PASS') or _configured('MAIL_USER', 'MAIL_PASSWORD'), 'Used when Brevo is not set'),
+        ('Payments (Razorpay)', _configured('RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET'), 'Paid registrations'),
+        ('File storage', storage in ('s3', 'gcs'), f'Uploads and certificates: {storage}'),
+        ('Google sign-in', _configured('OAUTH_GOOGLE_CLIENT_ID', 'OAUTH_GOOGLE_CLIENT_SECRET'), 'Sign in with Google'),
+        ('Microsoft sign-in', _configured('OAUTH_MICROSOFT_CLIENT_ID', 'OAUTH_MICROSOFT_CLIENT_SECRET'), 'Sign in with Microsoft'),
+        ('AI (Gemini)', _configured('GEMINI_API_KEY') or _configured('GOOGLE_API_KEY'), 'Event writer, matching, summaries'),
+        ('WhatsApp (Twilio)', _configured('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'), 'Ticket messages'),
+        ('Error monitoring (Sentry)', _configured('SENTRY_DSN'), 'Crash reports'),
+        ('Scheduled jobs', _configured('CRON_SECRET'), 'Reminders, closing events, retries'),
+        ('Support email', _configured('SUPPORT_EMAIL'), 'Shown to users who need help'),
+    ]
+
+
+def _outbox_rows():
+    """Background jobs that didn't finish straight away (UPG-18)."""
+    try:
+        from models_pg import OutboxTask
+        from services_outbox import _session
+        with _session() as s:
+            tasks = s.query(OutboxTask).order_by(OutboxTask.updated_at.desc()).limit(500).all()
+            return [{'key': t.key, 'task': t.task_name, 'status': t.status, 'attempts': t.attempts,
+                     'error': (t.last_error or '')[:300], 'updated': t.updated_at, 'next': t.next_attempt_at}
+                    for t in tasks]
+    except Exception as exc:
+        logger.warning("Outbox read failed: %s", exc)
+        return None
+
+
+@admin_bp.route('/system', methods=['GET', 'POST'])
+@login_required
+@role_required(SUPER_ROLES)
+def system_status():
+    if request.method == 'POST' and request.form.get('action') == 'retry':
+        try:
+            from services_outbox import retry_due
+            result = retry_due()
+            log_action(db, "ADMIN_OUTBOX_RETRY", f"{session.get('user_id')} retried background jobs: {result}")
+            flash(f"Retried background jobs: {result}.", "success")
+        except Exception as exc:
+            flash(f"Retry failed: {exc}", "danger")
+        return redirect('/admin/system')
+    db_ok = True
+    try:
+        list(db.collection('users').limit(1).stream())
+    except Exception:
+        db_ok = False
+    jobs = _outbox_rows()
+    job_counts = collections.Counter(j['status'] for j in jobs or [])
+    totals = {}
+    for coll in ('users', 'events', 'registrations'):
+        try:
+            totals[coll] = db.collection(coll).count() if hasattr(db.collection(coll), 'count') else \
+                sum(1 for _ in db.collection(coll).stream())
+        except Exception:
+            totals[coll] = sum(1 for _ in db.collection(coll).stream())
+    return render_template('admin/system.html', db_ok=db_ok, integrations=_integrations(), jobs=jobs,
+                           failed=[j for j in jobs or [] if j['status'] in ('failed', 'pending')],
+                           job_counts=job_counts, totals=totals, current_page='system')

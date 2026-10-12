@@ -33,12 +33,12 @@
       const icon = navBtn.querySelector('i');
       if (icon) {
         icon.className = 'fas fa-sync';
-        icon.style.color = '#c9a45e';
+        icon.style.color = '#c69d67';
       }
       const text = navBtn.querySelector('span');
       if (text) {
         text.innerText = 'Update';
-        text.style.color = '#c9a45e';
+        text.style.color = '#c69d67';
       }
       navBtn.onclick = function(e) {
         e.preventDefault();

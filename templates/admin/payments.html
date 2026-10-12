@@ -6,15 +6,10 @@
 {% block content %}
 <div class="card">
     <div class="card-body">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
 
         <p><a href="/admin/analytics/export/payments">Download every payment (CSV)</a> for the finance office.</p>
 
-        <h2 style="font-size:17px;margin-top:16px;">Paid, but not registered</h2>
+        <h2 class="h6 fw-bold mt-3">Paid, but not registered</h2>
         <p>The payment went through but the registration couldn't be completed (the event filled up, the payer was
            already registered, or an error). Register them by hand, or refund them.</p>
         <div class="table-responsive">
@@ -32,7 +27,7 @@
                         <td>
                             <form method="POST" action="/admin/payments/{{ o.id }}/refund">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <label style="font-size:12px;"><input type="checkbox" name="confirm" value="yes" required>
+                                <label class="small"><input type="checkbox" name="confirm" value="yes" required>
                                     Refund ₹{{ '%g' % o.amount }} to {{ o.email }}</label>
                                 <button type="submit" class="btn btn-sm btn-danger">Refund through Razorpay</button>
                             </form>
@@ -46,7 +41,7 @@
         </div>
 
         {% if cancelled_events %}
-        <h2 style="font-size:17px;margin-top:24px;">Cancelled events with payments</h2>
+        <h2 class="h6 fw-bold mt-4">Cancelled events with payments</h2>
         <ul>
             {% for ev in cancelled_events %}
             <li><a href="/admin/events/{{ ev.id }}/refunds">{{ ev.title }}</a>: {{ ev.count }} payment{{ '' if ev.count == 1 else 's' }} to refund</li>
@@ -54,7 +49,7 @@
         </ul>
         {% endif %}
 
-        <h2 style="font-size:17px;margin-top:24px;">Paid registrations</h2>
+        <h2 class="h6 fw-bold mt-4">Paid registrations</h2>
         <p>Mark a registration refunded (the money was returned another way) or cancelled. Either way its ticket
            no longer checks in. Both are recorded in the audit log.</p>
         {% set search_label = 'Search by name, email, USN, registration or event' %}

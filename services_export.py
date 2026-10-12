@@ -45,17 +45,17 @@ def department_and_year(reg, profile=None):
 
 
 def _average(reg):
-    totals = [s.get('total') for s in (reg.get('scores') or {}).values() if isinstance(s, dict)]
-    totals = [float(t) for t in totals if isinstance(t, (int, float)) or str(t).replace('.', '', 1).isdigit()]
-    return round(sum(totals) / len(totals), 2) if totals else None
+    """The team's score as every board shows it (UPG-84)."""
+    from services_leaderboard import score_of
+    return score_of(reg)[0]
 
 
 def _ranks(regs):
-    """Published ranks where there are any; otherwise by average score."""
+    """Published ranks where there are any; otherwise the shared ranking (UPG-84)."""
     if any(r.get('final_rank') for _, r in regs):
         return {rid: r.get('final_rank') for rid, r in regs if r.get('final_rank')}
-    scored = sorted(((rid, _average(r)) for rid, r in regs if _average(r) is not None), key=lambda x: -x[1])
-    return {rid: i for i, (rid, _) in enumerate(scored, start=1)}
+    from services_leaderboard import rank
+    return {row['id']: row['rank'] for row in rank([dict(r, id=rid) for rid, r in regs])}
 
 
 def _registrations(db, event_id):

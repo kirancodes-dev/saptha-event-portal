@@ -18,43 +18,43 @@
         svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg");
         svgElement.setAttribute('viewBox', "0 0 800 600");
         svgElement.innerHTML = `
-            <!-- Dark modern blueprint style college layout -->
-            <rect width="800" height="600" fill="#090d16"/>
+            <!-- Campus plan on the portal's light surface (UPG-63) -->
+            <rect width="800" height="600" fill="#eef1f6"/>
             <g opacity="0.1">
                 <!-- Grid Lines -->
-                <path d="M 0,100 L 800,100 M 0,200 L 800,200 M 0,300 L 800,300 M 0,400 L 800,400 M 0,500 L 800,500" stroke="#3b82f6" stroke-width="1"/>
-                <path d="M 100,0 L 100,600 M 200,0 L 200,600 M 300,0 L 300,600 M 400,0 L 400,600 M 500,0 L 500,600 M 600,0 L 600,600 M 700,0 L 700,600" stroke="#3b82f6" stroke-width="1"/>
+                <path d="M 0,100 L 800,100 M 0,200 L 800,200 M 0,300 L 800,300 M 0,400 L 800,400 M 0,500 L 800,500" stroke="#00185e" stroke-width="1"/>
+                <path d="M 100,0 L 100,600 M 200,0 L 200,600 M 300,0 L 300,600 M 400,0 L 400,600 M 500,0 L 500,600 M 600,0 L 600,600 M 700,0 L 700,600" stroke="#00185e" stroke-width="1"/>
             </g>
             
             <!-- Campus Gardens & Outer Spaces -->
-            <rect x="50" y="50" width="700" height="500" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.15" rx="20"/>
-            <rect x="550" y="350" width="160" height="160" fill="#10b981" fill-opacity="0.05" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,4" rx="10"/>
-            <text x="630" y="440" fill="#10b981" fill-opacity="0.6" font-family='Outfit' font-size="12" text-anchor="middle">Green Zone Lawn</text>
+            <rect x="50" y="50" width="700" height="500" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" rx="20"/>
+            <rect x="550" y="350" width="160" height="160" fill="#16a34a" fill-opacity="0.08" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4,4" rx="10"/>
+            <text x="630" y="440" fill="#166534" font-family='Plus Jakarta Sans, Inter, sans-serif' font-size="12" text-anchor="middle">Green Zone Lawn</text>
 
             <!-- Buildings -->
             <!-- Main Block -->
-            <rect x="300" y="70" width="200" height="100" fill="#1e293b" fill-opacity="0.8" stroke="#3b82f6" stroke-width="2" rx="8"/>
-            <text x="400" y="125" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Administration Block</text>
+            <rect x="300" y="70" width="200" height="100" fill="#ffffff" stroke="#00185e" stroke-width="2" rx="8"/>
+            <text x="400" y="125" fill="#0b1530" font-family='Plus Jakarta Sans, Inter, sans-serif' font-size="14" font-weight="bold" text-anchor="middle">Administration Block</text>
 
             <!-- CS & IT Building -->
-            <rect x="100" y="240" width="180" height="110" fill="#1e293b" fill-opacity="0.8" stroke="#06b6d4" stroke-width="2" rx="8"/>
-            <text x="190" y="300" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Computer Science Labs</text>
+            <rect x="100" y="240" width="180" height="110" fill="#ffffff" stroke="#00185e" stroke-width="2" rx="8"/>
+            <text x="190" y="300" fill="#0b1530" font-family='Plus Jakarta Sans, Inter, sans-serif' font-size="14" font-weight="bold" text-anchor="middle">Computer Science Labs</text>
 
             <!-- Seminar and Lecture Halls -->
-            <rect x="500" y="220" width="200" height="100" fill="#1e293b" fill-opacity="0.8" stroke="#f59e0b" stroke-width="2" rx="8"/>
-            <text x="600" y="275" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Seminar Hall Block</text>
+            <rect x="500" y="220" width="200" height="100" fill="#ffffff" stroke="#00185e" stroke-width="2" rx="8"/>
+            <text x="600" y="275" fill="#0b1530" font-family='Plus Jakarta Sans, Inter, sans-serif' font-size="14" font-weight="bold" text-anchor="middle">Seminar Hall Block</text>
 
             <!-- Sports Stadium Arena -->
-            <rect x="100" y="420" width="240" height="120" fill="#1e293b" fill-opacity="0.8" stroke="#10b981" stroke-width="2" rx="8"/>
-            <text x="220" y="485" fill="#f8fafc" font-family='Outfit' font-size="14" font-weight="bold" text-anchor="middle">Sports Stadium Complex</text>
+            <rect x="100" y="420" width="240" height="120" fill="#ffffff" stroke="#00185e" stroke-width="2" rx="8"/>
+            <text x="220" y="485" fill="#0b1530" font-family='Plus Jakarta Sans, Inter, sans-serif' font-size="14" font-weight="bold" text-anchor="middle">Sports Stadium Complex</text>
 
             <!-- Main Canteen / Food Court -->
-            <rect x="520" y="400" width="100" height="80" fill="#1e293b" fill-opacity="0.8" stroke="#ec4899" stroke-width="2" rx="8"/>
-            <text x="570" y="445" fill="#f8fafc" font-family='Outfit' font-size="11" font-weight="bold" text-anchor="middle">Food Court</text>
+            <rect x="520" y="400" width="100" height="80" fill="#ffffff" stroke="#00185e" stroke-width="2" rx="8"/>
+            <text x="570" y="445" fill="#0b1530" font-family='Plus Jakarta Sans, Inter, sans-serif' font-size="11" font-weight="bold" text-anchor="middle">Food Court</text>
 
             <!-- Pathways / Roads (Main corridors) -->
             <path d="M 400,170 L 400,280 L 190,280 M 400,280 L 600,280 L 600,220 M 400,280 L 400,440 L 220,440 M 400,440 L 570,440 L 570,400 M 400,170 L 400,50" 
-                  stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.1"/>
+                  fill="none" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
         `;
 
         var imageBounds = [[0, 0], [600, 800]];
@@ -62,14 +62,14 @@
 
         // Nodes for wayfinding calculation
         var nodes = {
-            entrance: { name: "Main Entrance (Gate 1)", coords: [50, 400], icon: "fa-door-open", color: "#3b82f6" },
-            lobby: { name: "Admin Block Lobby", coords: [150, 400], icon: "fa-building-columns", color: "#3b82f6" },
-            canteen: { name: "Food Court / Cafeteria", coords: [420, 570], icon: "fa-utensils", color: "#ec4899" },
-            seminar: { name: "Seminar Hall Block", coords: [270, 600], icon: "fa-chalkboard-user", color: "#f59e0b" },
-            ground: { name: "Sports Arena Complex", coords: [470, 220], icon: "fa-running", color: "#10b981" },
-            auditorium: { name: "Main Auditorium (Tech Fest Venue)", coords: [120, 350], icon: "fa-theater-masks", color: "#3b82f6" },
-            lab1: { name: "Advanced CS Labs (Hackathon)", coords: [290, 190], icon: "fa-laptop-code", color: "#06b6d4" },
-            lounge: { name: "Club Activities Lounge", coords: [270, 520], icon: "fa-comments", color: "#8b5cf6" }
+            entrance: { name: "Main Entrance (Gate 1)", coords: [50, 400], icon: "fa-door-open", color: "#00185e" },
+            lobby: { name: "Admin Block Lobby", coords: [150, 400], icon: "fa-building-columns", color: "#00185e" },
+            canteen: { name: "Food Court / Cafeteria", coords: [420, 570], icon: "fa-utensils", color: "#00185e" },
+            seminar: { name: "Seminar Hall Block", coords: [270, 600], icon: "fa-chalkboard-user", color: "#00185e" },
+            ground: { name: "Sports Arena Complex", coords: [470, 220], icon: "fa-running", color: "#00185e" },
+            auditorium: { name: "Main Auditorium (Tech Fest Venue)", coords: [120, 350], icon: "fa-theater-masks", color: "#00185e" },
+            lab1: { name: "Advanced CS Labs (Hackathon)", coords: [290, 190], icon: "fa-laptop-code", color: "#00185e" },
+            lounge: { name: "Club Activities Lounge", coords: [270, 520], icon: "fa-comments", color: "#00185e" }
         };
 
         // Graph connections (simplistic routes matching drawing coordinates)
@@ -143,7 +143,7 @@
         var markers = {};
         Object.keys(nodes).forEach(key => {
             var n = nodes[key];
-            var iconHtml = `<div style="background: ${escapeHtml(n.color)}; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border: 2px solid rgba(255,255,255,0.4); box-shadow: 0 4px 8px rgba(0,0,0,0.4)">
+            var iconHtml = `<div style="background: ${escapeHtml(n.color)}; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border: 2px solid #c69d67; box-shadow: 0 2px 6px rgba(11,21,48,0.25)">
                                 <i class="fas ${escapeHtml(n.icon)}"></i>
                             </div>`;
             var myIcon = L.divIcon({
@@ -156,10 +156,10 @@
 
             var m = L.marker(n.coords, { icon: myIcon }).addTo(map);
             m.bindPopup(`<div class="text-center">
-                            <h6 class="fw-bold m-0 text-white">${escapeHtml(n.name)}</h6>
+                            <h6 class="fw-bold m-0">${escapeHtml(n.name)}</h6>
                             <span class="text-muted small">Campus Landmark</span>
-                            <hr class="my-1 border-secondary">
-                            <button data-h-click="se:call" data-call="setAsDestination" data-args="${escapeHtml(JSON.stringify([key]))}" class="btn btn-primary btn-xs py-1 px-2 rounded mt-1" style="font-size:11px;">Navigate Here</button>
+                            <hr class="my-1">
+                            <button data-h-click="se:call" data-call="setAsDestination" data-args="${escapeHtml(JSON.stringify([key]))}" class="btn btn-primary btn-sm mt-1">Navigate Here</button>
                          </div>`);
             markers[key] = m;
         });
@@ -197,7 +197,7 @@
 
             // Draw beautiful glowing dynamic dashed path
             activePolyline = L.polyline(routeData.path, {
-                color: '#3b82f6',
+                color: '#c69d67',
                 weight: 6,
                 opacity: 0.8,
                 lineJoin: 'round',
@@ -206,15 +206,15 @@
 
             // Add terminal visual enhancements (start/end indicators)
             startMarkerGlow = L.circle(nodes[startKey].coords, {
-                color: '#3b82f6',
-                fillColor: '#3b82f6',
+                color: '#00185e',
+                fillColor: '#00185e',
                 fillOpacity: 0.2,
                 radius: 20
             }).addTo(map);
 
             endMarkerGlow = L.circle(nodes[endKey].coords, {
-                color: '#10b981',
-                fillColor: '#10b981',
+                color: '#16a34a',
+                fillColor: '#16a34a',
                 fillOpacity: 0.2,
                 radius: 25
             }).addTo(map);
@@ -229,8 +229,8 @@
             
             instContent.innerHTML = routeData.steps.map((step, idx) => {
                 return `<div class="d-flex align-items-start gap-2 mb-2">
-                            <span class="badge bg-secondary rounded-pill mt-1" style="font-size: 9px;">${escapeHtml(idx + 1)}</span>
-                            <span class="text-light">${escapeHtml(step)}</span>
+                            <span class="se-badge se-badge--brand se-badge--plain mt-1">${escapeHtml(idx + 1)}</span>
+                            <span>${escapeHtml(step)}</span>
                         </div>`;
             }).join('');
         }

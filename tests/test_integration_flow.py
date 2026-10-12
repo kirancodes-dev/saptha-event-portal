@@ -46,6 +46,11 @@ def _create_event(client, db, title, date, fee=0, team=True):
     assert resp.status_code == 302
     matches = [d for d in db.collection('events').where('title', '==', title).stream()]
     assert len(matches) == 1
+    # New events are drafts until the SPOC publishes them (UPG-73, tested in
+    # test_event_creation.py). These tests were written for an event that is live
+    # from the start, so the helper puts it in that state: `active`, no history.
+    assert matches[0].to_dict().get('status') == 'draft'
+    db.collection('events').document(matches[0].id).update({'status': 'active'})
     return matches[0].id
 
 

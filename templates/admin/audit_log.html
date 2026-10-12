@@ -1,102 +1,49 @@
-{% extends "layouts/standalone.html" %}
-{#- On the shared document since UPG-23g. -#}
-{% block head %}
-    <title>Audit Log | Admin HQ</title>
-    {% include "layouts/_bootstrap_css.html" %}
-    <link href="/static/css/global.css" rel="stylesheet">
-    {% include "layouts/_fontawesome.html" %}
-    <style>
-        :root { --blue:#1a2557; --orange:#c9a45e; }
-        body { background:#f8f9fa; font-family:'Inter',sans-serif; color:#1e293b; }
-        h1,h2,h3,h4,h5 { font-family:'Outfit',sans-serif; }
-
-        .topnav { background:var(--blue); padding:0 24px; height:56px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.2); }
-        .brand { font-family:'Outfit',sans-serif; font-weight:700; font-size:15px; color:#fff; margin-left:10px; }
-        .nav-link-item { color:rgba(255,255,255,.7); font-size:12.5px; text-decoration:none; padding:5px 11px; border-radius:7px; transition:.15s; }
-        .nav-link-item:hover { color:#fff; background:rgba(255,255,255,.1); }
-
-        .page-header { background:var(--blue); color:#fff; padding:32px 0 28px; margin-bottom:32px; }
-        .page-header h2 { font-size:1.6rem; font-weight:800; margin:0; }
-        .page-header p { font-size:13px; color:rgba(255,255,255,.6); margin:4px 0 0; }
-
-        .filter-bar { background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:16px 20px; margin-bottom:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-        .filter-bar input, .filter-bar select { font-size:13px; border:1.5px solid #e2e8f0; border-radius:8px; padding:7px 12px; outline:none; color:#334155; }
-        .filter-bar input:focus, .filter-bar select:focus { border-color:var(--blue); }
-
-        .log-table-wrap { background:#fff; border-radius:14px; border:1px solid #e2e8f0; overflow:hidden; }
-        .log-table { width:100%; border-collapse:collapse; font-size:13px; }
-        .log-table thead th { background:var(--blue); color:#fff; font-weight:600; padding:12px 16px; white-space:nowrap; font-family:'Outfit',sans-serif; font-size:12px; letter-spacing:.3px; }
-        .log-table tbody tr { border-bottom:1px solid #f1f5f9; transition:.15s; }
-        .log-table tbody tr:last-child { border:none; }
-        .log-table tbody tr:hover { background:#f8faff; }
-        .log-table td { padding:12px 16px; vertical-align:middle; color:#334155; }
-
-        .action-badge { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; letter-spacing:.3px; padding:3px 10px; border-radius:100px; white-space:nowrap; }
-        .ab-create  { background:#dcfce7; color:#166534; }
-        .ab-update  { background:#dbeafe; color:#1e40af; }
-        .ab-delete  { background:#fee2e2; color:#991b1b; }
-        .ab-login   { background:#f0fdf4; color:#15803d; }
-        .ab-publish { background:#fef9c3; color:#854d0e; }
-        .ab-score   { background:#ede9fe; color:#6d28d9; }
-        .ab-default { background:#f1f5f9; color:#475569; }
-
-        .role-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px; }
-        .role-SuperAdmin { background:#fee2e2; color:#991b1b; }
-        .role-ClubSPOC   { background:#dbeafe; color:#1e40af; }
-        .role-EventCoordinator { background:#ede9fe; color:#6d28d9; }
-        .role-default    { background:#f1f5f9; color:#475569; }
-
-        .ts { font-size:11.5px; color:#94a3b8; white-space:nowrap; }
-        .ip-chip { font-size:10px; background:#f1f5f9; color:#64748b; border-radius:6px; padding:2px 7px; font-family:monospace; }
-        .details-cell { max-width:340px; word-break:break-word; color:#475569; }
-
-        .empty-state { padding:60px 24px; text-align:center; }
-        .empty-state i { font-size:48px; color:#cbd5e1; display:block; margin-bottom:16px; }
-        .empty-state h5 { color:var(--blue); font-family:'Outfit',sans-serif; font-weight:700; }
-        .empty-state p { color:#94a3b8; font-size:13px; }
-
-        .count-pill { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:100px; margin-left:8px; }
-    </style>
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% block title %}Audit log | Admin{% endblock %}
+{% block page_title %}Audit log{% endblock %}
+{% block page_sub %}System-wide record of privileged actions, newest first.{% if page and page.total %} <span class="se-badge se-badge--neutral ms-1">{{ page.total }} entries</span>{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+h1,h2,h3,h4,h5 { font-family: var(--font-heading); }
+.filter-bar { background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:16px 20px; margin-bottom:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.filter-bar input, .filter-bar select { font-size:13px; border:1.5px solid #e2e8f0; border-radius:8px; padding:7px 12px; outline:none; color:#334155; }
+.filter-bar input:focus, .filter-bar select:focus { border-color:var(--brand-navy); }
+.log-table-wrap { background:#fff; border-radius:14px; border:1px solid #e2e8f0; overflow:hidden; }
+.log-table { width:100%; border-collapse:collapse; font-size:13px; }
+.log-table thead th { background:var(--brand-navy); color:#fff; font-weight:600; padding:12px 16px; white-space:nowrap; font-family: var(--font-heading); font-size:12px; letter-spacing:.3px; }
+.log-table tbody tr { border-bottom:1px solid #f1f5f9; transition:.15s; }
+.log-table tbody tr:last-child { border:none; }
+.log-table tbody tr:hover { background:#f8faff; }
+.log-table td { padding:12px 16px; vertical-align:middle; color:#334155; }
+.action-badge { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; letter-spacing:.3px; padding:3px 10px; border-radius:100px; white-space:nowrap; }
+.ab-create  { background:#dcfce7; color:#166534; }
+.ab-update  { background:#dbeafe; color:#1e40af; }
+.ab-delete  { background:#fee2e2; color:#991b1b; }
+.ab-login   { background:#f0fdf4; color:#15803d; }
+.ab-publish { background:#fef9c3; color:#854d0e; }
+.ab-score   { background:#ede9fe; color:#6d28d9; }
+.ab-default { background:#f1f5f9; color:#475569; }
+.role-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:100px; }
+.role-SuperAdmin { background:#fee2e2; color:#991b1b; }
+.role-ClubSPOC   { background:#dbeafe; color:#1e40af; }
+.role-EventCoordinator { background:#ede9fe; color:#6d28d9; }
+.role-default    { background:#f1f5f9; color:#475569; }
+.ts { font-size:11.5px; color:var(--text-muted); white-space:nowrap; }
+.ip-chip { font-size:10px; background:#f1f5f9; color:#64748b; border-radius:6px; padding:2px 7px; font-family:monospace; }
+.details-cell { max-width:340px; word-break:break-word; color:#475569; }
+.empty-state { padding:60px 24px; text-align:center; }
+.empty-state i { font-size:48px; color:#cbd5e1; display:block; margin-bottom:16px; }
+.empty-state h5 { color: var(--brand-ink); font-family: var(--font-heading); font-weight:700; }
+.empty-state p { color:var(--text-muted); font-size:13px; }
+</style>
 {% endblock %}
-{% block body %}
-
-<!-- TOPNAV -->
-<div class="topnav">
-    <div class="d-flex align-items-center gap-2">
-        <img loading="eager" src="/static/snpsu-logo.png" alt="SNPSU" style="height:36px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;" data-h-error="admin/audit_log:1">
-        <span class="brand">Admin HQ</span>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-        <a href="/admin/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-        <a href="/admin/analytics" class="nav-link-item"><i class="fas fa-chart-bar me-1"></i>Analytics</a>
-        <a href="/events" class="nav-link-item"><i class="fas fa-calendar me-1"></i>Events</a>
-        <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Portal</a>
-        <a href="/logout" class="nav-link-item" style="color:rgba(255,255,255,.5);"><i class="fas fa-sign-out-alt"></i></a>
-    </div>
-</div>
-
-<!-- PAGE HEADER -->
-<div class="page-header">
-    <div class="container">
-        <div class="d-flex align-items-center gap-3">
-            <div style="width:48px;height:48px;background:rgba(255,255,255,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;">
-                <i class="fas fa-shield-halved" style="font-size:22px;color:var(--orange);"></i>
-            </div>
-            <div>
-                <h2>Audit Log
-                    <span class="count-pill">{{ entries | length }} entries</span>
-                </h2>
-                <p>System-wide record of privileged actions — last 100 events</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="container pb-5">
+{% block content %}
+<div>
 
     <!-- FILTER BAR: filters, search and page stay in the URL (UPG-19) -->
     <form method="get" action="/admin/audit_log" class="filter-bar" role="search">
-        <i class="fas fa-filter" style="color:var(--blue);font-size:13px;" aria-hidden="true"></i>
+        <i class="fas fa-filter" style="color: var(--brand-ink);font-size:13px;" aria-hidden="true"></i>
         <label for="filterText" class="visually-hidden">Search action, details or user</label>
         <input type="search" id="filterText" name="q" value="{{ page.q }}" placeholder="Search action, details or user…" style="flex:1;min-width:180px;">
         <label for="filterRole" class="visually-hidden">Role</label>
@@ -113,7 +60,7 @@
             <option value="{{ a }}" {% if action_filter == a %}selected{% endif %}>{{ a }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="btn btn-sm" style="background:var(--blue);color:#fff;border-radius:8px;font-size:12px;">
+        <button type="submit" class="btn btn-sm" style="background:var(--brand-navy);color:#fff;border-radius:8px;font-size:12px;">
             <i class="fas fa-search me-1" aria-hidden="true"></i> Apply
         </button>
         <a href="/admin/audit_log" class="btn btn-sm btn-link" style="font-size:12px;">Clear</a>
@@ -167,7 +114,7 @@
                         {% endif %}
                     </td>
                     <td style="font-size:12.5px;">
-                        <i class="fas fa-user-circle me-1" style="color:var(--orange);"></i>
+                        <i class="fas fa-user-circle me-1" style="color:var(--brand-gold);"></i>
                         {{ entry.get('user', '—') }}
                     </td>
                     <td>
@@ -197,4 +144,5 @@
 
 {% include "layouts/_bootstrap_js.html" %}
 {% endblock %}
-{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__audit_log.js"></script>{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__audit_log.js"></script>
+{% endblock %}

@@ -1,42 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="csrf-token" content="{{ csrf_token() }}">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23d (full-screen: no footer). -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
 <title>QR Scanner | {{ event.title }}</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
+{% include "layouts/_fontawesome.html" %}
+<link href="/static/css/global.css" rel="stylesheet">
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;}
+/* SPOC scanner (UPG-63): a dark camera tool on the brand navy */
+:root{--blue:var(--brand-navy);--orange:var(--brand-gold);--scan-bg:#070f3a;--scan-card:#0f1d5c;--scan-hover:#172873;--scan-line:rgba(255,255,255,.1);--scan-muted:#b4bee0;--scan-subtle:#8f9bc4;}
 *{box-sizing:border-box;}
-body{font-family:'Inter',sans-serif;background:#0f172a;min-height:100vh;color:#fff;}
-h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
+body{font-family:var(--font-body);background:var(--scan-bg);min-height:100vh;color:#fff;}
+h1,h2,h3,h4,h5,h6{font-family: var(--font-heading);}
 
-.topbar{background:#1e293b;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);}
-.topbar-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;color:#fff;}
-.topbar-sub{font-size:11px;color:#94a3b8;margin-top:1px;}
-.back-btn{color:#94a3b8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;transition:.15s;}
+.topbar{padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.topbar .brand-logo{height:30px;}
+@media (max-width:575.98px){.topbar{flex-wrap:wrap;}.topbar>.text-end{flex:1 1 100%;text-align:left!important;}}
+.topbar-title{font-family: var(--font-heading);font-weight:700;font-size:14px;color:#fff;}
+.topbar-sub{font-size:11px;color:var(--scan-muted);margin-top:1px;}
+.back-btn{color:var(--scan-muted);text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;transition:.15s;}
 .back-btn:hover{color:#fff;}
 
 .counter-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px 8px;}
-.counter-card{background:#1e293b;border-radius:12px;padding:14px 16px;text-align:center;border:1px solid rgba(255,255,255,.07);}
-.counter-val{font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;line-height:1;}
-.counter-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-top:4px;}
+.counter-card{background:var(--scan-card);border-radius:12px;padding:14px 16px;text-align:center;border:1px solid rgba(255,255,255,.07);}
+.counter-val{font-family: var(--font-heading);font-size:28px;font-weight:800;line-height:1;}
+.counter-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--scan-subtle);margin-top:4px;}
 .cv-green{color:#22c55e;}
-.cv-blue{color:#60a5fa;}
+.cv-blue{color:#c9d3ff;}
 
 /* Progress Bar */
 .progress-container{padding:0 20px 16px;}
-.progress-wrap{height:8px;background:#1e293b;border-radius:100px;overflow:hidden;border:1px solid rgba(255,255,255,0.05);margin-top:6px;}
+.progress-wrap{height:8px;background:var(--scan-card);border-radius:100px;overflow:hidden;border:1px solid rgba(255,255,255,0.05);margin-top:6px;}
 .progress-bar-custom{height:100%;background:linear-gradient(90deg, #10b981, #22c55e);border-radius:100px;width:0%;transition:width 0.4s cubic-bezier(0.4, 0, 0.2, 1);}
 
 /* Custom Tabs */
 .tabs-container{padding:0 20px 16px;}
-.nav-tabs-custom{display:flex;background:#1e293b;border-radius:12px;padding:4px;border:1px solid rgba(255,255,255,0.06);}
-.tab-btn{flex:1;padding:10px;border:none;border-radius:8px;background:transparent;color:#94a3b8;font-size:13px;font-weight:600;font-family:'Poppins',sans-serif;transition:0.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
-.tab-btn.active{background:#0f172a;color:#fff;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);}
+.nav-tabs-custom{display:flex;background:var(--scan-card);border-radius:12px;padding:4px;border:1px solid rgba(255,255,255,0.06);}
+.tab-btn{flex:1;padding:10px;border:none;border-radius:8px;background:transparent;color:var(--scan-muted);font-size:13px;font-weight:600;font-family: var(--font-heading);transition:0.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tab-btn.active{background:var(--brand-navy);color:#fff;box-shadow:inset 0 -2px 0 var(--brand-gold);box-shadow:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);}
 
 .scanner-wrap{padding:0 20px;margin-bottom:16px;}
 #qr-reader{border-radius:16px;overflow:hidden;background:#000;width:100%;aspect-ratio:1/1;position:relative;}
@@ -49,36 +50,36 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 #qr-reader__status_span{display:none !important;}
 
 .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-.scan-frame{width:65%;height:65%;border:2px solid rgba(201,164,94,.8);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);}
+.scan-frame{width:65%;height:65%;border:2px solid rgba(198,157,103,.8);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);}
 .scan-line{position:absolute;width:65%;height:2px;background:linear-gradient(90deg,transparent,var(--orange),transparent);border-radius:100px;animation:scanline 2s linear infinite;}
 @keyframes scanline{0%{top:17.5%}100%{top:82.5%}}
 
-.start-btn{display:block;width:100%;padding:14px;background:var(--orange);color:#fff;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;border:none;border-radius:12px;cursor:pointer;transition:.15s;text-align:center;}
+.start-btn{display:block;width:100%;padding:14px;background:var(--orange);color:var(--brand-navy);font-family: var(--font-heading);font-weight:700;font-size:14px;border:none;border-radius:12px;cursor:pointer;transition:.15s;text-align:center;}
 .start-btn:hover{background:#b8894a;}
-.stop-btn{display:none;width:100%;padding:14px;background:#1e293b;color:#94a3b8;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;transition:.15s;}
-.stop-btn:hover{background:#334155;color:#fff;}
+.stop-btn{display:none;width:100%;padding:14px;background:var(--scan-card);color:var(--scan-muted);font-family: var(--font-heading);font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,.1);border-radius:12px;cursor:pointer;transition:.15s;}
+.stop-btn:hover{background:var(--scan-hover);color:#fff;}
 
 /* Manual check-in section */
 .search-wrap{padding:0 20px 12px;}
-.search-box-custom{background:#1e293b;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:2px 14px;display:flex;align-items:center;gap:10px;}
+.search-box-custom{background:var(--scan-card);border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:2px 14px;display:flex;align-items:center;gap:10px;}
 .search-box-custom input{flex:1;background:transparent;border:none;color:#fff;padding:12px 0;font-size:13px;outline:none;}
-.search-box-custom i{color:#64748b;font-size:14px;}
+.search-box-custom i{color:var(--scan-subtle);font-size:14px;}
 
 .filter-pills-wrap{padding:0 20px 16px;display:flex;gap:8px;overflow-x:auto;}
-.filter-pill{background:#1e293b;border:1px solid rgba(255,255,255,0.06);border-radius:100px;padding:6px 14px;color:#94a3b8;font-size:12px;font-weight:500;cursor:pointer;transition:0.15s;}
-.filter-pill:hover{color:#fff;background:#334155;}
-.filter-pill.active{background:var(--orange);color:#fff;border-color:transparent;}
+.filter-pill{background:var(--scan-card);border:1px solid rgba(255,255,255,0.06);border-radius:100px;padding:6px 14px;color:var(--scan-muted);font-size:12px;font-weight:500;cursor:pointer;transition:0.15s;}
+.filter-pill:hover{color:#fff;background:var(--scan-hover);}
+.filter-pill.active{background:var(--orange);color:var(--brand-navy);border-color:transparent;}
 
 .manual-list{padding:0 20px 20px;display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
-.manual-item{background:#1e293b;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;transition:0.15s;}
-.manual-item:hover{border-color:rgba(255,255,255,0.12);background:#223047;}
+.manual-item{background:var(--scan-card);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;transition:0.15s;}
+.manual-item:hover{border-color:rgba(255,255,255,0.12);background:var(--scan-hover);}
 .manual-name{font-weight:600;font-size:13.5px;color:#f8fafc;}
-.manual-sub{font-size:11.5px;color:#64748b;margin-top:2px;}
+.manual-sub{font-size:11.5px;color:var(--scan-subtle);margin-top:2px;}
 .manual-btn{background:#22c55e;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:0.12s;display:flex;align-items:center;gap:4px;}
 .manual-btn:hover{background:#16a34a;}
 .manual-status{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;}
 .status-present{color:#22c55e;}
-.status-absent{color:#64748b;}
+.status-absent{color:var(--scan-subtle);}
 
 .result-panel{margin:12px 20px;padding:16px 20px;border-radius:14px;display:none;animation:fadeIn .25s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -86,33 +87,52 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 .rp-already{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);}
 .rp-invalid{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);}
 .rp-icon{font-size:28px;margin-bottom:8px;}
-.rp-status{font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;}
+.rp-success .rp-icon{color:#22c55e;}.rp-already .rp-icon{color:#eab308;}.rp-invalid .rp-icon{color:#ef4444;}
+.rp-status{font-family: var(--font-heading);font-weight:700;font-size:16px;}
 .rp-success .rp-status{color:#22c55e;}
 .rp-already .rp-status{color:#eab308;}
 .rp-invalid .rp-status{color:#ef4444;}
-.rp-detail{font-size:13px;color:#94a3b8;margin-top:4px;}
+.rp-detail{font-size:13px;color:var(--scan-muted);margin-top:4px;}
 .rp-name{font-size:14px;font-weight:600;color:#e2e8f0;margin-top:8px;}
-.rp-time{font-size:12px;color:#64748b;margin-top:2px;}
+.rp-time{font-size:12px;color:var(--scan-subtle);margin-top:2px;}
 
 .log-section{padding:0 20px 80px;}
-.log-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:10px;font-weight:600;}
+.log-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--scan-subtle);margin-bottom:10px;font-weight:600;}
 .log-list{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;}
-.log-item{background:#1e293b;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:13px;border:1px solid rgba(255,255,255,.06);}
+.log-item{background:var(--scan-card);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:13px;border:1px solid rgba(255,255,255,.06);}
 .log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .ld-green{background:#22c55e;}
 .ld-yellow{background:#eab308;}
 .ld-red{background:#ef4444;}
 .log-name{font-weight:600;color:#e2e8f0;flex:1;}
-.log-time{font-size:11px;color:#475569;}
+.log-time{font-size:11px;color:var(--scan-subtle);}
+.progress-head{font-size:11px;color:var(--scan-subtle);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.scan-locked{text-align:center;padding:40px 20px 20px;}
+.scan-locked__icon{width:72px;height:72px;margin:0 auto;border-radius:50%;background:var(--scan-card);border:1px solid var(--scan-line);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--brand-gold);}
+.scan-locked h2{font-weight:700;font-size:1.25rem;color:#fff;margin-top:14px;}
+.scan-locked p{color:var(--scan-muted);font-size:14px;margin-top:8px;}
+.scan-locked strong{color:#fff;}
+.scan-ghost-btn{display:inline-block;margin-top:20px;padding:10px 24px;background:var(--scan-card);color:var(--scan-muted);border-radius:10px;text-decoration:none;font-size:13px;border:1px solid var(--scan-line);}
+.scan-ghost-btn:hover{color:#fff;background:var(--scan-hover);}
+.cam-placeholder{aspect-ratio:1/1;background:var(--scan-card);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:2px dashed var(--scan-line);}
+.cam-placeholder i{font-size:48px;color:var(--scan-subtle);}
+.cam-placeholder span{color:var(--scan-subtle);font-size:13px;}
+.list-empty{color:var(--scan-subtle);font-size:13px;text-align:center;padding:20px;}
+.team-name{color:var(--brand-gold);}
+.delivery-badge{font-size:10px;margin-left:6px;font-weight:500;padding:3px 6px;}
+.tab-btn:focus-visible,.filter-pill:focus-visible,.start-btn:focus-visible,.stop-btn:focus-visible,.manual-btn:focus-visible{outline:2px solid var(--brand-gold);outline-offset:2px;}
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <a href="/spoc/dashboard" class="back-btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
+  <div class="d-flex align-items-center gap-3">
+    <img src="/static/img/snpsu-logo-reversed.png" alt="SNPSU" class="brand-logo">
+    <a href="/spoc/dashboard" class="back-btn"><i class="fas fa-arrow-left" aria-hidden="true"></i> Dashboard</a>
+  </div>
   <div class="text-end">
-    <div class="topbar-title">QR Scanner & Check-in</div>
+    <h1 class="topbar-title m-0">QR Scanner & Check-in</h1>
     <div class="topbar-sub">{{ event.title }}</div>
   </div>
 </div>
@@ -121,7 +141,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <div class="counter-row">
   <div class="counter-card">
     <div class="counter-val cv-green" id="presentCount">{{ present_count }}</div>
-    <div class="counter-label">Checked In</div>
+    <div class="counter-label">Checked in</div>
   </div>
   <div class="counter-card">
     <div class="counter-val cv-blue">{{ total_count }}</div>
@@ -131,7 +151,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
 <!-- CHECK-IN PROGRESS BAR -->
 <div class="progress-container">
-  <div class="d-flex justify-content-between align-items-center" style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">
+  <div class="d-flex justify-content-between align-items-center progress-head">
     <span>Check-in Progress</span>
     <span id="progressText">0%</span>
   </div>
@@ -143,10 +163,10 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <!-- TABS -->
 <div class="tabs-container">
   <div class="nav-tabs-custom">
-    <button class="tab-btn active" id="btnTabScan" onclick="setTab('scan')">
+    <button class="tab-btn active" id="btnTabScan" data-h-click="spoc/scan:1">
       <i class="fas fa-qrcode"></i> QR Scan
     </button>
-    <button class="tab-btn" id="btnTabManual" onclick="setTab('manual')">
+    <button class="tab-btn" id="btnTabManual" data-h-click="spoc/scan:2">
       <i class="fas fa-list-ul"></i> Manual List
     </button>
   </div>
@@ -155,15 +175,15 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 <!-- SCANNER TAB VIEW -->
 <div id="scanView">
   {% if not scanning_open %}
-  <div style="text-align:center;padding:40px 20px 20px;">
-    <div style="font-size:56px;">🔒</div>
-    <h4 style="font-family:'Poppins',sans-serif;font-weight:700;color:#fbbf24;margin-top:12px;">Scanner Locked</h4>
-    <p style="color:#64748b;font-size:14px;margin-top:8px;">
-      Scanning opens on <strong style="color:#e2e8f0;">{{ event_date }}</strong>.
+  <div class="scan-locked">
+    <div class="scan-locked__icon" aria-hidden="true"><i class="fas fa-lock"></i></div>
+    <h2>Scanner locked</h2>
+    <p>
+      Scanning opens on <strong>{{ event_date }}</strong>.
       {% if today < event_date %}Come back on the event day.{% else %}This event has already passed.{% endif %}
     </p>
-    <a href="/spoc/dashboard" style="display:inline-block;margin-top:20px;padding:10px 24px;background:#1e293b;color:#94a3b8;border-radius:10px;text-decoration:none;font-size:13px;border:1px solid rgba(255,255,255,.1);">
-      ← Back to Dashboard
+    <a href="/spoc/dashboard" class="scan-ghost-btn">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to dashboard
     </a>
   </div>
   {% else %}
@@ -174,19 +194,19 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
         <div class="scan-line"></div>
       </div>
     </div>
-    <div id="placeholder" style="aspect-ratio:1/1;background:#1e293b;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:2px dashed rgba(255,255,255,.08);">
-      <i class="fas fa-qrcode" style="font-size:48px;color:#334155;"></i>
-      <span style="color:#475569;font-size:13px;">Camera inactive</span>
+    <div id="placeholder" class="cam-placeholder">
+      <i class="fas fa-qrcode" aria-hidden="true"></i>
+      <span>Camera inactive</span>
     </div>
   </div>
 
   <!-- CONTROLS -->
   <div class="px-4 d-flex flex-column gap-2 mb-3">
-    <button class="start-btn" id="startBtn" onclick="startScanner()">
-      <i class="fas fa-camera me-2"></i>Start Camera
+    <button class="start-btn" id="startBtn" data-h-click="spoc/scan:3">
+      <i class="fas fa-camera me-2"></i>Start camera
     </button>
-    <button class="stop-btn" id="stopBtn" onclick="stopScanner()">
-      <i class="fas fa-stop me-2"></i>Stop Camera
+    <button class="stop-btn" id="stopBtn" data-h-click="spoc/scan:4">
+      <i class="fas fa-stop me-2"></i>Stop camera
     </button>
   </div>
   {% endif %}
@@ -198,15 +218,15 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
   <div class="search-wrap">
     <div class="search-box-custom">
       <i class="fas fa-search"></i>
-      <input type="text" id="searchInput" placeholder="Search by name, email, or team..." oninput="onSearchChange()">
+      <input aria-label="Search by name, email, or team" type="text" id="searchInput" placeholder="Search by name, email, or team..." data-h-input="spoc/scan:5">
     </div>
   </div>
 
   <!-- FILTERS -->
   <div class="filter-pills-wrap">
-    <button class="filter-pill active" id="pillAll" onclick="setFilter('all')">All</button>
-    <button class="filter-pill" id="pillAbsent" onclick="setFilter('absent')">Absent</button>
-    <button class="filter-pill" id="pillPresent" onclick="setFilter('present')">Checked In</button>
+    <button class="filter-pill active" id="pillAll" data-h-click="spoc/scan:6">All</button>
+    <button class="filter-pill" id="pillAbsent" data-h-click="spoc/scan:7">Absent</button>
+    <button class="filter-pill" id="pillPresent" data-h-click="spoc/scan:8">Checked In</button>
   </div>
 
   <!-- LIST -->
@@ -216,7 +236,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 </div>
 
 <!-- RESULT PANEL -->
-<div class="result-panel" id="resultPanel">
+<div class="result-panel" id="resultPanel" role="status" aria-live="polite">
   <div class="rp-icon" id="rpIcon"></div>
   <div class="rp-status" id="rpStatus"></div>
   <div class="rp-detail" id="rpDetail"></div>
@@ -226,14 +246,15 @@ h1,h2,h3,h4,h5,h6{font-family:'Poppins',sans-serif;}
 
 <!-- LOG -->
 <div class="log-section">
-  <div class="log-title"><i class="fas fa-history me-1"></i> Recent Scans</div>
+  <div class="log-title"><i class="fas fa-history me-1"></i> Recent scans</div>
   <div class="log-list" id="logList">
-    <div style="color:#334155;font-size:13px;text-align:center;padding:20px;">No scans yet</div>
+    <div class="list-empty">No scans yet</div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script>
+<script integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="/static/js/escape.js"></script>
+<script nonce="{{ csp_nonce() }}">
 const EVENT_ID        = {{ event_id | tojson }};
 const CSRF_TOKEN      = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const registrations   = {{ registrations | tojson }};
@@ -305,7 +326,7 @@ function renderManualList() {
   });
   
   if (filtered.length === 0) {
-    container.innerHTML = '<div style="color:#334155;font-size:13px;text-align:center;padding:24px;">No participants found</div>';
+    container.innerHTML = '<div class="list-empty">No participants found</div>';
     return;
   }
   
@@ -313,32 +334,33 @@ function renderManualList() {
     const item = document.createElement('div');
     item.className = 'manual-item';
     
-    let deliveryBadge = '';
+    let deliveryBadgeHtml = '';
     const dStatus = r.delivery_status || 'Unknown';
     if (dStatus === 'Sent') {
-      deliveryBadge = ` <span class="badge bg-secondary text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-paper-plane me-1"></i>Sent</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-secondary text-white delivery-badge"><i class="fas fa-paper-plane me-1"></i>Sent</span>`;
     } else if (dStatus === 'Delivered') {
-      deliveryBadge = ` <span class="badge bg-info text-dark" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-check-double me-1"></i>Delivered</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-info text-dark delivery-badge"><i class="fas fa-check-double me-1"></i>Delivered</span>`;
     } else if (dStatus === 'Opened') {
-      deliveryBadge = ` <span class="badge bg-success text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-envelope-open me-1"></i>Opened</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-success text-white delivery-badge"><i class="fas fa-envelope-open me-1"></i>Opened</span>`;
     } else if (dStatus === 'Bounced') {
-      deliveryBadge = ` <span class="badge bg-danger text-white" style="font-size:10px; margin-left: 6px; font-weight: 500; padding: 3px 6px;"><i class="fas fa-exclamation-triangle me-1"></i>Bounced</span>`;
+      deliveryBadgeHtml = ` <span class="badge bg-danger text-white delivery-badge"><i class="fas fa-exclamation-triangle me-1"></i>Bounced</span>`;
     }
 
-    const nameStr = r.lead_name + (r.team_name ? ` · <span style="color:var(--orange);">${r.team_name}</span>` : '');
-    const subStr = r.lead_email + deliveryBadge;
+    // Registrants typed these: escape them (BLK-19)
+    const nameHtml = escapeHtml(r.lead_name) + (r.team_name ? ` · <span class="team-name">${escapeHtml(r.team_name)}</span>` : '');
+    const subHtml = escapeHtml(r.lead_email) + deliveryBadgeHtml;
     
     let actionHtml = '';
     if (r.attendance === 'Present') {
       actionHtml = `<span class="manual-status status-present"><i class="fas fa-check-circle"></i> Checked In</span>`;
     } else {
-      actionHtml = `<button class="manual-btn" id="btn-${r.id}" onclick="manualCheckIn('${r.id}')"><i class="fas fa-user-check"></i> Check In</button>`;
+      actionHtml = `<button class="manual-btn" id="btn-${escapeHtml(r.id)}" data-h-click="se:call" data-call="manualCheckIn" data-args="${escapeHtml(JSON.stringify([r.id]))}"><i class="fas fa-user-check"></i> Check In</button>`;
     }
     
     item.innerHTML = `
       <div>
-        <div class="manual-name">${nameStr}</div>
-        <div class="manual-sub">${subStr}</div>
+        <div class="manual-name">${nameHtml}</div>
+        <div class="manual-sub">${subHtml}</div>
       </div>
       <div>
         ${actionHtml}
@@ -442,40 +464,35 @@ function playScanSound(type) {
   }
 }
 
+// Every scan goes through the shared check-in (UPG-02); it takes the ticket
+// link or code, never a registration ID.
 async function onQRDetected(decoded) {
   if (cooldown) return;
-
-  const match = decoded.match(/\/ticket\/verify\/([^/?#]+)/);
-  if (!match) {
-    showResult('invalid', null);
-    triggerCooldown(1500);
-    return;
-  }
-  const regId = match[1];
   triggerCooldown(3000);
 
   try {
-    const resp = await fetch(`/spoc/api/checkin/${EVENT_ID}/${regId}`, {
+    const resp = await fetch('/ticket/api/checkin', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': CSRF_TOKEN,
       },
+      body: JSON.stringify({ token: decoded, event_id: EVENT_ID, source: 'spoc scanner' }),
     });
     const data = await resp.json();
     showResult(data.status, data);
     addLog(data.status, data);
-    
+
     if (data.status === 'success') {
       // Find and update item locally if it exists
-      const item = registrations.find(r => r.id === regId);
+      const item = registrations.find(r => r.id === data.reg_id || r.reg_id === data.reg_id);
       if (item) {
         item.attendance = 'Present';
         item.checkin_time = data.checkin_time;
       } else {
         // Fallback: push dynamic new attendee if not in list
         registrations.push({
-          id: regId,
+          id: data.reg_id,
           lead_name: data.name || 'Unknown',
           lead_email: '',
           team_name: data.team || '',
@@ -510,22 +527,22 @@ function showResult(status, data) {
 
   if (status === 'success') {
     panel.classList.add('result-panel', 'rp-success');
-    icon.textContent  = '✅';
+    icon.innerHTML  = '<i class="fas fa-circle-check" aria-hidden="true"></i>';
     stat.textContent  = 'Entry Granted!';
     detail.textContent = data?.message || '';
     if (data?.name) name.textContent = data.name + (data.team ? ` · ${data.team}` : '');
     if (data?.checkin_time) time.textContent = `Checked in at ${data.checkin_time}`;
   } else if (status === 'already_in') {
     panel.classList.add('result-panel', 'rp-already');
-    icon.textContent  = '⚠️';
+    icon.innerHTML  = '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i>';
     stat.textContent  = 'Already Checked In';
     detail.textContent = data?.message || '';
     if (data?.name) name.textContent = data.name;
     if (data?.checkin_time) time.textContent = `Scanned earlier at ${data.checkin_time}`;
   } else {
     panel.classList.add('result-panel', 'rp-invalid');
-    icon.textContent  = '❌';
-    stat.textContent  = 'Invalid Ticket';
+    icon.innerHTML  = '<i class="fas fa-circle-xmark" aria-hidden="true"></i>';
+    stat.textContent  = {unpaid: 'Payment Pending', wrong_event: 'Different Event', forbidden: 'Not Allowed'}[status] || 'Invalid Ticket';
     detail.textContent = data?.message || 'This QR code is not valid for this event.';
   }
 
@@ -535,7 +552,7 @@ function showResult(status, data) {
 
 function addLog(status, data) {
   const list = document.getElementById('logList');
-  const placeholder = list.querySelector('div[style]');
+  const placeholder = list.querySelector('.list-empty');
   if (placeholder) placeholder.remove();
 
   const dot   = status === 'success' ? 'ld-green' : status === 'already_in' ? 'ld-yellow' : 'ld-red';
@@ -546,9 +563,9 @@ function addLog(status, data) {
   const item = document.createElement('div');
   item.className = 'log-item';
   item.innerHTML = `
-    <span class="log-dot ${dot}"></span>
-    <span class="log-name">${nameText}</span>
-    <span class="log-time">${now} · ${label}</span>
+    <span class="log-dot ${escapeHtml(dot)}"></span>
+    <span class="log-name">${escapeHtml(nameText)}</span>
+    <span class="log-time">${escapeHtml(now)} · ${escapeHtml(label)}</span>
   `;
   list.insertBefore(item, list.firstChild);
 }
@@ -595,5 +612,5 @@ function stopScanner() {
 // Initial stats progress bar load
 updateProgress();
 </script>
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/spoc__scan.js"></script>{% endblock %}

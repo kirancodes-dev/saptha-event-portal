@@ -71,17 +71,14 @@
     toast.style.minWidth = '280px';
     toast.style.boxShadow = '0 8px 30px rgba(0,0,0,0.3)';
     
-    var head = '<div class="d-flex justify-content-between align-items-center mb-1">' +
-               '<strong class="text-warning">' + title + '</strong>' +
-               '<button type="button" class="btn-close btn-close-white small" onclick="this.parentElement.parentElement.remove()"></button>' +
-               '</div>';
-    var textBody = '<div>' + body + '</div>';
-    
-    if (action) {
-      textBody += '<button class="btn btn-sm btn-warning mt-2 w-100" id="toastActionBtn">Execute</button>';
-    }
-
-    toast.innerHTML = head + textBody;
+    // Fixed markup first, then the title and body as text (BLK-19)
+    toast.innerHTML = '<div class="d-flex justify-content-between align-items-center mb-1">' +
+                      '<strong class="text-warning"></strong>' +
+                      '<button type="button" class="btn-close btn-close-white small" data-h-click="se:remove-grandparent"></button>' +
+                      '</div><div class="pwa-toast-body"></div>' +
+                      (action ? '<button class="btn btn-sm btn-warning mt-2 w-100" id="toastActionBtn">Execute</button>' : '');
+    toast.querySelector('strong').textContent = title;
+    toast.querySelector('.pwa-toast-body').textContent = body;
     container.appendChild(toast);
     
     if (action) {

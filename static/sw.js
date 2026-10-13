@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────
  */
 
-const CACHE_VERSION  = 'sapthaevent-v3';
+const CACHE_VERSION  = 'sapthaevent-v6';   // v6: full campus photo, profile photos (UPG-63, UPG-71)
 const OFFLINE_URL    = '/offline';
 
 // Assets cached immediately on install (shell)
@@ -17,7 +17,9 @@ const PRECACHE_ASSETS = [
   OFFLINE_URL,
   '/static/css/global.css',
   '/static/js/global.js',
+  '/static/js/offline-sync.js',   // the scanner's offline queue (UPG-02)
   '/static/snpsu-logo.png',
+  '/static/img/snpsu-logo-reversed.png',
   '/static/app-icon.png',
   '/static/manifest.webmanifest',
 ];

@@ -2,14 +2,13 @@
 tasks/scheduled_tasks.py — Celery Beat scheduled jobs
 ======================================================
 These tasks replace APScheduler running inside the web workers.
-They run in the dedicated celery-beat container so the web fleet
-remains fully stateless.
-
-Beat schedule is defined in celery_app.py.
+Self-hosted, they run in the celery-beat container (schedule in
+celery_app.py). On a single web service (Cloud Run), an outside scheduler
+calls them through POST /internal/cron/<job> (routes_cron.py, UPG-07).
 
 Jobs:
   send_24h_reminders   — every hour: email + WhatsApp for tomorrow's events
-  run_event_lifecycle  — every 6h: close regs, delete stale events
+  run_event_lifecycle  — every 6h: close registration, complete past events
   log_backup_ping      — daily 01:30 IST: remind ops to verify GCS backup
 """
 
@@ -17,8 +16,23 @@ import logging
 import datetime
 from celery_app import celery
 from models import db
+# Statuses an event runs in (reminders, lifecycle) and takes registrations in;
+# `active` is the old single "running" status (UPG-43).
+from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_STATUSES as REGISTRATION_OPEN
 
 logger = logging.getLogger(__name__)
+
+
+def _base_url() -> str:
+    """Every link in a scheduled email starts with BASE_URL (BLK-16, UPG-46)."""
+    from utils_email import _base_url as base
+    return base()
+
+
+def _e(value) -> str:
+    """Escape a value put into an email's HTML (UPG-50)."""
+    import html as _html
+    return _html.escape(str(value if value is not None else ''))
 
 
 @celery.task(
@@ -45,7 +59,7 @@ def send_24h_reminders(self):
 
         logger.info("send_24h_reminders: scanning for events on %s", tomorrow_str)
 
-        events_ref = db.collection('events').where('status', '==', 'active').stream()
+        events_ref = db.collection('events').where('status', 'in', list(RUNNING)).stream()
         events_tomorrow = [
             {**doc.to_dict(), 'id': doc.id}
             for doc in events_ref
@@ -68,7 +82,7 @@ def send_24h_reminders(self):
 
             for reg_doc in regs:
                 reg    = reg_doc.to_dict()
-                reg_id = reg_doc.id
+                reg_id = reg.get('reg_id') or reg_doc.id   # the ID on the ticket page
 
                 if reg.get('ticket_sent'):
                     skipped += 1
@@ -78,14 +92,13 @@ def send_24h_reminders(self):
                 if reg.get('is_eliminated'):
                     continue
 
-                name  = reg.get('lead_name', 'Participant')
-                email = reg.get('lead_email', '')
-                phone = (reg.get('lead_phone') or
-                         reg.get('phone') or
-                         (reg.get('members') or [{}])[0].get('phone', ''))
-
-                # Send the actual entry ticket (with QR link) 1 day before
-                if email:
+                # The entry ticket (with the QR) to the lead and every team
+                # member, once each (UPG-48); ticket_sent_to remembers who has it
+                from services_recipients import registration_people
+                already = set(reg.get('ticket_sent_to') or [])
+                for email, name, phone in registration_people(reg):
+                    if email in already:
+                        continue
                     send_ticket_email_task.delay(
                         to_email=email,
                         name=name,
@@ -93,23 +106,25 @@ def send_24h_reminders(self):
                         reg_id=reg_id,
                         event_date=event_date,
                         venue=venue,
+                        with_qr=True,
                     )
                     queued_emails += 1
-
-                if phone:
-                    send_reminder_whatsapp_task.delay(
-                        phone=phone,
-                        name=name,
-                        event_title=event_title,
-                        event_date=event_date,
-                        venue=venue,
-                        reg_id=reg_id,
-                    )
-                    queued_wa += 1
+                    if phone:
+                        send_reminder_whatsapp_task.delay(
+                            phone=phone,
+                            name=name,
+                            event_title=event_title,
+                            event_date=event_date,
+                            venue=venue,
+                            reg_id=reg_id,
+                        )
+                        queued_wa += 1
+                    already.add(email)
 
                 try:
                     db.collection('registrations').document(reg_id).update({
                         'ticket_sent':    True,
+                        'ticket_sent_to': sorted(already),
                         'ticket_sent_at': datetime.datetime.utcnow().isoformat(),
                     })
                 except Exception:
@@ -149,24 +164,24 @@ def send_24h_reminders(self):
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;max-width:560px;">
   <tr><td style="background:#1a2557;padding:28px 32px 22px;border-radius:14px 14px 0 0;">
     <div style="display:inline-block;background:#c9a45e;color:#fff;font-size:10px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:100px;margin-bottom:10px;">COORDINATOR BRIEFING</div>
-    <h2 style="margin:0;font-size:20px;color:#fff;">{title}</h2>
+    <h2 style="margin:0;font-size:20px;color:#fff;">{_e(title)}</h2>
     <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,.7);">Happening Tomorrow</p>
   </td></tr>
   <tr><td style="padding:28px 32px;">
-    <p style="font-size:15px;color:#1e293b;">Hello <strong>{coord_name}</strong>,</p>
-    <p style="font-size:14px;color:#475569;line-height:1.6;">You are assigned as Event Coordinator for <strong>{title}</strong> happening <strong>tomorrow</strong>. Here is your event briefing.</p>
+    <p style="font-size:15px;color:#1e293b;">Hello <strong>{_e(coord_name)}</strong>,</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">You are assigned as Event Coordinator for <strong>{_e(title)}</strong> happening <strong>tomorrow</strong>. Here is your event briefing.</p>
     <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin:20px 0;">
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Date &amp; Time</span><br>
-        <strong style="color:#1a2557;">📅 {date_str} &nbsp;⏰ {time_str}</strong>
+        <strong style="color:#1a2557;">📅 {_e(date_str)} &nbsp;⏰ {_e(time_str)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Venue</span><br>
-        <strong style="color:#1a2557;">📍 {venue}</strong>
+        <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Registered Participants</span><br>
-        <strong style="color:#1a2557;">👥 {cap_line}</strong>
+        <strong style="color:#1a2557;">👥 {_e(cap_line)}</strong>
       </td></tr>
     </table>
     <p style="font-size:13px;font-weight:700;color:#1a2557;margin-bottom:10px;">📋 Day-of Checklist</p>
@@ -180,7 +195,7 @@ def send_24h_reminders(self):
       </td></tr>
     </table>
     <table><tr><td>
-      <a href="https://sapthaevent.in/coordinator/scanner"
+      <a href="{_e(_base_url())}/coordinator/scanner"
          style="display:inline-block;padding:12px 28px;background:#1a2557;color:#fff;font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;">
         Open Scanner Dashboard →
       </a>
@@ -242,7 +257,7 @@ def send_3day_reminders(self):
 
         logger.info("send_3day_reminders: scanning for events on %s", target_str)
 
-        events_ref   = db.collection('events').where('status', '==', 'active').stream()
+        events_ref   = db.collection('events').where('status', 'in', list(RUNNING)).stream()
         target_events = [
             {**doc.to_dict(), 'id': doc.id}
             for doc in events_ref
@@ -275,65 +290,68 @@ def send_3day_reminders(self):
                 if reg.get('is_eliminated'):
                     continue
 
-                name  = reg.get('lead_name', 'Participant')
-                email = reg.get('lead_email', '')
-                if not email:
-                    continue
-
-                subject = f"Reminder: {event_title} is in 3 Days!"
-                body_text = (
-                    f"Hello {name},\n\n"
-                    f"{event_title} is just 3 days away!\n\n"
-                    f"Date: {event_date}\nVenue: {venue}\n\n"
-                    f"Your entry QR ticket will arrive in your inbox 1 day before the event.\n\n"
-                    f"— SapthaEvent, Sapthagiri NPS University"
-                )
-                body_html = f"""<!DOCTYPE html>
-<html><body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
-<table width="540" cellpadding="0" cellspacing="0"
-       style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;max-width:540px;">
-  <tr><td align="center" style="background:#1a2557;padding:28px 32px 24px;">
-    <h2 style="margin:0;font-size:18px;color:#fff;">📅 Your Event is in 3 Days!</h2>
-  </td></tr>
-  <tr><td style="padding:28px 32px;">
-    <p style="font-size:15px;color:#1e293b;">Hello <strong>{name}</strong>,</p>
-    <p style="font-size:14px;color:#475569;">
-      <strong>{event_title}</strong> is happening in just 3 days.
-    </p>
-    <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
-      <tr><td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
-        <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Date</span><br>
-        <strong style="color:#1a2557;">📅 {event_date}</strong>
+                # The lead and every team member, once each (UPG-48)
+                from services_recipients import registration_people
+                already = set(reg.get('early_reminder_sent_to') or [])
+                for email, name, _phone in registration_people(reg):
+                    if email in already:
+                        continue
+                    subject = f"Reminder: {event_title} is in 3 Days!"
+                    body_text = (
+                        f"Hello {name},\n\n"
+                        f"{event_title} is just 3 days away!\n\n"
+                        f"Date: {event_date}\nVenue: {venue}\n\n"
+                        f"Your entry QR ticket will arrive in your inbox 1 day before the event.\n\n"
+                        f"— SapthaEvent, Sapthagiri NPS University"
+                    )
+                    body_html = f"""<!DOCTYPE html>
+    <html><body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+    <table width="540" cellpadding="0" cellspacing="0"
+           style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;max-width:540px;">
+      <tr><td align="center" style="background:#1a2557;padding:28px 32px 24px;">
+        <h2 style="margin:0;font-size:18px;color:#fff;">📅 Your Event is in 3 Days!</h2>
       </td></tr>
-      <tr><td style="padding:14px 20px;">
-        <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Venue</span><br>
-        <strong style="color:#1a2557;">📍 {venue}</strong>
+      <tr><td style="padding:28px 32px;">
+        <p style="font-size:15px;color:#1e293b;">Hello <strong>{_e(name)}</strong>,</p>
+        <p style="font-size:14px;color:#475569;">
+          <strong>{_e(event_title)}</strong> is happening in just 3 days.
+        </p>
+        <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
+          <tr><td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+            <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Date</span><br>
+            <strong style="color:#1a2557;">📅 {_e(event_date)}</strong>
+          </td></tr>
+          <tr><td style="padding:14px 20px;">
+            <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Venue</span><br>
+            <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
+          </td></tr>
+        </table>
+        <p style="font-size:13px;color:#64748b;">
+          Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
+        </p>
       </td></tr>
-    </table>
-    <p style="font-size:13px;color:#64748b;">
-      Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
-    </p>
-  </td></tr>
-  <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;">
-    <p style="margin:0;font-size:12px;color:#94a3b8;">
-      SapthaEvent &middot; Sapthagiri NPS University, Bengaluru
-    </p>
-  </td></tr>
-</table></td></tr></table>
-</body></html>"""
+      <tr><td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="margin:0;font-size:12px;color:#94a3b8;">
+          SapthaEvent &middot; Sapthagiri NPS University, Bengaluru
+        </p>
+      </td></tr>
+    </table></td></tr></table>
+    </body></html>"""
 
-                send_generic_email_task.delay(
-                    to_email=email,
-                    subject=subject,
-                    body_text=body_text,
-                    body_html=body_html,
-                )
-                queued += 1
+                    send_generic_email_task.delay(
+                        to_email=email,
+                        subject=subject,
+                        body_text=body_text,
+                        body_html=body_html,
+                    )
+                    queued += 1
+                    already.add(email)
 
                 try:
                     db.collection('registrations').document(reg_id).update({
                         'early_reminder_sent':    True,
+                        'early_reminder_sent_to': sorted(already),
                         'early_reminder_sent_at': datetime.datetime.utcnow().isoformat(),
                     })
                 except Exception:
@@ -375,7 +393,7 @@ def check_registration_velocity(self):
 
         logger.info("check_registration_velocity: scanning for deadlines on %s", target)
 
-        events = db.collection('events').where('status', '==', 'active').stream()
+        events = db.collection('events').where('status', 'in', list(REGISTRATION_OPEN)).stream()
         alerted = skipped = 0
 
         for doc in events:
@@ -413,7 +431,7 @@ def check_registration_velocity(self):
                     continue
                 fill_display = f"{reg_count} registered (no capacity limit set)"
 
-            reg_link = f"https://sapthaevent.in/forms/register/{e_id}"
+            reg_link = f"{_base_url()}/forms/register/{e_id}"   # BASE_URL, never a fixed domain (UPG-46)
 
             subject = f"⚡ Low registrations alert: {title} — deadline in 3 days"
             body_text = (
@@ -437,8 +455,8 @@ def check_registration_velocity(self):
   <tr><td style="padding:28px 32px;">
     <p style="font-size:15px;color:#1e293b;">Hello,</p>
     <p style="font-size:14px;color:#475569;line-height:1.6;">
-      Your event <strong style="color:#1a2557;">{title}</strong> has its registration deadline
-      on <strong>{reg_deadline}</strong>, but registrations are below the expected threshold.
+      Your event <strong style="color:#1a2557;">{_e(title)}</strong> has its registration deadline
+      on <strong>{_e(reg_deadline)}</strong>, but registrations are below the expected threshold.
     </p>
     <table width="100%" style="background:#fff8f0;border-radius:10px;border:1px solid #fde68a;
            margin:20px 0;border-left:4px solid #c9a45e;">
@@ -446,21 +464,21 @@ def check_registration_velocity(self):
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;letter-spacing:.5px;">
           Current Fill Rate
         </span><br>
-        <strong style="font-size:18px;color:#1a2557;">{fill_display}</strong>
+        <strong style="font-size:18px;color:#1a2557;">{_e(fill_display)}</strong>
       </td></tr>
     </table>
     <table width="100%" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:24px;">
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Reg Deadline</span><br>
-        <strong style="color:#1a2557;">📅 {reg_deadline}</strong>
+        <strong style="color:#1a2557;">📅 {_e(reg_deadline)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;border-bottom:1px solid #e2e8f0;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Event Date</span><br>
-        <strong style="color:#1a2557;">🗓 {event_date}</strong>
+        <strong style="color:#1a2557;">🗓 {_e(event_date)}</strong>
       </td></tr>
       <tr><td style="padding:12px 20px;">
         <span style="font-size:11px;text-transform:uppercase;color:#94a3b8;">Venue</span><br>
-        <strong style="color:#1a2557;">📍 {venue}</strong>
+        <strong style="color:#1a2557;">📍 {_e(venue)}</strong>
       </td></tr>
     </table>
     <p style="font-size:14px;color:#1e293b;font-weight:600;margin-bottom:8px;">
@@ -469,11 +487,11 @@ def check_registration_velocity(self):
     <table width="100%" style="background:#f1f5f9;border-radius:10px;margin-bottom:20px;">
       <tr><td style="padding:14px 18px;font-family:monospace;font-size:13px;
               color:#1a2557;word-break:break-all;">
-        {reg_link}
+        {_e(reg_link)}
       </td></tr>
     </table>
     <table><tr><td>
-      <a href="{reg_link}"
+      <a href="{_e(reg_link)}"
          style="display:inline-block;padding:12px 28px;background:#c9a45e;color:#fff;
                 font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;">
         View Event Page →
@@ -517,6 +535,7 @@ def check_registration_velocity(self):
         raise self.retry(exc=exc)
 
 
+
 @celery.task(
     bind=True,
     queue='default',
@@ -527,12 +546,18 @@ def check_registration_velocity(self):
 )
 def run_event_lifecycle(self):
     """
-    1. Close registrations once reg_deadline has passed (status → registration_closed)
-    2. Delete registrations 30 days after event date
-    3. Delete event document 5 days after event date
+    Moves events forward; deletes nothing (how long data is kept is UPG-22).
+    1. Registration closes once reg_deadline has passed (registration_open,
+       or the old `active` → registration_closed).
+    2. An event whose last day has passed and is still published, open,
+       closed or in progress → completed. The last day is the later of
+       `date` and `end_datetime`: the SQL layer stores the save time as
+       end_datetime when an event has none (UPG-47), which must not end it.
+    Each change goes through WorkflowEngine.transition_event, so it's in the
+    audit trail. Running it again changes nothing.
     """
     try:
-
+        from services_workflow import WorkflowEngine
 
         ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         today = datetime.datetime.now(ist).date()
@@ -544,47 +569,32 @@ def run_event_lifecycle(self):
             except ValueError:
                 return None
 
-        events = list(db.collection('events').stream())
-        closed = deleted_events = deleted_regs = 0
+        def _move(e_id, target, reason):
+            WorkflowEngine.transition_event(db, event_id=e_id, target_state=target,
+                                            actor_id='system:lifecycle', reason=reason, force=True)
 
-        for doc in events:
+        closed = completed = 0
+        for doc in list(db.collection('events').stream()):
             e      = doc.to_dict() or {}
             e_id   = doc.id
             status = (e.get('status', '') or '').lower()
-            event_date = _parse_date(e.get('date'))
-            reg_dl     = _parse_date(e.get('reg_deadline'))
+            reg_dl = _parse_date(e.get('reg_deadline'))
+            days   = [d for d in (_parse_date(e.get('date')), _parse_date(e.get('end_datetime'))) if d]
+            ends   = max(days) if days else None
 
-            if reg_dl and today > reg_dl and status == 'active':
-                try:
-                    db.collection('events').document(e_id).update({
-                        'status': 'registration_closed',
-                        'registration_closed_at': datetime.datetime.now(ist).isoformat(),
-                    })
+            try:
+                if status in REGISTRATION_OPEN and reg_dl and today > reg_dl:
+                    _move(e_id, 'registration_closed', 'Registration deadline passed')
+                    status = 'registration_closed'
                     closed += 1
-                except Exception as exc:
-                    logger.warning("Could not close reg for %s: %s", e_id, exc)
+                if status in RUNNING and ends and today > ends:
+                    _move(e_id, 'completed', 'Event date passed')
+                    completed += 1
+            except Exception as exc:
+                logger.warning("Lifecycle: could not move %s: %s", e_id, exc)
 
-            if event_date and (today - event_date).days >= 30:
-                try:
-                    for r in db.collection('registrations').where('event_id', '==', e_id).stream():
-                        r.reference.delete()
-                        deleted_regs += 1
-                except Exception as exc:
-                    logger.warning("Reg cleanup failed %s: %s", e_id, exc)
-
-            if event_date and (today - event_date).days >= 5:
-                try:
-                    for r in db.collection('registrations').where('event_id', '==', e_id).stream():
-                        r.reference.delete()
-                        deleted_regs += 1
-                    db.collection('events').document(e_id).delete()
-                    deleted_events += 1
-                except Exception as exc:
-                    logger.warning("Event cleanup failed %s: %s", e_id, exc)
-
-        logger.info("run_event_lifecycle: closed=%d events_deleted=%d regs_deleted=%d",
-                    closed, deleted_events, deleted_regs)
-        return {'closed': closed, 'events_deleted': deleted_events, 'regs_deleted': deleted_regs}
+        logger.info("run_event_lifecycle: closed=%d completed=%d", closed, completed)
+        return {'closed': closed, 'completed': completed}
 
     except Exception as exc:
         logger.exception("run_event_lifecycle failed: %s", exc)

@@ -181,10 +181,11 @@ def export_attendance_qr_list(self, event_id: str):
 
 def _upload_export(data: bytes, gcs_path: str,
                    content_type: str = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') -> str:
-    """Upload data export to cloud/local storage; return public URL."""
+    """Upload a data export as a private object; return a signed link that
+    expires (exports hold names, emails and phones; UPG-17/UPG-21)."""
     try:
-        from utils_storage import upload_file
-        return upload_file(data, gcs_path, content_type)
+        from utils_storage import signed_url, upload_private
+        return signed_url(upload_private(data, gcs_path, content_type))
     except Exception as exc:
         logger.warning("Storage upload failed: %s — returning empty URL", exc)
         return ''

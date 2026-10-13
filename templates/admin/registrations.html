@@ -1,0 +1,79 @@
+{% extends "base_classic.html" %}
+{#- Every registration on the portal, for the Super Admin (UPG-75). -#}
+{% import 'includes/ui.html' as ui with context %}
+{% set app_active = 'registrations' %}
+{% block title %}Registrations | Admin{% endblock %}
+{% block page_title %}Registrations{% endblock %}
+{% block page_sub %}Find anyone's registration across every event: by name, email, USN, team or registration id.{% endblock %}
+{% block extra_css %}
+<style>
+.ar-filter { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 16px; }
+.ar-filter .grow { flex: 1; min-width: 200px; }
+.ar-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ar-actions form { display: flex; gap: 6px; margin: 0; }
+.ar-actions .form-select, .ar-actions .form-control { width: auto; }
+.ar-att .form-select { min-width: 115px; }
+.ar-meta { font-size: var(--fs-xs); color: var(--text-muted); }
+</style>
+{% endblock %}
+{% block content %}
+<form method="get" action="/admin/registrations" class="panel ar-filter" role="search">
+  <div class="grow"><label class="form-label" for="ar-q">Search</label><input class="form-control" id="ar-q" name="q" value="{{ page.q }}" placeholder="Name, email, USN, team or id"></div>
+  <div><label class="form-label" for="ar-event">Event</label>
+    <select class="form-select" id="ar-event" name="event" style="max-width:280px"><option value="">Any event</option>{% for eid, title in events %}<option value="{{ eid }}" {{ 'selected' if event_filter == eid }}>{{ title }}</option>{% endfor %}</select></div>
+  <div><label class="form-label" for="ar-status">Status</label>
+    <select class="form-select" id="ar-status" name="status"><option value="">Any</option>{% for st in ['confirmed', 'pending payment', 'waitlisted', 'cancelled'] %}<option value="{{ st }}" {{ 'selected' if status_filter == st }}>{{ st|capitalize }}</option>{% endfor %}</select></div>
+  <div><label class="form-label" for="ar-att">Attendance</label>
+    <select class="form-select" id="ar-att" name="attendance"><option value="">Any</option>{% for a in ['present', 'absent', 'pending'] %}<option value="{{ a }}" {{ 'selected' if attendance_filter == a }}>{{ a|capitalize }}</option>{% endfor %}</select></div>
+  <div><button class="btn btn-primary" type="submit">Find</button> {% if page.q or event_filter or status_filter or attendance_filter %}<a class="btn btn-link" href="/admin/registrations">Clear</a>{% endif %}</div>
+</form>
+
+{% if regs %}
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th scope="col">Participant</th><th scope="col">Event</th><th scope="col">Status</th><th scope="col">Attendance</th><th scope="col" class="text-end">Actions</th></tr></thead>
+      <tbody>
+      {% for r in regs %}
+      <tr>
+        <td>
+          <span class="fw-semibold">{{ r.lead_name or '—' }}</span>
+          <div class="ar-meta">{% if r.lead_email %}<a href="/admin/users/{{ r.lead_email }}">{{ r.lead_email }}</a>{% endif %}{% if r.usn %} · {{ r.usn }}{% endif %}{% if r.team_name %} · team {{ r.team_name }}{% endif %}</div>
+          <div class="ar-meta">{{ r.id }}</div>
+        </td>
+        <td><a href="/spoc/event/{{ r.event_id }}/review">{{ r.event_title }}</a><div class="ar-meta">{{ (r.registered_at or '')[:10] }}</div></td>
+        <td>{{ ui.status_badge(r.status) }}{% if r.payment_status and r.payment_status not in ('Free', 'N/A') %}<div class="ar-meta">Payment: {{ r.payment_status }}</div>{% endif %}</td>
+        <td>
+          <form method="POST" action="/admin/registrations/{{ r.id }}/attendance" class="d-flex gap-1 ar-att">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+            <label class="visually-hidden" for="att-{{ r.id }}">Attendance for {{ r.lead_name }}</label>
+            <select class="form-select form-select-sm" id="att-{{ r.id }}" name="attendance">
+              {% for a in ['Pending', 'Present', 'Absent'] %}<option value="{{ a }}" {{ 'selected' if (r.attendance or 'Pending') == a }}>{{ a }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-sm btn-outline-primary" type="submit">Set</button>
+          </form>
+        </td>
+        <td>
+          <div class="ar-actions">
+            <a class="btn btn-sm btn-outline-primary" href="/ticket/{{ r.id }}">Ticket</a>
+            {% if (r.status or '')|lower != 'cancelled' %}
+            <form method="POST" action="/admin/registrations/{{ r.id }}/cancel">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+              <label class="visually-hidden" for="why-{{ r.id }}">Reason for cancelling {{ r.lead_name }}</label>
+              <input class="form-control form-control-sm" id="why-{{ r.id }}" name="reason" placeholder="Reason" required maxlength="300">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "includes/pagination.html" %}
+{% else %}
+<div class="panel">{{ ui.empty_state('fa-magnifying-glass', 'No registrations match', 'Try another search or filter.') }}</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,281 @@
+{#- The event's content, shared by the event page and the home page's event
+    popup (UPG-92), so both always show the same thing. `fragment` is true in
+    the popup: no breadcrumb, no live countdown, no copy button. -#}
+<!-- HERO -->
+<section class="ev-hero" aria-label="Event summary">
+    {% if event.banner_url %}
+    <div class="ev-hero__bg" style="background-image:url('{{ event.banner_url }}');" aria-hidden="true"></div>
+    {% endif %}
+    <div class="ev-hero__body">
+        {% if not fragment %}<nav aria-label="Breadcrumb"><ol class="crumbs" style="--text-muted: rgba(255,255,255,.75); --text-subtle: rgba(255,255,255,.6); --text-strong: #fff; --border-strong: rgba(255,255,255,.35);">
+            <li><a href="/">Home</a></li><li><a href="/events">Events</a></li><li><span aria-current="page">{{ event.title }}</span></li>
+        </ol></nav>{% endif %}
+        <div class="ev-hero__chips">
+            {% if spec and spec.key != 'custom' %}<span class="ev-hero__chip"><i class="fas {{ spec.icon }}" aria-hidden="true"></i> {{ spec.name }}</span>{% endif %}
+            <span class="ev-hero__chip"><i class="fas fa-tag" aria-hidden="true"></i> {{ event.category }}</span>
+            {% if not event.is_fest %}<span class="ev-hero__chip"><i class="fas fa-users" aria-hidden="true"></i> {{ {'Team': 'Teams', 'Both': 'Individuals or teams'}.get(event.participation_type, 'Individuals') }}</span>{% endif %}
+            {% if event.event_mode in ('online', 'hybrid') %}<span class="ev-hero__chip"><i class="fas fa-video" aria-hidden="true"></i> {{ 'Online' if event.event_mode == 'online' else 'In person and online' }}</span>{% endif %}
+            {% if parent_fest %}<a class="ev-hero__chip" href="/event/{{ parent_fest.id }}"><i class="fas fa-flag" aria-hidden="true"></i> Part of {{ parent_fest.title }}</a>{% endif %}
+            {% if event.fees and event.fees.regular and event.fees.regular|int > 0 %}
+            <span class="ev-hero__chip ev-hero__chip--fee"><i class="fas fa-rupee-sign" aria-hidden="true"></i> ₹{{ event.fees.regular }}</span>
+            {% else %}
+            <span class="ev-hero__chip ev-hero__chip--fee"><i class="fas fa-ticket-alt" aria-hidden="true"></i> Free entry</span>
+            {% endif %}
+        </div>
+        <h1 class="ev-hero__title">{{ event.title }}</h1>
+        <div class="ev-hero__meta">
+            <span><i class="fas fa-calendar-alt" aria-hidden="true"></i> {{ event.date }}{% if event.end_date and event.end_date != event.date %} – {{ event.end_date }}{% endif %}</span>
+            {% if not event.is_fest %}<span><i class="fas fa-clock" aria-hidden="true"></i> {{ event.time or "Time to be announced" }}{% if event.end_time %} – {{ event.end_time }}{% endif %}</span>{% endif %}
+            {% if event.venue %}<span><i class="fas fa-map-marker-alt" aria-hidden="true"></i> {{ event.venue }}</span>{% endif %}
+        </div>
+    </div>
+</section>
+
+{% if not fragment %}
+<!-- COUNTDOWN -->
+<div class="cd-band" id="cd-band" aria-label="Time until the event">
+    <div class="cd-inner" id="cd-inner">
+        <div class="cd-unit"><div class="cd-num" id="cd-d">--</div><div class="cd-label">Days</div></div>
+        <span class="cd-colon" aria-hidden="true">:</span>
+        <div class="cd-unit"><div class="cd-num" id="cd-h">--</div><div class="cd-label">Hrs</div></div>
+        <span class="cd-colon" aria-hidden="true">:</span>
+        <div class="cd-unit"><div class="cd-num" id="cd-m">--</div><div class="cd-label">Min</div></div>
+        <span class="cd-colon" aria-hidden="true">:</span>
+        <div class="cd-unit"><div class="cd-num" id="cd-s">--</div><div class="cd-label">Sec</div></div>
+    </div>
+</div>
+{% elif days_until is not none and days_until >= 0 %}
+<p class="ev-fragment__soon"><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{ 'Today' if days_until == 0 else ('Tomorrow' if days_until == 1 else 'In ' ~ days_until ~ ' days') }}</p>
+{% endif %}
+
+<div class="ev-layout">
+    <!-- MAIN -->
+    <div>
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-align-left" aria-hidden="true"></i>About this event</h2>
+            <p class="desc-text">{{ event.description }}</p>
+        </section>
+
+        {% if event.is_fest %}
+        <!-- The fest's programme (UPG-74) -->
+        <section class="panel" id="programme">
+            <h2 class="ev-section-title"><i class="fas fa-flag" aria-hidden="true"></i>Programme</h2>
+            {% if fest_events %}
+            {% for day, items in fest_events|groupby('date') %}
+            <h3 class="h6 fw-bold mt-3 mb-2">{{ day }}</h3>
+            <ul class="list-unstyled mb-0">
+                {% for e in items %}
+                <li class="d-flex flex-wrap justify-content-between gap-2 py-2 border-bottom">
+                    <span><a href="/event/{{ e.id }}" class="fw-semibold">{{ e.title }}</a>{% if e.time %} <span class="text-muted small">· {{ e.time }}</span>{% endif %}{% if e.venue %} <span class="text-muted small">· {{ e.venue }}</span>{% endif %}</span>
+                    <a href="/event/{{ e.id }}" class="btn btn-sm btn-outline-primary">Details &amp; register</a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endfor %}
+            {% else %}
+            <p class="text-muted mb-0">The programme will be announced soon.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if spec and spec.details and event.details %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-circle-info" aria-hidden="true"></i>Event details</h2>
+            <dl class="row mb-0">
+                {% for f in spec.details if event.details.get(f.name) %}
+                <dt class="col-sm-4 text-muted">{{ f.label }}</dt><dd class="col-sm-8" style="white-space:pre-wrap">{{ event.details[f.name] }}</dd>
+                {% endfor %}
+            </dl>
+        </section>
+        {% endif %}
+
+        {% if event.online_link and is_registered %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-video" aria-hidden="true"></i>Join online</h2>
+            <p class="mb-2">You're registered. Join with this link when the event starts:</p>
+            <a class="btn btn-primary" href="{{ event.online_link }}" target="_blank" rel="noopener">Open the meeting <i class="fas fa-up-right-from-square" aria-hidden="true"></i></a>
+        </section>
+        {% endif %}
+
+        {% set gfees = event.fees or {} %}
+        {% if gfees.get('student') is not none or gfees.get('faculty') is not none or gfees.get('external') is not none %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-indian-rupee-sign" aria-hidden="true"></i>Fees</h2>
+            <ul class="list-unstyled mb-0">
+                {% for g, label in [('student', 'Students'), ('faculty', 'Faculty'), ('external', 'External participants')] %}
+                {% set amount = gfees.get(g) if gfees.get(g) is not none else gfees.get('regular', 0) %}
+                <li class="py-1">{{ label }}: <strong>{{ '₹' ~ (amount|int) if amount|float > 0 else 'Free' }}</strong></li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if event.sponsors %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-handshake" aria-hidden="true"></i>Sponsors</h2>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+                {% for sp in event.sponsors %}
+                {% set inner %}{% if sp.logo_url %}<img src="{{ sp.logo_url }}" alt="{{ sp.name }}" style="height:48px;width:auto;max-width:160px;object-fit:contain">{% else %}<span class="fw-semibold">{{ sp.name }}</span>{% endif %}{% if sp.tier %} <span class="se-badge se-badge--gold ms-1">{{ sp.tier }}</span>{% endif %}{% endset %}
+                {% if sp.website %}<a href="{{ sp.website }}" target="_blank" rel="noopener sponsored" class="text-decoration-none">{{ inner }}</a>{% else %}<span>{{ inner }}</span>{% endif %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Tournament fixtures & standings (UPG-13) -->
+        {% if event.get('tournament') %}
+        <section class="panel" id="tournament">
+            {% include "includes/tournament.html" %}
+        </section>
+        {% endif %}
+
+        {% if event.rules %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-list-check" aria-hidden="true"></i>Rules &amp; guidelines</h2>
+            <div class="rules-text">{{ event.rules }}</div>
+        </section>
+        {% endif %}
+
+        {% if event.get('agenda') %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-calendar-check" aria-hidden="true"></i>Event schedule</h2>
+            <div class="agenda-timeline">
+                {% for item in event.agenda %}
+                <div class="agenda-item">
+                    <span class="agenda-dot" aria-hidden="true"></span>
+                    <div class="agenda-time">{{ item.time }}</div>
+                    <div class="agenda-name">{{ item.title }}</div>
+                    {% if item.desc %}<div class="agenda-desc">{{ item.desc }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if event.prizes %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-trophy" aria-hidden="true"></i>Prizes &amp; rewards</h2>
+            <div class="prizes-grid">
+                <div class="prize-card gold">
+                    <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
+                    <div class="prize-rank">Winner</div>
+                    <div class="prize-val">{{ event.prizes.get('1st', '—') }}</div>
+                </div>
+                <div class="prize-card silver">
+                    <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
+                    <div class="prize-rank">Runner-up</div>
+                    <div class="prize-val">{{ event.prizes.get('2nd', '—') }}</div>
+                </div>
+                <div class="prize-card bronze">
+                    <div class="prize-icon"><i class="fas fa-medal" aria-hidden="true"></i></div>
+                    <div class="prize-rank">Third place</div>
+                    <div class="prize-val">{{ event.prizes.get('3rd', '—') }}</div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside aria-label="Event information">
+        {% set max_p = event.limits.max_participants if event.limits and event.limits.max_participants else 0 %}
+        {% if max_p and max_p|int > 0 %}
+        {% set pct = [[((reg_count / max_p|int) * 100)|int, 100]|min, 0]|max %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-users" aria-hidden="true"></i>Registrations</h2>
+            <div class="cap-top">
+                <span class="cap-count">{{ reg_count }}</span>
+                <span class="cap-max">of {{ max_p }} seats</span>
+            </div>
+            <div class="cap-bar" role="progressbar" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Seats filled">
+                <div class="cap-fill {{ 'full' if reg_count >= max_p|int else '' }}" style="width:{{ pct }}%;"></div>
+            </div>
+            {% if reg_count >= max_p|int %}
+            <p class="cap-msg cap-msg--full"><i class="fas fa-ban" aria-hidden="true"></i> Fully booked</p>
+            {% else %}
+            <p class="cap-msg">{{ max_p|int - reg_count }} spot{{ 's' if (max_p|int - reg_count) != 1 }} remaining</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-calendar-days" aria-hidden="true"></i>Key dates</h2>
+            {% if event.reg_deadline %}
+            <div class="tl-item">
+                <div class="tl-icon tl-icon--deadline" aria-hidden="true"><i class="fas fa-hourglass-end"></i></div>
+                <div>
+                    <div class="tl-label">Registration deadline</div>
+                    <div class="tl-val">{{ event.reg_deadline }}</div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="tl-item">
+                <div class="tl-icon" aria-hidden="true"><i class="fas fa-calendar-day"></i></div>
+                <div>
+                    <div class="tl-label">Event date</div>
+                    <div class="tl-val">{{ event.date }}</div>
+                    <div class="tl-sub">{{ event.time or "Time to be announced" }}</div>
+                </div>
+            </div>
+            {% if event.venue %}
+            <div class="tl-item">
+                <div class="tl-icon" aria-hidden="true"><i class="fas fa-map-marker-alt"></i></div>
+                <div>
+                    <div class="tl-label">Venue</div>
+                    <div class="tl-val">{{ event.venue }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-calendar-plus" aria-hidden="true"></i>Add to calendar</h2>
+            <div class="d-flex flex-column gap-2">
+                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ (event.title or event.name)|urlencode }}&dates={{ (event.date|replace('-', '')) if event.date else '20260901' }}T090000Z/{{ (event.date|replace('-', '')) if event.date else '20260901' }}T180000Z&details={{ (event.description or '')|urlencode }}&location={{ (event.venue or '')|urlencode }}"
+                   target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary w-100">
+                    <i class="fab fa-google" aria-hidden="true"></i> Google Calendar
+                </a>
+                <a href="/events/{{ event.slug or event.id }}/calendar.ics" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-download" aria-hidden="true"></i> Download .ics file
+                </a>
+            </div>
+        </section>
+
+        {% if event.organizer %}
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-id-badge" aria-hidden="true"></i>Organiser</h2>
+            <div class="d-flex align-items-center gap-3">
+                <div class="org-avatar" aria-hidden="true">{{ (event.organizer.name or 'O')[0].upper() }}</div>
+                <div>
+                    <div class="org-name">{{ event.organizer.name }}</div>
+                    <div class="org-role">Event organiser</div>
+                </div>
+            </div>
+            {% if event.organizer.group_link %}
+            <a href="{{ event.organizer.group_link }}" target="_blank" rel="noopener" class="btn btn-success w-100 mt-3">
+                <i class="fab fa-whatsapp" aria-hidden="true"></i> Join the WhatsApp group
+            </a>
+            {% endif %}
+            <div class="org-links">
+                {% if event.organizer.email %}
+                <a href="mailto:{{ event.organizer.email }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-envelope" aria-hidden="true"></i> Email</a>
+                {% endif %}
+                {% if event.organizer.phone %}
+                <a href="tel:{{ event.organizer.phone }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-phone" aria-hidden="true"></i> Call</a>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="panel">
+            <h2 class="ev-section-title"><i class="fas fa-share-nodes" aria-hidden="true"></i>Share this event</h2>
+            <div class="share-strip">
+                {%- set share_text = 'Check out: ' ~ event.title ~ ' on ' ~ event.date ~ (' at ' ~ event.venue if event.venue else '') ~ '. Register now!' %}
+                <a class="btn btn-outline-secondary btn-sm" href="https://api.whatsapp.com/send?text={{ (share_text ~ ' ' ~ share_url)|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i> WhatsApp</a>
+                <a class="btn btn-outline-secondary btn-sm" href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-linkedin-in" aria-hidden="true"></i> LinkedIn</a>
+                <a class="btn btn-outline-secondary btn-sm" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&amp;url={{ share_url|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-x-twitter" aria-hidden="true"></i> X</a>
+                {% if not fragment %}<button type="button" class="btn btn-outline-secondary btn-sm s-cp" id="s-cp" data-h-click="public/event_details:2"><i class="fas fa-link" aria-hidden="true"></i> Copy link</button>{% endif %}
+            </div>
+        </section>
+    </aside>
+</div>

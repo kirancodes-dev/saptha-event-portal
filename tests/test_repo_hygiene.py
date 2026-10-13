@@ -6,6 +6,7 @@ compiled Python, the Data Connect emulator's data folder and Flask's instance/.
 Also pins the .gitignore rules that keep those files out. CI runs this file in
 its own job (see .github/workflows/ci.yml, "Repo hygiene & secret scan").
 """
+import ast
 import json
 import os
 import re
@@ -108,3 +109,145 @@ def test_gitignore_rules(tracked_files, path, ignored):
     # --no-index so the rule is checked even if such a file were (wrongly) tracked
     r = _git('-c', 'core.excludesFile=/dev/null', 'check-ignore', '--no-index', '-q', path)
     assert (r.returncode == 0) is ignored, f'{path}: expected ignored={ignored}'
+
+
+# ── No mail password in tracked files (UPG-41) ──────────────────────────────
+# A Gmail app password sat in utils_email.py's docstring from 2026-04-19, in a
+# format gitleaks doesn't flag. The functions/ copy goes in Phase 5 (UPG-15);
+# scratch/ is cleaned up there too.
+MAIL_PASSWORD_NAMES = {'MAIL_PASS', 'MAIL_PASSWORD'}
+MAIL_PASSWORD_SKIP = ('functions/', 'scratch/')
+# NAME = value, NAME: value, NAME=value, "NAME": "value" in text or a string
+_MAIL_PASSWORD_TEXT = re.compile(
+    r'''\bMAIL_PASS(?:WORD)?["']?[ \t]*[:=][ \t]*["']?(?P<value>[^\s"',;)}\]]*)''')
+
+
+def _placeholder(value):
+    # empty, or a reference to the real value: $VAR, ${{ secrets.X }}, <your password>, {name}
+    return not value or value[0] in '$<{'
+
+
+def _mail_password_in_text(text):
+    return [m.group(0) for m in _MAIL_PASSWORD_TEXT.finditer(text) if not _placeholder(m.group('value'))]
+
+
+_LOOKUPS = {'get', 'getenv', 'pop', 'setdefault'}
+
+
+def _has_literal(node):
+    """A non-empty string in the expression, other than a key it looks up
+    (os.environ.get('MAIL_PASS'), config['MAIL_PASS'])."""
+    keys = set()
+    for n in ast.walk(node):
+        if isinstance(n, ast.Call) and n.args:
+            func = n.func
+            if (func.attr if isinstance(func, ast.Attribute) else getattr(func, 'id', '')) in _LOOKUPS:
+                keys.add(id(n.args[0]))
+        elif isinstance(n, ast.Subscript):
+            keys.add(id(n.slice))
+    return any(isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value.strip()
+               and id(n) not in keys for n in ast.walk(node))
+
+
+def _names_mail_password(node):
+    if isinstance(node, ast.Name):
+        return node.id in MAIL_PASSWORD_NAMES
+    if isinstance(node, ast.Attribute):
+        return node.attr in MAIL_PASSWORD_NAMES
+    if isinstance(node, ast.Subscript):
+        return isinstance(node.slice, ast.Constant) and node.slice.value in MAIL_PASSWORD_NAMES
+    return isinstance(node, ast.Constant) and node.value in MAIL_PASSWORD_NAMES
+
+
+def mail_passwords_in_python(source):
+    """Code that gives MAIL_PASS / MAIL_PASSWORD a string value (an assignment,
+    a dict entry, a keyword, a default such as os.environ.get('MAIL_PASS', 'x')),
+    and any string (docstrings included) that spells out such an assignment."""
+    found = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(_names_mail_password(t) for t in targets) and node.value is not None and _has_literal(node.value):
+                found.append(ast.unparse(node))
+        elif isinstance(node, ast.Dict):
+            for key, value in zip(node.keys, node.values):
+                if key is not None and _names_mail_password(key) and _has_literal(value):
+                    found.append(ast.unparse(node))
+        elif isinstance(node, ast.Call):
+            if any(k.arg in MAIL_PASSWORD_NAMES and _has_literal(k.value) for k in node.keywords):
+                found.append(ast.unparse(node))
+            elif len(node.args) >= 2 and _names_mail_password(node.args[0]) and _has_literal(node.args[1]):
+                found.append(ast.unparse(node))
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            found += _mail_password_in_text(node.value)
+    return found
+
+
+def test_no_mail_password_in_tracked_files(tracked_files):
+    offenders = []
+    for path in tracked_files:
+        if path.startswith(MAIL_PASSWORD_SKIP):
+            continue
+        full = os.path.join(ROOT, path)
+        if not os.path.isfile(full):
+            continue
+        with open(full, 'rb') as fh:
+            raw = fh.read()
+        if b'\0' in raw[:8192]:
+            continue  # binary
+        text = raw.decode('utf-8', errors='replace')
+        if path.endswith('.py'):
+            hits = mail_passwords_in_python(text)
+        else:
+            hits = _mail_password_in_text(text)
+        offenders += [f'{path}: {hit}' for hit in hits]
+    assert not offenders, ('A mail password value is committed; use the MAIL_PASS environment '
+                           'variable and revoke the password:\n  ' + '\n  '.join(offenders))
+
+
+# The examples spell the names as <PASS> and <PASSWORD>, so this file itself
+# passes the scan above.
+def _example(text):
+    return text.replace('<PASSWORD>', 'MAIL_PASSWORD').replace('<PASS>', 'MAIL_PASS')
+
+
+@pytest.mark.parametrize('source', [
+    '"""\nLAST RESORT: Gmail SMTP\n      <PASS> = abcdefghijklmnop\n"""',
+    '<PASSWORD> = "SET_THIS_IN_ENV"',
+    '<PASSWORD> = _raw or "fallback-secret"',
+    'class C:\n    <PASS>: str = "abcd efgh ijkl mnop"',
+    'os.environ["<PASS>"] = "abcdefghijklmnop"',
+    'os.environ.setdefault("<PASS>", "abcdefghijklmnop")',
+    'x = os.environ.get("<PASS>", "abcdefghijklmnop")',
+    'cfg = {"<PASS>": "abcdefghijklmnop"}',
+    'app.config.update(<PASSWORD>="abcdefghijklmnop")',
+    'help = "set <PASS>=abcdefghijklmnop in .env"',
+])
+def test_the_mail_password_check_flags_values(source):
+    assert mail_passwords_in_python(_example(source))
+
+
+@pytest.mark.parametrize('source', [
+    '<PASSWORD> = os.environ.get("<PASS>")',
+    '<PASSWORD> = app.config["<PASSWORD>"]',
+    '<PASSWORD> = _mail_pass_raw or ""',
+    'mail_pass = os.environ.get("<PASS>", "").strip()',
+    'PROVIDERS = ("MAIL_USER", "<PASS>")',
+    'monkeypatch.setenv(name, "x")',
+    '"""MAIL_USER + <PASS> -> SMTP login; <PASS> is an app password."""',
+    'msg = "Gmail: MAIL_USER or <PASS> not set."',
+])
+def test_the_mail_password_check_allows_names_and_lookups(source):
+    assert mail_passwords_in_python(_example(source)) == []
+
+
+@pytest.mark.parametrize('text,flagged', [
+    ('<PASS>=abcdefghijklmnop\n', True),
+    ('  <PASS>: hunter2hunter22\n', True),
+    ('<PASS>=\n', False),
+    ('<PASS>: ${{ secrets.<PASS> }}\n', False),
+    ('<PASS>=<your app password>\n', False),
+    ('- `<PASS>`: **two different values**\n', False),
+])
+def test_the_mail_password_check_reads_config_and_docs(text, flagged):
+    assert bool(_mail_password_in_text(_example(text))) is flagged

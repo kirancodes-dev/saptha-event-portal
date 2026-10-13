@@ -1,25 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23e. -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
 <title>Form Builder | {{ event.title }}</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
     <link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+{% include "layouts/_fontawesome.html" %}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;--bg:#f4f7f6;}
+:root{--blue:var(--brand-navy);--orange:var(--brand-gold);--bg:var(--surface-page);}
+/* Form builder (UPG-63): full-screen three-panel tool on the brand tokens */
 *{box-sizing:border-box;}
-body{background:var(--bg);font-family:'Inter',sans-serif;color:#1e293b;}
-h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
+body{background:var(--bg);font-family:var(--font-body);color:var(--text);}
+h1,h2,h3,h4,h5{font-family: var(--font-heading);}
 
 /* Layout */
 .builder-wrap{display:grid;grid-template-columns:260px 1fr 320px;gap:0;min-height:100vh;}
-.panel{background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;}
-.panel-header{background:var(--blue);color:white;padding:16px 20px;position:sticky;top:0;z-index:10;}
-.panel-header h6{margin:0;font-size:14px;font-weight:700;letter-spacing:.5px;}
+.panel{background:#fff;border:0;border-right:1px solid var(--border);border-radius:0;box-shadow:none;padding:0;overflow-y:auto;}
+.panel-header{background:var(--surface-card);color:var(--text-strong);border-bottom:2px solid var(--brand-gold);padding:14px 20px;position:sticky;top:0;z-index:10;}
+.panel-header h6{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color: var(--brand-ink);}
 
 /* Left — Field palette */
 .field-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 16px;
@@ -36,7 +34,7 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
   border:1px solid #e2e8f0;margin-bottom:20px;}
 .canvas-drop{min-height:300px;border:2px dashed #cbd5e1;border-radius:12px;
   padding:16px;background:#fff;transition:.2s;}
-.canvas-drop.drag-over{border-color:var(--orange);background:#fff8f4;}
+.canvas-drop.drag-over{border-color:var(--orange);background:var(--brand-gold-100);}
 .canvas-empty{text-align:center;padding:60px 24px;color:#94a3b8;}
 .canvas-empty i{font-size:3rem;margin-bottom:12px;display:block;opacity:.3;}
 
@@ -44,8 +42,8 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 .field-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;
   padding:14px 16px;margin-bottom:10px;cursor:grab;display:flex;
   align-items:flex-start;gap:12px;transition:.15s;position:relative;}
-.field-card:hover{border-color:var(--blue);box-shadow:0 2px 8px rgba(26, 37, 87,.08);}
-.field-card.selected{border-color:var(--orange);box-shadow:0 0 0 3px rgba(201,164,94,.15);}
+.field-card:hover{border-color:var(--blue);box-shadow:0 2px 8px rgba(0,24,94,.08);}
+.field-card.selected{border-color:var(--orange);box-shadow:0 0 0 3px rgba(198,157,103,.15);}
 .field-card.dragging{opacity:.4;}
 .field-card .drag-handle{color:#cbd5e1;padding-top:2px;cursor:grab;flex-shrink:0;}
 .field-card .field-meta{flex:1;min-width:0;}
@@ -69,10 +67,10 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 .prop-label{font-size:12px;font-weight:600;color:#64748b;
   text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
 .prop-input{width:100%;padding:8px 12px;border:1px solid #e2e8f0;
-  border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;
+  border-radius:8px;font-size:13px;font-family:var(--font-body);
   background:#f8fafc;transition:.15s;}
 .prop-input:focus{outline:none;border-color:var(--blue);
-  box-shadow:0 0 0 3px rgba(26, 37, 87,.1);background:#fff;}
+  box-shadow:0 0 0 3px rgba(0,24,94,.1);background:#fff;}
 .prop-toggle{display:flex;align-items:center;gap:10px;
   font-size:13px;color:#334155;cursor:pointer;}
 .prop-toggle input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);}
@@ -83,7 +81,7 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
   border-bottom:1px solid #f1f5f9;}
 .option-item:last-child{border-bottom:none;}
 .option-item input{flex:1;border:none;font-size:13px;background:transparent;
-  font-family:'Inter',sans-serif;}
+  font-family:var(--font-body);}
 .option-item input:focus{outline:none;}
 .option-item button{border:none;background:none;color:#94a3b8;cursor:pointer;
   font-size:12px;padding:2px 4px;}
@@ -94,15 +92,17 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 .btn-add-option:hover{border-color:var(--blue);color:var(--blue);}
 
 /* Top bar */
-.topbar{background:var(--blue);color:white;padding:14px 24px;
+.topbar{background:var(--blue);color:white;padding:12px 24px;gap:16px;flex-wrap:wrap;border-bottom:3px solid var(--brand-gold);
   display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:100;}
-.topbar h5{margin:0;font-size:16px;}
+.topbar h1{margin:0;font-size:16px;color:#fff;}
+.topbar .brand-logo{height:30px;width:auto;}
 .topbar .event-sub{font-size:12px;opacity:.7;margin-top:2px;}
-.btn-save{background:var(--orange);color:white;border:none;
-  padding:9px 24px;border-radius:20px;font-weight:700;font-size:13px;
+.btn-save{background:var(--orange);color:var(--brand-navy);border:none;
+  padding:9px 22px;border-radius:var(--radius-sm);font-weight:700;font-size:13px;
   cursor:pointer;transition:.2s;display:flex;align-items:center;gap:6px;}
-.btn-save:hover{background:#d95f0f;transform:scale(1.03);}
+.btn-save:hover{background:var(--brand-gold-300,#d8b98c);}
+.btn-save:focus-visible,.field-btn:focus-visible,.type-card:focus-visible{outline:2px solid var(--brand-gold);outline-offset:2px;}
 .btn-save:disabled{background:#94a3b8;cursor:not-allowed;transform:none;}
 
 /* Form type switcher */
@@ -110,8 +110,8 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 .type-card{flex:1;padding:16px;border:2px solid #e2e8f0;border-radius:12px;
   cursor:pointer;transition:.2s;text-align:center;background:#fff;}
 .type-card:hover{border-color:var(--blue);}
-.type-card.active{border-color:var(--orange);background:#fff8f4;}
-.type-card .type-icon{font-size:28px;margin-bottom:8px;display:block;}
+.type-card.active{border-color:var(--orange);background:var(--brand-gold-100);}
+.type-card .type-icon{font-size:26px;margin-bottom:8px;display:block;color: var(--brand-ink);}
 .type-card h6{margin:0;font-size:13px;font-weight:700;}
 .type-card p{margin:4px 0 0;font-size:11px;color:#64748b;}
 
@@ -124,10 +124,12 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 .toast-msg.error{border-left:4px solid #ef4444;}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
+/* What every form gets (UPG-79) */
+.fb-note{font-size:12.5px;color:var(--text-muted);background:var(--surface-sunken);border-radius:var(--radius-sm);padding:8px 12px;}
 /* Preview modal */
 .preview-form input,.preview-form select,.preview-form textarea{
   width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;
-  font-size:13px;font-family:'Inter',sans-serif;margin-top:4px;}
+  font-size:13px;font-family:var(--font-body);margin-top:4px;}
 .preview-form label{font-size:13px;font-weight:600;color:#334155;}
 .preview-form .required-star{color:#ef4444;}
 
@@ -140,25 +142,29 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
   .panel{border-right:none;border-bottom:1px solid #e2e8f0;}
 }
 </style>
-</head>
-<body>
+<script src="/static/js/escape.js"></script>
+{% endblock %}
+{% block body %}
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div>
-    <h5><i class="fas fa-wpforms me-2"></i>Form Builder</h5>
+  <div class="d-flex align-items-center gap-3">
+    <img src="/static/img/snpsu-logo-reversed.png" alt="SNPSU" class="brand-logo d-none d-md-block">
+    <div>
+    <h1><i class="fas fa-rectangle-list me-2" aria-hidden="true"></i>Form builder</h1>
     <div class="event-sub">{{ event.title }} &nbsp;·&nbsp; {{ event.get('date','') }}</div>
+    </div>
   </div>
   <div class="d-flex align-items-center gap-3">
-    <button class="btn btn-outline-light btn-sm rounded-pill px-3"
-            onclick="openPreview()">
-      <i class="fas fa-eye me-1"></i> Preview
+    <button type="button" class="btn btn-outline-light btn-sm"
+            data-h-click="coordinator/form_builder:1">
+      <i class="fas fa-eye me-1" aria-hidden="true"></i> Preview
     </button>
-    <button class="btn-save" id="btn-save" onclick="saveForm()">
-      <i class="fas fa-save"></i> Save Form
+    <button type="button" class="btn-save" id="btn-save" data-h-click="coordinator/form_builder:2">
+      <i class="fas fa-save" aria-hidden="true"></i> Save form
     </button>
-    <a href="{{ '/spoc/dashboard' if session.get('role') == 'ClubSPOC' else '/coordinator/dashboard' }}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-      <i class="fas fa-arrow-left me-1"></i> Back
+    <a href="{{ back_url }}" class="btn btn-outline-light btn-sm" id="btn-back">
+      <i class="fas fa-arrow-left me-1" aria-hidden="true"></i> Back
     </a>
   </div>
 </div>
@@ -175,25 +181,25 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
         Basic
       </div>
     </div>
-    <button class="field-btn" onclick="addField('text')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:3">
       <span class="icon"><i class="fas fa-font"></i></span> Short Text
     </button>
-    <button class="field-btn" onclick="addField('textarea')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:4">
       <span class="icon"><i class="fas fa-align-left"></i></span> Long Text
     </button>
-    <button class="field-btn" onclick="addField('email')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:5">
       <span class="icon"><i class="fas fa-envelope"></i></span> Email
     </button>
-    <button class="field-btn" onclick="addField('tel')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:6">
       <span class="icon"><i class="fas fa-phone"></i></span> Phone
     </button>
-    <button class="field-btn" onclick="addField('number')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:7">
       <span class="icon"><i class="fas fa-hashtag"></i></span> Number
     </button>
-    <button class="field-btn" onclick="addField('date')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:8">
       <span class="icon"><i class="fas fa-calendar"></i></span> Date
     </button>
-    <button class="field-btn" onclick="addField('url')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:9">
       <span class="icon"><i class="fas fa-link"></i></span> URL / Link
     </button>
 
@@ -203,16 +209,16 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
         Choice
       </div>
     </div>
-    <button class="field-btn" onclick="addField('select')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:10">
       <span class="icon"><i class="fas fa-caret-square-down"></i></span> Dropdown
     </button>
-    <button class="field-btn" onclick="addField('radio')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:11">
       <span class="icon"><i class="fas fa-dot-circle"></i></span> Multiple Choice
     </button>
-    <button class="field-btn" onclick="addField('checkbox_group')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:12">
       <span class="icon"><i class="fas fa-check-square"></i></span> Checkboxes
     </button>
-    <button class="field-btn" onclick="addField('checkbox')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:13">
       <span class="icon"><i class="fas fa-toggle-on"></i></span> Single Checkbox
     </button>
 
@@ -222,20 +228,20 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
         Layout
       </div>
     </div>
-    <button class="field-btn" onclick="addField('heading')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:14">
       <span class="icon"><i class="fas fa-heading"></i></span> Section Heading
     </button>
-    <button class="field-btn" onclick="addField('paragraph')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:15">
       <span class="icon"><i class="fas fa-info-circle"></i></span> Info Text
     </button>
-    <button class="field-btn" onclick="addField('divider')">
+    <button class="field-btn" data-h-click="coordinator/form_builder:16">
       <span class="icon"><i class="fas fa-minus"></i></span> Divider
     </button>
 
     <!-- Simple form reset -->
     <div style="padding:16px;">
       <button class="btn btn-outline-secondary btn-sm w-100 rounded-pill"
-              onclick="loadSimpleTemplate()">
+              data-h-click="coordinator/form_builder:17">
         <i class="fas fa-magic me-1"></i> Load Simple Template
       </button>
     </div>
@@ -251,13 +257,13 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
           <!-- Form type switcher -->
           <div class="prop-label mb-2">Registration Type</div>
           <div class="type-switcher">
-            <div class="type-card" id="type-simple" onclick="setFormType('simple')">
-              <span class="type-icon">📋</span>
+            <div class="type-card" id="type-simple" data-h-click="coordinator/form_builder:18">
+              <span class="type-icon" aria-hidden="true"><i class="fas fa-clipboard-list"></i></span>
               <h6>Simple Registration</h6>
               <p>Pre-built form with standard fields</p>
             </div>
-            <div class="type-card" id="type-custom" onclick="setFormType('custom')">
-              <span class="type-icon">🎨</span>
+            <div class="type-card" id="type-custom" data-h-click="coordinator/form_builder:19">
+              <span class="type-icon" aria-hidden="true"><i class="fas fa-palette"></i></span>
               <h6>Custom Form Builder</h6>
               <p>Design your own form with any fields</p>
             </div>
@@ -265,21 +271,27 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
         </div>
         <div class="col-md-6">
           <label class="prop-label">Form Title</label>
-          <input type="text" id="form-title" class="prop-input"
+          <input aria-label="Form Title" type="text" id="form-title" class="prop-input"
                  value="Registration Form" placeholder="e.g. Hackathon 2026 Registration">
         </div>
         <div class="col-md-6">
           <label class="prop-label">Form Description (optional)</label>
-          <input type="text" id="form-desc" class="prop-input"
+          <input aria-label="Form Description (optional)" type="text" id="form-desc" class="prop-input"
                  placeholder="Shown to participants at the top of the form">
+        </div>
+        <div class="col-12">
+          <p class="fb-note mb-0"><i class="fas fa-circle-info me-1" aria-hidden="true"></i>
+            Name, email, phone and USN are always asked: they're added if the form leaves them out.
+            {%- if team[1] > 1 %} This is a team event ({{ team[0] }}–{{ team[1] }} people), so the team name and a name, email and USN row for each member are added below your questions.{% endif %}
+          </p>
         </div>
         <!-- AI prompt builder -->
         <div class="col-12 mt-3 pt-3 border-top border-secondary border-opacity-10">
           <label class="prop-label"><i class="fas fa-wand-magic-sparkles text-primary me-1"></i>Generate Form from AI Prompt</label>
           <div class="input-group">
-            <input type="text" id="ai-prompt-input" class="prop-input" style="flex:1;"
+            <input aria-label="Generate Form from AI Prompt" type="text" id="ai-prompt-input" class="prop-input" style="flex:1;"
                    placeholder="e.g., Build a robotics team form with github url, team size of 4 and dietary preference">
-            <button class="btn btn-primary ms-2 px-4" style="border-radius:20px;" id="btn-ai-gen" onclick="generateFromAI()">
+            <button class="btn btn-primary ms-2 px-4" style="border-radius:20px;" id="btn-ai-gen" data-h-click="coordinator/form_builder:20">
               <i class="fas fa-bolt me-1"></i> Generate
             </button>
           </div>
@@ -292,8 +304,8 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 
     <!-- Drop canvas -->
     <div id="canvas" class="canvas-drop"
-         ondragover="onDragOver(event)" ondrop="onDrop(event)"
-         ondragleave="onDragLeave(event)">
+         data-h-dragover="coordinator/form_builder:21" data-h-drop="coordinator/form_builder:22"
+         data-h-dragleave="coordinator/form_builder:23">
       <div class="canvas-empty" id="canvas-empty">
         <i class="fas fa-mouse-pointer"></i>
         <p class="fw-bold mb-1">Click a field type on the left to add it</p>
@@ -305,7 +317,7 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 
     <div class="d-flex gap-2 mt-3">
       <button class="btn btn-outline-danger btn-sm rounded-pill"
-              onclick="clearAll()">
+              data-h-click="coordinator/form_builder:24">
         <i class="fas fa-trash me-1"></i> Clear All Fields
       </button>
       <a href="/forms/responses/{{ event.id }}"
@@ -356,8 +368,8 @@ h1,h2,h3,h4,h5{font-family:'Poppins',sans-serif;}
 <!-- TOAST -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
+{% include "layouts/_bootstrap_js.html" %}
+<script nonce="{{ csp_nonce() }}">
 // ── STATE ──────────────────────────────────────────────
 let fields       = [];
 let selectedId   = null;
@@ -365,6 +377,7 @@ let formType     = 'simple';
 let dragSrcIndex = null;
 
 const EVENT_ID   = "{{ event.id }}";
+const IS_TEAM    = {{ 'true' if team[1] > 1 else 'false' }};
 const existingForm = {{ form_json | safe }};
 
 // ── INIT ───────────────────────────────────────────────
@@ -374,9 +387,23 @@ document.addEventListener('DOMContentLoaded', () => {
     formType = existingForm.form_type || 'simple';
     document.getElementById('form-title').value = existingForm.form_title || '';
     document.getElementById('form-desc').value  = existingForm.form_desc  || '';
+  } else {
+    // No saved form yet: registrants get the standard one, so start from it (UPG-79)
+    loadSimpleTemplate(false);
   }
   setFormType(formType, false);
   renderCanvas();
+  savedState = currentState();
+});
+
+// ── UNSAVED CHANGES (UPG-79) ───────────────────────────
+let savedState = '';
+function currentState() {
+  return JSON.stringify([formType, document.getElementById('form-title').value,
+                         document.getElementById('form-desc').value, fields]);
+}
+window.addEventListener('beforeunload', e => {
+  if (currentState() !== savedState) { e.preventDefault(); e.returnValue = ''; }
 });
 
 // ── FORM TYPE ──────────────────────────────────────────
@@ -389,16 +416,15 @@ function setFormType(type, load = true) {
   }
 }
 
-function loadSimpleTemplate() {
+function loadSimpleTemplate(announce = true) {
   fields = [
     { id:'full_name', type:'text',  label:'Full Name',    placeholder:'Enter your full name', required:true,  options:[], help_text:'' },
     { id:'email',     type:'email', label:'Email Address',placeholder:'you@example.com',      required:true,  options:[], help_text:'' },
     { id:'phone',     type:'tel',   label:'Phone Number', placeholder:'10-digit mobile',      required:true,  options:[], help_text:'' },
-    { id:'usn',       type:'text',  label:'USN / Roll No',placeholder:'e.g. 1SN21CS001',      required:false, options:[], help_text:'' },
-    { id:'team_name', type:'text',  label:'Team Name',    placeholder:'Leave blank if solo',  required:false, options:[], help_text:'Only for team events' },
-  ];
+    { id:'usn',       type:'text',  label:'USN / Roll Number', placeholder:'e.g. 1SN21CS001', required:false, options:[], help_text:'' },
+  ];  // team events get the team name and member rows automatically (UPG-79)
   renderCanvas();
-  toast('Simple template loaded!', 'success');
+  if (announce) toast('Simple template loaded!', 'success');
 }
 
 // ── ADD FIELD ──────────────────────────────────────────
@@ -486,15 +512,15 @@ function renderCanvas() {
 
     card.innerHTML = `
       <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
-      <div class="field-meta" onclick="selectField('${f.id}')">
-        <div class="field-label">${escHtml(f.label || f.type)}</div>
-        <div class="field-type-badge">${typeLabel(f.type)}${f.help_text ? ' · ' + escHtml(f.help_text) : ''}</div>
+      <div class="field-meta" data-h-click="se:call" data-call="selectField" data-args="${escapeHtml(JSON.stringify([f.id]))}">
+        <div class="field-label">${escapeHtml(f.label || f.type)}</div>
+        <div class="field-type-badge">${escapeHtml(typeLabel(f.type))}${escapeHtml(f.help_text ? ' · ' + f.help_text : '')}</div>
       </div>
       <div class="field-actions">
-        <button title="Duplicate" onclick="duplicateField('${f.id}')"><i class="fas fa-copy"></i></button>
-        <button title="Move up"   onclick="moveField('${f.id}',-1)"><i class="fas fa-arrow-up"></i></button>
-        <button title="Move down" onclick="moveField('${f.id}',1)"><i class="fas fa-arrow-down"></i></button>
-        <button class="del" title="Delete" onclick="deleteField('${f.id}')"><i class="fas fa-trash"></i></button>
+        <button title="Duplicate" aria-label="Duplicate ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="duplicateField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-copy"></i></button>
+        <button title="Move up" aria-label="Move ${escapeHtml(f.label || f.type)} up" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, -1]))}"><i class="fas fa-arrow-up"></i></button>
+        <button title="Move down" aria-label="Move ${escapeHtml(f.label || f.type)} down" data-h-click="se:call" data-call="moveField" data-args="${escapeHtml(JSON.stringify([f.id, 1]))}"><i class="fas fa-arrow-down"></i></button>
+        <button class="del" title="Delete" aria-label="Delete ${escapeHtml(f.label || f.type)}" data-h-click="se:call" data-call="deleteField" data-args="${escapeHtml(JSON.stringify([f.id]))}"><i class="fas fa-trash"></i></button>
       </div>
       ${f.required ? '<span class="required-dot" title="Required"></span>' : ''}
     `;
@@ -511,10 +537,6 @@ function typeLabel(t) {
     heading:'Heading', paragraph:'Info Text', divider:'Divider'
   };
   return m[t] || t;
-}
-
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── CANVAS DRAG/DROP FROM PALETTE ─────────────────────
@@ -581,15 +603,15 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Field Label</div>
-      <input class="prop-input" id="p-label" value="${escHtml(f.label)}"
-             oninput="updateProp('label',this.value)" placeholder="Label shown to user">
+      <input class="prop-input" id="p-label" value="${escapeHtml(f.label)}"
+             data-h-input="coordinator/form_builder:prop" data-prop="label" placeholder="Label shown to user">
     </div>`;
   } else {
     html += `
     <div class="prop-group">
       <div class="prop-label">${f.type === 'heading' ? 'Heading Text' : f.type === 'paragraph' ? 'Info Text' : 'Divider'}</div>
-      ${f.type !== 'divider' ? `<input class="prop-input" id="p-label" value="${escHtml(f.label)}"
-        oninput="updateProp('label',this.value)" placeholder="Text content">` : '<p style="font-size:12px;color:#94a3b8;margin:0;">A horizontal line separator.</p>'}
+      ${f.type !== 'divider' ? `<input class="prop-input" id="p-label" value="${escapeHtml(f.label)}"
+        data-h-input="coordinator/form_builder:prop" data-prop="label" placeholder="Text content">` : '<p style="font-size:12px;color:#94a3b8;margin:0;">A horizontal line separator.</p>'}
     </div>`;
   }
 
@@ -597,8 +619,8 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Placeholder Text</div>
-      <input class="prop-input" id="p-ph" value="${escHtml(f.placeholder)}"
-             oninput="updateProp('placeholder',this.value)" placeholder="Hint inside the field">
+      <input class="prop-input" id="p-ph" value="${escapeHtml(f.placeholder)}"
+             data-h-input="coordinator/form_builder:prop" data-prop="placeholder" placeholder="Hint inside the field">
     </div>`;
   }
 
@@ -606,13 +628,13 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Help Text</div>
-      <input class="prop-input" id="p-help" value="${escHtml(f.help_text)}"
-             oninput="updateProp('help_text',this.value)" placeholder="Small description below field">
+      <input class="prop-input" id="p-help" value="${escapeHtml(f.help_text)}"
+             data-h-input="coordinator/form_builder:prop" data-prop="help_text" placeholder="Small description below field">
     </div>
     <div class="prop-group">
       <label class="prop-toggle">
         <input type="checkbox" ${f.required ? 'checked' : ''}
-               onchange="updateProp('required',this.checked)">
+               data-h-change="coordinator/form_builder:prop-checked" data-prop="required">
         Required field
       </label>
     </div>`;
@@ -622,13 +644,13 @@ function renderProps() {
     html += `
     <div class="prop-group">
       <div class="prop-label">Min Value</div>
-      <input class="prop-input" type="number" value="${f.min}"
-             oninput="updateProp('min',this.value)" placeholder="No minimum">
+      <input class="prop-input" type="number" value="${escapeHtml(f.min)}"
+             data-h-input="coordinator/form_builder:prop" data-prop="min" placeholder="No minimum">
     </div>
     <div class="prop-group">
       <div class="prop-label">Max Value</div>
-      <input class="prop-input" type="number" value="${f.max}"
-             oninput="updateProp('max',this.value)" placeholder="No maximum">
+      <input class="prop-input" type="number" value="${escapeHtml(f.max)}"
+             data-h-input="coordinator/form_builder:prop" data-prop="max" placeholder="No maximum">
     </div>`;
   }
 
@@ -639,13 +661,13 @@ function renderProps() {
       <div class="option-list" id="option-list">`;
     f.options.forEach((opt, i) => {
       html += `<div class="option-item">
-        <input value="${escHtml(opt)}" oninput="updateOption(${i},this.value)"
-               placeholder="Option ${i+1}">
-        <button onclick="removeOption(${i})"><i class="fas fa-times"></i></button>
+        <input value="${escapeHtml(opt)}" data-h-input="coordinator/form_builder:option" data-i="${escapeHtml(String(i))}"
+               placeholder="Option ${escapeHtml(i + 1)}">
+        <button data-h-click="se:call" data-call="removeOption" data-args="${escapeHtml(JSON.stringify([i]))}"><i class="fas fa-times"></i></button>
       </div>`;
     });
     html += `</div>
-      <button class="btn-add-option" onclick="addOption()">
+      <button class="btn-add-option" data-h-click="se:call" data-call="addOption">
         <i class="fas fa-plus me-1"></i> Add Option
       </button>
     </div>`;
@@ -655,7 +677,7 @@ function renderProps() {
   <div class="prop-group mt-3">
     <div class="prop-label">Field ID (internal)</div>
     <input class="prop-input" style="font-family:monospace;font-size:12px;"
-           value="${escHtml(f.id)}" readonly>
+           value="${escapeHtml(f.id)}" readonly>
     <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
       Used in CSV exports and the submissions database.
     </div>
@@ -697,8 +719,8 @@ function openPreview() {
   const title = document.getElementById('form-title').value || 'Registration Form';
   const desc  = document.getElementById('form-desc').value  || '';
   let html    = `<div class="preview-form">
-    <h5 class="fw-bold mb-1" style="color:var(--blue);">${escHtml(title)}</h5>
-    ${desc ? `<p class="text-muted mb-4" style="font-size:13px;">${escHtml(desc)}</p>` : '<div class="mb-4"></div>'}`;
+    <h5 class="fw-bold mb-1" style="color: var(--brand-ink);">${escapeHtml(title)}</h5>
+    ${desc ? `<p class="text-muted mb-4" style="font-size:13px;">${escapeHtml(desc)}</p>` : '<div class="mb-4"></div>'}`;
 
   fields.forEach(f => {
     if (f.type === 'divider') {
@@ -706,37 +728,37 @@ function openPreview() {
       return;
     }
     if (f.type === 'heading') {
-      html += `<h6 class="fw-bold mt-4 mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;">${escHtml(f.label)}</h6>`;
+      html += `<h6 class="fw-bold mt-4 mb-2" style="color:var(--blue);border-left:3px solid var(--orange);padding-left:10px;">${escapeHtml(f.label)}</h6>`;
       return;
     }
     if (f.type === 'paragraph') {
-      html += `<p class="text-muted mb-3" style="font-size:13px;">${escHtml(f.label)}</p>`;
+      html += `<p class="text-muted mb-3" style="font-size:13px;">${escapeHtml(f.label)}</p>`;
       return;
     }
 
-    html += `<div class="mb-3"><label>${escHtml(f.label)}${f.required ? ' <span class="required-star">*</span>' : ''}</label>`;
-    if (f.help_text) html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${escHtml(f.help_text)}</div>`;
+    html += `<div class="mb-3"><label>${escapeHtml(f.label)}${f.required ? ' <span class="required-star">*</span>' : ''}</label>`;
+    if (f.help_text) html += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">${escapeHtml(f.help_text)}</div>`;
 
     if (f.type === 'textarea') {
-      html += `<textarea placeholder="${escHtml(f.placeholder)}" rows="3"></textarea>`;
+      html += `<textarea placeholder="${escapeHtml(f.placeholder)}" rows="3"></textarea>`;
     } else if (f.type === 'select') {
       html += `<select><option value="">Select...</option>` +
-        f.options.map(o => `<option>${escHtml(o)}</option>`).join('') + `</select>`;
+        f.options.map(o => `<option>${escapeHtml(o)}</option>`).join('') + `</select>`;
     } else if (f.type === 'radio') {
       html += f.options.map(o =>
         `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
-          <input type="radio" name="${f.id}"> ${escHtml(o)}</label></div>`
+          <input type="radio" name="${escapeHtml(f.id)}"> ${escapeHtml(o)}</label></div>`
       ).join('');
     } else if (f.type === 'checkbox_group') {
       html += f.options.map(o =>
         `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
-          <input type="checkbox"> ${escHtml(o)}</label></div>`
+          <input type="checkbox"> ${escapeHtml(o)}</label></div>`
       ).join('');
     } else if (f.type === 'checkbox') {
       html += `<div style="margin-top:6px;"><label style="font-weight:400;display:flex;align-items:center;gap:8px;">
-        <input type="checkbox"> ${escHtml(f.label)}</label></div>`;
+        <input type="checkbox"> ${escapeHtml(f.label)}</label></div>`;
     } else {
-      html += `<input type="${f.type}" placeholder="${escHtml(f.placeholder)}">`;
+      html += `<input type="${escapeHtml(f.type)}" placeholder="${escapeHtml(f.placeholder)}">`;
     }
     html += `</div>`;
   });
@@ -775,15 +797,16 @@ async function saveForm() {
     });
     const data = await res.json();
     if (data.status === 'ok') {
+      savedState = currentState();
       toast('Form saved successfully! ✓', 'success');
     } else {
-      toast('Error: ' + data.message, 'error');
+      toast('Not saved: ' + (data.message || data.error || 'please try again.'), 'error');
     }
   } catch(e) {
     toast('Network error — please try again.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-save"></i> Save Form';
+    btn.innerHTML = '<i class="fas fa-save" aria-hidden="true"></i> Save form';
   }
 }
 
@@ -802,7 +825,7 @@ async function generateFromAI() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         description: promptVal,
-        is_team: fields.some(f => f.id === 'team_name') || promptVal.toLowerCase().includes('team')
+        is_team: IS_TEAM || fields.some(f => f.id === 'team_name') || promptVal.toLowerCase().includes('team')
       })
     });
     const data = await res.json();
@@ -829,19 +852,11 @@ function toast(msg, type='success') {
   const wrap = document.getElementById('toast-wrap');
   const el   = document.createElement('div');
   el.className = `toast-msg ${type}`;
-  el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
+  el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${escapeHtml(msg)}`;
   wrap.appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }
 </script>
-<script>
-(function(){var m=document.querySelector('meta[name="csrf-token"]');var t=m?m.getAttribute('content'):'';
-if(!t||!window.fetch)return;var of_=window.fetch.bind(window);window.fetch=function(i,n){n=n||{};
-var mth=(n.method||(typeof i==='object'&&i.method)||'GET').toUpperCase();
-if(['POST','PUT','DELETE','PATCH'].indexOf(mth)===-1)return of_(i,n);
-var u=typeof i==='string'?i:(i&&i.url)||'';try{var U=new URL(u,location.origin);if(U.origin!==location.origin)return of_(i,n);}catch(_){}
-var h=new Headers(n.headers||{});if(!h.has('X-CSRFToken'))h.set('X-CSRFToken',t);n.headers=h;
-if(!n.credentials)n.credentials='same-origin';return of_(i,n);};})();
-</script>
-</body>
-</html>
+<script src="/static/js/pages/coordinator__form_builder.js"></script>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/coordinator__form_builder.js"></script>{% endblock %}

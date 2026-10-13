@@ -1,498 +1,87 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23a (full-screen: no footer). -#}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
     <title>SapthaEvent Gate Kiosk</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <!-- Outfit Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Bootstrap CSS (Optional Grid, but we use custom styles mostly) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-
+    {% include "layouts/_fontawesome.html" %}
+    {% include "layouts/_bootstrap_css.html" %}
+    <link href="/static/css/global.css" rel="stylesheet">
     <style>
-        :root {
-            --bg-dark: #090d16;
-            --glass-bg: rgba(17, 25, 40, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --primary: #8b5cf6;
-            --primary-glow: rgba(139, 92, 246, 0.4);
-            --success: #10b981;
-            --success-glow: rgba(16, 185, 129, 0.3);
-            --warning: #f59e0b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --card-hover-bg: rgba(255, 255, 255, 0.03);
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        /* Abstract glowing blobs for premium visual feel */
-        body::before {
-            content: '';
-            position: absolute;
-            top: -20%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
-            z-index: -1;
-            filter: blur(80px);
-        }
-        body::after {
-            content: '';
-            position: absolute;
-            bottom: -20%;
-            right: -10%;
-            width: 45vw;
-            height: 45vw;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
-            z-index: -1;
-            filter: blur(80px);
-        }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-        }
-
-        /* Pulsing indicator */
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--success);
-            display: inline-block;
-            box-shadow: 0 0 10px var(--success-glow);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                transform: scale(0.9);
-                opacity: 0.6;
-            }
-            50% {
-                transform: scale(1.1);
-                opacity: 1;
-                box-shadow: 0 0 14px var(--success-glow);
-            }
-            100% {
-                transform: scale(0.9);
-                opacity: 0.6;
-            }
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Top Kiosk Header */
-        .kiosk-header {
-            border-bottom: 1px solid var(--glass-border);
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Large search console */
-        .console-container {
-            max-width: 900px;
-            margin: 2.5rem auto;
-            padding: 2rem;
-            position: relative;
-        }
-
-        .search-input-wrapper {
-            position: relative;
-            margin-bottom: 2rem;
-        }
-
-        .search-input-field {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.04);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 18px;
-            padding: 1.2rem 1.5rem 1.2rem 3.5rem;
-            color: #fff;
-            font-size: 1.3rem;
-            font-weight: 500;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-
-        .search-input-field:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 20px var(--primary-glow);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 1.2rem;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.5rem;
-            color: var(--text-muted);
-            pointer-events: none;
-        }
-
-        /* Virtual Keyboard Grid */
-        .keyboard-wrapper {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 20px;
-            padding: 1rem;
-            border: 1px solid var(--glass-border);
-            margin-top: 1.5rem;
-        }
-
-        .keyboard-row {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            margin-bottom: 6px;
-        }
-
-        .keyboard-key {
-            flex: 1;
-            max-width: 75px;
-            height: 52px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(255, 255, 255, 0.04);
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            user-select: none;
-            transition: all 0.15s ease;
-        }
-
-        .keyboard-key:active, .keyboard-key.active {
-            transform: scale(0.92);
-            background: var(--primary);
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-
-        .keyboard-key.wide {
-            flex: 2.2;
-            max-width: 160px;
-        }
-
-        .keyboard-key.spacebar {
-            flex: 5;
-            max-width: 380px;
-        }
-
-        .keyboard-key.special {
-            background: rgba(255, 255, 255, 0.08);
-            font-size: 0.95rem;
-        }
-
-        /* Search Results Panel */
-        .results-viewport {
-            max-height: 320px;
-            overflow-y: auto;
-            margin-top: 1.5rem;
-            border-radius: 16px;
-            border: 1px solid var(--glass-border);
-            background: rgba(0, 0, 0, 0.15);
-            display: none;
-        }
-
-        .result-item {
-            padding: 1.2rem 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.2s ease;
-        }
-
-        .result-item:last-child {
-            border-bottom: none;
-        }
-
-        .result-item:hover {
-            background: var(--card-hover-bg);
-        }
-
-        .info-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 0.2rem;
-        }
-
-        .info-sub {
-            font-size: 0.88rem;
-            color: var(--text-muted);
-        }
-
-        .badge-status {
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            padding: 0.35rem 0.7rem;
-            border-radius: 12px;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-status.pending {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
-            border: 1px solid rgba(245, 158, 11, 0.2);
-        }
-
-        .badge-status.present {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-
-        /* Stunning Fullscreen Badge Printing Overlay */
-        .badge-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(5, 7, 12, 0.85);
-            backdrop-filter: blur(12px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .badge-modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        /* Badge Printer Slots Simulation */
-        .printer-container {
-            width: 360px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            perspective: 800px;
-        }
-
-        .printer-slot {
-            width: 320px;
-            height: 30px;
-            background: #1e293b;
-            border-radius: 10px 10px 0 0;
-            border: 3px solid #334155;
-            border-bottom: 6px solid #0f172a;
-            position: relative;
-            z-index: 10;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-        }
-
-        .printer-slot::after {
-            content: '';
-            position: absolute;
-            width: 250px;
-            height: 4px;
-            background: #000;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
-        }
-
-        /* Sliding out Badge styling */
-        .badge-card {
-            width: 290px;
-            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 0 0 20px 20px;
-            padding: 1.5rem;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-            position: relative;
-            transform: translateY(-90%);
-            opacity: 0;
-            z-index: 5;
-            transition: transform 1.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease;
-        }
-
-        .badge-card.print-active {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .badge-header {
-            border-bottom: 2px dashed rgba(255, 255, 255, 0.1);
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-
-        .badge-logo {
-            font-size: 0.8rem;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: var(--primary);
-            text-transform: uppercase;
-            margin-bottom: 0.3rem;
-        }
-
-        .badge-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #fff;
-        }
-
-        .badge-role-pill {
-            display: inline-block;
-            background: var(--primary);
-            color: #fff;
-            font-weight: 700;
-            font-size: 0.7rem;
-            padding: 0.25rem 0.8rem;
-            border-radius: 20px;
-            margin-top: 0.5rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        .badge-details {
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-
-        .badge-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.6rem;
-        }
-
-        .badge-lbl {
-            color: var(--text-muted);
-            font-weight: 500;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-        }
-
-        .badge-val {
-            color: #fff;
-            font-weight: 600;
-        }
-
-        /* Mock barcode */
-        .barcode-mock {
-            height: 45px;
-            background: linear-gradient(90deg, 
-                #fff 0%, #fff 5%, #000 5%, #000 10%, 
-                #fff 10%, #fff 12%, #000 12%, #000 20%, 
-                #fff 20%, #fff 25%, #000 25%, #000 30%, 
-                #fff 30%, #fff 35%, #000 35%, #000 45%, 
-                #fff 45%, #fff 50%, #000 50%, #000 55%, 
-                #fff 55%, #fff 60%, #000 60%, #000 70%, 
-                #fff 70%, #fff 75%, #000 75%, #000 80%, 
-                #fff 80%, #fff 85%, #000 85%, #000 95%, 
-                #fff 95%, #fff 100%
-            );
-            border-radius: 4px;
-            margin: 1rem 0 0.5rem 0;
-            border: 4px solid #fff;
-        }
-
-        .success-checkmark {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1.5rem auto;
-            background: rgba(16, 185, 129, 0.1);
-            border: 3px solid var(--success);
-            color: var(--success);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.2rem;
-            animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-            box-shadow: 0 0 20px var(--success-glow);
-        }
-
-        @keyframes bounceIn {
-            0% { transform: scale(0.3); opacity: 0; }
-            50% { transform: scale(1.1); opacity: 0.9; }
-            80% { transform: scale(0.89); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        /* Reset screen overlay styles */
-        .printing-status-text {
-            text-align: center;
-            margin-top: 1.5rem;
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
+        /* Gate kiosk (UPG-63): staff touch terminal on the portal design system */
+        body { background: var(--surface-page); min-height: 100vh; display: flex; flex-direction: column; }
+        .kiosk-header { background: var(--brand-navy); color: #fff; border-bottom: 3px solid var(--brand-gold); padding: 14px clamp(16px, 3vw, 32px); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .kiosk-header h1 { color: #fff; font-size: 1.15rem; margin: 0; letter-spacing: 0.02em; }
+        .kiosk-header .sub { font-size: var(--fs-xs); color: var(--text-on-brand-muted); }
+        .kiosk-clock { font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; display: inline-block; animation: livePulse 2s infinite; }
+        .console-container { width: calc(100% - 32px); max-width: 900px; margin: 28px auto; padding: clamp(18px, 3vw, 32px); background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+        .search-input-wrapper { position: relative; margin-bottom: 20px; }
+        .search-input-field { width: 100%; background: var(--surface-card); border: 2px solid var(--border-strong); border-radius: var(--radius); padding: 1.1rem 1.4rem 1.1rem 3.4rem; color: var(--text-strong); font-size: 1.3rem; font-weight: 500; outline: none; }
+        .search-input-field:focus { border-color: var(--brand-navy); box-shadow: 0 0 0 4px rgba(0, 24, 94, 0.12); }
+        .search-icon { position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); font-size: 1.4rem; color: var(--text-subtle); pointer-events: none; }
+        .keyboard-wrapper { background: var(--surface-sunken); border-radius: var(--radius); padding: 12px; border: 1px solid var(--border); margin-top: 20px; }
+        .keyboard-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 6px; }
+        .keyboard-key { flex: 1; max-width: 75px; height: 54px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface-card); color: var(--text-strong); font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; box-shadow: 0 1px 0 var(--border-strong); }
+        .keyboard-key:active, .keyboard-key.active { background: var(--brand-navy); color: #fff; border-color: var(--brand-navy); }
+        .keyboard-key.wide { flex: 2.2; max-width: 160px; }
+        .keyboard-key.spacebar { flex: 5; max-width: 380px; }
+        .keyboard-key.special { background: var(--surface-muted); font-size: 0.9rem; }
+        .keyboard-key.key-search { background: var(--brand-gold); border-color: var(--brand-gold); color: var(--brand-navy-900); font-weight: 700; }
+        .results-viewport { max-height: 320px; overflow-y: auto; margin-top: 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-card); display: none; }
+        .result-item { padding: 14px 18px; border-bottom: 1px solid var(--divider); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .result-item:last-child { border-bottom: none; }
+        .result-item:hover { background: var(--hover-bg); }
+        .info-title { font-size: 1.05rem; font-weight: 700; color: var(--text-strong); margin-bottom: 2px; }
+        .info-sub { font-size: var(--fs-sm); color: var(--text-subtle); }
+        .badge-status { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; padding: 0.3rem 0.65rem; border-radius: var(--radius-pill); letter-spacing: 0.04em; }
+        .badge-status.pending { background: var(--warning-soft); color: var(--warning-text); }
+        .badge-status.present { background: var(--success-soft); color: var(--success-text); }
+        /* Badge print overlay */
+        .badge-modal-overlay { position: fixed; inset: 0; background: rgba(0, 10, 46, 0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s var(--ease); }
+        .badge-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .printer-container { width: 360px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; align-items: center; }
+        .printer-slot { width: 320px; max-width: 100%; height: 26px; background: #1e293b; border-radius: 10px 10px 0 0; border: 3px solid #334155; border-bottom: 6px solid #0f172a; position: relative; z-index: 10; }
+        .badge-card { width: 290px; max-width: 92%; background: var(--surface-card); border-top: 4px solid var(--brand-navy); border-radius: 0 0 var(--radius) var(--radius); padding: 1.25rem; box-shadow: var(--shadow-lg); position: relative; transform: translateY(-90%); opacity: 0; z-index: 5; transition: transform 1.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease; }
+        .badge-card.print-active { transform: translateY(0); opacity: 1; }
+        .badge-header { border-bottom: 2px dashed var(--border); padding-bottom: 0.9rem; margin-bottom: 0.9rem; text-align: center; }
+        .badge-logo { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.15em; color: var(--brand-gold-700); text-transform: uppercase; margin-bottom: 0.25rem; }
+        .badge-title { font-family: var(--font-heading); font-size: 1.15rem; font-weight: 700; color: var(--text-strong); }
+        .badge-role-pill { display: inline-block; background: var(--brand-navy); color: #fff; font-weight: 700; font-size: 0.68rem; padding: 0.2rem 0.75rem; border-radius: var(--radius-pill); margin-top: 0.45rem; letter-spacing: 0.08em; text-transform: uppercase; }
+        .badge-details { font-size: 0.9rem; margin-bottom: 0.8rem; }
+        .badge-row { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+        .badge-lbl { color: var(--text-subtle); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; }
+        .badge-val { color: var(--text-strong); font-weight: 600; }
+        .barcode-mock { height: 42px; background: repeating-linear-gradient(90deg, #000 0 3px, #fff 3px 5px, #000 5px 6px, #fff 6px 9px); border-radius: 2px; margin: 0.9rem 0 0.4rem; border: 4px solid #fff; outline: 1px solid var(--border); }
+        .success-checkmark { width: 76px; height: 76px; margin: 0 auto 1.25rem; background: var(--success-soft); border: 3px solid var(--success); color: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .printing-status-text { text-align: center; margin-top: 1.25rem; font-size: 1.1rem; font-weight: 600; color: #fff; }
+        @media (max-width: 600px) { .keyboard-key { height: 46px; font-size: 0.95rem; } }
     </style>
-</head>
-<body>
+    <script src="/static/js/escape.js"></script>
+{% endblock %}
+{% block body %}
 
     <!-- Kiosk header -->
-    <header class="kiosk-header glass-panel m-3">
+    <header class="kiosk-header">
         <div class="d-flex align-items-center gap-3">
-            <div class="bg-primary bg-opacity-20 p-3 rounded-4 border border-primary border-opacity-35">
-                <i class="fas fa-tablet-screen-button text-primary fs-3"></i>
-            </div>
-            <div>
-                <h1 class="h4 fw-bold m-0 tracking-wide text-white">SAPTHAGIRI ACCESS TERMINAL</h1>
-                <div class="d-flex align-items-center gap-2 mt-1">
-                    <span class="status-dot"></span>
-                    <span class="small text-muted font-monospace">STATION-01 // KIOSK ONLINE</span>
-                </div>
+            <img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36">
+            <div class="d-none d-sm-block">
+                <h1>Gate check-in kiosk</h1>
+                <div class="sub d-flex align-items-center gap-2 mt-1"><span class="status-dot" aria-hidden="true"></span>Station 01 · online</div>
             </div>
         </div>
         <div class="text-end">
-            <div class="h5 fw-bold text-white mb-0" id="live-clock">--:--:--</div>
-            <div class="small text-muted" id="live-date">--- --, ----</div>
+            <div class="kiosk-clock" id="live-clock">--:--:--</div>
+            <div class="sub" id="live-date">--- --, ----</div>
         </div>
     </header>
 
     <!-- Console Container -->
-    <main class="console-container glass-panel">
-        <h2 class="text-center fw-bold text-white mb-3">Self-Serve Lookup & Check-In</h2>
-        <p class="text-center text-muted small mb-3">Select your event and enter your Registration ID or Name</p>
+    <main class="console-container">
+        <h2 class="text-center h3 mb-2">Find your registration and check in</h2>
+        <p class="text-center text-muted mb-4">Choose your event, then type your name or scan your ticket.</p>
 
         <div class="mb-3 text-center" style="max-width: 450px; margin: 0 auto 1.5rem auto;">
-            <select id="kiosk-event-id" class="form-select bg-dark text-white border-secondary shadow-sm" onchange="hideResults()">
+            <select aria-label="Kiosk event id" id="kiosk-event-id" class="form-select form-select-lg" data-h-change="public/kiosk:1">
                 {% if not events %}
                 <option value="">No managed events available</option>
                 {% else %}
@@ -506,7 +95,7 @@
         <!-- Search Input -->
         <div class="search-input-wrapper">
             <i class="fas fa-magnifying-glass search-icon"></i>
-            <input type="text" id="kiosk-search-input" class="search-input-field" placeholder="Lookup registration details..." readonly>
+            <input aria-label="Search by name, or scan a ticket" type="text" id="kiosk-search-input" class="search-input-field" placeholder="Search by name, or scan a ticket..." inputmode="none" autocomplete="off" autofocus>
         </div>
 
         <!-- Search Results Viewport -->
@@ -571,7 +160,7 @@
             <!-- Row 5 -->
             <div class="keyboard-row">
                 <div class="keyboard-key spacebar" data-key=" ">SPACE</div>
-                <div class="keyboard-key special wide" data-key="ENTER" style="background: var(--primary); font-weight:700;"><i class="fas fa-magnifying-glass me-1"></i> SEARCH</div>
+                <div class="keyboard-key wide key-search" data-key="ENTER"><i class="fas fa-magnifying-glass me-1" aria-hidden="true"></i> Search</div>
             </div>
         </div>
     </main>
@@ -589,7 +178,7 @@
             <!-- Badge Card -->
             <div class="badge-card" id="badge-ticket">
                 <div class="badge-header">
-                    <div class="badge-logo">Sapthagiri Fest</div>
+                    <div class="badge-logo">Sapthagiri NPS University</div>
                     <div class="badge-title" id="lbl-badge-event">EVENT TITLE</div>
                     <span class="badge-role-pill">PARTICIPANT</span>
                 </div>
@@ -613,17 +202,17 @@
                 </div>
                 
                 <div class="barcode-mock"></div>
-                <div class="text-center font-monospace mt-1" style="font-size: 10px; color: var(--text-muted);" id="lbl-badge-regid">REG-123456789</div>
+                <div class="text-center font-monospace mt-1 text-subtle" style="font-size: 10px;" id="lbl-badge-regid">REG-123456789</div>
             </div>
             
-            <div class="printing-status-text text-white" id="lbl-print-status">
+            <div class="printing-status-text" id="lbl-print-status">
                 <i class="fas fa-spinner fa-spin me-2 text-primary"></i>Checking in & generating badge...
             </div>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         // Kiosk Clock
         function updateClock() {
             var now = new Date();
@@ -664,6 +253,21 @@
             });
         });
 
+        // A USB scanner types into the box and presses Enter; the on-screen
+        // keyboard stays the touch input (inputmode="none" keeps the phone's away)
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                triggerSearch();
+            }
+        });
+
+        // A USB or camera scanner types the ticket's link (or code) into the box
+        function looksLikeTicket(val) {
+            return val.indexOf('/ticket/verify/') !== -1 ||
+                   (val.length >= 24 && val.indexOf('@') === -1 && /^[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-.]+$/.test(val));
+        }
+
         // Search trigger
         function triggerSearch() {
             var val = searchInput.value.trim();
@@ -676,6 +280,12 @@
             if (!eventId) {
                 resultsPanel.innerHTML = '<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>Please select an event above first.</div>';
                 resultsPanel.style.display = 'block';
+                return;
+            }
+
+            // A scanned ticket checks in through the shared check-in (UPG-02)
+            if (looksLikeTicket(val)) {
+                runCheckIn('/ticket/api/checkin', { token: val, event_id: eventId, source: 'kiosk scan' });
                 return;
             }
 
@@ -698,7 +308,7 @@
                     renderSearchResults(data.results);
                 } else {
                     var msg = data.error || 'No active registrations found. Please verify details.';
-                    resultsPanel.innerHTML = `<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>${msg}</div>`;
+                    resultsPanel.innerHTML = `<div class="text-center p-4 text-warning"><i class="fas fa-circle-exclamation fs-3 mb-2"></i><br>${escapeHtml(msg)}</div>`;
                 }
             })
             .catch(err => {
@@ -722,10 +332,11 @@
                 row.className = 'result-item';
 
                 var info = document.createElement('div');
-                var teamText = item.team_name ? ` // Team: ${item.team_name}` : '';
+                // Registrants typed the name and team: escape them (BLK-19)
+                var teamHtml = item.team_name ? ' // Team: ' + escapeHtml(item.team_name) : '';
                 info.innerHTML = `
-                    <div class="info-title">${item.lead_name}${teamText}</div>
-                    <div class="info-sub"><i class="fas fa-award text-primary me-1"></i>${item.event_title} &bull; <i class="fas fa-fingerprint me-1"></i>${item.reg_id}</div>
+                    <div class="info-title">${escapeHtml(item.lead_name)}${teamHtml}</div>
+                    <div class="info-sub"><i class="fas fa-award me-1"></i>${escapeHtml(item.event_title)} &bull; <i class="fas fa-fingerprint me-1"></i>${escapeHtml(item.reg_id)}</div>
                 `;
 
                 var actionWrapper = document.createElement('div');
@@ -736,7 +347,7 @@
                 statusBadge.textContent = item.attendance;
 
                 var checkInBtn = document.createElement('button');
-                checkInBtn.className = 'btn btn-primary rounded-pill btn-sm px-3 fw-bold';
+                checkInBtn.className = 'btn btn-gold';
                 checkInBtn.innerHTML = '<i class="fas fa-check-double me-1"></i> Check In';
                 checkInBtn.onclick = function() {
                     confirmCheckIn(item.reg_id);
@@ -755,26 +366,38 @@
 
         // Confirm Kiosk Check-In with badge print animation
         function confirmCheckIn(regId) {
+            runCheckIn('/checkin/kiosk/confirm/' + encodeURIComponent(regId), null);
+        }
+
+        function setPrintStatus(iconClass, text) {
+            var statusText = document.getElementById('lbl-print-status');
+            var icon = document.createElement('i');
+            icon.className = iconClass + ' me-2';
+            statusText.replaceChildren(icon, document.createTextNode(text));
+        }
+
+        // Both the scanned ticket and the name search end here: the same
+        // check-in answers success, "already checked in at HH:MM", or why not.
+        function runCheckIn(url, body) {
             var overlay = document.getElementById('badge-overlay');
-            var printerBox = document.getElementById('printer-box');
             var checkmark = document.getElementById('print-success-check');
             var badge = document.getElementById('badge-ticket');
-            var statusText = document.getElementById('lbl-print-status');
 
             // Reset animation states
             overlay.classList.add('active');
             checkmark.style.display = 'none';
             badge.classList.remove('print-active');
-            statusText.innerHTML = '<i class="fas fa-spinner fa-spin me-2 text-primary"></i>Accessing server database...';
+            setPrintStatus('fas fa-spinner fa-spin', 'Accessing server database...');
 
             var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
 
-            fetch(`/checkin/kiosk/confirm/${regId}`, {
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
-                }
+                },
+                body: body ? JSON.stringify(body) : null
             })
             .then(res => res.json())
             .then(data => {
@@ -782,8 +405,8 @@
                     // Pre-fill Badge details
                     document.getElementById('lbl-badge-name').textContent = data.lead_name;
                     document.getElementById('lbl-badge-event').textContent = data.event_title;
-                    document.getElementById('lbl-badge-regid').textContent = regId;
-                    
+                    document.getElementById('lbl-badge-regid').textContent = data.reg_id;
+
                     var teamRow = document.getElementById('badge-row-team');
                     if (data.team_name) {
                         document.getElementById('lbl-badge-team').textContent = data.team_name;
@@ -791,21 +414,21 @@
                     } else {
                         teamRow.style.display = 'none';
                     }
-                    
-                    var checkinTime = data.checkin_time || new Date().toLocaleTimeString();
-                    document.getElementById('lbl-badge-time').textContent = checkinTime;
+
+                    document.getElementById('lbl-badge-time').textContent = data.checkin_time || '';
 
                     // Start badge print animation sequence
                     setTimeout(function() {
-                        statusText.innerHTML = '<i class="fas fa-print fa-bounce me-2 text-primary"></i>Printing gate badge... Please wait';
+                        setPrintStatus('fas fa-print', 'Printing gate badge... Please wait');
                         badge.classList.add('print-active');
                     }, 800);
 
                     // Complete animation sequence
                     setTimeout(function() {
-                        statusText.innerHTML = '<i class="fas fa-circle-check text-success me-2"></i>Attendance Confirmed! Access Granted.';
+                        setPrintStatus('fas fa-circle-check',
+                            data.already_present ? data.message : 'Attendance Confirmed! Access Granted.');
                         checkmark.style.display = 'flex';
-                        
+
                         // Flash success glow
                         checkmark.style.animation = 'bounceIn 0.5s ease both';
                     }, 2800);
@@ -818,7 +441,7 @@
                     }, 8000);
 
                 } else {
-                    statusText.innerHTML = `<i class="fas fa-triangle-exclamation text-danger me-2"></i>Error: ${data.error}`;
+                    setPrintStatus('fas fa-triangle-exclamation', 'Error: ' + (data.message || data.error));
                     setTimeout(function() {
                         overlay.classList.remove('active');
                     }, 4000);
@@ -826,12 +449,12 @@
             })
             .catch(err => {
                 console.error("Check-in error:", err);
-                statusText.innerHTML = '<i class="fas fa-circle-xmark text-danger me-2"></i>Network communication failure.';
+                setPrintStatus('fas fa-circle-xmark', 'Network communication failure.');
                 setTimeout(function() {
                     overlay.classList.remove('active');
                 }, 4000);
             });
         }
     </script>
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__kiosk.js"></script>{% endblock %}

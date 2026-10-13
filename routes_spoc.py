@@ -2,11 +2,14 @@ from flask import Blueprint, render_template, request, redirect, session, flash,
 from models import FirebaseWrapper
 import datetime
 import csv
+import re
 import io
 import json
 from utils import login_required, role_required, log_action
 from utils_email import _base_url as _public_base_url
 from services_accounts import create_unverified_account, send_set_password_link
+
+XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 class DynamicDBProxy:
     def __getattr__(self, name):
@@ -68,22 +71,20 @@ def dashboard():
     chart_labels = []
     chart_regs = []
 
+    from services_insights import build as _insights, paid_amount
+    insight_events, insight_regs = [], []
     for doc in query:
         data = doc.to_dict()
-        reg_count = data.get('registration_count')
-        p_count   = data.get('attendance_count', 0) or 0
-        if reg_count is None:
-            regs      = list(db.collection('registrations').where('event_id', '==', doc.id).stream())
-            reg_count = len(regs)
-            p_count   = sum(1 for r in regs if r.to_dict().get('attendance') == 'Present')
-            db.collection('events').document(doc.id).update({
-                'registration_count': reg_count,
-                'attendance_count':   p_count,
-            })
+        # Counted from the registrations, not the cached counter, which can be
+        # stale; revenue is what was actually paid (UPG-81)
+        regs = [r.to_dict() or {} for r in db.collection('registrations').where('event_id', '==', doc.id).stream()]
+        reg_count = len(regs)
+        p_count   = sum(1 for r in regs if r.get('attendance') == 'Present')
+        insight_events.append(dict(data, id=doc.id))
+        insight_regs.extend(dict(r, event_id=doc.id) for r in regs)
         total_regs    += reg_count
         present_count += p_count
-        fee = int((data.get('fees') or {}).get('regular', 0) or data.get('entry_fee', 0) or 0)
-        total_revenue += fee * reg_count
+        total_revenue += sum(paid_amount(r) for r in regs)
         for s in data.get('staff', []):
             if s.get('email'):
                 unique_staff.add(s['email'])
@@ -97,9 +98,23 @@ def dashboard():
         chart_labels.append(data.get('title', doc.id)[:20])
         chart_regs.append(reg_count)
 
+    user_doc_data = {}
+    try:
+        if spoc_id:
+            u = db.collection('users').document(spoc_id).get()
+            if u.exists:
+                user_doc_data = u.to_dict() or {}
+    except Exception:
+        pass
+    import datetime
+    last_updated = datetime.datetime.now().strftime('%d/%m/%Y  %I:%M %p')
+
+    from utils_pagination import paginate_events
     return render_template(
         'spoc/dashboard.html',
         events=events,
+        page=paginate_events(events),   # sidebar and event panels: 25 a page; stats use every event (UPG-19)
+        status_filter=(request.args.get('status') or '').strip().lower(),
         stats={
             'total_events':  len(events),
             'total_regs':    total_regs,
@@ -110,188 +125,400 @@ def dashboard():
         category=session.get('category', 'General'),
         chart_labels=chart_labels,
         chart_regs=chart_regs,
+        # Per-event breakdown for the dashboard charts (UPG-83)
+        breakdown=_insights(insight_events, insight_regs, period='all')['events'],
+        user_name=session.get('name') or user_doc_data.get('name', 'Club SPOC'),
+        user_email=spoc_id,
+        user_profile=user_doc_data,
+        last_updated=last_updated,
     )
 
 # --- 2. CREATE EVENT (DYNAMIC BUILDER) ---
+# ── Event creation (UPG-73, UPG-74) ──────────────────────────────────────────
+# Every kind of event goes through one wizard and services_event_types: the
+# event is saved as a draft, the SPOC checks it on the review page and then
+# publishes it (or sends it for approval when their unit needs that).
+
+def _rooms():
+    return [dict(r.to_dict() or {}, id=r.id) for r in db.collection('rooms').stream()] if db else []
+
+
+def _owner_unit():
+    """The unit an event created now belongs to: the SPOC's scoped unit, else their department."""
+    unit = session.get('org_unit_id')
+    if not unit:
+        try:
+            for ra in db.collection('role_assignments').where(
+                    'user_id', '==', session.get('user_id', '').lower().strip()).stream():
+                rad = ra.to_dict() or {}
+                if rad.get('scope_type') == 'unit' and rad.get('scope_id'):
+                    unit = rad['scope_id']
+                    break
+        except Exception:
+            pass
+    if not unit:
+        u_doc = db.collection('users').document(session.get('user_id', '')).get()
+        if u_doc.exists:
+            unit = (u_doc.to_dict() or {}).get('department')
+    # Only a real org unit: a department name that isn't one used to break the
+    # save with a foreign-key error (UPG-73)
+    if unit and str(unit).lower() not in ('central', 'none'):
+        try:
+            if not db.collection('org_units').document(str(unit)).get().exists:
+                unit = None
+        except Exception:
+            unit = None
+    return unit or 'central'
+
+
+def _fest_for(parent_id, need_edit=True):
+    """The fest a sub-event is added to, if it exists and the SPOC may edit it."""
+    if not parent_id:
+        return None, ''
+    doc = db.collection('events').document(parent_id).get()
+    if not doc.exists:
+        return None, 'That fest no longer exists.'
+    fest = dict(doc.to_dict() or {}, id=doc.id)
+    if not fest.get('is_fest') and fest.get('event_type') != 'fest':
+        return None, 'Events can only be added to a fest.'
+    from services_permission import can
+    if need_edit and not can(session, 'edit_event', fest, db=db):
+        return None, "You can't add events to this fest."
+    return fest, ''
+
+
+def _my_fests():
+    """Fests this SPOC can add events to, for the wizard's "part of a fest" choice."""
+    from services_permission import can
+    fests = []
+    try:
+        for d in db.collection('events').where('is_fest', '==', True).stream():
+            ev = dict(d.to_dict() or {}, id=d.id)
+            if str(ev.get('status') or '').lower() in ('cancelled', 'completed', 'archived'):
+                continue
+            if can(session, 'edit_event', ev, db=db):
+                fests.append(ev)
+    except Exception:
+        pass
+    return sorted(fests, key=lambda e: str(e.get('date') or ''))
+
+
+def _render_wizard(values=None, errors=None, parent=None, status=200, editing=None):
+    from services_event_types import grouped, CATEGORIES, TYPES
+    profile = {}
+    try:
+        u_doc = db.collection('users').document(session.get('user_id', '')).get()
+        profile = (u_doc.to_dict() or {}) if u_doc.exists else {}
+    except Exception:
+        pass
+    return render_template('spoc/create_event.html', rooms=_rooms(), groups=grouped(), types=TYPES,
+                           categories=CATEGORIES, values=values or {}, errors=errors or [],
+                           parent=parent, fests=[] if editing else _my_fests(), editing=editing,
+                           profile_phone=profile.get('phone', ''),
+                           today=datetime.date.today().isoformat()), status
+
+
 @spoc_bp.route('/create_event', methods=['GET', 'POST'])
 @login_required
 @role_required('ClubSPOC')
 def create_event():
+    from services_event_types import parse_form, get_type
+    parent_id = (request.values.get('parent_event_id') or request.args.get('parent') or '').strip()
+    parent, parent_error = _fest_for(parent_id)
+    if parent_id and not parent:
+        flash(parent_error, 'danger')
+        return redirect('/spoc/dashboard')
+
     if request.method == 'GET':
-        return render_template('spoc/create_event.html')
+        values = {}
+        if request.args.get('type'):
+            values['event_type'] = request.args.get('type')
+        return _render_wizard(values=values, parent=parent)
+
+    data, errors, warnings = parse_form(request.form, parent=parent)
+    spec = get_type(data['event_type'])
+    values = request.form.to_dict()
+    values['allowed_participants'] = request.form.getlist('allowed_participants')
+    values['allowed_years'] = request.form.getlist('allowed_years')
+
+    # Room conflict check on create (UPG-09)
+    room_id = (request.form.get('room_id') or '').strip()
+    start_time_val = (data['start_datetime'] or '').replace('T', ' ')[:16]
+    end_time_val = (data['end_datetime'] or start_time_val).replace('T', ' ')[:16]
+    if room_id and start_time_val and not errors:
+        from services_venue import check_room_conflict
+        has_clash, clash_info = check_room_conflict(db, room_id=room_id, start_time=start_time_val,
+                                                    end_time=end_time_val)
+        if has_clash:
+            errors.append((clash_info or {}).get('message', 'That room is already booked at that time.'))
+
+    if errors:
+        if request.is_json or 'json' in request.headers.get('Accept', ''):
+            return jsonify({'status': 'error', 'errors': errors}), 400
+        return _render_wizard(values=values, errors=errors, parent=parent, status=400)
 
     try:
-        def get_bool(key): return True if request.form.get(key) == 'on' else False
-        def get_int(key, default=0):
-            try: return int(request.form.get(key, default))
-            except: return default
-
-        # 1. Capture Multiple Coordinators (Comma separated string -> List)
-        coord_string = request.form.get('coordinators', '')
-        coordinators_list = [email.strip().lower() for email in coord_string.split(',') if email.strip()]
-
-        # 2. Dynamic Form Schema (Strictly defined by SPOC)
-        form_schema = {
-            'require_lead_whatsapp': get_bool('req_lead_whatsapp'),
-            'require_member_usn': get_bool('req_member_usn'),
-            'require_member_email': get_bool('req_member_email'),
-            'require_member_whatsapp': get_bool('req_member_whatsapp'),
-            'submission_type': request.form.get('submission_type', 'none') # 'github', 'drive', 'none'
-        }
-
-        # 3. Allowed Years
-        allowed_years = []
-        if get_bool('year_1'): allowed_years.append(1)
-        if get_bool('year_2'): allowed_years.append(2)
-        if get_bool('year_3'): allowed_years.append(3)
-        if get_bool('year_4'): allowed_years.append(4)
-
-        template_id = (request.form.get('template_id') or request.form.get('event_type') or 'hackathon').strip().lower()
-        preset = None
-        if template_id in ('seminar', 'workshop'):
-            from services_templates import TemplateService
-            preset = TemplateService.get_template(template_id)
-
-        is_non_comp = preset is not None
-        initial_status = 'draft' if is_non_comp else 'active'
-        part_type = 'Individual' if is_non_comp else (request.form.get('participation_type') or 'Individual')
-        is_team = False if is_non_comp else (part_type in ['Team', 'Both'])
-        cap_val = get_int('max_participants', 0)
-        if not cap_val and preset:
-            cap_val = preset.get('capacity', 200)
-
-        # Determine owner unit
-        user_unit = session.get('org_unit_id')
-        if not user_unit:
-            try:
-                ras = list(db.collection('role_assignments').where('user_id', '==', session.get('user_id', '').lower().strip()).stream())
-                for ra in ras:
-                    rad = ra.to_dict() or {}
-                    if rad.get('scope_type') == 'unit' and rad.get('scope_id'):
-                        user_unit = rad.get('scope_id')
-                        break
-            except Exception:
-                pass
-        if not user_unit:
-            u_doc = db.collection('users').document(session.get('user_id', '')).get()
-            if u_doc.exists:
-                user_unit = u_doc.to_dict().get('department')
-
-        if user_unit and str(user_unit).lower() not in ('central', 'none', ''):
-            initial_status = 'draft'
-
-        event_data = {
+        unit = (parent or {}).get('org_unit_id') or _owner_unit()
+        profile_phone = ''
+        u_doc = db.collection('users').document(session.get('user_id', '')).get()
+        if u_doc.exists:
+            profile_phone = (u_doc.to_dict() or {}).get('phone', '') or ''
+        contact = data.pop('contact')
+        event_data = dict(data)
+        department = ''
+        try:
+            dep_doc = db.collection('users').document(session.get('user_id', '')).get()
+            department = ((dep_doc.to_dict() or {}).get('department') or '') if dep_doc.exists else ''
+        except Exception:
+            pass
+        event_data.update({
             'organization_id': 'default',
-            'org_unit_id': user_unit or 'central',
-            'title': request.form.get('title'),
-            'category': request.form.get('category') or (preset.get('category', 'Technical') if preset else 'Technical'),
-            'description': request.form.get('description'),
-            'rules': request.form.get('rules'),
-            'banner_url': request.form.get('banner_url') or 'https://placehold.co/800x400?text=Event',
-            'visibility': request.form.get('visibility') or 'Public',
-            'date': request.form.get('date'),
-            'time': request.form.get('time'),
-            'reg_deadline': request.form.get('reg_deadline'),
-            'venue': request.form.get('venue'),
-            'participation_type': part_type,
-            'is_team_event': is_team,
-            'event_type': template_id,
-            'capacity': cap_val,
-
-            # KEY NEW FIELDS
-            'coordinators': coordinators_list,  # Array of emails
-            'form_schema':  form_schema,         # The exact form requirements
-
-            # Judging criteria for judge scoring
-            'judging_criteria': [] if is_non_comp else json.loads(request.form.get('judging_criteria_json') or '[]'),
-
-            'limits': {
-                'team_min': 1 if is_non_comp else get_int('team_min', 1),
-                'team_max': 1 if is_non_comp else get_int('team_max', 1),
-                'max_participants': cap_val,
-                'allowed_years': allowed_years
-            },
-            'fees': {'regular': get_int('reg_fee', 0)},
-            'prizes': {
-                '1st': request.form.get('prize_1'),
-                '2nd': request.form.get('prize_2'),
-                '3rd': request.form.get('prize_3')
-            },
-
+            'org_unit_id': unit,
+            'department': (parent or {}).get('department') or department,
+            'status': 'draft',
             'spoc_id': session['user_id'],
             'organizer': {
                 'name': session.get('name'),
                 'email': session.get('user_id'),
-                'phone': '9999999999', # Placeholder, ideally fetch from profile
-                'group_link': '#'
+                'phone': contact.get('phone') or profile_phone,
+                'group_link': contact.get('group_link', ''),
             },
-            'status': initial_status,
             'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'results_published': False
-        }
+            'results_published': False,
+            'warnings': warnings,
+        })
+        if spec['placement']:
+            event_data['placement'] = __import__('services_placement').from_form(request.form)
+        if room_id:
+            event_data['room_id'] = room_id
+            rdoc = db.collection('rooms').document(room_id).get()
+            if rdoc.exists:
+                event_data['room_name'] = (rdoc.to_dict() or {}).get('name')
+                if not event_data.get('venue'):
+                    event_data['venue'] = event_data['room_name']
 
+        # The catalogue preset's workflow, judging and certificate settings; never its prices
+        preset = None
+        if spec['preset']:
+            from services_templates import TemplateService
+            preset = TemplateService.get_template(spec['preset'])
         if preset:
-            event_data['workflow_config'] = preset.get('workflow_config', {})
-            event_data['evaluation_config'] = preset.get('evaluation_config', {})
-            event_data['ticket_tiers'] = preset.get('ticket_tiers', [])
-            event_data['notification_rules'] = preset.get('notification_rules', [])
-            event_data['certificate_config'] = preset.get('certificate_config', {})
+            for key in ('workflow_config', 'evaluation_config', 'notification_rules', 'certificate_config'):
+                if preset.get(key):
+                    event_data[key] = preset[key]
 
-        # Firestore .add() returns (timestamp, doc_ref). Capture the id so
-        # we can attach an auto-generated form schema if one was provided.
-        _, new_event_ref = db.collection('events').add(event_data)
-        new_event_id = new_event_ref.id
+        _, new_ref = db.collection('events').add(event_data)
+        new_event_id = new_ref.id
 
-        auto_form_raw = request.form.get('auto_form_json', '').strip()
-        if auto_form_raw:
+        if room_id and start_time_val:
+            from services_venue import create_or_update_venue_booking
             try:
-                auto_fields = json.loads(auto_form_raw)
-            except json.JSONDecodeError:
-                auto_fields = []
+                create_or_update_venue_booking(db, room_id=room_id, start_time=start_time_val,
+                                               end_time=end_time_val, event_id=new_event_id, status="tentative",
+                                               notes=f"Tentative booking for event '{event_data['title']}'")
+            except Exception as b_exc:
+                current_app.logger.warning("Tentative room booking failed: %s", b_exc)
 
-            if isinstance(auto_fields, list) and auto_fields:
-                db.collection('event_forms').document(new_event_id).set({
-                    'event_id':   new_event_id,
-                    'form_type':  'custom',
-                    'fields':     auto_fields,
-                    'created_by': session.get('user_id'),
-                    'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    'source':     'ai_generated'
-                })
-                db.collection('events').document(new_event_id).update({'has_custom_form': True})
-                flash(f"Event '{event_data['title']}' created! Review and tweak the AI-generated form below.", "success")
-                return redirect(f'/forms/builder/{new_event_id}')
-        elif preset and preset.get('form_config'):
+        # Registration form: the wizard's own fields, else the preset's
+        form_fields = []
+        source = ''
+        try:
+            form_fields = json.loads(request.form.get('auto_form_json', '').strip() or '[]')
+            source = 'wizard'
+        except json.JSONDecodeError:
+            form_fields = []
+        if not (isinstance(form_fields, list) and form_fields) and preset and preset.get('form_config') \
+                and not spec['fest']:
             base_fields = [
                 {'id': 'full_name', 'type': 'text', 'label': 'Full Name', 'placeholder': 'Enter your full name', 'required': True, 'options': [], 'help_text': ''},
                 {'id': 'email', 'type': 'email', 'label': 'Email Address', 'placeholder': 'you@example.com', 'required': True, 'options': [], 'help_text': ''},
                 {'id': 'phone', 'type': 'tel', 'label': 'Phone Number', 'placeholder': '10-digit mobile', 'required': True, 'options': [], 'help_text': ''},
                 {'id': 'usn', 'type': 'text', 'label': 'USN / Roll Number', 'placeholder': 'e.g. 1SN21CS001', 'required': False, 'options': [], 'help_text': ''},
             ]
-            template_fields = []
-            for f in preset['form_config']:
-                f_item = dict(f)
-                if 'id' not in f_item and 'field_name' in f_item:
-                    f_item['id'] = f_item['field_name']
-                template_fields.append(f_item)
+            form_fields = base_fields + [dict(f, id=f.get('id') or f.get('field_name')) for f in preset['form_config']]
+            source = 'template'
+        if isinstance(form_fields, list) and form_fields:
             db.collection('event_forms').document(new_event_id).set({
-                'event_id':   new_event_id,
-                'form_type':  'custom',
-                'fields':     base_fields + template_fields,
+                'event_id': new_event_id, 'form_type': 'custom', 'fields': form_fields,
                 'created_by': session.get('user_id'),
                 'created_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'source':     'template'
+                'source': source,
             })
             db.collection('events').document(new_event_id).update({'has_custom_form': True})
 
-        msg_action = "created in Draft mode" if is_non_comp else "published"
-        flash(f"Event '{event_data['title']}' {msg_action}!", "success")
-        return redirect(f'/spoc/dashboard#event-{new_event_id}')
-
+        log_action(db, "EVENT_CREATED", f"{session.get('user_id')} created draft '{event_data['title']}' "
+                                        f"({event_data['event_type']}) {new_event_id}")
+        flash(f"Draft saved: '{event_data['title']}'. Check it below, then publish.", "success")
+        return redirect(f'/spoc/event/{new_event_id}/review')
     except Exception as e:
-        print(f"Error: {e}")
-        flash(f"Error creating event: {str(e)}", "danger")
-        return redirect('/spoc/create_event')
+        current_app.logger.exception("Event creation failed")
+        if request.is_json or 'json' in request.headers.get('Accept', ''):
+            return jsonify({'status': 'error', 'errors': ["The event couldn't be saved. Please try again."]}), 500
+        return _render_wizard(values=values, errors=["The event couldn't be saved. Please try again."],
+                              parent=parent, status=500)
+
+
+def _review_checklist(ev, sub_events):
+    """What a SPOC should fix or know before publishing: (level, message) pairs."""
+    from services_event_types import get_type
+    spec = get_type(ev.get('event_type'))
+    items = [('warning', w) for w in (ev.get('warnings') or [])]
+    if not ev.get('banner_url'):
+        items.append(('info', 'No banner image: the event card will show its category icon.'))
+    if len((ev.get('description') or '').strip()) < 40 and not spec['fest']:
+        items.append(('warning', 'The description is very short. Say what happens and who it is for.'))
+    if spec['fest']:
+        if not sub_events:
+            items.append(('warning', 'This fest has no events yet. Add the competitions and shows it holds.'))
+    else:
+        if ev.get('competitive') and not ev.get('judging_criteria') and spec['group'] != 'sports':
+            items.append(('warning', 'No judging criteria yet: judges will score without a rubric.'))
+        named = (ev.get('details') or {})
+        if spec['group'] == 'learning' and not (named.get('speaker') or named.get('trainer')
+                                                or named.get('resource_persons')) and spec['details']:
+            items.append(('warning', 'No speaker or trainer named yet. Participants like to know who is presenting.'))
+        if not ev.get('coordinators'):
+            items.append(('info', 'No coordinators added. You can appoint staff from the console later.'))
+        if not ev.get('has_custom_form'):
+            items.append(('info', 'Registrations will use the standard form (name, email, phone, USN).'))
+        if (ev.get('event_mode') in ('online', 'hybrid')) and not ev.get('online_link'):
+            items.append(('warning', 'No online meeting link yet. Add it before the event day.'))
+        if not (ev.get('organizer') or {}).get('phone'):
+            items.append(('info', 'No contact phone: participants will only see your email.'))
+    return items
+
+
+@spoc_bp.route('/event/<event_id>/review')
+@login_required
+@role_required('ClubSPOC')
+def review_event(event_id):
+    from services_permission import can
+    from services_event_types import get_type, id_variants
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    ev = dict(doc.to_dict() or {}, id=doc.id)
+    if not can(session, 'edit_event', ev, db=db):
+        abort(403)
+    sub_events = []
+    if ev.get('is_fest'):
+        sub_events = sorted([dict(d.to_dict() or {}, id=d.id) for d in
+                             db.collection('events').where('parent_event_id', 'in', id_variants(doc.id)).stream()],
+                            key=lambda e: (str(e.get('date') or ''), str(e.get('time') or '')))
+    parent = None
+    if ev.get('parent_event_id'):
+        p_doc = db.collection('events').document(ev['parent_event_id']).get()
+        parent = dict(p_doc.to_dict() or {}, id=p_doc.id) if p_doc.exists else None
+    from services_event_types import type_label
+    return render_template('spoc/review_event.html', ev=ev, spec=get_type(ev.get('event_type')),
+                           type_label=type_label,
+                           checklist=_review_checklist(ev, sub_events), sub_events=sub_events,
+                           parent=parent)
+
+
+@spoc_bp.route('/event/<event_id>/setup', methods=['GET', 'POST'])
+@login_required
+@role_required('ClubSPOC')
+def event_setup(event_id):
+    """Edit any event in the same wizard it was created with (UPG-73). Status,
+    owner, unit, registrations and the registration form are left alone."""
+    from services_permission import can
+    from services_event_types import parse_form, form_values, get_type
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    ev = dict(doc.to_dict() or {}, id=doc.id)
+    if not can(session, 'edit_event', ev, db=db):
+        abort(403)
+    parent, _ = _fest_for(ev.get('parent_event_id'), need_edit=False)
+
+    if request.method == 'GET':
+        return _render_wizard(values=form_values(ev), parent=parent, editing=ev)
+
+    data, errors, warnings = parse_form(request.form, parent=parent)
+    if get_type(data['event_type'])['fest'] != bool(ev.get('is_fest')):
+        errors.append("A fest can't become a single event, or the other way round.")
+    room_id = (request.form.get('room_id') or '').strip()
+    start = (data['start_datetime'] or '').replace('T', ' ')[:16]
+    end = (data['end_datetime'] or start).replace('T', ' ')[:16]
+    if room_id and start and not errors:
+        from services_venue import check_room_conflict
+        clash, info = check_room_conflict(db, room_id=room_id, start_time=start, end_time=end,
+                                          exclude_event_id=event_id)
+        if clash:
+            errors.append((info or {}).get('message', 'That room is already booked at that time.'))
+    if errors:
+        values = request.form.to_dict()
+        values['allowed_participants'] = request.form.getlist('allowed_participants')
+        values['allowed_years'] = request.form.getlist('allowed_years')
+        return _render_wizard(values=values, errors=errors, parent=parent, editing=ev, status=400)
+
+    contact = data.pop('contact')
+    data.pop('parent_event_id', None)
+    organizer = dict(ev.get('organizer') or {})
+    organizer.update(phone=contact.get('phone') or organizer.get('phone', ''),
+                     group_link=contact.get('group_link', ''))
+    updates = dict(data, organizer=organizer, warnings=warnings, room_id=room_id or None)
+    if get_type(data['event_type'])['placement']:
+        from services_placement import from_form as placement_from_form, settings as placement_settings
+        updates['placement'] = placement_from_form(request.form, placement_settings(ev))
+    if room_id:
+        rdoc = db.collection('rooms').document(room_id).get()
+        if rdoc.exists:
+            updates['room_name'] = (rdoc.to_dict() or {}).get('name')
+            if not updates.get('venue'):
+                updates['venue'] = updates['room_name']
+    db.collection('events').document(event_id).update(updates)
+    try:
+        from services_venue import notify_event_details_changed
+        notify_event_details_changed(db, event_id=event_id, previous_data=ev, new_data={**ev, **updates})
+    except Exception as exc:
+        current_app.logger.warning("Change notice failed for %s: %s", event_id, exc)
+    log_action(db, "EVENT_UPDATED", f"{session.get('user_id')} updated {event_id} in the wizard")
+    flash("Changes saved.", "success")
+    return redirect(f'/spoc/event/{event_id}/review')
+
+
+@spoc_bp.route('/event/<event_id>/publish', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def publish_event(event_id):
+    """Draft → published → registration open; a unit event that needs approval
+    goes to pending_approval instead. Fests are published without registration."""
+    from services_permission import can
+    from services_workflow import WorkflowEngine, WorkflowError
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        abort(404)
+    ev = dict(doc.to_dict() or {}, id=doc.id)
+    if not can(session, 'edit_event', ev, db=db):
+        abort(403)
+    status = str(ev.get('status') or 'draft').lower()
+    if status not in ('draft', 'published'):
+        flash("This event is already published.", "info")
+        return redirect(f'/spoc/event/{event_id}/review')
+    actor = session.get('user_id')
+    try:
+        if status == 'draft':
+            unit = str(ev.get('org_unit_id') or '').lower()
+            needs_approval = unit not in ('', 'central', 'none') and not can(session, 'approve_event', ev, db=db)
+            if needs_approval:
+                WorkflowEngine.transition_event(db, event_id=event_id, target_state='pending_approval',
+                                                actor_id=actor, actor=session, metadata={'source': 'review'})
+                flash("Sent for approval. It goes live once your unit approves it.", "success")
+                return redirect(f'/spoc/event/{event_id}/review')
+            WorkflowEngine.transition_event(db, event_id=event_id, target_state='published',
+                                            actor_id=actor, actor=session, metadata={'source': 'review'})
+        if not ev.get('is_fest'):
+            WorkflowEngine.transition_event(db, event_id=event_id, target_state='registration_open',
+                                            actor_id=actor, actor=session, metadata={'source': 'review'})
+            flash(f"Published. Registration for '{ev.get('title')}' is open.", "success")
+        else:
+            flash(f"Fest '{ev.get('title')}' is published. Publish each of its events when ready.", "success")
+        log_action(db, "EVENT_PUBLISHED", f"{actor} published {event_id}")
+    except WorkflowError as exc:
+        flash(str(exc), "danger")
+    return redirect(f'/spoc/event/{event_id}/review')
 
 
 # --- 2B. TRANSITION EVENT STATE (UNIVERSAL WORKFLOW) ---
@@ -325,43 +552,99 @@ def transition_event(event_id):
             metadata={'source': 'spoc_ui'}
         )
         flash(f"Event advanced to '{target_state.replace('_', ' ').title()}'.", "success")
+        if target_state == 'cancelled' and any(
+                float((r.to_dict() or {}).get('amount_paid') or 0) > 0
+                for r in db.collection('registrations').where('event_id', '==', event_id).stream()):
+            flash(f"This event has paid registrations. Refund them at /admin/events/{event_id}/refunds.", "warning")
     except Exception as e:
         flash(str(e), "warning")
 
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
-# --- 3. EXPORT CSV ---
+# --- 3. EXPORTS AND THE EVENT REPORT (one service, UPG-03) ---
+# Anyone with export_data on the event: its owner, unit admins, assigned
+# coordinators; everyone else gets 403.
+def _export_name(event, suffix):
+    title = re.sub(r'[^A-Za-z0-9_-]+', '_', str(event.get('title', 'Event'))).strip('_') or 'Event'
+    return f"{title}_{suffix}"
+
+
 @spoc_bp.route('/export_csv/<event_id>')
 @login_required
-@role_required('ClubSPOC')
 def export_csv(event_id):
-    from services_permission import can
-    try:
-        event_doc = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            return redirect('/spoc/dashboard')
-        ev_data = event_doc.to_dict() or {}
-        ev_data['id'] = event_id
-        if not can(session, 'export_data', ev_data, db=db):
-            abort(403)
-        title = ev_data.get('title', 'Event')
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Team/Name', 'Lead Email', 'Members', 'Status', 'Attendance', 'Score', 'Date'])
-        regs = db.collection('registrations').where('event_id', '==', event_id).stream()
-        for doc in regs:
-            r = doc.to_dict()
-            member_count = len(r.get('members', []))
-            scores = r.get('scores', {})
-            final_score = max([v['total'] for v in scores.values()]) if scores else 0
-            writer.writerow([r.get('team_name', 'Individual'), r.get('lead_email'), f"{member_count} Members", r.get('status'), r.get('attendance'), final_score, r.get('registered_at')])
-        return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": f"attachment; filename={title}_report.csv"})
-    except Exception as e:
-        if getattr(e, 'code', None) == 403:
-            abort(403)
-        return redirect('/spoc/dashboard')
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Registrations.csv")}'})
+
+
+@spoc_bp.route('/export_excel/<event_id>')
+@login_required
+def export_excel(event_id):
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.registrations_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Registrations.xlsx")}'})
+
+
+@spoc_bp.route('/event_report/<event_id>')
+@login_required
+def event_report(event_id):
+    """Registrations against attendance by department and year, feedback and winners."""
+    import services_export
+    event = _event_or_abort(event_id, 'export_data')
+    log_action(db, "EVENT_REPORT", f"{session.get('user_id')} downloaded the report for event {event_id}")
+    return Response(services_export.event_report_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={'Content-Disposition': f'attachment; filename={_export_name(event, "Report.xlsx")}'})
+
+
+@spoc_bp.route('/export/department_activity')
+@spoc_bp.route('/export/activity_points')
+@login_required
+@role_required('ClubSPOC')
+def spoc_export_department_activity():
+    user_doc = db.collection('users').document(session.get('user_id', '')).get()
+    dept = request.args.get('department') or (user_doc.to_dict().get('department') if user_doc.exists else None)
+    fmt = request.args.get('format', 'csv').lower()
+    from flask import Response
+    import services_export
+    if fmt == 'xlsx':
+        data = services_export.department_activity_xlsx(db, dept, request.args.get('participant_type'))
+        return Response(
+            data,
+            mimetype=XLSX_MIMETYPE,
+            headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.xlsx"'}
+        )
+    data = services_export.department_activity_csv(db, dept, request.args.get('participant_type'))
+    return Response(
+        data,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="activity_ledger_{dept or "all"}.csv"'}
+    )
+
 
 # --- 4. RESULTS DASHBOARD ---
+@spoc_bp.route('/analytics')
+@login_required
+@role_required('ClubSPOC')
+def analytics():
+    """The SPOC's own events on the analytics page (UPG-83)."""
+    from services_insights import build
+    from services_permission import can
+    events = []
+    for e in db.collection('events').stream():
+        d = e.to_dict() or {}
+        d['id'] = e.id
+        if can(session, 'view_analytics', d, db=db):
+            events.append(d)
+    ids = {e['id'] for e in events}
+    regs = [r.to_dict() or {} for r in db.collection('registrations').stream()]
+    regs = [r for r in regs if str(r.get('event_id') or '') in ids]
+    data = build(events, regs, period=request.args.get('period', '30'),
+                 category=(request.args.get('category') or '').strip())
+    return render_template('analytics/hub.html', data=data, scope='spoc', action_url='/spoc/analytics')
+
+
 @spoc_bp.route('/results/<event_id>')
 @login_required
 @role_required('ClubSPOC')
@@ -377,49 +660,22 @@ def event_results(event_id):
     if not can(session, 'publish_results', event, db=db) and not can(session, 'view_analytics', event, db=db):
         abort(403)
 
-    # 2. Fetch Registrations
-    regs_ref = db.collection('registrations').where('event_id', '==', event_id).stream()
+    # 2. One ranking for every board (UPG-84): scored teams ranked, the rest listed apart
+    from services_leaderboard import for_event, podium
+    rows = for_event(db, event_id, include_unscored=True)
+    leaderboard = [r for r in rows if r['rank'] is not None]
+    unscored = [r for r in rows if r['rank'] is None]
+    scores = [r['score'] for r in leaderboard]
+    summary = {
+        'scored': len(leaderboard), 'unscored': len(unscored),
+        'top': leaderboard[0]['score_text'] if leaderboard else '—',
+        'average': round(sum(scores) / len(scores), 2) if scores else None,
+        'judges': max((r['judges'] for r in leaderboard), default=0),
+        'max': max(scores, default=0),
+    }
+    return render_template('spoc/results.html', event=event, leaderboard=leaderboard,
+                           unscored=unscored, podium=podium(leaderboard), summary=summary)
 
-    leaderboard = []
-
-    for r in regs_ref:
-        data = r.to_dict()
-        data['id'] = r.id
-
-        # 3. Calculate Scores
-        scores_map = data.get('scores', {})
-        total_score = sum([s.get('total', 0) for s in scores_map.values()])
-        judge_count = len(scores_map)
-
-        avg_score = round(total_score / judge_count, 2) if judge_count > 0 else 0
-
-        data['final_score'] = avg_score
-        data['judge_count'] = judge_count
-
-        leaderboard.append(data)
-
-    # 4. Sort by highest avg score; tiebreak by per-criteria averages
-    # High-impact criteria checked first when totals are equal
-    HIGH_IMPACT = ['innovation', 'Innovation', 'clarity', 'Clarity',
-                   'Presentation', 'presentation', 'Impact', 'impact']
-
-    def _tiebreak_key(reg):
-        scores_map = reg.get('scores', {})
-        if not scores_map:
-            return (0,) * (len(HIGH_IMPACT) + 1)
-        # Per-criterion averages across all judges
-        crit_avgs = {}
-        for judge_scores in scores_map.values():
-            for crit, val in (judge_scores.get('details') or {}).items():
-                crit_avgs.setdefault(crit, []).append(float(val))
-        avg_by_crit = {k: sum(v) / len(v) for k, v in crit_avgs.items()}
-        # Return tuple: overall avg first, then high-impact criteria in order
-        hi_vals = tuple(avg_by_crit.get(c, 0) for c in HIGH_IMPACT)
-        return (reg['final_score'],) + hi_vals
-
-    leaderboard.sort(key=_tiebreak_key, reverse=True)
-
-    return render_template('spoc/results.html', event=event, leaderboard=leaderboard)
 
 # --- 5. QR SCANNER PAGE ---
 @spoc_bp.route('/scan/<event_id>')
@@ -442,6 +698,7 @@ def scan_page(event_id):
         d = r.to_dict()
         registrations.append({
             'id': r.id,
+            'reg_id': d.get('reg_id') or r.id,  # the ID in the ticket, which a scan reports (UPG-02)
             'lead_name': d.get('lead_name', ''),
             'lead_email': d.get('lead_email', ''),
             'team_name': d.get('team_name', ''),
@@ -562,33 +819,15 @@ def end_event(event_id):
             'cert_template_id': template_id,
             'cert_issued_by': issued_by,
         })
-        # Use template-aware cert task if available; fall back to Celery task
+        # Certificates go out through the one issuing path (UPG-06); the task
+        # runs inline without a broker, and directly if it can't be queued
+        from tasks.cert_tasks import bulk_generate_certificates
         try:
-            from tasks.cert_tasks import bulk_generate_certificates
-            bulk_generate_certificates.delay(event_id,
-                                             triggered_by=session.get('email', 'spoc'))
-        except Exception:
-            # Inline sync fallback (no Celery / custom templates)
-            from utils_certificate import generate_and_send_all_certificates_with_templates
-            ev   = db.collection('events').document(event_id).get().to_dict() or {}
-            regs = [r.to_dict() | {'id': r.id}
-                    for r in db.collection('registrations')
-                              .where('event_id', '==', event_id).stream()]
-            lb   = sorted(
-                [r for r in regs if r.get('scores')],
-                key=lambda x: -sum(s.get('total', 0)
-                                   for s in x.get('scores', {}).values())
-                               / max(len(x.get('scores', {})), 1)
-            )
-            generate_and_send_all_certificates_with_templates(
-                leaderboard=lb,
-                registrations=regs,
-                event_title=ev.get('title', 'Event'),
-                event_id=event_id,
-                event_date=str(ev.get('date', '')),
-                base_url=_public_base_url(),
-                template_id=template_id,
-            )
+            bulk_generate_certificates.delay(event_id, triggered_by=session.get('user_id', 'spoc'))
+        except Exception as exc:
+            current_app.logger.warning("Certificate task for %s not queued (%s); issuing inline", event_id, exc)
+            from utils_certificate import issue_event_certificates
+            issue_event_certificates(event_id, base_url=_public_base_url())
         _award_achievements(event_id)
         flash("Event ended. Certificates sent, achievements awarded!", "success")
     except Exception as e:
@@ -848,24 +1087,14 @@ def ai_report(event_id):
     attended    = sum(1 for r in regs if r.to_dict().get('attendance') == 'Present')
     att_pct     = round(attended / registered * 100) if registered else 0
 
-    scored_rows = []
+    # The shared ranking (UPG-84)
+    from services_leaderboard import rank as _rank
     judge_emails = set()
     for r in regs:
-        d = r.to_dict() or {}
-        sm = d.get('scores', {})
-        if not sm:
-            continue
-        judge_emails.update(sm.keys())
-        avg = round(sum(float(s.get('total', 0)) for s in sm.values()) / len(sm), 1)
-        scored_rows.append({
-            'team':     (d.get('team_name') or d.get('lead_name') or '—').strip(),
-            'lead':     (d.get('lead_name') or '').strip(),
-            'score':    avg,
-            'judges':   len(sm),
-            'attended': d.get('attendance') == 'Present',
-        })
-
-    scored_rows.sort(key=lambda x: -x['score'])
+        judge_emails.update(((r.to_dict() or {}).get('scores') or {}).keys())
+    scored_rows = [{'team': row['team'], 'lead': row['lead_name'], 'score': row['score'],
+                    'judges': row['judges'], 'attended': row['attended'], 'rank': row['rank']}
+                   for row in _rank([dict(r.to_dict() or {}, id=r.id) for r in regs])]
     max_sc = scored_rows[0]['score'] if scored_rows else 100
     for row in scored_rows:
         row['score_pct'] = int(row['score'] / max_sc * 100) if max_sc else 0
@@ -1140,6 +1369,20 @@ def edit_event(event_id):
         val = request.form.get(field, '').strip()
         if val:
             updates[field] = val
+    if request.form.get('placement_sent'):   # the edit form's placement section (UPG-57); rounds are kept
+        from services_placement import from_form as placement_from_form, settings as placement_settings
+        updates['is_placement'] = request.form.get('is_placement') == 'yes'
+        updates['placement'] = placement_from_form(request.form, placement_settings(event))
+    if request.form.get('allowed_participants_sent'):   # the edit form's "who can register" (UPG-12)
+        from services_participants import from_form
+        updates['allowed_participants'] = from_form(request.form.getlist('allowed_participants'))
+    for num_field in ['activity_points', 'activity_hours']:
+        val = request.form.get(num_field, '').strip()
+        if val != '':
+            try:
+                updates[num_field] = float(val)
+            except ValueError:
+                pass
 
     if updates:
         # If room or time is changing, check for conflicts on confirmed bookings
@@ -1198,15 +1441,7 @@ def delete_event(event_id):
 def assign_coordinator(event_id):
     from utils_email import send_appointment_email
 
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-
-    data = doc.to_dict() or {}
-    if data.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised to modify this event.", "danger")
-        return redirect('/spoc/dashboard')
+    data = _event_or_abort(event_id, 'edit_event')  # 404 / 403 for someone else's event (UPG-29)
 
     email = request.form.get('coordinator_email', '').strip().lower()
     name  = request.form.get('coordinator_name', '').strip() or email.split('@')[0].title()
@@ -1257,6 +1492,31 @@ def assign_coordinator(event_id):
     })
     log_action(db, "COORDINATOR_ASSIGNED", f"SPOC {session.get('user_id')} assigned {email} to event {event_id}")
     flash(f"✅ {email} assigned as coordinator. {account_msg}", "success")
+    return redirect(f'/spoc/dashboard#event-{event_id}')
+
+
+# =========================================================
+# 18b. REMOVE STAFF — undo a coordinator or judge assignment (UPG-29)
+# =========================================================
+@spoc_bp.route('/remove_staff/<event_id>', methods=['POST'])
+@login_required
+@role_required('ClubSPOC')
+def remove_staff(event_id):
+    """Every permission on an event comes from its staff and coordinators
+    lists (services_permission.can), so leaving both ends the person's access
+    to its registrations, check-in and scoring. Their account stays."""
+    event = _event_or_abort(event_id, 'edit_event')
+    email = request.form.get('email', '').strip().lower()
+    staff = event.get('staff') or []
+    coords = event.get('coordinators') or []
+    kept_staff = [s for s in staff if (s.get('email') or '').lower() != email]
+    kept_coords = [c for c in coords if (c or '').lower() != email]
+    if not email or (len(kept_staff) == len(staff) and len(kept_coords) == len(coords)):
+        flash(f"{email or 'That person'} isn't on this event's staff.", "warning")
+        return redirect(f'/spoc/dashboard#event-{event_id}')
+    db.collection('events').document(event_id).update({'staff': kept_staff, 'coordinators': kept_coords})
+    log_action(db, "STAFF_REMOVED", f"SPOC {session.get('user_id')} removed {email} from event {event_id}")
+    flash(f"{email} removed from this event's staff.", "success")
     return redirect(f'/spoc/dashboard#event-{event_id}')
 
 
@@ -1829,18 +2089,19 @@ def api_stats():
 
     # Checked-in items
     checkins = [r for r in all_regs if r[1].get('attendance') == 'Present']
-    checkins.sort(key=lambda x: x[1].get('checkin_time', ''), reverse=True)
+    # Attendance marked by hand has no check-in time (UPG-83)
+    checkins.sort(key=lambda x: str(x[1].get('checkin_time') or ''), reverse=True)
     for event_title, r_data in checkins[:5]:
         recent_activity.append({
             'type': 'checkin',
             'name': r_data.get('lead_name', 'Student'),
             'event': event_title,
-            'time': r_data.get('checkin_time', 'TBA'),
+            'time': r_data.get('checkin_time') or 'TBA',
             'details': f"Checked in for Round {r_data.get('current_round', 1)}"
         })
 
     # Registered items
-    regs_sorted = sorted(all_regs, key=lambda x: x[1].get('registered_at', ''), reverse=True)
+    regs_sorted = sorted(all_regs, key=lambda x: str(x[1].get('registered_at') or ''), reverse=True)
     for event_title, r_data in regs_sorted[:5]:
         recent_activity.append({
             'type': 'registration',
@@ -1851,7 +2112,7 @@ def api_stats():
         })
 
     # Sort recent activity by time descending
-    recent_activity.sort(key=lambda x: x['time'], reverse=True)
+    recent_activity.sort(key=lambda x: str(x['time'] or ''), reverse=True)
 
     return jsonify({
         'total_events':  len(event_docs),
@@ -1883,37 +2144,24 @@ def api_coordinators():
 @login_required
 @role_required('ClubSPOC')
 def bulk_certs(event_id):
-    doc = db.collection('events').document(event_id).get()
-    if not doc.exists:
-        flash("Event not found.", "danger")
-        return redirect('/spoc/dashboard')
-
-    event = doc.to_dict() or {}
-    if event.get('spoc_id') != session.get('user_id'):
-        flash("Not authorised.", "danger")
-        return redirect('/spoc/dashboard')
-
-    regs     = list(db.collection('registrations').where('event_id', '==', event_id).stream())
-    all_regs = [r.to_dict() | {'id': r.id} for r in regs]
-    attended = [r for r in all_regs if r.get('attendance') == 'Present']
-
+    _event_or_abort(event_id, 'issue_certificates')
+    attended = [r for r in db.collection('registrations').where('event_id', '==', event_id).stream()
+                if (r.to_dict() or {}).get('attendance') == 'Present']
     if not attended:
         flash("No checked-in attendees found. Mark attendance via QR Scanner first.", "warning")
         return redirect(f'/spoc/dashboard#event-{event_id}')
 
     try:
-        from utils_certificate import generate_and_send_all_certificates_with_templates
-        generate_and_send_all_certificates_with_templates(
-            leaderboard=[],
-            registrations=all_regs,
-            event_title=event.get('title', 'Event'),
-            event_id=event_id,
-            event_date=str(event.get('date', '')),
-            base_url=_public_base_url(),
-        )
+        # The same issuing path as ending the event (UPG-06); repeats issue nothing twice
+        from utils_certificate import issue_event_certificates
+        result = issue_event_certificates(event_id, base_url=_public_base_url())
         log_action(db, "BULK_CERTS",
-                   f"SPOC {session.get('user_id')} bulk-issued certs for event {event_id}")
-        flash(f"✅ Participation certificates sent to {len(attended)} attendee(s).", "success")
+                   f"SPOC {session.get('user_id')} issued certificates for event {event_id}: {result}")
+        if result['failed']:
+            flash(f"{result['issued']} certificate(s) issued; {result['failed']} failed. Try again to retry those.", "warning")
+        else:
+            flash(f"✅ {result['issued']} certificate(s) issued and {result['emailed']} emailed; "
+                  f"{result['already_issued']} attendee(s) already had one.", "success")
     except Exception as e:
         flash(f"Error sending certificates: {e}", "danger")
 

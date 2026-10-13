@@ -234,8 +234,8 @@ def test_redis_counters_are_shared_by_separate_clients(real_app, monkeypatch, cl
     flask_app, db = real_app
     monkeypatch.setitem(flask_app.config, 'LOGIN_THROTTLE_STORAGE', 'redis')
     server = fakeredis.FakeServer()
-    clients = iter([fakeredis.FakeRedis(server=server) for _ in range(20)])
-    monkeypatch.setattr(throttle, '_redis_client', lambda: next(clients))  # a new connection every call
+    # a new connection on every call (an endless supply: each check reads several counters)
+    monkeypatch.setattr(throttle, '_redis_client', lambda: fakeredis.FakeRedis(server=server))
 
     email = _student(db)
     for i in range(5):
@@ -301,3 +301,64 @@ def test_api_success_resets_the_account_counter(throttled_app):
     assert ok.status_code == 200 and ok.get_json()['data']['tokens']
     for i in range(5):
         assert _api_login(flask_app, email, 'wrong-password', f'192.0.2.{170 + i}').status_code == 401
+
+
+# ── UPG-37: hourly per-account cap ──────────────────────────────────────────
+
+@pytest.fixture
+def hourly_app(throttled_app, monkeypatch):
+    flask_app, db = throttled_app
+    monkeypatch.setitem(flask_app.config, 'LOGIN_THROTTLE_ACCOUNT_HOURLY_LIMIT', 20)
+    return flask_app, db
+
+
+def test_hourly_cap_stops_a_slow_guesser(hourly_app, clock):
+    flask_app, db = hourly_app
+    email, start = _student(db, 'slow'), clock[0]
+
+    # 20 failures, one every 2.5 minutes (never more than 1 a minute): all answered normally
+    for i in range(20):
+        clock[0] = start + i * 150
+        resp = _web_login(flask_app, email, 'wrong-password', f'192.0.2.{i + 1}')
+        assert resp.status_code == 302 and resp.headers['Location'] == '/login', i
+
+    # The 21st within the hour is refused until the oldest failure leaves the hour
+    clock[0] = start + 49 * 60
+    refused = _web_login(flask_app, email, PASSWORD, '192.0.2.99')
+    assert refused.status_code == 429
+    assert refused.headers['Retry-After'] == str(3600 - 49 * 60)
+    clock[0] = start + 3601
+    assert _logged_in(_web_login(flask_app, email, PASSWORD, '192.0.2.98'))
+
+
+def test_hourly_cap_applies_to_the_api_on_the_shared_counter(hourly_app, clock):
+    flask_app, db = hourly_app
+    email, start = _student(db, 'slowapi'), clock[0]
+    for i in range(20):
+        clock[0] = start + i * 150
+        login = _web_login if i % 2 else _api_login
+        resp = login(flask_app, email, 'wrong-password', f'192.0.2.{i + 101}')
+        assert resp.status_code in (302, 401), i
+    clock[0] = start + 49 * 60
+    refused = _api_login(flask_app, email, PASSWORD, '192.0.2.200')
+    assert refused.status_code == 429 and refused.get_json()['error'] == 'too_many_attempts'
+
+
+def test_success_clears_the_hourly_count_and_ips_have_no_hourly_cap(hourly_app, clock):
+    flask_app, db = hourly_app
+    email, start = _student(db, 'oops'), clock[0]
+    for i in range(19):
+        clock[0] = start + i * 150
+        _web_login(flask_app, email, 'wrong-password', f'192.0.2.{i + 1}')
+    clock[0] = start + 19 * 150
+    assert _logged_in(_web_login(flask_app, email, PASSWORD, '192.0.2.50'))
+    for i in range(5):  # without the reset, the 2nd of these would be the 21st
+        clock[0] = start + (20 + i) * 150
+        assert _web_login(flask_app, email, 'wrong-password', f'192.0.2.{i + 60}').status_code == 302
+
+    # One IP, 25 failures on different accounts spread over the hour: never refused
+    ip = '198.51.100.7'
+    for i in range(25):
+        clock[0] = start + 4000 + i * 140
+        resp = _web_login(flask_app, f"{_unique('nobody')}@test.edu", 'x', ip)
+        assert resp.status_code == 302, i

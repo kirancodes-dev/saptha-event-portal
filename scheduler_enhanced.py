@@ -1,49 +1,27 @@
 """
-scheduler_enhanced.py — Hardened Task Scheduler with Retry Logic
+scheduler_enhanced.py — Lightweight Job Helpers for SapthaEvent
 =================================================================
-
-Enhanced version of scheduler.py with:
-- Automatic retry logic (exponential backoff)
-- Error tracking and alerting
-- Job execution metrics
-- Graceful failure handling
-- Timeout protection
-
-Usage:
-  from scheduler_enhanced import enhanced_init_scheduler
-  enhanced_init_scheduler(app)
+In production and standard deployments, scheduled tasks run via
+/internal/cron/<job> (UPG-07) or Celery beat. This module retains
+lightweight job wrappers and metrics needed by maintenance tests.
 """
 
-import logging
 import datetime
-import time
 from functools import wraps
+import logging
+import time
 from typing import Callable
-
-try:
-    from apscheduler.schedulers.background import BackgroundScheduler
-except Exception:
-    apscheduler = None
-try:
-    from apscheduler.triggers.interval import IntervalTrigger
-except Exception:
-    apscheduler = None
-try:
-    from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
-except Exception:
-    apscheduler = None
 
 logger = logging.getLogger(__name__)
 
-# Configuration
 MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds, exponential backoff
-JOB_TIMEOUT = 300  # 5 minutes
-ALERT_THRESHOLD = 3  # Alert if job fails N times
+RETRY_DELAY = 2
+ALERT_THRESHOLD = 3
 
 
 class JobMetrics:
-    """Track job execution metrics"""
+    """Track job execution metrics."""
+
     def __init__(self):
         self.total_runs = 0
         self.successful_runs = 0
@@ -61,34 +39,26 @@ class JobMetrics:
         self.total_runs += 1
         self.failed_runs += 1
         self.last_error = str(error)
-        self.last_error_time = datetime.datetime.now()
+        self.last_error_time = datetime.datetime.now(datetime.timezone.utc)
         self.consecutive_failures += 1
 
     def to_dict(self):
         return {
-            'total_runs': self.total_runs,
-            'successful_runs': self.successful_runs,
-            'failed_runs': self.failed_runs,
-            'success_rate': (self.successful_runs / self.total_runs * 100) if self.total_runs > 0 else 0,
-            'consecutive_failures': self.consecutive_failures,
-            'last_error': self.last_error,
-            'last_error_time': self.last_error_time.isoformat() if self.last_error_time else None
+            "total_runs": self.total_runs,
+            "successful_runs": self.successful_runs,
+            "failed_runs": self.failed_runs,
+            "success_rate": (self.successful_runs / self.total_runs * 100) if self.total_runs > 0 else 0,
+            "consecutive_failures": self.consecutive_failures,
+            "last_error": self.last_error,
+            "last_error_time": self.last_error_time.isoformat() if self.last_error_time else None,
         }
 
 
-# Global metrics storage
 job_metrics = {}
 
 
 def retry_with_backoff(max_retries: int = MAX_RETRIES, initial_delay: int = RETRY_DELAY):
-    """
-    Decorator that retries a function with exponential backoff.
-
-    Usage:
-        @retry_with_backoff(max_retries=3)
-        def risky_operation():
-            ...
-    """
+    """Decorator that retries a function with exponential backoff."""
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -97,23 +67,14 @@ def retry_with_backoff(max_retries: int = MAX_RETRIES, initial_delay: int = RETR
 
             for attempt in range(max_retries + 1):
                 try:
-                    logger.debug(f"Attempting {func.__name__} (attempt {attempt + 1}/{max_retries + 1})")
                     return func(*args, **kwargs)
-
                 except Exception as e:
                     last_exception = e
-
                     if attempt < max_retries:
-                        logger.warning(
-                            f"{func.__name__} failed (attempt {attempt + 1}), "
-                            f"retrying in {delay}s: {str(e)}"
-                        )
                         time.sleep(delay)
-                        delay *= 2  # Exponential backoff
+                        delay *= 2
                     else:
-                        logger.error(
-                            f"{func.__name__} failed after {max_retries + 1} attempts: {str(e)}"
-                        )
+                        logger.error("%s failed after %d attempts: %s", func.__name__, max_retries + 1, e)
 
             raise last_exception
 
@@ -122,14 +83,7 @@ def retry_with_backoff(max_retries: int = MAX_RETRIES, initial_delay: int = RETR
 
 
 def safe_job(job_name: str, alert_threshold: int = ALERT_THRESHOLD):
-    """
-    Decorator that wraps a job with error handling, metrics, and alerting.
-
-    Usage:
-        @safe_job('send_reminders')
-        def reminder_job():
-            ...
-    """
+    """Decorator that wraps a job with error handling, metrics, and alerting."""
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -139,259 +93,46 @@ def safe_job(job_name: str, alert_threshold: int = ALERT_THRESHOLD):
             metrics = job_metrics[job_name]
 
             try:
-                logger.info(f"[{job_name}] Starting...")
                 start_time = time.time()
-
                 result = func(*args, **kwargs)
-
                 duration = time.time() - start_time
                 metrics.record_success()
-                logger.info(f"[{job_name}] Completed successfully in {duration:.2f}s")
-
+                logger.info("[%s] Completed in %.2fs", job_name, duration)
                 return result
-
             except Exception as e:
                 metrics.record_failure(e)
-                logger.error(f"[{job_name}] Failed: {str(e)}", exc_info=True)
-
-                # Alert if consecutive failures exceed threshold
+                logger.error("[%s] Failed: %s", job_name, e, exc_info=True)
                 if metrics.consecutive_failures >= alert_threshold:
-                    send_alert(
-                        f"Job '{job_name}' failed {metrics.consecutive_failures} times",
-                        f"Error: {str(e)}\n\nMetrics: {metrics.to_dict()}"
-                    )
-
-                # Don't re-raise - we want scheduler to keep running
-                return None
+                    logger.critical("[%s] Exceeded consecutive failure threshold %d", job_name, alert_threshold)
+                raise e
 
         return wrapper
     return decorator
 
 
-def send_alert(subject: str, message: str):
-    """
-    Send alert to administrators when critical jobs fail.
-    Can be enhanced to send emails, Slack messages, etc.
-    """
-    logger.critical(f"ALERT: {subject}\n{message}")
-
-    # TODO: Send email to admin
-    # TODO: Send Slack notification
-    # TODO: Log to external monitoring (Sentry, Datadog)
-
-
-def get_scheduler_status():
-    """Return current scheduler status and metrics"""
-    return {
-        'timestamp': datetime.datetime.now().isoformat(),
-        'job_metrics': {name: metrics.to_dict() for name, metrics in job_metrics.items()}
-    }
-
-
-# =========================================================
-# ENHANCED SCHEDULER INITIALIZATION
-# =========================================================
-
-def enhanced_init_scheduler(flask_app, enable_threading: bool = True):
-    """
-    Initialize enhanced background scheduler with retry logic,
-    error handling, and monitoring.
-
-    Args:
-        flask_app: Flask application instance
-        enable_threading: Use thread pool executor (True) or process (False)
-
-    Returns:
-        BackgroundScheduler instance
-    """
-    executor = ThreadPoolExecutor(
-        max_workers=2,
-        thread_name_prefix='scheduler-'
-    ) if enable_threading else ProcessPoolExecutor(max_workers=2)
-
-    scheduler = BackgroundScheduler(
-        timezone="Asia/Kolkata",
-        executors={'default': executor},
-        job_defaults={
-            'coalesce': True,  # Only run once if multiple triggers fire
-            'max_instances': 1,  # Only one instance at a time
-            'misfire_grace_time': 600,  # 10-minute grace period
-        }
-    )
-
-    # Example job: Event reminders every hour
-    scheduler.add_job(
-        func=_create_reminder_job(flask_app),
-        trigger=IntervalTrigger(hours=1),
-        id='event_reminders',
-        name='Send 24-hour event reminders',
-        replace_existing=True,
-        max_instances=1
-    )
-
-    # Example job: Cleanup old data every day at 2 AM IST (Non-destructive: soft-archives old completed events)
-    scheduler.add_job(
-        func=_create_cleanup_job(flask_app),
-        trigger='cron',
-        hour=2,
-        minute=0,
-        timezone='Asia/Kolkata',
-        id='data_cleanup',
-        name='Archive old data',
-        replace_existing=True,
-        max_instances=1
-    )
-
-    # Auto-transition past events daily at 00:30 IST
-    scheduler.add_job(
-        func=_create_event_status_transition_job(flask_app),
-        trigger='cron',
-        hour=0,
-        minute=30,
-        timezone='Asia/Kolkata',
-        id='event_status_transition',
-        name='Auto-transition past active events to completed',
-        replace_existing=True,
-        max_instances=1
-    )
-
-    # Upgrade 7: Automated DB backup cron job daily at 3 AM
-    scheduler.add_job(
-        func=_create_backup_job(flask_app),
-        trigger='cron',
-        hour=3,
-        minute=0,
-        timezone='Asia/Kolkata',
-        id='db_backup',
-        name='Daily database backup to Cloud Storage',
-        replace_existing=True,
-        max_instances=1
-    )
-
-    # Upgrade 50: Daily operations briefing emails daily at 6 AM
-    scheduler.add_job(
-        func=_create_daily_briefing_job(flask_app),
-        trigger='cron',
-        hour=6,
-        minute=0,
-        timezone='Asia/Kolkata',
-        id='daily_briefing',
-        name='Daily operations briefings emails',
-        replace_existing=True,
-        max_instances=1
-    )
-
-    #scheduler.start()
-    logger.info("✅ Enhanced scheduler started with retry logic and monitoring")
-
-    return scheduler
-
-
-def _create_reminder_job(flask_app):
-    """Create reminder job with error handling"""
-
-    @safe_job('event_reminders')
-    @retry_with_backoff(max_retries=3, initial_delay=2)
-    def reminder_job():
-        with flask_app.app_context():
-            from models import db
-            from utils_email import send_email
-
-            # Get IST timezone
-            ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-            tomorrow = (datetime.datetime.now(ist) + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-
-            logger.info(f"Checking for events on {tomorrow}")
-
-            # Query events
-            events = db.collection('events')\
-                .where('status', '==', 'active')\
-                .stream()
-
-            reminder_count = 0
-
-            for event_doc in events:
-                event = event_doc.to_dict()
-                event_date = str(event.get('date', ''))[:10]
-
-                if event_date != tomorrow:
-                    continue
-
-                # Get registrations for this event
-                registrations = db.collection('registrations')\
-                    .where('event_id', '==', event_doc.id)\
-                    .where('status', '==', 'Confirmed')\
-                    .stream()
-
-                for reg_doc in registrations:
-                    reg = reg_doc.to_dict()
-
-                    # Skip if already sent
-                    if reg.get('reminder_sent'):
-                        continue
-
-                    # Send email
-                    try:
-                        send_email(
-                            recipient=reg.get('lead_email'),
-                            subject=f"Reminder: {event.get('title')} Tomorrow!",
-                            body=f"""
-                            Dear {reg.get('lead_name')},
-
-                            Your event "{event.get('title')}" is tomorrow!
-
-                            Date: {event.get('date')}
-                            Venue: {event.get('venue')}
-
-                            Best regards,
-                            SapthaEvent Team
-                            """
-                        )
-
-                        # Mark as sent
-                        db.collection('registrations').document(reg_doc.id).update({
-                            'reminder_sent': True,
-                            'reminder_sent_at': datetime.datetime.now().isoformat()
-                        })
-
-                        reminder_count += 1
-
-                    except Exception as e:
-                        logger.error(f"Failed to send reminder to {reg.get('lead_email')}: {e}")
-
-            logger.info(f"Sent {reminder_count} reminders")
-            return reminder_count
-
-    return reminder_job
-
-
 def _create_cleanup_job(flask_app):
-    """Create cleanup job for old data (soft-archives old completed events to protect participant history)."""
+    """Create cleanup job for old data (soft-archives old completed events)."""
 
-    @safe_job('data_cleanup')
-    @retry_with_backoff(max_retries=2, initial_delay=5)
+    @safe_job("data_cleanup")
+    @retry_with_backoff(max_retries=2, initial_delay=1)
     def cleanup_job():
         with flask_app.app_context():
             from models import db
 
-            # Soft-archive events completed older than 180 days
-            cutoff_date = (datetime.datetime.now() - datetime.timedelta(days=180)).strftime("%Y-%m-%d")
-
-            logger.info(f"Archiving completed events before {cutoff_date}")
-
-            old_events = db.collection('events')\
-                .where('status', '==', 'completed')\
-                .where('date', '<', cutoff_date)\
-                .limit(100)\
+            cutoff_date = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=180)).strftime("%Y-%m-%d")
+            old_events = (
+                db.collection("events")
+                .where("status", "==", "completed")
+                .where("date", "<", cutoff_date)
+                .limit(100)
                 .stream()
+            )
 
             archived_count = 0
             for event in old_events:
-                # Soft-archive instead of hard delete to preserve registration/certificate history
-                db.collection('events').document(event.id).update({'status': 'archived'})
+                db.collection("events").document(event.id).update({"status": "archived"})
                 archived_count += 1
 
-            logger.info(f"Archived {archived_count} old events")
             return archived_count
 
     return cleanup_job
@@ -400,161 +141,25 @@ def _create_cleanup_job(flask_app):
 def _create_event_status_transition_job(flask_app):
     """Transition events that have passed their date from 'active' to 'completed'."""
 
-    @safe_job('event_status_transition')
-    @retry_with_backoff(max_retries=2, initial_delay=5)
+    @safe_job("event_status_transition")
+    @retry_with_backoff(max_retries=2, initial_delay=1)
     def status_transition_job():
         with flask_app.app_context():
             from models import db
-            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-            logger.info(f"Checking for active events before {today_str} to mark completed")
+            today_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
-            past_active_events = db.collection('events')\
-                .where('status', '==', 'active')\
-                .where('date', '<', today_str)\
+            past_active_events = (
+                db.collection("events")
+                .where("status", "==", "active")
+                .where("date", "<", today_str)
                 .stream()
+            )
 
             transitioned_count = 0
             for event in past_active_events:
-                db.collection('events').document(event.id).update({'status': 'completed'})
+                db.collection("events").document(event.id).update({"status": "completed"})
                 transitioned_count += 1
 
-            logger.info(f"Auto-transitioned {transitioned_count} past active events to completed")
             return transitioned_count
 
     return status_transition_job
-
-
-def _create_backup_job(flask_app):
-    """Create backup job to dump database and upload to storage"""
-
-    @safe_job('db_backup')
-    @retry_with_backoff(max_retries=2, initial_delay=5)
-    def backup_job():
-        with flask_app.app_context():
-            from models import db
-            from utils_storage import upload_file
-            import json
-
-            logger.info("Starting database backup...")
-            backup_data = {}
-
-            # Dump all mapped collections
-            from db_adapter import COLLECTION_MAP
-            for collection_name in COLLECTION_MAP.keys():
-                docs = db.collection(collection_name).stream()
-                backup_data[collection_name] = [doc.to_dict() for doc in docs]
-
-            # Convert to formatted JSON
-            backup_json = json.dumps(backup_data, indent=2)
-            backup_bytes = backup_json.encode('utf-8')
-
-            # Destination filename
-            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"backups/db_backup_{timestamp}.json"
-
-            # Upload using utils_storage
-            url = upload_file(backup_bytes, filename, 'application/json')
-            logger.info(f"Database backup uploaded successfully: {url}")
-            return url
-
-    return backup_job
-
-
-def _create_daily_briefing_job(flask_app):
-    """Compile daily coordinator schedules/briefings and email them to staff"""
-
-    @safe_job('daily_briefing')
-    @retry_with_backoff(max_retries=2, initial_delay=5)
-    def daily_briefing_job():
-        with flask_app.app_context():
-            from models import db
-            from utils_email import send_email
-
-            logger.info("Compiling daily operations briefs...")
-
-            # Get IST date for today
-            ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-            today_str = datetime.datetime.now(ist).strftime("%Y-%m-%d")
-
-            # Fetch active events happening today
-            events = db.collection('events').where('status', '==', 'active').stream()
-            briefing_sent_count = 0
-
-            for event_doc in events:
-                event = event_doc.to_dict()
-                event_date = str(event.get('date', ''))[:10]
-                if event_date != today_str:
-                    continue
-
-                coord_email = event.get('coordinator_id')
-                if not coord_email or '@' not in coord_email:
-                    coord_email = "admin@university.edu"
-
-                # Get registrations for this event to compile team checklist
-                registrations = db.collection('registrations')\
-                    .where('event_id', '==', event_doc.id)\
-                    .where('status', '==', 'confirmed')\
-                    .stream()
-
-                teams_list = []
-                for reg_doc in registrations:
-                    reg = reg_doc.to_dict()
-                    teams_list.append(f"- {reg.get('team_name') or 'Solo'} (Lead: {reg.get('lead_name')}, Email: {reg.get('lead_email')})")
-
-                teams_block = "\n".join(teams_list) if teams_list else "No registrations confirmed yet."
-
-                subject = f"SapthaEvent Briefing: {event.get('title')} Operations Checklist"
-                body = f"""
-                Hello Coordinator/Staff,
-
-                Here is your operational briefing checklist for today's event: {event.get('title')}.
-
-                Event Details:
-                - Title: {event.get('title')}
-                - Venue: {event.get('venue')}
-                - Date: {event.get('date')}
-                - Entry Fee: {event.get('fee')} INR
-
-                Confirmed Registrations/Teams:
-                {teams_block}
-
-                Action Items for Today:
-                1. Perform NFC/QR check-in verification at the venue entrance.
-                2. Allocate teams to rooms and assign judges.
-                3. Update scores and progress rounds in the SPOC console.
-                4. Mark attendance for all present participants.
-
-                Have a successful event!
-                SapthaEvent Team
-                """
-
-                try:
-                    send_email(
-                        recipient=coord_email,
-                        subject=subject,
-                        body=body
-                    )
-                    briefing_sent_count += 1
-                except Exception as e:
-                    logger.error(f"Failed to send briefing email to {coord_email}: {e}")
-
-            logger.info(f"Dispatched {briefing_sent_count} briefing emails.")
-            return briefing_sent_count
-
-    return daily_briefing_job
-
-
-if __name__ == '__main__':
-    # Test retry decorator
-    @retry_with_backoff(max_retries=3, initial_delay=1)
-    def test_function():
-        import random
-        if random.random() < 0.7:
-            raise Exception("Random failure for testing")
-        return "Success!"
-
-    try:
-        result = test_function()
-        print(f"Result: {result}")
-    except Exception as e:
-        print(f"Failed: {e}")

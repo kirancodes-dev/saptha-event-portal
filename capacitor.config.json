@@ -3,12 +3,9 @@
   "appName": "SapthaEvent",
   "webDir": "static",
   "server": {
-    "url": "https://saptha-portal.railway.app",
+    "url": "https://events.example.edu",
     "allowNavigation": [
-      "localhost",
-      "127.0.0.1",
-      "*.railway.app",
-      "*.firebaseapp.com"
+      "events.example.edu"
     ]
   }
 }

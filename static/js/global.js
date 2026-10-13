@@ -10,19 +10,11 @@
   /* ── 1. THEME MANAGEMENT (DARK / LIGHT MODE) ────────────────────────── */
   function initTheme() {
     const saved = localStorage.getItem('ds-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = saved || 'dark';
+    // Light is the portal's theme; dark is only used when someone picks it (UPG-63)
+    const theme = saved === 'dark' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
     updateThemeToggleUI(theme);
 
-    // Listen for system appearance changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-      if (!localStorage.getItem('ds-theme')) {
-        const newTheme = e.matches ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        updateThemeToggleUI(newTheme);
-      }
-    });
   }
 
   function updateThemeToggleUI(theme) {
@@ -62,19 +54,11 @@
   bar.id = 'sp-progress';
   bar.style.cssText = [
     'position:fixed', 'top:0', 'left:0', 'width:0', 'height:3px',
-    'background:linear-gradient(90deg,#c9a45e,#f5c878,#c9a45e)',
-    'background-size:200% 100%',
-    'animation:sp-shimmer 1.4s linear infinite',
+    'background:var(--brand-gold,#c69d67)',
     'z-index:99999', 'transition:width .3s ease,opacity .4s ease',
     'pointer-events:none', 'opacity:0',
   ].join(';');
   document.documentElement.appendChild(bar);
-
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes sp-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-  `;
-  document.head.appendChild(style);
 
   function progressStart() {
     bar.style.opacity = '1';
@@ -101,64 +85,50 @@
     progressStart();
   });
 
-  /* ── 3. TOAST NOTIFICATIONS ───────────────────────────────────────────── */
+  /* ── 3. TOAST NOTIFICATIONS ───────────────────────────────────────────
+     Styled by .se-toast in global.css (UPG-63); top-right on every page. */
   let toastContainer = document.querySelector('#sp-toast-container');
   if (!toastContainer) {
     toastContainer = document.createElement('div');
     toastContainer.id = 'sp-toast-container';
-    toastContainer.style.cssText = [
-      'position:fixed', 'top:72px', 'right:16px', 'z-index:99998',
-      'display:flex', 'flex-direction:column', 'gap:8px',
-      'max-width:min(380px,calc(100vw - 32px))', 'pointer-events:none',
-    ].join(';');
+    toastContainer.setAttribute('role', 'status');
+    toastContainer.setAttribute('aria-live', 'polite');
     document.body.appendChild(toastContainer);
   }
 
   const toastIcons = {
-    success: '<i class="fas fa-check-circle" style="color:#10b981"></i>',
-    danger:  '<i class="fas fa-times-circle" style="color:#ef4444"></i>',
-    error:   '<i class="fas fa-times-circle" style="color:#ef4444"></i>',
-    warning: '<i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i>',
-    info:    '<i class="fas fa-info-circle" style="color:#3b82f6"></i>',
+    success: 'fa-check-circle', danger: 'fa-times-circle', error: 'fa-times-circle',
+    warning: 'fa-exclamation-triangle', info: 'fa-info-circle',
   };
 
   window.showToast = function (message, type, duration) {
     type = type || 'info';
+    if (type === 'error') type = 'danger';
+    if (!toastIcons[type]) type = 'info';
     duration = duration === undefined ? 4000 : duration;
 
     const t = document.createElement('div');
-    t.style.cssText = [
-      'background:var(--bg-card,#fff)', 'border-radius:12px',
-      'box-shadow:0 8px 24px rgba(11,21,48,.14),0 2px 6px rgba(11,21,48,.08)',
-      'padding:12px 14px', 'display:flex', 'align-items:flex-start', 'gap:10px',
-      'font-size:13.5px', 'font-weight:500', 'color:var(--ink-800,#1e293b)',
-      'pointer-events:auto', 'cursor:pointer',
-      'border-left:4px solid',
-      'opacity:0', 'transform:translateX(24px)',
-      'transition:opacity .25s ease,transform .25s ease',
-      'word-break:break-word', 'line-height:1.45',
-    ].join(';');
-
-    const borderColors = {success:'#10b981', danger:'#ef4444', error:'#ef4444',
-                          warning:'#f59e0b', info:'#3b82f6'};
-    t.style.borderLeftColor = borderColors[type] || '#3b82f6';
-
-    t.innerHTML = `
-      <span style="flex-shrink:0;font-size:16px;margin-top:1px">${toastIcons[type] || toastIcons.info}</span>
-      <span style="flex:1">${message}</span>
-      <button onclick="this.closest('[id^=sp-t]').remove()" style="background:none;border:none;cursor:pointer;color:var(--ink-400,#94a3b8);padding:0 0 0 6px;font-size:15px;line-height:1;flex-shrink:0" aria-label="Dismiss">&times;</button>
-    `;
+    t.className = 'se-toast se-toast--' + type;
+    // Built as DOM nodes: the message is always text, never HTML (BLK-19)
+    const icon = document.createElement('i');
+    icon.className = 'se-toast__icon fas ' + toastIcons[type];
+    icon.setAttribute('aria-hidden', 'true');
+    const msg = document.createElement('span');
+    msg.className = 'se-toast__msg';
+    msg.textContent = message;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'se-toast__close';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.textContent = '\u00d7';
+    t.append(icon, msg, close);
     t.id = 'sp-t-' + Date.now();
     toastContainer.appendChild(t);
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'none'; });
-    });
+    requestAnimationFrame(() => { requestAnimationFrame(() => t.classList.add('is-shown')); });
 
     function dismiss() {
-      t.style.opacity = '0';
-      t.style.transform = 'translateX(24px)';
-      setTimeout(() => t.remove(), 260);
+      t.classList.remove('is-shown');
+      setTimeout(() => t.remove(), 220);
     }
     t.addEventListener('click', dismiss);
     if (duration > 0) setTimeout(dismiss, duration);
@@ -177,55 +147,29 @@
     }
   };
 
-  /* ── 4. CONVERT FLASK FLASH MESSAGES → TOASTS ─────────────────────────── */
+  /* ── 4. CONVERT FLASK FLASH MESSAGES → TOASTS ─────────────────────────
+     Only real flash messages (includes/flash_messages.html marks them with
+     data-flash). Static .alert boxes are page content and stay put (UPG-63). */
   function processFlashMessages() {
-    // Standard Bootstrap alerts
-    document.querySelectorAll('.alert, .flash').forEach(function (el) {
-      const text = el.innerText.trim();
-      if (!text) return;
-      let type = 'info';
-      const cls = el.className;
-      if (/success/.test(cls)) type = 'success';
-      else if (/danger|error/.test(cls)) type = 'danger';
-      else if (/warning/.test(cls)) type = 'warning';
-      showToast(text, type, 5000);
-      el.style.display = 'none'; // Hide the static alert
-      el.remove();
-    });
-
-    // Custom data-flash attributes
-    document.querySelectorAll('[data-flash]').forEach(function (el) {
+    document.querySelectorAll('[data-flash], .flash').forEach(function (el) {
       const text = el.textContent.trim();
       if (!text) return;
-      const rawType = el.dataset.flashType || 'info';
-      const typeMap = { success: 'success', danger: 'danger', error: 'danger', warning: 'warning', info: 'info' };
-      showToast(text, typeMap[rawType] || 'info', 5000);
+      const raw = el.dataset.flashType || el.className;
+      let type = 'info';
+      if (/success/.test(raw)) type = 'success';
+      else if (/danger|error/.test(raw)) type = 'danger';
+      else if (/warning/.test(raw)) type = 'warning';
+      showToast(text, type, 6000);
       el.remove();
+    });
+    document.querySelectorAll('.flash-stack').forEach(function (el) {
+      if (!el.children.length) el.remove();
     });
   }
   document.addEventListener('DOMContentLoaded', processFlashMessages);
 
-  /* ── 5. BUTTON LOADING STATE ──────────────────────────────────────────── */
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('form').forEach(function (form) {
-      form.addEventListener('submit', function () {
-        const btn = form.querySelector('[type="submit"]');
-        if (!btn || btn.dataset.noLoader) return;
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.dataset.originalHtml = original;
-        btn.innerHTML = `<span class="sp-spinner"></span> ${btn.dataset.loadingText || 'Please wait…'}`;
-
-        // Safety timeout to re-enable
-        setTimeout(function () {
-          if (btn.disabled) {
-            btn.disabled = false;
-            btn.innerHTML = original;
-          }
-        }, 15000);
-      });
-    });
-  });
+  /* ── 5. BUTTON LOADING STATE ──────────────────────────────────────────
+     Moved to static/js/forms.js, which every page loads (UPG-26). */
 
   /* ── 6. BACK TO TOP BUTTON ────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
@@ -236,9 +180,9 @@
     btt.style.cssText = [
       'position:fixed', 'bottom:24px', 'left:24px', 'width:42px', 'height:42px',
       'border-radius:50%', 'border:none', 'cursor:pointer',
-      'background:linear-gradient(135deg,#1a2557,#2a3a7a)',
+      'background:var(--brand-navy,#00185e)',
       'color:#fff', 'font-size:14px', 'z-index:9990',
-      'box-shadow:0 4px 14px rgba(26,37,87,.35)',
+      'box-shadow:var(--shadow-md)',
       'display:flex', 'align-items:center', 'justify-content:center',
       'opacity:0', 'transform:translateY(10px)',
       'transition:opacity .25s,transform .25s',
@@ -324,30 +268,7 @@
     }
   });
 
-  /* ── 9. RIPPLE EFFECT ON BUTTONS ──────────────────────────────────────── */
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.btn, button:not([data-no-ripple]), .ripple-target');
-    if (!btn || btn.dataset.noRipple) return;
-    const r = document.createElement('span');
-    const rect = btn.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height) * 2;
-    r.style.cssText = [
-      'position:absolute', 'border-radius:50%', 'pointer-events:none',
-      `width:${size}px`, `height:${size}px`,
-      `top:${e.clientY - rect.top - size / 2}px`,
-      `left:${e.clientX - rect.left - size / 2}px`,
-      'background:rgba(255,255,255,0.22)',
-      'transform:scale(0)', 'animation:sp-ripple .5s ease-out forwards',
-    ].join(';');
-    if (getComputedStyle(btn).position === 'static') btn.style.position = 'relative';
-    btn.style.overflow = 'hidden';
-    btn.appendChild(r);
-    setTimeout(() => r.remove(), 550);
-  });
-
-  const rippleStyle = document.createElement('style');
-  rippleStyle.textContent = `@keyframes sp-ripple{to{transform:scale(1);opacity:0}}`;
-  document.head.appendChild(rippleStyle);
+  /* ── 9. (Button ripple retired in UPG-63: buttons use plain hover states.) */
 
   /* ── 10. CONFIRM DIALOGS (data-confirm attribute) ──────────────────────── */
   document.addEventListener('click', function (e) {
@@ -416,18 +337,18 @@
       overlay = document.createElement('div');
       overlay.id = 'sp-loading-overlay';
       overlay.style.cssText = [
-        'position:fixed', 'inset:0', 'background:rgba(12,18,34,0.7)',
-        'backdrop-filter:blur(6px)', '-webkit-backdrop-filter:blur(6px)',
+        'position:fixed', 'inset:0', 'background:rgba(0,10,46,0.45)',
         'display:flex', 'align-items:center', 'justify-content:center', 'z-index:99999',
         'opacity:0', 'transition:opacity .25s ease',
       ].join(';');
 
       overlay.innerHTML = `
         <div style="background:var(--bg-card,#fff);padding:2.5rem;border-radius:16px;text-align:center;box-shadow:var(--shadow-lg);max-width:320px;width:90%">
-          <div class="sp-spinner" style="width:3.5rem;height:3.5rem;border-width:4px;border-top-color:var(--snpsu-blue,#1a2557);margin:0 auto 1.25rem"></div>
-          <p id="sp-loading-text" style="margin:0;color:var(--ink-700,#334155);font-weight:600;font-size:15px">${message}</p>
+          <div class="loading" style="width:3rem;height:3rem;border-width:4px;margin:0 auto 1.25rem"></div>
+          <p id="sp-loading-text" style="margin:0;color:var(--ink-700,#334155);font-weight:600;font-size:15px"></p>
         </div>
       `;
+      overlay.querySelector('#sp-loading-text').textContent = message;
       document.body.appendChild(overlay);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => overlay.style.opacity = '1');
@@ -525,17 +446,5 @@
       }
     });
 
-    // ── 19. AUTH PAGE BACKDROP INJECTION ──
-    if (document.body.classList.contains('auth')) {
-      const grid = document.createElement('div');
-      grid.className = 'grid-bg';
-      document.body.insertBefore(grid, document.body.firstChild);
-      
-      for (let i = 1; i <= 4; i++) {
-        const blob = document.createElement('div');
-        blob.className = `liquid-blob blob-${i}`;
-        document.body.insertBefore(blob, document.body.firstChild);
-      }
-    }
   });
 })();

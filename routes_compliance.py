@@ -10,7 +10,7 @@ import logging
 import datetime
 import uuid
 
-from flask import Blueprint, request, session, jsonify, render_template
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session
 try:
     from google.cloud.firestore_v1.base_query import FieldFilter
 except ImportError:
@@ -50,77 +50,25 @@ def _db():
 @compliance_bp.route("/export-data", methods=["POST"])
 @login_required
 def export_user_data():
-    """Export all user data as JSON (GDPR Article 20 — Data Portability)."""
+    """The signed-in person's own data as a JSON download (DPDP right of
+    access); other people's details are left out (UPG-22)."""
+    from services_privacy import own_data
     db = _db()
     email = session["user_id"]
-
-    export = {
-        "export_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "user_email": email,
-        "sections": {},
-    }
-
-    # 1. Profile
-    user_doc = db.collection("users").document(email).get()
-    if user_doc.exists:
-        profile = user_doc.to_dict()
-        profile.pop("password_hash", None)
-        profile.pop("password", None)
-        profile.pop("totp_secret", None)
-        profile.pop("totp_backup_codes", None)
-        export["sections"]["profile"] = profile
-
-    # 2. Registrations
-    regs = []
-    for doc in db.collection("registrations").where(
-        filter=FieldFilter("lead_email", "==", email)
-    ).stream():
-        r = doc.to_dict()
-        r["id"] = doc.id
-        regs.append(r)
-    export["sections"]["registrations"] = regs
-
-    # 3. Feedback
-    feedback = []
-    for r in regs:
-        fd = r.get("feedback")
-        if fd and isinstance(fd, dict):
-            fb_item = dict(fd)
-            fb_item["registration_id"] = r["id"]
-            fb_item["event_id"] = r.get("event_id")
-            fb_item["event_title"] = r.get("event_title")
-            feedback.append(fb_item)
-    export["sections"]["feedback"] = feedback
-
-    # 4. Notifications
-    notifs = []
-    for doc in db.collection("notifications_v2").where(
-        filter=FieldFilter("user_email", "==", email)
-    ).stream():
-        n = doc.to_dict()
-        n["id"] = doc.id
-        notifs.append(n)
-    export["sections"]["notifications"] = notifs
-
-    # 5. Audit log entries (about this user)
-    audit = []
-    for doc in db.collection("audit_log_v2").where(
-        filter=FieldFilter("actor_email", "==", email)
-    ).limit(500).stream():
-        a = doc.to_dict()
-        a["id"] = doc.id
-        audit.append(a)
-    export["sections"]["audit_trail"] = audit
-
-    # Log the export
+    export = own_data(db, email)
     try:
         from audit_logger import AuditLogger
         AuditLogger(db).log("DATA_EXPORT_REQUESTED", target_type="user",
                             target_id=email, severity="INFO")
     except Exception:
         pass
+    response = jsonify(export)
+    response.headers["Content-Disposition"] = "attachment; filename=sapthaevent-my-data.json"
+    return response
 
-    return jsonify(export)
+
+def _wants_json():
+    return request.is_json or request.accept_mimetypes.best == "application/json"
 
 
 @compliance_bp.route("/delete-request", methods=["POST"])
@@ -133,8 +81,11 @@ def request_deletion():
     """
     db = _db()
     email = session["user_id"]
-    data = request.get_json(silent=True) or {}
-    reason = data.get("reason", "User requested deletion")
+    data = request.get_json(silent=True) or request.form
+    reason = (data.get("reason") or "User requested deletion")[:500]
+    if not _wants_json() and data.get("confirm") != "yes":
+        flash("Tick the box to confirm you want your account deleted.", "warning")
+        return redirect("/profile/")
 
     # Check if already pending
     existing = (
@@ -145,6 +96,9 @@ def request_deletion():
         .stream()
     )
     if any(True for _ in existing):
+        if not _wants_json():
+            flash("Your account is already scheduled for deletion.", "info")
+            return redirect("/profile/")
         return jsonify({"error": "Deletion request already pending"}), 409
 
     req_id = str(uuid.uuid4())
@@ -161,8 +115,12 @@ def request_deletion():
             "scheduled_deletion_at": scheduled_at.isoformat(),
             "cancelled_at": None,
         })
-    except Exception as exc:
-        return jsonify({"error": "Failed to persist deletion request", "detail": str(exc)}), 500
+    except Exception:
+        logger.exception("Could not save a deletion request")
+        if not _wants_json():
+            flash("Your request couldn't be saved. Please try again.", "danger")
+            return redirect("/profile/")
+        return jsonify({"error": "Failed to persist deletion request"}), 500
 
     # Notify user
     try:
@@ -177,6 +135,10 @@ def request_deletion():
     except Exception:
         pass
 
+    if not _wants_json():
+        flash(f"Your account and personal data will be deleted on {scheduled_at.strftime('%d %B %Y')}. "
+              "You can cancel before then from this page.", "warning")
+        return redirect("/profile/")
     return jsonify({
         "message": "Deletion request submitted",
         "request_id": req_id,
@@ -203,8 +165,14 @@ def cancel_deletion():
             "status": "cancelled",
             "cancelled_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         })
+        if not _wants_json():
+            flash("Deletion cancelled. Your account stays.", "success")
+            return redirect("/profile/")
         return jsonify({"message": "Deletion request cancelled"})
 
+    if not _wants_json():
+        flash("There was no deletion request to cancel.", "info")
+        return redirect("/profile/")
     return jsonify({"error": "No pending deletion request found"}), 404
 
 
@@ -264,8 +232,9 @@ def update_consent():
 
     try:
         db.collection("user_consent").document(email).set(updates, merge=True)
-    except Exception as exc:
-        return jsonify({"error": "Failed to update consent preferences", "detail": str(exc)}), 500
+    except Exception:
+        logger.exception("Could not update consent preferences")
+        return jsonify({"error": "Failed to update consent preferences"}), 500
 
     # Log consent change
     try:

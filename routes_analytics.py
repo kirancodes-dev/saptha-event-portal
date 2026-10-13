@@ -1,7 +1,7 @@
 # routes_analytics.py — Analytics dashboard routes
 # Python 3.9 compatible
 
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, jsonify, redirect, session
 from models import db
 from utils import login_required, role_required
 
@@ -10,13 +10,20 @@ analytics_bp = Blueprint('analytics', __name__)
 
 @analytics_bp.route('/analytics')
 @login_required
-@role_required(['SuperAdmin', 'Super Admin', 'ClubSPOC', 'Coordinator'])
 def dashboard():
-    return render_template('analytics/dashboard.html')
+    """Retired (UPG-83): its trend figures were made up and it showed every
+    event to SPOCs. Each role now has its own analytics page."""
+    role = session.get('role')
+    if role in ('SuperAdmin', 'Super Admin'):
+        return redirect('/admin/analytics')
+    if role == 'ClubSPOC':
+        return redirect('/spoc/analytics')
+    return redirect('/')
 
 
 @analytics_bp.route('/analytics/api/stats')
 @login_required
+@role_required(['SuperAdmin', 'Super Admin'])   # names and payments of every registration (UPG-83)
 def api_stats():
     try:
         # Get all collections streams

@@ -1,26 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23a (full-screen: no footer). -#}
+{% block head %}
     <title>SapthaEvent Highlight Reels</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    {% include "layouts/_fontawesome.html" %}
+    {% include "layouts/_bootstrap_css.html" %}
+    <link href="/static/css/global.css" rel="stylesheet">
     
     <style>
-        :root {
-            --bg-dark: #070913;
-            --card-bg: rgba(15, 23, 42, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary: #3b82f6;
-            --pink-accent: #ec4899;
-            --text-muted: #94a3b8;
-        }
-
+        /* Highlight reels (UPG-63): a full-screen video viewer on the brand's deepest navy */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
+            background: var(--brand-navy-950);
             color: #f8fafc;
             margin: 0;
             padding: 0;
@@ -29,17 +18,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background-image: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 50%),
-                              radial-gradient(circle at 10% 90%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
         }
 
         /* Glassmorphic back navigation */
         .reels-header {
             position: absolute;
-            top: 20px;
+            top: 16px;
             left: 20px;
+            right: 20px;
             z-index: 100;
-            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
         }
 
         /* Reel Container - Mobile aspect ratio */
@@ -50,8 +41,8 @@
             height: 100%;
             max-height: 820px;
             background: #000;
-            border-radius: 28px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            border: 3px solid rgba(255, 255, 255, 0.12);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
             overflow: hidden;
             display: flex;
@@ -134,8 +125,8 @@
             border-color: rgba(255, 255, 255, 0.25);
         }
         .action-btn.active {
-            color: var(--pink-accent);
-            border-color: var(--pink-accent);
+            color: var(--brand-gold);
+            border-color: var(--brand-gold);
             animation: bounce-heart 0.3s ease-out;
         }
 
@@ -172,7 +163,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            border: 1.5px solid var(--primary);
+            border: 1.5px solid var(--brand-gold);
             background: rgba(255,255,255,0.1);
             display: flex;
             align-items: center;
@@ -196,9 +187,9 @@
         }
 
         .reel-tag {
-            background: rgba(59, 130, 246, 0.2);
-            color: var(--primary);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            background: rgba(198, 157, 103, 0.18);
+            color: var(--brand-gold-300);
+            border: 1px solid rgba(198, 157, 103, 0.4);
             border-radius: 4px;
             padding: 2px 6px;
             font-size: 11px;
@@ -264,19 +255,23 @@
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
     <div class="reels-header">
-        <a href="/live/streams" class="btn btn-outline-light rounded-pill px-3 py-2 btn-sm bg-dark bg-opacity-40 border-secondary border-opacity-35">
-            <i class="fas fa-arrow-left me-1"></i> Back to Stream Portal
+        <a href="/live/streams" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to live streams
+        </a>
+        <a href="/" class="d-none d-md-inline-flex" aria-label="SapthaEvent home">
+            <img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36">
         </a>
     </div>
 
     <!-- Phone Bezel Container -->
     <div class="reel-viewport">
+        {# No external sample videos: the CSP only plays this site's media; event images show instead (UPG-60) #}
         <!-- Next/Prev Buttons for Desktop -->
-        <div class="nav-overlay-arrow arrow-up" onclick="slidePrev()"><i class="fas fa-chevron-up"></i></div>
-        <div class="nav-overlay-arrow arrow-down" onclick="slideNext()"><i class="fas fa-chevron-down"></i></div>
+        <div class="nav-overlay-arrow arrow-up" role="button" tabindex="0" aria-label="Previous reel" data-h-click="public/reels:1"><i class="fas fa-chevron-up"></i></div>
+        <div class="nav-overlay-arrow arrow-down" role="button" tabindex="0" aria-label="Next reel" data-h-click="public/reels:2"><i class="fas fa-chevron-down"></i></div>
 
         <div class="play-indicator" id="play-splash"><i class="fas fa-play"></i></div>
 
@@ -284,12 +279,11 @@
         <div class="reel-slider" id="reel-slider">
             <!-- Slide 1 -->
             <div class="reel-slide" data-index="0">
-                <video class="reel-video" loop muted playsinline onclick="togglePlay(this)">
-                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                <video class="reel-video" loop muted playsinline poster="/static/img/event_slide1.webp" data-h-click="public/reels:3">
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
-                        <div class="action-btn" onclick="toggleLike(this)"><i class="fas fa-heart"></i></div>
+                        <div class="action-btn" role="button" tabindex="0" aria-label="Like" data-h-click="public/reels:4"><i class="fas fa-heart"></i></div>
                         <span class="action-label">1.2K</span>
                     </div>
                     <div class="d-flex flex-column align-items-center">
@@ -303,7 +297,7 @@
                 </div>
                 <div class="reel-details">
                     <div class="author-badge">
-                        <div class="author-avatar bg-primary text-white">CE</div>
+                        <div class="author-avatar">CE</div>
                         <span class="author-name">Cultural Event Comm.</span>
                     </div>
                     <p class="reel-title">Highlights from the opening group dance at SNPSU Auditorium! What a performance! #sapthafest2026</p>
@@ -313,12 +307,11 @@
 
             <!-- Slide 2 -->
             <div class="reel-slide" data-index="1">
-                <video class="reel-video" loop muted playsinline onclick="togglePlay(this)">
-                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" type="video/mp4">
+                <video class="reel-video" loop muted playsinline poster="/static/img/event_slide2.webp" data-h-click="public/reels:5">
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
-                        <div class="action-btn" onclick="toggleLike(this)"><i class="fas fa-heart"></i></div>
+                        <div class="action-btn" role="button" tabindex="0" aria-label="Like" data-h-click="public/reels:6"><i class="fas fa-heart"></i></div>
                         <span class="action-label">956</span>
                     </div>
                     <div class="d-flex flex-column align-items-center">
@@ -332,7 +325,7 @@
                 </div>
                 <div class="reel-details">
                     <div class="author-badge">
-                        <div class="author-avatar bg-info text-white">HC</div>
+                        <div class="author-avatar">HC</div>
                         <span class="author-name">Hackathon Organisers</span>
                     </div>
                     <p class="reel-title">Final seconds of the 24hr Hackathon pitch rounds inside CS Labs Block. The exhaustion is real but the products are epic! 💻🔥</p>
@@ -342,12 +335,11 @@
 
             <!-- Slide 3 -->
             <div class="reel-slide" data-index="2">
-                <video class="reel-video" loop muted playsinline onclick="togglePlay(this)">
-                    <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
+                <video class="reel-video" loop muted playsinline poster="/static/img/event_slide3.webp" data-h-click="public/reels:7">
                 </video>
                 <div class="reel-actions">
                     <div class="d-flex flex-column align-items-center">
-                        <div class="action-btn" onclick="toggleLike(this)"><i class="fas fa-heart"></i></div>
+                        <div class="action-btn" role="button" tabindex="0" aria-label="Like" data-h-click="public/reels:8"><i class="fas fa-heart"></i></div>
                         <span class="action-label">2.4K</span>
                     </div>
                     <div class="d-flex flex-column align-items-center">
@@ -361,7 +353,7 @@
                 </div>
                 <div class="reel-details">
                     <div class="author-badge">
-                        <div class="author-avatar bg-success text-white">RW</div>
+                        <div class="author-avatar">RW</div>
                         <span class="author-name">RoboWars SPOC</span>
                     </div>
                     <p class="reel-title">Absolute destruction at the RoboWars arena today. Team DeathGrid takes home the cup with a brutal flip! 🤖💥</p>
@@ -372,120 +364,6 @@
     </div>
 
     <!-- Script controls -->
-    <script>
-        var curIdx = 0;
-        var totalReels = 3;
-        var slider = document.getElementById('reel-slider');
-        var videos = document.querySelectorAll('.reel-video');
-
-        // Play the first video on start
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                playVideo(0);
-            }, 600);
-        });
-
-        function slideTo(idx) {
-            if (idx < 0 || idx >= totalReels) return;
-            
-            // Pause current video
-            videos[curIdx].pause();
-            
-            curIdx = idx;
-            slider.style.transform = `translateY(-${curIdx * 100}%)`;
-            
-            // Play new video
-            setTimeout(function() {
-                playVideo(curIdx);
-            }, 300);
-        }
-
-        function slideNext() {
-            if (curIdx < totalReels - 1) {
-                slideTo(curIdx + 1);
-            } else {
-                // Loop back to start
-                slideTo(0);
-            }
-        }
-
-        function slidePrev() {
-            if (curIdx > 0) {
-                slideTo(curIdx - 1);
-            }
-        }
-
-        function playVideo(idx) {
-            var v = videos[idx];
-            v.currentTime = 0;
-            v.play().catch(function(err) {
-                console.log("Auto play prevented, waiting for user click.", err);
-            });
-        }
-
-        function togglePlay(video) {
-            var splash = document.getElementById('play-splash');
-            var icon = splash.querySelector('i');
-            
-            if (video.paused) {
-                video.play();
-                icon.className = "fas fa-play";
-            } else {
-                video.pause();
-                icon.className = "fas fa-pause";
-            }
-            
-            splash.classList.remove('trigger');
-            void splash.offsetWidth; // trigger reflow
-            splash.classList.add('trigger');
-        }
-
-        function toggleLike(btn) {
-            btn.classList.toggle('active');
-            var label = btn.nextElementSibling;
-            var currentVal = parseFloat(label.innerText.replace('K', ''));
-            
-            if (btn.classList.contains('active')) {
-                if (label.innerText.includes('K')) {
-                    label.innerText = (currentVal + 0.1).toFixed(1) + 'K';
-                } else {
-                    label.innerText = parseInt(label.innerText) + 1;
-                }
-            } else {
-                if (label.innerText.includes('K')) {
-                    label.innerText = (currentVal - 0.1).toFixed(1) + 'K';
-                } else {
-                    label.innerText = parseInt(label.innerText) - 1;
-                }
-            }
-        }
-
-        // Gesture slider support (touch events)
-        var startY = 0;
-        document.querySelector('.reel-viewport').addEventListener('touchstart', function(e) {
-            startY = e.touches[0].clientY;
-        }, { passive: true });
-
-        document.querySelector('.reel-viewport').addEventListener('touchend', function(e) {
-            var endY = e.changedTouches[0].clientY;
-            var deltaY = startY - endY;
-            if (Math.abs(deltaY) > 60) {
-                if (deltaY > 0) {
-                    slideNext();
-                } else {
-                    slidePrev();
-                }
-            }
-        }, { passive: true });
-
-        // Keyboard navigation (up/down arrow keys)
-        window.addEventListener('keydown', function(e) {
-            if (e.key === "ArrowDown") {
-                slideNext();
-            } else if (e.key === "ArrowUp") {
-                slidePrev();
-            }
-        });
-    </script>
-</body>
-</html>
+    <script src="/static/js/pages/public__reels.js"></script>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__reels.js"></script>{% endblock %}

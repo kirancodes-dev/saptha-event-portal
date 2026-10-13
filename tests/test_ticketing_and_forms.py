@@ -457,7 +457,7 @@ class TestDigitalTicketWalletRoutes:
 
         resp = client.post(
             f"/forms/submit/{event_id}",
-            data={
+            data={'privacy_consent': 'yes',
                 "full_name": "Jane Developer",
                 "email": "jane.dev@student.edu",
                 "phone": "9876543210",

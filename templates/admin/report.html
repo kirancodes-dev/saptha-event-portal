@@ -1,12 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23g. -#}
+{% block head %}
   <title>SapthaEvent Portal Report — Sapthagiri NPS University</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     /* ── SCREEN: centered A4 card ── */
+    /* Portal report (UPG-63): official A4 document on the brand navy and gold */
+    :root{--font-heading:'Plus Jakarta Sans','Inter',sans-serif;}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'Inter',sans-serif;background:#e2e8f0;min-height:100vh;padding:24px;}
     @media print{body{background:#fff;padding:0;}
@@ -17,9 +16,11 @@
     .controls{max-width:210mm;margin:0 auto 16px;display:flex;gap:10px;align-items:center;}
     .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:9px;
          font-size:13px;font-weight:700;border:none;cursor:pointer;text-decoration:none;}
-    .btn-back{background:#fff;color:#1a2557;border:1.5px solid #e2e8f0;}
-    .btn-print{background:#1a2557;color:#fff;}
-    .btn-orange{background:#c9a227;color:#fff;}
+    .btn-back{background:#fff;color:#00185e;border:1.5px solid #e2e8f0;}
+    .btn-print{background:#00185e;color:#fff;}
+    .btn-orange{background:#c69d67;color:#00185e;}
+    .btn:focus-visible{outline:2px solid #c69d67;outline-offset:2px;}
+    .controls-meta{font-size:12px;color:#475569;margin-left:auto;}
 
     /* ── A4 PAGE ── */
     .page{
@@ -33,43 +34,43 @@
 
     /* ── HEADER ── */
     .report-header{display:flex;align-items:center;justify-content:space-between;
-      border-bottom:3px solid #1a2557;padding-bottom:14px;margin-bottom:18px;}
+      border-bottom:3px solid #00185e;padding-bottom:14px;margin-bottom:18px;}
     .header-left{display:flex;align-items:center;gap:14px;}
-    .header-logo{height:52px;background:#1a2557;border-radius:8px;padding:5px 10px;object-fit:contain;}
-    .header-logo-fallback{height:52px;width:100px;background:#1a2557;border-radius:8px;
+    .header-logo{height:52px;background:#00185e;border-radius:8px;padding:8px 12px;object-fit:contain;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .header-logo-fallback{height:52px;width:100px;background:#00185e;border-radius:8px;
       display:flex;align-items:center;justify-content:center;
-      font-family:'Poppins',sans-serif;font-weight:800;font-size:13px;color:#c9a227;letter-spacing:.5px;}
-    .header-title{font-family:'Poppins',sans-serif;}
-    .header-title h1{font-size:18px;font-weight:800;color:#1a2557;line-height:1.2;margin-bottom:3px;}
+      font-family: var(--font-heading);font-weight:800;font-size:13px;color:#c69d67;letter-spacing:.5px;}
+    .header-title{font-family: var(--font-heading);}
+    .header-title h1{font-size:18px;font-weight:800;color:#00185e;line-height:1.2;margin-bottom:3px;}
     .header-title p{font-size:11px;color:#64748b;font-weight:500;}
     .header-right{text-align:right;}
-    .report-badge{display:inline-block;background:#1a2557;color:#fff;
-      font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;
+    .report-badge{display:inline-block;background:#00185e;color:#fff;
+      font-family: var(--font-heading);font-size:11px;font-weight:700;
       padding:4px 12px;border-radius:100px;margin-bottom:6px;letter-spacing:.3px;}
     .report-date{font-size:11px;color:#64748b;}
 
     /* ── SECTION ── */
     .section{margin-bottom:20px;}
-    .section-title{font-family:'Poppins',sans-serif;font-size:13px;font-weight:800;
-      color:#1a2557;border-bottom:2px solid #f1f5f9;padding-bottom:6px;margin-bottom:12px;
+    .section-title{font-family: var(--font-heading);font-size:13px;font-weight:800;
+      color:#00185e;border-bottom:2px solid #f1f5f9;padding-bottom:6px;margin-bottom:12px;
       display:flex;align-items:center;gap:8px;}
-    .section-title span{display:inline-block;width:6px;height:18px;background:#c9a227;border-radius:3px;}
+    .section-title span{display:inline-block;width:6px;height:18px;background:#c69d67;border-radius:3px;}
 
     /* ── SUMMARY GRID ── */
     .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
     .sum-card{border:1px solid #e2e8f0;border-radius:10px;padding:14px;
       background:linear-gradient(135deg,#fafafa 0%,#fff 100%);}
-    .sum-card.accent{border-left:4px solid #1a2557;}
-    .sum-card.accent-gold{border-left:4px solid #c9a227;}
+    .sum-card.accent{border-left:4px solid #00185e;}
+    .sum-card.accent-gold{border-left:4px solid #c69d67;}
     .sum-card.accent-green{border-left:4px solid #16a34a;}
-    .sum-val{font-family:'Poppins',sans-serif;font-size:26px;font-weight:800;color:#1a2557;line-height:1;}
+    .sum-val{font-family: var(--font-heading);font-size:26px;font-weight:800;color:#00185e;line-height:1;}
     .sum-label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;
       letter-spacing:.4px;margin-top:5px;}
     .sum-sub{font-size:10.5px;color:#94a3b8;margin-top:3px;}
 
     /* ── TABLES ── */
     table{width:100%;border-collapse:collapse;font-size:11.5px;}
-    thead th{background:#1a2557;color:#fff;padding:8px 10px;font-size:10.5px;
+    thead th{background:#00185e;color:#fff;padding:8px 10px;font-size:10.5px;
       font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.4px;}
     thead th:first-child{border-radius:6px 0 0 6px;}
     thead th:last-child{border-radius:0 6px 6px 0;}
@@ -79,13 +80,13 @@
     .pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;
       border-radius:100px;white-space:nowrap;}
     .pill-active{background:rgba(22,163,74,.12);color:#16a34a;}
-    .pill-done{background:rgba(26,37,87,.08);color:#1a2557;}
+    .pill-done{background:rgba(0,24,94,.08);color:#00185e;}
     .pill-free{background:rgba(22,163,74,.1);color:#16a34a;}
     .pill-paid{background:rgba(201,162,39,.15);color:#92400e;}
     .text-right{text-align:right;}
     .text-center{text-align:center;}
     .fw-bold{font-weight:700;}
-    .text-blue{color:#1a2557;}
+    .text-blue{color:#00185e;}
     .text-muted{color:#94a3b8;}
 
     /* ── USER TABLE ── */
@@ -98,20 +99,20 @@
     .report-footer{margin-top:24px;padding-top:12px;border-top:2px solid #f1f5f9;
       display:flex;justify-content:space-between;align-items:center;}
     .footer-text{font-size:10px;color:#94a3b8;}
-    .footer-sig{font-size:10px;color:#1a2557;font-weight:700;font-family:'Poppins',sans-serif;}
+    .footer-sig{font-size:10px;color:#00185e;font-weight:700;font-family: var(--font-heading);}
 
     /* ── PAGE BREAK ── */
     .page-break{page-break-before:always;}
   </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
 <!-- SCREEN CONTROLS -->
 <div class="controls no-print">
-  <a href="/admin/dashboard" class="btn btn-back"><i>&#8592;</i> Admin HQ</a>
-  <button class="btn btn-print" onclick="window.print()">&#128438; Print / Save PDF</button>
-  <a href="/admin/analytics" class="btn btn-orange">&#128202; Full Analytics</a>
-  <span style="font-size:12px;color:#64748b;margin-left:auto;">A4 · Generated {{ generated_at }}</span>
+  <a href="/admin/dashboard" class="btn btn-back"><span aria-hidden="true">&#8592;</span> Admin</a>
+  <button type="button" class="btn btn-print" data-h-click="admin/report:1">Print / save PDF</button>
+  <a href="/admin/analytics" class="btn btn-orange">Full analytics</a>
+  <span class="controls-meta">A4 · Generated {{ generated_at }}</span>
 </div>
 
 <!-- A4 PAGE -->
@@ -120,8 +121,8 @@
   <!-- ── HEADER ── -->
   <div class="report-header">
     <div class="header-left">
-      <img src="/static/snpsu-logo.png" alt="SNPSU" class="header-logo"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <img loading="eager" src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="header-logo"
+           data-h-error="admin/report:2">
       <div class="header-logo-fallback" style="display:none;">SNPSU</div>
       <div class="header-title">
         <h1>SapthaEvent Portal Report</h1>
@@ -236,7 +237,7 @@
       <tfoot>
         <tr style="background:#f1f5f9;">
           <td colspan="5" class="fw-bold text-blue" style="padding:8px 10px;font-size:11px;text-transform:uppercase;">Total</td>
-          <td class="text-right fw-bold" style="padding:8px 10px;color:#1a2557;">{{ total_regs }}</td>
+          <td class="text-right fw-bold" style="padding:8px 10px;color:#00185e;">{{ total_regs }}</td>
           <td></td>
           <td class="text-right fw-bold" style="padding:8px 10px;color:#16a34a;">₹{{ "{:,}".format(total_revenue) }}</td>
           <td colspan="2"></td>
@@ -320,5 +321,5 @@
   </div>
 
 </div><!-- /page -->
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/admin__report.js"></script>{% endblock %}

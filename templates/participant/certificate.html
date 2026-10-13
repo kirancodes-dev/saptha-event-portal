@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/fullscreen.html" %}
+{#- On the shared document since UPG-23b (full-screen: no footer). -#}
+{% block head %}
     <title>Certificate | {{ student_name }}</title>
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
         body { 
@@ -17,7 +12,7 @@
             align-items: center; 
             min-height: 100vh; 
             margin: 0; 
-            font-family: 'Montserrat', sans-serif; 
+            font-family: 'Inter', sans-serif; 
         }
         
         .cert-container { 
@@ -28,28 +23,28 @@
             box-sizing: border-box;
             box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
             position: relative; 
-            border: 15px solid #1a2557; 
-            outline: 4px solid #c9a45e; 
+            border: 15px solid #00185e; 
+            outline: 4px solid #c69d67; 
             outline-offset: -25px; 
             text-align: center; 
         }
 
         .logo-area {
             font-size: 50px;
-            color: #c9a45e;
+            color: #c69d67;
             margin-bottom: 10px;
             margin-top: 10px;
         }
 
         .univ-name { 
-            font-family: 'Cinzel', serif; 
+            font-family: Georgia, serif; 
             font-size: 36px; 
-            color: #1a2557; 
+            color: #00185e; 
             font-weight: 800; 
             letter-spacing: 2px;
         }
         .univ-sub { 
-            color: #c9a45e; 
+            color: #c69d67; 
             font-weight: 600; 
             letter-spacing: 4px; 
             margin-bottom: 50px; 
@@ -57,7 +52,7 @@
         }
         
         .cert-title { 
-            font-family: 'Cinzel', serif; 
+            font-family: Georgia, serif; 
             font-size: 52px; 
             color: #1e293b; 
             margin-bottom: 30px; 
@@ -72,9 +67,9 @@
         }
         
         .student-name { 
-            font-family: 'Cinzel', serif; 
+            font-family: Georgia, serif; 
             font-size: 48px; 
-            color: #c9a45e; 
+            color: #c69d67; 
             border-bottom: 2px solid #cbd5e1; 
             display: inline-block; 
             padding: 0 50px 10px; 
@@ -90,7 +85,7 @@
             margin-bottom: 60px; 
         }
         .cert-body strong {
-            color: #1a2557;
+            color: #00185e;
             font-size: 24px;
         }
         
@@ -102,12 +97,12 @@
         }
         
         .signature { 
-            border-top: 2px solid #1a2557; 
+            border-top: 2px solid #00185e; 
             width: 220px; 
             padding-top: 10px; 
             font-weight: 600; 
-            color: #1a2557; 
-            font-family: 'Cinzel', serif;
+            color: #00185e; 
+            font-family: Georgia, serif;
             font-size: 18px;
         }
 
@@ -116,7 +111,7 @@
             position: fixed; 
             bottom: 40px; 
             right: 40px; 
-            background: #1a2557; 
+            background: #00185e; 
             color: white; 
             padding: 15px 30px; 
             border-radius: 30px; 
@@ -124,9 +119,9 @@
             font-weight: bold; 
             cursor: pointer; 
             border: none; 
-            box-shadow: 0 8px 20px rgba(26, 37, 87, 0.4); 
+            box-shadow: 0 8px 20px rgba(0,24,94, 0.4); 
             transition: 0.3s;
-            font-family: 'Montserrat', sans-serif;
+            font-family: 'Inter', sans-serif;
         }
         .print-btn:hover {
             transform: translateY(-5px);
@@ -136,14 +131,14 @@
         /* When the user hits Ctrl+P to print, hide the background and buttons! */
         @media print {
             body { background: white; }
-            .cert-container { box-shadow: none; border: 15px solid #1a2557; margin: 0; }
+            .cert-container { box-shadow: none; border: 15px solid #00185e; margin: 0; }
             .print-btn, .no-print { display: none; }
             @page { size: landscape; margin: 0mm; }
         }
     </style>
     <link href="/static/css/global.css" rel="stylesheet">
-</head>
-<body>
+{% endblock %}
+{% block body %}
 
     <div class="cert-container">
         
@@ -169,7 +164,13 @@
         
     </div>
 
-    <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
+    <button class="print-btn" data-h-click="participant/certificate:1">Save as PDF / print</button>
+    {% if certificate_id %}
+    <p class="no-print" style="text-align:center;margin-top:12px;font-family:'Inter',sans-serif;font-size:14px;">
+      <a href="/verify/{{ certificate_id }}/download">Download the official certificate (PDF)</a>
+      · <a href="/verify/{{ certificate_id }}">Verification page</a>
+    </p>
+    {% endif %}
 
     <div style="max-width:680px;margin:16px auto;padding:0 20px;" class="no-print">
       {% set share_title = "I earned a certificate for " ~ event.title ~ " at Sapthagiri NPS University! #SapthaEvent #SNPSU" %}
@@ -177,5 +178,5 @@
       {% include 'includes/share_strip.html' %}
     </div>
 
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/participant__certificate.js"></script>{% endblock %}

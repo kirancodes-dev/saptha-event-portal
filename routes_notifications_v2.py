@@ -272,3 +272,81 @@ def _time_ago(iso_str: str) -> str:
         return dt.strftime("%b %d")
     except Exception:
         return ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DASHBOARD FEED & MARK READ (Consolidated from v1)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@notif_v2_bp.route("/feed", methods=["GET"])
+@login_required
+def feed():
+    """Return the 20 most recent notifications for the logged-in user."""
+    db = _db()
+    email = session.get("user_id", "").lower().strip()
+    try:
+        query = (
+            db.collection("notifications_v2")
+            .where(filter=FieldFilter("user_email", "==", email))
+        )
+        docs = query.order_by("created_at", direction="DESCENDING").limit(20).stream()
+        items = []
+        for d in docs:
+            n = d.to_dict()
+            n["id"] = d.id
+            type_info = NOTIFICATION_TYPES.get(n.get("type", ""), {})
+            if "icon" not in n or not n["icon"]:
+                n["icon"] = type_info.get("icon", "bell")
+            if "body" not in n:
+                n["body"] = n.get("message", "")
+            if "read" not in n:
+                n["read"] = n.get("is_read", False)
+            items.append(n)
+        return jsonify(items)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@notif_v2_bp.route("/mark_read/<notif_id>", methods=["POST"])
+@login_required
+def mark_read(notif_id):
+    """Mark a notification as read."""
+    db = _db()
+    email = session.get("user_id", "").lower().strip()
+    doc = db.collection("notifications_v2").document(notif_id).get()
+    if doc.exists and doc.to_dict().get("user_email") == email:
+        db.collection("notifications_v2").document(notif_id).update({
+            "is_read": True,
+            "read": True,
+        })
+    return jsonify({"ok": True})
+
+
+@notif_v2_bp.route("/mark_all_read", methods=["POST"])
+@login_required
+def mark_all_read():
+    """Mark all unread notifications as read."""
+    db = _db()
+    email = session.get("user_id", "").lower().strip()
+    docs = (
+        db.collection("notifications_v2")
+        .where(filter=FieldFilter("user_email", "==", email))
+        .where(filter=FieldFilter("is_read", "==", False))
+        .stream()
+    )
+    for d in docs:
+        d.reference.update({"is_read": True, "read": True})
+    return jsonify({"ok": True})
+
+
+def push_notification(user_id: str, title: str, body: str, icon: str = "bell", link: str = ""):
+    """Compatibility wrapper calling create_notification into notifications_v2."""
+    return create_notification(
+        _db(),
+        user_email=user_id,
+        notif_type="announcement",
+        title=title,
+        message=body,
+        link=link,
+    )
+

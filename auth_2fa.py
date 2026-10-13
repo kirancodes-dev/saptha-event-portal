@@ -166,10 +166,10 @@ def disable_2fa():
 
     user = user_doc.to_dict()
     from werkzeug.security import check_password_hash
-    stored = user.get("password_hash", "")
-    if not check_password_hash(stored, password):
+    stored = user.get("password_hash") or user.get("password", "")
+    if not stored or not check_password_hash(stored, password):
         flash("Incorrect password.", "danger")
-        return redirect("/profile/dashboard")
+        return redirect("/profile/")
 
     db.collection("users").document(email).update({
         "totp_secret": None,
@@ -178,7 +178,7 @@ def disable_2fa():
     })
 
     flash("2FA has been disabled.", "info")
-    return redirect("/profile/dashboard")
+    return redirect("/profile/")
 
 
 def _complete_2fa_login(user: dict, email: str):

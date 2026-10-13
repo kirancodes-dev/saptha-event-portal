@@ -1,21 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23a. -#}
+{% block head %}
 <title>Certificate Verification | SapthaEvent</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+{% include "layouts/_bootstrap_css.html" %}
+{% include "layouts/_fontawesome.html" %}
+<link href="/static/css/global.css" rel="stylesheet">
 <style>
+  /* Certificate verification, signed-hash path (UPG-63): brand tokens */
   :root {
-    --primary: #1a2557;
-    --primary-dark: #0c122b;
-    --gold: #c9a45e;
-    --gold-light: #dcbb7a;
-    --success: #10b981;
-    --danger: #ef4444;
-    --bg-gradient: linear-gradient(135deg, #eef2f6 0%, #e2e8f0 100%);
+    --primary: var(--brand-navy);
+    --primary-dark: var(--text-strong);
+    --gold: var(--brand-gold);
+    --gold-light: var(--brand-gold-300);
+    --bg-gradient: var(--surface-page);
     --radius-lg: 16px;
     --radius-sm: 8px;
     --shadow-md: 0 10px 25px rgba(15, 23, 42, 0.08);
@@ -23,9 +20,9 @@
   
   body {
     background: var(--bg-gradient);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-body);
     min-height: 100vh;
-    padding: 40px 20px;
+    padding: 0 0 40px;
     color: #334155;
     position: relative;
   }
@@ -68,7 +65,7 @@
   }
 
   .main-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-heading);
     font-weight: 800;
     font-size: clamp(20px, 4vw, 32px);
     color: var(--primary-dark);
@@ -77,7 +74,7 @@
 
   .subtitle {
     font-size: 15px;
-    color: #64748b;
+    color: var(--text-muted);
   }
 
   .cert-card {
@@ -112,7 +109,8 @@
   }
 
   .cert-header-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: #fff;
+    font-family: var(--font-heading);
     font-weight: 700;
     font-size: 18px;
     margin: 0;
@@ -164,7 +162,7 @@
 
   .info-cell-label {
     padding: 12px 0;
-    color: #64748b;
+    color: var(--text-muted);
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
@@ -203,8 +201,14 @@
     height: 100%;
   }
 
+  .vs-brand { background: var(--brand-navy); border-bottom: 3px solid var(--brand-gold); padding: 14px 20px; margin-bottom: 32px; display: flex; justify-content: center; }
+  .verified-seal { background: var(--success-soft); border-color: #bbf7d0; }
+  .verified-seal .action-card-title, .verified-seal .help-text { color: var(--success-text); }
+  .verified-seal .action-card-title i { color: var(--success); }
+  .verified-seal .help-text { font-size: 13px; font-weight: 500; margin: 0; }
+  .main-title.is-failed { color: var(--danger-text); }
   .action-card-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-heading);
     font-weight: 700;
     font-size: 15px;
     color: var(--primary-dark);
@@ -219,7 +223,7 @@
   }
 
   .btn-download {
-    background: var(--success);
+    background: var(--brand-navy);
     color: #ffffff;
     border: none;
     font-weight: 700;
@@ -235,7 +239,7 @@
   }
 
   .btn-download:hover {
-    background: #0d9488;
+    background: var(--brand-navy-900);
     color: #ffffff;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
@@ -291,7 +295,7 @@
 
   .verification-url {
     font-size: 12px;
-    color: #475569;
+    color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -333,7 +337,7 @@
   .status-label {
     font-size: 13.5px;
     font-weight: 500;
-    color: #475569;
+    color: var(--text-muted);
   }
 
   .status-dot {
@@ -350,7 +354,7 @@
 
   .help-text {
     font-size: 13px;
-    color: #64748b;
+    color: var(--text-muted);
     line-height: 1.5;
   }
 
@@ -359,7 +363,7 @@
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%) translateY(100px);
-    background: #0f172a;
+    background: var(--text-strong);
     color: #ffffff;
     padding: 10px 24px;
     border-radius: 8px;
@@ -396,18 +400,19 @@
     box-shadow: var(--shadow-md);
   }
 </style>
-</head>
-<body>
+{% endblock %}
+{% block body %}
+<header class="vs-brand"><a href="/" aria-label="SapthaEvent home"><img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36"></a></header>
 
-<div class="container py-4">
+<main class="container" id="main-content">
   {% if success %}
     <!-- Celebration Title & Pill -->
     <div class="celebration-wrap">
       <div class="claimed-pill">
-        <i class="fas fa-shield-check"></i> Certificate Verified
+        <i class="fas fa-shield-halved" aria-hidden="true"></i> Certificate Verified
       </div>
-      <h1 class="main-title">🎉 Congratulations, {{ cert.student_name }}!</h1>
-      <p class="subtitle">This cryptographic credential has been verified as authentic and valid.</p>
+      <h1 class="main-title">Congratulations{% if cert.student_name %}, {{ cert.student_name }}{% endif %}!</h1>
+      <p class="subtitle">This certificate was found in the Sapthagiri NPS University certificate registry and is valid.</p>
     </div>
 
     <div class="row justify-content-center">
@@ -421,7 +426,7 @@
             <div>
               <h2 class="cert-header-title">
                 {% if cert.cert_type == 'winner' %}
-                  🥇 Winner (Rank {{ cert.rank }})
+                  Winner (rank {{ cert.rank }})
                 {% else %}
                   Participant
                 {% endif %}
@@ -433,7 +438,7 @@
           <div class="cert-body">
             <!-- Scalable Certificate Iframe Preview -->
             <div class="preview-container">
-              <iframe src="/verify/{{ cert.hash }}/preview"></iframe>
+              <iframe title="Certificate preview" src="/verify/{{ cert.hash }}/preview"></iframe>
             </div>
 
             <!-- Certificate Recipient Details Table -->
@@ -449,7 +454,7 @@
               {% if cert.cert_type == 'winner' and cert.score %}
               <tr class="info-row">
                 <td class="info-cell-label">Final Score</td>
-                <td class="info-cell-value" style="color: var(--primary);">{{ cert.score }}</td>
+                <td class="info-cell-value">{{ cert.score }}</td>
               </tr>
               {% endif %}
               <tr class="info-row">
@@ -477,10 +482,10 @@
           <!-- Download Certificate -->
           <div class="col-12">
             <div class="action-card">
-              <h3 class="action-card-title"><i class="fas fa-file-pdf"></i> Download Certificate</h3>
+              <h3 class="action-card-title"><i class="fas fa-file-pdf"></i> Download certificate</h3>
               <p class="help-text mb-3">Save a high-resolution, print-ready PDF copy of your credential.</p>
               <a href="/verify/{{ cert.hash }}/download" class="btn-download">
-                <i class="fas fa-download"></i> Download PDF Certificate
+                <i class="fas fa-download"></i> Download PDF certificate
               </a>
             </div>
           </div>
@@ -488,15 +493,15 @@
           <!-- Share Certificate -->
           <div class="col-12">
             <div class="action-card">
-              <h3 class="action-card-title"><i class="fas fa-share-nodes"></i> Share Certificate</h3>
+              <h3 class="action-card-title"><i class="fas fa-share-nodes"></i> Share certificate</h3>
               <p class="help-text mb-3">Add this achievement to your profile or share it with your network.</p>
               <div class="share-grid">
                 {% set share_text = "I'm proud to share my verified certificate for " ~ cert.event_title ~ " from " ~ cert.college_name ~ "! Verify here:" %}
                 {% set share_url = request.url %}
-                <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" target="_blank" class="btn-share linkedin">
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" target="_blank" rel="noopener" class="btn-share linkedin">
                   <i class="fab fa-linkedin"></i> LinkedIn
                 </a>
-                <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" class="btn-share twitter">
+                <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" rel="noopener" class="btn-share twitter">
                   <i class="fab fa-x-twitter"></i> X (Twitter)
                 </a>
               </div>
@@ -505,10 +510,10 @@
 
           <!-- Verified Seal -->
           <div class="col-12">
-            <div class="action-card" style="background: #f0fdf4; border-color: #bbf7d0;">
-              <h3 class="action-card-title" style="color: #166534;"><i class="fas fa-shield-halved" style="color: var(--success);"></i> Cryptographically Confirmed</h3>
-              <p class="help-text" style="color: #166534; font-size: 13px; font-weight: 500; margin: 0;">
-                Authenticity confirmed. This digital credential has been validated via cryptographic registry signatures at {{ cert.college_name }}.
+            <div class="action-card verified-seal">
+              <h3 class="action-card-title"><i class="fas fa-shield-halved" aria-hidden="true"></i> Registry confirmed</h3>
+              <p class="help-text">
+                Authenticity confirmed: this certificate code matches an entry in the certificate registry{% if cert.college_name %} of {{ cert.college_name }}{% endif %}.
               </p>
             </div>
           </div>
@@ -516,41 +521,20 @@
           <!-- Copy Verification Link -->
           <div class="col-12">
             <div class="action-card">
-              <h3 class="action-card-title"><i class="fas fa-link"></i> Verification Link</h3>
+              <h3 class="action-card-title"><i class="fas fa-link"></i> Verification link</h3>
               <div class="verification-link-box">
                 <span class="verification-url" id="verify-url-text">{{ request.url }}</span>
-                <button class="btn-copy" onclick="copyVerificationLink()" title="Copy Link">
+                <button type="button" class="btn-copy" data-h-click="public/verify_certificate:1" title="Copy link" aria-label="Copy verification link">
                   <i class="far fa-copy" id="copy-icon"></i>
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Certificate Status Tracker -->
-          <div class="col-12">
-            <div class="action-card">
-              <h3 class="action-card-title"><i class="fas fa-timeline"></i> Certificate Status</h3>
-              <ul class="status-list">
-                <li class="status-item">
-                  <span class="status-label">Generated</span>
-                  <span class="status-dot"><i class="fas fa-check"></i></span>
-                </li>
-                <li class="status-item">
-                  <span class="status-label">Delivered</span>
-                  <span class="status-dot"><i class="fas fa-check"></i></span>
-                </li>
-                <li class="status-item">
-                  <span class="status-label">Claimed</span>
-                  <span class="status-dot"><i class="fas fa-check"></i></span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
           <!-- Need Help -->
           <div class="col-12">
             <div class="action-card">
-              <h3 class="action-card-title"><i class="far fa-circle-question"></i> Need Help?</h3>
+              <h3 class="action-card-title"><i class="far fa-circle-question"></i> Need help?</h3>
               <p class="help-text m-0">
                 For any questions regarding your certificate details, contact the issuing organization at <strong>support@snpsu.edu.in</strong>.
               </p>
@@ -565,74 +549,34 @@
       <div class="col-md-6 text-center">
         <div class="cert-card p-5">
           <div class="failed-pill mb-4">
-            <i class="fas fa-triangle-exclamation"></i> Verification Failed
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Verification failed
           </div>
-          <h1 class="main-title mb-3" style="color: var(--danger);">Invalid Credential</h1>
+          <h1 class="main-title is-failed mb-3">Invalid credential</h1>
           <p class="subtitle mb-5">We were unable to verify this certificate code in our registry.</p>
           
-          <div class="alert alert-danger mb-5 d-flex align-items-center justify-content-center gap-2" role="alert" style="border-radius: var(--radius-sm);">
+          <div class="alert alert-danger mb-5 d-flex align-items-center justify-content-center gap-2" role="alert">
             <i class="fas fa-circle-xmark"></i>
             <span>{{ error }}</span>
           </div>
 
           <a href="/" class="btn-portal">
-            <i class="fas fa-house"></i> Back to Portal Home
+            <i class="fas fa-house" aria-hidden="true"></i> Back to the portal
           </a>
         </div>
       </div>
     </div>
   {% endif %}
-</div>
+</main>
 
 <!-- Copy Action Toast -->
-<div class="toast-copy" id="copy-toast">
+<div class="toast-copy" id="copy-toast" role="status" aria-live="polite">
   Link copied to clipboard!
 </div>
 
 {% if success %}
 <!-- Canvas Confetti Library & Script -->
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-<script>
-  // Shoot confetti on load
-  window.addEventListener('DOMContentLoaded', () => {
-    const duration = 4 * 1000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 28, spread: 360, ticks: 60, zIndex: 1000 };
-
-    function randomInRange(min, max) {
-      return Math.random() * (max - min) + min;
-    }
-
-    const interval = setInterval(() => {
-      const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
-      const particleCount = 45 * (timeLeft / duration);
-      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-    }, 250);
-  });
-
-  // Copy URL Script
-  function copyVerificationLink() {
-    const copyText = document.getElementById("verify-url-text").textContent;
-    navigator.clipboard.writeText(copyText).then(() => {
-      const toast = document.getElementById("copy-toast");
-      const icon = document.getElementById("copy-icon");
-      
-      icon.className = "fas fa-check text-success";
-      toast.classList.add("show");
-      
-      setTimeout(() => {
-        toast.classList.remove("show");
-        icon.className = "far fa-copy";
-      }, 2500);
-    });
-  }
-</script>
+<script integrity="sha384-HAH79XdRvHr6axVGh4xQWVCp14kcd32bNk4Xu0sHDHtFQ42n6BAM8ykvB47dGz6D" crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="/static/js/pages/public__verify_certificate.js"></script>
 {% endif %}
-</body>
-</html>
+{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/public__verify_certificate.js"></script>{% endblock %}

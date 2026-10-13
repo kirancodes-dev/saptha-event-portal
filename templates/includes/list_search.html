@@ -1,0 +1,12 @@
+{# Search box for a paginated list (UPG-19). Needs `page` (utils_pagination.Page);
+   optional `search_label`. Other filters in the URL are kept as hidden fields. #}
+<form method="get" action="{{ request.path }}" class="d-flex gap-2 flex-wrap align-items-end mb-3" role="search">
+    {% for k, v in page.args.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    {% if page.per_page != 25 %}<input type="hidden" name="per_page" value="{{ page.per_page }}">{% endif %}
+    <div>
+        <label for="list-search-q" class="form-label mb-1">{{ search_label or 'Search by name, email or USN' }}</label>
+        <input type="search" id="list-search-q" name="q" value="{{ page.q }}" class="form-control" autocomplete="off">
+    </div>
+    <button type="submit" class="btn btn-outline-primary">Search</button>
+    {% if page.q %}<a href="{{ request.path }}{% if page.args %}?{{ page.args|urlencode }}{% endif %}" class="btn btn-link">Clear</a>{% endif %}
+</form>

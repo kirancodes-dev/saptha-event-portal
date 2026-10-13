@@ -1,22 +1,19 @@
-<!DOCTYPE html>
-<html lang="{{ current_locale }}" dir="{{ locale_dir }}" class="dark-mode">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="{{ csrf_token() }}">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23h. -#}
+{% block html_attrs %}lang="{{ current_locale }}" dir="{{ locale_dir }}"{% endblock %}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
   <title>SapthaEvent | The Event Platform Built for Universities</title>
   <meta name="description" content="Industrial-grade SaaS event management system for colleges worldwide. Manage waitlists, ticketing, real-time leaderboards, certificates, and more.">
   
   <!-- CSS CDNs -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  {% include "layouts/_bootstrap_css.html" %}
+  {% include "layouts/_fontawesome.html" %}
   
   <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
   <!-- Custom Marketing CSS -->
+  <link href="/static/css/global.css" rel="stylesheet">
   <link href="/static/css/marketing.css" rel="stylesheet">
   
   <style>
@@ -24,38 +21,39 @@
       margin-left: 15px;
     }
   </style>
-</head>
-<body class="mkt-page">
+{% endblock %}
+{% block body_attrs %} class="mkt-page"{% endblock %}
+{% block body %}
 
   <!-- NAVBAR -->
   <nav class="navbar navbar-expand-lg mkt-nav" id="marketingNav">
     <div class="container-xl">
       <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-        <img src="/static/snpsu-logo.png" alt="SapthaEvent" style="height: 40px; width: auto; object-fit: contain;">
-        <span class="fw-bold text-white fs-4" style="font-family: var(--font-heading);">Saptha<span class="text-warning">Event</span></span>
+        <img loading="eager" src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="159" height="40">
+        <span class="visually-hidden">SapthaEvent</span>
       </a>
       <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mktNavbar" aria-controls="mktNavbar" aria-expanded="false" aria-label="Toggle navigation">
         <i class="fas fa-bars"></i>
       </button>
       <div class="collapse navbar-collapse" id="mktNavbar">
         <ul class="navbar-nav ms-auto align-items-center gap-3 py-3 py-lg-0">
-          <li class="nav-item"><a class="nav-link text-white-50" href="/platform">Home</a></li>
-          <li class="nav-item"><a class="nav-link text-white-50" href="/features">Features</a></li>
-          <li class="nav-item"><a class="nav-link text-white-50" href="/pricing">Pricing</a></li>
-          <li class="nav-item"><a class="nav-link text-white-50" href="/developer/docs">API Docs</a></li>
+          <li class="nav-item"><a class="nav-link" href="/platform">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/features">Features</a></li>
+          <li class="nav-item"><a class="nav-link" href="/pricing">Pricing</a></li>
+          <li class="nav-item"><a class="nav-link" href="/developer/docs">API Docs</a></li>
           <li class="nav-item">
-            <a class="nav-link text-white-50" href="/analytics">
+            <a class="nav-link" href="/analytics">
               <i class="fas fa-chart-line me-1 text-warning"></i>Demo Stats
             </a>
           </li>
           
           {% if session.get('user_id') %}
             <li class="nav-item">
-              <a class="btn btn-nav-cta text-white" href="/login">Dashboard</a>
+              <a class="btn btn-nav-cta" href="/login">Dashboard</a>
             </li>
           {% else %}
             <li class="nav-item">
-              <a class="btn btn-nav-cta text-white" href="/login">Login / Sign Up</a>
+              <a class="btn btn-nav-cta" href="/login">Login / Sign Up</a>
             </li>
           {% endif %}
           
@@ -149,22 +147,22 @@
     <div class="container-xl">
       <div class="stats-grid">
         <div class="stat-card">
-          <i class="fas fa-university stat-icon text-white-50"></i>
+          <i class="fas fa-university stat-icon" aria-hidden="true"></i>
           <div class="stat-number">50+</div>
           <div class="stat-label">Colleges</div>
         </div>
         <div class="stat-card">
-          <i class="fas fa-calendar-star stat-icon text-white-50"></i>
+          <i class="fas fa-calendar-check stat-icon" aria-hidden="true"></i>
           <div class="stat-number">10K+</div>
           <div class="stat-label">Events Managed</div>
         </div>
         <div class="stat-card">
-          <i class="fas fa-user-graduate stat-icon text-white-50"></i>
+          <i class="fas fa-user-graduate stat-icon" aria-hidden="true"></i>
           <div class="stat-number">500K+</div>
           <div class="stat-label">Active Students</div>
         </div>
         <div class="stat-card">
-          <i class="fas fa-signal stat-icon text-white-50"></i>
+          <i class="fas fa-signal stat-icon" aria-hidden="true"></i>
           <div class="stat-number">99.9%</div>
           <div class="stat-label">Uptime SLA</div>
         </div>
@@ -236,12 +234,12 @@
       <div class="pricing-grid mt-5">
         <!-- Tier 1 -->
         <div class="pricing-card">
-          <h3 class="fs-4 fw-bold text-white mb-2" style="font-family: var(--font-heading);">Starter</h3>
+          <h3 class="fs-4 fw-bold mb-2">Starter</h3>
           <p class="text-white-50 small mb-4">Perfect for individual clubs</p>
           <div class="mb-4">
-            <span class="fs-1 fw-extrabold text-white">Free</span>
+            <span class="fs-1 fw-extrabold">Free</span>
           </div>
-          <ul class="text-start list-unstyled text-white-50 mb-5 d-flex flex-column gap-3">
+          <ul class="text-start list-unstyled text-muted mb-5 d-flex flex-column gap-3">
             <li><i class="fas fa-check text-warning me-2"></i> 5 events / semester</li>
             <li><i class="fas fa-check text-warning me-2"></i> 200 registrations</li>
             <li><i class="fas fa-check text-warning me-2"></i> Standard QR ticketing</li>
@@ -253,12 +251,12 @@
         <!-- Tier 2 -->
         <div class="pricing-card popular">
           <span class="pricing-popular-badge bg-warning text-dark fw-bold small uppercase">Most Popular</span>
-          <h3 class="fs-4 fw-bold text-white mb-2" style="font-family: var(--font-heading);">SaaS Pro</h3>
+          <h3 class="fs-4 fw-bold mb-2">SaaS Pro</h3>
           <p class="text-white-50 small mb-4">For departments & large festivals</p>
-          <div class="mb-4 text-white">
-            <span class="fs-1 fw-bold">₹4,999</span><span class="small text-white-50">/year</span>
+          <div class="mb-4">
+            <span class="fs-1 fw-bold">₹4,999</span><span class="small text-muted">/year</span>
           </div>
-          <ul class="text-start list-unstyled text-white-50 mb-5 d-flex flex-column gap-3">
+          <ul class="text-start list-unstyled text-muted mb-5 d-flex flex-column gap-3">
             <li><i class="fas fa-check text-warning me-2"></i> <strong>Unlimited</strong> events</li>
             <li><i class="fas fa-check text-warning me-2"></i> Custom university branding</li>
             <li><i class="fas fa-check text-warning me-2"></i> Advanced AI judge pairing</li>
@@ -270,12 +268,12 @@
         
         <!-- Tier 3 -->
         <div class="pricing-card">
-          <h3 class="fs-4 fw-bold text-white mb-2" style="font-family: var(--font-heading);">Enterprise</h3>
+          <h3 class="fs-4 fw-bold mb-2">Enterprise</h3>
           <p class="text-white-50 small mb-4">Complete multi-tenant customization</p>
           <div class="mb-4">
-            <span class="fs-1 fw-extrabold text-white">Custom</span>
+            <span class="fs-1 fw-extrabold">Custom</span>
           </div>
-          <ul class="text-start list-unstyled text-white-50 mb-5 d-flex flex-column gap-3">
+          <ul class="text-start list-unstyled text-muted mb-5 d-flex flex-column gap-3">
             <li><i class="fas fa-check text-warning me-2"></i> Dedicated domain resolving</li>
             <li><i class="fas fa-check text-warning me-2"></i> Full REST API & Webhooks</li>
             <li><i class="fas fa-check text-warning me-2"></i> LDAP / Google / Microsoft SSO</li>
@@ -289,27 +287,27 @@
   </section>
 
   <!-- CTA -->
-  <section class="mkt-section text-center text-white bg-dark position-relative overflow-hidden py-5" style="border-top: 1px solid rgba(255,255,255,0.05);">
+  <section class="mkt-section text-center text-white position-relative overflow-hidden py-5" style="background: var(--brand-navy); border-top: 3px solid var(--brand-gold);">
     <div class="container-xl position-relative z-1 py-4">
-      <h2 class="fs-1 fw-bold mb-3" style="font-family: var(--font-heading);">Take Your Fest to the Next Level</h2>
-      <p class="text-white-50 max-width-600 mx-auto mb-4 fs-5">Join over 50 universities worldwide using SapthaEvent to streamline fests.</p>
+      <h2 class="fs-1 fw-bold mb-3 text-white">Take Your Fest to the Next Level</h2>
+      <p class="mx-auto mb-4 fs-5" style="max-width:600px;color:rgba(255,255,255,.8);">Join over 50 universities worldwide using SapthaEvent to streamline fests.</p>
       <a href="/login" class="btn btn-warning btn-lg rounded-pill px-5 py-3 fw-bold text-dark">Create Your Tenant Account</a>
     </div>
   </section>
 
   <!-- FOOTER -->
-  <footer class="bg-black text-white-50 py-5" style="border-top: 1px solid rgba(255,255,255,0.05);">
+  <footer class="site-ft py-5">
     <div class="container-xl">
       <div class="row gy-4">
         <div class="col-md-4">
           <div class="d-flex align-items-center gap-2 mb-3">
-            <img src="/static/snpsu-logo.png" alt="SapthaEvent Logo" style="height: 32px;">
-            <span class="fw-bold text-white fs-5" style="font-family: var(--font-heading);">SapthaEvent</span>
+            <img loading="lazy" src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo brand-logo--sm" width="111" height="28">
+            <span class="fw-bold text-white fs-5">SapthaEvent</span>
           </div>
           <p class="small text-white-50">Industrial-grade event management software powering university festivals, competitions, and developer hackathons across the world.</p>
         </div>
         <div class="col-md-2 offset-md-1">
-          <h5 class="text-white fw-bold small text-uppercase mb-3" style="font-family: var(--font-heading);">Links</h5>
+          <h5 class="text-white fw-bold small text-uppercase mb-3">Links</h5>
           <ul class="list-unstyled d-flex flex-column gap-2 small">
             <li><a href="/platform" class="text-white-50 text-decoration-none hover-warning">Home</a></li>
             <li><a href="/features" class="text-white-50 text-decoration-none hover-warning">Features</a></li>
@@ -317,14 +315,14 @@
           </ul>
         </div>
         <div class="col-md-2">
-          <h5 class="text-white fw-bold small text-uppercase mb-3" style="font-family: var(--font-heading);">Developer</h5>
+          <h5 class="text-white fw-bold small text-uppercase mb-3">Developer</h5>
           <ul class="list-unstyled d-flex flex-column gap-2 small">
             <li><a href="/developer/docs" class="text-white-50 text-decoration-none hover-warning">API Reference</a></li>
             <li><a href="/platform" class="text-white-50 text-decoration-none hover-warning">Changelog</a></li>
           </ul>
         </div>
         <div class="col-md-3">
-          <h5 class="text-white fw-bold small text-uppercase mb-3" style="font-family: var(--font-heading);">Contact</h5>
+          <h5 class="text-white fw-bold small text-uppercase mb-3">Contact</h5>
           <p class="small mb-1"><i class="fas fa-envelope me-2 text-warning"></i> support@sapthaevent.com</p>
           <p class="small"><i class="fas fa-location-dot me-2 text-warning"></i> Sapthagiri NPS University Campus</p>
         </div>
@@ -344,7 +342,6 @@
   </footer>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% include "layouts/_bootstrap_js.html" %}
   <script src="/static/js/i18n.js"></script>
-</body>
-</html>
+{% endblock %}

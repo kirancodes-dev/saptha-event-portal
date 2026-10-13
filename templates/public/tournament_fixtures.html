@@ -1,0 +1,33 @@
+{% extends "base_classic.html" %}
+{#- Public fixtures and standings (UPG-63): app layout; it had no stylesheet before. -#}
+{% set app_active = 'events' %}
+{% block robots %}index, follow{% endblock %}
+{% block title %}Fixtures &amp; standings — {{ event.title }}{% endblock %}
+{% block breadcrumbs %}
+<ol class="crumbs" aria-label="Breadcrumb">
+  <li><a href="/events">Events</a></li>
+  <li><a href="/event/{{ event.id }}">{{ event.title }}</a></li>
+  <li><span aria-current="page">Fixtures</span></li>
+</ol>
+{% endblock %}
+{% block page_title %}{{ event.title }}{% endblock %}
+{% block page_sub %}<i class="fas fa-calendar me-1" aria-hidden="true"></i> {{ event.date or 'Date to be announced' }}{% if event.venue %} · <i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i> {{ event.venue }}{% endif %}{% endblock %}
+{% block page_actions %}
+  {% if champion %}
+  <span class="se-badge se-badge--gold se-badge--plain fs-6"><i class="fas fa-trophy" aria-hidden="true"></i> Champion: {{ names.get(champion, champion) if names else champion }}</span>
+  {% endif %}
+  <a href="/event/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Event details</a>
+{% endblock %}
+{% block content %}
+<div class="panel">
+  {% if not t or not t.matches %}
+  <div class="empty-state border-0">
+    <i class="fas fa-medal" aria-hidden="true"></i>
+    <h3>Fixtures not yet generated</h3>
+    <p>Brackets and fixtures appear here once the organisers finalise them.</p>
+  </div>
+  {% else %}
+    {% include "includes/tournament.html" %}
+  {% endif %}
+</div>
+{% endblock %}

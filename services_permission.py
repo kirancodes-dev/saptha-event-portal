@@ -302,15 +302,25 @@ def can(user, permission: str, target=None, db=None) -> bool:
         if permission != 'score':
             return False
         if target_event_data:
-            assigned = any(
-                s.get('email') == user_id and s.get('role') == 'Judge'
-                for s in target_event_data.get('staff', [])
+            assigned = (
+                user_id in [str(j).lower() for j in target_event_data.get('judges', [])] or
+                any(
+                    str(s.get('email', '')).lower() == user_id and s.get('role') == 'Judge'
+                    for s in target_event_data.get('staff', [])
+                    if isinstance(s, dict)
+                )
             )
             return assigned
         return True
 
     elif norm_session_role == 'Volunteer':
-        return permission == 'check_in'
+        if permission != 'check_in':
+            return False
+        if target_event_data:
+            # Only at events they're staff on (BLK-18)
+            return (user_id in target_event_data.get('coordinators', []) or
+                    any(s.get('email') == user_id for s in target_event_data.get('staff', [])))
+        return True
 
     return False
 

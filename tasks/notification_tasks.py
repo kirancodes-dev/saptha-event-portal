@@ -74,8 +74,9 @@ def send_reminder_whatsapp_task(self, phone: str, name: str, event_title: str,
 )
 def send_payment_receipt_whatsapp_task(self, phone: str, name: str,
                                         event_title: str, amount: str,
-                                        reg_id: str):
-    """WhatsApp payment receipt after Razorpay success."""
+                                        reg_id: str = '', payment_id: str = ''):
+    """WhatsApp payment receipt after Razorpay success (shows the payment ID,
+    else the registration ID)."""
     try:
         from utils_whatsapp import send_payment_receipt_whatsapp
         send_payment_receipt_whatsapp(
@@ -83,7 +84,7 @@ def send_payment_receipt_whatsapp_task(self, phone: str, name: str,
             name=name,
             event_title=event_title,
             amount=amount,
-            reg_id=reg_id,
+            payment_id=payment_id or reg_id,
         )
         logger.info("WhatsApp payment receipt sent to %s", phone)
     except Exception as exc:

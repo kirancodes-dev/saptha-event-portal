@@ -81,22 +81,163 @@ def _allowed(event_id, event: dict, permission: str) -> bool:
 # HELPERS
 # =========================================================
 
+LAYOUT_TYPES = ('heading', 'paragraph', 'divider')
+
+CLOSED_STATUSES = ('draft', 'pending_approval', 'published', 'registration_closed',
+                   'completed', 'certified', 'cancelled', 'archived')
+
+
+def registration_closed(event: dict) -> bool:
+    """Not open yet, past its deadline, or over: the one check every
+    registration route applies (UPG-34)."""
+    if (event.get('status') or '').lower() in CLOSED_STATUSES:
+        return True
+    deadline = str(event.get('deadline') or event.get('reg_deadline') or '')[:10]
+    return bool(deadline) and datetime.datetime.now().strftime('%Y-%m-%d') > deadline
+
+# The identity every registration needs, with the ids forms already use for it
+IDENTITY_FIELDS = (
+    (('full_name', 'name', 'participant_name'),
+     {'id': 'full_name', 'type': 'text', 'label': 'Full Name', 'placeholder': 'Enter your full name',
+      'required': True, 'options': [], 'help_text': ''}),
+    (('email', 'email_address'),
+     {'id': 'email', 'type': 'email', 'label': 'Email Address', 'placeholder': 'you@example.com',
+      'required': True, 'options': [], 'help_text': ''}),
+    (('phone', 'phone_number', 'mobile', 'contact'),
+     {'id': 'phone', 'type': 'tel', 'label': 'Phone Number', 'placeholder': '10-digit mobile',
+      'required': True, 'options': [], 'help_text': ''}),
+    (('usn', 'roll_number', 'roll_no', 'id_number'),
+     {'id': 'usn', 'type': 'text', 'label': 'USN / Roll Number', 'placeholder': 'e.g. 1SN21CS001',
+      'required': False, 'options': [], 'help_text': ''}),
+)
+
+
+def normalise_fields(fields) -> list:
+    """Every field gets an `id` (template and seeded forms store `field_name`),
+    the identity fields come first unless the form already asks for them, and
+    each id appears once (UPG-01)."""
+    out, seen = [], set()
+    for i, raw in enumerate(fields or []):
+        if not isinstance(raw, dict):
+            continue
+        field = dict(raw)
+        fid = field.get('id') or field.get('field_name')
+        if not fid:
+            if field.get('type') not in LAYOUT_TYPES:
+                continue  # an input nobody can name can't be answered; saving refuses these
+            fid = f'layout_{i}'
+        field['id'] = str(fid)
+        field.setdefault('type', 'text')
+        field.setdefault('label', field['id'].replace('_', ' ').title())
+        field.setdefault('options', [])
+        if field['id'] in seen:
+            continue
+        seen.add(field['id'])
+        out.append(field)
+    missing = [dict(standard) for ids, standard in IDENTITY_FIELDS if not seen.intersection(ids)]
+    return missing + out
+
+
 def _get_form(event_id: str) -> Optional[dict]:
     doc = db.collection('event_forms').document(event_id).get()
     if not doc.exists:
         return None
     data = doc.to_dict()
     if isinstance(data, list):
-        return {'fields': data, 'form_title': 'Registration Form', 'form_desc': ''}
+        data = {'fields': data, 'form_title': 'Registration Form', 'form_desc': ''}
     if isinstance(data, dict):
-        if 'fields' not in data:
-            data['fields'] = []
+        data['fields'] = normalise_fields(data.get('fields') or [])
         return data
     return None
 
 
+# ── Teams (UPG-08) ─────────────────────────────────────────────────────────
+
+def team_limits(event: dict) -> tuple:
+    """(fewest, most) people in a team, the lead included; (1, 1) when the
+    event isn't a team event."""
+    limits = event.get('limits') or {}
+    lo = safe_int(limits.get('team_min') or event.get('min_team_size') or 1) or 1
+    hi = safe_int(limits.get('team_max') or event.get('max_team_size') or 1) or 1
+    if hi <= 1 and not event.get('is_team_event'):
+        return 1, 1
+    return max(lo, 1), max(hi, lo, 1)
+
+
+def team_fields(event: dict, existing_ids=()) -> list:
+    """The team name and one name / email / USN row per possible member,
+    required up to the team's minimum."""
+    lo, hi = team_limits(event)
+    if hi <= 1:
+        return []
+    fields = []
+    if 'team_name' not in existing_ids:
+        fields.append({'id': 'team_name', 'type': 'text', 'label': 'Team Name', 'placeholder': 'e.g. ByteCraft',
+                       'required': True, 'options': [], 'help_text': ''})
+    fields.append({'id': 'team_members', 'type': 'heading', 'options': [],
+                   'label': f'Team members: {lo}–{hi} people including you'})
+    for i in range(1, hi):
+        for key, label, ftype in (('name', 'Name', 'text'), ('email', 'Email', 'email'), ('usn', 'USN', 'text')):
+            fid = f'member_{i}_{key}'
+            if fid not in existing_ids:
+                fields.append({'id': fid, 'type': ftype, 'label': f'Member {i + 1} {label}', 'placeholder': '',
+                               'required': i < lo and key != 'usn', 'options': [], 'help_text': ''})
+    return fields
+
+
+def registration_schema(event_id: str, event: dict) -> dict:
+    """The form a registrant fills: the event's form (or the default one)
+    plus the team fields its limits call for."""
+    schema = _get_form(event_id) or _simple_schema_fallback(is_team=team_limits(event)[1] > 1)
+    schema['fields'] = schema['fields'] + team_fields(event, {f['id'] for f in schema['fields']})
+    return schema
+
+
+def submitted_members(form, lead_email: str, hi: int):
+    """(members, error) from the member_N_* fields a browser sent."""
+    numbers = sorted({int(m.group(1)) for key in form.keys()
+                      for m in [re.fullmatch(r'member_(\d+)_name', key)]
+                      if m and str(form.get(key) or '').strip()})
+    if numbers and numbers[-1] >= hi:
+        return [], f"A team can have at most {hi} people."
+    members, seen = [], {lead_email}
+    for i in numbers:
+        email = str(form.get(f'member_{i}_email') or '').strip().lower()
+        if email and email in seen:
+            return [], f"{email} is listed twice; each team member needs their own email."
+        if email:
+            seen.add(email)
+        members.append({'role': 'Member', 'name': str(form.get(f'member_{i}_name')).strip(), 'email': email,
+                        'usn': str(form.get(f'member_{i}_usn') or '').strip().upper(),
+                        'phone': str(form.get(f'member_{i}_phone') or '').strip()})
+    return members, ''
+
+
+def new_team_code(db_client) -> str:
+    """A 6-character invite code no other registration uses."""
+    import secrets
+    import string
+    alphabet = string.ascii_uppercase + string.digits
+    for _ in range(10):
+        code = ''.join(secrets.choice(alphabet) for _ in range(6))
+        if not list(db_client.collection('registrations').where('team_code', '==', code).limit(1).stream()):
+            return code
+    raise RuntimeError('Could not find a free team code')
+
+
 def _validate_submission(schema: dict, form_data: dict) -> list:
-    errors = []
+    """The error messages, in field order."""
+    return [msg for _, msg in _field_errors(schema, form_data)]
+
+
+def _field_errors(schema: dict, form_data: dict) -> list:
+    """(field id, message) for each problem, so the form can show it beside
+    the field (UPG-26)."""
+    class _Errors(list):
+        """Each check below appends a message; it's recorded with the field being checked."""
+        def append(self, msg):
+            super().append((fid, msg))
+    errors = _Errors()
     for field in schema.get('fields', []):
         fid      = field.get('id', '')
         label    = field.get('label', fid)
@@ -164,7 +305,7 @@ def _validate_submission(schema: dict, form_data: dict) -> list:
             except (ValueError, TypeError):
                 errors.append(f"'{label}' must be a number.")
 
-    return errors
+    return list(errors)
 
 
 def _extract_core(answers: dict) -> dict:
@@ -236,8 +377,39 @@ def builder(event_id):
         'coordinator/form_builder.html',
         event=event,
         existing_form=existing,
-        form_json=json.dumps(existing) if existing else 'null'
+        form_json=json.dumps(existing) if existing else 'null',
+        back_url=_builder_back_url(event_id),
+        team=team_limits(event),
     )
+
+
+def _builder_back_url(event_id: str) -> str:
+    """Where the builder's Back goes: the page on this site that opened it,
+    else the event's page for the user's role (UPG-79). "This site" is
+    a trusted address (utils_links: BASE_URL, TRUSTED_HOSTS, and in development
+    this machine, the local network or an ngrok tunnel), never any other Host a
+    client could forge (BLK-16, UPG-91); only the path is kept."""
+    from urllib.parse import urlparse
+    from utils_email import _configured_base_url
+    from utils_links import is_trusted_host
+    production = str(current_app.config.get('FLASK_ENV') or '').lower() == 'production'
+    for candidate in (request.args.get('next'), request.referrer):
+        if not candidate or '\\' in candidate:
+            continue
+        url = urlparse(candidate)
+        if url.scheme and url.scheme not in ('http', 'https'):
+            continue
+        if url.netloc and not is_trusted_host(url.netloc, _configured_base_url(), production):
+            continue
+        if not url.path.startswith('/') or url.path.startswith('//') or url.path.startswith('/forms/builder/'):
+            continue
+        return url.path + (f'?{url.query}' if url.query else '')
+    role = session.get('role')
+    if role in ('SuperAdmin', 'Super Admin'):
+        return '/admin/events'
+    if role == 'ClubSPOC':
+        return f'/spoc/event/{event_id}/review'
+    return '/coordinator/dashboard'
 
 
 # =========================================================
@@ -261,8 +433,13 @@ def save_form(event_id):
 
         clean_fields = []
         for i, f in enumerate(fields_raw):
+            fid = f.get('id') or f.get('field_name')
+            if not fid and f.get('type') not in LAYOUT_TYPES:
+                # Its answers would have no name to be stored under (UPG-01)
+                return jsonify({'status': 'error', 'message':
+                                f"Field {i + 1} ('{f.get('label') or f.get('type') or 'untitled'}') has no id."}), 400
             clean_fields.append({
-                'id':          f.get('id') or f"field_{i}",
+                'id':          fid or f"layout_{i}",
                 'type':        f.get('type', 'text'),
                 'label':       f.get('label', f'Field {i+1}'),
                 'placeholder': f.get('placeholder', ''),
@@ -311,14 +488,7 @@ def registration_page(event_id):
     event       = event_doc.to_dict()
     event['id'] = event_id
 
-    # Deadline check
-    deadline = event.get('deadline') or event.get('reg_deadline', '')
-    today    = datetime.datetime.now().strftime('%Y-%m-%d')
-    if deadline and today > deadline:
-        return render_template('public/registration_closed.html', event=event)
-
-    status = (event.get('status') or '').lower()
-    if status in ('draft', 'pending_approval', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
+    if registration_closed(event):
         return render_template('public/registration_closed.html', event=event)
 
     # Capacity check
@@ -336,17 +506,36 @@ def registration_page(event_id):
                .limit(1).stream())
         is_registered = any(q)
 
-    # Load schema — always exists after wizard, fallback just in case
-    schema = _get_form(event_id) or _simple_schema_fallback(
-        is_team=event.get('is_team_event', False)
-    )
+    # The event's form, plus team fields from its team limits (UPG-08)
+    schema = registration_schema(event_id, event)
 
+    # A form sent back with errors keeps what was typed, with each message
+    # beside its field (UPG-26)
+    state = session.pop('form_state', None) if 'form_state' in session else None
+    if not state or state.get('event_id') != event_id:
+        state = {}
+
+    # "Back" returns to the page the visitor came from (UPG-92): the home page's
+    # event popup, the catalogue or the event page; kept across a resubmission
+    from utils_links import back_path
+    remembered = session.get('register_back') or {}
+    back_url = back_path('', skip_prefix=f'/forms/register/{event_id}')
+    if back_url:
+        session['register_back'] = {event_id: back_url}
+    else:
+        back_url = remembered.get(event_id) or f'/event/{event_id}'
+
+    import uuid
     return render_template(
         'public/registration_form.html',
+        back_url=back_url,
         event=event,
         schema=schema,
         is_registered=is_registered,
-        is_waitlist=is_waitlist
+        is_waitlist=is_waitlist,
+        values=state.get('values') or {},
+        field_errors=state.get('errors') or {},
+        submission_id=uuid.uuid4().hex,   # one registration per form, however often it's sent
     )
 
 
@@ -356,6 +545,7 @@ def registration_page(event_id):
 @forms_bp.route('/submit/<event_id>', methods=['POST'])
 @limiter.limit("20 per hour")
 def submit_form(event_id):
+    sub_key = ''
     try:
         event_doc = db.collection('events').document(event_id).get()
         if not event_doc.exists:
@@ -363,10 +553,7 @@ def submit_form(event_id):
             return redirect('/')
         event_data = event_doc.to_dict()
 
-        schema = _get_form(event_id) or {
-            'fields': _simple_schema_fallback(
-                event_data.get('is_team_event', False))['fields']
-        }
+        schema = registration_schema(event_id, event_data)
 
         # Collect all answers — values are str for most fields, list[str] for checkbox_group
         answers: dict = {}
@@ -391,11 +578,32 @@ def submit_form(event_id):
                 if email_key in answers:
                     answers[email_key] = session_email
 
-        # Validate
-        errors = _validate_submission(schema, answers)
-        if errors:
-            for err in errors:
+        # Validate: messages go beside their fields, and the form keeps what was typed (UPG-26)
+        field_errors = _field_errors(schema, answers)
+
+        # Student, faculty or external, as the event allows; faculty and
+        # external participants give designation and institution (UPG-12)
+        from services_participants import PLURALS, NEEDS_AFFILIATION, allowed_types
+        allowed = allowed_types(event_data)
+        ptype = (request.form.get('participant_type') or allowed[0]).strip().lower()
+        designation = (request.form.get('designation') or '').strip()[:150]
+        institution = (request.form.get('institution') or '').strip()[:200]
+        answers.update(participant_type=ptype, designation=designation, institution=institution)
+        if ptype not in allowed:
+            field_errors.append(('participant_type', 'This event is for ' +
+                                 ' and '.join(PLURALS[t] for t in allowed) + ' only.'))
+        elif ptype in NEEDS_AFFILIATION:
+            if not designation:
+                field_errors.append(('designation', 'Please give your designation.'))
+            if not institution:
+                field_errors.append(('institution', 'Please give your institution.'))
+        if ptype not in NEEDS_AFFILIATION:
+            designation = institution = ''
+        if field_errors:
+            for _, err in field_errors:
                 flash(err, 'danger')
+            session['form_state'] = {'event_id': event_id, 'values': answers,
+                                     'errors': {fid: msg for fid, msg in field_errors}}
             return redirect(f'/forms/register/{event_id}')
 
         # Extract core fields. BLK-02: registration never logs anyone in.
@@ -410,15 +618,34 @@ def submit_form(event_id):
             flash("Name and email are required.", "warning")
             return redirect(f'/forms/register/{event_id}')
 
-        status = (event_data.get('status') or '').lower()
-        if status in ('draft', 'published', 'registration_closed', 'completed', 'certified', 'cancelled', 'archived'):
+        if registration_closed(event_data):
             flash("Registration is closed for this event.", "warning")
+            return redirect(f'/forms/register/{event_id}')
+
+        # Team size is checked here, whatever the browser sent (UPG-08)
+        team_min, team_max = team_limits(event_data)
+        team_members, team_error = submitted_members(request.form, email, team_max)
+        if team_max > 1 and not team_error and not (team_min <= 1 + len(team_members) <= team_max):
+            team_error = f"A team needs {team_min}–{team_max} people, you included."
+        if team_max > 1 and not team_error and team_name in ('', 'Individual'):
+            team_error = "Please give your team a name."
+        if team_error:
+            flash(team_error, 'danger')
             return redirect(f'/forms/register/{event_id}')
 
         if login_redirect:
             flash("An account already exists for this email. Please log in to register; "
                   "you'll come back to this form.", "info")
             return redirect(login_redirect)
+
+        # Placement drives: only students who meet the company's rules (UPG-57)
+        from services_placement import eligibility, is_placement
+        if is_placement(event_data):
+            prof = db.collection('users').document(email).get()
+            ok, reason = eligibility(event_data, (prof.to_dict() or {}) if prof.exists else None)
+            if not ok:
+                flash(reason, 'danger')
+                return redirect(f'/forms/register/{event_id}')
 
         # Duplicate check
         existing = list(
@@ -431,28 +658,47 @@ def submit_form(event_id):
             flash("🚫 You have already registered for this event.", "warning")
             return redirect('/')
 
+        # DPDP: nobody is registered, and no account is created, without
+        # agreeing to the privacy notice (UPG-22)
+        from services_privacy import consent_given, consent_record, record_consent
+        if not consent_given(request.form):
+            flash("Please tick the box to agree to the privacy notice; we can't register you without it.", 'danger')
+            session['form_state'] = {'event_id': event_id, 'values': answers,
+                                     'errors': {'privacy_consent': "Tick this box to register."}}
+            return redirect(f'/forms/register/{event_id}')
+
+        # One registration per form, however many times it's sent (UPG-26)
+        from services_idempotency import claim_submission, finish_submission, submission_result
+        sub_key = (request.form.get('submission_id') or '').strip()[:64]
+        if sub_key and not claim_submission(sub_key):
+            done = submission_result(sub_key)
+            flash("We already have this form: it was sent twice, and we registered it once.", "info")
+            if done == 'pending_payment':
+                return redirect(f'/payment/checkout/{event_id}')
+            if done and done not in ('waitlist',) and session.get('reg_confirmed'):
+                return redirect('/registration/confirmed')
+            return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
+
         # New email: an unverified account nobody can log in to until the
         # emailed one-time link is used (never a password in email or session)
         is_new_user = not session_email
         if is_new_user:
-            create_unverified_account(db, email, full_name, phone)
+            # A set-password link, never a password (UPG-33); faculty and external
+            # participants keep the participant role and their own type (UPG-12)
+            create_unverified_account(db, email, full_name, phone, participant_type=ptype,
+                                      designation=designation, institution=institution)
             send_set_password_link(db, email, full_name)
             flash("🆕 We've emailed you a link to set your password.", "info")
+        else:
+            # An existing account takes the type the first time it's given (UPG-12)
+            prof = db.collection('users').document(email).get()
+            if prof.exists and not (prof.to_dict() or {}).get('participant_type'):
+                db.collection('users').document(email).update(
+                    {'participant_type': ptype, 'designation': designation, 'institution': institution})
 
-        # Build members list — lead + any member_N_* fields from team forms
+        # Members: the lead, then the team's other members (UPG-08)
         members = [{'role': 'Lead', 'name': full_name,
-                    'email': email, 'usn': usn, 'phone': phone}]
-        for i in range(1, 10):
-            m_name = str(answers.get(f'member_{i}_name') or '').strip()
-            if not m_name:
-                break
-            members.append({
-                'role':  'Member',
-                'name':  m_name,
-                'email': str(answers.get(f'member_{i}_email') or '').strip().lower(),
-                'usn':   str(answers.get(f'member_{i}_usn')   or '').strip().upper(),
-                'phone': str(answers.get(f'member_{i}_phone') or '').strip(),
-            })
+                    'email': email, 'usn': usn, 'phone': phone}] + (team_members if team_max > 1 else [])
 
         # Build registration
         reg_id   = f"REG-{int(time.time() * 1000)}"
@@ -473,10 +719,18 @@ def submit_form(event_id):
             'current_round':   1,
             'form_answers':    answers,
             'form_type':       schema.get('form_type', 'simple'),
+            'privacy_consent': consent_record(),   # time and notice version (UPG-22)
+            'participant_type': ptype,             # UPG-12
+            'designation':     designation,
+            'institution':     institution,
         }
+        record_consent(db, email, reg_data['privacy_consent'])
+        if team_max > 1:
+            reg_data['team_code'] = new_team_code(db)  # others join with it (UPG-08)
 
         # Free vs paid fee calculation
-        fee = safe_int(event_data.get('entry_fee', 0))
+        from services_payments import fee_for
+        fee = fee_for(event_data, ptype)   # the registrant's group fee when set (UPG-73)
 
         # Capacity check — if event is at capacity, add to waitlists instead
         max_cap = safe_int((event_data.get('limits') or {}).get('max_participants', 0)) or safe_int(event_data.get('capacity', 0))
@@ -522,6 +776,7 @@ def submit_form(event_id):
             }
             db.collection('waitlists').document(wl_id).set(wl_entry)
 
+            finish_submission(sub_key, 'waitlist')
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
@@ -533,6 +788,7 @@ def submit_form(event_id):
                 'amount_paid':    0
             })
             session['pending_reg_data'] = reg_data
+            finish_submission(sub_key, 'pending_payment')
             return redirect(f'/payment/checkout/{event_id}')
 
         reg_data.update({
@@ -581,6 +837,14 @@ def submit_form(event_id):
             venue=event_data.get('venue', ''),
             is_new_user=is_new_user,
         )
+        # Each team member the lead listed hears they were added (UPG-48)
+        for m in reg_data.get('members') or []:
+            m_email = str((m or {}).get('email') or '').strip().lower()
+            if m_email and m_email != email:
+                send_registration_confirmed_email(
+                    m_email, m.get('name') or 'Participant', event_data.get('title', ''),
+                    event_date=event_data.get('date', ''), venue=event_data.get('venue', ''),
+                    added_by=full_name, team_name=team_name)
         if phone and WA_ENABLED:
             try:
                 send_ticket_whatsapp(
@@ -605,9 +869,13 @@ def submit_form(event_id):
             'is_new_user': is_new_user,
             'user_email':  email,
         }
+        finish_submission(sub_key, reg_id)
         return redirect('/registration/confirmed')
 
     except Exception as exc:
+        if sub_key:
+            from services_idempotency import release_submission
+            release_submission(sub_key)
         logger.error("Form submission error for event %s: %s", event_id, exc, exc_info=True)
         flash(f"Submission failed: {exc}", "danger")
         return redirect(f'/forms/register/{event_id}')
@@ -638,11 +906,13 @@ def view_responses(event_id):
         d['doc_id'] = doc.id
         submissions.append(d)
 
-    submissions.sort(key=lambda x: x.get('submitted_at', ''), reverse=True)
+    submissions.sort(key=lambda x: str(x.get('submitted_at', '')), reverse=True)
+    from utils_pagination import paginate_items
+    page = paginate_items(submissions, search_fields=('name', 'email', 'reg_id'))
 
     return render_template(
         'coordinator/form_responses.html',
-        event=event, schema=schema, submissions=submissions
+        event=event, schema=schema, submissions=page.items, page=page, total=len(submissions)
     )
 
 
@@ -651,8 +921,8 @@ def view_responses(event_id):
 # =========================================================
 @forms_bp.route('/responses/export/<event_id>')
 @login_required
-@role_required(BUILDER_ROLES)
 def export_responses(event_id):
+    # export_data on the event, else 403 for every role (UPG-03)
     event_doc = db.collection('events').document(event_id).get()
     if not event_doc.exists:
         abort(404)

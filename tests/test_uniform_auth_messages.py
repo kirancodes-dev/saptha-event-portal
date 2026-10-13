@@ -96,6 +96,6 @@ def test_sign_up_and_registration_still_tell_an_existing_email_to_log_in(account
 
     event_id = _spoc_event(flask_app, db)
     visitor = flask_app.test_client()
-    resp = visitor.post(f'/forms/submit/{event_id}', data=_form(who['student']))
+    resp = visitor.post(f'/forms/submit/{event_id}', data={**_form(who['student']), 'privacy_consent': 'yes'})
     assert resp.headers['Location'] == f'/login?next=/forms/register/{event_id}'
     assert any('already exists' in f and 'log in' in f for f in _flashes(visitor))

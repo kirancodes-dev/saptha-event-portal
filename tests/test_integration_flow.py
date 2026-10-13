@@ -46,6 +46,11 @@ def _create_event(client, db, title, date, fee=0, team=True):
     assert resp.status_code == 302
     matches = [d for d in db.collection('events').where('title', '==', title).stream()]
     assert len(matches) == 1
+    # New events are drafts until the SPOC publishes them (UPG-73, tested in
+    # test_event_creation.py). These tests were written for an event that is live
+    # from the start, so the helper puts it in that state: `active`, no history.
+    assert matches[0].to_dict().get('status') == 'draft'
+    db.collection('events').document(matches[0].id).update({'status': 'active'})
     return matches[0].id
 
 
@@ -97,9 +102,11 @@ def test_student_registers_for_free_team_event_and_spoc_checks_in(real_app):
     assert b'name="team_name"' in form.data  # team event renders team fields
 
     email = f"{_unique('stu')}@test.edu"
-    resp = student.post(f'/forms/submit/{event_id}', data={
+    mate = f"{_unique('mate')}@test.edu"  # the event's teams have 2–4 people (UPG-08)
+    resp = student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': email, 'phone': '9876543210',
         'usn': '1SN20CS001', 'team_name': 'Team Rocket',
+        'member_1_name': 'Tea Mate', 'member_1_email': mate,
     })
     assert resp.status_code == 302
 
@@ -113,9 +120,10 @@ def test_student_registers_for_free_team_event_and_spoc_checks_in(real_app):
     assert db.collection('users').document(email).get().to_dict()['role'] == 'Student'
 
     # Duplicate registration is rejected
-    student.post(f'/forms/submit/{event_id}', data={
+    student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': email, 'phone': '9876543210',
         'usn': '1SN20CS001', 'team_name': 'Team Rocket',
+        'member_1_name': 'Tea Mate', 'member_1_email': mate,
     })
     assert len(list(db.collection('registrations').where('event_id', '==', event_id).stream())) == 1
 
@@ -134,7 +142,7 @@ def test_paid_event_sends_student_to_checkout(real_app):
     event_id = _create_event(spoc_client, db, _unique('Paid Hack'), '2030-06-01', fee=250, team=False)
 
     student = flask_app.test_client()
-    resp = student.post(f'/forms/submit/{event_id}', data={
+    resp = student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Pay Er', 'email': f"{_unique('payer')}@test.edu",
         'phone': '9876543210', 'usn': '1SN20CS002',
     })

@@ -168,8 +168,35 @@ def get_engine():
     return _engine
 
 
+ALEMBIC_INI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alembic.ini")
+
+
+def schema_revisions():
+    """(database revision, code's head revision) from Alembic; the first is None
+    for a database that was never migrated or stamped."""
+    from alembic.config import Config
+    from alembic.runtime.migration import MigrationContext
+    from alembic.script import ScriptDirectory
+    head = ScriptDirectory.from_config(Config(ALEMBIC_INI)).get_current_head()
+    with get_engine().connect() as conn:
+        current = MigrationContext.configure(conn).get_current_revision()
+    return current, head
+
+
+def require_schema_at_head():
+    """Production start-up: never create or alter tables, only check that
+    `alembic upgrade head` has run (UPG-16). Raises DatabaseConfigError otherwise."""
+    current, head = schema_revisions()
+    if current != head:
+        raise DatabaseConfigError(
+            f"The database schema is at {current or 'no Alembic revision'}, but this code needs {head}. "
+            "Run `alembic upgrade head` before starting the app (docs/DEPLOY.md). "
+            "A database created by an older start-up is stamped once with `alembic stamp 0001_baseline`.")
+
+
 def init_db():
-    """Create all tables and missing columns if they don't exist. Call once at app startup."""
+    """Development only: create missing tables and nullable columns at start-up.
+    Production databases are built and changed by Alembic migrations (UPG-16)."""
     engine = get_engine()
     if engine is not None:
         try:
@@ -184,17 +211,26 @@ def init_db():
                 Base.metadata.create_all(engine, tables=tables_to_create)
 
             # Reconcile columns added to the models after the table was created.
-            # Only nullable columns can be added to a populated table safely.
+            # Nullable columns are added as they are; a NOT NULL column only when
+            # it has a constant default to fill existing rows with (UPG-61).
             with engine.connect() as conn:
                 for table_name, table in Base.metadata.tables.items():
                     if table_name not in existing_tables:
                         continue
                     existing_cols = {col['name'] for col in inspector.get_columns(table_name)}
                     for col in table.columns:
-                        if col.name in existing_cols or not col.nullable:
+                        if col.name in existing_cols:
                             continue
                         col_type = col.type.compile(engine.dialect)
-                        conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}'))
+                        extra = ''
+                        if not col.nullable:
+                            default = getattr(col.default, 'arg', None)
+                            if default is None or callable(default) or not isinstance(default, (int, float, str, bool)):
+                                continue
+                            literal = (str(int(default)) if isinstance(default, bool) else repr(default)
+                                       if isinstance(default, str) else str(default))
+                            extra = f' NOT NULL DEFAULT {literal}'
+                        conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}{extra}'))
                         conn.commit()
         except Exception as exc:
             import logging

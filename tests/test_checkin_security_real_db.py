@@ -33,10 +33,10 @@ def day(real_app):
     other_event = _create_event(owner, db, _unique('Other Event'), '2030-06-02', fee=0, team=False)
 
     student = _login(flask_app, people['student'], 'Student')
-    student.post(f'/forms/submit/{event_id}', data={
+    student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Gate Walker', 'email': people['student'], 'phone': PHONE, 'usn': '1SN20CS321'})
     other = _login(flask_app, people['other'], 'Student')
-    other.post(f'/forms/submit/{other_event}', data={
+    other.post(f'/forms/submit/{other_event}', data={'privacy_consent': 'yes',
         'full_name': 'Gate Walker Twin', 'email': people['other'], 'phone': PHONE, 'usn': '1SN20CS322'})
 
     db.collection('events').document(event_id).update({

@@ -1,0 +1,31 @@
+{#- One centred status card (UPG-63): check-in results, closed registration,
+    errors, offline, verification results. Children set `status_tone`
+    (success | warning | danger | info | brand) and `status_icon` (a Font
+    Awesome name) and fill `title`, `status` and optionally `extra_css`,
+    `extra_js`. -#}
+{% extends "layouts/standalone.html" %}
+{% set site_footer_fixed = true %}
+{% block head %}
+<meta name="theme-color" content="#00185e">
+<title>{% block title %}SapthaEvent{% endblock %} | SapthaEvent</title>
+{% include "layouts/_bootstrap_css.html" %}
+{% include "layouts/_fontawesome.html" %}
+<link href="/static/css/global.css" rel="stylesheet">
+{% block extra_css %}{% endblock %}
+{% endblock %}
+{% block body_attrs %} class="status-page"{% endblock %}
+{% block body %}
+<main class="status-wrap" id="main-content">
+  <div class="status-card status-card--{{ status_tone or 'brand' }}">
+    <div class="status-card__brand">
+      <a href="/" aria-label="SapthaEvent home"><img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36"></a>
+    </div>
+    <div class="status-card__body">
+      {% if status_icon %}<div class="status-card__icon" aria-hidden="true"><i class="fas {{ status_icon }}"></i></div>{% endif %}
+      {% include 'includes/flash_messages.html' %}
+      {% block status %}{% endblock %}
+    </div>
+  </div>
+</main>
+{% block extra_js %}{% endblock %}
+{% endblock %}

@@ -27,7 +27,7 @@ def two_spocs(real_app, monkeypatch):
         student = f"{_unique('stu' + tag)}@test.edu"
         _user(db, student, 'Student')
         assert _login(flask_app, student, 'Student').post(
-            f'/forms/submit/{event_id}', data=_form(student)).status_code == 302
+            f'/forms/submit/{event_id}', data={**_form(student), 'privacy_consent': 'yes'}).status_code == 302
         reg_id = next(d.id for d in db.collection('registrations').where('event_id', '==', event_id).stream())
         return client, event_id, reg_id
 

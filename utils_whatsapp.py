@@ -114,6 +114,18 @@ def _send(to_phone: str, body: str) -> bool:
 # PUBLIC SEND FUNCTIONS — called from routes
 # ─────────────────────────────────────────────────────────────
 
+def whatsapp_configured() -> bool:
+    """Whether Twilio settings are present, so WhatsApp can be sent at all."""
+    return bool(os.environ.get('TWILIO_ACCOUNT_SID', '').strip()
+                and os.environ.get('TWILIO_AUTH_TOKEN', '').strip())
+
+
+def send_whatsapp_message(phone: str, body: str) -> bool:
+    """A plain WhatsApp message (services_automation's channel, UPG-49).
+    True when Twilio accepted it; never raises."""
+    return _send(phone, body)
+
+
 def send_ticket_whatsapp(phone: str, name: str, event_title: str,
                          reg_id: str, base_url: str = '',
                          event_date: str = '', venue: str = '') -> bool:
@@ -130,6 +142,24 @@ def send_ticket_whatsapp(phone: str, name: str, event_title: str,
         f"📌 *Ticket ID:* `{reg_id}`\n\n"
         f"Show this ID at the venue for check-in.\n"
         f"👉 Dashboard: {base}/participant/dashboard"
+    )
+    return _send(phone, body)
+
+
+def send_event_reminder_whatsapp(phone: str, name: str, event_title: str,
+                                 event_date: str = '', venue: str = '', reg_id: str = '') -> bool:
+    """The day-before reminder (tasks/scheduled_tasks.send_24h_reminders)."""
+    base = _public_base_url()
+    date_line = f"📅 *Date:* {event_date}\n" if event_date else ""
+    venue_line = f"📍 *Venue:* {venue}\n" if venue else ""
+    body = (
+        f"⏰ *Tomorrow: {event_title}*\n\n"
+        f"Hi {name},\n"
+        f"{date_line}"
+        f"{venue_line}"
+        f"📌 *Ticket ID:* `{reg_id}`\n\n"
+        f"Your entry QR is in your email and on your ticket.\n"
+        f"👉 Ticket: {base}/ticket/{reg_id}"
     )
     return _send(phone, body)
 

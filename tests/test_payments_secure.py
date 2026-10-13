@@ -84,7 +84,7 @@ def _start(flask_app, event_id, email=None, client=None):
     """Submit the registration form; returns the client with a pending registration."""
     client = client or flask_app.test_client()
     email = email or f"{_unique('payer')}@test.edu"
-    resp = client.post(f'/forms/submit/{event_id}', data={
+    resp = client.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Pay Er', 'email': email, 'phone': '9876543210', 'usn': '1SN20CS042'})
     assert resp.headers['Location'] == f'/payment/checkout/{event_id}', resp.headers['Location']
     return client
@@ -258,7 +258,7 @@ def test_waitlist_promotion_on_a_paid_event_holds_the_seat_until_paid(real_app, 
 
     second_email = f"{_unique('second')}@test.edu"
     second = _login_student(flask_app, db, second_email)
-    wl = second.post(f'/forms/submit/{event_id}', data={
+    wl = second.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Second', 'email': second_email, 'phone': '9876543210', 'usn': '1SN20CS043'})
     assert wl.headers['Location'] == '/participant/dashboard'
 

@@ -57,6 +57,20 @@ PARTICIPANT_STATE_TRANSITIONS: Dict[str, List[str]] = {
 }
 
 
+# Statuses in which an event can run on its day (scanners, walk-ins, self
+# check-in, reminders): every published state up to `in_progress`, plus the old
+# single `active` status. Not draft, pending approval, cancelled or completed.
+EVENT_DAY_STATUSES = ('published', 'registration_open', 'registration_closed', 'in_progress', 'active')
+
+# Statuses in which an event is still taking registrations.
+REGISTRATION_OPEN_STATUSES = ('registration_open', 'active')
+
+
+def is_event_day_status(event: Optional[Dict[str, Any]]) -> bool:
+    """True when the event's status lets it run on its day."""
+    return str((event or {}).get('status') or '').lower() in EVENT_DAY_STATUSES
+
+
 class WorkflowError(Exception):
     """Raised when an illegal or guarded workflow transition is attempted."""
     pass
@@ -109,6 +123,11 @@ class WorkflowEngine:
                     # Strictly allow next stage (prevents state skipping)
                     if idx + 1 < len(stages_lower):
                         allowed.append(stages_lower[idx + 1])
+                    # Approval is an organisation rule, not a stage: a draft in a unit
+                    # can always be sent for approval, whatever its stages (UPG-73).
+                    # From pending_approval the global map applies.
+                    if c_state == "draft" and "pending_approval" not in allowed:
+                        allowed.append("pending_approval")
                     # Revert to draft from published
                     if c_state == "published" and "draft" in stages_lower and "draft" not in allowed:
                         allowed.append("draft")
@@ -265,6 +284,24 @@ class WorkflowEngine:
         doc_ref.set(updates, merge=True)
         event_data.update(updates)
 
+        # Confirm tentative room bookings on approval or publish (UPG-09)
+        if t_state in ("approved", "published"):
+            bookings = list(db.collection("venue_bookings").where("event_id", "==", str(event_id)).stream())
+            for b in bookings:
+                bd = b.to_dict()
+                if (bd.get("status") or "").strip().lower() == "tentative":
+                    db.collection("venue_bookings").document(b.id).set({
+                        "status": "confirmed",
+                        "updated_at": now_str,
+                    }, merge=True)
+        elif t_state == "cancelled":
+            bookings = list(db.collection("venue_bookings").where("event_id", "==", str(event_id)).stream())
+            for b in bookings:
+                db.collection("venue_bookings").document(b.id).set({
+                    "status": "cancelled",
+                    "updated_at": now_str,
+                }, merge=True)
+
         # Record immutable audit log
         cls._record_audit_entry(
             db,
@@ -293,14 +330,16 @@ class WorkflowEngine:
             event_title = event_data.get("title") or event_data.get("name") or "Event"
             date_str = event_data.get("date") or event_data.get("start_datetime") or ""
 
+            from services_recipients import registration_people
             for r in regs:
                 rd = r.to_dict()
                 if (rd.get("status") or "").strip().lower() == "cancelled":
                     continue
-                email = (rd.get("lead_email") or rd.get("student_email") or "").strip().lower()
-                if email and email not in notified_emails:
+                # The lead and every team member, once each (UPG-48)
+                for email, recipient_name, _phone in registration_people(rd):
+                    if email in notified_emails:
+                        continue
                     notified_emails.add(email)
-                    recipient_name = rd.get("lead_name") or rd.get("name") or "Participant"
                     context = {
                         "recipient_email": email,
                         "recipient_name": recipient_name,

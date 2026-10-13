@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Book">
+<title>Book</title>
+<circle cx="64" cy="64" r="64" fill="#0f8fb0"/>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#c69d67" stroke-opacity=".55" stroke-width="2"/>
+<g fill="#ffffff">
+<path d="M28 40 C42 36 54 38 62 44 V92 C54 86 42 84 28 88 Z"/>
+<path d="M100 40 C86 36 74 38 66 44 V92 C74 86 86 84 100 88 Z" fill-opacity=".85"/>
+</g>
+</svg>

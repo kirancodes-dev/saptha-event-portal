@@ -1,20 +1,20 @@
-<!DOCTYPE html>
-<html lang="en" class="dark-mode">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="{{ csrf_token() }}">
+{% extends "layouts/standalone.html" %}
+{#- On the shared document since UPG-23g. -#}
+{% block html_attrs %}lang="en"{% endblock %}
+{% block csrf_meta %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
+{% block head %}
   <title>API Documentation | SapthaEvent Developer Portal</title>
   
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  {% include "layouts/_bootstrap_css.html" %}
+  {% include "layouts/_fontawesome.html" %}
+  <link href="/static/css/global.css" rel="stylesheet">
   <link href="/static/css/developer.css" rel="stylesheet">
   <style>
     .sticky-top-bar {
       position: sticky;
       top: 0;
       background: var(--dev-sidebar);
-      border-bottom: 1px solid var(--dev-border);
+      border-bottom: 3px solid #c69d67;
       padding: 16px 24px;
       z-index: 1000;
       display: flex;
@@ -22,16 +22,17 @@
       align-items: center;
     }
   </style>
-</head>
-<body class="dev-portal">
+{% endblock %}
+{% block body_attrs %} class="dev-portal"{% endblock %}
+{% block body %}
 
   <div class="dev-container">
     
     <!-- LEFT SIDEBAR -->
     <aside class="dev-sidebar">
       <div class="dev-sidebar-title">
-        <img src="/static/snpsu-logo.png" alt="SapthaEvent" style="height: 30px;">
-        <span>SapthaEvent API</span>
+        <img loading="eager" src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo brand-logo--sm" width="111" height="28">
+        <span>API</span>
       </div>
       
       <ul class="dev-sidebar-menu">
@@ -78,14 +79,14 @@
       <div class="sticky-top-bar">
         <div class="d-flex align-items-center gap-3">
           <a href="/" class="text-white-50 text-decoration-none small"><i class="fas fa-arrow-left"></i> Main Site</a>
-          <span class="text-secondary">|</span>
+          <span class="text-white-50">|</span>
           <span class="text-white small fw-bold">v1.0 API Sandbox</span>
         </div>
         
         <!-- Auth token key input -->
         <div class="d-flex align-items-center gap-2">
           <label for="api-global-token" class="small text-white-50 text-nowrap">Authorization Token:</label>
-          <input type="text" id="api-global-token" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Bearer JWT..." style="width: 250px;">
+          <input type="text" id="api-global-token" class="form-control form-control-sm" placeholder="Bearer JWT..." style="width: 250px;">
         </div>
       </div>
 
@@ -94,19 +95,19 @@
         
         <!-- INTRODUCTION -->
         <section id="introduction" class="endpoint-section">
-          <h2 class="text-white fw-bold mb-3">Developer API Reference</h2>
-          <p class="text-white-50">
+          <h2 class="fw-bold mb-3">Developer API Reference</h2>
+          <p class="text-muted">
             Welcome to the SapthaEvent REST API Sandbox. Here you can explore documentation for all platform routes, interact with the actual endpoints, and generate client boilerplate codes automatically.
           </p>
-          <div class="alert alert-info bg-opacity-10 text-info border-info border-opacity-25 mt-3">
+          <div class="alert alert-info mt-3">
             <i class="fas fa-info-circle me-2"></i> All requests must include the CSRF header token for browser authentication when using session cookies. For stateless API clients, supply the Bearer JWT token.
           </div>
         </section>
 
         <!-- AUTHENTICATION -->
         <section id="authentication" class="endpoint-section">
-          <h3 class="text-white fw-bold mb-3">Authentication Protocol</h3>
-          <p class="text-white-50">
+          <h3 class="fw-bold mb-3">Authentication Protocol</h3>
+          <p class="text-muted">
             Authenticating with the API requires issuing a POST login command. The returned credentials contains an <code>access_token</code> which must be included inside the <code>Authorization: Bearer &lt;Token&gt;</code> header on all secure routes.
           </p>
         </section>
@@ -119,20 +120,20 @@
                 <span class="method-badge post">POST</span>
                 <span class="endpoint-url">/api/v1/auth/login</span>
               </div>
-              <h4 class="text-white fw-bold">User Login</h4>
-              <p class="text-white-50 small">Generates a JWT access and refresh token using user email and password.</p>
+              <h4 class="fw-bold">User Login</h4>
+              <p class="text-muted small">Generates a JWT access and refresh token using user email and password.</p>
               
               <!-- Interactive Try Box -->
               <div class="try-panel">
-                <h5 class="text-white small fw-bold mb-3">Try It Out</h5>
+                <h5 class="text-strong small fw-bold mb-3">Try It Out</h5>
                 <form class="try-api-form" data-endpoint-id="login" data-method="POST" data-path="/api/v1/auth/login">
                   <div class="mb-3">
-                    <label class="form-label small text-white-50">Email Address</label>
-                    <input type="email" name="email" class="form-control form-control-sm bg-dark text-white border-secondary" required value="admin@sapthaevent.com">
+                    <label class="form-label small text-muted">Email Address</label>
+                    <input aria-label="Email Address" type="email" name="email" class="form-control form-control-sm" required value="admin@sapthaevent.com">
                   </div>
                   <div class="mb-3">
-                    <label class="form-label small text-white-50">Password</label>
-                    <input type="password" name="password" class="form-control form-control-sm bg-dark text-white border-secondary" required value="Admin@123">
+                    <label class="form-label small text-muted">Password</label>
+                    <input aria-label="Password" type="password" name="password" class="form-control form-control-sm" required value="Admin@123">
                   </div>
                   <button type="submit" class="btn-execute">Send Request</button>
                 </form>
@@ -140,7 +141,7 @@
             </div>
             
             <div class="col-lg-6">
-              <h5 class="text-white small fw-bold">Client Boilerplate</h5>
+              <h5 class="text-strong small fw-bold">Client Boilerplate</h5>
               <div class="code-block-wrap">
                 <div class="code-header">
                   <div class="code-lang-tabs">
@@ -177,8 +178,8 @@ print(res.json())</code></pre>
               </div>
 
               <!-- Output Box -->
-              <h5 class="text-white small fw-bold mt-4">API Response</h5>
-              <pre class="code-pre bg-dark rounded border border-secondary border-opacity-25" id="response-login" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
+              <h5 class="text-strong small fw-bold mt-4">API Response</h5>
+              <pre class="code-pre rounded" id="response-login" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
             </div>
           </div>
         </section>
@@ -191,20 +192,20 @@ print(res.json())</code></pre>
                 <span class="method-badge get">GET</span>
                 <span class="endpoint-url">/api/v1/users/me</span>
               </div>
-              <h4 class="text-white fw-bold">Get Profile Details</h4>
-              <p class="text-white-50 small">Returns payload validation parameters of the currently authenticated user.</p>
+              <h4 class="fw-bold">Get Profile Details</h4>
+              <p class="text-muted small">Returns payload validation parameters of the currently authenticated user.</p>
               
               <div class="try-panel">
-                <h5 class="text-white small fw-bold mb-3">Try It Out</h5>
+                <h5 class="text-strong small fw-bold mb-3">Try It Out</h5>
                 <form class="try-api-form" data-endpoint-id="me" data-method="GET" data-path="/api/v1/users/me">
-                  <p class="text-white-50 small">Secure route. Insert Bearer Token inside the header box above before sending.</p>
+                  <p class="text-muted small">Secure route. Insert Bearer Token inside the header box above before sending.</p>
                   <button type="submit" class="btn-execute">Send Request</button>
                 </form>
               </div>
             </div>
             
             <div class="col-lg-6">
-              <h5 class="text-white small fw-bold">Client Boilerplate</h5>
+              <h5 class="text-strong small fw-bold">Client Boilerplate</h5>
               <div class="code-block-wrap">
                 <div class="code-header">
                   <div class="code-lang-tabs">
@@ -231,8 +232,8 @@ res = requests.get(
 print(res.json())</code></pre>
               </div>
 
-              <h5 class="text-white small fw-bold mt-4">API Response</h5>
-              <pre class="code-pre bg-dark rounded border border-secondary border-opacity-25" id="response-me" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
+              <h5 class="text-strong small fw-bold mt-4">API Response</h5>
+              <pre class="code-pre rounded" id="response-me" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
             </div>
           </div>
         </section>
@@ -245,20 +246,20 @@ print(res.json())</code></pre>
                 <span class="method-badge get">GET</span>
                 <span class="endpoint-url">/api/v1/events</span>
               </div>
-              <h4 class="text-white fw-bold">List All Events</h4>
-              <p class="text-white-50 small">Returns list of registered active university events with pagination support.</p>
+              <h4 class="fw-bold">List All Events</h4>
+              <p class="text-muted small">Returns list of registered active university events with pagination support.</p>
               
               <div class="try-panel">
-                <h5 class="text-white small fw-bold mb-3">Try It Out</h5>
+                <h5 class="text-strong small fw-bold mb-3">Try It Out</h5>
                 <form class="try-api-form" data-endpoint-id="events-list" data-method="GET" data-path="/api/v1/events">
                   <div class="row g-2 mb-3">
                     <div class="col-6">
-                      <label class="form-label small text-white-50">Limit</label>
-                      <input type="number" name="limit" data-param-type="query" class="form-control form-control-sm bg-dark text-white border-secondary" value="10">
+                      <label class="form-label small text-muted">Limit</label>
+                      <input aria-label="Limit" type="number" name="limit" data-param-type="query" class="form-control form-control-sm" value="10">
                     </div>
                     <div class="col-6">
-                      <label class="form-label small text-white-50">Category</label>
-                      <select name="category" data-param-type="query" class="form-select form-select-sm bg-dark text-white border-secondary">
+                      <label class="form-label small text-muted">Category</label>
+                      <select aria-label="Category" name="category" data-param-type="query" class="form-select form-select-sm">
                         <option value="">All</option>
                         <option value="Technical">Technical</option>
                         <option value="Cultural">Cultural</option>
@@ -272,7 +273,7 @@ print(res.json())</code></pre>
             </div>
             
             <div class="col-lg-6">
-              <h5 class="text-white small fw-bold">Client Boilerplate</h5>
+              <h5 class="text-strong small fw-bold">Client Boilerplate</h5>
               <div class="code-block-wrap">
                 <div class="code-header">
                   <div class="code-lang-tabs">
@@ -294,8 +295,8 @@ res = requests.get("http://127.0.0.1:5001/api/v1/events", params={"limit": 10})
 print(res.json())</code></pre>
               </div>
 
-              <h5 class="text-white small fw-bold mt-4">API Response</h5>
-              <pre class="code-pre bg-dark rounded border border-secondary border-opacity-25" id="response-events-list" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
+              <h5 class="text-strong small fw-bold mt-4">API Response</h5>
+              <pre class="code-pre rounded" id="response-events-list" style="max-height: 250px; overflow-y: auto;">Execute request to view server response.</pre>
             </div>
           </div>
         </section>
@@ -305,7 +306,6 @@ print(res.json())</code></pre>
 
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% include "layouts/_bootstrap_js.html" %}
   <script src="/static/js/api_explorer.js"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,84 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helpdesk POS | Sapthagiri NPS</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/global.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <style>
-        :root { --snpsu-blue: #1a2557; --snpsu-orange: #c9a45e; --bg-light: #f4f7f6; }
-        body { background-color: var(--bg-light); font-family: 'Inter', sans-serif; color: #1e293b; }
-        .pos-card { background: #ffffff; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.05); padding: 40px; border-top: 6px solid var(--snpsu-orange); }
-        .form-label { font-size: 0.85rem; font-weight: 700; color: var(--snpsu-blue); text-transform: uppercase; margin-bottom: 6px; }
-        .form-control, .form-select { background-color: #f8f9fa; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-weight: 500;}
-        .form-control:focus, .form-select:focus { background-color: #ffffff; border-color: var(--snpsu-orange); box-shadow: 0 0 0 3px rgba(201, 164, 94, 0.1); }
-        
-        .payment-radio { display: none; }
-        .payment-label { border: 2px solid #cbd5e1; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: 0.2s; font-weight: bold; color: #64748b;}
-        .payment-radio:checked + .payment-label { border-color: var(--snpsu-orange); background-color: rgba(201, 164, 94, 0.05); color: var(--snpsu-orange); }
-        
-        .btn-checkout { background-color: var(--snpsu-orange); color: white; font-weight: bold; border-radius: 8px; transition: 0.3s; }
-        .btn-checkout:hover { background-color: #d95e1a; color: white; transform: translateY(-2px); }
-    </style>
-</head>
-<body>
+{% extends "base_classic.html" %}
+{#- On the app layout and portal design system (UPG-63). -#}
+{% set app_active = 'scanner' %}
+{% block title %}Walk-in helpdesk | SapthaEvent{% endblock %}
+{% block page_title %}Walk-in helpdesk{% endblock %}
+{% block page_sub %}Register a walk-in, record the payment and email the ticket.{% endblock %}
+{% block page_actions %}<a href="/coordinator/scanner" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Exit helpdesk</a>{% endblock %}
+{% block extra_css %}
+<style>
+/* Walk-in helpdesk (UPG-63) */
+.pos-card { max-width: 720px; border-top: 3px solid var(--brand-gold); }
+.pos-step { font-family: var(--font-heading); font-weight: 700; color: var(--text-strong); width: 100%; display: flex; align-items: center; gap: 10px; font-size: 1rem; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.pos-step__num { width: 26px; height: 26px; border-radius: 50%; background: var(--brand-navy); color: #fff; font-size: var(--fs-sm); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.payment-radio { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.payment-label { display: block; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 16px; text-align: center; cursor: pointer; font-weight: 600; color: var(--text-muted); background: var(--surface-card); }
+.payment-label i { color: var(--text-subtle); }
+.payment-radio:checked + .payment-label { border-color: var(--brand-navy); box-shadow: inset 0 0 0 1px var(--brand-navy); background: var(--brand-navy-50); color: var(--brand-ink); }
+.payment-radio:checked + .payment-label i { color: var(--brand-gold-700); }
+.payment-radio:focus-visible + .payment-label { box-shadow: var(--focus-ring); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="panel pos-card mx-auto">
+  <form action="/coordinator/process_walkin" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <div class="container py-5 d-flex justify-content-center">
-        <div class="w-100" style="max-width: 700px;">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <a href="/coordinator/scanner" class="btn btn-outline-secondary fw-bold"><i class="fas fa-arrow-left me-2"></i> Exit Helpdesk</a>
-                <h4 class="fw-bold m-0" style="color: var(--snpsu-blue);"><i class="fas fa-desktop me-2 text-primary"></i> POS Terminal</h4>
-            </div>
-
-            <div class="pos-card">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} fw-bold"><i class="fas fa-info-circle me-2"></i>{{ message }}</div>{% endfor %}{% endif %}
-                {% endwith %}
-
-                <form action="/coordinator/process_walkin" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    
-                    <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">1. Select Event</h5>
-                    <div class="mb-4">
-                        <select name="event_id" class="form-select form-select-lg fw-bold" required>
-                            <option value="" disabled selected>-- Choose Event --</option>
-                            {% for event in events %}
-                                <option value="{{ event.id }}">{{ event.title }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">2. Student Details</h5>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6"><label class="form-label">Full Name</label><input type="text" name="name" class="form-control" placeholder="Enter Name" required></div>
-                        <div class="col-md-6"><label class="form-label">College USN / ID</label><input type="text" name="usn" class="form-control" placeholder="Ex: 1XY23CS001" required></div>
-                        <div class="col-md-6"><label class="form-label">Email Address (For Ticket)</label><input type="email" name="email" class="form-control" placeholder="student@college.edu" required></div>
-                        <div class="col-md-6"><label class="form-label">Phone Number</label><input type="tel" name="phone" class="form-control" placeholder="10-digit number" required></div>
-                    </div>
-
-                    <h5 class="fw-bold mb-4 border-bottom pb-2" style="color: var(--snpsu-blue);">3. Payment Collection</h5>
-                    <div class="row g-3 mb-5">
-                        <div class="col-6">
-                            <input type="radio" name="payment_mode" id="pay_cash" value="Cash" class="payment-radio" required>
-                            <label for="pay_cash" class="payment-label w-100"><i class="fas fa-money-bill-wave fa-2x mb-2 d-block"></i> Cash Received</label>
-                        </div>
-                        <div class="col-6">
-                            <input type="radio" name="payment_mode" id="pay_upi" value="UPI" class="payment-radio" required>
-                            <label for="pay_upi" class="payment-label w-100"><i class="fas fa-qrcode fa-2x mb-2 d-block"></i> UPI Verified</label>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-checkout w-100 py-3 fs-5 shadow-sm">Confirm & Generate Ticket <i class="fas fa-check-circle ms-2"></i></button>
-                </form>
-            </div>
-        </div>
+    <h2 class="pos-step"><span class="pos-step__num">1</span> Select event</h2>
+    <div class="mb-4">
+      <label class="form-label visually-hidden" for="pos-event">Event</label>
+      <select id="pos-event" name="event_id" class="form-select form-select-lg" required>
+        <option value="" disabled selected>Choose an event</option>
+        {% for event in events %}
+          <option value="{{ event.id }}">{{ event.title }}</option>
+        {% endfor %}
+      </select>
     </div>
 
-</body>
-</html>
+    <h2 class="pos-step"><span class="pos-step__num">2</span> Student details</h2>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6"><label class="form-label" for="pos-name">Full name</label><input id="pos-name" type="text" name="name" class="form-control" autocomplete="off" required></div>
+      <div class="col-md-6"><label class="form-label" for="pos-usn">College USN / ID</label><input id="pos-usn" type="text" name="usn" class="form-control" placeholder="e.g. 1XY23CS001" autocomplete="off" required></div>
+      <div class="col-md-6"><label class="form-label" for="pos-email">Email address (for the ticket)</label><input id="pos-email" type="email" name="email" class="form-control" autocomplete="off" required></div>
+      <div class="col-md-6"><label class="form-label" for="pos-phone">Phone number</label><input id="pos-phone" type="tel" name="phone" class="form-control" placeholder="10-digit number" autocomplete="off" required></div>
+    </div>
+
+    <fieldset class="mb-4">
+      <legend class="pos-step"><span class="pos-step__num">3</span> Payment collected</legend>
+      <div class="row g-3">
+        <div class="col-6">
+          <input type="radio" name="payment_mode" id="pay_cash" value="Cash" class="payment-radio" required>
+          <label for="pay_cash" class="payment-label"><i class="fas fa-money-bill-wave fa-2x mb-2 d-block" aria-hidden="true"></i> Cash received</label>
+        </div>
+        <div class="col-6">
+          <input type="radio" name="payment_mode" id="pay_upi" value="UPI" class="payment-radio" required>
+          <label for="pay_upi" class="payment-label"><i class="fas fa-qrcode fa-2x mb-2 d-block" aria-hidden="true"></i> UPI verified</label>
+        </div>
+      </div>
+    </fieldset>
+
+    <button type="submit" class="btn btn-gold btn-lg w-100">Confirm &amp; generate ticket <i class="fas fa-check-circle ms-1" aria-hidden="true"></i></button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base_classic.html" %}
+{#- Review a new or draft event before it goes live (UPG-73); a fest also lists its
+    events and adds more (UPG-74). Publishing goes through WorkflowEngine. -#}
+{% set app_active = 'dashboard' %}
+{%- set status = (ev.status or 'draft')|lower -%}
+{%- set status_labels = {'draft': ('Draft', 'neutral'), 'pending_approval': ('Waiting for approval', 'warning'),
+    'published': ('Published', 'info'), 'registration_open': ('Registration open', 'success'),
+    'registration_closed': ('Registration closed', 'neutral'), 'in_progress': ('Happening now', 'success'),
+    'active': ('Live', 'success'), 'completed': ('Completed', 'neutral'), 'cancelled': ('Cancelled', 'danger')} -%}
+{%- set mode_labels = {'offline': 'In person', 'online': 'Online', 'hybrid': 'In person and online'} -%}
+{% block title %}Review: {{ ev.title }}{% endblock %}
+{% block page_title %}{{ ev.title }}{% endblock %}
+{% block page_sub %}<span class="se-badge se-badge--{{ status_labels.get(status, (status, 'neutral'))[1] }}">{{ status_labels.get(status, (status|replace('_', ' ')|capitalize, 'neutral'))[0] }}</span> <span class="ms-1">{{ spec.name }}{% if parent %} · part of <a href="/spoc/event/{{ parent.id }}/review">{{ parent.title }}</a>{% endif %}</span>{% endblock %}
+{% block page_actions %}
+<a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>
+<a href="/spoc/event/{{ ev.id }}/setup" class="btn btn-outline-primary"><i class="fas fa-pen" aria-hidden="true"></i> Edit</a>
+{% if status in ('draft', 'published') %}
+<form method="POST" action="/spoc/event/{{ ev.id }}/publish" class="d-inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit" class="btn btn-gold"><i class="fas fa-rocket" aria-hidden="true"></i>
+    {% if status == 'published' and not ev.is_fest %}Open registration{% elif ev.org_unit_id and ev.org_unit_id|lower not in ('central', 'none') %}Publish or send for approval{% else %}Publish{% endif %}</button>
+</form>
+{% elif status not in ('pending_approval', 'cancelled') %}
+<a href="/event/{{ ev.id }}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square" aria-hidden="true"></i> Public page</a>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Event review (UPG-73) */
+.rv-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 991.98px) { .rv-grid { grid-template-columns: 1fr; } }
+.rv-banner { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 14px; }
+.rv-facts { display: grid; grid-template-columns: 170px 1fr; gap: 8px 16px; margin: 0 0 16px; font-size: var(--fs-sm); }
+.rv-facts dt { color: var(--text-muted); font-weight: 600; }
+.rv-facts dd { margin: 0; color: var(--text-strong); }
+@media (max-width: 575.98px) { .rv-facts { grid-template-columns: 1fr; } .rv-facts dd { margin-bottom: 6px; } }
+.rv-text { white-space: pre-wrap; font-size: var(--fs-sm); color: var(--text); }
+.rv-check { list-style: none; padding: 0; margin: 0; }
+.rv-check li { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--divider); font-size: var(--fs-sm); }
+.rv-check li:last-child { border-bottom: 0; }
+.rv-check i { margin-top: 3px; }
+.rv-check .warning i { color: var(--warning); }
+.rv-check .info i { color: var(--info); }
+.rv-h { font-size: 1rem; margin: 18px 0 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if status == 'draft' %}
+<div class="callout callout--brand mb-3"><i class="fas fa-eye-slash me-1" aria-hidden="true"></i> <strong>Only you can see this draft.</strong> Nobody can find it or register until you publish it.</div>
+{% elif status == 'pending_approval' %}
+<div class="callout callout--warning mb-3"><i class="fas fa-hourglass-half me-1" aria-hidden="true"></i> <strong>Waiting for approval.</strong> It goes live once your unit approves it.</div>
+{% elif status == 'published' and not ev.is_fest %}
+<div class="callout callout--info mb-3"><i class="fas fa-circle-info me-1" aria-hidden="true"></i> <strong>Published, registration not open yet.</strong> Open registration when you're ready.</div>
+{% endif %}
+
+<div class="rv-grid">
+  <div>
+    <section class="panel">
+      <h2 class="h5 mb-3">What participants will see</h2>
+      {% if ev.banner_url %}<img class="rv-banner" src="{{ ev.banner_url }}" alt="">{% endif %}
+      <dl class="rv-facts">
+        <dt>When</dt><dd>{{ ev.date }}{% if ev.time %} {{ ev.time }}{% endif %}{% if ev.end_date and (ev.end_date != ev.date or ev.end_time) %} to {{ ev.end_date }}{% if ev.end_time %} {{ ev.end_time }}{% endif %}{% endif %}</dd>
+        <dt>How</dt><dd>{{ mode_labels.get(ev.event_mode or 'offline', ev.event_mode) }}</dd>
+        {% if (ev.event_mode or 'offline') != 'online' %}<dt>Where</dt><dd>{{ ev.venue or ev.room_name or '—' }}{% if ev.map_link %} · <a href="{{ ev.map_link }}" target="_blank" rel="noopener">Map</a>{% endif %}</dd>{% endif %}
+        {% if ev.online_link %}<dt>Meeting link</dt><dd><a href="{{ ev.online_link }}" target="_blank" rel="noopener">{{ ev.online_link }}</a> <span class="text-muted">(registered participants only)</span></dd>{% endif %}
+        <dt>Category</dt><dd>{{ ev.category }}</dd>
+        {% if not ev.is_fest %}
+        <dt>Registration</dt><dd>{% if ev.reg_opens %}From {{ ev.reg_opens }} {% endif %}until {{ ev.reg_deadline or '—' }}</dd>
+        <dt>Who can register</dt><dd>{{ (ev.allowed_participants or ['student'])|map('capitalize')|join(', ') }}{% if (ev.limits or {}).allowed_years %} · years {{ ev.limits.allowed_years|join(', ') }}{% endif %}</dd>
+        <dt>Seats</dt><dd>{{ ev.capacity if ev.capacity else 'No limit' }}</dd>
+        <dt>Taking part as</dt><dd>{% if ev.is_team_event %}{{ 'Teams' if ev.participation_type == 'Team' else 'Individuals or teams' }} of {{ (ev.limits or {}).team_min }}–{{ (ev.limits or {}).team_max }}{% if (ev.limits or {}).max_teams %} · up to {{ ev.limits.max_teams }} teams{% endif %}{% else %}Individuals{% endif %}</dd>
+        {% set fees = ev.fees or {} %}
+        <dt>Fee</dt><dd>{% if fees.regular %}₹{{ fees.regular|int }}{% else %}Free{% endif %}{% for g in ('student', 'faculty', 'external') if fees[g] is defined %} · {{ g|capitalize }}: {{ '₹' ~ fees[g]|int if fees[g] else 'free' }}{% endfor %}</dd>
+        {% endif %}
+        {% for f in spec.details if (ev.details or {}).get(f.name) %}
+        <dt>{{ f.label }}</dt><dd class="rv-text">{{ ev.details[f.name] }}</dd>
+        {% endfor %}
+        {% if ev.is_placement and ev.placement %}
+        <dt>Company</dt><dd>{{ ev.placement.company }}{% if ev.placement.role %} · {{ ev.placement.role }}{% endif %}{% if ev.placement.package %} · {{ ev.placement.package }}{% endif %}</dd>
+        {% endif %}
+        {% if ev.prizes %}<dt>Prizes</dt><dd>{% for k, p in ev.prizes.items() %}{{ k }}: {{ p }}{{ ' · ' if not loop.last }}{% endfor %}{% if ev.prize_pool %} (pool {{ ev.prize_pool }}){% endif %}</dd>{% endif %}
+        {% if ev.judging_criteria %}<dt>Judging</dt><dd>{% for c in ev.judging_criteria %}{{ c.name }} (/{{ c.max_score }}){{ ', ' if not loop.last }}{% endfor %}{% if ev.total_rounds and ev.total_rounds > 1 %} · {{ ev.total_rounds }} rounds{% endif %}</dd>{% endif %}
+        {% if ev.organizer %}<dt>Contact</dt><dd>{{ ev.organizer.name }} · {{ ev.organizer.email }}{% if ev.organizer.phone %} · {{ ev.organizer.phone }}{% endif %}</dd>{% endif %}
+      </dl>
+      {% if ev.description %}<h3 class="rv-h">About</h3><div class="rv-text">{{ ev.description }}</div>{% endif %}
+      {% if ev.rules %}<h3 class="rv-h">Rules</h3><div class="rv-text">{{ ev.rules }}</div>{% endif %}
+      {% if ev.sponsors %}<h3 class="rv-h">Sponsors</h3><p class="mb-0">{% for s in ev.sponsors %}<span class="se-badge se-badge--gold me-1">{{ s.name }}{% if s.tier %} · {{ s.tier }}{% endif %}</span>{% endfor %}</p>{% endif %}
+    </section>
+
+    {% if ev.is_fest %}
+    <section class="panel mt-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <h2 class="h5 m-0">Events in this fest <span class="se-badge se-badge--neutral ms-1">{{ sub_events|length }}</span></h2>
+        <a href="/spoc/create_event?parent={{ ev.id }}" class="btn btn-primary"><i class="fas fa-plus" aria-hidden="true"></i> Add an event to this fest</a>
+      </div>
+      {% if sub_events %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead><tr><th scope="col">Event</th><th scope="col">Kind</th><th scope="col">When</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody>
+          {% for s in sub_events %}
+          {% set st = (s.status or 'draft')|lower %}
+          <tr>
+            <td class="fw-semibold">{{ s.title }}</td>
+            <td>{{ type_label(s) }}</td>
+            <td>{{ s.date }}{% if s.time %} {{ s.time }}{% endif %}</td>
+            <td><span class="se-badge se-badge--{{ status_labels.get(st, (st, 'neutral'))[1] }}">{{ status_labels.get(st, (st|replace('_', ' ')|capitalize, 'neutral'))[0] }}</span></td>
+            <td class="text-end"><a href="/spoc/event/{{ s.id }}/review" class="btn btn-sm btn-outline-primary">Review</a></td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No events yet. Add each competition, show or match the fest holds; they appear on the fest's public page once published.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="panel">
+    <h2 class="h6 fw-bold mb-2"><i class="fas fa-list-check text-gold me-1" aria-hidden="true"></i> Before you publish</h2>
+    {% if checklist %}
+    <ul class="rv-check">
+      {% for level, msg in checklist %}
+      <li class="{{ level }}"><i class="fas {{ 'fa-triangle-exclamation' if level == 'warning' else 'fa-circle-info' }}" aria-hidden="true"></i><span><span class="visually-hidden">{{ 'Check: ' if level == 'warning' else 'Note: ' }}</span>{{ msg }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-success mb-0"><i class="fas fa-circle-check me-1" aria-hidden="true"></i> Everything looks ready.</p>
+    {% endif %}
+    <hr>
+    <p class="small text-muted mb-2">Registration form</p>
+    <a href="/forms/builder/{{ ev.id }}" class="btn btn-sm btn-outline-primary w-100 mb-2"><i class="fas fa-rectangle-list" aria-hidden="true"></i> {{ 'Edit the registration form' if ev.has_custom_form else 'Customise the registration form' }}</a>
+    {% if not ev.is_fest %}<a href="/forms/register/{{ ev.id }}" class="btn btn-sm btn-link w-100" target="_blank" rel="noopener">Preview the registration page</a>{% endif %}
+  </aside>
+</div>
+{% endblock %}

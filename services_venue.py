@@ -13,6 +13,7 @@ Features:
 4. Per-event Google Calendar URL generation and RFC 5545 iCalendar (.ics) exports.
 """
 
+import hashlib
 import json
 import uuid
 import urllib.parse
@@ -135,6 +136,10 @@ def check_room_conflict(
 
             b_start = parse_to_utc(b_start_raw)
             b_end = parse_to_utc(b_end_raw)
+            if b_end <= b_start:
+                # A booking for an event saved without times holds its date like
+                # the request does (2 hours from its start), so it still clashes (UPG-47)
+                b_end = b_start + timedelta(hours=2)
 
             if slots_overlap(start_utc, end_utc, b_start, b_end):
                 # Retrieve room and clashing event title
@@ -542,14 +547,16 @@ def notify_event_details_changed(
         notified_emails = set()
         count = 0
 
+        from services_recipients import registration_people
         for r in regs:
             rd = r.to_dict()
             if (rd.get("status") or "").strip().lower() == "cancelled":
                 continue
-            email = (rd.get("lead_email") or rd.get("student_email") or "").strip().lower()
-            if email and email not in notified_emails:
+            # The lead and every team member, once each (UPG-48)
+            for email, recipient_name, _phone in registration_people(rd):
+                if email in notified_emails:
+                    continue
                 notified_emails.add(email)
-                recipient_name = rd.get("lead_name") or rd.get("name") or "Participant"
                 context = {
                     "recipient_email": email,
                     "recipient_name": recipient_name,
@@ -563,7 +570,11 @@ def notify_event_details_changed(
                     "notif_type": "event_reminder",
                     "channels": ["in_app", "email"],
                 }
-                idempotency_key = f"event_change_{event_id}_{email}_{abs(hash(change_summary))}"
+                # Stable across processes (hash() isn't): the same change is sent once
+                change_id = hashlib.sha256(
+                    f"{prev_venue}|{prev_room}|{prev_date}|{prev_time}|{prev_start}>"
+                    f"{new_venue}|{new_room}|{new_date}|{new_time}|{new_start}".encode()).hexdigest()[:16]
+                idempotency_key = f"event_change_{event_id}_{email}_{change_id}"
                 NotificationAutomationEngine.dispatch_trigger(
                     db,
                     trigger_name="on_event_details_changed",

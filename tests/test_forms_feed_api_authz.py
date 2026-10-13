@@ -24,7 +24,7 @@ def setup(real_app):
     db.collection('events').document(event_b).update(
         {'staff': [{'name': 'C', 'email': people['coord'], 'role': 'Coordinator'}]})
     student = _login(flask_app, people['student'], 'Student')
-    student.post(f'/forms/submit/{event_b}', data={
+    student.post(f'/forms/submit/{event_b}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': people['student'], 'phone': '9876543210', 'usn': '1SN20CS555'})
     return {'app': flask_app, 'db': db, 'people': people, 'event_b': event_b, 'title': title,
             'spoc_b': spoc_b, 'student': student}

@@ -1,102 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Campus Events | SapthaEvent</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="/static/css/global.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+{% extends "base_classic.html" %}
+{#- My events (UPG-63): app layout; tabs for upcoming, registered, waitlisted, attended, certificates, cancelled. -#}
+{% set app_active = 'my_events' %}
+{% block title %}My events{% endblock %}
+{% block page_sub %}Your registrations, gate passes, attendance and certificates.{% endblock %}
+{% block page_actions %}
+  <a href="/calendar" class="btn btn-primary"><i class="fas fa-search" aria-hidden="true"></i> Discover events</a>
+  <a href="{{ calendar_feed_url() }}" class="btn btn-secondary" title="Subscribe to your events in a calendar app"><i class="fas fa-rss" aria-hidden="true"></i> Calendar feed</a>
+  <form method="POST" action="/calendar/feed/rotate" class="m-0" data-h-submit="participant/my_events:1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-secondary" title="Reset your private calendar link"><i class="fas fa-rotate" aria-hidden="true"></i> Reset link</button>
+  </form>
+{% endblock %}
+{% block extra_css %}
 <style>
-:root{--blue:#1a2557;--orange:#c9a45e;--navy:#0f172a;}
-body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1e293b;}
-.topnav{background:var(--blue);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
-.brand{font-weight:700;font-size:15px;color:#fff;}
-.nav-link-item{color:rgba(255,255,255,.75);font-size:12.5px;text-decoration:none;padding:5px 11px;border-radius:7px;transition:.15s;}
-.nav-link-item:hover{color:#fff;background:rgba(255,255,255,.1);}
-.nav-pills .nav-link{border-radius:10px;font-weight:600;font-size:13.5px;color:#64748b;padding:8px 18px;transition:.15s;border:1px solid transparent;}
-.nav-pills .nav-link.active{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:0 4px 12px rgba(26,37,87,.15);}
-.ev-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:20px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.03);}
-.ev-card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.06);transform:translateY(-2px);}
-.badge-tech{background:#f37021;color:#fff;}
-.badge-cult{background:#7c3aed;color:#fff;}
-.badge-sport{background:#10b981;color:#fff;}
-.badge-mgmt{background:#0891b2;color:#fff;}
+.portal-tab-count { display: inline-block; margin-left: 4px; font-size: var(--fs-xs); background: var(--surface-muted); color: var(--text-muted); border-radius: var(--radius-pill); padding: 0 7px; }
+.nav-tabs .nav-link.active .portal-tab-count { background: var(--brand-navy-50); color: var(--brand-ink); }
+.nav-tabs .nav-link { white-space: nowrap; }
 </style>
-</head>
-<body>
-
-<nav class="topnav">
-  <img src="/static/snpsu-logo.png" alt="SNPSU" style="height:38px;width:auto;object-fit:contain;">
-  <span class="brand">SapthaEvent</span>
-  <div class="ms-auto d-flex gap-1 align-items-center">
-    <a href="/" class="nav-link-item"><i class="fas fa-home me-1"></i>Home</a>
-    <a href="/calendar" class="nav-link-item"><i class="fas fa-calendar-alt me-1"></i>Calendar</a>
-    <a href="/participant/dashboard" class="nav-link-item"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-    <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-outline-light ms-2" title="Subscribe to calendar feed">
-      <i class="fas fa-rss me-1"></i> Sync .ics Feed
-    </a>
-  </div>
-</nav>
-
-<div class="container py-4" style="max-width:1180px;">
-  <!-- Header Banner -->
-  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-    <div>
-      <h3 style="font-family:'Poppins',sans-serif;font-weight:800;color:var(--blue);margin:0;">
-        <i class="fas fa-calendar-check text-primary me-2"></i>My Campus Events
-      </h3>
-      <p style="font-size:13px;color:#64748b;margin:3px 0 0;">
-        Track your registrations, live gate passes, verified attendance, and issued certificates.
-      </p>
-    </div>
-    <div class="d-flex gap-2">
-      <a href="/calendar" class="btn btn-sm btn-primary">
-        <i class="fas fa-search me-1"></i> Discover Events
-      </a>
-      <a href="{{ calendar_feed_url() }}" class="btn btn-sm btn-outline-secondary">
-        <i class="fas fa-download me-1"></i> Export .ics
-      </a>
-      <form method="POST" action="/calendar/feed/rotate" class="m-0"
-            onsubmit="return confirm('Reset your calendar link? Calendars subscribed with the old link stop updating.');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reset your private calendar link">
-          <i class="fas fa-rotate me-1"></i> Reset link
-        </button>
-      </form>
-    </div>
-  </div>
-
+{% endblock %}
+{% block content %}
   <!-- Navigation Tabs -->
-  <ul class="nav nav-pills mb-4 gap-2 flex-wrap" id="eventsTab" role="tablist">
+  <ul class="nav nav-tabs mb-4 flex-nowrap overflow-auto" id="eventsTab" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link {% if active_tab == 'upcoming' %}active{% endif %}" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming" type="button" role="tab">
-        <i class="fas fa-clock me-1"></i> Upcoming <span class="badge bg-light text-dark ms-1">{{ upcoming|length }}</span>
+        <i class="fas fa-clock me-1"></i> Upcoming <span class="portal-tab-count">{{ upcoming|length }}</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link {% if active_tab == 'registered' %}active{% endif %}" id="registered-tab" data-bs-toggle="pill" data-bs-target="#registered" type="button" role="tab">
-        <i class="fas fa-ticket-alt me-1"></i> Registered <span class="badge bg-light text-dark ms-1">{{ registered|length }}</span>
+        <i class="fas fa-ticket-alt me-1"></i> Registered <span class="portal-tab-count">{{ registered|length }}</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link {% if active_tab == 'waitlisted' %}active{% endif %}" id="waitlisted-tab" data-bs-toggle="pill" data-bs-target="#waitlisted" type="button" role="tab">
-        <i class="fas fa-hourglass-half me-1"></i> Waitlisted <span class="badge bg-light text-dark ms-1">{{ waitlisted|length }}</span>
+        <i class="fas fa-hourglass-half me-1"></i> Waitlisted <span class="portal-tab-count">{{ waitlisted|length }}</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link {% if active_tab == 'attended' %}active{% endif %}" id="attended-tab" data-bs-toggle="pill" data-bs-target="#attended" type="button" role="tab">
-        <i class="fas fa-check-circle me-1"></i> Attended <span class="badge bg-light text-dark ms-1">{{ attended|length }}</span>
+        <i class="fas fa-check-circle me-1"></i> Attended <span class="portal-tab-count">{{ attended|length }}</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link {% if active_tab == 'certificates' %}active{% endif %}" id="certificates-tab" data-bs-toggle="pill" data-bs-target="#certificates" type="button" role="tab">
-        <i class="fas fa-certificate me-1"></i> Certificates <span class="badge bg-light text-dark ms-1">{{ certificates|length }}</span>
+        <i class="fas fa-certificate me-1"></i> Certificates <span class="portal-tab-count">{{ certificates|length }}</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link {% if active_tab == 'cancelled' %}active{% endif %}" id="cancelled-tab" data-bs-toggle="pill" data-bs-target="#cancelled" type="button" role="tab">
-        <i class="fas fa-ban me-1"></i> Cancelled <span class="badge bg-light text-dark ms-1">{{ cancelled|length }}</span>
+        <i class="fas fa-ban me-1"></i> Cancelled <span class="portal-tab-count">{{ cancelled|length }}</span>
       </button>
     </li>
   </ul>
@@ -110,26 +62,26 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
         <div class="row g-3">
           {% for r in items %}
           <div class="col-md-6 col-lg-4">
-            <div class="ev-card h-100 d-flex flex-column justify-content-between">
+            <div class="panel h-100 d-flex flex-column justify-content-between">
               <div>
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                  <span class="badge bg-light text-secondary border">{{ r.event_category }}</span>
+                  <span class="se-badge se-badge--brand se-badge--plain">{{ r.event_category }}</span>
                   {% if r.is_checked_in %}
-                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Attended</span>
+                    <span class="se-badge se-badge--success">Attended</span>
                   {% elif r.status == 'waitlisted' %}
-                    <span class="badge bg-warning text-dark"><i class="fas fa-hourglass-half me-1"></i>Waitlisted</span>
+                    <span class="se-badge se-badge--warning">Waitlisted</span>
                   {% elif r.status == 'cancelled' %}
-                    <span class="badge bg-danger">Cancelled</span>
+                    <span class="se-badge se-badge--danger">Cancelled</span>
                   {% else %}
-                    <span class="badge bg-primary">Confirmed</span>
+                    <span class="se-badge se-badge--info">Confirmed</span>
                   {% endif %}
                 </div>
 
-                <h5 class="fw-bold text-dark mb-1" style="font-size:16px;">{{ r.event_title }}</h5>
+                <h3 class="h6 mb-1">{{ r.event_title }}</h3>
                 <div class="text-muted small mb-2">
-                  <i class="fas fa-calendar-alt text-primary me-1"></i> {{ r.event_date or 'TBA' }}
+                  <i class="fas fa-calendar-alt me-1" aria-hidden="true"></i> {{ r.event_date or 'TBA' }}
                   &nbsp;·&nbsp;
-                  <i class="fas fa-map-marker-alt text-danger me-1"></i> {{ r.event_venue }}
+                  <i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i> {{ r.event_venue }}
                 </div>
 
                 {% if r.ticket_code %}
@@ -142,7 +94,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
 
               <div class="pt-3 border-top d-flex gap-2 flex-wrap">
                 {% if r.ticket_code %}
-                <a href="/participant/ticket/{{ r.ticket_code }}" class="btn btn-sm btn-outline-primary flex-fill">
+                <a href="/ticket/{{ r.id }}" class="btn btn-sm btn-outline-primary flex-fill">
                   <i class="fas fa-qrcode me-1"></i> View Ticket
                 </a>
                 {% elif r.id %}
@@ -152,19 +104,19 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
                 {% endif %}
 
                 {% if show_cert or r.has_certificate %}
-                <a href="/participant/certificate/{{ r.id }}" class="btn btn-sm btn-warning text-dark flex-fill">
+                <a href="/participant/certificate/{{ r.id }}" class="btn btn-sm btn-gold flex-fill">
                   <i class="fas fa-award me-1"></i> Certificate
                 </a>
                 {% endif %}
 
                 {% if r.google_calendar_url %}
-                <a href="{{ r.google_calendar_url }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Add to Google Calendar">
-                  <i class="fab fa-google"></i>
+                <a href="{{ r.google_calendar_url }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Add to Google Calendar" aria-label="Add {{ r.event_title }} to Google Calendar">
+                  <i class="fab fa-google" aria-hidden="true"></i>
                 </a>
                 {% endif %}
 
-                <a href="{{ r.ics_url }}" class="btn btn-sm btn-outline-secondary" title="Download .ics">
-                  <i class="fas fa-calendar-plus"></i>
+                <a href="{{ r.ics_url }}" class="btn btn-sm btn-outline-secondary" title="Download .ics" aria-label="Download {{ r.event_title }} as a calendar file">
+                  <i class="fas fa-calendar-plus" aria-hidden="true"></i>
                 </a>
               </div>
             </div>
@@ -172,10 +124,10 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
           {% endfor %}
         </div>
       {% else %}
-        <div class="text-center py-5 bg-white rounded-3 border">
-          <i class="fas fa-calendar-minus fa-3x text-muted mb-3 opacity-50"></i>
-          <h5 class="fw-bold text-muted">{{ empty_msg }}</h5>
-          <a href="/calendar" class="btn btn-sm btn-primary mt-2">Explore Campus Calendar</a>
+        <div class="empty-state">
+          <i class="fas fa-calendar-minus" aria-hidden="true"></i>
+          <h3>{{ empty_msg }}</h3>
+          <a href="/calendar" class="btn btn-primary btn-sm">Explore the campus calendar</a>
         </div>
       {% endif %}
     {% endmacro %}
@@ -211,8 +163,6 @@ body{background:#f8fafc;font-family:'Inter',sans-serif;min-height:100vh;color:#1
     </div>
 
   </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}
+{% block extra_js %}{% include "layouts/_bootstrap_js.html" %}{% endblock %}
+{% block handler_scripts %}{{ super() }}<script src="/static/js/handlers/participant__my_events.js"></script>{% endblock %}

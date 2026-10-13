@@ -1,0 +1,64 @@
+{% extends "base_classic.html" %}
+{#- System status for the Super Admin (UPG-75): what's configured, what failed.
+    Shows yes/no only, never a key or password. -#}
+{% import 'includes/ui.html' as ui with context %}
+{% set app_active = 'system' %}
+{% block title %}System | Admin{% endblock %}
+{% block page_title %}System status{% endblock %}
+{% block page_sub %}Whether the portal's services are set up, and any background jobs that didn't finish.{% endblock %}
+{% block page_actions %}<a href="/diag/email" class="btn btn-outline-primary"><i class="fas fa-stethoscope" aria-hidden="true"></i> Email diagnostics</a> <a href="/admin/audit_log" class="btn btn-outline-primary"><i class="fas fa-clipboard-list" aria-hidden="true"></i> Audit log</a>{% endblock %}
+{% block extra_css %}
+<style>
+.sys-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.sys-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 991.98px) { .sys-grid { grid-template-columns: 1fr; } }
+.sys-list { list-style: none; padding: 0; margin: 0; }
+.sys-list li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--divider); font-size: var(--fs-sm); }
+.sys-list li:last-child { border-bottom: 0; }
+.sys-err { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--danger-text); white-space: pre-wrap; word-break: break-word; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="sys-stats">
+  {{ ui.stat_tile('fa-database', 'Working' if db_ok else 'Not reachable', 'Database') }}
+  {{ ui.stat_tile('fa-users', totals.users, 'Accounts') }}
+  {{ ui.stat_tile('fa-calendar-check', totals.events, 'Events') }}
+  {{ ui.stat_tile('fa-ticket', totals.registrations, 'Registrations') }}
+</div>
+
+<div class="sys-grid">
+  <section class="panel">
+    <h2 class="h6 fw-bold mb-2"><i class="fas fa-plug text-gold me-1" aria-hidden="true"></i> Services</h2>
+    <ul class="sys-list">
+      {% for name, ok, what in integrations %}
+      <li><span><strong>{{ name }}</strong><br><span class="text-muted">{{ what }}</span></span>
+        <span>{% if ok %}<span class="se-badge se-badge--success"><i class="fas fa-check" aria-hidden="true"></i> Set up</span>{% else %}<span class="se-badge se-badge--warning">Not set up</span>{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="small text-muted mt-2 mb-0">Settings live in the server's environment (see <code>.env.example</code>); they aren't shown here.</p>
+  </section>
+
+  <section class="panel">
+    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+      <h2 class="h6 fw-bold m-0"><i class="fas fa-gears text-gold me-1" aria-hidden="true"></i> Background jobs</h2>
+      <form method="POST" class="m-0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="retry"><button class="btn btn-sm btn-primary" type="submit"><i class="fas fa-rotate" aria-hidden="true"></i> Retry due jobs now</button></form>
+    </div>
+    {% if jobs is none %}
+    <p class="text-muted mb-0">Job records aren't available on this database.</p>
+    {% else %}
+    <p class="small mb-2">{% for st in ('pending', 'running', 'failed', 'done') %}<span class="se-badge se-badge--{{ {'failed': 'danger', 'pending': 'warning', 'running': 'info', 'done': 'success'}[st] }} me-1">{{ st|capitalize }} · {{ job_counts[st] or 0 }}</span>{% endfor %}</p>
+    {% if failed %}
+    <ul class="sys-list">
+      {% for j in failed[:50] %}
+      <li><span><strong>{{ j.task.split('.')[-1]|replace('_', ' ') }}</strong> <span class="text-muted">· {{ j.status }} · {{ j.attempts }} attempt{{ 's' if j.attempts != 1 }}</span>
+        {% if j.error %}<div class="sys-err">{{ j.error }}</div>{% endif %}</span>
+        <span class="text-muted small text-nowrap">{{ (j.updated|string)[:16] }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-success mb-0"><i class="fas fa-circle-check me-1" aria-hidden="true"></i> Nothing waiting or failed.</p>
+    {% endif %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

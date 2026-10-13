@@ -1,555 +1,210 @@
 <div align="center">
 
-<a href="https://saptha-event-portal-762269836348.us-east4.run.app/" target="_blank">
-  <img src="static/img/hero-banner.png" width="800" alt="SapthaEvent Banner" style="border-radius:14px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);" />
-</a>
-
-<br/><br/>
-
-# [⚡ SapthaEvent](https://saptha-event-portal-762269836348.us-east4.run.app/)
-### *Enterprise Event Intelligence & Orchestration Platform*
-
-<p align="center">
-  <b>Sapthagiri NPS University &nbsp;•&nbsp; Bengaluru, Karnataka &nbsp;•&nbsp; 2026</b>
-</p>
-
-[![Live Portal](https://img.shields.io/badge/🌐_Live_Portal-ONLINE-22c55e?style=for-the-badge&logo=google-cloud&logoColor=white)](https://saptha-event-portal-762269836348.us-east4.run.app/)
-[![Python](https://img.shields.io/badge/Python-3.12-c9a45e?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-SQLAlchemy-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
-[![Gemini AI](https://img.shields.io/badge/Gemini_2.5_Flash-AI_Engine-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
-[![Tests](https://img.shields.io/badge/Tests-145_Passing-1a2557?style=for-the-badge&logo=pytest&logoColor=white)](#)
+<img src="docs/assets/banner.png" width="100%" alt="Sapthagiri NPS University" />
 
 <br/>
 
+# SapthaEvent
+
+**The event portal of Sapthagiri NPS University, Bengaluru**
+
+*Every campus event. One place to join in.*
+
+<br/>
+
+![Python](https://img.shields.io/badge/Python-3.11-00185e?style=flat-square&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.1-00185e?style=flat-square&logo=flask&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.1-00185e?style=flat-square&logo=sqlalchemy&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-ready-00185e?style=flat-square&logo=postgresql&logoColor=white)
+![Apache ECharts](https://img.shields.io/badge/Apache_ECharts-5.5-c69d67?style=flat-square&logo=apacheecharts&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-893_passing-c69d67?style=flat-square&logo=pytest&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-c69d67?style=flat-square)
+
+<br/>
+
+[About](#about) · [Screenshots](#screenshots) · [Roles](#who-it-is-for) · [Features](#features) · [Technology](#technology) · [Quality](#quality) · [Docs](#documentation)
+
+</div>
+
+<br/>
+
+## About
+
+SapthaEvent brings every event at the university into one portal: hackathons and coding contests,
+workshops and guest lectures, cultural competitions and shows, sports tournaments, placement drives and
+multi-day fests with their own sub-events.
+
+Students find an event, register in a minute and walk in with a QR ticket. Organisers create and publish
+events, manage registrations, check people in, run judging and publish results, and issue certificates
+that anyone can verify. The university sees all of it in one console, with analytics to match.
+
+<br/>
+
+## Screenshots
+
 <table>
   <tr>
-    <td align="center" width="50%">
-      <h3>📲 Scan to Visit</h3>
-      <a href="https://saptha-event-portal-762269836348.us-east4.run.app/" target="_blank">
-        <img src="static/img/portal-qr.png" width="180" alt="Scan QR Code to Visit" style="border: 4px solid #1a2557; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
-      </a>
-      <br/>
-      <p><i>Point your camera scanner here to launch the live platform</i></p>
+    <td width="50%" valign="top">
+      <img src="docs/assets/home.webp" alt="Home page" />
+      <p align="center"><b>Home</b><br/><sub>The next events, live from the database, on the campus photograph</sub></p>
     </td>
-    <td align="center" width="50%" valign="middle">
-      <h3>🚀 Quick Launch</h3>
-      <br/>
-      <a href="https://saptha-event-portal-762269836348.us-east4.run.app/" target="_blank" style="text-decoration:none;">
-        <img src="https://img.shields.io/badge/LAUNCH_LIVE_PORTAL-1a2557?style=for-the-badge&logo=rocket&logoColor=white" alt="Launch Live Portal" />
-      </a>
-      <br/><br/>
-      <p>Click the button above or the title "SapthaEvent" to access the live cloud environment.</p>
+    <td width="50%" valign="top">
+      <img src="docs/assets/student.webp" alt="Student dashboard" />
+      <p align="center"><b>Student dashboard</b><br/><sub>Tickets, upcoming events, results and certificates</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/wizard.webp" alt="Event creation wizard" />
+      <p align="center"><b>Create an event</b><br/><sub>A 7-step wizard for 27 kinds of event</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/spoc.webp" alt="SPOC console" />
+      <p align="center"><b>SPOC console</b><br/><sub>Registrations, attendance and revenue for every event</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/analytics.webp" alt="Analytics" />
+      <p align="center"><b>Analytics</b><br/><sub>Compare every event, with filters, zoom and table views</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/results.webp" alt="Results" />
+      <p align="center"><b>Results</b><br/><sub>Judges' scores ranked, with a podium and standings</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/live.webp" alt="Live leaderboard" />
+      <p align="center"><b>Live leaderboard</b><br/><sub>For the projector on the event day</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/admin.webp" alt="Admin console" />
+      <p align="center"><b>Admin console</b><br/><sub>Every event, account and registration in one place</sub></p>
     </td>
   </tr>
 </table>
 
-</div>
+<br/>
 
----
+## Who it is for
 
-<div align="center">
+| | Role | What they can do |
+|:-:|:--|:--|
+| 🌐 | **Visitor** | Browse and search events, read event pages, learn about the university, verify a certificate |
+| 🎓 | **Student** | Register alone or as a team, pay where needed, get a QR ticket, see results, download certificates, give feedback |
+| 🧭 | **Club SPOC** | Create, review and publish events (fests included), build registration forms, appoint staff, book rooms, publish results, issue certificates, see analytics |
+| 📋 | **Event coordinator** | Manage registrations and exports, check people in with the QR scanner, run rooms and rounds |
+| ⚖️ | **Judge** | Score teams against the event's criteria and follow the live leaderboard |
+| 🎟️ | **Volunteer** | Check people in at the gate |
+| 🏛️ | **Super Admin** | Approve and manage every event, account and registration; venues, payments, announcements, analytics, system status and the audit log |
 
-## 📸 Platform Showcase
+<br/>
 
-<img src="static/img/feature-showcase.png" width="850" alt="Feature Showcase" style="border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2);" />
-
-</div>
-
----
-
-## 🧭 Table of Contents
-
-- [🌟 Why SapthaEvent?](#-why-sapthaevent)
-- [🎭 Role-Based Access System](#-role-based-access-system)
-- [✨ Flagship Features Deep Dive](#-flagship-features-deep-dive)
-- [🏗 System Architecture](#-system-architecture)
-- [🔧 Full Technology Stack](#-full-technology-stack)
-- [📁 Repository Structure](#-repository-structure)
-- [🚀 Local Setup Guide](#-local-setup-guide)
-- [📡 API Reference](#-api-reference)
-- [⚙️ CI/CD & Security](#️-cicd--security)
-- [🤝 Contributing](#-contributing)
-- [📜 License](#-license)
-
----
-
-## 🌟 Why SapthaEvent?
-
-Every university runs events. Most run them through a chaotic mix of Google Forms, WhatsApp groups, clipboard registers, and emails at 2am. **SapthaEvent eliminates all of that** — replacing manual chaos with an intelligent, real-time, multi-role orchestration platform purpose-built for academic institutions.
+## Features
 
 <table>
-<thead>
-<tr>
-<th>❌ The Old Way</th>
-<th>✅ The SapthaEvent Way</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Google Forms + manual Excel scoring</td>
-<td>Dynamic JSON schema forms with real-time validation, team caps, and auto-confirmation emails</td>
-</tr>
-<tr>
-<td>WhatsApp announcements at midnight</td>
-<td>Instant Server-Sent Events (SSE) push — leaderboards update within 3 seconds on projectors</td>
-</tr>
-<tr>
-<td>Paper attendance sheets at entry gates</td>
-<td>QR code scanner check-in with anti-duplication, real-time attendance counters</td>
-</tr>
-<tr>
-<td>Manual Canva certificates, weeks later</td>
-<td>Auto-generated PDF certificates with cryptographic hashes, emailed instantly on result publish</td>
-</tr>
-<tr>
-<td>No post-event insight</td>
-<td>Gemini 2.5 Flash AI generates executive post-event reports in seconds — print-ready A4</td>
-</tr>
-<tr>
-<td>No idea who attended what</td>
-<td>Every student builds a verifiable XP portfolio with badges, event history, and public achievements</td>
-</tr>
-<tr>
-<td>Manually typing results into email</td>
-<td>Judge scorecard → average → rank → certificate → email → done. Zero human steps.</td>
-</tr>
-</tbody>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>🗓️ Every kind of event</h4>
+      Talks, competitions, cultural, sports, community, career, fests and custom events, each with its own
+      details. Fees per participant group, team sizes, judging criteria, prizes, sponsors and room booking
+      with clash checks. Every event is a draft until it is reviewed and published.
+    </td>
+    <td width="50%" valign="top">
+      <h4>🎫 Registration and tickets</h4>
+      A registration form per event, team members with their own details, waitlists, Razorpay payments with
+      coupons and refunds, and a QR ticket the moment someone registers.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>✅ The event day</h4>
+      QR check-in, live attendance, rooms and rounds, and judges' scoring against the rubric.
+    </td>
+    <td width="50%" valign="top">
+      <h4>🏆 One leaderboard</h4>
+      The projector board, the live board, the judges' view, the results page and the published winners all
+      use one ranking. Scores keep their decimals and equal scores share a place.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>📜 Verifiable certificates</h4>
+      Issued to everyone who attended, each with a verification link and QR code.
+    </td>
+    <td width="50%" valign="top">
+      <h4>📊 Analytics</h4>
+      Compare every event side by side, registrations over time, a weekday × hour heatmap, the funnel from
+      registration to certificate, revenue and no-shows, filtered by period and category.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>🔔 Notifications</h4>
+      Email, WhatsApp and in-app notifications, and announcements to any group of people.
+    </td>
+    <td width="50%" valign="top">
+      <h4>♿ Built for everyone</h4>
+      Mobile-first, dark mode, keyboard and screen-reader friendly, installable as an app, in English,
+      Hindi and Kannada.
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <h4>🔒 Secure by default</h4>
+      Permission checks on every route, CSRF protection, a strict Content Security Policy, rate-limited
+      login, hashed passwords, and a refusal to start in production without real secrets.
+    </td>
+  </tr>
 </table>
 
----
+<br/>
 
-## 🎭 Role-Based Access System
+## Technology
 
-SapthaEvent supports **6 distinct privilege levels**, each with tailored dashboards and tightly-scoped permissions enforced via Flask route decorators and session-based auth:
+<table>
+  <tr><td><b>Application</b></td><td>Flask 3, Jinja, Bootstrap 5 and a shared design system in the university's navy and gold</td></tr>
+  <tr><td><b>Data</b></td><td>SQLAlchemy 2 on PostgreSQL (SQLite for development), Alembic migrations</td></tr>
+  <tr><td><b>Background work</b></td><td>Celery, with an outbox that retries anything that failed to send</td></tr>
+  <tr><td><b>Charts</b></td><td>Apache ECharts, with colour-blind-safe palettes in light and dark mode</td></tr>
+  <tr><td><b>Documents</b></td><td>ReportLab certificates with QR verification, Excel exports with openpyxl</td></tr>
+  <tr><td><b>Payments</b></td><td>Razorpay</td></tr>
+  <tr><td><b>Messages</b></td><td>Email, WhatsApp (Twilio) and web push</td></tr>
+  <tr><td><b>AI (optional)</b></td><td>Google Gemini for the event writer, the form generator and report summaries</td></tr>
+  <tr><td><b>Security</b></td><td>Flask-Talisman, Flask-WTF, Flask-Limiter, server-side sessions</td></tr>
+  <tr><td><b>Deployment</b></td><td>Docker and Docker Compose</td></tr>
+</table>
 
-```
-Super Admin
-    │
-    ├── Admin (per-college)
-    │       ├── Club SPOC (per-club)
-    │       │       ├── Judge (per-event)
-    │       │       └── Coordinator (per-event)
-    │       └── Head (cross-event analytics)
-    │
-    └── Student/Participant (self-serve)
-```
+<br/>
 
-| 🎖 Role | Dashboard URL | What They Can Do |
-|:--------|:-------------|:-----------------|
-| 🔴 **Super Admin** | `/admin/super` | Full platform override — create events, clubs, colleges; appoint SPOCs; configure master settings; view all analytics |
-| 🟠 **Admin** | `/admin/dashboard` | User management, judge allocation, system health diagnostics, audit logs, sponsor management |
-| 🟡 **Club SPOC** | `/spoc/dashboard` | Create & configure events, manage rounds, set scoring rubrics, open SSE scoreboards, trigger Gemini AI reports, broadcast emails, manage teams |
-| 🟢 **Judge** | `/judge/dashboard` | Score teams in assigned rounds using configurable rubric sliders; view team submissions |
-| 🔵 **Coordinator** | `/coordinator/dashboard` | QR ticket scanner check-in, live attendance counters, room-wise entry management, walk-in registration |
-| ⚪ **Student** | `/participant/dashboard` | Event discovery, registration (solo/team), Razorpay payment, QR ticket download, certificate portfolio, XP/badge system |
+## Quality
 
----
+The project has **914 automated tests**. In the full run on 13 October 2026, **893 pass** and 1 is skipped.
+The 20 that fail are known and tracked in the feature review, not hidden:
 
-## ✨ Flagship Features Deep Dive
+- 19 were already known before this release (two tests for a former payment provider, three for the
+  matchmaker feature, twelve for helper scripts the database safety check does not cover yet, and two
+  seminar lifecycle tests);
+- 1 fails only between midnight and 05:30 IST, because a scheduled job compares dates in UTC.
 
-### 📺 1. Real-Time SSE Projector Leaderboard
-> *Route: `/live/<event_id>` — Designed for 100" projectors at crowded venues*
+Every change is also checked with `ruff`.
 
-- Pure **Server-Sent Events (SSE)** — no WebSocket overhead, auto-reconnects, works through any firewall
-- Pushes rank updates every **3 seconds** to all connected displays simultaneously
-- **Animated rank transitions**: green flash ↑ on rise, red flash ↓ on drop
-- **Podium visualization**: Top 3 rendered as a physical gold/silver/bronze podium with live scores
-- Fullscreen-optimized layout — works on any projector/TV via browser, no app install needed
-- Auto-switches from "Waiting..." to live rankings the moment scoring begins
+<br/>
 
----
+## Documentation
 
-### 🤖 2. Gemini 2.5 Flash AI Reports
-> *One click. Complete post-event institutional intelligence.*
+| Document | What it covers |
+|:--|:--|
+| [`docs/FEATURE_REVIEW.md`](docs/FEATURE_REVIEW.md) | Every feature, what is done, what is open and why |
+| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deploying to production |
+| [`docs/API.md`](docs/API.md) | The REST API |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How the parts fit together |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | The security model |
 
-- SPOCs press one button — Gemini analyzes: attendance rates, score distributions, top performers, round-by-round data, club vs college breakdown
-- Produces a **structured executive report**: highlights, participation stats, operational recommendations, gender/category breakdowns
-- **Print-to-PDF**: Optimized `@media print` layout generates a clean A4 PDF straight from the browser — no third-party tools
-- AI report stored in the database; re-accessible anytime from the SPOC dashboard
+<br/>
 
----
-
-### 🛡️ 3. Cryptographic Certificate Engine
-> *Route: `/verify/<cert_hash>` — Every certificate is a blockchain-grade artifact*
-
-- **ReportLab PDF generation** with university branding, event metadata, rank, score, and date
-- Each certificate carries a **unique cryptographic hash** (`itsdangerous` + `SHA-256`) stored in the database
-- Public verification URL shareable on LinkedIn, WhatsApp, or resume
-- Verification page features:
-  - 🎉 **Canvas confetti** celebration animation on successful verify
-  - 📱 **Responsive iframe preview** of the certificate
-  - ⬇️ **Dynamic PDF download** generated on-demand
-  - 🔗 **Copy-to-clipboard** verification URL
-  - 📍 **Status timeline**: `Generated → Delivered → Claimed`
-  - 🔗 **LinkedIn & X share** direct links pre-filled with achievement text
-
----
-
-### 📧 4. Premium Transactional Email Engine
-> *Auto-switching SMTP-free email pipeline — works on any cloud platform*
-
-Emails rendered as **HTML table-based templates** (email-client safe) with:
-- Navy gradient header matching the portal UI exactly
-- Gold accent bars top & bottom (brand-consistent)
-- University logo on transparent navy pill (always visible)
-
-**Email types dispatched automatically:**
-
-| Trigger | Email Sent |
-|:--------|:----------|
-| Student registers for event | Registration confirmation + event details |
-| New user auto-created | Welcome email with login credentials |
-| 24h before event | Reminder email with QR ticket |
-| Result published | Rank notification + certificate PDF attachment |
-| SPOC appointed | Role notification with login URL |
-| Coordinator assigned | Event assignment confirmation |
-| Password reset requested | Secure reset link (1hr expiry) |
-| Room assigned | Room number with event schedule |
-
-**Provider priority chain** (auto-detected at runtime):
-1. `BREVO_API_KEY` → Brevo HTTP API ✅ *Railway-safe, 300 free/day, anyone*
-2. `RESEND_API_KEY` → Resend HTTP API ⚠️ *Free, verified emails only*
-3. Neither → Gmail SMTP 🔧 *Dev fallback*
-
----
-
-### 🎫 5. QR Ticket & Check-In System
-
-- Every registration generates a **unique QR code** (PyQRCode) encoding the registration ID
-- QR code emailed as attachment 24h before event via Celery scheduled task
-- Coordinators scan via **mobile camera scanner** (`/coordinator/scan`) — anti-duplicate detection
-- Real-time attendance counter updates across all coordinator terminals via SSE
-- Walk-in registration flow: coordinator creates account on-spot, auto-generates credentials, sends welcome email instantly
-
----
-
-### 💰 6. Payment Gateway (Razorpay + Stripe)
-
-- **Razorpay** integration for INR payments (primary, India-facing)
-- **Stripe** integration for international payments
-- Dynamic pricing rules: early-bird discounts, coupon codes, referral rewards
-- Payment webhook verification with signature validation
-- Failed payment recovery with retry mechanisms
-- All transactions logged in the database with audit trails
-
----
-
-### 👥 7. Team Management System
-
-- SPOCs configure: min/max team size, team creation deadline, allowed college domains
-- Students form teams, invite members by email, elect team leaders
-- Real-time slot availability checking — prevents over-registration
-- Team submission portal for multi-file uploads
-- **Team matchmaking**: AI-assisted suggestions for solo participants seeking teams (`/matchmaker`)
-
----
-
-### 🏆 8. Student Achievement Portfolio
-
-- Every student accumulates **XP points** (configurable per event category)
-- Unlockable **badge system**: 🥇 First Place, 🎯 Perfect Score, ⚡ Early Bird, 🔥 Streak badges
-- Public portfolio URL: `/portfolio/<student_id>`
-- Embeddable achievement widget for LinkedIn profiles
-- Complete event history with certificates, ranks, and scores
-- Club-level leaderboards showing cross-event standings
-
----
-
-### 📊 9. Advanced Analytics Engine
-
-- **SPOC Analytics**: per-event registration trends, score distribution charts, demographic breakdown
-- **Admin Analytics**: cross-event comparison, revenue summaries, club performance rankings
-- **Audit Logger**: every admin action logged with timestamp, IP, and user — downloadable as PDF
-- **Feedback System**: post-event structured feedback forms; SPOC can view sentiment analysis
-
----
-
-### 🔔 10. Multi-Channel Notifications
-
-- **In-App**: Real-time notification bell with SSE push (no polling)
-- **Email**: Brevo HTTP transactional queue
-- **WhatsApp**: Twilio Business API integration (optional)
-- **Push Notifications**: Web Push API (service worker registered) for mobile browser alerts
-
----
-
-## 🏗 System Architecture
-
-```
-                    ┌─────────────────────────────────────────────┐
-                    │          Browser / Mobile Client             │
-                    │   (Vanilla JS + Bootstrap 5 + FontAwesome)  │
-                    └────────────────────┬────────────────────────┘
-                                         │  HTTPS / SSE
-                                         ▼
-                    ┌─────────────────────────────────────────────┐
-                    │         Google Cloud Run Container           │
-                    │    Flask 3.x + Gunicorn (4 workers)         │
-                    │    Security: Flask-Talisman + Rate Limiter   │
-                    └──┬──────────────┬──────────────┬────────────┘
-                       │              │              │
-           ┌───────────▼──┐   ┌───────▼──────┐  ┌──▼────────────┐
-           │  PostgreSQL   │   │  Celery 5.x  │  │  Google       │
-           │   (NoSQL DB)  │   │  Task Queue  │  │  Cloud        │
-           │   Real-time   │   │  (Redis      │  │  Storage      │
-           │   Listeners   │   │   Broker)    │  │  (Assets)     │
-           └───────────────┘   └──────┬───────┘  └───────────────┘
-                                      │
-              ┌───────────────┬───────┴──────┬───────────────┐
-              ▼               ▼              ▼               ▼
-        ┌──────────┐   ┌──────────┐  ┌──────────┐   ┌──────────┐
-        │ Gemini   │   │  Brevo   │  │ Razorpay │   │  Twilio  │
-        │ 2.5 Flash│   │  Email   │  │  Stripe  │   │WhatsApp  │
-        │ AI API   │   │  API     │  │ Payments │   │  API     │
-        └──────────┘   └──────────┘  └──────────┘   └──────────┘
-```
-
-**Data Flow:**
-```
-Student Registers → Database Write → Celery Email Task → Brevo API → Inbox
-Judge Scores       → Database Write → SSE Push         → Leaderboard updates in 3s
-Result Published   → Database Write → Celery Cert Task → PDF gen → Email with attachment
-SPOC Requests AI   → Gemini API      → Report stored    → Print-to-PDF available
-```
-
-### 🔄 11. Database Independence & SQLFirestoreAdapter
-The application implements an intermediate database abstraction layer: the `SQLFirestoreAdapter` (`db_adapter.py`). This adapter translates standard NoSQL queries (e.g. `db.collection('users').document(email).get()`) into equivalent relational SQL transactions at runtime. This allows developers to use a unified interface, PostgreSQL is the supported database (SQLite for local development); every document field is preserved via the row's `extra_json` column.
-
-### 📱 12. Zero-Scroll Mobile Login Page
-The mobile login page features dynamic viewport locking (`100dvh` container height) with hidden scrollbars to prevent scrolling. When a user selects the `Super Admin` role, which requires an additional `Master Secret Key` field, the viewport styles automatically respond via CSS transitions to resize paddings and branding margins, preventing overflow even on small screens.
-
-### 🔄 13. PWA Lifecycle & Live Update Flow
-To keep users in sync without disruptive page refreshes:
-1. Service worker waiting states are explicitly managed.
-2. If an update is detected, the install button changes dynamically to an "Update App" button.
-3. Clicking "Update App" sends a `SKIP_WAITING` message to the service worker, and the client automatically refreshes the window upon `controllerchange`.
-
-### ♿ 14. WCAG Accessibility & Dark Mode High-Contrast Overlays
-To comply with WCAG text-readability rules:
-- Light-red/green Bootstrap validation message overlays are adjusted to high-contrast semi-transparent variables (`rgba(239, 68, 68, 0.18)`) in dark mode (`data-theme="dark"`).
-- Input borders and validation texts are styled to ensure clear visibility without fading.
-- Non-numeric inputs on `type="tel"` elements (e.g., student phone numbers) are stripped in real-time.
-
----
-
-## 🔧 Full Technology Stack
-
-### Backend Core
-| Component | Technology | Purpose |
-|:----------|:-----------|:--------|
-| Web Framework | **Flask 3.x** | Route handling, Jinja2 templates, SSE streaming |
-| WSGI Server | **Gunicorn** | Production multi-worker HTTP server |
-| Task Queue | **Celery 5** + Redis | Async email, PDF generation, scheduled reminders |
-| Dev Scheduler | **APScheduler** | Local dev fallback when Redis unavailable |
-
-### Database & Storage
-| Component | Technology | Purpose |
-|:----------|:-----------|:--------|
-| Primary DB | **PostgreSQL** (SQLAlchemy) | Relational database; SQLite for local development |
-| Relational (Alt) | **PostgreSQL** via Supabase/AWS RDS | Industrial SQL upgrade path |
-| File Storage | **AWS S3** / **Google Cloud Storage** | Certificate PDFs, event assets |
-| ORM/Migration | **SQLAlchemy + Alembic** | Schema migration for PostgreSQL path |
-
-### AI & Intelligence
-| Component | Technology | Purpose |
-|:----------|:-----------|:--------|
-| AI Reports | **Google Gemini 2.5 Flash** | Post-event analysis, executive summaries |
-| Team Matching | **AI Matchmaker** (`routes_ai_matching.py`) | Solo participant → team suggestions |
-| Chatbot | **Gemini + Flask SSE** | Event assistant chatbot (`/chatbot`) |
-
-### Security & Auth
-| Component | Technology | Purpose |
-|:----------|:-----------|:--------|
-| Password Hashing | **Werkzeug scrypt** | Industry-standard PBKDF2 equivalent |
-| Token Signing | **itsdangerous** | Reset tokens, certificate hashes, signed URLs |
-| 2FA | **PyOTP** (TOTP) | Optional two-factor authentication |
-| JWT | **PyJWT** | API token authentication |
-| OAuth | **auth_oauth.py** | Google SSO login |
-| Rate Limiting | **Flask-Limiter** | DDoS protection, brute-force prevention |
-| HTTPS Headers | **Flask-Talisman** | CSP, HSTS, XSS protection headers |
-| CSRF | **Flask-WTF** | Form submission protection |
-| Input Validation | **Server-side sanitization** | Security validation middleware |
-| Audit Trail | **Audit Logger** | Record critical actions with IP mapping |
-| Secrets | **Environment variables** | Conf and API key protection |
-
-### Documents & Media
-| Component | Technology | Purpose |
-|:----------|:-----------|:--------|
-| PDF Certificates | **ReportLab** | Pixel-perfect branded PDF generation |
-| QR Codes | **qrcode + Pillow** | Ticket QR generation with logo embed |
-| Excel Export | **openpyxl + pandas** | Registration lists, score sheets |
-
-### Payments
-| Gateway | Provider | Use Case |
-|:--------|:---------|:---------|
-| India Payments | **Razorpay** | INR registrations with UPI/card/wallet |
-| International | **Stripe** | Global card payments |
-| Coupons | Custom engine | Percentage & flat discounts, referral codes |
-
-### Communications
-| Channel | Provider | Trigger |
-|:--------|:---------|:--------|
-| Transactional Email | **Brevo HTTP API** | All automated emails (primary) |
-| Email Fallback | **Gmail SMTP** | Dev/backup path |
-| WhatsApp | **Twilio Business API** | Optional event reminders |
-| Push Notifications | **Web Push API** | Browser push (mobile-friendly) |
-
----
-
-## 📁 Repository Structure
-
-```
-saptha-event-portal/
-│
-├── 🐍 Core Application
-│   ├── app.py                    # Flask application factory & route registration
-│   ├── config.py                 # Environment-aware configuration classes
-│   ├── models.py                 # Database client (`db`) resolution
-│   ├── extensions.py             # Flask extension instances
-│   └── celery_app.py             # Celery application + broker config
-│
-├── 🛣️ Route Modules (40+ blueprints)
-│   ├── routes_auth.py            # Login, logout, registration, password reset, 2FA
-│   ├── routes_spoc.py            # Club SPOC full event lifecycle
-│   ├── routes_coordinator.py     # Check-in scanner, attendance, walk-ins
-│   ├── routes_admin.py           # Admin dashboard, user management
-│   ├── routes_participant.py     # Student dashboard, registration
-│   ├── routes_forms.py           # Dynamic form schema engine
-│   ├── routes_verification.py    # Certificate verify, preview, download
-│   ├── routes_live.py            # SSE real-time leaderboard streaming
-│   ├── routes_judge.py           # Judge scoring interface
-│   ├── routes_payment.py         # Razorpay payment integration
-│   ├── routes_payment_stripe.py  # Stripe payment integration
-│   ├── routes_teams.py           # Team creation, invites, management
-│   ├── routes_analytics.py       # Analytics dashboard data APIs
-│   ├── routes_gamification.py    # XP, badges, achievements
-│   └── routes_notifications.py   # SSE push notification system
-│
-├── 🛠️ Utilities
-│   ├── utils_email.py            # HTML email templates + multi-provider send
-│   ├── utils_certificate.py      # ReportLab PDF certificate generation
-│   ├── utils_qr.py               # QR code generation with logo
-│   ├── utils_validation.py       # Form validation, sanitization
-│   ├── utils_whatsapp.py         # Twilio WhatsApp helpers
-│   └── utils_storage.py          # S3/GCS/local file storage adapter
-│
-├── 📋 Task Workers
-│   ├── tasks/email_tasks.py      # Async email delivery tasks
-│   ├── tasks/cert_tasks.py       # Certificate generation + email pipeline
-│   └── scheduler.py              # APScheduler cron jobs (reminders)
-│
-├── 🔐 Security
-│   ├── security_middleware.py    # Request filtering, header enforcement
-│   ├── audit_logger.py           # Admin action audit trail
-│   ├── auth_2fa.py               # TOTP two-factor auth flow
-│   ├── auth_jwt.py               # JWT token validation middleware
-│   └── auth_oauth.py             # Google OAuth2 SSO integration
-│
-├── 🗄️ Database
-│   ├── db_adapter.py             # Firestore-style API → SQL adapter
-│   ├── models_pg.py              # SQLAlchemy ORM models for PostgreSQL
-│
-├── 🎨 Frontend
-│   ├── static/css/global.css     # 2600+ line unified design system
-│   ├── static/js/                # Vanilla JS modules (scanner, charts, SSE)
-│   └── static/snpsu-logo.png     # University logo (navy-transparent)
-│
-└── 🧪 Tests
-    ├── tests/                    # 145 unit + integration tests
-    └── pytest.ini                # Test configuration
-```
-
----
-
-## 🚀 Local Setup Guide
-
-### Prerequisites
-- Python 3.11
-- Git
-- (Optional) Docker, to run with PostgreSQL + Redis
-
-### Option A — Plain Python (SQLite, zero configuration)
-
-```bash
-git clone https://github.com/kirancodes-dev/saptha-event-portal.git
-cd saptha-event-portal
-
-python3 -m venv .venv
-source .venv/bin/activate      # macOS/Linux
-# .venv\Scripts\activate       # Windows
-
-pip install -r requirements-dev.txt
-
-# Create your Super Admin (choose your own email/password)
-SUPER_ADMIN_EMAIL=you@college.edu SUPER_ADMIN_PASS='choose-a-Strong-pass1' python init_superadmin.py
-
-python app.py                  # http://127.0.0.1:5001
-```
-
-With no `DATABASE_URL`, data lives in `saptha_fallback.db` (SQLite, gitignored)
-and a development secret key is generated in `instance/`. Optional: load demo
-accounts and events with `python seed_all_roles_demo.py`.
-
-### Option B — Docker Compose (PostgreSQL + Redis + Celery)
-
-```bash
-cp .env.example .env           # set SECRET_KEY and MASTER_SECRET_KEY
-docker compose up --build      # http://localhost:8080
-docker compose exec web env SUPER_ADMIN_EMAIL=you@college.edu \
-    SUPER_ADMIN_PASS='choose-a-Strong-pass1' python init_superadmin.py
-```
-
-### Tests & checks
-
-```bash
-pytest              # uses a temporary SQLite database, never your local data
-ruff check .
-```
-
-### Database
-
-The app stores everything in **PostgreSQL** through SQLAlchemy (`models_pg.py`).
-Route code uses a Firestore-style API (`db.collection(...).document(...)`) that
-`db_adapter.py` translates to SQL; every document field is kept (fields without
-their own column are stored in the row's `extra_json`), and tables/columns are
-created automatically on startup. In production (`FLASK_ENV=production`) the app
-refuses to start without `DATABASE_URL` (or `CLOUD_SQL_INSTANCE`), `SECRET_KEY`
-and `MASTER_SECRET_KEY` — see `.env.example`.
-
----
-
-## 📡 API Reference
-
-Interactive endpoints are documented at `/developer/api-docs` (access via the portal once running).
-
-| Method | Endpoint | Description |
-|:-------|:---------|:------------|
-| `GET` | `/api/v1/events` | List all public events |
-| `GET` | `/api/v1/events/<id>` | Event details + registration stats |
-| `GET` | `/api/v1/events/<id>/leaderboard` | Live ranked leaderboard |
-| `GET` | `/api/v1/verify/<cert_hash>` | Certificate verification |
-
----
-
-## ⚙️ CI/CD & Security
-
-### Automated Workflow Pipeline
-
-- **Linter**: `ruff` static code analysis.
-- **Security Audit**: `bandit` vulnerability detection.
-- **Testing**: `pytest` running all 145 checks across core functions.
-- **Continuous Deployment**: Automated integration with Google Cloud Run.
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please open an issue or submit a pull request matching our project architecture.
-
----
-
-## 📜 License
+## License
 
 MIT License
 
@@ -565,20 +220,12 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
----
+<br/>
 
 <div align="center">
 
-<img src="static/snpsu-logo.png" width="200" alt="Sapthagiri NPS University" style="background:#1a2557; padding:10px 20px; border-radius:10px;" />
+<img src="docs/assets/banner.png" width="360" alt="Sapthagiri NPS University" />
 
-<br/>
-
-**Built with ❤️ at Sapthagiri NPS University, Bengaluru**
-
-*Python · Flask · PostgreSQL · Gemini AI · Celery · Brevo · ReportLab · Cloud Run*
-
-<br/>
-
-© 2026 Sapthagiri NPS University · All Rights Reserved
+<sub>Sapthagiri NPS University · #14/5, Chikkasandra, Hesarghatta Main Road, Bengaluru 560057 · <a href="https://snpsu.edu.in">snpsu.edu.in</a></sub>
 
 </div>

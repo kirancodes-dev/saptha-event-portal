@@ -26,7 +26,7 @@ def world(real_app):
         {'staff': [{'name': 'In', 'email': people['coord_in'], 'role': 'EventCoordinator'}]})
 
     student = _login(flask_app, people['student'], 'Student')
-    student.post(f'/forms/submit/{event_id}', data={
+    student.post(f'/forms/submit/{event_id}', data={'privacy_consent': 'yes',
         'full_name': 'Stu Dent', 'email': people['student'], 'phone': '9876543210', 'usn': '1SN20CS777'})
     regs = list(db.collection('registrations').where('event_id', '==', event_id).stream())
     assert len(regs) == 1

@@ -53,7 +53,7 @@ try:
 except ImportError:
     def load_dotenv(*args, **kwargs): pass
 
-from config import Config, validate_production_config
+from config import Config, check_production_settings
 from utils import ROLE_REDIRECTS  # single source of truth
 
 # =========================================================
@@ -87,62 +87,49 @@ if not getattr(_wsec, '_is_patched', False):
 
 
 # =========================================================
-# LOGGING CONFIGURATION — structured JSON in production
+# LOGGING — one JSON object per line in production (Cloud Run), UPG-20
 # =========================================================
-def _configure_logging():
-    log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
-    root = logging.getLogger()
-    root.setLevel(log_level)
-    # Clear pre-existing handlers so reloaders don't double-log
-    for h in list(root.handlers):
-        root.removeHandler(h)
-    handler = logging.StreamHandler()
-    if os.environ.get('FLASK_ENV') == 'production':
-        try:
-            from pythonjsonlogger import jsonlogger
-            fmt = jsonlogger.JsonFormatter(
-                '%(asctime)s %(levelname)s %(name)s %(message)s %(pathname)s %(lineno)d'
-            )
-            handler.setFormatter(fmt)
-        except Exception:
-            handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
-    else:
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
-    root.addHandler(handler)
+from utils_logging import configure_logging  # noqa: E402
 
-_configure_logging()
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # =========================================================
-# SENTRY — initialized before app creation so errors during
-# boot are captured too
+# SENTRY — on when SENTRY_DSN is set; initialized before app
+# creation so errors during boot are captured too. Never sends
+# personal data (send_default_pii=False). UPG-20.
 # =========================================================
-_SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
-if _SENTRY_DSN:
+def init_sentry(env=None):
+    env = os.environ if env is None else env
+    dsn = (env.get('SENTRY_DSN') or '').strip()
+    if not dsn:
+        return False
     try:
         import sentry_sdk
         from sentry_sdk.integrations.flask import FlaskIntegration
         sentry_sdk.init(
-            dsn=_SENTRY_DSN,
+            dsn=dsn,
             integrations=[FlaskIntegration()],
-            environment=os.environ.get('FLASK_ENV', 'development'),
-            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+            environment=env.get('FLASK_ENV', 'development'),
+            release=env.get('K_REVISION') or None,   # the Cloud Run revision
+            traces_sample_rate=float(env.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
             send_default_pii=False,
         )
         logger.info("Sentry: initialized")
+        return True
     except Exception as exc:
         logger.warning("Sentry: failed to initialize: %s", exc)
+        return False
+
+
+init_sentry()
 
 # =========================================================
 # APP FACTORY
 # =========================================================
 app = Flask(__name__)
 app.config.from_object(Config)
-validate_production_config(app.config)
+check_production_settings()   # production: one error naming every missing or weak setting (UPG-20)
 
 # One proxy hop (Cloud Run's front end): trust its client IP (login throttle)
 # and scheme (so Talisman's force_https doesn't loop). Never X-Forwarded-Host
@@ -189,6 +176,8 @@ def _csrf_meta_token():
 
 
 app.jinja_env.globals.update(csrf_token=_safe_csrf_token, csrf_meta_token=_csrf_meta_token)
+from services_participants import allowed_types as _allowed_participant_types, LABELS as _participant_labels  # noqa: E402
+app.jinja_env.globals.update(allowed_types=_allowed_participant_types, participant_labels=_participant_labels)  # UPG-12
 
 # ── Server-side sessions (BLK-08): Redis when configured, else the database ──
 if app.config.get('SESSION_TYPE') == 'redis':
@@ -214,11 +203,12 @@ else:
 _csp = {
     'default-src': ["'self'"],
     'img-src':     ["'self'", 'data:', 'https:'],
-    'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
-                    'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-    'font-src':    ["'self'", 'https://cdnjs.cloudflare.com',
-                    'https://fonts.gstatic.com', 'data:'],
-    'script-src':  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com',
+    # Fonts are self-hosted (static/fonts, UPG-24); Font Awesome's come from cdnjs
+    'style-src':   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net'],
+    'font-src':    ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
+    # No 'unsafe-inline': page scripts live in static/js, and the few inline
+    # scripts that carry template values have a per-request nonce (UPG-25)
+    'script-src':  ["'self'", 'https://cdnjs.cloudflare.com',
                     'https://cdn.jsdelivr.net', 'https://www.gstatic.com',
                     'https://checkout.razorpay.com'],
     'connect-src': ["'self'", 'https://api.razorpay.com',
@@ -227,17 +217,24 @@ _csp = {
     'frame-src':   ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
     'frame-ancestors': ["'self'"],
 }
+_is_production = os.environ.get('FLASK_ENV') == 'production'
 Talisman(
     app,
     force_https=app.config.get('FORCE_HTTPS', False),
-    strict_transport_security=app.config.get('FORCE_HTTPS', False),
+    # Always in production: TLS ends at Cloud Run's front end, and ProxyFix
+    # above trusts its X-Forwarded-Proto, so requests are seen as https (UPG-20).
+    strict_transport_security=app.config.get('FORCE_HTTPS', False) or _is_production,
+    strict_transport_security_include_subdomains=False,
     strict_transport_security_max_age=31536000,
     content_security_policy=_csp,
-    content_security_policy_nonce_in=[],
+    content_security_policy_nonce_in=['script-src'],
     session_cookie_secure=app.config.get('SESSION_COOKIE_SECURE', False),
     referrer_policy='strict-origin-when-cross-origin',
     frame_options='SAMEORIGIN',
     x_content_type_options=True,
+    # Scanners use the camera, judges' dictation the microphone; nothing else.
+    # Structured-header syntax: camera=(self), geolocation=() — not Feature-Policy's 'self'
+    permissions_policy={'camera': '(self)', 'microphone': '(self)', 'geolocation': '()', 'payment': '(self)'},
 )
 
 # ── Rate limiter ─────────────────────────────────────────
@@ -305,7 +302,6 @@ else:
 # BLUEPRINTS
 # =========================================================
 from routes_auth        import auth_bp        # noqa: E402
-from routes_api         import api_bp          # noqa: E402
 from routes_ai_matching import ai_bp           # noqa: E402
 from routes_admin       import admin_bp        # noqa: E402
 from routes_coordinator import coord_bp        # noqa: E402
@@ -320,7 +316,8 @@ from routes_forms       import forms_bp        # noqa: E402
 from routes_portfolio   import portfolio_bp    # noqa: E402
 from routes_sponsors    import sponsors_bp     # noqa: E402
 from routes_teams          import teams_bp           # noqa: E402
-from routes_notifications  import notif_bp          # noqa: E402
+from routes_placement      import placement_bp       # noqa: E402  (UPG-57)
+from routes_sports         import sports_bp          # noqa: E402  (UPG-13)
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
 from routes_spoc           import spoc_bp           # noqa: E402
@@ -329,9 +326,9 @@ from routes_verification   import verification_bp   # noqa: E402
 from routes_matchmaker     import matchmaker_bp     # noqa: E402
 from routes_dynamic_pricing import dynamic_pricing_bp # noqa: E402
 from routes_referrals       import referrals_bp       # noqa: E402
+from routes_cron            import cron_bp            # noqa: E402
 
 app.register_blueprint(auth_bp)
-app.register_blueprint(api_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(coord_bp)
@@ -346,7 +343,8 @@ app.register_blueprint(forms_bp)
 app.register_blueprint(portfolio_bp)
 app.register_blueprint(sponsors_bp)
 app.register_blueprint(teams_bp)
-app.register_blueprint(notif_bp)
+app.register_blueprint(placement_bp)
+app.register_blueprint(sports_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)
 app.register_blueprint(spoc_bp)
@@ -355,6 +353,7 @@ app.register_blueprint(verification_bp)
 app.register_blueprint(matchmaker_bp)
 app.register_blueprint(dynamic_pricing_bp)
 app.register_blueprint(referrals_bp)
+app.register_blueprint(cron_bp)
 
 # ── Phase 1–4 Industrial Upgrade blueprints ──────────────
 from routes_api_v1          import api_v1_bp          # noqa: E402
@@ -371,7 +370,6 @@ from routes_i18n            import i18n_bp             # noqa: E402
 from i18n                   import init_i18n           # noqa: E402
 from routes_developer       import developer_bp        # noqa: E402
 from routes_analytics       import analytics_bp        # noqa: E402
-from routes_payment_stripe  import stripe_bp           # noqa: E402
 from routes_ai_features     import ai_features_bp      # noqa: E402
 from routes_onboarding      import onboarding_bp       # noqa: E402
 from routes_gamification    import gamification_bp     # noqa: E402
@@ -390,7 +388,6 @@ app.register_blueprint(marketing_bp)
 app.register_blueprint(i18n_bp)
 app.register_blueprint(developer_bp)
 app.register_blueprint(analytics_bp)
-app.register_blueprint(stripe_bp)
 app.register_blueprint(ai_features_bp)
 app.register_blueprint(onboarding_bp)
 app.register_blueprint(gamification_bp)
@@ -417,6 +414,36 @@ for _bearer_bp in (api_v1_bp,):
         csrf.exempt(_bearer_bp)
     except Exception as exc:
         logger.warning("CSRF exempt failed for %s: %s", _bearer_bp.name, exc)
+
+# Razorpay calls its webhook server to server; its signature authenticates it (UPG-30)
+from routes_payment import price_preview, razorpay_webhook  # noqa: E402
+csrf.exempt(price_preview)
+csrf.exempt(razorpay_webhook)
+# The scheduler calls the cron endpoint with a shared secret, not a session (UPG-07)
+csrf.exempt(cron_bp)
+
+
+@app.context_processor
+def inject_auth_features():
+    google_configured = bool(
+        app.config.get('OAUTH_GOOGLE_CLIENT_ID')
+        or app.config.get('GOOGLE_CLIENT_ID')
+    )
+    twofa_available = bool(app.config.get('TWO_FA_AVAILABLE', True))
+    try:
+        import pyotp
+        import qrcode
+        if pyotp is None or qrcode is None:
+            twofa_available = False
+    except Exception:
+        twofa_available = False
+
+    return {
+        'google_oauth_configured': google_configured,
+        'twofa_available': twofa_available,
+        # Help and privacy requests (D-4, UPG-42); unset, pages show no address
+        'support_email': (os.environ.get('SUPPORT_EMAIL') or '').strip(),
+    }
 
 
 
@@ -482,7 +509,8 @@ def well_known_suppress(subpath):
 # =========================================================
 @app.route('/privacy')
 def privacy_policy():
-    return render_template('public/privacy.html')
+    from services_privacy import PRIVACY_NOTICE_VERSION
+    return render_template('public/privacy.html', privacy_notice_version=PRIVACY_NOTICE_VERSION)
 
 @app.route('/terms')
 def terms_of_service():
@@ -491,43 +519,43 @@ def terms_of_service():
 # =========================================================
 # HEALTH CHECK — For load balancers & monitoring
 # =========================================================
+def _database_ok():
+    """One real round trip to the database: SELECT 1 on the SQL layer, or one
+    document read in Firestore mode. Never raises."""
+    try:
+        from db_adapter import SQLFirestoreAdapter
+        if isinstance(db, SQLFirestoreAdapter):
+            from sqlalchemy import text
+            from db_pg import get_engine
+            with get_engine().connect() as conn:
+                conn.execute(text('SELECT 1')).scalar()
+        else:
+            next(iter(db.collection('users').limit(1).stream()), None)
+        return True
+    except Exception:
+        logger.exception("Health check: the database is unreachable")
+        return False
+
+
 @app.route('/health', methods=['GET'])
 @limiter.exempt
 def health_check():
-    """
-    Health check endpoint for Railway, Render, and load balancers.
-    Returns 200 OK if app and Firebase are healthy.
-    """
-    try:
-        # Quick Firebase connection test
-        db.collection('users').limit(1).stream()
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.datetime.now().isoformat(),
-            'version': '1.0.0',
-            'environment': app.config.get('FLASK_ENV', 'unknown')
-        }), 200
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.datetime.now().isoformat()
-        }), 503
+    """Liveness and database check for Cloud Run and load balancers: 200 or
+    503, never error details (they're in the log). UPG-20."""
+    ok = _database_ok()
+    return jsonify({
+        'status': 'healthy' if ok else 'unhealthy',
+        'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'version': os.environ.get('K_REVISION', '1.0.0'),
+    }), 200 if ok else 503
+
 
 @app.route('/health/ready', methods=['GET'])
 @limiter.exempt
 def ready_check():
-    """
-    Readiness endpoint - checks if app is ready to handle traffic.
-    """
-    try:
-        # Check Firebase
-        db.collection('users').limit(1).stream()
-        return jsonify({'ready': True}), 200
-    except Exception as e:
-        logger.error(f"Readiness check failed: {e}")
-        return jsonify({'ready': False, 'error': str(e)}), 503
+    """Readiness: the database answers. No error details."""
+    ok = _database_ok()
+    return jsonify({'ready': ok}), 200 if ok else 503
 
 # =========================================================
 # HOME
@@ -602,17 +630,11 @@ def home():
                 d = e.to_dict() if hasattr(e, 'to_dict') else e
                 if not isinstance(d, dict): continue
                 d['id'] = getattr(e, 'id', None) or d.get('id') or 'event-demo'
-                status = (d.get('status') or 'active').strip().lower()
-                if status not in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+                # Published, not private, department-only for that department (UPG-73)
+                from services_event_types import is_listed
+                if not is_listed(d, viewer_dept=(viewer_dept or '') if viewer_email else '', is_admin=is_admin):
                     continue
-
-                # Visibility guard
-                ev_visibility = (d.get('visibility') or 'Public').strip().lower()
-                ev_dept = str(d.get('org_unit_id') or d.get('department') or '').strip().lower()
-                if ev_visibility in ('department', 'department_only') or d.get('department_only') is True:
-                    if not is_admin:
-                        if not viewer_email or not viewer_dept or viewer_dept.lower() != ev_dept:
-                            continue
+                ev_dept = str(d.get('department') or d.get('org_unit_id') or '').strip().lower()
 
                 # Search query
                 if q:
@@ -691,20 +713,17 @@ def home():
             'event_id': d.get('id', ''),
         })
 
-    if not events and not (q or filter_dept or filter_type or filter_mode or filter_fee):
-        events = [{
-            'id': 'demo-hackathon-2026',
-            'title': 'SapthaHack 2026 — National AI Hackathon',
-            'description': 'Flagship 36-hour hackathon organized by Sapthagiri NPS University.',
-            'category': 'Technical',
-            'date': '2026-08-15',
-            'venue': 'APJ Abdul Kalam Auditorium, SNPSU Campus',
-            'entry_fee': 0,
-            'registration_count': 124,
-            'is_closed': False
-        }]
-
+    # The hero's "Coming up" list and the counts beside it, from the events
+    # above; the university's own facts come from university_info (UPG-86)
+    from university_info import UNIVERSITY, SOURCE_URL
+    open_events = [d for d in events if str(d.get('date') or '') >= current_date and not d.get('is_closed')]
+    month = current_date[:7]
     _ctx = {
+        'university': UNIVERSITY,
+        'university_source': SOURCE_URL,
+        'coming_up': open_events[:3],
+        'open_count': len(open_events),
+        'this_month_count': sum(1 for d in events if str(d.get('date') or '')[:7] == month),
         'events': events,
         'current_date': current_date,
         'today_date': current_date,
@@ -729,6 +748,21 @@ def dashboard_redirect():
 # =========================================================
 # UNIVERSAL EVENT DISCOVERY & CATALOG
 # =========================================================
+def _viewer_is_admin():
+    return session.get('role') in ('SuperAdmin', 'Super Admin', 'Admin', 'UniversityAdmin')
+
+
+def _viewer_department():
+    """The signed-in user's department, for department-only events (UPG-73)."""
+    if not session.get('user_id') or db is None:
+        return ''
+    try:
+        doc = db.collection('users').document(session['user_id']).get()
+        return ((doc.to_dict() or {}).get('department') or '') if doc.exists else ''
+    except Exception:
+        return ''
+
+
 @app.route('/events')
 def events_catalog():
     """Universal Event Discovery Catalog with multi-facet filtering."""
@@ -746,6 +780,10 @@ def events_catalog():
             for doc in stream:
                 ev = doc.to_dict()
                 ev['id'] = doc.id
+                # Only published, publicly visible events (drafts and private ones never; UPG-73)
+                from services_event_types import is_listed
+                if not is_listed(ev, viewer_dept=_viewer_department(), is_admin=_viewer_is_admin()):
+                    continue
                 cat = ev.get('category')
                 if cat:
                     categories.add(cat)
@@ -928,15 +966,73 @@ def event_details(event_id):
                         'phone': u.get('phone', ''),
                     }
 
+        # Tournament data if present (UPG-13)
+        t = event.get('tournament') or {}
+        t_names, t_table, t_champ = {}, [], None
+        if t:
+            try:
+                import services_sports
+                t_names = services_sports.names(t)
+                t_table = services_sports.standings(t) if t.get('format') == 'league' else []
+                t_champ = services_sports.champion(t)
+            except Exception:
+                pass
+
+        # Kind of event, its fest, and a fest's programme (UPG-73, UPG-74)
+        from services_event_types import get_type, is_listed, id_variants
+        spec = get_type(event.get('event_type'))
+        parent_fest, fest_events = None, []
+        if event.get('parent_event_id'):
+            p_doc = db.collection('events').document(event['parent_event_id']).get()
+            if p_doc.exists:
+                parent_fest = dict(p_doc.to_dict() or {}, id=p_doc.id)
+        if event.get('is_fest'):
+            fest_events = sorted(
+                [dict(d.to_dict() or {}, id=d.id) for d in
+                 db.collection('events').where('parent_event_id', 'in', id_variants(doc.id) + id_variants(event_id)).stream()],
+                key=lambda e: (str(e.get('date') or ''), str(e.get('time') or '')))
+            fest_events = [e for e in fest_events if is_listed(e, is_admin=True)]
+
+        # Seats taken: counted from the registrations, not the cached counter (UPG-81, UPG-92)
+        reg_count = sum(1 for r in db.collection('registrations').where('event_id', '==', event_id).stream()
+                        if str((r.to_dict() or {}).get('status') or '').lower() not in ('cancelled', 'refunded'))
+        from utils_email import _base_url
+        share_url = f"{_base_url()}/event/{event_id}"
+        try:
+            days_until = (datetime.date.fromisoformat(str(event.get('date'))[:10]) - datetime.date.today()).days
+        except ValueError:
+            days_until = None
+        from routes_forms import registration_closed
+        page_args = dict(share_url=share_url, days_until=days_until, closed=registration_closed(event))
+
+        # The home page's event popup shows the same content (UPG-92)
+        if request.args.get('fragment') == '1':
+            return render_template('public/event_fragment.html', event=event, spec=spec,
+                                   parent_fest=parent_fest, fest_events=fest_events,
+                                   is_registered=is_registered, reg_count=reg_count, fragment=True,
+                                   t=t, names=t_names, table=t_table, champion=t_champ, **page_args)
+
         return render_template('public/event_details.html',
+                               fragment=False, **page_args,
                                event=event,
+                               spec=spec, parent_fest=parent_fest, fest_events=fest_events,
                                is_registered=is_registered,
                                reg_count=reg_count,
                                max_p=max_p,
-                               prefill=prefill)
+                               prefill=prefill,
+                               t=t,
+                               names=t_names,
+                               table=t_table,
+                               champion=t_champ)
     except Exception as exc:
         app.logger.error("Event details error: %s", exc)
         return render_template('500.html'), 500
+
+
+@app.route('/sports/fixtures/<event_id>')
+def sports_fixtures_alias(event_id):
+    """Public fixtures alias route (UPG-13)."""
+    return redirect(f'/tournament/fixtures/{event_id}')
 
 
 # =========================================================
@@ -992,19 +1088,11 @@ def _filter_calendar_events(events_stream, args, session_dict, db_client):
         ev_id = doc.id if hasattr(doc, 'id') else ev.get('id')
         ev['id'] = ev_id
 
-        # Must be active or published
-        ev_status = (ev.get('status') or 'active').strip().lower()
-        if ev_status not in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+        # Published, not private, department-only for that department (UPG-73)
+        from services_event_types import is_listed
+        if not is_listed(ev, viewer_dept=(viewer_dept or '') if viewer_email else '', is_admin=is_admin):
             continue
-
-        # Visibility guard: department-only events
-        ev_visibility = (ev.get('visibility') or 'Public').strip().lower()
-        ev_dept = str(ev.get('org_unit_id') or ev.get('department') or '').strip().lower()
-
-        if ev_visibility in ('department', 'department_only') or ev.get('department_only') is True:
-            if not is_admin:
-                if not viewer_email or not viewer_dept or viewer_dept.lower() != ev_dept:
-                    continue  # Hidden from other departments and unauthenticated users
+        ev_dept = str(ev.get('department') or ev.get('org_unit_id') or '').strip().lower()
 
         # "My events" filter
         if my_events_only and str(ev_id) not in user_registered_event_ids:
@@ -1036,6 +1124,15 @@ def _filter_calendar_events(events_stream, args, session_dict, db_client):
                 continue
             if filter_fee == 'paid' and is_free:
                 continue
+
+        if (ev.get('room_id') or ev.get('roomId')) and not ev.get('room_name') and db_client:
+            try:
+                r_id = ev.get('room_id') or ev.get('roomId')
+                rdoc = db_client.collection('rooms').document(str(r_id)).get()
+                if rdoc.exists:
+                    ev['room_name'] = rdoc.to_dict().get('name')
+            except Exception:
+                pass
 
         ev['google_calendar_url'] = get_google_calendar_url(ev)
         ev['ics_url'] = f"/events/{ev.get('slug') or ev_id}/calendar.ics"

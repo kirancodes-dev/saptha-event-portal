@@ -1,10 +1,14 @@
-// static/js/offline-sync.js — IndexedDB Offline Synchronization Engine
+// static/js/offline-sync.js — scans made without a connection wait in IndexedDB
+// and are sent to the shared check-in endpoint later (UPG-02). The server
+// answers a repeat with "already checked in", so replaying never double-counts.
 
 const DB_NAME = 'SapthaOfflineCheckin';
 const DB_VERSION = 1;
 const STORE_NAME = 'pending_checkins';
+const CHECKIN_URL = '/ticket/api/checkin';
 
 let dbInstance = null;
+let syncing = false;
 
 function getDB() {
     return new Promise((resolve, reject) => {
@@ -32,24 +36,40 @@ function getDB() {
     });
 }
 
-// Queue check-in offline
-window.queueOfflineCheckin = async function(regId, eventId, round = 1) {
-    try {
-        const db = await getDB();
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        
-        const checkinData = {
-            regId: regId,
-            eventId: eventId,
-            round: round,
-            timestamp: new Date().toISOString()
-        };
+// Run fn(store) in one transaction; resolves with its request's result
+function withStore(mode, fn) {
+    return getDB().then((db) => new Promise((resolve, reject) => {
+        const tx = db.transaction([STORE_NAME], mode);
+        const request = fn(tx.objectStore(STORE_NAME));
+        tx.oncomplete = () => resolve(request ? request.result : undefined);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+    }));
+}
 
-        store.add(checkinData);
-        console.log("Check-in queued offline successfully:", checkinData);
+// Queued items before UPG-02 kept the scanned text under regId
+function tokenOf(item) {
+    return item.token || item.regId || '';
+}
+
+function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+// Keep a scan for later; the same ticket is queued once
+window.queueOfflineCheckin = async function(token, eventId) {
+    try {
+        const pending = await withStore('readonly', (store) => store.getAll());
+        if (!pending.some((item) => tokenOf(item) === token)) {
+            await withStore('readwrite', (store) => store.add({
+                token: token,
+                eventId: eventId,
+                queuedAt: new Date().toISOString()
+            }));
+        }
         if (window.showToast) {
-            window.showToast("Offline mode: Check-in saved locally.", "warning", 3000);
+            window.showToast("Offline: scan saved on this device.", "warning", 3000);
         }
         return true;
     } catch (err) {
@@ -58,64 +78,70 @@ window.queueOfflineCheckin = async function(regId, eventId, round = 1) {
     }
 };
 
-// Sync queued check-ins to server
-window.syncOfflineCheckins = async function() {
-    if (!navigator.onLine) return;
-    
+window.countOfflineCheckins = async function() {
     try {
-        const db = await getDB();
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        
-        const request = store.getAll();
-        
-        request.onsuccess = async (e) => {
-            const list = e.target.result;
-            if (list.length === 0) return;
-            
-            console.log(`Found ${list.length} offline check-ins to sync...`);
-            if (window.showToast) {
-                window.showToast(`Syncing ${list.length} offline check-ins...`, "info", 2000);
-            }
-
-            for (const item of list) {
-                try {
-                    const resp = await fetch(`/checkin/kiosk/confirm/${item.regId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            event_id: item.eventId,
-                            round: item.round,
-                            offline_time: item.timestamp
-                        })
-                    });
-                    
-                    if (resp.ok) {
-                        // Success -> remove from store
-                        const deleteTx = db.transaction([STORE_NAME], 'readwrite');
-                        deleteTx.objectStore(STORE_NAME).delete(item.id);
-                        console.log(`Synced & deleted offline check-in ID: ${item.id}`);
-                    }
-                } catch (fetchErr) {
-                    console.error("Failed to sync item:", item, fetchErr);
-                }
-            }
-            
-            if (window.showToast) {
-                window.showToast("Offline check-ins synced successfully!", "success", 3000);
-            }
-        };
+        return await withStore('readonly', (store) => store.count());
     } catch (err) {
-        console.error("Error in syncOfflineCheckins:", err);
+        return 0;
     }
 };
 
-// Auto-sync when system changes online state
-window.addEventListener('online', window.syncOfflineCheckins);
+// Send queued scans. An item leaves the queue once the server has given a
+// final answer (checked in, already in, or refused); it stays after a network
+// error, an expired login (401) or a server error (5xx), to be tried again.
+window.syncOfflineCheckins = async function() {
+    const summary = { sent: 0, alreadyIn: 0, refused: 0, kept: 0 };
+    if (!navigator.onLine || syncing) return summary;
+    syncing = true;
+    try {
+        const pending = await withStore('readonly', (store) => store.getAll());
+        if (pending.length === 0) return summary;
+        if (window.showToast) {
+            window.showToast(`Sending ${pending.length} offline scans...`, "info", 2000);
+        }
 
-// Check immediately on load if online
+        for (let i = 0; i < pending.length; i++) {
+            const item = pending[i];
+            let resp, data;
+            try {
+                resp = await fetch(CHECKIN_URL, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                    body: JSON.stringify({ token: tokenOf(item), event_id: item.eventId, source: 'offline queue' })
+                });
+                data = await resp.json().catch(() => ({}));
+            } catch (fetchErr) {
+                summary.kept += pending.length - i;  // offline again: this one and the rest wait
+                break;
+            }
+            if (resp.status === 401 || resp.status >= 500) {
+                summary.kept += 1;
+                continue;
+            }
+            await withStore('readwrite', (store) => store.delete(item.id));
+            if (data.status === 'success') summary.sent += 1;
+            else if (data.status === 'already_in') summary.alreadyIn += 1;
+            else summary.refused += 1;
+        }
+
+        if (window.showToast) {
+            window.showToast(`Offline scans: ${summary.sent} checked in, ${summary.alreadyIn} already in, ` +
+                             `${summary.refused} refused, ${summary.kept} still waiting.`,
+                             summary.refused || summary.kept ? "warning" : "success", 4000);
+        }
+        window.dispatchEvent(new CustomEvent('offline-checkins-synced', { detail: summary }));
+        return summary;
+    } catch (err) {
+        console.error("Error in syncOfflineCheckins:", err);
+        return summary;
+    } finally {
+        syncing = false;
+    }
+};
+
+// Send as soon as the connection comes back, and shortly after each page load
+window.addEventListener('online', window.syncOfflineCheckins);
 window.addEventListener('load', () => {
     if (navigator.onLine) {
         setTimeout(window.syncOfflineCheckins, 3000);

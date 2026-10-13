@@ -1,35 +1,18 @@
 """
-utils_email.py — SapthaEvent Email (Auto-switching)
+utils_email.py — SapthaEvent email, sent through the first provider configured.
 
-Railway blocks outbound SMTP (ports 465/587) at the platform level.
-Use an HTTP-based provider instead — Brevo is free and works everywhere.
+Settings are environment variables; their values never belong in code (UPG-41):
+  1. BREVO_API_KEY          → Brevo HTTP API (recommended: free tier, sends to
+                              anyone, works where outbound SMTP is blocked)
+  2. RESEND_API_KEY         → Resend HTTP API (free tier sends to verified
+                              addresses only)
+  3. MAIL_USER + MAIL_PASS  → SMTP login (MAIL_SERVER, default Gmail; for Gmail,
+                              MAIL_PASS is an app password)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- RECOMMENDED (free, works on Railway):  BREVO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 1. Sign up free at https://brevo.com
- 2. Settings → SMTP & API → API Keys → Generate
- 3. In Railway Variables add:
-      BREVO_API_KEY = xkeysib-xxxxxxxxxxxxxxxxxxxx
-      MAIL_FROM     = SapthaEvent <sapthhack@gmail.com>
-
- Free tier: 300 emails/day, sends to ANYONE. No domain verification needed.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- FALLBACK: RESEND (free but only to verified emails)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      RESEND_API_KEY = re_xxxxxxxxxxxx
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- LAST RESORT: Gmail SMTP (blocked by Railway SMTP firewall)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      MAIL_USER = sapthhack@gmail.com
-      MAIL_PASS = yqfktmdnvxofqvxj
-
-PRIORITY ORDER (auto-detected at runtime):
-  1. BREVO_API_KEY set     → Brevo HTTP API  ✅ Railway-safe, free, anyone
-  2. RESEND_API_KEY set    → Resend HTTP API  ⚠️  verified emails only (free)
-  3. Neither               → Gmail SMTP       ❌ blocked on Railway
+MAIL_FROM is the sender, e.g. "SapthaEvent <events@your-domain>", verified with
+the provider. Without it the sender is MAIL_USER; with neither, Brevo and Resend
+refuse to send. With no provider at all, development logs the set-password and
+reset links instead (UPG-39).
 """
 
 from __future__ import annotations
@@ -47,14 +30,9 @@ LAST_EMAIL_ERROR = ""
 # HELPERS
 # ─────────────────────────────────────────────────────────────
 
-def _base_url() -> str:
-    """The site's public address for every link that leaves the app: emails,
-    WhatsApp messages, QR codes, referrals (BLK-16).
-
-    BASE_URL only, never the request's host: a client can forge Host or
-    X-Forwarded-Host, and a reset email would then link to their site.
-    Production refuses to start without an https BASE_URL
-    (config.validate_production_config)."""
+def _configured_base_url() -> str:
+    """BASE_URL: the site's public address. Production refuses to start
+    without an https one (config.validate_production_config)."""
     url = ''
     try:
         from flask import current_app
@@ -65,11 +43,75 @@ def _base_url() -> str:
     return url.strip().rstrip('/')
 
 
+def _base_url() -> str:
+    """The address every link that leaves the app uses: emails, WhatsApp
+    messages, QR codes, referrals (BLK-16).
+
+    The address the current request came in on when that address is trusted
+    (this machine, the local network or an ngrok tunnel in development, the
+    BASE_URL host, or TRUSTED_HOSTS), so links open where the portal is being
+    used (UPG-91); otherwise BASE_URL. A forged Host header is never trusted,
+    so a reset email can't be made to link to someone else's site."""
+    base = _configured_base_url()
+    from utils_links import request_origin
+    return (request_origin(base) or base).rstrip('/')
+
+
+# The logo travels inside each email (UPG-91): no outside address it depends on
+LOGO_CID = 'cid:snpsu-logo'
+LOGO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'img', 'email-logo.png')
+
+
+def _public_logo_url() -> str:
+    """For providers that take the email as HTML only (Brevo, Resend)."""
+    return (os.environ.get('COLLEGE_LOGO_URL', '').strip()
+            or f"{_configured_base_url()}/static/img/email-logo.png")
+
+
 def _from_address() -> str:
-    return os.environ.get(
-        'MAIL_FROM',
-        f"SapthaEvent <{os.environ.get('MAIL_USER', 'sapthhack@gmail.com')}>"
-    )
+    """MAIL_FROM, else the MAIL_USER login; '' when neither is set. There's no
+    built-in sender account (UPG-41)."""
+    mail_from = os.environ.get('MAIL_FROM', '').strip()
+    if mail_from:
+        return mail_from
+    mail_user = os.environ.get('MAIL_USER', '').strip()
+    return f"SapthaEvent <{mail_user}>" if mail_user else ''
+
+
+NO_SENDER_ERROR = "MAIL_FROM isn't set: set it to a sender address verified with the mail provider."
+
+
+def mail_provider() -> str:
+    """The provider _send will use: 'brevo', 'resend', 'smtp', or '' for none."""
+    if os.environ.get('BREVO_API_KEY'):
+        return 'brevo'
+    if os.environ.get('RESEND_API_KEY'):
+        return 'resend'
+    if os.environ.get('MAIL_USER') and os.environ.get('MAIL_PASS'):
+        return 'smtp'
+    return ''
+
+
+def _is_production() -> bool:
+    try:
+        from flask import current_app
+        if current_app.config.get('FLASK_ENV') == 'production':
+            return True
+    except RuntimeError:  # outside an app context
+        pass
+    return os.environ.get('FLASK_ENV') == 'production'
+
+
+def _log_link_without_mail(kind: str, to_email: str, url: str) -> None:
+    """No mail provider configured: in development, write the link to the log
+    so the flow can be followed locally (UPG-39). Never in production, where
+    the link is a credential: there, report the missing provider instead."""
+    if mail_provider():
+        return
+    if _is_production():
+        logger.error("No mail provider is configured: the %s email to %s can't be sent", kind, to_email)
+        return
+    logger.warning("DEVELOPMENT ONLY, no mail provider: %s link for %s: %s", kind, to_email, url)
 
 
 def _update_delivery_status(to_email: str, status: str, reg_id: str | None = None):
@@ -97,10 +139,16 @@ def _update_delivery_status(to_email: str, status: str, reg_id: str | None = Non
         logger.warning("Failed to update email delivery status: %s", exc)
 
 
+def _e(value) -> str:
+    """Escape a value put into an email's HTML (UPG-50): names, titles,
+    venues and messages are text, never markup."""
+    import html as _html
+    return _html.escape(str(value if value is not None else ''))
+
+
 def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
-    logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip()
-    if not logo_url:
-        logo_url = f"{_base_url().rstrip('/')}/static/snpsu-logo.png"
+    # COLLEGE_LOGO_URL if set; otherwise the logo attached to the email itself
+    logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip() or LOGO_CID
     base = _base_url().rstrip('/')
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -131,8 +179,8 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                     <!-- University logo — crisp white text on navy background, matches home page -->
                     <img src="{logo_url}"
                          alt="Sapthagiri NPS University"
-                         width="220"
-                         style="display:block;margin:0 auto 14px;height:56px;width:auto;max-width:220px;border:none;outline:none;text-decoration:none;background:transparent;">
+                         width="230" height="56"
+                         style="display:block;margin:0 auto 14px;height:56px;width:230px;max-width:230px;border:none;outline:none;text-decoration:none;background:transparent;">
                     <!-- Gold divider line -->
                     <div style="width:60px;height:2px;background:linear-gradient(90deg,transparent,#c9a020,transparent);margin:0 auto 12px;"></div>
                     <!-- SapthaEvent badge -->
@@ -171,8 +219,8 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                         <td style="background-color:#1a2557;border-bottom:2.5px solid #c9a020;border-radius:10px;padding:10px 24px;box-shadow:0 3px 12px rgba(26,37,87,0.15);">
                           <img src="{logo_url}"
                                alt="Sapthagiri NPS University"
-                               height="32"
-                               style="display:block;height:32px;width:auto;max-width:200px;border:none;outline:none;background:transparent;">
+                               width="131" height="32"
+                               style="display:block;height:32px;width:131px;max-width:200px;border:none;outline:none;background:transparent;">
                         </td>
                       </tr>
                     </table>
@@ -236,6 +284,10 @@ def _send_via_brevo(to_email, subject: str, html: str,
 
         api_key  = os.environ.get('BREVO_API_KEY', '')
         from_raw = _from_address()
+        if not from_raw:
+            LAST_EMAIL_ERROR = f"Brevo: {NO_SENDER_ERROR}"
+            logger.error(LAST_EMAIL_ERROR)
+            return False
 
         # Parse "Name <email>" or plain email
         if '<' in from_raw and '>' in from_raw:
@@ -251,7 +303,7 @@ def _send_via_brevo(to_email, subject: str, html: str,
             'sender':      {'name': from_name, 'email': from_email},
             'to':          [{'email': e} for e in to_list],
             'subject':     subject,
-            'htmlContent': html,
+            'htmlContent': html.replace(LOGO_CID, _public_logo_url()),
         }
 
         if attachments:
@@ -294,6 +346,10 @@ def _send_via_resend(to_email, subject: str, html: str,
                      attachments: list | None = None) -> bool:
     global LAST_EMAIL_ERROR
     try:
+        if not _from_address():
+            LAST_EMAIL_ERROR = f"Resend: {NO_SENDER_ERROR}"
+            logger.error(LAST_EMAIL_ERROR)
+            return False
         import resend
         resend.api_key = os.environ.get('RESEND_API_KEY', '')
         to_list = [to_email] if isinstance(to_email, str) else to_email
@@ -301,7 +357,7 @@ def _send_via_resend(to_email, subject: str, html: str,
             'from':    _from_address(),
             'to':      to_list,
             'subject': subject,
-            'html':    html,
+            'html':    html.replace(LOGO_CID, _public_logo_url()),
         }
         if attachments:
             params['attachments'] = attachments
@@ -317,6 +373,16 @@ def _send_via_resend(to_email, subject: str, html: str,
 # ─────────────────────────────────────────────────────────────
 # PROVIDER 2 — GMAIL SMTP (used on Railway paid plan)
 # ─────────────────────────────────────────────────────────────
+
+def _smtp_login(server, user: str, password: str) -> None:
+    """Log in with AUTH PLAIN only. smtplib otherwise retries a refused login
+    with AUTH LOGIN, which Gmail answers by closing the connection, and the
+    real reason ("Username and Password not accepted") is lost (UPG-91)."""
+    server.ehlo()
+    if 'PLAIN' in (server.esmtp_features.get('auth') or '').upper().split():
+        server.esmtp_features['auth'] = 'PLAIN'
+    server.login(user, password)
+
 
 def _send_via_gmail(to_email, subject: str, html: str,
                     attachments: list | None = None) -> bool:
@@ -347,9 +413,19 @@ def _send_via_gmail(to_email, subject: str, html: str,
         msg['To']      = ', '.join(to_list)
         msg['Subject'] = Header(subject, 'utf-8').encode()
 
+        # The HTML and the logo it shows travel together (multipart/related, UPG-91)
+        related = MIMEMultipart('related')
         alt = MIMEMultipart('alternative')
         alt.attach(MIMEText(html, 'html', 'utf-8'))
-        msg.attach(alt)
+        related.attach(alt)
+        if LOGO_CID in html and os.path.exists(LOGO_FILE):
+            from email.mime.image import MIMEImage
+            with open(LOGO_FILE, 'rb') as fh:
+                logo = MIMEImage(fh.read(), 'png')
+            logo.add_header('Content-ID', '<snpsu-logo>')
+            logo.add_header('Content-Disposition', 'inline', filename='snpsu-logo.png')
+            related.attach(logo)
+        msg.attach(related)
 
         if attachments:
             for att in attachments:
@@ -376,23 +452,22 @@ def _send_via_gmail(to_email, subject: str, html: str,
             ctx = _ssl.create_default_context()
             with smtplib.SMTP_SSL(smtp_host, smtp_port,
                                   context=ctx, timeout=timeout) as server:
-                server.login(mail_user, mail_pass)
+                _smtp_login(server, mail_user, mail_pass)
                 server.send_message(msg)
         else:
             with smtplib.SMTP(smtp_host, smtp_port, timeout=timeout) as server:
                 server.ehlo()
                 server.starttls()
-                server.ehlo()
-                server.login(mail_user, mail_pass)
+                _smtp_login(server, mail_user, mail_pass)
                 server.send_message(msg)
 
         logger.info("Gmail SMTP → %s | %s", to_list, subject)
         return True
 
     except smtplib.SMTPAuthenticationError as exc:
-        LAST_EMAIL_ERROR = (f"Gmail auth failed: {exc}. MAIL_PASS must be a "
-                            "16-char App Password (no spaces). Generate at "
-                            "myaccount.google.com/apppasswords")
+        LAST_EMAIL_ERROR = (f"Gmail refused the login ({exc.smtp_code}): MAIL_USER must be the exact "
+                            "Gmail address the App Password was made for, and MAIL_PASS that "
+                            "16-letter App Password (myaccount.google.com/apppasswords).")
         logger.error(LAST_EMAIL_ERROR)
         return False
     except Exception as exc:
@@ -436,7 +511,8 @@ def _send(to_email, subject: str, html: str,
 def send_registration_confirmed_email(to_email: str, name: str, event_title: str,
                                        event_date: str = '', venue: str = '',
                                        is_new_user: bool = False,
-                                       raw_password: str | None = None) -> bool:
+                                       raw_password: str | None = None,
+                                       added_by: str = '', team_name: str = '') -> bool:
     """
     Sent immediately at registration. Simple confirmation — no QR, no ticket ID.
     The actual entry ticket (with QR) is sent 1 day before the event.
@@ -450,25 +526,27 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
             🔑 Your Login Credentials</p>
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr><td style="color:#64748b;padding:4px 0;width:30%;">Email</td>
-                <td style="font-weight:700;color:#1a2557;">{to_email}</td></tr>
+                <td style="font-weight:700;color:#1a2557;">{_e(to_email)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Password</td>
                 <td style="font-family:monospace;font-weight:700;color:#c9a227;
-                           letter-spacing:1px;">{raw_password}</td></tr>
+                           letter-spacing:1px;">{_e(raw_password)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Login</td>
-                <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">{base}/login</a></td></tr>
+                <td><a href="{_e(base)}/login" style="color:#1a2557;font-weight:700;">{_e(base)}/login</a></td></tr>
           </table>
           <p style="color:#ef4444;font-size:12px;margin:10px 0 0;font-weight:600;">
             ⚠️ Change your password after first login.</p>
         </div>"""
     details = ""
     if event_date:
-        details += f"<tr><td style='color:#64748b;padding:4px 0;width:30%;'>Date</td><td style='font-weight:600;color:#1a2557;'>📅 {event_date}</td></tr>"
+        details += f"<tr><td style='color:#64748b;padding:4px 0;width:30%;'>Date</td><td style='font-weight:600;color:#1a2557;'>📅 {_e(event_date)}</td></tr>"
     if venue:
-        details += f"<tr><td style='color:#64748b;padding:4px 0;'>Venue</td><td style='font-weight:600;color:#1a2557;'>📍 {venue}</td></tr>"
+        details += f"<tr><td style='color:#64748b;padding:4px 0;'>Venue</td><td style='font-weight:600;color:#1a2557;'>📍 {_e(venue)}</td></tr>"
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
-        <p style="color:#475569;">Your registration for
-           <strong style="color:#1a2557;">{event_title}</strong> is confirmed!</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
+        <p style="color:#475569;">{
+            f'<strong>{_e(added_by)}</strong> added you to team <strong>{_e(team_name)}</strong> for'
+            if added_by else 'Your registration for'}
+           <strong style="color:#1a2557;">{_e(event_title)}</strong> is confirmed!</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:16px;margin:16px 0;">
           <p style="color:#166534;font-size:13px;margin:0 0 10px;font-weight:700;">
@@ -482,7 +560,7 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
           Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
           Keep an eye on your inbox!
         </p>
-    """, f"Registration Confirmed — {event_title}")
+    """, f"Registration Confirmed — {_e(event_title)}")
 
     atts = []
     if event_date:
@@ -504,7 +582,11 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
 def send_ticket_email(to_email: str, name: str, event_title: str,
                       reg_id: str, qr_bytes: bytes | None = None,
                       is_new_user: bool = False,
-                      raw_password: str | None = None) -> bool:
+                      raw_password: str | None = None,
+                      event_date: str = '', venue: str = '') -> bool:
+    """The ticket: after payment, at the desk, and the day before the event
+    (with the QR, tasks/scheduled_tasks.send_24h_reminders). Date and venue
+    come from the caller, else from the registration's event."""
     base = _base_url()
     credentials_block = ""
     if is_new_user and raw_password:
@@ -514,27 +596,27 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
             🔑 Your Login Credentials</p>
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr><td style="color:#64748b;padding:4px 0;width:30%;">Email</td>
-                <td style="font-weight:700;color:#1a2557;">{to_email}</td></tr>
+                <td style="font-weight:700;color:#1a2557;">{_e(to_email)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Password</td>
                 <td style="font-family:monospace;font-weight:700;color:#c9a227;
-                           letter-spacing:1px;">{raw_password}</td></tr>
+                           letter-spacing:1px;">{_e(raw_password)}</td></tr>
             <tr><td style="color:#64748b;padding:4px 0;">Login</td>
-                <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">
-                  {base}/login</a></td></tr>
+                <td><a href="{_e(base)}/login" style="color:#1a2557;font-weight:700;">
+                  {_e(base)}/login</a></td></tr>
           </table>
           <p style="color:#ef4444;font-size:12px;margin:10px 0 0;font-weight:600;">
             ⚠️ Change your password after first login.</p>
         </div>"""
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">You are successfully registered for
-           <strong style="color:#1a2557;">{event_title}</strong>.</p>
+           <strong style="color:#1a2557;">{_e(event_title)}</strong>.</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:16px;text-align:center;margin:16px 0;">
           <p style="color:#166534;font-size:13px;margin:0 0 6px;font-weight:700;">
             Your Ticket ID</p>
           <p style="font-family:monospace;font-size:22px;color:#1a2557;
-                    font-weight:700;margin:0;">{reg_id}</p>
+                    font-weight:700;margin:0;">{_e(reg_id)}</p>
         </div>
         {credentials_block}
         <p style="color:#475569;font-size:13px;">
@@ -542,13 +624,13 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
           {'Your QR code is attached.' if qr_bytes else ''}
         </p>
         <p style="margin-top:20px;">
-          <a href="{base}/participant/dashboard"
+          <a href="{_e(base)}/participant/dashboard"
              style="background:#1a2557;color:#fff;padding:10px 24px;
                     border-radius:8px;text-decoration:none;font-weight:700;">
             View My Dashboard →
           </a>
         </p>
-    """, f"Registration Confirmed — {event_title}")
+    """, f"Registration Confirmed — {_e(event_title)}")
 
     atts = []
     if qr_bytes:
@@ -559,12 +641,10 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
             'data':     qr_bytes,
         })
 
-    # Attempt to fetch event_date and venue from database using reg_id for calendar invite
-    event_date = ''
-    venue = ''
+    # Date and venue for the calendar invite, from the event if not given
     try:
         from models import db
-        if db is not None:
+        if db is not None and not (event_date or venue):
             reg_doc = db.collection('registrations').document(reg_id).get()
             if reg_doc.exists:
                 reg_dict = reg_doc.to_dict()
@@ -598,43 +678,43 @@ def send_credentials_email(to_email: str, name: str, role: str,
                            password: str, category: str = '') -> bool:
     base = _base_url()
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">You have been appointed as
-           <strong style="color:#1a2557;">{role}</strong>
-           {f'for <strong>{category}</strong> events' if category else ''}.</p>
+           <strong style="color:#1a2557;">{_e(role)}</strong>
+           {f'for <strong>{_e(category)}</strong> events' if category else ''}.</p>
         <div style="background:#e8f0fe;border-radius:10px;padding:20px;margin:16px 0;">
           <table style="width:100%;font-size:14px;border-collapse:collapse;">
             <tr>
               <td style="color:#64748b;padding:8px 0;width:30%;">Login URL</td>
-              <td><a href="{base}/login" style="color:#1a2557;font-weight:700;">
-                {base}/login</a></td>
+              <td><a href="{_e(base)}/login" style="color:#1a2557;font-weight:700;">
+                {_e(base)}/login</a></td>
             </tr>
             <tr>
               <td style="color:#64748b;padding:8px 0;">Email</td>
-              <td style="font-weight:700;color:#1a2557;">{to_email}</td>
+              <td style="font-weight:700;color:#1a2557;">{_e(to_email)}</td>
             </tr>
             <tr>
               <td style="color:#64748b;padding:8px 0;">Password</td>
               <td style="font-family:monospace;font-size:20px;font-weight:700;
-                         color:#c9a227;letter-spacing:2px;">{password}</td>
+                         color:#c9a227;letter-spacing:2px;">{_e(password)}</td>
             </tr>
           </table>
         </div>
         <p style="color:#ef4444;font-size:13px;font-weight:600;">
           ⚠️ Change your password after first login.
         </p>
-    """, f"Your Login — {role}")
+    """, f"Your Login — {_e(role)}")
     return _send(to_email, f"🔐 Your SapthaEvent Login — {role}", html)
 
 
 def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name or 'User'}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name or 'User')}</strong>,</p>
         <p style="color:#475569;">We received a request to reset your
            SapthaEvent password. Click the button below to set a new one.
            This link expires in <strong>1 hour</strong>.</p>
         <p style="text-align:center;margin:24px 0;">
-          <a href="{reset_url}"
+          <a href="{_e(reset_url)}"
              style="background:#1a2557;color:#fff;padding:12px 32px;
                     border-radius:8px;text-decoration:none;font-weight:700;
                     display:inline-block;">
@@ -643,13 +723,14 @@ def send_password_reset_email(to_email: str, name: str, reset_url: str) -> bool:
         </p>
         <p style="color:#64748b;font-size:12px;">
           If the button doesn't work, copy this link into your browser:<br>
-          <span style="word-break:break-all;color:#1a2557;">{reset_url}</span>
+          <span style="word-break:break-all;color:#1a2557;">{_e(reset_url)}</span>
         </p>
         <p style="color:#ef4444;font-size:12px;margin-top:18px;">
           Didn't request this? You can safely ignore this email — your
           password will remain unchanged.
         </p>
     """, "Password Reset Request")
+    _log_link_without_mail('password reset', to_email, reset_url)
     return _send(to_email, "🔐 Reset your SapthaEvent password", html)
 
 
@@ -659,12 +740,12 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
     one-time link to choose a password. No password is ever emailed (UPG-33)."""
     reason = reason or 'when you registered for an event'
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name or 'User'}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name or 'User')}</strong>,</p>
         <p style="color:#475569;">A SapthaEvent account was created for this
-           email {reason}. Choose a password to open your dashboard. This link
+           email {_e(reason)}. Choose a password to open your dashboard. This link
            works once and expires in <strong>3 days</strong>.</p>
         <p style="text-align:center;margin:24px 0;">
-          <a href="{set_password_url}"
+          <a href="{_e(set_password_url)}"
              style="background:#1a2557;color:#fff;padding:12px 32px;
                     border-radius:8px;text-decoration:none;font-weight:700;
                     display:inline-block;">
@@ -673,32 +754,68 @@ def send_set_password_email(to_email: str, name: str, set_password_url: str,
         </p>
         <p style="color:#64748b;font-size:12px;">
           If the button doesn't work, copy this link into your browser:<br>
-          <span style="word-break:break-all;color:#1a2557;">{set_password_url}</span>
+          <span style="word-break:break-all;color:#1a2557;">{_e(set_password_url)}</span>
         </p>
         <p style="color:#ef4444;font-size:12px;margin-top:18px;">
           Not expecting this? You can ignore this email; nobody can log in to
           the account without this link.
         </p>
     """, "Set Your Password")
+    _log_link_without_mail('set-password', to_email, set_password_url)
     return _send(to_email, "🔐 Set your SapthaEvent password", html)
+
+
+def send_payment_receipt_email(to_email: str, name: str, event_title: str, amount,
+                               reg_id: str, payment_id: str = '', paid_on: str = '') -> bool:
+    """The receipt after a verified payment (UPG-30)."""
+    import html as _html
+    e = lambda v: _html.escape(str(v or ''))  # noqa: E731
+    rows = [('Event', event_title), ('Amount paid', f"₹{amount}"), ('Registration', reg_id),
+            ('Payment ID', payment_id), ('Paid on', paid_on or __import__('datetime').date.today().isoformat())]
+    table = ''.join(
+        f'<tr><td style="padding:6px 0;color:#64748b;">{e(label)}</td>'
+        f'<td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;">{e(value)}</td></tr>'
+        for label, value in rows if value)
+    body = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{e(name) or 'Participant'}</strong>,</p>
+        <p style="color:#475569;">We received your payment. Keep this email as your receipt.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:16px 0;">{table}</table>
+        <p style="color:#64748b;font-size:12px;">Your ticket: {e(_base_url())}/ticket/{e(reg_id)}</p>
+    """, "Payment Receipt")
+    return _send(to_email, f"🧾 Payment receipt — {event_title}", body, reg_id=reg_id)
+
+
+def send_refund_email(to_email: str, name: str, event_title: str, amount, reg_id: str,
+                      refund_id: str = '') -> bool:
+    """The event was cancelled and the payment refunded (UPG-51)."""
+    import html as _html
+    e = lambda v: _html.escape(str(v or ''))  # noqa: E731
+    body = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{e(name) or 'Participant'}</strong>,</p>
+        <p style="color:#475569;"><strong>{e(event_title)}</strong> was cancelled, so we have refunded
+           your payment of <strong>₹{e(amount)}</strong> (registration {e(reg_id)}).</p>
+        <p style="color:#475569;">Razorpay refund reference: <strong>{e(refund_id) or '—'}</strong>.
+           Refunds usually reach your account in 5–7 working days.</p>
+    """, "Refund")
+    return _send(to_email, f"Refund — {event_title} was cancelled", body, reg_id=reg_id)
 
 
 def send_appointment_email(to_email: str, name: str, role: str,
                            event_title: str) -> bool:
     base = _base_url()
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">You have been appointed as
-           <strong style="color:#1a2557;">{role}</strong>
-           for <strong>{event_title}</strong>.</p>
+           <strong style="color:#1a2557;">{_e(role)}</strong>
+           for <strong>{_e(event_title)}</strong>.</p>
         <p style="margin-top:20px;">
-          <a href="{base}/login"
+          <a href="{_e(base)}/login"
              style="background:#c9a227;color:#fff;padding:10px 24px;
                     border-radius:8px;text-decoration:none;font-weight:700;">
             Login to Dashboard →
           </a>
         </p>
-    """, f"Appointment — {event_title}")
+    """, f"Appointment — {_e(event_title)}")
     return _send(to_email, f"📋 Appointed as {role} — {event_title}", html)
 
 
@@ -707,25 +824,36 @@ def send_result_email(to_email: str, name: str, event_title: str,
     rank_labels = {1: '🥇 1st Place', 2: '🥈 2nd Place', 3: '🥉 3rd Place'}
     rank_text   = rank_labels.get(rank, f'Rank {rank}')
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
                     padding:24px;text-align:center;margin:16px 0;">
           <p style="font-size:32px;margin:0 0 6px;">{rank_text}</p>
           <p style="color:#1a2557;font-weight:700;font-size:16px;margin:0;">
-            Final Score: {score}</p>
+            Final Score: {_e(score)}</p>
         </div>
         <p style="color:#475569;">Congratulations in
-           <strong>{event_title}</strong>!
+           <strong>{_e(event_title)}</strong>!
            Your certificate is in a separate email.</p>
-    """, f"🏆 Results — {event_title}")
+    """, f"🏆 Results — {_e(event_title)}")
     return _send(to_email, f"🏆 Results — {event_title}", html)
+
+
+def send_email_notification(to_email: str, subject: str, message: str,
+                            event_name: str = 'SapthaEvent') -> bool:
+    """A plain notice (event changed or cancelled, services_automation's email
+    channel). The message is text: it's escaped, never read as HTML."""
+    import html as _html
+    body = _html_wrapper(f"""
+        <div style="color:#475569;font-size:14px;line-height:1.8;white-space:pre-line;">{_html.escape(message)}</div>
+    """, _html.escape(subject or event_name))
+    return _send(to_email, subject, body)
 
 
 def send_broadcast_email(to_list: list, subject: str,
                          message: str, event_title: str = '') -> bool:
     html = _html_wrapper(f"""
         <div style="color:#475569;font-size:14px;line-height:1.8;white-space:pre-line;">
-          {message}
+          {_e(message)}
         </div>
     """, subject)
     success = True
@@ -739,7 +867,8 @@ def send_broadcast_email(to_list: list, subject: str,
 def _send_cert_email(to_email: str, student_name: str,
                      event_title: str, cert_type: str,
                      rank: int, score: float,
-                     pdf_bytes: bytes, reg_id: str | None = None) -> bool:
+                     pdf_bytes: bytes, reg_id: str | None = None,
+                     certificate_id: str | None = None) -> bool:
     rank_labels = {1: '🥇 1st Place Winner', 2: '🥈 2nd Place Winner', 3: '🥉 3rd Place Winner'}
     if cert_type == 'winner':
         subject  = f"🏆 Your Achievement Certificate — {event_title}"
@@ -751,7 +880,9 @@ def _send_cert_email(to_email: str, student_name: str,
         cert_color = "#1d4ed8"  # blue
 
     base = _base_url().rstrip('/')
-    verify_url = f"{base}/verify/{reg_id}" if reg_id else "#"
+    # The certificate's own ID when it has one (UPG-06), else the registration's
+    verify_id = certificate_id or reg_id
+    verify_url = f"{base}/verify/{verify_id}" if verify_id else "#"
 
     verified_block = ""
     if reg_id:
@@ -836,23 +967,23 @@ def send_room_assignment_email(to_email: str, name: str, event_title: str,
     details = ''
     if event_date:
         details += (f"<tr><td style='color:#64748b;padding:6px 0;width:30%;'>Date</td>"
-                    f"<td style='font-weight:600;color:#1a2557;'>📅 {event_date}</td></tr>")
+                    f"<td style='font-weight:600;color:#1a2557;'>📅 {_e(event_date)}</td></tr>")
     if event_time:
         details += (f"<tr><td style='color:#64748b;padding:6px 0;'>Time</td>"
-                    f"<td style='font-weight:600;color:#1a2557;'>🕐 {event_time}</td></tr>")
+                    f"<td style='font-weight:600;color:#1a2557;'>🕐 {_e(event_time)}</td></tr>")
     if venue:
         details += (f"<tr><td style='color:#64748b;padding:6px 0;'>Venue</td>"
-                    f"<td style='font-weight:600;color:#1a2557;'>📍 {venue}</td></tr>")
+                    f"<td style='font-weight:600;color:#1a2557;'>📍 {_e(venue)}</td></tr>")
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <p style="color:#475569;">Your room assignment for
-           <strong style="color:#1a2557;">{event_title}</strong> is confirmed.</p>
+           <strong style="color:#1a2557;">{_e(event_title)}</strong> is confirmed.</p>
         <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;
                     padding:24px;text-align:center;margin:16px 0;">
           <p style="color:#64748b;font-size:12px;margin:0 0 8px;font-weight:700;
                     text-transform:uppercase;letter-spacing:.5px;">Your Assigned Room</p>
           <p style="font-family:monospace;font-size:34px;font-weight:800;
-                    color:#15803d;margin:0;">{room_name}</p>
+                    color:#15803d;margin:0;">{_e(room_name)}</p>
         </div>
         <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:16px 0;">
           <table style="width:100%;font-size:14px;border-collapse:collapse;">{details}</table>
@@ -861,7 +992,7 @@ def send_room_assignment_email(to_email: str, name: str, event_title: str,
           Please report directly to your assigned room on the event day.
           Carry your QR ticket for check-in at the room entrance.
         </p>
-    """, f"Room Assignment — {event_title}")
+    """, f"Room Assignment — {_e(event_title)}")
     return _send(to_email, f"🏛️ Your Room: {room_name} — {event_title}", html)
 
 
@@ -874,26 +1005,26 @@ def send_advancement_email(to_email: str, name: str, event_title: str,
         <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;
                     padding:16px;margin:12px 0;text-align:center;">
           <p style="color:#1d4ed8;font-size:11px;margin:0 0 6px;font-weight:700;
-                    text-transform:uppercase;letter-spacing:.5px;">Round {next_round} Room</p>
+                    text-transform:uppercase;letter-spacing:.5px;">Round {_e(next_round)} Room</p>
           <p style="font-family:monospace;font-size:26px;font-weight:800;
-                    color:#1a2557;margin:0;">{room_name}</p>
+                    color:#1a2557;margin:0;">{_e(room_name)}</p>
         </div>"""
     time_note = (f"<p style='color:#475569;font-size:13px;'>Report time: "
-                 f"<strong>{event_time}</strong></p>") if event_time else ''
+                 f"<strong>{_e(event_time)}</strong></p>") if event_time else ''
     html = _html_wrapper(f"""
-        <p style="color:#475569;">Dear <strong>{name}</strong>,</p>
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
         <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;
                     padding:20px;text-align:center;margin:16px 0;">
           <p style="font-size:30px;margin:0 0 8px;">🎉</p>
           <p style="color:#15803d;font-weight:800;font-size:18px;margin:0 0 6px;">Congratulations!</p>
           <p style="color:#475569;margin:0;">You have advanced to
-             <strong>Round {next_round}</strong> of
-             <strong style="color:#1a2557;">{event_title}</strong>!</p>
+             <strong>Round {_e(next_round)}</strong> of
+             <strong style="color:#1a2557;">{_e(event_title)}</strong>!</p>
         </div>
         {room_block}
         {time_note}
         <p style="color:#475569;font-size:13px;">Keep up the great work — best of luck in the next round!</p>
-    """, f"Round {next_round} Advancement — {event_title}")
+    """, f"Round {_e(next_round)} Advancement — {_e(event_title)}")
     return _send(to_email, f"🎉 You advanced to Round {next_round}! — {event_title}", html)
 
 

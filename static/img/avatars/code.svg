@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Code">
+<title>Code</title>
+<circle cx="64" cy="64" r="64" fill="#3b5bc9"/>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#c69d67" stroke-opacity=".55" stroke-width="2"/>
+<g fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+<path d="M48 44 L30 64 L48 84"/><path d="M80 44 L98 64 L80 84"/><path d="M70 38 L58 90" stroke="#c69d67"/>
+</g>
+</svg>

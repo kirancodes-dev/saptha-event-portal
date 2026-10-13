@@ -2,11 +2,18 @@
 import logging
 import random
 import json
-from flask import Blueprint, render_template, jsonify, request, current_app, session
+from flask import Blueprint, render_template, jsonify, request, current_app, session, abort
 from utils import login_required
 
 matchmaker_bp = Blueprint('matchmaker', __name__, url_prefix='/participant/matchmaker')
 logger = logging.getLogger(__name__)
+
+
+@matchmaker_bp.before_request
+def _matchmaker_guard():
+    if not current_app.config.get("FEATURE_MATCHMAKER", False):
+        abort(404)
+
 
 # Fallback rich static list of potential team partners for matchmaker simulation
 MOCK_STUDENTS = [

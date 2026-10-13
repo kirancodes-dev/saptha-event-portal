@@ -1,20 +1,5 @@
-import csv
 import datetime
-import io
 import random
-from io import StringIO
-try:
-    import openpyxl
-except Exception:
-    openpyxl = None
-try:
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-except Exception:
-    openpyxl = None
-try:
-    from openpyxl.utils import get_column_letter
-except Exception:
-    openpyxl = None
 from flask import (Blueprint, Response, flash, jsonify,
                    redirect, render_template, request, session)
 try:
@@ -117,19 +102,25 @@ def dashboard():
                 event_date = d.get('date', '9999-99-99')
                 if event_date < current_date:
                     continue
-            total_regs  += d.get('registration_count', 0)
             total_staff += len(d.get('staff', []))
-            regs = (db.collection('registrations')
-                      .where(filter=_ff('event_id', '==', e.id)).stream())
+            regs = [r.to_dict() or {} for r in (db.collection('registrations')
+                      .where(filter=_ff('event_id', '==', e.id)).stream())]
+            # Count the registrations themselves: the cached counter on the event
+            # can be stale (seeded or never reconciled) (UPG-80)
+            d['registration_count'] = len(regs)
+            total_regs += len(regs)
             d['scored_teams'] = sum(
                 1 for r in regs
-                if not r.to_dict().get('is_eliminated') and r.to_dict().get('scores'))
+                if not r.get('is_eliminated') and r.get('scores'))
             events.append(d)
     except Exception as exc:
         flash(f"Dashboard error: {exc}", "danger")
         events = []; total_regs = 0; total_staff = 0
+    from utils_pagination import paginate_events
     return render_template('coordinator/dashboard.html',
-        events=events, club_category=club_category,
+        events=events, page=paginate_events(events),   # cards: 25 a page (UPG-19)
+        status_filter=(request.args.get('status') or '').strip().lower(),
+        club_category=club_category,
         total_regs=total_regs, total_staff=total_staff,
         user_name=session.get('name'))
 
@@ -153,9 +144,12 @@ def view_registrations(event_id):
                       .where(filter=_ff('event_id', '==', event_id)).stream())
         registrations = sorted(
             [dict(r.to_dict(), id=r.id) for r in regs_raw],
-            key=lambda x: x.get('registered_at', ''), reverse=True)
+            key=lambda x: str(x.get('registered_at', '')), reverse=True)
+        from utils_pagination import paginate_items
+        page = paginate_items(registrations, search_fields=(
+            'lead_name', 'name', 'lead_email', 'student_email', 'usn', 'team_name', 'lead_phone'))
         return render_template('coordinator/registrations.html',
-            event=event, registrations=registrations, total=len(registrations))
+            event=event, registrations=page.items, page=page, total=len(registrations))
     except Exception as exc:
         if getattr(exc, 'code', None) == 403:
             abort(403)
@@ -163,47 +157,18 @@ def view_registrations(event_id):
         return redirect('/coordinator/dashboard')
 
 
-# 3. CREATE EVENT
+# 3. CREATE EVENT: retired (UPG-78). This used to save a live event straight
+# from the coordinator dashboard's old modal, skipping the event types,
+# validation, draft and review. Events are made in the wizard now.
 @coord_bp.route('/create_event', methods=['POST'])
 @login_required
 @role_required(COORD_ROLES)
 def create_event():
-    try:
-        overview = request.form.get('overview', '').strip()
-        criteria_list = [c.strip() for c in
-            request.form.get('criteria', 'Overall Score').split(',') if c.strip()] or ['Overall Score']
-        media_urls = [u.strip() for u in request.form.getlist('media_urls[]') if u.strip()]
-        category = (session.get('category') if session.get('category') not in (None, 'All')
-                    else request.form.get('category', 'General'))
-        db.collection('events').add({
-            # Length caps — prevent oversized Firestore documents
-            'title':              request.form.get('title', '').strip()[:100],
-            'date':               request.form.get('date'),
-            'deadline':           request.form.get('deadline'),
-            'venue':              request.form.get('venue', '').strip()[:200],
-            'description':        overview[:120] + '...' if len(overview) > 120 else overview,
-            'overview':           overview[:3000],
-            'rules':              request.form.get('rules', '')[:5000],
-            'prizes':             request.form.get('prizes', '')[:1000],
-            'category':           category,
-            'media_urls':         media_urls[:5],   # max 5 media URLs
-            'banner_url':         media_urls[0] if media_urls else '',
-            'entry_fee':          safe_int(request.form.get('entry_fee', 0)),
-            'is_team_event':      request.form.get('is_team') == 'on',
-            'judging_criteria':   criteria_list,
-            'status':             'active',
-            'active_round':       1,
-            'registration_count': 0,
-            'staff':              [],
-            'created_by':         session.get('name'),
-            'created_by_email':   session.get('user_id'),
-            'created_at':         datetime.datetime.now(datetime.timezone.utc),
-        })
-        log_action(db, "EVENT_CREATED",
-                   f"{session.get('user_id')} created '{request.form.get('title')}'")
-        flash("Event created successfully!", "success")
-    except Exception as exc:
-        flash(f"Error creating event: {exc}", "danger")
+    if session.get('role') in ('ClubSPOC', 'SuperAdmin', 'Super Admin'):
+        flash("Events are created in the event wizard: it saves a draft you can review before publishing.", "info")
+        return redirect('/spoc/create_event')
+    flash("Event coordinators don't create events. Ask your club SPOC to create it; "
+          "they can then add you to its staff.", "warning")
     return redirect('/coordinator/dashboard')
 
 
@@ -226,7 +191,7 @@ def edit_event(event_id):
         criteria_list = [c.strip() for c in
             request.form.get('criteria', 'Overall Score').split(',') if c.strip()] or ['Overall Score']
         media_urls = [u.strip() for u in request.form.getlist('media_urls[]') if u.strip()]
-        db.collection('events').document(event_id).update({
+        updates = {
             'title':            request.form.get('title', '').strip(),
             'date':             request.form.get('date'),
             'deadline':         request.form.get('deadline'),
@@ -240,7 +205,12 @@ def edit_event(event_id):
             'banner_url':       media_urls[0] if media_urls else '',
             'entry_fee':        safe_int(request.form.get('entry_fee', 0)),
             'is_team_event':    request.form.get('is_team') == 'on',
-        })
+        }
+        db.collection('events').document(event_id).update(updates)
+        # Registrants hear about a new date or venue, once (UPG-31)
+        from services_venue import notify_event_details_changed
+        notify_event_details_changed(db, event_id=event_id, previous_data=event_data,
+                                     new_data={**event_data, **updates})
         log_action(db, "EVENT_EDITED", f"Event {event_id} by {session.get('user_id')}")
         flash("Event updated!", "success")
     except Exception as exc:
@@ -459,44 +429,33 @@ def publish_results(event_id):
         event_ref   = db.collection('events').document(event_id)
         event_data  = event_ref.get().to_dict() or {}
         event_title = event_data.get('title', 'Event')
-        leaderboard = []
+        # The shared ranking (UPG-84): the same scores and places as every board.
+        # Scores keep their decimals; equal scores share a place.
+        from services_leaderboard import for_event
+        regs = {}
         for r in (db.collection('registrations')
                     .where(filter=_ff('event_id', '==', event_id)).stream()):
-            d = r.to_dict()
-            if d.get('is_eliminated'): continue
-            scores = d.get('scores', {})
-            if not scores: continue
-            avg = round(sum(safe_int(s.get('total', 0)) for s in scores.values()) / len(scores), 2)
-            leaderboard.append({'team_name': d.get('team_name'), 'lead_name': d.get('lead_name'),
-                                 'email': d.get('lead_email'), 'phone': _phone(d), 'score': avg})
-        leaderboard.sort(key=lambda x: x['score'], reverse=True)
+            regs[r.id] = r.to_dict() or {}
+        ranked = for_event(db, event_id)
+        leaderboard = [{'team_name': row['team_name'], 'lead_name': row['lead_name'],
+                        'email': row['lead_email'], 'phone': _phone(regs.get(row['id'], {})),
+                        'score': row['score'], 'rank': row['rank']} for row in ranked]
 
         # Write final_rank + final_score to every scored registration
-        for reg in (db.collection('registrations')
-                      .where(filter=_ff('event_id', '==', event_id)).stream()):
-            d = reg.to_dict()
-            if d.get('is_eliminated') or not d.get('scores'):
-                continue
-            reg_scores = d.get('scores', {})
-            reg_avg    = round(
-                sum(safe_int(s.get('total', 0)) for s in reg_scores.values()) / len(reg_scores), 2
-            ) if reg_scores else 0
-            rank = next(
-                (i + 1 for i, lb in enumerate(leaderboard)
-                 if lb.get('email') == d.get('lead_email')), None
-            )
-            db.collection('registrations').document(reg.id).update({
-                'final_score': reg_avg,
-                'final_rank':  rank,
+        for row in ranked:
+            db.collection('registrations').document(row['id']).update({
+                'final_score': row['score'],
+                'final_rank':  row['rank'],
             })
 
-        for idx, winner in enumerate(leaderboard[:3], start=1):
-            send_result_email(str(winner['email']), str(winner['lead_name']), event_title, idx, winner['score'])
+        winners = [w for w in leaderboard if w['rank'] <= 3]
+        for winner in winners:
+            send_result_email(str(winner['email']), str(winner['lead_name']), event_title, winner['rank'], winner['score'])
             if winner.get('phone'):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
-                    event_title, idx, winner['score'])
+                    event_title, winner['rank'], winner['score'])
 
-        event_ref.update({'status': 'completed', 'winners': leaderboard[:3],
+        event_ref.update({'status': 'completed', 'winners': winners,
                           'completed_at': datetime.datetime.now(datetime.timezone.utc)})
 
         # Kick off AI summaries in background (best-effort — won't block publish)
@@ -527,162 +486,25 @@ def publish_results(event_id):
     return redirect('/coordinator/dashboard')
 
 
-# 12. EXPORT CSV
+# 12–13. EXPORTS: the shared export service (UPG-03); 403 without export_data
 @coord_bp.route('/export_registrations/<event_id>')
 @login_required
-@role_required(COORD_ROLES)
 def export_registrations(event_id):
-    from flask import abort
-    from services_permission import can
-    try:
-        event_doc  = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            abort(404)
-        event_data = event_doc.to_dict() or {}
-        event_data['id'] = event_id
-        if not can(session, 'export_data', event_data, db=db):
-            abort(403)
-        is_team    = event_data.get('is_team_event', False)
-        regs       = list(db.collection('registrations')
-                          .where(filter=_ff('event_id', '==', event_id)).stream())
-        output = StringIO()
-        writer = csv.writer(output)
-        header = ['Ticket ID', 'Lead Name', 'Email', 'Phone', 'USN', 'Team Name',
-                  'Payment Status', 'Amount (Rs)', 'Room', 'Judge', 'Round',
-                  'Status', 'Attendance', 'Check-in Time', 'Registered At']
-        if is_team:
-            for i in range(2, 6):
-                header += [f'M{i} Name', f'M{i} Email', f'M{i} Phone', f'M{i} USN']
-        writer.writerow(header)
-        for r in regs:
-            d      = r.to_dict()
-            status = 'Eliminated' if d.get('is_eliminated') else 'Active'
-            row    = [d.get('reg_id', r.id), d.get('lead_name', ''), d.get('lead_email', ''),
-                      d.get('lead_phone', ''), d.get('lead_usn', ''),
-                      d.get('team_name', 'Individual'), d.get('payment_status', 'Free'),
-                      d.get('amount_paid', 0), d.get('assigned_room', ''),
-                      d.get('assigned_judge_name', ''), d.get('current_round', 1),
-                      status, d.get('attendance', 'Pending'),
-                      d.get('checkin_time', ''), d.get('registered_at', '')]
-            if is_team:
-                mems = [m for m in d.get('members', [])
-                        if m.get('email', '') != d.get('lead_email', '')]
-                for i in range(4):
-                    m = mems[i] if i < len(mems) else {}
-                    row += [m.get('name', ''), m.get('email', ''),
-                             m.get('phone', ''), m.get('usn', '')]
-            writer.writerow(row)
-        title = str(event_data.get('title', 'Event')).replace(' ', '_')
-        return Response(output.getvalue(), mimetype='text/csv',
-            headers={"Content-Disposition": f"attachment; filename={title}_Registrations.csv"})
-    except Exception as exc:
-        if getattr(exc, 'code', None) == 403:
-            abort(403)
-        flash(f"CSV export error: {exc}", "danger")
-        return redirect('/coordinator/dashboard')
+    import services_export
+    from routes_spoc import _export_name
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.to_csv(services_export.registration_rows(db, event_id)), mimetype='text/csv',
+                    headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.csv')}"})
 
 
-# 13. EXPORT EXCEL (branded, all team members expanded)
 @coord_bp.route('/export_excel/<event_id>')
 @login_required
-@role_required(COORD_ROLES)
 def export_excel(event_id):
-    from flask import abort
-    from services_permission import can
-    try:
-        event_doc  = db.collection('events').document(event_id).get()
-        if not event_doc.exists:
-            abort(404)
-        event_data = event_doc.to_dict() or {}
-        event_data['id'] = event_id
-        if not can(session, 'export_data', event_data, db=db):
-            abort(403)
-        is_team    = event_data.get('is_team_event', False)
-        regs       = list(db.collection('registrations')
-                          .where(filter=_ff('event_id', '==', event_id)).stream())
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        assert ws is not None
-        ws.title = "Registrations"
-        hf    = PatternFill("solid", fgColor="0D2D62")
-        hfont = Font(bold=True, color="FFFFFF", size=11)
-        haln  = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        dfont = Font(size=10)
-        daln  = Alignment(vertical="center")
-        afill = PatternFill("solid", fgColor="EEF3FA")
-        thin  = Side(style="thin", color="CCCCCC")
-        bdr   = Border(left=thin, right=thin, top=thin, bottom=thin)
-        event_title = str(event_data.get('title', 'Event'))
-        last_col    = 15 + (16 if is_team else 0)
-        last_ltr    = get_column_letter(last_col)
-        # Row 1 — title banner
-        ws.merge_cells(f'A1:{last_ltr}1')
-        c = ws['A1']
-        c.value = f"Sapthagiri NPS University  |  {event_title}  |  Registrations"
-        c.font  = Font(bold=True, color="F37021", size=13)
-        c.fill  = PatternFill("solid", fgColor="0D2D62")
-        c.alignment = Alignment(horizontal="center", vertical="center")
-        ws.row_dimensions[1].height = 28
-        # Row 2 — subtitle
-        ws.merge_cells(f'A2:{last_ltr}2')
-        c2 = ws['A2']
-        c2.value = (f"Date: {event_data.get('date','TBD')}  |  "
-                    f"Venue: {event_data.get('venue','SNPSU')}  |  "
-                    f"Total Registrations: {len(regs)}  |  "
-                    f"Exported: {datetime.datetime.now().strftime('%d %b %Y %H:%M')}")
-        c2.font  = Font(italic=True, color="FFFFFF", size=9)
-        c2.fill  = PatternFill("solid", fgColor="1A3A6B")
-        c2.alignment = Alignment(horizontal="center", vertical="center")
-        ws.row_dimensions[2].height = 16
-        # Row 3 — headers
-        headers = ['S.No', 'Ticket ID', 'Lead Name', 'Email', 'Phone', 'USN',
-                   'Team Name', 'Payment', 'Amount (Rs)', 'Room', 'Round',
-                   'Status', 'Attendance', 'Check-in', 'Registered At']
-        if is_team:
-            for i in range(2, 6):
-                headers += [f'M{i} Name', f'M{i} Email', f'M{i} Phone', f'M{i} USN']
-        for ci, h in enumerate(headers, 1):
-            cell = ws.cell(row=3, column=ci, value=h)
-            cell.font = hfont; cell.fill = hf; cell.alignment = haln; cell.border = bdr
-        ws.row_dimensions[3].height = 26
-        # Data rows
-        for ri, r in enumerate(regs, 1):
-            d      = r.to_dict()
-            status = 'Eliminated' if d.get('is_eliminated') else 'Active'
-            fill   = afill if ri % 2 == 0 else PatternFill()
-            row    = [ri, d.get('reg_id', r.id), d.get('lead_name', ''),
-                      d.get('lead_email', ''), d.get('lead_phone', ''),
-                      d.get('lead_usn', ''), d.get('team_name', 'Individual'),
-                      d.get('payment_status', 'Free'), d.get('amount_paid', 0),
-                      d.get('assigned_room', ''), d.get('current_round', 1),
-                      status, d.get('attendance', 'Pending'),
-                      d.get('checkin_time', ''), d.get('registered_at', '')]
-            if is_team:
-                mems = [m for m in d.get('members', [])
-                        if m.get('email', '') != d.get('lead_email', '')]
-                for i in range(4):
-                    m = mems[i] if i < len(mems) else {}
-                    row += [m.get('name', ''), m.get('email', ''),
-                             m.get('phone', ''), m.get('usn', '')]
-            xlsx_row = ri + 3
-            for ci, val in enumerate(row, 1):
-                cell = ws.cell(row=xlsx_row, column=ci, value=val)
-                cell.font = dfont; cell.alignment = daln; cell.border = bdr
-                if fill.fill_type: cell.fill = fill
-            ws.row_dimensions[xlsx_row].height = 17
-        widths = [5, 22, 20, 28, 14, 15, 20, 12, 10, 12, 7, 12, 12, 10, 20]
-        if is_team: widths += [18, 26, 13, 13] * 4
-        for i, w in enumerate(widths, 1):
-            ws.column_dimensions[get_column_letter(i)].width = w
-        ws.freeze_panes = 'A4'
-        buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-        clean = event_title.replace(' ', '_')
-        return Response(buf.getvalue(),
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={"Content-Disposition": f"attachment; filename={clean}_Registrations.xlsx"})
-    except Exception as exc:
-        flash(f"Excel export error: {exc}", "danger")
-        return redirect('/coordinator/dashboard')
+    import services_export
+    from routes_spoc import XLSX_MIMETYPE, _export_name
+    event = _event_or_abort(event_id, 'export_data')
+    return Response(services_export.registrations_xlsx(db, event_id), mimetype=XLSX_MIMETYPE,
+                    headers={"Content-Disposition": f"attachment; filename={_export_name(event, 'Registrations.xlsx')}"})
 
 
 # 14. WALK-IN / ON-SPOT
@@ -690,9 +512,10 @@ def export_excel(event_id):
 @login_required
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
 def on_spot_form():
+    from services_workflow import EVENT_DAY_STATUSES
     events = [{'id': e.id, 'title': e.to_dict().get('title')}
               for e in (db.collection('events')
-                          .where(filter=_ff('status', '==', 'active')).stream())]
+                          .where(filter=_ff('status', 'in', list(EVENT_DAY_STATUSES))).stream())]
     return render_template('coordinator/on_spot.html', events=events)
 
 
@@ -779,8 +602,9 @@ def scanner_selector():
     today_str    = datetime.datetime.now().strftime('%Y-%m-%d')
     tomorrow_str = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
+    from services_workflow import EVENT_DAY_STATUSES
     events = []
-    for e in db.collection('events').where(filter=_ff('status', '==', 'active')).stream():
+    for e in db.collection('events').where(filter=_ff('status', 'in', list(EVENT_DAY_STATUSES))).stream():
         d = e.to_dict()
         in_staff  = any(s.get('email') == user_email for s in d.get('staff', []))
         in_coords = user_email in d.get('coordinators', [])
@@ -923,9 +747,10 @@ def mark_attendance_granular():
         members = reg_data.get('members', [])
         for m in members:
             m['attendance'] = 'Present' if m.get('usn') in present_usns else 'Absent'
+        # Keep the first check-in time: the scan already recorded it (UPG-02)
         reg_ref.update({'members': members,
                         'attendance': 'Present' if present_usns else 'Absent',
-                        'checkin_time': datetime.datetime.now().strftime("%H:%M:%S")})
+                        'checkin_time': reg_data.get('checkin_time') or datetime.datetime.now().strftime("%H:%M:%S")})
         log_action(db, "ATTENDANCE_MARKED",
                    f"Reg {reg_id}: {len(present_usns)} members marked present")
         return jsonify({'status': 'success',

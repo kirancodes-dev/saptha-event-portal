@@ -154,6 +154,12 @@ def login():
                 log_action("LOGIN_FAILED", f"Bad credentials for {email} (role={role})")
                 return redirect('/login')
 
+            # A Super Admin can deactivate an account (UPG-75)
+            if user.get('is_active') is False:
+                flash('This account has been deactivated. Contact the portal administrator.', 'danger')
+                log_action("LOGIN_BLOCKED_INACTIVE", f"Deactivated account {email} tried to log in")
+                return redirect('/login')
+
             user_name = user.get('name', 'User')
             user_category = user.get('category', 'General')
             if hasattr(user_category, 'value'):
@@ -299,6 +305,12 @@ def register():
                 flash('An account with this email already exists. Please log in.', 'warning')
                 return redirect('/login')
 
+            from services_privacy import consent_given, consent_record, record_consent
+            if not consent_given(request.form):
+                flash("Please tick the box to agree to the privacy notice; we can't create your account "
+                      "without it.", 'warning')
+                return redirect('/register')
+
             db.collection('users').document(email).set({
                 'name':                name,
                 'usn':                 usn,
@@ -307,8 +319,10 @@ def register():
                 'category':            'General',
                 'password':            generate_password_hash(password, method='pbkdf2:sha256'),
                 'created_at':          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'needs_password_reset': False
+                'needs_password_reset': False,
+                'privacy_consent':     consent_record(),   # UPG-22
             })
+            record_consent(db, email)
             _set_session(email, name, 'Student', 'General')
             log_action("USER_REGISTERED", f"New student self-registered: {email}")
             flash(f"🎉 Welcome, {name}! Your account is ready.", "success")

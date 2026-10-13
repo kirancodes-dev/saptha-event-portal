@@ -1,13 +1,6 @@
 from logging.config import fileConfig
 
-try:
-    pass
-except Exception:
-    sqlalchemy = None
-try:
-    from alembic import context
-except Exception:
-    alembic = None
+from alembic import context
 
 # Import the app's database config and models
 from db_pg import get_engine
@@ -50,7 +43,8 @@ def run_migrations_online() -> None:
     with engine.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
+            compare_type=True,
         )
 
         with context.begin_transaction():

@@ -2892,7 +2892,11 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
     - the 115 unrelated `.agents/` skill files.
   - **Kept:** `README.md`, `CLAUDE.md`, `AGENTS.md`, `privacy_policy.md`, `.github/` and `docs/`.
   - **`.gitignore`:** now ignores `*.pdf`, `*.docx`, `*.pptx`, `static/uploads/` (user uploads) and `test_event_id.txt`.
-  - **`README.md`:** rewritten: why the portal exists, what each role can do, highlights, how to run it and the one-command demo, how it is built, tests, links to the docs, and the licence unchanged.
+  - **`README.md`:** rewritten twice. The second version, at the owner's request (2026-10-13), has:
+    - the university's real logo on a navy banner (`docs/assets/banner.png`, built from `static/snpsu-logo.png`) and eight real screenshots of the running portal (`docs/assets/*.webp`, demo data);
+    - what each role can do, the features, the technology (each item checked against `requirements.txt`), the test results and links to the docs;
+    - no local-run instructions, no "scan me" QR code and no AI-generated images.
+  - **Removed images:** the AI-generated ones the old README used (`static/img/hero-banner.webp`, `feature-showcase.webp`, `portal-qr.png`) and the unused `dashboard-banner.jpg`.
 - **Acceptance criteria:**
   1. `git ls-files` lists no `.pdf`, `.docx` or `.pptx` file, nothing under `reports/` or `.agents/`, and none of the removed notes.
 

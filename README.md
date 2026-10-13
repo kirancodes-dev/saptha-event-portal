@@ -1,179 +1,208 @@
 <div align="center">
 
-<img src="static/img/hero-banner.webp" width="820" alt="SapthaEvent — the event portal of Sapthagiri NPS University" />
+<img src="docs/assets/banner.png" width="100%" alt="Sapthagiri NPS University" />
+
+<br/>
 
 # SapthaEvent
 
-### Every campus event. One place to join in.
+**The event portal of Sapthagiri NPS University, Bengaluru**
 
-**The official event portal of Sapthagiri NPS University, Bengaluru**
+*Every campus event. One place to join in.*
 
-[![Python](https://img.shields.io/badge/Python-3.11-00185e?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-3-00185e?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
-[![Database](https://img.shields.io/badge/PostgreSQL_·_SQLite-SQLAlchemy-00185e?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.sqlalchemy.org)
-[![Charts](https://img.shields.io/badge/Apache_ECharts-5.5-c69d67?style=for-the-badge&logo=apacheecharts&logoColor=white)](https://echarts.apache.org)
-[![Tests](https://img.shields.io/badge/pytest-893_passing-c69d67?style=for-the-badge&logo=pytest&logoColor=white)](#tests-and-quality)
+<br/>
+
+![Python](https://img.shields.io/badge/Python-3.11-00185e?style=flat-square&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.1-00185e?style=flat-square&logo=flask&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.1-00185e?style=flat-square&logo=sqlalchemy&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-ready-00185e?style=flat-square&logo=postgresql&logoColor=white)
+![Apache ECharts](https://img.shields.io/badge/Apache_ECharts-5.5-c69d67?style=flat-square&logo=apacheecharts&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-893_passing-c69d67?style=flat-square&logo=pytest&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-c69d67?style=flat-square)
+
+<br/>
+
+[About](#about) · [Screenshots](#screenshots) · [Roles](#who-it-is-for) · [Features](#features) · [Technology](#technology) · [Quality](#quality) · [Docs](#documentation)
 
 </div>
 
----
+<br/>
 
-## Why we built it
+## About
 
-A university is full of things worth showing up for: a hackathon in the CSE block, a dance
-championship in the main auditorium, a cricket final on the main ground, a guest lecture that
-changes someone's mind about their career. Too often they reach students as a forwarded poster,
-a Google Form and a spreadsheet that one tired organiser has to reconcile by hand.
+SapthaEvent brings every event at the university into one portal: hackathons and coding contests,
+workshops and guest lectures, cultural competitions and shows, sports tournaments, placement drives and
+multi-day fests with their own sub-events.
 
-SapthaEvent puts all of it in one place. Students find events and register in a minute, then walk
-in with a QR ticket. Organisers create any kind of event (from a one-hour seminar to a multi-day fest with
-its own sub-events), see who is coming, run check-in, judging and results, and issue certificates
-that anyone can verify. The university sees everything that happens on campus, with the numbers to
-back it up.
+Students find an event, register in a minute and walk in with a QR ticket. Organisers create and publish
+events, manage registrations, check people in, run judging and publish results, and issue certificates
+that anyone can verify. The university sees all of it in one console, with analytics to match.
 
-It was built for the people who make campus life happen, the students, the club leads and the faculty
-who give up their evenings for it, and we hope it makes their work a little lighter.
+<br/>
 
----
+## Screenshots
 
-## What each person can do
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/home.webp" alt="Home page" />
+      <p align="center"><b>Home</b><br/><sub>The next events, live from the database, on the campus photograph</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/student.webp" alt="Student dashboard" />
+      <p align="center"><b>Student dashboard</b><br/><sub>Tickets, upcoming events, results and certificates</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/wizard.webp" alt="Event creation wizard" />
+      <p align="center"><b>Create an event</b><br/><sub>A 7-step wizard for 27 kinds of event</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/spoc.webp" alt="SPOC console" />
+      <p align="center"><b>SPOC console</b><br/><sub>Registrations, attendance and revenue for every event</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/analytics.webp" alt="Analytics" />
+      <p align="center"><b>Analytics</b><br/><sub>Compare every event, with filters, zoom and table views</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/results.webp" alt="Results" />
+      <p align="center"><b>Results</b><br/><sub>Judges' scores ranked, with a podium and standings</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/live.webp" alt="Live leaderboard" />
+      <p align="center"><b>Live leaderboard</b><br/><sub>For the projector on the event day</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/admin.webp" alt="Admin console" />
+      <p align="center"><b>Admin console</b><br/><sub>Every event, account and registration in one place</sub></p>
+    </td>
+  </tr>
+</table>
 
-| Role | What they get |
+<br/>
+
+## Who it is for
+
+| | Role | What they can do |
+|:-:|:--|:--|
+| 🌐 | **Visitor** | Browse and search events, read event pages, learn about the university, verify a certificate |
+| 🎓 | **Student** | Register alone or as a team, pay where needed, get a QR ticket, see results, download certificates, give feedback |
+| 🧭 | **Club SPOC** | Create, review and publish events (fests included), build registration forms, appoint staff, book rooms, publish results, issue certificates, see analytics |
+| 📋 | **Event coordinator** | Manage registrations and exports, check people in with the QR scanner, run rooms and rounds |
+| ⚖️ | **Judge** | Score teams against the event's criteria and follow the live leaderboard |
+| 🎟️ | **Volunteer** | Check people in at the gate |
+| 🏛️ | **Super Admin** | Approve and manage every event, account and registration; venues, payments, announcements, analytics, system status and the audit log |
+
+<br/>
+
+## Features
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>🗓️ Every kind of event</h4>
+      Talks, competitions, cultural, sports, community, career, fests and custom events, each with its own
+      details. Fees per participant group, team sizes, judging criteria, prizes, sponsors and room booking
+      with clash checks. Every event is a draft until it is reviewed and published.
+    </td>
+    <td width="50%" valign="top">
+      <h4>🎫 Registration and tickets</h4>
+      A registration form per event, team members with their own details, waitlists, Razorpay payments with
+      coupons and refunds, and a QR ticket the moment someone registers.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>✅ The event day</h4>
+      QR check-in, live attendance, rooms and rounds, and judges' scoring against the rubric.
+    </td>
+    <td width="50%" valign="top">
+      <h4>🏆 One leaderboard</h4>
+      The projector board, the live board, the judges' view, the results page and the published winners all
+      use one ranking. Scores keep their decimals and equal scores share a place.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>📜 Verifiable certificates</h4>
+      Issued to everyone who attended, each with a verification link and QR code.
+    </td>
+    <td width="50%" valign="top">
+      <h4>📊 Analytics</h4>
+      Compare every event side by side, registrations over time, a weekday × hour heatmap, the funnel from
+      registration to certificate, revenue and no-shows, filtered by period and category.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>🔔 Notifications</h4>
+      Email, WhatsApp and in-app notifications, and announcements to any group of people.
+    </td>
+    <td width="50%" valign="top">
+      <h4>♿ Built for everyone</h4>
+      Mobile-first, dark mode, keyboard and screen-reader friendly, installable as an app, in English,
+      Hindi and Kannada.
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <h4>🔒 Secure by default</h4>
+      Permission checks on every route, CSRF protection, a strict Content Security Policy, rate-limited
+      login, hashed passwords, and a refusal to start in production without real secrets.
+    </td>
+  </tr>
+</table>
+
+<br/>
+
+## Technology
+
+<table>
+  <tr><td><b>Application</b></td><td>Flask 3, Jinja, Bootstrap 5 and a shared design system in the university's navy and gold</td></tr>
+  <tr><td><b>Data</b></td><td>SQLAlchemy 2 on PostgreSQL (SQLite for development), Alembic migrations</td></tr>
+  <tr><td><b>Background work</b></td><td>Celery, with an outbox that retries anything that failed to send</td></tr>
+  <tr><td><b>Charts</b></td><td>Apache ECharts, with colour-blind-safe palettes in light and dark mode</td></tr>
+  <tr><td><b>Documents</b></td><td>ReportLab certificates with QR verification, Excel exports with openpyxl</td></tr>
+  <tr><td><b>Payments</b></td><td>Razorpay</td></tr>
+  <tr><td><b>Messages</b></td><td>Email, WhatsApp (Twilio) and web push</td></tr>
+  <tr><td><b>AI (optional)</b></td><td>Google Gemini for the event writer, the form generator and report summaries</td></tr>
+  <tr><td><b>Security</b></td><td>Flask-Talisman, Flask-WTF, Flask-Limiter, server-side sessions</td></tr>
+  <tr><td><b>Deployment</b></td><td>Docker and Docker Compose</td></tr>
+</table>
+
+<br/>
+
+## Quality
+
+The project has **914 automated tests**. In the full run on 13 October 2026, **893 pass** and 1 is skipped.
+The 20 that fail are known and tracked in the feature review, not hidden:
+
+- 19 were already known before this release (two tests for a former payment provider, three for the
+  matchmaker feature, twelve for helper scripts the database safety check does not cover yet, and two
+  seminar lifecycle tests);
+- 1 fails only between midnight and 05:30 IST, because a scheduled job compares dates in UTC.
+
+Every change is also checked with `ruff`.
+
+<br/>
+
+## Documentation
+
+| Document | What it covers |
 |:--|:--|
-| **Visitor** | The home page with the next events live from the database, filters and search, event pages, the university's schools and official accounts, certificate verification. |
-| **Student** | Register (solo or as a team) for free and paid events, QR tickets, a dashboard of upcoming events, results, certificates and feedback, in-app notifications. |
-| **Club SPOC** | A 7-step event wizard for **27 kinds of event** in 8 groups, drafts and a review page before publishing, fests with sub-events, a form builder, staff and rooms, results and certificates, and analytics for their own events. |
-| **Event coordinator** | Registrations and exports, the QR check-in scanner, rooms, rounds and publishing results for the events they run. |
-| **Judge** | The teams to score against the event's criteria, and the live leaderboard. |
-| **Volunteer** | The check-in scanner on the event day. |
-| **Super Admin** | Everything: all events (approve, change status, hand to another SPOC), users and roles, registrations across events, analytics across the university, venues and rooms, payments and refunds, announcements, system status and the audit log. |
+| [`docs/FEATURE_REVIEW.md`](docs/FEATURE_REVIEW.md) | Every feature, what is done, what is open and why |
+| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Deploying to production |
+| [`docs/API.md`](docs/API.md) | The REST API |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How the parts fit together |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | The security model |
 
----
-
-## Highlights
-
-- **Every kind of event, one wizard.** Talks, competitions, cultural, sports, community, career, fests and
-  custom events, each with its own details (the sport and format for a tournament, the speaker for a
-  seminar, the company for a placement drive). Fees per participant group, team sizes, judging criteria,
-  prizes, sponsors and room booking with clash checks. Every event starts as a draft and is reviewed
-  before it goes live.
-- **Registration that just works.** A form per event (or the standard one), team members with their own
-  details, waitlists, Razorpay payments with coupons and refunds, and a QR ticket the moment you register.
-- **Event day.** QR check-in at the gate, live attendance, rooms and rounds, judges' scoring against the
-  rubric and **one leaderboard** shared by the projector board, the live board, the judges, the results
-  page and the published winners (equal scores share a place).
-- **Certificates you can trust.** Issued to everyone who attended, each with a verification link and QR code.
-- **Analytics.** Apache ECharts with filters for period and category: compare every event side by side
-  (choose the measures, sort, top N or all, a breakdown that adds up), registrations over time, a weekday ×
-  hour heatmap, the registration-to-certificate funnel, revenue and no-shows. Every chart has a table
-  view and a PNG download, and the colours are checked for colour-blind readers in light and dark mode.
-- **Notifications.** Email, WhatsApp and the in-app bell; announcements to any group.
-- **For everyone.** Mobile-first layouts, dark mode, keyboard and screen-reader friendly, an installable PWA,
-  and English, Hindi and Kannada.
-- **Safe by default.** Server-side permissions on every route, CSRF protection, a strict Content Security
-  Policy, rate-limited login, hashed passwords, refusal to start in production without real secrets, and
-  seed scripts that refuse production databases.
-
----
-
-## Run it locally
-
-You need Python 3.11 and Git.
-
-```bash
-git clone https://github.com/kirancodes-dev/saptha-event-portal.git
-cd saptha-event-portal
-python3 -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
-python app.py                                          # http://127.0.0.1:5001
-```
-
-With no `DATABASE_URL`, data lives in `saptha_fallback.db` (SQLite, gitignored). Settings go in `.env`
-(start from `.env.example`). In production (`FLASK_ENV=production`) the app refuses to start without
-`DATABASE_URL` (or `CLOUD_SQL_INSTANCE`), `SECRET_KEY` and `MASTER_SECRET_KEY`.
-
-### A full demo in one command
-
-```bash
-python seed_showcase.py
-```
-
-This empties the **local** database and builds a realistic university through the portal's own pages:
-
-- 1 Super Admin, 3 Club SPOCs, 3 coordinators, 4 judges, a volunteer and 60 students across 9 programmes
-- the main campus with 4 buildings and 13 rooms
-- **40 upcoming events, two a day for the next 20 days**, of every kind, with registrations and QR tickets
-- 8 events from the last two weeks with attendance, judges' scores, published results, certificates and feedback
-- announcements in every student's notifications
-
-Demo accounts use `@snpsu.test`, a reserved domain that never receives mail, so a demo can't write to a real
-person. Passwords are printed once at the end of the run (or set `SEED_<ROLE>_PASSWORD` to choose them).
-The script refuses anything that looks like a production database.
-
-### With Docker (PostgreSQL, Redis, Celery)
-
-```bash
-cp .env.example .env           # set SECRET_KEY and MASTER_SECRET_KEY
-docker compose up --build      # http://localhost:8080
-docker compose exec web env SUPER_ADMIN_EMAIL=you@college.edu \
-    SUPER_ADMIN_PASS='choose-a-Strong-pass1' python init_superadmin.py
-```
-
----
-
-## How it is built
-
-| Layer | Technology |
-|:--|:--|
-| Web | Flask 3, Jinja templates, Bootstrap 5, a shared design system (`static/css/global.css`) |
-| Data | SQLAlchemy models (`models_pg.py`) on PostgreSQL or SQLite, Alembic migrations, a document-style adapter (`db_adapter.py`) |
-| Jobs | Celery with an outbox that retries anything that failed to send |
-| Charts | Apache ECharts through `static/js/se-echarts.js` |
-| Documents | ReportLab certificates with QR verification, Excel and PDF exports |
-| Messages | Email (SMTP/Brevo), WhatsApp (Twilio), web push |
-| AI | Google Gemini for the event writer, form generator and report summaries (optional) |
-| Hosting | Docker, Google Cloud Run, PostgreSQL |
-
-```
-app.py                  the app, home page and public routes
-routes_*.py             one blueprint per area (admin, spoc, coordinator, judge, participant, forms, …)
-services_*.py           the rules: event types, workflow, permissions, payments, analytics, leaderboard, …
-models_pg.py, db_*.py   the database
-templates/, static/     pages, styles and scripts (no inline scripts: a strict CSP)
-tests/                  pytest, against a temporary database
-docs/                   deployment, API, architecture and the feature review
-seed_showcase.py        the demo data
-university_info.py      the university's details shown on the home page
-```
-
----
-
-## Tests and quality
-
-```bash
-python -m pytest        # uses a temporary database, never your local data
-ruff check .
-```
-
-The suite has **914 tests**. In the full run of 13 October 2026, 893 pass (after one new test was made
-independent of the order the tests run in) and 1 is skipped. The 20 that fail are known and tracked, not hidden:
-
-- 19 are listed in UPG-62: two Stripe tests (Razorpay is the payment provider now), three for the matchmaker
-  feature, twelve that check helper scripts the seed-safety guard doesn't cover yet, and two seminar
-  lifecycle tests;
-- 1, the event-status job test, fails only between midnight and 05:30 IST because the job uses UTC dates (UPG-90).
-
-Planned work, what is done and what is open lives in [`docs/FEATURE_REVIEW.md`](docs/FEATURE_REVIEW.md);
-deployment is in [`docs/DEPLOY.md`](docs/DEPLOY.md), and the API in [`docs/API.md`](docs/API.md).
-
----
-
-## Thank you
-
-To the students who tested every form, the club leads who told us what was missing, and the faculty who
-believed a campus portal could be this good: this is yours.
-
----
+<br/>
 
 ## License
 
@@ -191,14 +220,12 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
----
+<br/>
 
 <div align="center">
 
-<img src="static/img/snpsu-logo-reversed.png" width="220" alt="Sapthagiri NPS University" />
+<img src="docs/assets/banner.png" width="360" alt="Sapthagiri NPS University" />
 
-**Built with care, for everyone who makes campus life happen.**
-
-Sapthagiri NPS University · Bengaluru · 2026
+<sub>Sapthagiri NPS University · #14/5, Chikkasandra, Hesarghatta Main Road, Bengaluru 560057 · <a href="https://snpsu.edu.in">snpsu.edu.in</a></sub>
 
 </div>

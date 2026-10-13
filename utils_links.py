@@ -76,3 +76,30 @@ def request_origin(base_url: str) -> Optional[str]:
     if not is_trusted_host(host, base_url, production):
         return None
     return f"{request.scheme}://{host}"
+
+
+def back_path(default: str, skip_prefix: str = '') -> str:
+    """Where a "Back" link should go: the page on this site the visitor came
+    from (?next=, else the referrer), as a path, never another site; else
+    `default` (UPG-92). Pages under `skip_prefix` (the page itself) don't count."""
+    try:
+        from flask import current_app, has_request_context, request
+    except ImportError:
+        return default
+    if not has_request_context():
+        return default
+    from utils_email import _configured_base_url
+    production = str(current_app.config.get('FLASK_ENV') or '').lower() == 'production'
+    for candidate in (request.args.get('next'), request.referrer):
+        if not candidate or '\\' in candidate:
+            continue
+        url = urlparse(candidate)
+        if url.scheme and url.scheme not in ('http', 'https'):
+            continue
+        if url.netloc and not is_trusted_host(url.netloc, _configured_base_url(), production):
+            continue
+        path = url.path or '/'
+        if not path.startswith('/') or path.startswith('//') or (skip_prefix and path.startswith(skip_prefix)):
+            continue
+        return path + (f'?{url.query}' if url.query else '')
+    return default

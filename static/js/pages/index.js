@@ -65,30 +65,45 @@ function _dbgToast(msg, isErr){
   console.log(isErr ? 'ERROR:' : 'DEBUG:', msg);
 }
 
-// ── EVENT CARD CLICK (event delegation) ────────────────────────────────────
-document.addEventListener('click', function(e){
-  // Don't trigger if clicking the Register/View Ticket button
-  if(e.target.closest('.btn-reg')) return;
-  
-  var card = e.target.closest('.ev-card-clickable');
-  if(!card) return;
-  
-  // Walk up to the .ev-col to read all data attributes
-  var col = card.closest('.ev-col');
-  if(!col){ _dbgToast('Could not find .ev-col parent', true); return; }
-  
-  if(col.dataset.regClosed === 'true'){
-    alert('Registration is closed for this event.');
+// ── EVENT POPUP (UPG-92) ───────────────────────────────────────────────────
+// One view of an event: the event page's own content (/event/<id>?fragment=1),
+// shown in a large scrollable popup. Cards, the hero's "Coming up" items and
+// /?event=<id> (the registration page's Back link) all open it.
+function openEventPopup(eventId){
+  var modalEl = document.getElementById('eventModal');
+  var body    = document.getElementById('eventModalBody');
+  if(!eventId) return;
+  if(typeof bootstrap === 'undefined' || !modalEl || !body){
+    window.location.href = '/event/' + encodeURIComponent(eventId);
     return;
   }
-  
-  _dbgToast('Clicked event: ' + (col.dataset.id || 'NO-ID'));
-  
-  try {
-    showEventModalFromCol(col);
-  } catch(err) {
-    _dbgToast(err.message + ' at ' + (err.stack ? err.stack.split('\n')[1] : '?'), true);
-  }
+  var titleEl = document.getElementById('eventModalLabel');
+  if(titleEl) titleEl.textContent = 'Event details';
+  body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted">Loading the event…</p></div>';
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  fetch('/event/' + encodeURIComponent(eventId) + '?fragment=1', { headers: { 'Accept': 'text/html' }, credentials: 'same-origin' })
+    .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+    .then(function(fragmentHtml){
+      // Rendered and escaped by the server's template (public/event_fragment.html)
+      body.innerHTML = fragmentHtml;
+      var frag = body.querySelector('.ev-fragment');
+      if(titleEl && frag && frag.dataset.eventTitle) titleEl.textContent = frag.dataset.eventTitle;
+      body.scrollTop = 0;
+    })
+    .catch(function(){
+      body.innerHTML = '<div class="text-center py-5"><p class="mb-3">The event couldn\'t be loaded.</p>'
+        + '<a class="btn btn-primary" href="' + safeUrl('/event/' + encodeURIComponent(eventId)) + '">Open the event page</a></div>';
+    });
+}
+
+document.addEventListener('click', function(e){
+  if(e.target.closest('.btn-reg')) return;            // the card's own Register / Ticket button
+  var opener = e.target.closest('[data-open-event]');
+  if(opener){ e.preventDefault(); openEventPopup(opener.getAttribute('data-open-event')); return; }
+  var card = e.target.closest('.ev-card-clickable');
+  if(!card) return;
+  var col = card.closest('.ev-col');
+  if(col) openEventPopup(col.dataset.id);
 });
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Enter' && e.key !== ' ') return;
@@ -96,117 +111,16 @@ document.addEventListener('keydown', function(e){
   var card = e.target.closest('.ev-card-clickable');
   if(!card) return;
   var col = card.closest('.ev-col');
-  if(col){
-    if(col.dataset.regClosed === 'true'){
-      e.preventDefault();
-      alert('Registration is closed for this event.');
-      return;
-    }
-    e.preventDefault();
-    showEventModalFromCol(col);
-  }
+  if(col){ e.preventDefault(); openEventPopup(col.dataset.id); }
+});
+// Coming back from the registration page: reopen that event's popup
+document.addEventListener('DOMContentLoaded', function(){
+  var id = new URLSearchParams(window.location.search).get('event');
+  if(id) openEventPopup(id);
 });
 
-// ── EVENT MODAL ────────────────────────────────────────────────────────────
-function showEventModalFromCol(col){
-  var modalEl = document.getElementById('eventModal');
-  var body    = document.getElementById('eventModalBody');
-  
-  // STEP 1: Reset spinner and show modal immediately
-  // This ensures the page is NEVER left frozen with backdrop
-  if(body) body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-3 text-muted">Loading...</p></div>';
-  
-  if(typeof bootstrap === 'undefined' || !modalEl){
-    // Bootstrap not loaded — just navigate to register page
-    var eid = col ? col.dataset.id : '';
-    if(eid) window.location.href = '/forms/register/' + eid;
-    return;
-  }
-  
-  
-  
-  // Show modal NOW (with spinner) — user sees it opening immediately
-  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-  modal.show();
-  
-  // STEP 2: Populate content (safely, after modal is visible)
-  try {
-    if(!col){ body.innerHTML = '<p class="text-danger">Error: event data not found.</p>'; return; }
-    
-    var evId    = col.dataset.id    || '';
-    var evCat   = col.dataset.cat   || 'General';
-    var evDate  = col.dataset.date  || '';
-    var evReg   = col.dataset.registered === 'true';
-    var evRegId = col.dataset.regId || '';
-    
-    var title       = (col.querySelector('.ev-title')?.textContent || 'Event').trim();
-    var description = (col.querySelector('.ev-desc')?.textContent  || 'No description available.').trim();
-    var dateText    = (col.querySelector('[data-info="date"]')?.textContent  || evDate || 'TBA').trim();
-    var venue       = (col.querySelector('[data-info="venue"]')?.textContent || 'TBA').trim();
-    var fee         = (col.querySelector('[data-info="fee"]')?.textContent   || 'Free').trim();
-    var bannerSrc   = col.querySelector('.ev-banner img')?.src || '';
-    
-    // Update modal title
-    var titleEl = document.getElementById('eventModalLabel');
-    if(titleEl) titleEl.textContent = title;
-    
-    // Banner image
-    var bannerHtml = bannerSrc
-      ? '<img src="' + safeUrl(bannerSrc) + '" class="event-modal-banner" alt="">'
-      : '';
-    
-    // Category badge colour
-    var catColour = {technical:'var(--cat-technical)',cultural:'var(--cat-cultural)',sports:'var(--cat-sports)',management:'var(--cat-management)'};
-    var badgeBg = catColour[evCat.toLowerCase()] || 'var(--text-muted)';
-    
-    // Register button (the card's text and IDs are escaped into the HTML: BLK-19)
-    var regBtnHtml = evReg && evRegId
-      ? '<button class="modal-btn btn-success" data-h-click="se:go" data-href="' + safeUrl('/ticket/' + encodeURIComponent(evRegId)) + '"><i class="fas fa-ticket-alt me-1"></i>View My Ticket</button>'
-      : '<button class="modal-btn modal-btn-primary" data-h-click="se:go" data-href="' + safeUrl('/forms/register/' + encodeURIComponent(evId)) + '"><i class="fas fa-arrow-right me-1"></i>Register Now</button>';
-    
-    // Calendar section (only if we have a valid date)
-    var calHtml = '';
-    if(evDate && /^\d{4}-\d{2}-\d{2}$/.test(evDate)){
-      var gUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + evDate.replace(/-/g,'') + '&location=' + encodeURIComponent(venue);
-      calHtml = '<div class="event-modal-section">'
-        + '<h5>Add to Calendar</h5>'
-        + '<div class="d-flex flex-wrap gap-2">'
-        + '<a href="' + safeUrl(gUrl) + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fab fa-google me-1"></i>Google Calendar</a>'
-        + '</div></div>';
-    }
-    
-    body.innerHTML =
-      bannerHtml +
-      '<div class="event-modal-meta">'
-        + '<div class="event-modal-meta-item"><i class="fas fa-calendar-alt"></i><span>' + escapeHtml(dateText) + '</span></div>'
-        + '<div class="event-modal-meta-item"><i class="fas fa-map-marker-alt"></i><span>' + escapeHtml(venue) + '</span></div>'
-        + '<div class="event-modal-meta-item"><i class="fas fa-tag"></i><span style="text-transform:capitalize;color:' + escapeHtml(badgeBg) + ';font-weight:700;">' + escapeHtml(evCat) + '</span></div>'
-      + '</div>'
-      + '<div class="event-modal-section"><h5>About This Event</h5><p>' + escapeHtml(description) + '</p></div>'
-      + '<div class="event-modal-section"><h5>Entry Fee</h5><p style="font-size:18px;font-weight:800;color:var(--brand-navy);">' + escapeHtml(fee) + '</p></div>'
-      + calHtml
-      + '<div class="event-modal-section"><h5>Event Highlights</h5><p>\uD83C\uDFAF Competitive spirit \u2022 \uD83C\uDFC6 Amazing prizes \u2022 \uD83E\uDD1D Networking opportunities \u2022 \uD83C\uDF93 Skill development</p></div>'
-      + '<div class="modal-btn-group">' + regBtnHtml + '<button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
-      
-  } catch(err) {
-    // Safety net — show error in modal so page is NEVER frozen
-    if(body) body.innerHTML = '<div class="alert alert-danger"><strong>Could not load event details.</strong><br><small>' + escapeHtml(err.message) + '</small></div><div class="modal-btn-group"><button class="modal-btn modal-btn-secondary" data-bs-dismiss="modal">Close</button></div>';
-    console.error('showEventModalFromCol error:', err);
-  }
-}
-
-// Legacy alias
-function showEventModal(eventId){
-  var col = document.querySelector('.ev-col[data-id="' + CSS.escape(eventId) + '"]');
-  if(col) {
-    if(col.dataset.regClosed === 'true'){
-      alert('Registration is closed for this event.');
-      return;
-    }
-    showEventModalFromCol(col);
-  }
-  else if(eventId) window.location.href = '/forms/register/' + eventId;
-}
+// Older callers
+function showEventModal(eventId){ openEventPopup(eventId); }
 
 // ── CALENDAR HELPER FUNCTIONS ──────────────────
 function getGoogleCalendarUrl(title, dateStr, description, venue) {

@@ -50,7 +50,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 
 | Feature | Status | Evidence | Notes |
 |---|---|---|---|
-| Home / event discovery / catalogue | WORKING [T, R at UPG-86] | `app.py:564-735`, `templates/index.html`, `university_info.py` | The home page shows live events (a "Coming up" list of the next open ones) and the university's real details from `university_info.py` (schools and programmes, highlights, official social accounts, contacts, links checked to open real pages); nothing invented. The old fake fallback hackathon is gone (re-verified at UPG-86). |
+| Home / event discovery / catalogue | WORKING [T, R at UPG-92] | `app.py:564-735`, `app.py:875-1030`, `templates/index.html`, `templates/public/_event_content.html`, `static/js/pages/index.js:72`, `university_info.py` | The home page shows live events (a "Coming up" list of the next open ones) and the university's real details from `university_info.py` (schools and programmes, highlights, official social accounts, contacts, links checked to open real pages); nothing invented. The old fake fallback hackathon is gone (re-verified at UPG-86). Clicking an event opens the event page's own content in a scrollable popup (UPG-92); registration's Back returns to the page the visitor came from. |
 | University calendar + event `.ics` | WORKING [R] | `app.py:1093`, `app.py:794` | Department-only visibility filter at `app.py:1011-1014`. |
 | Personal calendar feed | WORKING [R at BLK-04b] | `app.py:1135-1210`, `services_accounts.py:143,149` | Own events when logged in; calendar apps use a signed, resettable per-user token; `?user=` is ignored (BLK-04). |
 | Student sign-up / login | WORKING [R at UPG-35] | `routes_auth.py:272`, `routes_auth.py:66` | USN now persists (document shadow, `db_adapter.py` `extra_json`) [R at `1f4cdc8`]; it wasn't stored at `694c729`. Failed logins and reset requests answer the same for every email (UPG-35); sign-up still tells an existing email to log in. |
@@ -2934,6 +2934,41 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: a set-password email sent from `http://192.168.1.6:5001` links there; from a forged host, and outside a request, it links to `BASE_URL` [T `::test_a_link_sent_from_a_trusted_address_opens_there`, `::test_a_forged_address_still_gets_base_url`, `::test_set_password_email_links_to_the_address_in_use`].
   3. Test: an SMTP email carries the logo inline (`Content-ID: <snpsu-logo>`, PNG) and logs in with PLAIN only; Brevo gets a public logo address [T `::test_smtp_email_carries_the_logo_inline_and_logs_in_with_plain_only`, `::test_brevo_gets_a_public_logo_address`].
 
+
+#### UPG-92 — One event view: the home page popup shows the event page, and registration's Back returns where the visitor came from
+- **Status:** DONE
+- **Last verified:** 2026-10-13, working tree on `2bda4a8` (not committed) [T; R: Playwright on the seeded database]
+- **Problem:** Owner report 2026-10-13 (two screenshots). Clicking an event on the home page and opening its page showed the same event two different ways:
+  - **Two versions of one event:** the home page's popup was built in `index.js` from the card's text and added invented "Event Highlights". The full page (`/event/<id>`) had different content and left the home page.
+  - **Back went to the wrong place:** "Back to event" on the registration page always went to `/event/<id>`, even when the visitor came from the home page's popup.
+- **Built:**
+  - **One content template:** `templates/public/_event_content.html` holds the hero, the details, the rules, registrations, key dates, calendar, organiser and share sections. Both `public/event_details.html` and the new `public/event_fragment.html` include it. The page's CSS moved to `static/css/event-details.css`.
+  - **The popup:** `/event/<id>?fragment=1` (`app.py:1009`) returns only that content, without the page-only parts (breadcrumb, live countdown, copy button). It shows "In N days" instead of the countdown, plus a sticky bar with Register, "Already registered" or "Registration closed".
+    - `index.js:72` `openEventPopup()` loads it into a centred, scrollable Bootstrap modal (not full screen).
+    - Event cards and the "Coming up" list (`data-open-event`) open it; `/?event=<id>` reopens it.
+    - The invented highlights are gone.
+  - **Real numbers:** the registrations shown on the page and in the popup are counted from non-cancelled registrations (`app.py:996`), not the cached counter. Share links are built on the server from the trusted address (UPG-91).
+  - **Back:** `utils_links.back_path()` (`utils_links.py:81`) returns the page on this site the visitor came from (`?next=`, else the referrer), as a path only. Other sites, `//` and backslash tricks and non-http schemes are refused.
+    - The registration page (`routes_forms.py:518`) remembers that page across a reload or a resubmission and falls back to `/event/<id>`.
+    - The popup's Register link carries `next=/?event=<id>`, so Back reopens the popup.
+- **Acceptance criteria:**
+  1. Test: the popup and the page show the same sections; the popup has no breadcrumb, countdown or copy button, shows "In 5 days" and links Register with `next=/?event=<id>` [T `tests/test_event_popup.py::test_popup_shows_the_event_page_content_without_page_only_parts`].
+  2. Test: a closed event's popup says "Registration closed" and has no register link [T `::test_popup_shows_closed_registration_instead_of_a_register_link`].
+  3. Test: the registrations shown are counted (2 of 3, one cancelled), not the cached 999 [T `::test_registrations_shown_are_counted_not_cached`].
+  4. Test: the home page opens the popup from `data-open-event`, uses a scrollable dialog and has no "Event Highlights" [T `::test_home_page_opens_the_popup_and_invents_nothing`].
+  5. Test: Back goes to the page given in `next`, else to a trusted referrer, and is remembered on reload [T `::test_back_returns_to_the_page_given_in_next` ×3, `::test_back_follows_a_trusted_referrer_and_is_remembered`].
+  6. Test: Back never leaves the site (another host, `//host`, `javascript:`, `/\host`, a foreign referrer) [T `::test_back_never_leaves_the_site` ×5].
+  7. Checked [R] in Playwright: card → popup (8 sections, no errors) → Register → Back → `/?event=<id>` with the popup open again; "Coming up" opens the popup.
+
+#### UPG-93 — UPG-91's test sets a password-shaped MAIL_PASS literal, failing the repo hygiene scan
+- **Status:** TODO
+- **Last verified:** 2026-10-13, working tree on `2bda4a8`
+- **Problem:** Found in the full run at UPG-92 [T]. `tests/test_email_links_and_logo.py:118` calls `monkeypatch.setenv('MAIL_PASS', ...)` with a made-up app password written as a literal, so `tests/test_repo_hygiene.py::test_no_mail_password_in_tracked_files` fails. The value is not a real password, but the scan is right to refuse any literal there.
+- **What to build:** generate the dummy value when the test runs (for example `uuid.uuid4().hex`), so no password-shaped literal is committed. The hygiene scan stays as it is.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: `tests/test_repo_hygiene.py::test_no_mail_password_in_tracked_files` passes and `tests/test_email_links_and_logo.py` still passes.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3258,3 +3293,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-12 | uncommitted (working tree on `0fd9f3a`) | UPG-86, UPG-65, UPG-79 | **UPG-86 DONE** at the owner's request (production home page with snpsu.edu.in's real details). Removed the invented content: the hero's "Saptha 2026" card with ₹0 entry fee and always-0 registrations, the 60-second steps, three made-up testimonials and the count-ups (UPG-65's home-page part). Added: the full campus photo hero with a live "Coming up" list of the next open events, About the university (four schools and programmes, highlights), Follow SNPSU (five official accounts) and a footer with real links and contacts; dead and `#` links are gone. Fixed on the page: the undefined hero filter, error and debug pop-ups shown to visitors, the duplicate footer, and SPOC/admin dashboard links. UPG-79's Back check now compares with BASE_URL instead of the request's Host (BLK-16). 4 new tests in `tests/test_home_page.py`; with the auth, mobile, public-links, HTML-injection, sessions, event-creation, analytics, builder and forms files, 140 passed. |
 | 2026-10-13 | uncommitted (working tree on `0fd9f3a`) | UPG-87, UPG-88, UPG-89 | **UPG-87, UPG-88, UPG-89 DONE** for the final submission. Home page: calendar links removed and "Coming up" kept inside its card. `seed_showcase.py` rebuilt the owner's local database (backed up first) through the portal's own routes: 72 accounts, 48 events (2 a day for 20 days plus 8 finished with results, certificates and feedback), 544 registrations; a demo guide PDF generated outside git. Old reports, PDFs, planning notes and `.agents/` removed from git (owner's choice), `.gitignore` covers generated documents and uploads, README rewritten. |
 | 2026-10-13 | uncommitted (working tree on `4deb9ac`) | UPG-91 | **UPG-91 DONE** at the owner's request: the logo travels inside each email; emailed links open the trusted address the portal is being used on (local, LAN, ngrok in development; BASE_URL and TRUSTED_HOSTS anywhere), forged hosts still get BASE_URL; a refused Gmail login now reports Gmail's reason. 18 new tests; with the email, link, account, admin and registration files, 141 passed (3 admin-users failures are the known order dependence, UPG-62; they pass alone and after the new file). |
+| 2026-10-13 | uncommitted (working tree on `2bda4a8`) | UPG-92, UPG-93 | **UPG-92 DONE** at the owner's request: the home page's event popup and the event page now show one content template (`public/_event_content.html`), the popup through `/event/<id>?fragment=1` in a centred scrollable dialog, without the invented "Event Highlights"; registrations shown are counted, not cached; the registration page's Back returns to the page the visitor came from (same site only, remembered across reloads), so from the popup it reopens the popup. 13 new tests in `tests/test_event_popup.py`; with the home, public-links, registration, event-creation, email-links and builder files, 135 passed; HTML-injection check 35 passed (scratch index). Full pytest: 20 failed, 928 passed, 1 skipped: the 19 known (UPG-62) and one new, recorded as UPG-93 (UPG-91's test trips the mail-password scan); not fixed in this change. |

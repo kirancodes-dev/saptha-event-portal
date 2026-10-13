@@ -38,6 +38,7 @@
 <!-- ═══ Stylesheets ═══ -->
 {% include "layouts/_bootstrap_css.html" %}
 <link href="/static/css/global.css" rel="stylesheet">
+<link href="/static/css/event-details.css" rel="stylesheet">
 {% include "layouts/_fontawesome.html" %}
 <style>
 /* Home page (UPG-63): brand navy hero and footer, light content sections.
@@ -240,7 +241,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
 /* Event detail modal becomes a bottom sheet on phones */
 @media (max-width: 576px) {
     #eventModal .modal-dialog { margin: 0; position: fixed; bottom: 0; left: 0; right: 0; width: 100%; max-width: 100%; }
-    #eventModal .modal-content { border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 85vh; overflow-y: auto; }
+    #eventModal .modal-content { border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 92vh; }
     #eventModal .modal-content::before { content: ''; width: 40px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 10px auto 0; display: block; }
 }
 
@@ -428,7 +429,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
             {% for ev in coming_up %}
             {%- set d = ev.get('date', '') -%}
             <li>
-              <a class="hero-next__item" href="/event/{{ ev.id }}">
+              <a class="hero-next__item" href="/event/{{ ev.id }}" data-open-event="{{ ev.id }}">
                 <span class="hero-next__date" aria-hidden="true">
                   <span class="d">{{ d[8:10] if d|length >= 10 else '—' }}</span>
                   <span class="m">{{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(d[5:7]|int) - 1] if d|length >= 7 and d[5:7]|int else '' }}</span>
@@ -904,7 +905,7 @@ button.hsc-cat { font-family: inherit; line-height: 1.2; }
 
 <!-- ═══ EVENT DETAIL MODAL ═══ -->
 <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="eventModalLabel" aria-describedby="eventModalBody">
       <div class="modal-header">
         <h5 class="modal-title" id="eventModalLabel">Event Details</h5>

@@ -993,7 +993,27 @@ def event_details(event_id):
                 key=lambda e: (str(e.get('date') or ''), str(e.get('time') or '')))
             fest_events = [e for e in fest_events if is_listed(e, is_admin=True)]
 
+        # Seats taken: counted from the registrations, not the cached counter (UPG-81, UPG-92)
+        reg_count = sum(1 for r in db.collection('registrations').where('event_id', '==', event_id).stream()
+                        if str((r.to_dict() or {}).get('status') or '').lower() not in ('cancelled', 'refunded'))
+        from utils_email import _base_url
+        share_url = f"{_base_url()}/event/{event_id}"
+        try:
+            days_until = (datetime.date.fromisoformat(str(event.get('date'))[:10]) - datetime.date.today()).days
+        except ValueError:
+            days_until = None
+        from routes_forms import registration_closed
+        page_args = dict(share_url=share_url, days_until=days_until, closed=registration_closed(event))
+
+        # The home page's event popup shows the same content (UPG-92)
+        if request.args.get('fragment') == '1':
+            return render_template('public/event_fragment.html', event=event, spec=spec,
+                                   parent_fest=parent_fest, fest_events=fest_events,
+                                   is_registered=is_registered, reg_count=reg_count, fragment=True,
+                                   t=t, names=t_names, table=t_table, champion=t_champ, **page_args)
+
         return render_template('public/event_details.html',
+                               fragment=False, **page_args,
                                event=event,
                                spec=spec, parent_fest=parent_fest, fest_events=fest_events,
                                is_registered=is_registered,

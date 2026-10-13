@@ -515,9 +515,20 @@ def registration_page(event_id):
     if not state or state.get('event_id') != event_id:
         state = {}
 
+    # "Back" returns to the page the visitor came from (UPG-92): the home page's
+    # event popup, the catalogue or the event page; kept across a resubmission
+    from utils_links import back_path
+    remembered = session.get('register_back') or {}
+    back_url = back_path('', skip_prefix=f'/forms/register/{event_id}')
+    if back_url:
+        session['register_back'] = {event_id: back_url}
+    else:
+        back_url = remembered.get(event_id) or f'/event/{event_id}'
+
     import uuid
     return render_template(
         'public/registration_form.html',
+        back_url=back_url,
         event=event,
         schema=schema,
         is_registered=is_registered,

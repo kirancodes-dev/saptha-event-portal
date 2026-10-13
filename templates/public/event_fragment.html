@@ -1,0 +1,20 @@
+{#- The event as the home page's popup shows it (UPG-92): the event page's own
+    content (public/_event_content.html) and its register action. -#}
+<div class="ev-fragment" data-event-title="{{ event.title }}">
+{% include "public/_event_content.html" %}
+{% if not event.is_fest %}
+<div class="ev-fragment__actions">
+  <div>
+    <div class="reg-bar__label">Registration fee</div>
+    <div class="reg-bar__fee">{% if event.fees and event.fees.regular and event.fees.regular|int > 0 %}₹{{ event.fees.regular }}{% else %}<span class="free">Free</span>{% endif %}</div>
+  </div>
+  {% if is_registered %}
+  <span class="btn btn-lg btn-outline-success disabled" aria-disabled="true"><i class="fas fa-check-circle" aria-hidden="true"></i> Already registered</span>
+  {% elif closed %}
+  <span class="btn btn-lg btn-outline-secondary disabled" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i> Registration closed</span>
+  {% else %}
+  <a class="btn btn-lg btn-gold" href="/forms/register/{{ event.id }}?next={{ ('/?event=' ~ event.id)|urlencode }}">Register now <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+  {% endif %}
+</div>
+{% endif %}
+</div>

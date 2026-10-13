@@ -7,6 +7,7 @@ login reports Gmail's reason.
 """
 import email
 import json
+import uuid
 
 import pytest
 
@@ -115,7 +116,7 @@ def test_smtp_email_carries_the_logo_inline_and_logs_in_with_plain_only(monkeypa
     import smtplib
     import utils_email
     monkeypatch.setenv('MAIL_USER', 'portal@example.com')
-    monkeypatch.setenv('MAIL_PASS', 'abcd efgh ijkl mnop')
+    monkeypatch.setenv('MAIL_PASS', uuid.uuid4().hex)       # made up when the test runs (UPG-93)
     monkeypatch.delenv('COLLEGE_LOGO_URL', raising=False)
     monkeypatch.setattr(smtplib, 'SMTP_SSL', _FakeSMTP)
     _FakeSMTP.sent.clear()

@@ -196,6 +196,8 @@ ALLOWED_HOST_USES = {
     'app.py',                    # same-site check on the referrer before redirecting back
     'routes_payment_stripe.py',  # the caller's own Stripe redirect URLs (removed by UPG-14)
     'middleware_tenant.py',      # tenant lookup by domain (multi-tenancy is off), not a link
+    'utils_links.py',            # the trusted-address check (UPG-91): only a trusted Host is ever
+                                 # used for links; tests/test_email_links_and_logo.py covers it
 }
 
 

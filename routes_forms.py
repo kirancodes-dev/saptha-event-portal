@@ -386,16 +386,20 @@ def builder(event_id):
 def _builder_back_url(event_id: str) -> str:
     """Where the builder's Back goes: the page on this site that opened it,
     else the event's page for the user's role (UPG-79). "This site" is
-    BASE_URL, never the request's Host, which a client can forge (BLK-16);
-    only the path is kept."""
+    a trusted address (utils_links: BASE_URL, TRUSTED_HOSTS, and in development
+    this machine, the local network or an ngrok tunnel), never any other Host a
+    client could forge (BLK-16, UPG-91); only the path is kept."""
     from urllib.parse import urlparse
-    from utils_email import _base_url
-    site = urlparse(_base_url()).netloc
+    from utils_email import _configured_base_url
+    from utils_links import is_trusted_host
+    production = str(current_app.config.get('FLASK_ENV') or '').lower() == 'production'
     for candidate in (request.args.get('next'), request.referrer):
         if not candidate or '\\' in candidate:
             continue
         url = urlparse(candidate)
-        if (url.scheme and url.scheme not in ('http', 'https')) or (url.netloc and url.netloc != site):
+        if url.scheme and url.scheme not in ('http', 'https'):
+            continue
+        if url.netloc and not is_trusted_host(url.netloc, _configured_base_url(), production):
             continue
         if not url.path.startswith('/') or url.path.startswith('//') or url.path.startswith('/forms/builder/'):
             continue

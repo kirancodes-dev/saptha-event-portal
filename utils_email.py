@@ -30,14 +30,9 @@ LAST_EMAIL_ERROR = ""
 # HELPERS
 # ─────────────────────────────────────────────────────────────
 
-def _base_url() -> str:
-    """The site's public address for every link that leaves the app: emails,
-    WhatsApp messages, QR codes, referrals (BLK-16).
-
-    BASE_URL only, never the request's host: a client can forge Host or
-    X-Forwarded-Host, and a reset email would then link to their site.
-    Production refuses to start without an https BASE_URL
-    (config.validate_production_config)."""
+def _configured_base_url() -> str:
+    """BASE_URL: the site's public address. Production refuses to start
+    without an https one (config.validate_production_config)."""
     url = ''
     try:
         from flask import current_app
@@ -46,6 +41,31 @@ def _base_url() -> str:
         pass
     url = url or os.environ.get('BASE_URL') or 'http://127.0.0.1:5000'
     return url.strip().rstrip('/')
+
+
+def _base_url() -> str:
+    """The address every link that leaves the app uses: emails, WhatsApp
+    messages, QR codes, referrals (BLK-16).
+
+    The address the current request came in on when that address is trusted
+    (this machine, the local network or an ngrok tunnel in development, the
+    BASE_URL host, or TRUSTED_HOSTS), so links open where the portal is being
+    used (UPG-91); otherwise BASE_URL. A forged Host header is never trusted,
+    so a reset email can't be made to link to someone else's site."""
+    base = _configured_base_url()
+    from utils_links import request_origin
+    return (request_origin(base) or base).rstrip('/')
+
+
+# The logo travels inside each email (UPG-91): no outside address it depends on
+LOGO_CID = 'cid:snpsu-logo'
+LOGO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'img', 'email-logo.png')
+
+
+def _public_logo_url() -> str:
+    """For providers that take the email as HTML only (Brevo, Resend)."""
+    return (os.environ.get('COLLEGE_LOGO_URL', '').strip()
+            or f"{_configured_base_url()}/static/img/email-logo.png")
 
 
 def _from_address() -> str:
@@ -127,9 +147,8 @@ def _e(value) -> str:
 
 
 def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
-    logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip()
-    if not logo_url:
-        logo_url = f"{_base_url().rstrip('/')}/static/snpsu-logo.png"
+    # COLLEGE_LOGO_URL if set; otherwise the logo attached to the email itself
+    logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip() or LOGO_CID
     base = _base_url().rstrip('/')
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -160,8 +179,8 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                     <!-- University logo — crisp white text on navy background, matches home page -->
                     <img src="{logo_url}"
                          alt="Sapthagiri NPS University"
-                         width="220"
-                         style="display:block;margin:0 auto 14px;height:56px;width:auto;max-width:220px;border:none;outline:none;text-decoration:none;background:transparent;">
+                         width="230" height="56"
+                         style="display:block;margin:0 auto 14px;height:56px;width:230px;max-width:230px;border:none;outline:none;text-decoration:none;background:transparent;">
                     <!-- Gold divider line -->
                     <div style="width:60px;height:2px;background:linear-gradient(90deg,transparent,#c9a020,transparent);margin:0 auto 12px;"></div>
                     <!-- SapthaEvent badge -->
@@ -200,8 +219,8 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                         <td style="background-color:#1a2557;border-bottom:2.5px solid #c9a020;border-radius:10px;padding:10px 24px;box-shadow:0 3px 12px rgba(26,37,87,0.15);">
                           <img src="{logo_url}"
                                alt="Sapthagiri NPS University"
-                               height="32"
-                               style="display:block;height:32px;width:auto;max-width:200px;border:none;outline:none;background:transparent;">
+                               width="131" height="32"
+                               style="display:block;height:32px;width:131px;max-width:200px;border:none;outline:none;background:transparent;">
                         </td>
                       </tr>
                     </table>
@@ -284,7 +303,7 @@ def _send_via_brevo(to_email, subject: str, html: str,
             'sender':      {'name': from_name, 'email': from_email},
             'to':          [{'email': e} for e in to_list],
             'subject':     subject,
-            'htmlContent': html,
+            'htmlContent': html.replace(LOGO_CID, _public_logo_url()),
         }
 
         if attachments:
@@ -338,7 +357,7 @@ def _send_via_resend(to_email, subject: str, html: str,
             'from':    _from_address(),
             'to':      to_list,
             'subject': subject,
-            'html':    html,
+            'html':    html.replace(LOGO_CID, _public_logo_url()),
         }
         if attachments:
             params['attachments'] = attachments
@@ -354,6 +373,16 @@ def _send_via_resend(to_email, subject: str, html: str,
 # ─────────────────────────────────────────────────────────────
 # PROVIDER 2 — GMAIL SMTP (used on Railway paid plan)
 # ─────────────────────────────────────────────────────────────
+
+def _smtp_login(server, user: str, password: str) -> None:
+    """Log in with AUTH PLAIN only. smtplib otherwise retries a refused login
+    with AUTH LOGIN, which Gmail answers by closing the connection, and the
+    real reason ("Username and Password not accepted") is lost (UPG-91)."""
+    server.ehlo()
+    if 'PLAIN' in (server.esmtp_features.get('auth') or '').upper().split():
+        server.esmtp_features['auth'] = 'PLAIN'
+    server.login(user, password)
+
 
 def _send_via_gmail(to_email, subject: str, html: str,
                     attachments: list | None = None) -> bool:
@@ -384,9 +413,19 @@ def _send_via_gmail(to_email, subject: str, html: str,
         msg['To']      = ', '.join(to_list)
         msg['Subject'] = Header(subject, 'utf-8').encode()
 
+        # The HTML and the logo it shows travel together (multipart/related, UPG-91)
+        related = MIMEMultipart('related')
         alt = MIMEMultipart('alternative')
         alt.attach(MIMEText(html, 'html', 'utf-8'))
-        msg.attach(alt)
+        related.attach(alt)
+        if LOGO_CID in html and os.path.exists(LOGO_FILE):
+            from email.mime.image import MIMEImage
+            with open(LOGO_FILE, 'rb') as fh:
+                logo = MIMEImage(fh.read(), 'png')
+            logo.add_header('Content-ID', '<snpsu-logo>')
+            logo.add_header('Content-Disposition', 'inline', filename='snpsu-logo.png')
+            related.attach(logo)
+        msg.attach(related)
 
         if attachments:
             for att in attachments:
@@ -413,23 +452,22 @@ def _send_via_gmail(to_email, subject: str, html: str,
             ctx = _ssl.create_default_context()
             with smtplib.SMTP_SSL(smtp_host, smtp_port,
                                   context=ctx, timeout=timeout) as server:
-                server.login(mail_user, mail_pass)
+                _smtp_login(server, mail_user, mail_pass)
                 server.send_message(msg)
         else:
             with smtplib.SMTP(smtp_host, smtp_port, timeout=timeout) as server:
                 server.ehlo()
                 server.starttls()
-                server.ehlo()
-                server.login(mail_user, mail_pass)
+                _smtp_login(server, mail_user, mail_pass)
                 server.send_message(msg)
 
         logger.info("Gmail SMTP → %s | %s", to_list, subject)
         return True
 
     except smtplib.SMTPAuthenticationError as exc:
-        LAST_EMAIL_ERROR = (f"Gmail auth failed: {exc}. MAIL_PASS must be a "
-                            "16-char App Password (no spaces). Generate at "
-                            "myaccount.google.com/apppasswords")
+        LAST_EMAIL_ERROR = (f"Gmail refused the login ({exc.smtp_code}): MAIL_USER must be the exact "
+                            "Gmail address the App Password was made for, and MAIL_PASS that "
+                            "16-letter App Password (myaccount.google.com/apppasswords).")
         logger.error(LAST_EMAIL_ERROR)
         return False
     except Exception as exc:

@@ -3168,6 +3168,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: `pyrefly.toml` is valid TOML with the known keys, and `pyrightconfig.json` says 3.11 [T `tests/test_type_check_config.py::test_the_pyrefly_config_is_valid_toml_with_known_keys`].
   2. ✅ Test: Pyrefly accepts the config and reports 0 errors in `routes_coordinator.py` [T `::test_pyrefly_accepts_the_config_and_finds_no_errors_in_routes_coordinator`]. Both fail on the old files.
 
+#### UPG-101 — README: the live link, a live-demo button, running it locally, and current facts
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-101: …" on `production-ready` (parent `0d60c3a`) [T]
+- **Problem:** Owner request 2026-10-17. The README had no link to the deployed site. Its test badge (893) and Quality section (20 known failures, 13 October) were out of date. It listed only Docker for deployment, and it had no instructions to run the app or the tests.
+- **Built:**
+  - a "Live demo" button and link at the top, and a "Live demo" section: no login needed to register, Razorpay Test Mode with test cards, the first-visit wake-up, `/health/ready`, and what it runs on;
+  - Cloud Run and Razorpay test-mode badges;
+  - a "Run it locally" section (venv, `requirements-dev.txt`, `.env.example`, `python app.py`, pytest, ruff, Razorpay test keys, never commit `.env`);
+  - Payments, Deployment and Security text matching UPG-94 and UPG-97;
+  - the test numbers from the full run on 17 October, and the 5 known failures (D-9).
+- **Files touched:** `README.md`, `tests/test_readme.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the README links the live URL, has the "Run it locally" section, and its test badge matches the Quality section [T `tests/test_readme.py::test_the_readme_links_the_live_site_and_says_how_to_run_it`].
+
 #### UPG-102 — 1,044 Pyrefly type errors across the app
 - **Status:** TODO
 - **Last verified:** 2026-10-17, after UPG-100 [R]
@@ -3513,3 +3528,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-98: …" (parent `ec0b29a`) | UPG-98 | **UPG-98 added and DONE** (found preparing the Google Cloud deployment). `.dockerignore` now keeps the Firebase key, local database copies, Word documents, `android/`, `functions/` and `dataconnect/` out of the image. 2 new tests. |
 | 2026-10-17 | `a7fa6fd` (deployment; this line in "docs: …") | D-6, UPG-16, UPG-99 | **Google Cloud test deployment** for the owner (account queserateam07@gmail.com, project `saptha-event-261017`, Mumbai): Cloud Run service `saptha` (min 0, max 3 instances, 1 GiB, request timeout 30 min) from image `web:a7fa6fd` built by Cloud Build. Cloud SQL PostgreSQL 16 `saptha-db` (db-f1-micro, 10 GB HDD, zonal, daily backups, reached only through the Cloud SQL connector). Secret Manager holds every secret (new keys and Super Admin password; the Gmail app password and Razorpay **test** keys copied from `.env`). Uploads go to bucket `saptha-event-261017-uploads`. Cloud Scheduler runs the four cron jobs. A budget alert at 50/75/90/100% of the ₹28,796 trial credit. Migrations ran on the empty database (UPG-16 note). Checked [R]: home, events, login, `/health/ready` 200; webhook refuses an unsigned call; cron 200 with the secret and 403 without; Super Admin created by first login, and admin, payments and orders pages 200; public and private uploads work. Signed links don't (new **UPG-99**). Not yet done: the owner's Razorpay Test Mode checkout with the webhook (UPG-30 criterion 4). |
 | 2026-10-17 | "UPG-100: …" (parent `cc334ef`) | UPG-100, UPG-102 | **UPG-100 added and DONE** from the owner's pasted Pyrefly diagnostics: `pyrefly.toml` was unreadable (wrong keys), so Pyrefly fell back to a missing Python 3.9 path and flagged the optional imports. The config is rewritten, `pyrightconfig.json` says 3.11, and `routes_coordinator.py` imports `firestore`/`FieldFilter` directly: 0 errors there. `pyrefly==1.4.0` added to dev requirements. 2 new tests (both fail on the old files). **New UPG-102:** the 1,044 other Pyrefly errors, to work through file by file. Full pytest on SQLite: 966 passed, 1 skipped, 5 failed (known D-9); ruff clean. |
+| 2026-10-17 | "UPG-101: …" (parent `0d60c3a`) | UPG-101 | **UPG-101 added and DONE** at the owner's request. README: a live-demo button and section for https://saptha-967997581752.asia-south1.run.app, Cloud Run and Razorpay test-mode badges, "Run it locally" (venv, `.env.example`, app, tests), Payments, Deployment and Security text matching UPG-94 and UPG-97, and the test numbers of the 17 October run (967 passed, 1 skipped, 5 known failures). 1 new test. |

@@ -21,9 +21,16 @@ SECRET = 'test-razorpay-secret-for-pytest'
 def shop(real_app, monkeypatch):
     flask_app, db = real_app
 
+    orders = {}
+
     class FakeOrders:
         def create(self, data):
-            return dict(data, id=f"order_{_unique('rzp')}", status='created')
+            order = dict(data, id=f"order_{_unique('rzp')}", status='created')
+            orders[order['id']] = order
+            return order
+
+        def fetch(self, order_id):  # a checked-out order is paid in full (UPG-94)
+            return dict(orders[order_id], status='paid', amount_paid=orders[order_id]['amount'])
 
     class FakeClient:
         order = FakeOrders()

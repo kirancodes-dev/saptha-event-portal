@@ -698,6 +698,7 @@ small, .small { font-size: var(--fs-sm); }
 .info-box.warning, .callout--warning { background: var(--warning-soft); border-color: rgba(217, 119, 6, 0.3); border-left-color: var(--warning); }
 .info-box.success, .callout--success { background: var(--success-soft); border-color: rgba(22, 163, 74, 0.3); border-left-color: var(--success); }
 .callout--info { background: var(--info-soft); border-color: rgba(37, 99, 235, 0.25); border-left-color: var(--info); }
+.callout--danger { background: var(--danger-soft); border-color: rgba(220, 38, 38, 0.3); border-left-color: var(--danger); }
 .callout--brand { background: var(--brand-navy-50); border-color: var(--brand-navy-100); border-left-color: var(--brand-navy); }
 
 .feature-card {

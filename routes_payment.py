@@ -3,12 +3,14 @@ import hashlib
 import hmac as _hmac  # alias to avoid shadowing module with local var
 import json
 import os
+import secrets
 import time
 from flask import (Blueprint, flash, jsonify, redirect, render_template, request, session)
-from services_payments import (PaymentError, amount_inr, attach_registration, claim_order,
+from services_payments import (PaymentError, amount_inr, attach_registration, check_order, claim_order,
                                claim_paid_order, get_order, give_back_coupon_use, mark_unmatched,
-                               record_order, release_payer_holds, server_price, simulation_enabled,
-                               take_coupon_use)
+                               note_failed_attempt, note_order, order_for_payment, record_order,
+                               record_refund, refund_reversed, release_payer_holds, server_price,
+                               simulation_enabled, take_coupon_use)
 
 COUPON_GONE = 'the coupon had no uses left when this late payment arrived'  # UPG-36
 from utils import login_required, record_form_submission, safe_int
@@ -18,6 +20,10 @@ from utils import login_required, record_form_submission, safe_int
 RECORDED_MESSAGE = ("Your payment is recorded, but we couldn't complete the registration (the event may be "
                     "full, or you may already be registered). The organisers will complete it or refund you; "
                     "you don't need to pay again.")
+# What a payer sees when Razorpay hasn't confirmed the payment yet; the
+# webhook completes it (UPG-94)
+PENDING_MESSAGE = ("We received your payment and are confirming it with Razorpay. Your ticket and receipt "
+                   "will be emailed in a few minutes; you don't need to pay again.")
 
 try:
     import razorpay
@@ -109,6 +115,8 @@ def create_order():
         return jsonify({'error': 'Online payment is not configured. Please contact the organiser.'}), 503
 
     email = (reg_data.get('lead_email') or '').lower()
+    reg_id = str(reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}")
+    reg_data = dict(reg_data, reg_id=reg_id)
     coupon = price.get('coupon')
     if coupon:
         # Hold one use for this order, atomically; a retry gives back the
@@ -121,8 +129,10 @@ def create_order():
         order = _rzp().order.create({  # type: ignore[union-attr]
             'amount':   price['amount_paise'],
             'currency': 'INR',
-            'receipt':  f"reg_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}",
-            'notes':    {'event_id': event_id, 'email': email},
+            # One per order, at most 40 characters (UPG-94)
+            'receipt':  f"{reg_id[:31]}-{secrets.token_hex(4)}",
+            'payment_capture': 1,
+            'notes':    {'event_id': event_id, 'registration_id': reg_id, 'email': email},
         })
     except Exception:
         if coupon:
@@ -176,6 +186,16 @@ def verify_payment():
     event_id = str(reg_data.get('event_id', ''))
 
     try:
+        recorded = check_order(razorpay_order_id, razorpay_payment_id, event_id, reg_data.get('lead_email', ''))
+        # Razorpay, not the browser, says whether the money arrived (UPG-94)
+        settled = _razorpay_settled(razorpay_order_id, razorpay_payment_id, recorded['amount_paise'])
+        if settled == 'pending':
+            log_action(_db(), "PAYMENT_PENDING", f"Order {razorpay_order_id} / {razorpay_payment_id}: "
+                                                 "not confirmed by Razorpay yet; the webhook completes it")
+            return jsonify({'pending': True, 'message': PENDING_MESSAGE}), 202
+        if settled != 'paid':
+            raise PaymentError(f"The payment could not be confirmed: {settled}. Nothing was registered; you "
+                               "can try again, and if money left your account the organisers will refund it.", 400)
         order = claim_order(razorpay_order_id, razorpay_payment_id, event_id,
                             reg_data.get('lead_email', ''))
     except PaymentError as exc:
@@ -216,6 +236,34 @@ def verify_payment():
     if order.get('coupon_code'):
         _use_coupon(event_id, order['coupon_code'])
     return jsonify({'redirect': _after_payment_url(result)})
+
+
+def _razorpay_settled(order_id, payment_id, amount_paise):
+    """Ask Razorpay about the order: 'paid' (captured for this amount in INR),
+    'pending' (not settled yet, or Razorpay unreachable: the webhook decides),
+    or why it isn't paid. An authorized-only payment is captured here (UPG-94)."""
+    try:
+        rzp_order = _rzp().order.fetch(order_id)  # type: ignore[union-attr]
+        if rzp_order.get('status') == 'paid':
+            if (safe_int(rzp_order.get('amount_paid')) == amount_paise
+                    and str(rzp_order.get('currency') or 'INR') == 'INR'):
+                return 'paid'
+            return 'Razorpay received a different amount'
+        payment = _rzp().payment.fetch(payment_id)  # type: ignore[union-attr]
+        if str(payment.get('order_id') or '') != order_id:
+            return 'the payment belongs to another order'
+        if safe_int(payment.get('amount')) != amount_paise:
+            return 'Razorpay received a different amount'
+        if payment.get('status') == 'authorized':
+            payment = _rzp().payment.capture(payment_id, amount_paise, {'currency': 'INR'})  # type: ignore[union-attr]
+        if payment.get('status') == 'captured':
+            return 'paid'
+        if payment.get('status') == 'failed':
+            return 'the payment failed'
+        return 'pending'
+    except Exception as exc:
+        log_action(_db(), "PAYMENT_STATUS_UNAVAILABLE", f"Order {order_id} / {payment_id}: {exc}")
+        return 'pending'
 
 
 def _use_coupon(event_id, code):
@@ -456,45 +504,141 @@ def _after_payment_url(result):
 # =========================================================
 @payment_bp.route('/webhook/razorpay', methods=['POST'])
 def razorpay_webhook():
-    """Razorpay's server-to-server events. payment.captured completes the
-    registration stored with the order, once, whether or not the payer's
-    browser came back to /payment/verify. Signed with RAZORPAY_WEBHOOK_SECRET."""
+    """Razorpay's server-to-server events, the source of truth for payments.
+    payment.captured completes the registration stored with the order, once,
+    whether or not the payer's browser came back to /payment/verify; the
+    authorized, failed and refund events are handled too (UPG-94). Signed
+    with RAZORPAY_WEBHOOK_SECRET; https only in production."""
     secret = os.environ.get('RAZORPAY_WEBHOOK_SECRET', '')
     if not secret:
         return jsonify({'error': 'Webhook not configured'}), 503
+    if os.environ.get('FLASK_ENV', '').strip().lower() == 'production' and not request.is_secure:
+        return jsonify({'error': 'HTTPS required'}), 403
     body = request.get_data()
     expected = _hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     if not _hmac.compare_digest(expected, request.headers.get('X-Razorpay-Signature', '')):
         return jsonify({'error': 'Invalid signature'}), 400
     try:
         event = json.loads(body or b'{}')
-        payment = event['payload']['payment']['entity'] if event.get('event') == 'payment.captured' else None
-    except (ValueError, KeyError, TypeError):
+        kind = str(event.get('event', ''))
+        payload = event.get('payload') or {}
+        payment = (payload.get('payment') or {}).get('entity') or {}
+        refund = (payload.get('refund') or {}).get('entity') or {}
+    except (ValueError, AttributeError, TypeError):
         return jsonify({'error': 'Malformed event'}), 400
-    if not payment:
+    handler = _WEBHOOK_HANDLERS.get(kind)
+    if handler is None:
         return jsonify({'status': 'ignored'})
+    # A refund event also carries its payment, with the total refunded so far
+    entity = dict(refund, _payment=payment) if kind.startswith('refund.') else payment
+    if not entity.get('id'):
+        return jsonify({'error': 'Malformed event'}), 400
+    return jsonify(handler(entity))
 
+
+def _webhook_captured(payment):
     order_id, payment_id = str(payment.get('order_id', '')), str(payment.get('id', ''))
     order = claim_paid_order(order_id, payment_id, safe_int(payment.get('amount')))
     if order is None:  # unknown, already completed by the browser, or the amount differs
-        return jsonify({'status': 'nothing to do'})
+        return {'status': 'nothing to do'}
     if order.get('coupon_over_limit'):  # UPG-36
         mark_unmatched(order_id, COUPON_GONE)
-        return jsonify({'status': 'recorded'})
+        return {'status': 'recorded'}
     if not order['reg_data']:
         mark_unmatched(order_id, 'no registration details were stored with the order')
-        return jsonify({'status': 'recorded'})
+        return {'status': 'recorded'}
     result = _complete_registration(order['event_id'], dict(order['reg_data']), 'Paid',
                                     amount_inr(order['amount_paise']), payment_id, order_id)
     if 'error' in result:
         mark_unmatched(order_id, result['error'])
         log_action(_db(), "PAYMENT_UNMATCHED", f"Webhook: paid order {order_id} could not complete: {result['error']}")
-        return jsonify({'status': 'recorded'})
+        return {'status': 'recorded'}
     attach_registration(order_id, result['reg_id'])
     if order.get('coupon_code'):
         _use_coupon(order['event_id'], order['coupon_code'])
     log_action(_db(), "PAYMENT_WEBHOOK_COMPLETED", f"Order {order_id} completed registration {result['reg_id']}")
-    return jsonify({'status': 'completed', 'reg_id': result['reg_id']})
+    return {'status': 'completed', 'reg_id': result['reg_id']}
+
+
+def _webhook_authorized(payment):
+    """Auto-capture is off: capture an open order's payment for its amount.
+    Razorpay then sends payment.captured, which completes it."""
+    order = get_order(str(payment.get('order_id', '')))
+    if (order is None or order['status'] not in ('created', 'expired')
+            or safe_int(payment.get('amount')) != order['amount_paise']):
+        return {'status': 'nothing to do'}
+    try:
+        _rzp().payment.capture(str(payment['id']), order['amount_paise'], {'currency': 'INR'})  # type: ignore[union-attr]
+    except Exception as exc:  # already captured, or Razorpay unreachable: it retries
+        log_action(_db(), "PAYMENT_CAPTURE_FAILED", f"Order {order['id']} / {payment['id']}: {exc}")
+        return {'status': 'capture failed'}
+    return {'status': 'captured'}
+
+
+def _webhook_failed(payment):
+    """A failed attempt: nothing is registered; the order stays open for a retry."""
+    order_id = str(payment.get('order_id', ''))
+    reason = str(payment.get('error_description') or payment.get('error_reason') or 'declined')
+    if not note_failed_attempt(order_id, reason):
+        return {'status': 'nothing to do'}
+    log_action(_db(), "PAYMENT_ATTEMPT_FAILED", f"Order {order_id} / {payment.get('id')}: {reason}")
+    return {'status': 'recorded'}
+
+
+def _registration_ref(order):
+    return _db().collection('registrations').document(order['reg_id']) if order.get('reg_id') else None
+
+
+def _webhook_refund_processed(refund):
+    """A refund went through (from the admin pages or Razorpay's dashboard). A
+    full refund cancels the registration, so its ticket stops checking in."""
+    refund_id, payment_id = str(refund.get('id', '')), str(refund.get('payment_id', ''))
+    order = order_for_payment(payment_id)
+    if order is None:
+        return {'status': 'nothing to do'}
+    amount = safe_int(refund.get('amount'))
+    refunded_total = max(amount, safe_int((refund.get('_payment') or {}).get('amount_refunded')))
+    if refunded_total < order['amount_paise']:
+        note_order(order['id'], f"Partly refunded ₹{amount_inr(amount)} (refund {refund_id})")
+        log_action(_db(), "PAYMENT_PARTLY_REFUNDED",
+                   f"Order {order['id']} (payment {payment_id}): ₹{amount_inr(amount)} refunded, refund {refund_id}")
+        return {'status': 'noted'}
+    if not record_refund(order['id'], refund_id):
+        return {'status': 'nothing to do'}
+    ref = _registration_ref(order)
+    if ref is not None:
+        ref.update({'payment_status': 'Refunded', 'status': 'cancelled', 'refund_id': refund_id,
+                    'refunded_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    'refunded_by': 'razorpay'})
+    log_action(_db(), "PAYMENT_REFUNDED_WEBHOOK",
+               f"Order {order['id']} (payment {payment_id}, ₹{amount_inr(order['amount_paise'])}) refunded by "
+               f"Razorpay: refund {refund_id}; registration {order['reg_id'] or 'none'}")
+    return {'status': 'refunded'}
+
+
+def _webhook_refund_failed(refund):
+    """Razorpay couldn't return the money: the order is paid again, with the
+    reason, for the admin to retry."""
+    refund_id, payment_id = str(refund.get('id', '')), str(refund.get('payment_id', ''))
+    order = order_for_payment(payment_id)
+    reason = str(refund.get('error_description') or refund.get('status') or 'failed')
+    if order is None or not refund_reversed(order['id'], refund_id, reason):
+        return {'status': 'nothing to do'}
+    ref = _registration_ref(order)
+    if ref is not None:
+        ref.update({'payment_status': 'Refund failed'})
+    log_action(_db(), "PAYMENT_REFUND_FAILED",
+               f"Order {order['id']} (payment {payment_id}): refund {refund_id} failed: {reason}")
+    return {'status': 'recorded'}
+
+
+_WEBHOOK_HANDLERS = {
+    'payment.captured':  _webhook_captured,
+    'payment.authorized': _webhook_authorized,
+    'payment.failed':    _webhook_failed,
+    'refund.processed':  _webhook_refund_processed,
+    'refund.failed':     _webhook_refund_failed,
+}
 
 
 # =========================================================

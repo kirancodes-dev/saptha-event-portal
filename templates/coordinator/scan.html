@@ -238,6 +238,8 @@
 
         // Auto-prompt camera start on page load (user may need to tap due to mobile autoplay rules)
         document.addEventListener('DOMContentLoaded', function(){
+            // Only when the scanner is open: a locked event has no camera view (UPG-67)
+            if (!document.getElementById('cam-placeholder')) return;
             // Attempt auto-start; browsers will prompt for permission on user gesture
             startCamera();
         });

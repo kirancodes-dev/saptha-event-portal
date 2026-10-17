@@ -2421,13 +2421,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. ✅ Test: every `<form method="POST">` in `templates/` contains a `csrf_token` field, except the routes that are exempt (`tests/test_upg66_csrf_forms.py::test_every_rendered_post_form_in_templates_has_csrf_token`).
 
 #### UPG-67 — The coordinator scanner throws a script error when it is locked
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-67: …" on `production-ready` (parent `dfcdb48`) [T]
 - **Problem:** Found during UPG-63 [R, headless Chromium]. `templates/coordinator/scan.html` calls `startCamera()` on `DOMContentLoaded` even when `scanning_open` is false. In that state the camera elements (`#cam-placeholder`, `#cam-error`) aren't rendered, so the page logs "Cannot read properties of null (reading 'style')" on every locked event.
 - **What to build:** only start the camera when the scanner view exists (frontend only).
+- **Built (2026-10-17):**
+  - `templates/coordinator/scan.html` starts the camera on load only when the camera view (`#cam-placeholder`) exists; a locked event renders no camera view and no longer throws.
+  - `tests/headless.py` (new): loads a page the app rendered in headless Chromium, with `/static` served from disk and every other request blocked, and collects page errors, CSP violations and navigations; UPG-70 and UPG-72 use it too. Its tests skip only where Playwright's Chromium isn't installed.
+- **Files touched:** `templates/coordinator/scan.html`, `tests/headless.py` (new), `tests/test_scanner_locked.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Headless: `/coordinator/scan/<event>` for an event on another day logs no page error.
+  1. ✅ Headless: `/coordinator/scan/<event>` for an event on another day logs no page error. [T `tests/test_scanner_locked.py::test_a_locked_scanner_logs_no_page_error` (headless Chromium; fails on the old template with "Cannot read properties of null"), `::test_todays_scanner_still_has_its_camera_view`]
 
 #### UPG-68 — The coordinator dashboard links to a form builder coordinators can't open
 - **Status:** TODO
@@ -3703,3 +3707,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-62: …" (parent `858be1e`) | UPG-62 | **UPG-62 DONE.** D-9 decided by the owner: deleted `test_global_scale.py::test_stripe_create_session_simulation_fallback`, `::test_stripe_success_redirection_and_registration`, `test_next_gen.py::test_matchmaker_page_requires_auth`, `::test_matchmaker_endpoint_calculates_jaccard_matches` and `::test_matchmaker_message_exchange_simulates_realtime_replies` (Stripe removed and matchmaker hidden in UPG-14). Full pytest: 984 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-65: …" (parent `6c356b4`) | UPG-65 | **UPG-65 DONE** (owner: remove or hide every made-up figure and simulated feature; settles D-8). Demo pages behind `DEMO_PAGES_ENABLED` (off). Made-up figures removed. Computed service status. No fake NFC delay or 20 points. Event-page defaults not invented. Chatbot contact from `SUPPORT_EMAIL`. Found and fixed: the Zoho fallback that pasted the prompt (with the student's details) into the chat, and the fake 96% judge matches. Three existing tests updated to the instruction (named in the item). Certificate pages' address deferred. **New UPG-108.** Full pytest: 992 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-82: …" (parent `1b65815`) | UPG-82 | **UPG-82 DONE** (owner decision: API events are drafts with the wizard's review). Both API create endpoints run `parse_form` and save drafts owned by the caller; the preset step is shared with the wizard. 6 new tests. Full pytest: 998 passed, 1 skipped, 0 failed. |
+| 2026-10-17 | "UPG-67: …" (parent `dfcdb48`) | UPG-67 | **UPG-67 DONE:** the locked coordinator scanner no longer starts the camera, so it logs no error. New `tests/headless.py` for headless page checks. 2 new tests. |

@@ -904,7 +904,7 @@ def event_details(event_id):
             }
         event.setdefault('date',               'TBD')
         event.setdefault('deadline',           '')
-        event.setdefault('venue',              'SNPSU Campus')
+        event.setdefault('venue',              'Venue to be announced')   # not an invented place (UPG-65)
         event.setdefault('category',           'General')
         event.setdefault('entry_fee',          0)
         event.setdefault('is_team_event',      False)
@@ -933,18 +933,18 @@ def event_details(event_id):
 
         if 'limits' not in event or not isinstance(event['limits'], dict):
             event['limits'] = {
-                'max_participants': 200,
+                'max_participants': 0,   # no limit set: no seat count shown, not an invented 200 (UPG-65)
                 'team_min': event.get('min_team_size', 1),
                 'team_max': event.get('max_team_size', 1)
             }
         else:
-            event['limits'].setdefault('max_participants', 200)
+            event['limits'].setdefault('max_participants', 0)
             event['limits'].setdefault('team_min', event.get('min_team_size', 1))
             event['limits'].setdefault('team_max', event.get('max_team_size', 1))
 
         reg_count = event.get('registration_count', 0)
         limits    = event['limits']
-        max_p     = limits.get('max_participants', 200)
+        max_p     = limits.get('max_participants', 0)
 
         is_registered = False
         prefill = None

@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 from flask import Blueprint, current_app, jsonify, request
 try:
     from google import genai
@@ -135,12 +136,15 @@ CAMPUS LOGISTICS & FAQ:
 6. Q: Where can we get food/refreshments?
    A: The main Student Food Court is situated near the Basketball court. Snack kiosks are also open near the CS Block.
 7. Q: Who to contact for help/emergencies?
-   A: Visit the main registration desk at the main arch entrance, or email help@sapthagiri.edu.
+   A: Visit the main registration desk at the main arch entrance{SUPPORT_LINE}.
 8. Q: What is required for check-in?
    A: Carry your college student ID card and your digital ticket QR code.
 9. Q: How to download certificates?
    A: If you were marked 'Present' at the event, go to your dashboard, scroll to 'Completed Events', and click 'Download Certificate'.
 """
+        # The contact comes from SUPPORT_EMAIL, never a made-up address (UPG-65)
+        support = (os.environ.get('SUPPORT_EMAIL') or '').strip()
+        FAQ_CONTEXT = FAQ_CONTEXT.replace('{SUPPORT_LINE}', f', or email {support}' if support else '')
 
         system_prompt = (
             "You are 'Sparky', the official AI assistant for the Sapthagiri NPS University "
@@ -176,13 +180,16 @@ CAMPUS LOGISTICS & FAQ:
             return jsonify({'reply': response.text})
         except Exception as g_err:
             logger.warning("Gemini API fallback error: %s", g_err)
+            # No AI answered: say so, and point to the configured support address (UPG-65)
+            support = (os.environ.get('SUPPORT_EMAIL') or '').strip()
             return jsonify({
-                'reply': f"Hello! Sparky (Zoho Zia AI) here! 🤖\n\nRegarding '{user_message}': Please check your student dashboard for live updates or contact support@snpsu.edu.in."
+                'reply': "I couldn't answer that just now. Please check your student dashboard for the latest "
+                         "updates" + (f" or write to {support}." if support else ".")
             })
 
     except Exception as exc:
         logger.error("Chatbot error: %s", exc)
         return jsonify({
-            'reply': "Oops! My Zoho Zia AI brain is rebooting. Please try again in a moment! 🤖⚡"
+            'reply': "I couldn't answer that just now. Please try again in a moment."
         })
 

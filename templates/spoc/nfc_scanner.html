@@ -77,7 +77,7 @@
                         </div>
                     </div>
 
-                    <!-- Simulator Payload Trigger -->
+                    <!-- Check in by hand from the list (UPG-65: no simulated card read) -->
                     <div class="mt-4 text-start">
                         <label class="form-label nfc-label" for="student-payload">Attendee to check in</label>
                         <div class="input-group">
@@ -137,13 +137,11 @@
             var viewfinder = document.getElementById('viewfinder-content');
             var select = document.getElementById('student-payload');
 
-            // Set scanning visual feedback
-            statusBox.innerHTML = `<span class="spinner-border spinner-border-sm text-warning"></span> Reading NFC card…`;
+            // Check in straight away; there is no card read to wait for (UPG-65)
+            statusBox.innerHTML = `<span class="spinner-border spinner-border-sm text-warning"></span> Checking in…`;
             viewfinder.style.color = "var(--brand-gold)";
 
-            // Delay check-in action slightly to simulate RFID parsing
-            setTimeout(function() {
-                // Post to checkin API
+            {
                 fetch(`/spoc/api/checkin/{{ event.id }}/${regId}`, {
                     method: 'POST',
                     headers: {
@@ -186,8 +184,7 @@
                     statusBox.innerHTML = `<i class="fas fa-circle-xmark text-danger"></i> Server Offline`;
                     setTimeout(resetViewfinder, 3000);
                 });
-
-            }, 1200);
+            }
         }
 
         function simulateNFCDetection() {
@@ -224,7 +221,7 @@
                     alert("WebNFC initialization failed: " + error);
                 }
             } else {
-                alert("WebNFC is not supported on this browser/device. Using emulator.");
+                alert("NFC isn't supported on this browser or device. Check people in with the list instead.");
             }
         }
 

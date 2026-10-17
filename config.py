@@ -225,6 +225,12 @@ class Config:
     # exists (UPG-105). The referral routes stay; only the section is hidden.
     REFERRALS_ENABLED = os.environ.get('REFERRALS_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
 
+    # Demo pages with no real data or backend behind them (UPG-65, D-8): the
+    # SaaS marketing pages (/platform, /pricing, /features: invented customers,
+    # prices and uptime) and the live streams and reels pages (simulated viewers,
+    # likes and chat). They answer 404 unless this is switched on.
+    DEMO_PAGES_ENABLED = os.environ.get('DEMO_PAGES_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
+
     # =========================================================
     # 7. TWILIO WHATSAPP
     # ─────────────────────────────────────────────────────────

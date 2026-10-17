@@ -102,16 +102,10 @@ def ask_zia_chatbot(message: str, context: str = "") -> str:
     if llm_output:
         return llm_output
 
-    # Intelligent Fallback if token is pending
-    msg_lower = message.lower()
-    if 'event' in msg_lower or 'schedule' in msg_lower:
-        return f"[Zoho QuickML AI Assistant]: {context}\n\nAsk me about registration deadlines or live stages!"
-    elif 'hackathon' in msg_lower or 'team' in msg_lower:
-        return "[Zoho QuickML AI]: Hackathon teams require 2 to 4 members. You can find team matches under the 'AI Matchmaker' tab in your participant dashboard."
-    elif 'certificate' in msg_lower or 'ticket' in msg_lower:
-        return "[Zoho QuickML AI]: Your event ticket & QR code are instantly available under 'My Registrations'. Verified certificates unlock after event completion."
-    else:
-        return f"[Zoho QuickML AI]: Welcome to SapthaEvent Portal! Open events:\n\n{context[:300]}..."
+    # Not configured or no answer: say nothing, so the caller tries the next
+    # provider or tells the student plainly. The canned "[Zoho QuickML AI]"
+    # replies pasted the prompt (with the student's details) into the chat (UPG-65).
+    return ''
 
 
 def match_teams_zia(judges: List[Dict[str, Any]], teams: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -135,32 +129,9 @@ def match_teams_zia(judges: List[Dict[str, Any]], teams: List[Dict[str, Any]]) -
         except Exception:
             pass
 
-    # Heuristic fallback matching using QuickML structured format
-    matches = []
-    reasoning_lines = []
-
-    for idx, team in enumerate(teams):
-        assigned_judge = judges[idx % len(judges)] if judges else {"name": "Unassigned", "email": ""}
-        j_exp = assigned_judge.get('expertise', 'General Technology')
-        t_title = team.get('project_title', team.get('team_name', f'Team {idx+1}'))
-
-        matches.append({
-            "registration_id": team.get('id', str(idx)),
-            "team_name": team.get('team_name', f"Team #{idx+1}"),
-            "project_title": t_title,
-            "judge_name": assigned_judge.get('name', 'Unassigned'),
-            "judge_email": assigned_judge.get('email', ''),
-            "confidence_score": 0.96,
-            "reasoning": f"Zoho QuickML (Qwen 3.6 35B) matched '{t_title}' with {assigned_judge.get('name')} based on expertise domain ({j_exp})."
-        })
-        reasoning_lines.append(f"• Matched {team.get('team_name')} -> {assigned_judge.get('name')} (Zoho QuickML score: 96%)")
-
-    return {
-        "status": "success",
-        "provider": "Zoho QuickML (VL-Qwen3.6-35B-A3B)",
-        "matches": matches,
-        "reasoning": "\n".join(reasoning_lines)
-    }
+    # No model answered. The old fallback assigned teams round-robin and called
+    # it a 96%-confident QuickML match; raising lets the caller use Gemini (UPG-65).
+    raise RuntimeError("Zoho QuickML is not configured or gave no usable answer")
 
 
 def search_catalyst_data(search_word: str, table_name: str = "events", column_name: str = "title") -> List[Any]:

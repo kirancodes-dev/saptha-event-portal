@@ -175,7 +175,7 @@ def dashboard():
         pass
 
     # XP + badges + full profile for dashboard header
-    user_xp = 20
+    user_xp = 0   # no made-up starting points (UPG-65)
     user_badges = []
     user_doc_data = {}
     try:
@@ -184,7 +184,7 @@ def dashboard():
             u = db.collection('users').document(uid).get()
             if u.exists:
                 user_doc_data = u.to_dict() or {}
-                user_xp     = int(user_doc_data.get('xp', 0) or user_doc_data.get('activity_points', 0) or 20)
+                user_xp     = int(user_doc_data.get('xp', 0) or user_doc_data.get('activity_points', 0) or 0)
                 user_badges = user_doc_data.get('badges', []) or []
     except Exception:
         pass

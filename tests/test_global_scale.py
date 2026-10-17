@@ -209,12 +209,17 @@ def test_xp_triggers_registration_and_checkin(client, mock_db, sample_event, mon
 
 
 def test_sla_uptime_page(client, mock_db):
-    """Test public SLA Status uptime page renders successfully."""
+    """The public service status page shows only what it computes when it opens:
+    whether the database answers and which providers are configured. Its made-up
+    uptime figures, "All Systems Operational" banner and Stripe line are gone
+    (UPG-65, owner's instruction 2026-10-17)."""
     resp = client.get('/compliance/sla')
     assert resp.status_code == 200
-    assert b'All Systems Operational' in resp.data
-    assert b'Stripe Gateway' in resp.data
-    assert b'SLA Commitment' in resp.data
+    page = resp.get_data(as_text=True)
+    assert 'Checked ' in page and 'Online payments (Razorpay)' in page and 'Database' in page
+    assert ('SapthaEvent is running' in page) or ("can't reach its database" in page)
+    for invented in ('All Systems Operational', 'Stripe Gateway', 'SLA Commitment', '99.9', 'Uptime', '124 ms'):
+        assert invented not in page, invented
 
 
 def test_seo_json_ld_event_metadata(client, mock_db, sample_event):

@@ -2362,8 +2362,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: every file under `templates/` is rendered by a route or included/extended by a rendered template.
 
 #### UPG-65 — Fabricated figures and simulated features on live pages
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE (the certificate pages' support address is deferred with certificates)
+- **Last verified:** 2026-10-17, commit "UPG-65: …" on `production-ready` (parent `6c356b4`) [T]
 - **Problem:** Found during UPG-63 [C, templates read; R, pages loaded]. Several pages show numbers or behaviour that no data or backend supports:
   - **Hard-coded figures:**
     - ~~Home page credibility figures, shown as count-ups (`data-count="2400"` and others), and the hero's "₹0" entry-fee tile~~: removed in UPG-86, with the invented testimonials and the "Saptha 2026 – The Grand College Fest" card.
@@ -2380,11 +2380,33 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Already removed in UPG-63 (frontend only):** the wallet pass's invented values, the certificate status tracker, the student dashboard's fake fallbacks and push-notification stub, and the scan HUD's total of 100.
 - **Who benefits:** the university's credibility; visitors and students who read the numbers as real.
 - **What to build:** either compute each figure from data (counts already exist in the admin dashboard queries) or remove it. Give demo-only pages an owner decision (D-8 covers the reels and streams pages). Move the support address to configuration after confirming it.
+- **Built (2026-10-17):**
+  - **Owner instruction 2026-10-17 (production-ready brief): remove or hide every made-up figure and simulated feature.** This also settles D-8.
+  - **Hidden demo pages:** `DEMO_PAGES_ENABLED` (`config.py`, off by default) hides the SaaS marketing pages and the live streams and reels pages. Those pages had invented customers, prices, uptime, viewers, likes, chat, and comment and share buttons that did nothing. `/platform`, `/pricing`, `/features` (`routes_marketing._demo_page`), `/live/streams` and `/live/reels` (`routes_live.py`) answer 404 unless it's on. The command palette no longer lists streams and reels.
+  - **Landing page cleaned anyway:**
+    - the invented stats strip (50+, 10K+, 500K+, 99.9%), "99.9% Uptime SLA" and "Join over 50 universities" are removed;
+    - "GDPR Compliant" becomes "Privacy notice, data export and account deletion".
+  - **Service status** (`/compliance/sla`, `routes_compliance.py`, `templates/compliance/sla.html`) shows only what it can check when it opens: the database answers (`app._database_ok`), and whether email, Razorpay (with "test mode"), WhatsApp and the AI assistant are configured. Uptime figures, history ticks and the SLA promises are gone.
+  - **NFC terminal:** the 1.2 s "simulate RFID parsing" delay and the "Using emulator" alert are removed (`templates/spoc/nfc_scanner.html`).
+  - **Points:** a student without points shows 0, not 20 (`routes_participant.py`).
+  - **Event page:** an event without a venue shows "Venue to be announced", and one without a seat limit shows no seat count, not "SNPSU Campus" and 200 (`app.py`, `event_details`).
+  - **Chatbot:**
+    - its fallback replies no longer claim an AI answered;
+    - the FAQ contact (`help@sapthagiri.edu`) and the fallback's address come from `SUPPORT_EMAIL`, and are left out when it's unset.
+    - **Found while testing:** without Zoho credentials, `zoho_zia.ask_zia_chatbot` returned canned "[Zoho QuickML AI]" answers that pasted the prompt, including the student's own registrations, into the chat. It now returns nothing.
+    - `zoho_zia.match_teams_zia`'s fallback assigned judges round-robin and called it a 96%-confident QuickML match. It now raises, so `routes_ai_matching` uses Gemini, which it also does for an unusable Zoho plan. That route's fixed `avg_confidence: 94` is computed from the matches.
+  - **Existing tests changed by this instruction:**
+    - `tests/test_global_scale.py::test_sla_uptime_page` now checks the computed status and that the invented strings are absent;
+    - `tests/test_next_gen.py::test_live_streams_page_returns_200` and `::test_live_reels_page_returns_200` check 404 by default and the same content with the setting on.
+  - **Deferred (certificates are out of scope for this run):** the support address hard-coded on the certificate verification pages (`templates/public/verify_success.html`, `verify_certificate.html`); criterion 3 is met for the chatbot only.
+  - **New:** UPG-108 (the chatbot FAQ's campus facts are unconfirmed).
+- **Files touched:** `config.py`, `routes_marketing.py`, `routes_live.py`, `routes_compliance.py`, `routes_participant.py`, `routes_ai_matching.py`, `app.py`, `chatbot_routes.py`, `zoho_zia.py`, `static/js/command-palette.js`, `templates/compliance/sla.html`, `templates/marketing/landing.html`, `templates/spoc/nfc_scanner.html`, `tests/test_no_made_up_figures.py` (new), `tests/test_global_scale.py`, `tests/test_next_gen.py`.
 - **Effort:** M · **Depends on:** D-8 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: the home page and the platform landing page show no figure that isn't computed from the database or configuration.
-  2. Test: no template has a hard-coded `data-count` figure or the strings "99.9%", "500K+" or "Verified-2026".
-  3. Test: the verification pages and the chatbot take the support address from `SUPPORT_EMAIL`.
+  1. ✅ Test: the home page and the platform landing page show no figure that isn't computed from the database or configuration. [T `tests/test_no_made_up_figures.py::test_the_home_page_and_platform_pages_show_no_invented_figures`]
+  2. ✅ Test: no template has a hard-coded `data-count` figure or the strings "99.9%", "500K+" or "Verified-2026". [T `::test_no_template_has_a_hard_coded_count_or_invented_figure`]
+  3. ✅ Test: the verification pages and the chatbot take the support address from `SUPPORT_EMAIL`. [T `::test_the_chatbot_takes_its_contact_from_support_email` ×2; the verification pages are **deferred** with certificates]
+  - Also: `::test_a_new_student_starts_with_zero_points`, `::test_an_event_without_venue_or_limit_shows_no_invented_values`, `::test_without_zoho_the_ai_helpers_simulate_nothing`, `::test_the_status_page_and_nfc_terminal_simulate_nothing`. 7 of the 8 fail on the old code. Full pytest: 992 passed, 1 skipped, 0 failed.
 
 #### UPG-66 — Two forms post without a CSRF token
 - **Status:** DONE
@@ -3318,6 +3340,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: `GET /google8e55d49885709546.html` answers 200, `text/html`, with exactly `google-site-verification: google8e55d49885709546.html` [T `tests/test_site_verification.py::test_the_google_verification_file_is_served_at_the_root`].
   2. ✅ Checked [R] on the deployment (revision `saptha-00004-q58`, image `web:fca39ec`): `https://saptha-967997581752.asia-south1.run.app/google8e55d49885709546.html` answers 200 with the file's contents.
 
+
+#### UPG-108 — The chatbot's built-in campus FAQ states unconfirmed facts
+- **Status:** TODO
+- **Last verified:** 2026-10-17, commit "UPG-65: …" [C]
+- **Problem:** Found building UPG-65. The prompt sent to the AI assistant (`chatbot_routes.py`, `FAQ_CONTEXT`) presents campus facts as true: where Zones A–D are, "parking at the North Gate", "the Student Food Court near the Basketball court", how certificates are downloaded. Nobody has confirmed them for Sapthagiri NPS University; the AI repeats them to students. UPG-65 replaced its invented contact address with `SUPPORT_EMAIL`.
+- **What to build:** the owner confirms each fact, or the FAQ moves to configuration (or an admin-editable page) and only confirmed answers are sent.
+- **Effort:** S · **Depends on:** owner input · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the prompt contains only FAQ entries that come from configuration or are marked confirmed.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3662,3 +3694,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-77: …" (parent `938048f`) | UPG-77 | **UPG-77 DONE:** the admin's announcement email escapes the message and subject (line breaks kept). 1 new test. |
 | 2026-10-17 | "UPG-96: …" (parent `e070b2e`) | UPG-96 | **UPG-96 DONE:** the checkout script receives the event title as a JSON literal. 1 new test. |
 | 2026-10-17 | "UPG-62: …" (parent `858be1e`) | UPG-62 | **UPG-62 DONE.** D-9 decided by the owner: deleted `test_global_scale.py::test_stripe_create_session_simulation_fallback`, `::test_stripe_success_redirection_and_registration`, `test_next_gen.py::test_matchmaker_page_requires_auth`, `::test_matchmaker_endpoint_calculates_jaccard_matches` and `::test_matchmaker_message_exchange_simulates_realtime_replies` (Stripe removed and matchmaker hidden in UPG-14). Full pytest: 984 passed, 1 skipped, 0 failed. |
+| 2026-10-17 | "UPG-65: …" (parent `6c356b4`) | UPG-65 | **UPG-65 DONE** (owner: remove or hide every made-up figure and simulated feature; settles D-8). Demo pages behind `DEMO_PAGES_ENABLED` (off). Made-up figures removed. Computed service status. No fake NFC delay or 20 points. Event-page defaults not invented. Chatbot contact from `SUPPORT_EMAIL`. Found and fixed: the Zoho fallback that pasted the prompt (with the student's details) into the chat, and the fake 96% judge matches. Three existing tests updated to the instruction (named in the item). Certificate pages' address deferred. **New UPG-108.** Full pytest: 992 passed, 1 skipped, 0 failed. |

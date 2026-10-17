@@ -82,15 +82,28 @@ def test_wayfinder_page_returns_200(client):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def test_live_streams_page_returns_200(client):
-    resp = client.get('/live/streams')
-    assert resp.status_code == 200
-    assert b"SapthaEvent LiveStream" in resp.data
+    # Simulated viewers, likes and chat: hidden unless DEMO_PAGES_ENABLED (UPG-65,
+    # owner's instruction 2026-10-17); with the setting the page renders as before
+    assert client.get('/live/streams').status_code == 404
+    client.application.config['DEMO_PAGES_ENABLED'] = True
+    try:
+        resp = client.get('/live/streams')
+        assert resp.status_code == 200
+        assert b"SapthaEvent LiveStream" in resp.data
+    finally:
+        client.application.config['DEMO_PAGES_ENABLED'] = False
 
 
 def test_live_reels_page_returns_200(client):
-    resp = client.get('/live/reels')
-    assert resp.status_code == 200
-    assert b"Watch Highlight Reels" in resp.data or b"SapthaEvent Highlight Reels" in resp.data
+    # Comment and share buttons that do nothing: hidden unless DEMO_PAGES_ENABLED (UPG-65)
+    assert client.get('/live/reels').status_code == 404
+    client.application.config['DEMO_PAGES_ENABLED'] = True
+    try:
+        resp = client.get('/live/reels')
+        assert resp.status_code == 200
+        assert b"Watch Highlight Reels" in resp.data or b"SapthaEvent Highlight Reels" in resp.data
+    finally:
+        client.application.config['DEMO_PAGES_ENABLED'] = False
 
 
 def test_judging_audit_page_resolves_and_renders_bias(client, mock_db):

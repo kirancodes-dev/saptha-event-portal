@@ -24,15 +24,32 @@ compliance_bp = Blueprint("compliance", __name__, url_prefix="/compliance")
 
 @compliance_bp.route("/sla", methods=["GET"])
 def sla_page():
-    """GET /compliance/sla — Public SLA & service status page."""
+    """GET /compliance/sla — what is running right now, computed when the page
+    opens: the database answers, and which providers are configured. No uptime
+    history or SLA figures, because nothing records them (UPG-65)."""
+    import datetime
+    import os
+    from app import _database_ok
+    env = lambda name: bool(os.environ.get(name, '').strip())  # noqa: E731
+    db_ok = _database_ok()
+    rzp = os.environ.get('RAZORPAY_KEY_ID', '')
     services = [
-        {"name": "Database API", "status": "Operational", "uptime": "99.98%", "icon": "fa-database"},
-        {"name": "Email Gateway", "status": "Operational", "uptime": "100.0%", "icon": "fa-envelope"},
-        {"name": "Stripe Gateway", "status": "Operational", "uptime": "99.99%", "icon": "fa-credit-card"},
-        {"name": "WhatsApp Service", "status": "Operational", "uptime": "99.95%", "icon": "fa-whatsapp"},
-        {"name": "AI Generation API", "status": "Operational", "uptime": "99.90%", "icon": "fa-robot"}
+        {"name": "Database", "icon": "fa-database", "ok": db_ok,
+         "status": "Operational" if db_ok else "Unreachable"},
+        {"name": "Email", "icon": "fa-envelope",
+         "ok": env('BREVO_API_KEY') or env('RESEND_API_KEY') or (env('MAIL_USER') and env('MAIL_PASS')),
+         "status": None},
+        {"name": "Online payments (Razorpay)", "icon": "fa-credit-card",
+         "ok": bool(rzp and env('RAZORPAY_KEY_SECRET')),
+         "status": None, "note": "test mode" if rzp.startswith('rzp_test_') else ""},
+        {"name": "WhatsApp messages", "icon": "fa-comment-dots",
+         "ok": env('TWILIO_ACCOUNT_SID') and env('TWILIO_AUTH_TOKEN'), "status": None},
+        {"name": "AI writing assistant", "icon": "fa-robot", "ok": env('GEMINI_API_KEY'), "status": None},
     ]
-    return render_template("compliance/sla.html", services=services)
+    for svc in services[1:]:
+        svc["status"] = "Configured" if svc["ok"] else "Not configured"
+    checked_at = datetime.datetime.now().strftime('%d %b %Y, %H:%M')
+    return render_template("compliance/sla.html", services=services, db_ok=db_ok, checked_at=checked_at)
 
 
 @compliance_bp.route("/settings", methods=["GET"])

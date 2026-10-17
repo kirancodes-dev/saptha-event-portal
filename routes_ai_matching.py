@@ -221,6 +221,8 @@ Return ONLY valid JSON in this exact schema — no prose, no markdown fences:
         try:
             from zoho_zia import match_teams_zia
             zia_res = match_teams_zia(judges, regs)
+            if not (zia_res and zia_res.get('status') == 'success'):
+                raise RuntimeError('Zoho QuickML gave no usable match plan')   # try Gemini (UPG-65)
             if zia_res and zia_res.get('status') == 'success':
                 # Convert to standard match plan structure
                 matches_by_judge = {}
@@ -242,8 +244,9 @@ Return ONLY valid JSON in this exact schema — no prose, no markdown fences:
                 plan = {
                     "matches": list(matches_by_judge.values()),
                     "overall_reasoning": zia_res.get('reasoning', 'Matched using Zoho Zia QuickML Engine.'),
-                    "avg_confidence": 94
                 }
+                scores = [t['confidence'] for m in plan['matches'] for t in m['assigned_teams']]
+                plan["avg_confidence"] = round(sum(scores) / len(scores)) if scores else 0   # not a fixed 94 (UPG-65)
                 raw = json.dumps(plan)
         except Exception as z_err:
             logger.warning("Zoho Zia match engine skipped: %s. Falling back to Gemini Client.", z_err)

@@ -2903,13 +2903,14 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### UPG-90 — Events turn "completed" up to 5½ hours late, and a test fails after midnight
-- **Status:** TODO
-- **Last verified:** 2026-10-13, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit on `production-ready` [T]
 - **Problem:** Found in the full run at UPG-89 [T]. `scheduler_enhanced.py:149` compares event dates, which are local (IST), with today's date in **UTC**. Between 00:00 and 05:30 IST, yesterday's events don't count as past yet. `tests/test_event_maintenance.py::test_event_auto_transition_job` builds "yesterday" from the local date, so it fails in that window (seen at 00:30 IST) and passes the rest of the day.
 - **What to build:** use the university's timezone (a `TIMEZONE` setting, default Asia/Kolkata) for "today" in the scheduler and wherever dates are compared.
+- **What was built:** `scheduler_enhanced.py:149` loads university timezone (`TIMEZONE` setting, defaulting to `Asia/Kolkata` via `ZoneInfo`), ensuring date comparisons match local event days regardless of midnight UTC skew.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: with the clock at 00:30 IST, an active event dated yesterday is transitioned.
+  1. ✅ Test: with the clock at 00:30 IST, an active event dated yesterday is transitioned (`tests/test_event_maintenance.py::test_event_auto_transition_job_at_midnight_ist`).
 
 
 #### UPG-91 — Emails: the logo shows, and links open where the portal is being used

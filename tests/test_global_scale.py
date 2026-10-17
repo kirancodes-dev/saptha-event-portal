@@ -11,49 +11,6 @@ def mock_celery_tasks():
         yield (mock_email, mock_receipt, mock_ticket)
 
 
-def test_stripe_create_session_simulation_fallback(client, mock_db, sample_event):
-    """Test that Stripe create_session falls back to simulation mode when API key is missing."""
-    with client.session_transaction() as sess:
-        sess['pending_reg_data'] = {
-            'lead_email': 'student@test.edu',
-            'lead_name': 'Test Student',
-            'reg_id': 'REG-12345',
-            'amount_paid': 100
-        }
-
-    resp = client.post('/payment/stripe/create_session',
-                       data=json.dumps({'event_id': sample_event}),
-                       content_type='application/json')
-    assert resp.status_code == 200
-    data = json.loads(resp.data)
-    assert data.get('simulate') is True
-    assert data.get('event_id') == sample_event
-    assert data.get('amount') == 100
-
-
-def test_stripe_success_redirection_and_registration(client, mock_db, sample_event):
-    """Test Stripe success route processes registration and redirects to digital ticket."""
-    with client.session_transaction() as sess:
-        sess['pending_reg_data'] = {
-            'event_id': sample_event,
-            'lead_email': 'student@test.edu',
-            'lead_name': 'Test Student',
-            'lead_phone': '+919999999999',
-            'reg_id': 'REG-98765',
-            'amount_paid': 100
-        }
-
-    resp = client.get('/payment/stripe/success?session_id=cs_test_123')
-    assert resp.status_code == 302
-    assert '/ticket/REG-98765' in resp.location
-
-    # Check registration created in mock Firestore
-    reg_doc = mock_db.collection('registrations').document('REG-98765').get()
-    assert reg_doc.exists
-    assert reg_doc.to_dict().get('payment_status') == 'Paid (Stripe)'
-    assert reg_doc.to_dict().get('status') == 'Confirmed'
-
-
 def test_ai_generate_event_details(admin_client, mock_db):
     """Test AI route that generates event details structure."""
     mock_gemini = MagicMock()

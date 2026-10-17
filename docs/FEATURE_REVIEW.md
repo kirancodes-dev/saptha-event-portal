@@ -2226,17 +2226,29 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: a SQLite database created without `events.activity_points` gets it (NOT NULL, default 0) at development start-up, and `/spoc/dashboard` answers 200.
 
 #### UPG-62 — 19 existing tests fail since the clean-up and seed commits
-- **Status:** IN PROGRESS (implementation complete; waiting for D-9 owner decision)
-- **Last verified:** 2026-10-17, commit `da7700a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-62: …" on `production-ready` (parent `858be1e`) [T]
 - **Problem:** Found by the full pytest after Part 1 of the owner's second run [R]: 19 failed, 792 passed, 1 skipped on SQLite (Python 3.11). The same 19 fail at `251f444`, before this run's commits, so they come from the earlier commits (UPG-14, UPG-15, the seed fold, UPG-04/UPG-11), not from Part 1. No test file was changed or deleted; the total fell from 894 to 812 because `tests/test_seed_safety.py` is parametrised over the seed scripts, which are now one `seed.py`.
   - **Obsolete after removals (owner's rule: leave them, note them):** `tests/test_global_scale.py::test_stripe_create_session_simulation_fallback` and `::test_stripe_success_redirection_and_registration` (Stripe removed, UPG-14); `tests/test_next_gen.py::test_matchmaker_page_requires_auth`, `::test_matchmaker_endpoint_calculates_jaccard_matches`, `::test_matchmaker_message_exchange_simulates_realtime_replies` (matchmaker hidden, UPG-14).
   - **Seed safety (12 cases):** `tests/test_seed_safety.py` now collects `scripts/configure_capacitor.py` and `scripts/generate_vapid.py` as seed scripts (they don't call `seed_safety.guard()`), and `test_there_are_scripts_to_check` / `test_there_are_firestore_scripts_to_check` find no seed scripts under the old names. Running it also executes `scripts/configure_capacitor.py`, which **rewrites the tracked `capacitor.config.json`** with the developer's `BASE_URL` (seen 2026-10-10; the file was restored).
   - **Order-dependent (seen 2026-10-10):** `tests/test_admin_users.py` passes alone but 2 of its cases fail after other tests add accounts, because the users list now shows 25 a page (UPG-19) and the test's accounts land on page 2.
   - **Real bugs:** `tests/test_no_html_injection.py::test_every_value_put_into_html_is_escaped` finds `maxScore` put into HTML unescaped in `templates/judge/teams.html` (UPG-04's rubric); `tests/test_seminar_e2e.py::test_capacity_waitlist_and_promotion_guard`: a promoted waitlist registrant gets no `ticket_id`, and `routes_waitlist.auto_promote` calls `send_generic_email_task` with `body=` (it takes `body_text`), so the promotion email fails (now kept in the outbox and retried, still failing).
 - **What to build:** fix the three real bugs; point the seed-safety test at `seed.py` (and exclude scripts that aren't seeds) without weakening it; for the Stripe and matchmaker tests, the owner decides whether they're retired (D-9).
+- **Built (2026-10-17):**
+  - The three real bugs and the seed-safety test were already fixed at `7accdd9`/`da7700a`; see above.
+  - **D-9 (owner, 2026-10-17): the 5 obsolete tests are deleted:**
+    - `tests/test_global_scale.py::test_stripe_create_session_simulation_fallback` (Stripe removed in UPG-14);
+    - `tests/test_global_scale.py::test_stripe_success_redirection_and_registration` (Stripe removed);
+    - `tests/test_next_gen.py::test_matchmaker_page_requires_auth` (matchmaker hidden in UPG-14);
+    - `tests/test_next_gen.py::test_matchmaker_endpoint_calculates_jaccard_matches` (matchmaker hidden);
+    - `tests/test_next_gen.py::test_matchmaker_message_exchange_simulates_realtime_replies` (matchmaker hidden).
+
+    Nothing else in either file changed, apart from removing the matchmaker section's now-empty header comment.
+  - A full run no longer touches `capacitor.config.json` (`git status` clean afterwards).
+- **Files touched:** `tests/test_global_scale.py`, `tests/test_next_gen.py`.
 - **Effort:** S · **Depends on:** UPG-14, UPG-15 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Full pytest passes, except tests the owner retires under D-9.
+  1. ✅ Full pytest passes, except tests the owner retires under D-9. [T full pytest on SQLite: **984 passed, 1 skipped, 0 failed** at this commit]
 - **2026-10-11 baseline (UPG-63 start, Python 3.11, SQLite):** **20 failed, 791 passed, 1 skipped** at `0fd9f3a`. The 19 above plus `tests/test_seminar_e2e.py::test_seminar_full_lifecycle_and_certificate_guards`: `/participant/certificate/<reg>` now checks attendance before completion (`routes_participant.py:232` before `:238`), so a registrant who hasn't attended gets "Certificates are only issued to students who attended." and the test's `b"completed"` check fails. That is backend order, not a template. Running the suite rewrote `capacitor.config.json` again (restored).
 - **2026-10-12 (full pytest, Python 3.11, SQLite):** **19 failed, 848 passed, 1 skipped.** The 19 are: Stripe (2) and matchmaker (3), both D-9; seed safety (12); `test_seminar_full_lifecycle_and_certificate_guards` (certificate order) and `test_capacity_waitlist_and_promotion_guard` (promoted waitlist entry gets no ticket). `tests/test_no_html_injection.py` now passes, and so does `tests/test_admin_users.py`. Running the suite still rewrites `capacitor.config.json` (restored).
 - **Progress 2026-10-11 (frontend part only; the owner's UPG-63 run keeps backend files unchanged):** the `maxScore` escaping bug is fixed in `templates/judge/teams.html:201-206` (`escapeHtml(maxScore)`), so `test_no_html_injection.py` should pass again (not re-run: the owner asked for no test runs in this session). Still open and **blocked by the frontend-only rule**: the waitlist promotion bugs (`routes_waitlist.auto_promote`), the certificate guard order, the seed-safety test's script list; the Stripe and matchmaker tests wait on D-9.
@@ -3467,7 +3479,7 @@ All items built in the development-only run (`BUILT (untested)`), prioritized by
 | D-6 | **UPG-30 criterion 4: when is the Razorpay test-mode checkout run?** | UPG-30 criterion 4 | **Decided (owner, 2026-10-10):** deferred to UPG-32 (release check), run on a public test deployment together with the webhook (Razorpay must reach `<BASE_URL>/payment/webhook/razorpay`). UPG-30 stays IN PROGRESS until then. |
 | D-7 | **UPG-22: what is kept after an account is deleted?** Built: the account and the person's name, email, phone, USN and answers go; registration rows stay without them (attendance and payment totals for reports). Still holding the email: payment orders (finance records) and the audit log. Also: should API v1 registrations (the apps) require consent once the apps are updated? | UPG-22 (policy, not code) | Open (2026-10-10). Proposed: keep payment orders and the audit log for the finance and audit retention period (e.g. 8 years), then anonymise; require consent in API v1 after the next app release. |
 | D-8 | **Keep `/live/reels` and `/live/streams` public?** Both are demo pages: made-up like and viewer counts, a "Live" badge, and (until UPG-60) cartoon sample videos. UPG-60 replaced the videos with event images; the counts are still invented. | none (content, not code) | Open (2026-10-10). Proposed: hide both until there's real event media, as UPG-53 did for the home page's fake hackathon. |
-| D-9 | **Retire the Stripe and matchmaker tests?** UPG-14 removed Stripe and hid the matchmaker, so 5 existing tests (`test_global_scale.py` Stripe ×2, `test_next_gen.py` matchmaker ×3) now fail. The rules say never delete or weaken a test. | UPG-62 | Open (2026-10-10). Proposed: delete them with a changelog line naming each, since the features they test are gone. |
+| D-9 | **Retire the Stripe and matchmaker tests?** UPG-14 removed Stripe and hid the matchmaker, so 5 existing tests (`test_global_scale.py` Stripe ×2, `test_next_gen.py` matchmaker ×3) now fail. The rules say never delete or weaken a test. | UPG-62 | **Decided (owner, 2026-10-17, production-ready run brief):** yes, delete the 5 tests. Done in UPG-62. |
 
 ---
 
@@ -3649,3 +3661,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-76: …" (parent `f1426f4`) | UPG-76 | **UPG-76 DONE:** every request re-checks the signed-in account; a deactivated account's open session ends (redirect to login, or 401 for JSON), audit-logged. 2 new tests. |
 | 2026-10-17 | "UPG-77: …" (parent `938048f`) | UPG-77 | **UPG-77 DONE:** the admin's announcement email escapes the message and subject (line breaks kept). 1 new test. |
 | 2026-10-17 | "UPG-96: …" (parent `e070b2e`) | UPG-96 | **UPG-96 DONE:** the checkout script receives the event title as a JSON literal. 1 new test. |
+| 2026-10-17 | "UPG-62: …" (parent `858be1e`) | UPG-62 | **UPG-62 DONE.** D-9 decided by the owner: deleted `test_global_scale.py::test_stripe_create_session_simulation_fallback`, `::test_stripe_success_redirection_and_registration`, `test_next_gen.py::test_matchmaker_page_requires_auth`, `::test_matchmaker_endpoint_calculates_jaccard_matches` and `::test_matchmaker_message_exchange_simulates_realtime_replies` (Stripe removed and matchmaker hidden in UPG-14). Full pytest: 984 passed, 1 skipped, 0 failed. |

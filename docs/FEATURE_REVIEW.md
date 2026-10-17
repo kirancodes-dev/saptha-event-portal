@@ -802,6 +802,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. Test: every page on the shared layout links the privacy notice.
 
 ### E. Frontend (added in Phase 0, 2026-09-30)
+  - **Re-verified at the end of Part 1 (2026-10-17):** since UPG-69 the SQL layer always returns `lead_email`/`lead_name`/`lead_phone` for registrations as well as `leadEmail`. The team member's allow-list still leaves the lead's details out (it lists what to keep, not what to drop).
 
 #### UPG-23 — Every page on one shared layout (split by area: UPG-23a–h)
 - **Status:** BUILT (untested)
@@ -2189,6 +2190,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **To test later:** criterion 1.
 - **Acceptance criteria:**
   1. Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500.
+  - **Re-verified at the end of Part 1 (2026-10-17):** UPG-65 removed the Zoho round-robin "96%" fallback. With neither Zoho QuickML nor `GEMINI_API_KEY` configured, `POST /ai/match_judges/<event>` now answers a JSON error (500, the exception text) instead of an invented plan. Logged as UPG-109. The pages this item lists are otherwise unchanged.
 
 #### UPG-60 — Front-end errors the browser pass found (before and after this run)
 - **Status:** BUILT (untested)
@@ -2214,6 +2216,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **To test later:** criterion 1 (headless check, no 404 or page error), plus the create-event wizard working end to end now that its script runs.
 - **Acceptance criteria:**
   1. Headless check: no page logs a 404 for a `/static/` file or a page error.
+  - **Re-verified at the end of Part 1 (2026-10-17):** the reels page is now hidden unless `DEMO_PAGES_ENABLED` (UPG-65), so its demo videos no longer show by default; the other findings are unchanged.
 
 #### UPG-61 — A development database made before a NOT NULL column was added breaks every query on its table
 - **Status:** BUILT (untested)
@@ -2876,7 +2879,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. Test: publishing results stores the 2-decimal score and shared place, and every team sharing a top-3 place is a winner [T `::test_publishing_results_keeps_decimals_and_shared_places`].
 
 #### UPG-85 — AI summaries after publishing results never run
-- **Status:** TODO
+- **Status:** DROPPED (owner, 2026-10-17: no new AI features)
 - **Last verified:** 2026-10-12, working tree on `0fd9f3a`
 - **Problem:** Found testing UPG-84 [T, traceback in the test log]. `routes_coordinator.py` starts a thread for `_bg_summaries`, which calls `current_app.app_context()` inside the thread. There is no app context there, so it raises `RuntimeError: Working outside of application context` every time, and the summaries the flash message promises ("AI summaries generating in background") are never made.
 - **What to build:** pass the real app object into the thread (`current_app._get_current_object()`) or queue it through the outbox (UPG-18); show the message only when the job was queued.
@@ -3386,6 +3389,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: the prompt contains only FAQ entries that come from configuration or are marked confirmed.
 
+
+#### UPG-109 — AI judge matching without any AI provider answers 500 with the raw error
+- **Status:** TODO
+- **Last verified:** 2026-10-17, end of Part 1 [C]
+- **Problem:** Found re-verifying UPG-59 after UPG-65. With neither Zoho QuickML nor `GEMINI_API_KEY` configured, `POST /ai/match_judges/<event>` (`routes_ai_matching.py`) falls through to Gemini, which raises, and the route answers `500 {"status": "error", "message": <exception text>}`. Before UPG-65 the Zoho fallback invented a round-robin "96%-confident" plan instead.
+- **What to build:** answer `503` with "AI matching isn't set up: add GEMINI_API_KEY (or Zoho QuickML)", and offer a plain manual assignment, clearly labelled as not AI.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: without AI keys the route answers 503 with that message and saves no plan.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3739,3 +3752,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-72: …" (parent `d725b2e`) | UPG-72 | **UPG-72 DONE:** a first visit no longer reloads when the service worker takes control (only an accepted update does). 1 new test. |
 | 2026-10-17 | "UPG-64: …" (parent `c9353ba`) | UPG-64 | **UPG-64 DONE:** the six never-rendered templates are deleted (the deletions went into `24d6eec` by mistake), and a test keeps every template reachable. 1 new test. |
 | 2026-10-17 | "UPG-99: …" (parent `34b8cde`) | UPG-99 | **UPG-99 DONE** (Cloud Run check at the next deploy): signed links sign through IAM signBlob when the credentials have no key; DEPLOY.md documents the roles. 2 new tests. Full pytest: 1008 passed, 1 skipped, 0 failed. |
+| 2026-10-17 | `40c9888` | Rule 8 (end of Part 1), UPG-85, UPG-109 | **Re-verification of every open item at the end of Part 1** (47 open). This also covers the early pass that `db_adapter.py` (UPG-69) required. Method: the files Part 1 changed, against each item's citations, then each item's claims about the changed code (registration IDs, the lead-key aliases, the deactivation check, the preset step, the demo pages, signed links, the bulk email, AI matching, the made-up defaults, the support address). 37 items cite a changed file. Of those, 9 mention changed code; their claims hold except as noted: UPG-60 (reels hidden), UPG-59 (matching without AI now errors; **new UPG-109**), UPG-22 (alias note, holds). The other 28 cite changed files for unrelated code. **UPG-85 DROPPED** (owner: no new AI features). Full pytest at `40c9888`: 1008 passed, 1 skipped, 0 failed; ruff clean. |

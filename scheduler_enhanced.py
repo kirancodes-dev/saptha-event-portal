@@ -146,7 +146,13 @@ def _create_event_status_transition_job(flask_app):
     def status_transition_job():
         with flask_app.app_context():
             from models import db
-            today_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+            import os
+            try:
+                from zoneinfo import ZoneInfo
+                tz = ZoneInfo(os.environ.get("TIMEZONE", "Asia/Kolkata"))
+            except Exception:
+                tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+            today_str = datetime.datetime.now(tz).strftime("%Y-%m-%d")
 
             past_active_events = (
                 db.collection("events")

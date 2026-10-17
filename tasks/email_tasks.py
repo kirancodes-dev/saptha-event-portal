@@ -32,6 +32,7 @@ def send_ticket_email_task(self, to_email: str, name: str, event_title: str,
     try:
         from utils_email import send_ticket_email
         send_ticket_email(
+            cancel_url=_cancel_url(reg_id),
             to_email=to_email,
             name=name,
             event_title=event_title,
@@ -80,10 +81,14 @@ def send_reminder_email_task(self, to_email: str, name: str, event_title: str,
     name='tasks.email_tasks.send_generic_email_task',
 )
 def send_generic_email_task(self, to_email: str, subject: str,
-                             body_text: str, body_html: str = ''):
+                             body_text: str = '', body_html: str = '',
+                             body: str = ''):
     """Generic fire-and-forget email for announcements, password resets, etc."""
     try:
         from utils_email import _send
+        # ``body`` is retained as a compatibility alias for older callers;
+        # new callers should use the explicit ``body_text`` name.
+        body_text = body_text or body
         html = body_html or f"<pre style='font-family:sans-serif'>{body_text}</pre>"
         _send(to_email, subject, html)
         logger.info("generic email sent to %s subject=%r", to_email, subject)
@@ -107,6 +112,18 @@ def send_payment_receipt_email_task(self, to_email: str, name: str, event_title:
     from utils_email import send_payment_receipt_email
     send_payment_receipt_email(to_email, name, event_title, amount, reg_id, payment_id)
     logger.info("receipt email sent to %s reg=%s", to_email, reg_id)
+
+
+def _cancel_url(reg_id: str) -> str:
+    """The 'Not you?' link for a registration made without logging in (UPG-97)."""
+    try:
+        from models import db
+        from services_accounts import cancel_url_for
+        doc = db.collection('registrations').document(reg_id).get()
+        return cancel_url_for(doc.to_dict() or {}) if doc.exists else ''
+    except Exception as exc:
+        logger.warning("cancel link for %s failed: %s", reg_id, exc)
+        return ''
 
 
 def ticket_qr_png(reg_id: str) -> bytes | None:

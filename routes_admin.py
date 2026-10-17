@@ -607,6 +607,20 @@ def payments():
                            cancelled_events=cancelled_events, current_page='payments')
 
 
+@admin_bp.route('/payments/orders')
+@login_required
+def payment_orders():
+    """Every recent Razorpay order with its status, for reconciliation; the
+    CSV has all of them (UPG-94)."""
+    _super_only()
+    from services_payments import all_orders
+    titles = {e.id: (e.to_dict() or {}).get('title', '') for e in db.collection('events').stream()}
+    recent = [dict(o, event_title=titles.get(o['event_id'], o['event_id']), amount=o['amount_paise'] / 100,
+                   registration=o['reg_id'] or o['reg_data'].get('reg_id', ''))
+              for o in reversed(all_orders()[-50:])]
+    return render_template('admin/payment_orders.html', recent_orders=recent, current_page='payments')
+
+
 # =========================================================
 # REFUND A CANCELLED EVENT'S PAYMENTS (UPG-51)
 # =========================================================

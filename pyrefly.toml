@@ -1,6 +1,18 @@
-python_interpreter = ".venv/bin/python"
+# Pyrefly (editor type checking). Uses the project's virtual environment so
+# installed packages (flask, google-cloud, ...) resolve.
+python-interpreter-path = ".venv/bin/python"
 
-# Suppress false-positive errors from Pyrefly analyzing code blocks
-# inside docstrings as standalone virtual Python files
+# Only the app: not the old copies, the mobile build or generated output.
+project-excludes = [
+    "**/.venv*", "**/node_modules", "**/__pycache__",
+    "saptha-event-portal-source*", "functions", "android", "sapthagiri_app",
+    "dataconnect", "scratch", "graphify-out", "migrations/versions",
+]
+
+# Code blocks inside docstrings are analysed as standalone files; their parse
+# errors and unknown names are noise.
 [errors]
-ignore = ["parse-error", "unknown-name"]
+parse-error = false
+unknown-name = false
+# Third-party packages without type stubs (qrcode, ...) are not actionable here.
+untyped-import = false

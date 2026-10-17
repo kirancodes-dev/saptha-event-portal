@@ -57,6 +57,9 @@ def razorpay(monkeypatch):
             orders[order['id']] = order
             return order
 
+        def fetch(self, order_id):  # a checked-out order is paid in full (UPG-94)
+            return dict(orders[order_id], status='paid', amount_paid=orders[order_id]['amount'])
+
     class FakeClient:
         order = FakeOrders()
 

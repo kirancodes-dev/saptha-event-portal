@@ -123,6 +123,44 @@ def test_event_auto_transition_job(test_app, monkeypatch):
     assert doc.to_dict()['status'] == 'completed'
 
 
+def test_event_auto_transition_job_at_midnight_ist(test_app, monkeypatch):
+    """UPG-90: With clock at 00:30 IST (19:00 UTC previous day),
+    an active event dated yesterday in IST is transitioned to completed."""
+    import models
+    from zoneinfo import ZoneInfo
+    adapter = SQLFirestoreAdapter()
+    monkeypatch.setattr(models, 'db', adapter)
+
+    kolkata_tz = ZoneInfo("Asia/Kolkata")
+    fake_now = datetime.datetime(2026, 10, 17, 0, 30, tzinfo=kolkata_tz)
+
+    class MockDatetime(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is not None:
+                return fake_now.astimezone(tz)
+            return fake_now
+
+    import scheduler_enhanced
+    monkeypatch.setattr(scheduler_enhanced.datetime, "datetime", MockDatetime)
+
+    event_ref = adapter.collection('events').document('test-midnight-evt')
+    event_ref.set({
+        'title': 'Yesterday Event IST',
+        'category': 'Technical',
+        'date': '2026-10-16',
+        'venue': 'V1',
+        'status': 'active'
+    })
+
+    transition_job = _create_event_status_transition_job(test_app)
+    count = transition_job()
+    assert count >= 1
+
+    doc = event_ref.get()
+    assert doc.to_dict()['status'] == 'completed'
+
+
 def test_safe_cleanup_archives_instead_of_deleting(test_app, monkeypatch):
     import models
     adapter = SQLFirestoreAdapter()

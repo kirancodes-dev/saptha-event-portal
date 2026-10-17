@@ -25,7 +25,7 @@ WEBHOOK_SECRET = 'test-webhook-secret-for-pytest'
 def rzp(real_app, monkeypatch):
     """Razorpay keys and a fake client recording orders and refunds; outgoing mail captured."""
     import utils_email
-    calls = {'orders': {}, 'refunds': [], 'mail': []}
+    calls = {'orders': {}, 'refunds': [], 'mail': [], 'captures': [], 'razorpay': {}, 'payments': {}}
 
     class FakeOrders:
         def create(self, data):
@@ -33,10 +33,25 @@ def rzp(real_app, monkeypatch):
             calls['orders'][order['id']] = order
             return order
 
+        def fetch(self, order_id):
+            # A checked-out order is paid in full, unless a test says otherwise (UPG-94)
+            if calls['razorpay'].get(order_id) == 'unreachable':
+                raise ConnectionError('Razorpay unreachable')
+            order = dict(calls['orders'][order_id], status='paid', amount_paid=calls['orders'][order_id]['amount'])
+            order.update(calls['razorpay'].get(order_id, {}))
+            return order
+
     class FakePayments:
         def refund(self, payment_id, data):
             calls['refunds'].append((payment_id, data))
             return {'id': f"rfnd_{_unique('r')}", 'payment_id': payment_id, 'amount': data['amount']}
+
+        def fetch(self, payment_id):
+            return dict(calls['payments'][payment_id])
+
+        def capture(self, payment_id, amount, data):
+            calls['captures'].append((payment_id, amount, data))
+            return dict(calls['payments'][payment_id], status='captured')
 
     class FakeClient:
         order = FakeOrders()

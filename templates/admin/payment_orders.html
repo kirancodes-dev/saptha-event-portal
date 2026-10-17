@@ -1,0 +1,42 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Payment orders{% endblock %}
+{% block page_title %}Payment orders{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <p><a href="/admin/payments">Back to payments</a> ·
+           <a href="/admin/analytics/export/payments">Download every payment (CSV)</a></p>
+        <p>The latest 50 Razorpay orders, newest first, with their status. A failed attempt leaves the order open for
+           the payer to try again; refunds made in the Razorpay dashboard show here too. The CSV has every order.</p>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th scope="col">Created</th><th scope="col">Event</th><th scope="col">Payer</th>
+                    <th scope="col">Amount</th><th scope="col">Status</th><th scope="col">Order / payment</th>
+                    <th scope="col">Registration</th><th scope="col">Paid</th><th scope="col">Refund</th>
+                    <th scope="col">Note</th></tr></thead>
+                <tbody>
+                {% for o in recent_orders %}
+                    <tr>
+                        <td><small>{{ o.created_at }}</small></td>
+                        <td>{{ o.event_title }}</td>
+                        <td>{{ o.email }}</td>
+                        <td>₹{{ '%g' % o.amount }}</td>
+                        <td><span class="badge bg-{{ {'paid': 'success', 'refunded': 'secondary', 'refunding': 'warning'}.get(o.status, 'light text-dark') }}">{{ o.status }}</span></td>
+                        <td><code>{{ o.id }}</code>{% if o.payment_id %}<br><code>{{ o.payment_id }}</code>{% endif %}</td>
+                        <td>{% if o.registration %}<code>{{ o.registration }}</code>{% else %}—{% endif %}</td>
+                        <td><small>{{ o.paid_at or '—' }}</small></td>
+                        <td>{% if o.refund_id %}<code>{{ o.refund_id }}</code><br><small>{{ o.refunded_at }} · {{ o.refunded_by }}</small>{% else %}—{% endif %}</td>
+                        <td><small>{{ o.failure_reason or '—' }}</small></td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="10">No orders yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

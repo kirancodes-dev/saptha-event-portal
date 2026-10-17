@@ -271,6 +271,22 @@ def auto_promote(db, event_id: str):
             }
         db.collection("registrations").document(reg_id).set(reg_data)
 
+        # Free promotions are confirmed immediately, so issue the same signed
+        # ticket that a normal registration receives.  Paid promotions remain
+        # pending payment and receive their ticket after payment is verified.
+        if status == "Confirmed":
+            from services_ticket import TicketService
+            TicketService.issue_ticket(
+                db,
+                event_id=event_id,
+                registration_id=reg_id,
+                user_email=reg_data.get("lead_email") or email,
+                lead_name=reg_data.get("lead_name") or name,
+                ticket_type=(reg_data.get("ticket_tier")
+                             or reg_data.get("ticket_type")
+                             or "General"),
+            )
+
         # Increment count
         try:
             from google.cloud.firestore_v1 import Increment
@@ -294,24 +310,31 @@ def auto_promote(db, event_id: str):
         # Send email notification
         try:
             from tasks.email_tasks import send_generic_email_task
+            email_body = (
+                f"Hi {name},\n\n"
+                f"A seat has opened up and you've been promoted from the waitlist for "
+                f"{ev.get('title', 'Event')}!\n\n"
+                f"{terms['email_line']}"
+                f"Registration ID: {reg_id}\n"
+                f"Event Date: {ev.get('date', '')}\n"
+                f"Venue: {ev.get('venue', 'SNPSU Campus')}\n\n"
+                f"See you there!\n— SapthaEvent Team"
+            )
             send_generic_email_task.delay(
                 to_email=email,
                 subject=terms["subject"],
-                body=(
-                    f"Hi {name},\n\n"
-                    f"A seat has opened up and you've been promoted from the waitlist for "
-                    f"{ev.get('title', 'Event')}!\n\n"
-                    f"{terms['email_line']}"
-                    f"Registration ID: {reg_id}\n"
-                    f"Event Date: {ev.get('date', '')}\n"
-                    f"Venue: {ev.get('venue', 'SNPSU Campus')}\n\n"
-                    f"See you there!\n— SapthaEvent Team"
-                ),
+                body_text=email_body,
+                body=email_body,
             )
         except Exception:
             pass
 
         logger.info("Waitlist promotion: %s for event %s", email, event_id)
-        return {"user_email": email, "registration_id": reg_id, "status": status}
+        return {
+            "user_email": email,
+            "registration_id": reg_id,
+            "reg_id": reg_id,
+            "status": status,
+        }
 
     return None

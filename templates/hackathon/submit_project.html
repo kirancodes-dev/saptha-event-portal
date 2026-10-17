@@ -27,6 +27,7 @@
                 </div>
                 <div class="card-body p-4">
                     <form action="{{ url_for('hackathon.submit_project', event_id=event.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <!-- PROJECT TITLE & TAGLINE -->
                         <div class="row g-3 mb-4">

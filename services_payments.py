@@ -14,7 +14,7 @@ import json
 import os
 from typing import Optional, Tuple
 
-from sqlalchemy import update
+from sqlalchemy import and_, or_, update
 from sqlalchemy.exc import IntegrityError
 
 
@@ -264,7 +264,7 @@ def claim_paid_order(order_id: str, payment_id: str, amount_paise: int) -> Optio
             result = s.execute(
                 update(PaymentOrder)
                 .where(PaymentOrder.id == order_id, PaymentOrder.status.in_(('created', 'expired')))
-                .values(status='paid', payment_id=payment_id,
+                .values(status='paid', payment_id=payment_id, failure_reason=None,
                         paid_at=datetime.datetime.now(datetime.timezone.utc)))
             if result.rowcount != 1:
                 return None
@@ -332,12 +332,10 @@ def undo_refund(order_id: str) -> None:
                   .values(status='paid'))
 
 
-def claim_order(order_id: str, payment_id: str, event_id: str, email: str) -> dict:
-    """Mark a recorded order paid by payment_id, exactly once.
-
-    The order must have been created by this server for the same event and
-    payer. Raises PaymentError (400 mismatch, 409 already used).
-    """
+def check_order(order_id: str, payment_id: str, event_id: str, email: str) -> dict:
+    """claim_order's checks, without claiming: the order was created by this
+    server for the same event and payer, is still open, and the payment ID
+    isn't used. Raises PaymentError (400 mismatch, 409 already used) (UPG-94)."""
     from db_pg import get_session
     from models_pg import PaymentOrder
     with get_session() as s:
@@ -347,15 +345,29 @@ def claim_order(order_id: str, payment_id: str, event_id: str, email: str) -> di
             raise PaymentError('This payment does not match your registration.', 400)
         if order.status not in ('created', 'expired'):
             raise PaymentError('This payment has already been used.', 409)
-        snapshot = {'amount_paise': order.amount_paise, 'coupon_code': order.coupon_code or '',
-                    'was_expired': order.status == 'expired'}
+        if s.query(PaymentOrder.id).filter(PaymentOrder.payment_id == payment_id,
+                                           PaymentOrder.id != order_id).first():
+            raise PaymentError('This payment has already been used.', 409)
+        return {'amount_paise': order.amount_paise, 'coupon_code': order.coupon_code or '',
+                'was_expired': order.status == 'expired'}
+
+
+def claim_order(order_id: str, payment_id: str, event_id: str, email: str) -> dict:
+    """Mark a recorded order paid by payment_id, exactly once.
+
+    The order must have been created by this server for the same event and
+    payer. Raises PaymentError (400 mismatch, 409 already used).
+    """
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    snapshot = check_order(order_id, payment_id, event_id, email)
 
     try:
         with get_session() as s:
             result = s.execute(
                 update(PaymentOrder)
                 .where(PaymentOrder.id == order_id, PaymentOrder.status.in_(('created', 'expired')))
-                .values(status='paid', payment_id=payment_id,
+                .values(status='paid', payment_id=payment_id, failure_reason=None,
                         paid_at=datetime.datetime.now(datetime.timezone.utc))
             )
             if result.rowcount != 1:
@@ -391,3 +403,60 @@ def attach_registration(order_id: str, reg_id: str) -> None:
     from models_pg import PaymentOrder
     with get_session() as s:
         s.execute(update(PaymentOrder).where(PaymentOrder.id == order_id).values(reg_id=reg_id))
+
+
+# ── Razorpay's later events (UPG-94) ───────────────────────────────────────
+
+def order_for_payment(payment_id: str) -> Optional[dict]:
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    if not payment_id:
+        return None
+    with get_session() as s:
+        order = s.query(PaymentOrder).filter(PaymentOrder.payment_id == payment_id).first()
+        return _order_dict(order) if order else None
+
+
+def note_failed_attempt(order_id: str, reason: str) -> bool:
+    """A payment attempt failed: keep why on the order, which stays open so
+    the payer can try again. False if the order isn't open."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        return s.execute(update(PaymentOrder)
+                         .where(PaymentOrder.id == order_id, PaymentOrder.status.in_(('created', 'expired')))
+                         .values(failure_reason=f"Payment attempt failed: {reason}"[:500])).rowcount == 1
+
+
+def note_order(order_id: str, note: str) -> None:
+    """Add a line to the order's note, once."""
+    order = get_order(order_id)
+    if order is None or note in order['failure_reason']:
+        return
+    mark_unmatched(order_id, '; '.join(n for n in (order['failure_reason'], note) if n))
+
+
+def record_refund(order_id: str, refund_id: str) -> bool:
+    """Razorpay refunded the whole payment: mark the order refunded, once.
+    True only for the call that made the change."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        return s.execute(update(PaymentOrder)
+                         .where(PaymentOrder.id == order_id, PaymentOrder.status.in_(('paid', 'refunding')))
+                         .values(status='refunded', refund_id=refund_id, refunded_by='razorpay',
+                                 refunded_at=datetime.datetime.now(datetime.timezone.utc))).rowcount == 1
+
+
+def refund_reversed(order_id: str, refund_id: str, reason: str) -> bool:
+    """Razorpay couldn't complete a refund: the order is paid again, with the
+    reason, so the admin can retry. True only for the call that made the change."""
+    from db_pg import get_session
+    from models_pg import PaymentOrder
+    with get_session() as s:
+        return s.execute(update(PaymentOrder)
+                         .where(PaymentOrder.id == order_id,
+                                or_(PaymentOrder.status == 'refunding',
+                                    and_(PaymentOrder.status == 'refunded', PaymentOrder.refund_id == refund_id)))
+                         .values(status='paid', refund_id=None, refunded_at=None, refunded_by=None,
+                                 failure_reason=f"Refund {refund_id} failed: {reason}"[:500])).rowcount == 1

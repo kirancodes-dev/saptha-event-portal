@@ -78,6 +78,9 @@
             <span class="secure-badge"><i class="fas fa-lock" aria-hidden="true"></i> Secure</span>
         </div>
 
+        {# Payment results, failures and retries are shown here, never in a browser alert (UPG-94) #}
+        <div id="pay-status" class="callout d-none mb-3" role="alert" aria-live="polite"></div>
+
         <div id="rzp-section">
             <p class="text-muted mb-4">Click below to open the secure Razorpay payment window. You can pay via UPI, Card, Net Banking, or Wallet.</p>
             <div class="d-flex gap-3 mb-4 flex-wrap">
@@ -118,6 +121,7 @@
     var simForm    = document.getElementById('sim-form');
     var simAmount  = document.getElementById('sim-amount');
     var csrf       = document.querySelector('meta[name="csrf-token"]').content;
+    var payStatus  = document.getElementById('pay-status');
     var eventId    = "{{ event_id }}";
     var baseAmount = {{ amount }};
     var currentTotal = baseAmount;
@@ -190,6 +194,7 @@
 
     btn.addEventListener('click', function () {
         btn.disabled = true;
+        payStatus.className = 'callout d-none mb-3';
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Opening payment…';
 
         var payload = { event_id: eventId };
@@ -205,7 +210,7 @@
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
-            if (data.error) { alert(data.error); resetBtn(); return; }
+            if (data.error) { showStatus(data.error, 'danger'); resetBtn(); return; }
 
             if (data.simulate) {
                 simNote.classList.remove('d-none');
@@ -237,21 +242,54 @@
                     })
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
-                        if (res.redirect) { window.location.href = res.redirect; }
-                        else { alert(res.message || res.error || 'Verification failed'); resetBtn(); }
+                        if (res.redirect) { window.location.href = res.redirect; return; }
+                        if (res.pending || res.recorded) {
+                            // The money arrived: never offer to pay again
+                            btn.innerHTML = '<i class="fas fa-hourglass-half me-2"></i> Payment received';
+                            showStatus(res.message, 'info');
+                            return;
+                        }
+                        showStatus((res.error || 'The payment could not be verified.') +
+                                   ' Your details are saved; press Pay to try again.', 'danger');
+                        resetBtn();
                     })
                     .catch(function () {
                         btn.innerHTML = '<i class="fas fa-hourglass-half me-2"></i> Payment received, confirming…';
-                        alert('Your payment went through, but we could not confirm it just now. ' +
-                              'Check your dashboard in a minute; do not pay again.');
+                        showStatus('Your payment went through, but we could not confirm it just now. Your ticket ' +
+                                   'will be emailed once Razorpay confirms it; do not pay again.', 'info');
                     });
                 },
-                modal: { ondismiss: resetBtn },
+                modal: {
+                    ondismiss: function () {
+                        if (paymentFailed) { return; }
+                        showStatus('Payment cancelled. Nothing was charged and your details are saved; ' +
+                                   'press Pay to try again.', 'warning');
+                        resetBtn();
+                    },
+                },
             };
-            new Razorpay(options).open();
+            var paymentFailed = false;
+            var rzp = new Razorpay(options);
+            rzp.on('payment.failed', function (resp) {
+                paymentFailed = true;
+                var why = (resp && resp.error && resp.error.description) || 'The payment was declined.';
+                showStatus('Payment failed: ' + why + ' Nothing was charged and your details are saved; ' +
+                           'press Pay to try again.', 'danger');
+                resetBtn();
+            });
+            rzp.open();
         })
-        .catch(function () { alert('Network error. Please try again.'); resetBtn(); });
+        .catch(function () {
+            showStatus('Network error: the payment window could not open. Check your connection and press Pay ' +
+                       'to try again.', 'danger');
+            resetBtn();
+        });
     });
+
+    function showStatus(message, kind) {
+        payStatus.className = 'callout callout--' + kind + ' mb-3';
+        payStatus.textContent = message;
+    }
 
     function resetBtn() {
         btn.disabled = false;

@@ -508,11 +508,24 @@ def _send(to_email, subject: str, html: str,
 # PUBLIC EMAIL FUNCTIONS
 # ─────────────────────────────────────────────────────────────
 
+def _cancel_block(cancel_url: str) -> str:
+    """'Not you?' with the link that cancels a registration someone made for
+    this email without logging in (UPG-97)."""
+    if not cancel_url:
+        return ''
+    return f"""
+        <p style="color:#64748b;font-size:12px;margin-top:20px;border-top:1px solid #e2e8f0;padding-top:12px;">
+          This registration was made without logging in. Not you, or you don't want it?
+          <a href="{_e(cancel_url)}" style="color:#b91c1c;font-weight:700;">Cancel this registration</a>.
+        </p>"""
+
+
 def send_registration_confirmed_email(to_email: str, name: str, event_title: str,
                                        event_date: str = '', venue: str = '',
                                        is_new_user: bool = False,
                                        raw_password: str | None = None,
-                                       added_by: str = '', team_name: str = '') -> bool:
+                                       added_by: str = '', team_name: str = '',
+                                       cancel_url: str = '') -> bool:
     """
     Sent immediately at registration. Simple confirmation — no QR, no ticket ID.
     The actual entry ticket (with QR) is sent 1 day before the event.
@@ -560,6 +573,7 @@ def send_registration_confirmed_email(to_email: str, name: str, event_title: str
           Your entry QR ticket will be emailed to you <strong>1 day before the event</strong>.
           Keep an eye on your inbox!
         </p>
+        {_cancel_block(cancel_url)}
     """, f"Registration Confirmed — {_e(event_title)}")
 
     atts = []
@@ -583,7 +597,8 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
                       reg_id: str, qr_bytes: bytes | None = None,
                       is_new_user: bool = False,
                       raw_password: str | None = None,
-                      event_date: str = '', venue: str = '') -> bool:
+                      event_date: str = '', venue: str = '',
+                      cancel_url: str = '') -> bool:
     """The ticket: after payment, at the desk, and the day before the event
     (with the QR, tasks/scheduled_tasks.send_24h_reminders). Date and venue
     come from the caller, else from the registration's event."""
@@ -630,6 +645,7 @@ def send_ticket_email(to_email: str, name: str, event_title: str,
             View My Dashboard →
           </a>
         </p>
+        {_cancel_block(cancel_url)}
     """, f"Registration Confirmed — {_e(event_title)}")
 
     atts = []

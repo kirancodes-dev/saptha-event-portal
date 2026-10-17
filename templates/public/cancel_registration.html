@@ -1,0 +1,29 @@
+{% extends "layouts/status.html" %}
+{#- The emailed "Not you?" link for a registration made without logging in (UPG-97) -#}
+{% set status_tone = {'confirm': 'warning', 'done': 'success'}.get(state, 'danger') %}
+{% set status_icon = {'confirm': 'fa-user-xmark', 'done': 'fa-circle-check'}.get(state, 'fa-link-slash') %}
+{% block title %}Cancel registration{% endblock %}
+{% block status %}
+  {% if state == 'confirm' %}
+    <h1>Cancel this registration?</h1>
+    <p>Someone registered <strong>{{ reg.lead_email }}</strong> for <strong>{{ title }}</strong> without logging in.
+       If it wasn't you, or you don't want to go, cancel it here.</p>
+    {% if paid %}<p>It was paid for; the organisers will refund the payment.</p>{% endif %}
+    <form method="POST" action="/forms/cancel/{{ token }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="status-actions">
+        <button type="submit" class="btn btn-danger">Cancel the registration</button>
+        <a href="/" class="btn btn-outline-secondary">Keep it</a>
+      </div>
+    </form>
+  {% elif state == 'done' %}
+    <h1>Registration cancelled</h1>
+    <p>The registration for <strong>{{ title }}</strong> is cancelled{% if paid %}, and the organisers will refund the payment{% endif %}.</p>
+    <div class="status-actions"><a href="/events" class="btn btn-primary">Browse events</a></div>
+  {% else %}
+    <h1>This link doesn't work</h1>
+    <p>{% if expired %}The cancel link has expired.{% else %}The cancel link is not valid.{% endif %}
+       Log in to see and cancel your registrations from your dashboard.</p>
+    <div class="status-actions"><a href="/login" class="btn btn-primary">Log in</a></div>
+  {% endif %}
+{% endblock %}

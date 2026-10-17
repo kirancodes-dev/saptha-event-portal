@@ -2,14 +2,10 @@ import datetime
 import random
 from flask import (Blueprint, Response, flash, jsonify,
                    redirect, render_template, request, session)
-try:
-    from google.cloud import firestore
-except ImportError:
-    firestore = None
-try:
-    from google.cloud.firestore_v1.base_query import FieldFilter
-except ImportError:
-    FieldFilter = None
+# google-cloud-firestore is a pinned requirement: the database adapter uses its
+# sentinels (Query, ArrayUnion, DELETE_FIELD) and FieldFilter on every backend.
+from google.cloud import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 class DynamicDBProxy:
     def __getattr__(self, name):
         try:

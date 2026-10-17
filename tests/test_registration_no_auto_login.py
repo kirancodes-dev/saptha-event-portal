@@ -2,7 +2,9 @@
 tests/test_registration_no_auto_login.py — BLK-02 on the real SQL database
 layer: registration, waitlist and payment completion never log anyone in.
 
-  * an existing account must log in first (and comes back to the form);
+  * an existing account's email registers without logging in, changes no
+    account, and is emailed a cancel link (UPG-97, owner decision 2026-10-17;
+    before that it had to log in first);
   * a logged-in student always registers as their own account;
   * a new email gets an unverified account and a one-time set-password link;
   * no password is ever shown, stored in the session or emailed.
@@ -79,20 +81,26 @@ def _set_password_links(outbox, email):
 
 # ── Criterion 1 ─────────────────────────────────────────────────────────────
 
-def test_anonymous_submit_with_existing_email_must_log_in_first(real_app, outbox):
+def test_anonymous_submit_with_existing_email_registers_without_logging_in(real_app, outbox):
     flask_app, db = real_app
     event_id = _spoc_event(flask_app, db)
     student = f"{_unique('existing')}@test.edu"
     _user(db, student, 'Student')
+    account_before = db.collection('users').document(student).get().to_dict()
 
     visitor = flask_app.test_client()
     resp = visitor.post(f'/forms/submit/{event_id}', data={**_form(student), 'privacy_consent': 'yes'})
 
+    # UPG-97 (owner decision 2026-10-17): registered without logging in
     assert resp.status_code == 302
-    assert resp.headers['Location'] == f'/login?next=/forms/register/{event_id}'
+    assert resp.headers['Location'] == '/registration/confirmed'
     assert 'user_id' not in _session(visitor)
-    assert _regs(db, event_id) == []
-    assert outbox['mail'] == []  # nothing is sent for someone else's account
+    regs = _regs(db, event_id)
+    assert [r['lead_email'] for r in regs] == [student] and regs[0]['registered_without_login'] is True
+    assert db.collection('users').document(student).get().to_dict() == account_before  # no account change
+    assert _set_password_links(outbox, student) == []
+    [(args, kwargs)] = outbox['confirmations']   # the account hears of it, with a cancel link
+    assert args[0] == student and '/forms/cancel/' in kwargs['cancel_url']
 
     # After logging in, the student comes back to the form
     back = visitor.post('/login', data={'role': 'Student', 'email': student, 'password': PASSWORD,
@@ -327,14 +335,15 @@ def test_legacy_public_register_route_never_logs_in(real_app, outbox):
 
     visitor = flask_app.test_client()
     resp = visitor.post(f'/participant/public_register/{event_id}', data=_form(existing))
-    assert resp.headers['Location'] == f'/login?next=/forms/register/{event_id}'
+    assert resp.headers['Location'] == '/registration/confirmed'   # UPG-97: no login needed
     assert 'user_id' not in _session(visitor)
-    assert _regs(db, event_id) == []
+    assert [r['lead_email'] for r in _regs(db, event_id)] == [existing]
+    assert _set_password_links(outbox, existing) == []
 
     new = f"{_unique('legacy')}@test.edu"
     resp = visitor.post(f'/participant/public_register/{event_id}', data=_form(new))
     assert resp.headers['Location'] == '/registration/confirmed'
     assert 'user_id' not in _session(visitor)
-    assert [r['lead_email'] for r in _regs(db, event_id)] == [new]
+    assert sorted(r['lead_email'] for r in _regs(db, event_id)) == sorted([existing, new])
     assert len(_set_password_links(outbox, new)) == 1
     assert all('Login Credentials' not in m['html'] for m in outbox['mail'])

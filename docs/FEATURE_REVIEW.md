@@ -60,9 +60,9 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Approval workflow (unit → admin) | WORKING [R] | `services_workflow.py:130-217`, `routes_admin.py:913` | Admin approval sets `published`; SPOC must still move it to `registration_open` (`published` is a closed status, `routes_forms.py:86`). |
 | Registration form (custom fields) | WORKING [R at UPG-01] | `routes_forms.py:99-154` | Every form, template, seeded or SPOC-built, is normalised on read: each field has a name and the identity fields appear once. Answers are stored and shown on the responses page (UPG-45 fixed postgres mode). |
 | Form builder | WORKING [T, R at UPG-79] | `routes_forms.py:361-406`, `templates/coordinator/form_builder.html` | Only the event's owner (or admins) can edit the form; assigned staff can see responses (BLK-04). Back returns to the page that opened it; the page says which fields every form gets and what a team event adds; unsaved changes are guarded (UPG-79). The coordinator dashboard links coordinators to it, but they get 403 (UPG-68). |
-| Auto-account on registration (no auto-login) | WORKING [R at BLK-02] | `services_accounts.py:37-106`, `routes_forms.py:526-572`, `routes_auth.py:236` | Fixed by BLK-02: no path logs anyone in; existing accounts log in first; new emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
-| Waitlist | PARTLY BUILT [R at BLK-03] | `routes_forms.py`, `routes_waitlist.py:185-300`, `tasks/waitlist_tasks.py` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
-| Paid registration (Razorpay) | WORKING in tests [R at UPG-30] | `routes_payment.py`, `services_payments.py`, `routes_admin.py:486-560` | Server-side price, recorded orders, single-use payment IDs (BLK-03). A receipt email after payment. Capacity is re-checked at completion; a paid order that can't complete stays paid and is listed for the admin to complete or refund (Razorpay refund with confirmation). A signed `payment.captured` webhook completes registrations whose browser closed. Admins mark registrations refunded or cancelled, and those tickets stop checking in. Not yet run against Razorpay test mode (criterion 4). Cancelling a paid event offers "Refund all through Razorpay" (once per payment, failures retryable, emailed, audited; UPG-51, built, untested). |
+| Auto-account on registration (no auto-login) | WORKING [R at BLK-02, T at UPG-97] | `services_accounts.py:41-80`, `routes_forms.py:613-726,1220`, `routes_auth.py:236` | Fixed by BLK-02: no path logs anyone in. Since UPG-97 (owner decision 2026-10-17), an existing account's email registers without logging in, changes no account, and is emailed a "Not you? Cancel this registration" link (it was "log in first" before). New emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
+| Waitlist | PARTLY BUILT [R at BLK-03, UPG-62] | `routes_forms.py`, `routes_waitlist.py:185-338`, `tasks/waitlist_tasks.py`, `services_ticket.py:139-217` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03); a free promotion now issues the same signed ticket as a normal registration and sends the promotion email with the canonical task arguments (UPG-62). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
+| Paid registration (Razorpay) | WORKING in tests [R at UPG-30, T at UPG-94] | `routes_payment.py`, `services_payments.py`, `routes_admin.py:586-775`, `templates/payment/checkout.html` | Server-side price, recorded orders, single-use payment IDs (BLK-03). Since UPG-94: the order carries event, registration and payer with a unique receipt and asks for automatic capture. Verify confirms only when Razorpay says the order is paid (an authorized payment is captured) and otherwise waits for the webhook. The webhook also handles `payment.authorized`, `payment.failed`, `refund.processed` (dashboard refunds cancel the registration) and `refund.failed`, and needs https in production. The checkout page shows failure, cancellation and a retry on the page. `/admin/payments/orders` lists every order's status. A receipt email after payment. Capacity is re-checked at completion; a paid order that can't complete stays paid and is listed for the admin to complete or refund (Razorpay refund with confirmation). A signed `payment.captured` webhook completes registrations whose browser closed. Admins mark registrations refunded or cancelled, and those tickets stop checking in. Not yet run against Razorpay test mode (criterion 4). Cancelling a paid event offers "Refund all through Razorpay" (once per payment, failures retryable, emailed, audited; UPG-51, built, untested). |
 | Stripe payments | REMOVED | None (removed by UPG-14) | Removed in favor of Razorpay as the single payment provider. |
 | Coupons | NOT CONNECTED in the UI [C] | `routes_coupons.py`, `services_payments.py:36-73` | `create_order` applies a coupon validated on the server if one is sent (BLK-03), but no template or JS sends one or calls `/coupons/*`. Since UPG-36 each order holds a use when it's created (race-free), so `max_uses` holds even when payers check out together. |
 | Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:224-281` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:243`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. Re-run 2026-10-12 [R, SQLite dev seed]: the owner is sent back "not your ticket" again, because `to_dict()` returns only `leadEmail` (UPG-69). The page is restyled on the brand (UPG-63). |
@@ -78,14 +78,14 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Rounds, lock scoring, advance round | not re-run [C at `1f4cdc8`] | `routes_spoc.py` round panel / lock / advance | The `spoc_id` gate is now satisfiable (the field persists), so these are likely unblocked; not re-run. |
 | AI judge↔team matching | PARTLY BUILT [C] | `routes_ai_matching.py:87-116` | Reads `form_answers`/`team_name`, which persist since BLK-09/BLK-06 [R round-trip]; matching not re-run. |
 | Results + public leaderboard | WORKING [T, R at UPG-84] | `services_leaderboard.py`, `routes_spoc.py:651`, `routes_live.py:27`, `routes_participant.py:258`, `routes_judge.py:360`, `routes_coordinator.py:426` | One ranking for every board, results publishing and exports: both score fields, 2 decimals, shared places for ties, cancelled and eliminated left out; the results page lists scored teams with unscored ones apart (UPG-84). |
-| Certificates | WORKING [R at UPG-06] | `utils_certificate.py:778`, `tasks/cert_tasks.py:25`, `routes_spoc.py:579,1894` | One issuing path for end-event and the bulk button: a PDF per attendee marked Present (winner certificates for the top three scores), a certificate ID and verify URL on the registration, an emailed PDF; never issued twice. PDFs are drawn again on download, not stored (UPG-17). |
+| Certificates | WORKING [R at UPG-06, UPG-62] | `utils_certificate.py:778`, `tasks/cert_tasks.py:25`, `routes_spoc.py:579,1894`, `routes_participant.py:213-252` | One issuing path for end-event and the bulk button: a PDF per attendee marked Present (winner certificates for the top three scores), a certificate ID and verify URL on the registration, an emailed PDF; never issued twice. The participant guard checks event completion before attendance, so the user sees the correct readiness message (UPG-62). PDFs are drawn again on download, not stored (UPG-17). |
 | Certificate public verification | WORKING [R at UPG-06] | `routes_verification.py:21-185` | `/verify/<certificate_id>` shows the issued certificate and offers the PDF; an unknown ID shows invalid (404). Certificates from API v1's `CertificateService` aren't found there (UPG-14). |
 | Feedback | WORKING [R at UPG-05] | `routes_feedback.py`, `routes_participant.py:290-340` | Opens after check-in; each attendee (lead or team member) answers once; the event's staff see the summary and export it (others 403). An optional rule requires each person's feedback before their certificate. |
 | Hackathon submission + kanban | WORKING (page load) [R] | `routes_hackathon.py:20-206` | Pipeline and project pages are public (`routes_hackathon.py:107,137`). Submitting should be refused [C]: the form posts without a CSRF token (UPG-66). |
 | Teams (create/join by code) | WORKING [R at UPG-08] | `routes_teams.py`, `routes_forms.py:156-225` | A team is one registration: the form asks for members within the event's limits, others join with the lead's invite code, the lead removes members and replaces the code; tickets, judging and check-in read its members. Joining is atomic on PostgreSQL since UPG-52 (built, untested). |
 | Agenda / sessions | WORKING (page load) [R] | `routes_spoc.py:772` | Session-level attendance not found. |
 | Announcements | not run [C] | `routes_spoc.py:696-771` | — |
-| Email (Brevo / Resend / Gmail) | WORKING in tests [R at UPG-31] | `utils_email.py`, `routes_auth.py:473-478` | Confirmation, day-before ticket with the entry QR, and change and cancellation notices go through Brevo once each (`tests/test_notices.py`, HTTP mocked); not yet sent through a real Brevo account. Notices reach only the registration's lead (UPG-48). Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
+| Email (Brevo / Resend / Gmail) | WORKING in tests [R at UPG-31, UPG-62] | `utils_email.py`, `tasks/email_tasks.py:82-96`, `routes_auth.py:473-478` | Confirmation, day-before ticket with the entry QR, and change and cancellation notices go through Brevo once each (`tests/test_notices.py`, HTTP mocked); not yet sent through a real Brevo account. Notices reach only the registration's lead (UPG-48). Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). The generic task uses `body_text` and accepts the legacy `body` alias for older callers (UPG-62). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
 | WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. The day-before reminder and the payment receipt tasks call their functions correctly since UPG-31; the automation's WhatsApp channel still doesn't (UPG-49). |
 | In-app notifications | BUILT (untested) [UPG-14] | `routes_notifications_v2.py:22-150` | Consolidated onto `notifications_v2` with dashboard feed (`/notifications/feed`), `mark_read`, and bulk operations; v1 removed. |
 | Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:534`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders read every event-day status since UPG-43 (built, untested); the ticket-email signature was fixed in UPG-31. |
@@ -135,7 +135,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Discover | OK [R] | — |
 | Register (solo) | **Works** [R at UPG-01] | Every template's form names its fields and asks for name, email, phone and USN once; the seeded conference registers end to end. |
 | Register (team) | **Works** [R at UPG-08] | The form asks for the team name and members within the event's limits; teammates join with the lead's code (`tests/test_teams.py`). |
-| Pay | **Works in tests** (BLK-03, UPG-30) | Charged at the server's price; a receipt email; a webhook completes payments whose browser closed; a paid order that can't complete stays paid for the admin to complete or refund. Not yet run against Razorpay test mode (UPG-30 criterion 4). |
+| Pay | **Works in tests** (BLK-03, UPG-30, UPG-94) | Charged at the server's price; confirmed only when Razorpay says the order is paid; a receipt email; a webhook completes payments whose browser closed; a failed or cancelled payment says so on the page, keeps the form and offers a retry; refunds and failed refunds arrive by webhook; a paid order that can't complete stays paid for the admin to complete or refund. Not yet run against Razorpay test mode (UPG-30 criterion 4). |
 | Ticket | OK for new registrations [R] | QR hidden until 1 day before (intended, `routes_ticket.py:143-152`). The day before, the ticket email brings the same QR, and a WhatsApp reminder goes out (UPG-31, through UPG-07's cron). Changes of date, time or venue, and cancellation, are emailed once. No payment reference stored. |
 | Check-in | **Works** [R at UPG-02] | The ticket's QR is accepted by every scanner; see Coordinator. |
 | Attend sessions | Not found | No session-level attendance. |
@@ -197,8 +197,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Event type | Works today | Done outside the app | Needed |
 |---|---|---|---|
-| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), feedback (UPG-05), calendar; Own type with speaker details (UPG-73) | — | — |
-| Workshop | Same as seminar; preset applied (`routes_spoc.py:154`); Own type with trainer, prerequisites, what to bring (UPG-73) | Same; paid workshops: payments are verified safely since BLK-03, not yet run against Razorpay test mode | + UPG-30 |
+| Seminar | Create from template, approval, free registration (any form, UPG-01), ticket, QR and manual check-in (UPG-02), certificates (UPG-06), attendance export and event report (UPG-03), feedback (UPG-05), calendar; waitlist promotion issues a signed ticket and notification for a newly available free seat (UPG-62); Own type with speaker details (UPG-73) | — | — |
+| Workshop | Same as seminar; preset applied (`routes_spoc.py:154`); Own type with trainer, prerequisites, what to bring (UPG-73) | Same; paid workshops: payments are verified safely since BLK-03 and confirmed with Razorpay since UPG-94, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template); Own type (UPG-73) | Speaker invite and attendance list | Seminar items |
 | Hackathon | Create, judges, project submission page, scoring with string criteria, leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08); Own type: duration, themes, judging criteria, rounds, prizes in the wizard (UPG-73) | Rubric scoring, round shortlists | UPG-04; + UPG-66 (the project submission form posts without a CSRF token) |
 | Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings (UPG-13, built, untested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74) | Whiteboard/Excel replaced | — |
@@ -643,6 +643,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Checked by hand [R]: `alembic upgrade head` on an empty SQLite file and an empty PostgreSQL 16 database; `compare_metadata` reports 0 differences on PostgreSQL (on SQLite only UUID columns differ, because SQLite reflects `UUID` as `NUMERIC`); `downgrade base` then `upgrade head` on PostgreSQL, 0 differences; a production start-up on the migrated database loads `/` with 0 CREATE/ALTER/DROP statements; on an empty database it refuses with the message.
   - Not changed: `run_alembic.py` still generates an "initial_schema" revision with autogenerate; it's obsolete next to the baseline (left for UPG-15's clean-up).
 - **To test later:** criterion 1 (upgrade on empty SQLite and PostgreSQL; `compare_metadata` empty on PostgreSQL, and on SQLite ignoring UUID-vs-NUMERIC type reflection); criterion 2 (downgrade base → upgrade head on PostgreSQL); criterion 3 (production start-up: an engine listener sees no CREATE/ALTER; an unmigrated database raises `DatabaseConfigError`); criterion 4 is the guide section. No existing test referenced the removed migrations.
+- **Seen in the Google Cloud test deployment (2026-10-17) [R]:** `alembic upgrade head` on a new, empty Cloud SQL PostgreSQL 16 database ran 0001_baseline to 0006_participant_types and exited 0, and the production app started against it (it refuses to start unless the database is at head). That is part of criterion 1 only; `compare_metadata`, downgrade and SQLite are still to test.
 - **Acceptance criteria:**
   1. Test: `alembic upgrade head` on an empty SQLite and an empty PostgreSQL database succeeds, and Alembic's `compare_metadata` against `models_pg.Base.metadata` reports no differences.
   2. Test: `alembic downgrade base` then `upgrade head` works on PostgreSQL.
@@ -1048,7 +1049,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 | `JWT_SECRET_KEY` | New random value, 32+ characters, different from `SECRET_KEY` | Yes since UPG-20 (`config.production_problems`) |
 | `SUPER_ADMIN_PASS` (with `SUPER_ADMIN_EMAIL`) | New strong password, used to create the first SuperAdmin | Only against the list of published passwords (`validate_production_config`) |
 | `RAZORPAY_KEY_SECRET` (with `RAZORPAY_KEY_ID`) | Set before any paid event is opened | Since UPG-20, half a set-up (one or two of the key ID, key secret and webhook secret) is refused, and so is `PAYMENT_SIMULATION`; with none set, online payment refuses with 503 (fails closed since BLK-03). |
-| `RAZORPAY_WEBHOOK_SECRET` | The secret set on the Razorpay webhook (Dashboard → Webhooks: event `payment.captured`, URL `<BASE_URL>/payment/webhook/razorpay`). It completes registrations whose browser closed after paying (UPG-30). | Required with the other two Razorpay settings since UPG-20 |
+| `RAZORPAY_WEBHOOK_SECRET` | The secret set on the Razorpay webhook (Dashboard → Webhooks: URL `https://<BASE_URL>/payment/webhook/razorpay`; events `payment.captured`, `payment.authorized`, `payment.failed`, `refund.processed`, `refund.failed`, UPG-94). It completes registrations whose browser closed after paying (UPG-30). | Required with the other two Razorpay settings since UPG-20 |
 | `DATABASE_URL` | PostgreSQL (`postgresql://…`) | Yes: named with every other problem at start-up (UPG-20), and the schema must be at Alembic head (UPG-16) |
 | `BREVO_API_KEY` | A Brevo API key (Brevo → Settings → SMTP & API → API Keys). **Required in practice:** since UPG-33, new staff, SPOCs and walk-ins can get in only through the emailed set-password link. | Yes since UPG-20: production refuses to start with no mail provider |
 | `MAIL_FROM` | The sender, e.g. `SapthaEvent <events@your-domain>`, an address verified as a sender in Brevo. Unset, the sender is `MAIL_USER`; with neither, Brevo and Resend refuse to send and `/diag/email` says why (`utils_email.py:51-61`, UPG-41). | Yes since UPG-20 (`MAIL_FROM` or `MAIL_USER`) |
@@ -1133,7 +1134,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Files touched:** `services_accounts.py` (new), `routes_forms.py`, `routes_payment.py`, `routes_participant.py`, `routes_auth.py`, `utils_email.py`, `app.py`, `templates/login.html`, `templates/participant/registration_confirmed.html`, `tests/test_registration_no_auto_login.py` (new), `tests/conftest.py`, `tests/test_integration_flow.py`, `tests/test_seminar_e2e.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** existing students must now log in before registering; new students must use the emailed link before they can see their dashboard or ticket.
 - **Acceptance criteria** (all in `tests/test_registration_no_auto_login.py`, on the real SQL adapter; each fails on the old code except the off-site `next` check):
-  1. ✅ An anonymous submit with an existing student's email → no `user_id` in the session, a redirect to `/login?next=/forms/register/<event>`, no registration and no email; logging in returns to the form; an off-site `next` is ignored (`test_anonymous_submit_with_existing_email_must_log_in_first`, `test_login_ignores_an_off_site_next`).
+  1. ✅ *(Changed by UPG-97, owner decision 2026-10-17: such a submit now registers without logging in and emails a cancel link; the test is now `::test_anonymous_submit_with_existing_email_registers_without_logging_in` and still checks that nobody is logged in.)* An anonymous submit with an existing student's email → no `user_id` in the session, a redirect to `/login?next=/forms/register/<event>`, no registration and no email; logging in returns to the form; an off-site `next` is ignored (`test_anonymous_submit_with_existing_email_must_log_in_first`, `test_login_ignores_an_off_site_next`).
   2. ✅ A logged-in student submitting a different email → the registration and its answers use the session email, and no account is created for the other email (`test_logged_in_student_registers_under_the_session_email`).
   3. ✅ The waitlist branch, `/payment/process` and `/payment/verify` (Razorpay client faked, correctly signed) never set the session (`test_waitlist_branch_never_logs_in`, `test_simulated_payment_completion_never_logs_in`, `test_verified_razorpay_payment_never_logs_in`).
   4. ✅ `/registration/confirmed`, the session and every email contain no password (`test_no_password_is_shown_stored_in_the_session_or_emailed`).
@@ -1748,7 +1749,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: a web login with an unknown email, a wrong password for an existing account, and an existing account with a legacy unhashed password all get the same status, redirect and "Email or password is incorrect"; the wrong-role hint appears only with the right password (`::test_web_login_answers_alike_for_unknown_emails_wrong_and_old_passwords`).
   2. ✅ Test: the API gives the same status and JSON body for those three cases (`::test_api_login_answers_alike_for_the_same_three_cases`).
   3. ✅ Test: a password-reset request for an unknown, an existing and a SuperAdmin email shows the same page and "If an account exists for this email, we've sent a reset link"; only the existing non-SuperAdmin email is sent a link (`::test_reset_requests_answer_alike_and_only_the_real_account_gets_a_link`).
-  4. ✅ Test: sign-up (web and API) and registration with an existing email still tell the user to log in first (unchanged behaviour, now pinned: `::test_sign_up_and_registration_still_tell_an_existing_email_to_log_in`).
+  4. ✅ *(Registration part changed by UPG-97, 2026-10-17: registration no longer asks an existing account to log in; the test is now `tests/test_uniform_auth_messages.py::test_sign_up_still_tells_an_existing_email_to_log_in_and_registration_needs_no_login`. Sign-up and the API still answer "already exists".)* Test: sign-up (web and API) and registration with an existing email still tell the user to log in first (unchanged behaviour, now pinned: `::test_sign_up_and_registration_still_tell_an_existing_email_to_log_in`).
   - Full pytest: **716 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-36 — Coupons can be used more than `max_uses` times
@@ -2225,8 +2226,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: a SQLite database created without `events.activity_points` gets it (NOT NULL, default 0) at development start-up, and `/spoc/dashboard` answers 200.
 
 #### UPG-62 — 19 existing tests fail since the clean-up and seed commits
-- **Status:** TODO
-- **Last verified:** 2026-10-10, commit "docs: …" (parent `96b9c80`)
+- **Status:** IN PROGRESS (implementation complete; waiting for D-9 owner decision)
+- **Last verified:** 2026-10-17, commit `da7700a`
 - **Problem:** Found by the full pytest after Part 1 of the owner's second run [R]: 19 failed, 792 passed, 1 skipped on SQLite (Python 3.11). The same 19 fail at `251f444`, before this run's commits, so they come from the earlier commits (UPG-14, UPG-15, the seed fold, UPG-04/UPG-11), not from Part 1. No test file was changed or deleted; the total fell from 894 to 812 because `tests/test_seed_safety.py` is parametrised over the seed scripts, which are now one `seed.py`.
   - **Obsolete after removals (owner's rule: leave them, note them):** `tests/test_global_scale.py::test_stripe_create_session_simulation_fallback` and `::test_stripe_success_redirection_and_registration` (Stripe removed, UPG-14); `tests/test_next_gen.py::test_matchmaker_page_requires_auth`, `::test_matchmaker_endpoint_calculates_jaccard_matches`, `::test_matchmaker_message_exchange_simulates_realtime_replies` (matchmaker hidden, UPG-14).
   - **Seed safety (12 cases):** `tests/test_seed_safety.py` now collects `scripts/configure_capacitor.py` and `scripts/generate_vapid.py` as seed scripts (they don't call `seed_safety.guard()`), and `test_there_are_scripts_to_check` / `test_there_are_firestore_scripts_to_check` find no seed scripts under the old names. Running it also executes `scripts/configure_capacitor.py`, which **rewrites the tracked `capacitor.config.json`** with the developer's `BASE_URL` (seen 2026-10-10; the file was restored).
@@ -2239,6 +2240,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **2026-10-11 baseline (UPG-63 start, Python 3.11, SQLite):** **20 failed, 791 passed, 1 skipped** at `0fd9f3a`. The 19 above plus `tests/test_seminar_e2e.py::test_seminar_full_lifecycle_and_certificate_guards`: `/participant/certificate/<reg>` now checks attendance before completion (`routes_participant.py:232` before `:238`), so a registrant who hasn't attended gets "Certificates are only issued to students who attended." and the test's `b"completed"` check fails. That is backend order, not a template. Running the suite rewrote `capacitor.config.json` again (restored).
 - **2026-10-12 (full pytest, Python 3.11, SQLite):** **19 failed, 848 passed, 1 skipped.** The 19 are: Stripe (2) and matchmaker (3), both D-9; seed safety (12); `test_seminar_full_lifecycle_and_certificate_guards` (certificate order) and `test_capacity_waitlist_and_promotion_guard` (promoted waitlist entry gets no ticket). `tests/test_no_html_injection.py` now passes, and so does `tests/test_admin_users.py`. Running the suite still rewrites `capacitor.config.json` (restored).
 - **Progress 2026-10-11 (frontend part only; the owner's UPG-63 run keeps backend files unchanged):** the `maxScore` escaping bug is fixed in `templates/judge/teams.html:201-206` (`escapeHtml(maxScore)`), so `test_no_html_injection.py` should pass again (not re-run: the owner asked for no test runs in this session). Still open and **blocked by the frontend-only rule**: the waitlist promotion bugs (`routes_waitlist.auto_promote`), the certificate guard order, the seed-safety test's script list; the Stripe and matchmaker tests wait on D-9.
+- **2026-10-17 verification [R at `da7700a`]:** fixed free waitlist promotion ticket issuance and returned registration ID, corrected the promotion email payload to use `body_text` while retaining a compatibility alias for older callers, moved certificate completion validation before attendance validation, and narrowed seed-safety discovery to actual seed/setup scripts while including the unified `seed.py`. Targeted lifecycle, payment, seed-safety, HTML-injection and admin tests: **315 passed** across the focused runs. Full pytest: **937 passed, 1 skipped, 5 failed**; the five failures are exactly the Stripe ×2 and matchmaker ×3 tests listed under open D-9. No tests were deleted, skipped or weakened.
 
 #### UPG-63 — Portal-wide design system and visual consistency
 - **Status:** DONE (full pytest 2026-10-13: 892 passed, 1 skipped, 21 failed = the 19 UPG-62 failures, UPG-90's time-of-day failure and one order-dependent new home test, since fixed; no regression from this item)
@@ -2373,15 +2375,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. Test: the verification pages and the chatbot take the support address from `SUPPORT_EMAIL`.
 
 #### UPG-66 — Two forms post without a CSRF token
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit on `production-ready` [T]
 - **Problem:** Found during UPG-63 [C]. `templates/public/exam_interface.html:49` (`examForm`, also submitted by `static/js/proctor.js:99`) and `templates/hackathon/submit_project.html:29` post plain forms with no `csrf_token` field. `CSRFProtect` is on for the whole app (`app.py:146`), and the fetch helper (`static/js/pages/includes__csrf_fetch.js`) only covers `fetch()`. So both submissions should be refused with 400: an exam that is submitted (or force-submitted by the proctor) is lost, and a hackathon project can't be submitted.
 - **Who benefits:** students taking proctored exams; hackathon teams.
 - **What to build:** add `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` to both forms (frontend only), with a test.
+- **What was built:** Added hidden `csrf_token` input to `templates/public/exam_interface.html` (`#examForm`) and `templates/hackathon/submit_project.html`. Verified with `tests/test_upg66_csrf_forms.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: posting each form as rendered (token included) succeeds, and posting without the token is refused.
-  2. Test: every `<form method="POST">` in `templates/` contains a `csrf_token` field, except the routes that are exempt.
+  1. ✅ Test: posting each form as rendered (token included) succeeds, and posting without the token is refused (`tests/test_upg66_csrf_forms.py::test_hackathon_submission_csrf_protection`, `::test_exam_submission_csrf_protection`).
+  2. ✅ Test: every `<form method="POST">` in `templates/` contains a `csrf_token` field, except the routes that are exempt (`tests/test_upg66_csrf_forms.py::test_every_rendered_post_form_in_templates_has_csrf_token`).
 
 #### UPG-67 — The coordinator scanner throws a script error when it is locked
 - **Status:** TODO
@@ -2902,13 +2905,14 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### UPG-90 — Events turn "completed" up to 5½ hours late, and a test fails after midnight
-- **Status:** TODO
-- **Last verified:** 2026-10-13, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit on `production-ready` [T]
 - **Problem:** Found in the full run at UPG-89 [T]. `scheduler_enhanced.py:149` compares event dates, which are local (IST), with today's date in **UTC**. Between 00:00 and 05:30 IST, yesterday's events don't count as past yet. `tests/test_event_maintenance.py::test_event_auto_transition_job` builds "yesterday" from the local date, so it fails in that window (seen at 00:30 IST) and passes the rest of the day.
 - **What to build:** use the university's timezone (a `TIMEZONE` setting, default Asia/Kolkata) for "today" in the scheduler and wherever dates are compared.
+- **What was built:** `scheduler_enhanced.py:149` loads university timezone (`TIMEZONE` setting, defaulting to `Asia/Kolkata` via `ZoneInfo`), ensuring date comparisons match local event days regardless of midnight UTC skew.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: with the clock at 00:30 IST, an active event dated yesterday is transitioned.
+  1. ✅ Test: with the clock at 00:30 IST, an active event dated yesterday is transitioned (`tests/test_event_maintenance.py::test_event_auto_transition_job_at_midnight_ist`).
 
 
 #### UPG-91 — Emails: the logo shows, and links open where the portal is being used
@@ -2969,6 +2973,228 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Built:** `tests/test_email_links_and_logo.py:119` sets `MAIL_PASS` to `uuid.uuid4().hex`; no assertion changed, and the hygiene scan is unchanged.
 - **Acceptance criteria:**
   1. ✅ Test: `tests/test_repo_hygiene.py::test_no_mail_password_in_tracked_files` passes and `tests/test_email_links_and_logo.py` still passes (84 passed together).
+
+#### UPG-94 — Razorpay: confirm capture with Razorpay, failed and refund webhooks, retry on the checkout page
+- **Status:** DONE (the owner's Test Mode run stays with UPG-30 criterion 4, in UPG-32)
+- **Last verified:** 2026-10-17, working tree on `43f2c00` (not committed) [T]
+- **Problem:** Owner's Razorpay integration request, 2026-10-17. BLK-03 and UPG-30 built most of it: the server's price, recorded orders, single-use payment IDs, a `payment.captured` webhook, the receipt, the admin refund. Checked against the code at `43f2c00` [C], these gaps remain:
+  - **Browser trusted for capture:** `/payment/verify` confirms on the checkout signature alone (`routes_payment.py:165-171`). It never asks Razorpay whether the payment was captured. A payment that is only authorized (auto-capture off) is confirmed but never captured, and Razorpay later returns the money on its own.
+  - **Only one webhook event handled:** the webhook handles `payment.captured` and ignores everything else (`routes_payment.py:471-475`):
+    - `payment.failed` is not recorded;
+    - `refund.processed` from the Razorpay dashboard leaves the registration paid and its ticket valid;
+    - `refund.failed` after an admin refund leaves the order marked refunded although the money never went back.
+  - **Order details:** the receipt is a timestamp to the second (`routes_payment.py:124`), so two orders in the same second share it. The notes carry the event and email but not the registration ID that the form already assigned (`routes_forms.py:704`). The order doesn't ask for automatic capture.
+  - **Checkout page:** there is no handler for a failed payment and no retry message (`templates/payment/checkout.html:249` only resets the button). Errors use `alert()`.
+  - **Webhook over plain http:** nothing in the webhook refuses plain http in production. (`FORCE_HTTPS` redirects, which drops Razorpay's POST without saying so.)
+  - **Admin view:** the admin's payments page lists only paid orders with no registration, and paid registrations. There is no list of every order with its status, timestamps and refund.
+- **Who benefits:** paying participants (no lost payments, a clear retry), the finance office (reconciliation), whoever turns on live keys.
+- **What to build:**
+  - **Order details:** create the order with `payment_capture: 1`, a unique receipt (registration ID plus a random suffix, at most 40 characters), and notes with `event_id`, `registration_id` and `email`.
+  - **Verify asks Razorpay:** `/payment/verify` keeps its database checks first (mismatch 400, used 409), then fetches the order from Razorpay.
+    - Razorpay says the order is `paid` for the recorded amount in INR → confirm.
+    - The payment is only `authorized` → capture it for the recorded amount, then confirm.
+    - Razorpay can't be reached, or the payment isn't settled yet → 202 "payment received, confirming". Nothing is claimed; the webhook completes it.
+    - The payment failed, or Razorpay's amount differs → 400; nothing is claimed.
+  - **Webhook events** (all idempotent):
+    - `payment.authorized`: capture the payment once, for a recorded open order of the same amount.
+    - `payment.failed`: record the reason on the open order, which stays open for a retry.
+    - `refund.processed`, full refund: mark the order refunded, and its registration `cancelled` / `Refunded`, so check-in refuses it. Covers refunds made from the Razorpay dashboard.
+    - `refund.processed`, partial refund: noted on the order, and the registration is unchanged.
+    - `refund.failed`: put the order back to paid with the reason, and mark the registration `Refund failed`, so the admin can retry.
+    - In production, a webhook that doesn't arrive over https gets 403.
+  - **Checkout page:** shows payment failure, cancellation, "confirming" and errors in a message box on the page, with Pay ready to try again. The form data stays in the session.
+  - **Admin's payments page:** an "All orders" table of the latest 50 orders: event, payer, amount, status, order and payment IDs, registration, created / paid / refunded times, refund ID and note (the CSV has all of them). *(Built as its own page, `/admin/payments/orders`, linked from `/admin/payments`: `/admin/payments` stays the list of things to act on, and UPG-30's test checks that a refunded order leaves it.)*
+  - **Documentation:** `.env.example` and this item say how to set up Test Mode and the live webhook.
+- **Built** (2026-10-17, re-checked against `43f2c00`, rule 3: the payment files were last changed by UPG-56 and `ee483fa`; the claims above hold):
+  - **Order details** (`routes_payment.py:118-136`):
+    - the order is for the server's amount in INR, with `payment_capture: 1`;
+    - its receipt is the registration ID plus 8 random hex characters (at most 40);
+    - its notes are `event_id`, `registration_id` and `email`.
+    - The registration ID is the one the form assigned, kept in the session and the order, so a retry keeps it.
+  - **Verify asks Razorpay** (`routes_payment.py:189-198`):
+    - The database checks run first, unchanged in effect: `services_payments.check_order` (`services_payments.py:335`) is claim_order's checks without the claim. It also refuses a payment ID used on another order before any Razorpay call, so 400/409 come as before.
+    - `_razorpay_settled` (`routes_payment.py:241`) fetches the order. `paid` for the recorded amount in INR → confirm. Otherwise it fetches the payment: an `authorized` payment for this order and amount is captured; `captured` → confirm; `failed` or another amount → 400 and nothing claimed. Anything else, including an error reaching Razorpay → 202 `PENDING_MESSAGE` (`:25`), nothing claimed, the form kept; the webhook completes it.
+  - **Webhook** (`routes_payment.py:506`): one parser and a handler per event (`_WEBHOOK_HANDLERS`, `:635`).
+    - `payment.captured` is unchanged (`_webhook_captured`, `:539`).
+    - `payment.authorized` captures an open order's payment of the same amount (`:563`).
+    - `payment.failed` records "Payment attempt failed: <reason>" on an open order, which stays open (`:578`; `note_failed_attempt`, `services_payments.py:420`). A later claim clears the note.
+    - `refund.processed` (`:592`) finds the order by payment ID (`order_for_payment`, `services_payments.py:410`).
+      - Full refund (this refund, or the payment's `amount_refunded` total): `record_refund` (`:439`) moves `paid`/`refunding` → `refunded` once, with `refunded_by` `razorpay`. The registration becomes `cancelled` / `Refunded`, with its refund ID, so check-in refuses it.
+      - Partial refund: noted once (`note_order`, `:431`).
+      - The admin's own refund, already recorded: nothing.
+    - `refund.failed` (`:619`): `refund_reversed` (`:451`) puts a `refunding` order, or a `refunded` one with that refund ID, back to `paid` with "Refund <id> failed: …". Its registration is marked `Refund failed`, so it shows again for a retry.
+    - In production, a request that isn't https gets 403 (`:516`). Behind Cloud Run, ProxyFix reads `X-Forwarded-Proto`.
+    - Every change is audit-logged.
+  - **Checkout page** (`templates/payment/checkout.html:82`, script `:240-292`):
+    - a `role="alert"` message box replaces every `alert()`;
+    - `rzp.on('payment.failed')` and `ondismiss` say nothing was charged, the details are saved, and to press Pay to try again;
+    - a 202 shows "Payment received" and never offers to pay again.
+    - `.callout--danger` added to `static/css/global.css`.
+  - **Admin:** `/admin/payments/orders` (`routes_admin.py:610`, `templates/admin/payment_orders.html`), Super Admin only.
+  - **`.env.example`:** Test Mode first, then the key placeholders, the webhook URL and its five events, how to make the webhook secret, and live keys only in the host's settings.
+  - **Test fakes:** the Razorpay fakes in `tests/test_paid_events.py`, `tests/test_payments_secure.py` and `tests/test_coupon_limits.py` gain `order.fetch`, which reports a checked-out order as paid, the way `tests/test_registration_no_auto_login.py`'s fake already did. `test_paid_events.py`'s fake can also be told an order's Razorpay state, and it records captures. No existing assertion changed.
+  - **Not built:** no refund email for a dashboard refund (`send_refund_email` is worded for a cancelled event; UPG-51). The webhook keeps no event log of its own: its effects are idempotent and audit-logged.
+- **Files touched:** `routes_payment.py`, `services_payments.py`, `routes_admin.py`, `templates/payment/checkout.html`, `templates/admin/payments.html`, `templates/admin/payment_orders.html` (new), `static/css/global.css`, `.env.example`, `tests/test_razorpay_flow.py` (new), `tests/test_paid_events.py`, `tests/test_payments_secure.py`, `tests/test_coupon_limits.py` (fakes only).
+- **Effort:** M · **Depends on:** BLK-03 (DONE); UPG-30 (IN PROGRESS: its built code is done, and only its manual Test Mode run, criterion 4, is open). The owner chose on 2026-10-17 to go ahead. That manual run covers this item too, in UPG-32. · **Risk:** a verify that can't reach Razorpay no longer confirms at once, and the payer waits for the webhook. So the webhook must be set up before going live (already on the deploy checklist).
+- **Acceptance criteria** (Razorpay client mocked; the existing fakes gain `order.fetch`, which reports a checked-out order as paid, the way `tests/test_registration_no_auto_login.py`'s fake already does; no existing assertion changes):
+  1. ✅ Test: the Razorpay order is created for the server's amount in INR, with `payment_capture`, notes carrying the event ID, the registration ID and the payer's email, and a receipt of at most 40 characters that differs between two orders made in the same second. [T `tests/test_razorpay_flow.py::test_the_order_carries_event_registration_payer_and_a_unique_receipt`]
+  2. ✅ Test: verify confirms when Razorpay says the order is paid. An authorized-only payment is captured once for the recorded amount, then confirmed. When Razorpay says failed, or another amount, the answer is 400 and nothing is registered or claimed. [T `::test_an_authorized_payment_is_captured_once_then_confirmed`, `::test_verify_refuses_what_razorpay_says_failed_or_was_another_amount`]
+  3. ✅ Test: browser closed or Razorpay unreachable at verify gives 202 "confirming", with no registration and the order still open. A webhook that arrives later completes it once, with one receipt, and a later verify goes to the ticket. [T `::test_when_razorpay_cant_confirm_the_webhook_completes_it_later`]
+  4. ✅ Test: a webhook that arrives after the browser's verify changes nothing: one registration, one receipt, one ticket email. [T `::test_a_webhook_after_the_browser_verified_changes_nothing`; already true before this item]
+  5. ✅ Test: a failed payment (`payment.failed`), or a cancelled checkout, creates no registration and leaves the order open with the reason recorded. The payer's form data is still in the session, and a retry creates a new order with the same registration ID and a new receipt. The checkout page handles `payment.failed` and dismissal, and uses no `alert()`. [T `::test_a_failed_or_cancelled_payment_registers_nothing_and_can_be_retried`, `::test_the_checkout_page_handles_failure_and_cancel_on_the_page`]
+  6. ✅ Test: a full `refund.processed` cancels the paid registration as Refunded, and the ticket is refused at check-in. A replay changes nothing. A partial refund only adds a note. `refund.failed` after an admin refund puts the order back to paid, with the reason, in the admin list. [T `::test_razorpay_refunds_cancel_the_registration_and_stop_the_ticket`, `::test_a_failed_refund_puts_the_order_back_for_the_admin`]
+  7. ✅ Test: after a paid registration, the payer gets exactly one ticket (confirmation) email and one receipt, the ticket's QR PNG is made, and the ticket checks in. [T `::test_a_paid_registration_gets_its_ticket_qr_and_emails`; already true before this item]
+  8. ✅ Test: in production, the webhook refuses plain http (403) and accepts https. [T `::test_the_webhook_needs_https_in_production`, plain http and `X-Forwarded-Proto: https`]
+  9. ✅ Test: the admin's payments page shows every recent order with its status, payment ID, registration, amount and timestamps. A non-admin gets 403. [T `::test_admins_see_every_orders_status_and_others_get_403`, on `/admin/payments/orders`]
+  - Already covered by existing tests: duplicate payment attempt (`tests/test_payments_secure.py::test_a_payment_id_can_be_used_once`); duplicate callback and amount mismatch on the webhook (`tests/test_paid_events.py::test_the_webhook_completes_a_payment_whose_browser_never_returned_once`, `::test_the_webhook_refuses_bad_signatures_and_ignores_unknown_orders`); simulation never in production (`tests/test_payments_secure.py::test_simulated_checkout_needs_the_flag_and_never_runs_in_production`, `config.production_problems`).
+  - Manual (owner, Test Mode, no real money): part of UPG-30 criterion 4 / UPG-32.
+  - 10 of the 12 new tests fail on the old code; criteria 4 and 7 already held and are now pinned.
+  - Full pytest on SQLite (the SQL layer; no `TEST_DATABASE_URL`, so PostgreSQL 16 wasn't run): **955 passed, 1 skipped, 5 failed**. The 5 failures are UPG-62's known Stripe and matchmaker tests (D-9), which also fail at `43f2c00` (943 passed before). ruff clean.
+
+
+#### UPG-95 — Registration IDs come from the clock, so two at the same millisecond overwrite each other
+- **Status:** TODO
+- **Last verified:** 2026-10-17, commit `43f2c00` [C]
+- **Problem:** Found building UPG-94 [C]. A registration's ID is `REG-<milliseconds>`. It's set in the form (`routes_forms.py:704`) and as a fallback when a payment completes (`routes_payment.py:407`), and becomes the document ID (`routes_payment.py:434`: `document(reg_id).set(...)`). Two registrations submitted in the same millisecond, on any instance, get the same ID, and the second `set` replaces the first, which may be a paid registration. Waitlist IDs (`WL-…`, `routes_forms.py:761`) have the same problem.
+- **What to build:** add a random part to the ID (for example `REG-<ms>-<6 hex>`), keeping the `REG-` prefix that tickets and exports show. Writing a new registration must never replace an existing one.
+- **Effort:** S · **Depends on:** none · **Risk:** low; existing IDs are unchanged.
+- **Acceptance criteria:**
+  1. Test: two registrations created with the clock frozen get different IDs, and both rows exist.
+
+#### UPG-96 — The checkout script puts the event title into a JavaScript string with HTML escaping only
+- **Status:** TODO
+- **Last verified:** 2026-10-17, commit `43f2c00` [C]
+- **Problem:** Found building UPG-94 [C]. `templates/payment/checkout.html:227` writes `description: "{{ event.title }}"`. Autoescape turns quotes into `&#34;`, so a title can't break out of the string. But a title ending in a backslash ends the string early, the script fails, and Pay does nothing. Titles with `&` or quotes also reach Razorpay as `&amp;` and `&#34;`.
+- **What to build:** pass the title with `|tojson`, the way JSON values reach scripts elsewhere.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the checkout page for an event titled `Rock & "Roll" \` renders a script whose description is that exact string as a JSON literal.
+
+
+#### UPG-97 — Registering without logging in, for an email that already has an account
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-97: …" on `production-ready` (parent `ae9f7d2`) [T]
+- **Problem:** Owner report 2026-10-17, with a screenshot. A visitor who registers from the home page with an email that already has an account is sent to log in: "An account already exists for this email. Please log in to register" (`routes_forms.py:636-639`, `routes_participant.py:401-403`, through `services_accounts.resolve_registrant`, `services_accounts.py:39-51`). The owner wants registration not to require a login: register now, and see the registration after logging in later. BLK-02 added the redirect as an extra guard next to its real fix (no path logs anyone in), so a stranger couldn't register someone else and nothing was sent to their inbox. **Owner decision 2026-10-17:** register straight away, and email the account a "Not you? Cancel this registration" link. The three existing tests that pin the redirect change to the new behaviour with the owner's approval: `tests/test_registration_no_auto_login.py::test_anonymous_submit_with_existing_email_must_log_in_first`, `::test_legacy_public_register_route_never_logs_in`, and `tests/test_uniform_auth_messages.py::test_sign_up_and_registration_still_tell_an_existing_email_to_log_in`. Sign-up's own "already exists" answer is unchanged.
+- **Who benefits:** students registering from the home page or a shared link without remembering their password.
+- **What to build:**
+  - **No login needed:** an anonymous visitor who types an existing account's email is registered under that email (free → confirmed; paid → checkout; full → waitlist).
+    - Still never logs anyone in.
+    - Creates no account and sends no set-password link.
+    - Doesn't change the account's profile.
+    - The registration is marked `registered_without_login`.
+  - **Cancel link in the email:** the account's confirmation email for such a registration, and its ticket email after payment, carry a signed "Not you? Cancel this registration" link (90 days).
+    - The link opens a page that asks for confirmation (so mail scanners that open links cancel nothing).
+    - Confirming cancels the registration once, the same way the participant's own cancel does: seat count, waitlist promotion, audit log.
+    - A paid registration is cancelled with its reason and the payment stays for the organisers to refund (their refund in the Razorpay dashboard is recorded by UPG-94's webhook).
+  - **Seen after login:** the participant dashboard already lists registrations by email (`routes_participant.py:671,835`), so the registration shows up once they log in.
+  - Same for the legacy `/participant/public_register` route.
+- **Built:**
+  - **`services_accounts.resolve_registrant(db, email)`** (`services_accounts.py:41`) returns `(email, without_login)` and never a login redirect. `make_cancel_token` / `load_cancel_token` (`:56`, `:62`) sign the registration ID and email (90 days). `cancel_url_for` (`:75`) gives the link only for a `registered_without_login` registration that isn't cancelled. The now-unused `login_url` is removed.
+  - **Form** (`routes_forms.py:613`): the "log in first" redirect is gone.
+    - An existing account's email is not "new" (`:681`), so it gets no account and no set-password link.
+    - Its profile is only updated for a logged-in visitor (`:689`).
+    - The registration gets `registered_without_login` (`:725-726`), which a paid registration carries through checkout.
+    - The confirmation email gets the link (`:839`).
+  - **Legacy route** (`routes_participant.py:392-533`): the same, and its confirmation page now uses the real new-user flag (it said `True` for everyone).
+  - **Emails:** `utils_email._cancel_block` (`utils_email.py:511`) is added to the confirmation (`:576`) and ticket (`:648`) emails when a link is given. `tasks/email_tasks.send_ticket_email_task` looks the link up from the registration (`_cancel_url`, `tasks/email_tasks.py:117`), so the ticket email after payment carries it, and so does the day-before ticket.
+  - **Cancel page** `GET/POST /forms/cancel/<token>` (`routes_forms.py:1220`, `templates/public/cancel_registration.html`).
+    - GET only asks. POST cancels through `routes_participant.cancel_registration_record` (`routes_participant.py:575`): the participant's own cancel, moved into a function and shared (status, seat count, waitlist promotion, audit line). It is called with a reason.
+    - A paid registration's reason says the payment is to be refunded.
+    - A cancelled registration shows "cancelled" again without counting twice.
+    - A bad, expired or borrowed token, or a registration not made without login, gets 400.
+  - **Tests changed with the owner's approval** (they pinned the old redirect; each still checks that nobody is logged in and no account is created or changed):
+    - `tests/test_registration_no_auto_login.py`: `::test_anonymous_submit_with_existing_email_registers_without_logging_in` (renamed) and `::test_legacy_public_register_route_never_logs_in`;
+    - `tests/test_uniform_auth_messages.py`: `::test_sign_up_still_tells_an_existing_email_to_log_in_and_registration_needs_no_login` (renamed; the sign-up and API checks are unchanged).
+  - **Not built:** a waitlist entry for such an email gets no cancel link; the promotion email reaches the account.
+- **Files touched:** `services_accounts.py`, `routes_forms.py`, `routes_participant.py`, `utils_email.py`, `tasks/email_tasks.py`, `templates/public/cancel_registration.html` (new), `tests/test_guest_registration.py` (new), `tests/test_registration_no_auto_login.py`, `tests/test_uniform_auth_messages.py`.
+- **Effort:** S · **Depends on:** BLK-02 (DONE) · **Risk:** anyone can register an existing student for an event; the emailed cancel link and the audit log are the guard (owner's choice).
+- **Acceptance criteria:**
+  1. ✅ Test: an anonymous registration with an existing account's email (free event) is confirmed under that email. Nobody is logged in, no account is created or changed, and no set-password email is sent. The account gets one confirmation email with a cancel link. [T `tests/test_guest_registration.py::test_an_existing_account_registers_without_logging_in_and_gets_a_cancel_link`; also `::test_a_logged_in_registration_has_no_cancel_link`]
+  2. ✅ Test: after the student logs in, the dashboard shows the registration. [T `::test_the_registration_shows_on_the_dashboard_after_login`]
+  3. ✅ Test: the same on a paid event goes to checkout; after payment, the ticket email carries the cancel link. [T `::test_a_paid_registration_without_login_gets_the_link_in_its_ticket_email`, which also cancels it and keeps the payment]
+  4. ✅ Test: the cancel link's page changes nothing. Confirming cancels once: status, seat count, audit line. A second confirm, a tampered token, or a token for another registration changes nothing. [T `::test_the_cancel_link_asks_first_then_cancels_once`, `::test_a_tampered_or_borrowed_cancel_token_changes_nothing`]
+  5. ✅ Test: the legacy public route registers an existing account the same way, without logging in. [T `::test_the_legacy_public_route_registers_an_existing_account_the_same_way`]
+  6. ✅ The three tests named above expect the new behaviour (owner-approved change); the full pytest passes otherwise as before. [T: all three pass]
+  - The new test file can't import on the old code (no `make_cancel_token`); `::test_a_logged_in_registration_has_no_cancel_link` describes behaviour that is unchanged.
+  - Full pytest on SQLite (the SQL layer; PostgreSQL 16 not run): **962 passed, 1 skipped, 5 failed**. The 5 failures are the known D-9 Stripe and matchmaker tests; with UPG-94 alone it was 955 passed. ruff clean.
+
+
+#### UPG-98 — The container image would include the Firebase key and local database copies
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-98: …" on `production-ready` (parent `ec0b29a`) [T]
+- **Problem:** Found preparing the Google Cloud deployment, 2026-10-17 [C]. `.dockerignore` excludes `.env` and `saptha_fallback.db` but not:
+  - `serviceAccountKey.json` (a Firebase service-account key; the app only reads it if present, `app.py:275-283`);
+  - `saptha_fallback.backup-2026-10-12-before-demo.db` (a database copy with user data);
+  - other `*.db` files.
+
+  `gcloud run deploy --source` skips them only because it falls back to `.gitignore`. A `docker build`, or Cloud Build with its own config, would put them in the image. The image also carried `android/` (64 MB), `functions/` (26 MB) and `dataconnect/`, none of which the web app imports.
+- **What to build:** exclude credentials, local databases, Word documents and those three folders in `.dockerignore`.
+- **Built:** `.dockerignore` adds `serviceAccountKey.json`, `**/serviceAccountKey*.json`, `**/*.db`, `**/*.db-journal`, `**/*.sqlite`, `**/*.sqlite3`, `*.docx`, `android`, `functions` and `dataconnect`. In production, Firebase (optional; the app runs on PostgreSQL) takes `FIREBASE_CREDENTIALS` from the environment instead.
+- **Files touched:** `.dockerignore`, `tests/test_dockerignore.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the key, `.env` files, local databases, Word documents and the three folders are excluded; the app's code, templates, static files, requirements and migrations are not [T `tests/test_dockerignore.py::test_credentials_and_local_data_stay_out_of_the_image`, `::test_the_app_itself_still_goes_in`; the first fails on the old file].
+
+
+#### UPG-99 — Signed download links fail on Cloud Run's default credentials
+- **Status:** TODO
+- **Last verified:** 2026-10-17, commit `a7fa6fd`, Google Cloud test deployment [R]
+- **Problem:** Found in the test deployment [R]. `utils_storage.signed_url` (`utils_storage.py:162`) calls `blob.generate_signed_url(...)` with the default credentials. On Cloud Run those are compute-engine credentials with no private key, so it raises `AttributeError: you need a private key to sign credentials`. The only caller is `tasks/export_tasks.py:187-188`, which nothing queues (UPG-14's list), so no feature fails today. Public uploads (`upload_file`, `make_public`) and private uploads work.
+- **What to build:** sign through the IAM signBlob API when the credentials have no key: pass `service_account_email` and `access_token` from refreshed default credentials to `generate_signed_url`, and grant the runtime service account `roles/iam.serviceAccountTokenCreator` on itself. Document the role in `docs/DEPLOY.md`.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: with key-less credentials (mocked), `signed_url` signs through `service_account_email` and `access_token` instead of raising.
+  2. Checked [R] on Cloud Run: a private upload's signed link downloads, and the object's plain URL is refused.
+
+
+#### UPG-100 — The editor's type checker can't read its config, so it reports missing modules and the optional-import fallbacks
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-100: …" on `production-ready` (parent `cc334ef`) [T]
+- **Problem:** Owner report 2026-10-17 (Pyrefly diagnostics pasted from VS Code for `routes_coordinator.py`). `pyrefly.toml` used keys Pyrefly doesn't accept (`python_interpreter`, `[errors] ignore = [...]`), so Pyrefly 1.4 stopped with "TOML parse error … Fatal configuration error" and fell back to defaults. That gave:
+  - "Cannot find module `flask`" / "`google.cloud`" warnings, because it looked in a `.venv/lib/python3.9` that no longer exists (the venv is 3.11);
+  - four errors in `routes_coordinator.py` (`:54`, `:90`, `:276`, `:374`): `firestore` / `FieldFilter` "may be `None`". They are set to `None` when the import fails, and the code then uses `firestore.Query`, `ArrayUnion` and `DELETE_FIELD` without a check, so the fallback protected nothing. `google-cloud-firestore` is pinned in `requirements.txt`.
+
+  `pyrightconfig.json` also said Python 3.9.
+- **What to build:** a valid `pyrefly.toml` (interpreter, excludes for the old copies and generated folders, the two docstring-noise kinds and untyped third-party imports off), Python 3.11 in `pyrightconfig.json`, and a plain import in `routes_coordinator.py`.
+- **Built:**
+  - `pyrefly.toml` rewritten (`python-interpreter-path`, `project-excludes`, `[errors]` as kind = false); Pyrefly now uses `.venv/lib/python3.11/site-packages`.
+  - `routes_coordinator.py:5-8` imports `firestore` and `FieldFilter` directly, with a comment saying why.
+  - `pyrightconfig.json` says 3.11.
+  - `pyrefly==1.4.0` added to `requirements-dev.txt`.
+- **Not done here:** the other 1,044 Pyrefly errors in the project (UPG-102).
+- **Files touched:** `pyrefly.toml`, `pyrightconfig.json`, `routes_coordinator.py`, `requirements-dev.txt`, `tests/test_type_check_config.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** low; behaviour is unchanged where the package is installed, which is everywhere the app runs.
+- **Acceptance criteria:**
+  1. ✅ Test: `pyrefly.toml` is valid TOML with the known keys, and `pyrightconfig.json` says 3.11 [T `tests/test_type_check_config.py::test_the_pyrefly_config_is_valid_toml_with_known_keys`].
+  2. ✅ Test: Pyrefly accepts the config and reports 0 errors in `routes_coordinator.py` [T `::test_pyrefly_accepts_the_config_and_finds_no_errors_in_routes_coordinator`]. Both fail on the old files.
+
+#### UPG-101 — README: the live link, a live-demo button, running it locally, and current facts
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-101: …" on `production-ready` (parent `0d60c3a`) [T]
+- **Problem:** Owner request 2026-10-17. The README had no link to the deployed site. Its test badge (893) and Quality section (20 known failures, 13 October) were out of date. It listed only Docker for deployment, and it had no instructions to run the app or the tests.
+- **Built:**
+  - a "Live demo" button and link at the top, and a "Live demo" section: no login needed to register, Razorpay Test Mode with test cards, the first-visit wake-up, `/health/ready`, and what it runs on;
+  - Cloud Run and Razorpay test-mode badges;
+  - a "Run it locally" section (venv, `requirements-dev.txt`, `.env.example`, `python app.py`, pytest, ruff, Razorpay test keys, never commit `.env`);
+  - Payments, Deployment and Security text matching UPG-94 and UPG-97;
+  - the test numbers from the full run on 17 October, and the 5 known failures (D-9).
+- **Files touched:** `README.md`, `tests/test_readme.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the README links the live URL, has the "Run it locally" section, and its test badge matches the Quality section [T `tests/test_readme.py::test_the_readme_links_the_live_site_and_says_how_to_run_it`].
+
+#### UPG-102 — 1,044 Pyrefly type errors across the app
+- **Status:** TODO
+- **Last verified:** 2026-10-17, after UPG-100 [R]
+- **Problem:** With a working config (UPG-100), `pyrefly check` reports 1,044 errors in the app. The most are in `models_pg.py` (171, mostly SQLAlchemy `Column` typing), the report generators (`generate_*.py`, about 350), the seed scripts and `utils_certificate.py`. By kind: `bad-argument-type` 381, `unbound-name` 197, `missing-attribute` 151, `not-callable` 126, `unsupported-operation` 117. Most are type-checker noise (optional imports set to `None`, SQLAlchemy columns, dynamic proxies), but `unbound-name` and `not-callable` can hide real bugs.
+- **What to build:** go through them file by file:
+  - fix real bugs as their own items;
+  - type the database proxies and the optional imports properly;
+  - adopt SQLAlchemy 2's `Mapped[...]` in `models_pg.py`, or turn off the noise kinds there;
+  - add `pyrefly check` to CI once the count is low.
+- **Effort:** L · **Depends on:** UPG-100 · **Risk:** low per file; never change behaviour to quiet the checker.
+- **Acceptance criteria:**
+  1. Test: `pyrefly check` reports 0 errors in the routes, services and utils files, or each remaining kind is turned off with a reason in `pyrefly.toml`.
 
 ---
 
@@ -3296,3 +3522,10 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-13 | uncommitted (working tree on `4deb9ac`) | UPG-91 | **UPG-91 DONE** at the owner's request: the logo travels inside each email; emailed links open the trusted address the portal is being used on (local, LAN, ngrok in development; BASE_URL and TRUSTED_HOSTS anywhere), forged hosts still get BASE_URL; a refused Gmail login now reports Gmail's reason. 18 new tests; with the email, link, account, admin and registration files, 141 passed (3 admin-users failures are the known order dependence, UPG-62; they pass alone and after the new file). |
 | 2026-10-13 | "UPG-92: …" (parent `2bda4a8`) | UPG-92, UPG-93 | **UPG-92 DONE** at the owner's request: the home page's event popup and the event page now show one content template (`public/_event_content.html`), the popup through `/event/<id>?fragment=1` in a centred scrollable dialog, without the invented "Event Highlights"; registrations shown are counted, not cached; the registration page's Back returns to the page the visitor came from (same site only, remembered across reloads), so from the popup it reopens the popup. 13 new tests in `tests/test_event_popup.py`; with the home, public-links, registration, event-creation, email-links and builder files, 135 passed; HTML-injection check 35 passed (scratch index). Full pytest: 20 failed, 928 passed, 1 skipped: the 19 known (UPG-62) and one new, recorded as UPG-93 (UPG-91's test trips the mail-password scan); not fixed in this change. |
 | 2026-10-13 | "UPG-93: …" (parent `2720e1a`) | UPG-93 | **UPG-93 DONE.** UPG-91's test makes up its dummy mail password when it runs instead of committing a literal; the repo hygiene scan passes again. Full pytest: 19 failed (the known UPG-62 set), 929 passed, 1 skipped. |
+| 2026-10-17 | `da7700a` | UPG-62 | **UPG-62 implementation complete, pending D-9.** Free waitlist promotions now issue signed tickets, promotion emails use the correct generic-task payload, certificate access checks event completion before attendance, and seed-safety covers the unified `seed.py` without scanning Capacitor/VAPID utilities. Full pytest: 937 passed, 1 skipped, 5 failures, all five the documented obsolete Stripe/matchmaker tests awaiting the owner's D-9 decision; ruff clean. |
+| 2026-10-17 | "UPG-94: …" (parent `43f2c00`) | UPG-94, UPG-95, UPG-96 | **UPG-94 added and DONE** from the owner's Razorpay request; the owner chose to go ahead while UPG-30's manual Test Mode run is open. Verify confirms only when Razorpay says the order is paid (authorized payments captured; otherwise 202 and the webhook completes it). The order carries event, registration, payer, a unique receipt and `payment_capture`. The webhook also handles `payment.authorized`, `payment.failed`, `refund.processed` (dashboard refunds cancel the registration and stop the ticket) and `refund.failed`, and refuses plain http in production. The checkout page shows failure, cancellation and a retry on the page instead of `alert()`. New `/admin/payments/orders`. `.env.example` covers Test Mode and the live webhook. 12 new tests in `tests/test_razorpay_flow.py` (10 fail on the old code). Three existing Razorpay fakes gain `order.fetch`; no assertion changed. Full pytest on SQLite: 955 passed, 1 skipped, 5 failed (the known D-9 tests, failing before too); ruff clean. Rule 8: no early pass; none of the shared files (`db_adapter.py`, `models_pg.py`, `services_permission.py`, `tests/conftest.py`) changed. **New:** UPG-95 (clock-based registration IDs can collide and overwrite), UPG-96 (event title in the checkout script). |
+| 2026-10-17 | "UPG-97: …" (parent `ae9f7d2`) | UPG-97, BLK-02, UPG-35 | **UPG-97 added and DONE** from the owner's report (home-page registration asked an existing account to log in). Owner decision: register without logging in and email a cancel link. An existing account's email now registers straight away (free, paid or waitlist). Nobody is logged in, no account is created or changed, and the confirmation and ticket emails carry a signed "Not you? Cancel this registration" link. Its page asks first and cancels once, through the participant's own cancel logic, now shared. Same for the legacy public route. Three tests that pinned "log in first" changed with the owner's approval (BLK-02 criterion 1 and its legacy test, UPG-35 criterion 4; notes added to both items). 7 new tests in `tests/test_guest_registration.py`. Full pytest on SQLite: 962 passed, 1 skipped, 5 failed (known D-9); ruff clean. Rule 8: no early pass (no shared file changed). |
+| 2026-10-17 | "UPG-98: …" (parent `ec0b29a`) | UPG-98 | **UPG-98 added and DONE** (found preparing the Google Cloud deployment). `.dockerignore` now keeps the Firebase key, local database copies, Word documents, `android/`, `functions/` and `dataconnect/` out of the image. 2 new tests. |
+| 2026-10-17 | `a7fa6fd` (deployment; this line in "docs: …") | D-6, UPG-16, UPG-99 | **Google Cloud test deployment** for the owner (account queserateam07@gmail.com, project `saptha-event-261017`, Mumbai): Cloud Run service `saptha` (min 0, max 3 instances, 1 GiB, request timeout 30 min) from image `web:a7fa6fd` built by Cloud Build. Cloud SQL PostgreSQL 16 `saptha-db` (db-f1-micro, 10 GB HDD, zonal, daily backups, reached only through the Cloud SQL connector). Secret Manager holds every secret (new keys and Super Admin password; the Gmail app password and Razorpay **test** keys copied from `.env`). Uploads go to bucket `saptha-event-261017-uploads`. Cloud Scheduler runs the four cron jobs. A budget alert at 50/75/90/100% of the ₹28,796 trial credit. Migrations ran on the empty database (UPG-16 note). Checked [R]: home, events, login, `/health/ready` 200; webhook refuses an unsigned call; cron 200 with the secret and 403 without; Super Admin created by first login, and admin, payments and orders pages 200; public and private uploads work. Signed links don't (new **UPG-99**). Not yet done: the owner's Razorpay Test Mode checkout with the webhook (UPG-30 criterion 4). |
+| 2026-10-17 | "UPG-100: …" (parent `cc334ef`) | UPG-100, UPG-102 | **UPG-100 added and DONE** from the owner's pasted Pyrefly diagnostics: `pyrefly.toml` was unreadable (wrong keys), so Pyrefly fell back to a missing Python 3.9 path and flagged the optional imports. The config is rewritten, `pyrightconfig.json` says 3.11, and `routes_coordinator.py` imports `firestore`/`FieldFilter` directly: 0 errors there. `pyrefly==1.4.0` added to dev requirements. 2 new tests (both fail on the old files). **New UPG-102:** the 1,044 other Pyrefly errors, to work through file by file. Full pytest on SQLite: 966 passed, 1 skipped, 5 failed (known D-9); ruff clean. |
+| 2026-10-17 | "UPG-101: …" (parent `0d60c3a`) | UPG-101 | **UPG-101 added and DONE** at the owner's request. README: a live-demo button and section for https://saptha-967997581752.asia-south1.run.app, Cloud Run and Razorpay test-mode badges, "Run it locally" (venv, `.env.example`, app, tests), Payments, Deployment and Security text matching UPG-94 and UPG-97, and the test numbers of the 17 October run (967 passed, 1 skipped, 5 known failures). 1 new test. |

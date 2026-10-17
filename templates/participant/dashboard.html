@@ -174,6 +174,7 @@
 {% endfor %}
 {% endif %}
 
+{% if config.get('REFERRALS_ENABLED') %}{# hidden until payouts exist (UPG-105) #}
 <section class="panel mb-4" aria-label="Referrals">
   <div class="row align-items-center g-3">
     <div class="col-md-7">
@@ -195,6 +196,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
     <!-- ── ACTIVE TICKETS SECTION ── -->
     <div id="tickets-section">
@@ -453,7 +455,8 @@ function openScoreModal(el) {
   new bootstrap.Modal(document.getElementById('scoreModal')).show();
 }
 
-/* Referral */
+{% if config.get('REFERRALS_ENABLED') %}
+/* Referral (UPG-105: only when REFERRALS_ENABLED) */
 fetch('/participant/referrals/api/stats', { credentials: 'same-origin' })
   .then(function(res) { return res.json(); })
   .then(function(data) {
@@ -484,6 +487,7 @@ function claimPayout() {
   }).then(function(res) { return res.json(); })
     .then(function(data) { if (data.success && window.showToast) showToast(data.message, 'success', 3000); });
 }
+{% endif %}
 
 function openCmdPalette() { if (window.openCommandPalette) window.openCommandPalette(); }
 function togglePushSubscription() { /* push stub, as before */ }

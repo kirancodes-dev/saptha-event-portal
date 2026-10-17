@@ -221,6 +221,10 @@ class Config:
     # =========================================================
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
+    # Referral rewards on the student dashboard: off until a payout process
+    # exists (UPG-105). The referral routes stay; only the section is hidden.
+    REFERRALS_ENABLED = os.environ.get('REFERRALS_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
+
     # =========================================================
     # 7. TWILIO WHATSAPP
     # ─────────────────────────────────────────────────────────

@@ -3196,6 +3196,54 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: `pyrefly check` reports 0 errors in the routes, services and utils files, or each remaining kind is turned off with a reason in `pyrefly.toml`.
 
+
+#### UPG-103 — No way back to the previous page in the installed app
+- **Status:** TODO
+- **Last verified:** 2026-10-17, commit `250252a` [C]
+- **Problem:** Owner report 2026-10-17: "for all pages I can't go back to the previous step". The app installs as a PWA with `"display": "standalone"` (`static/manifest.webmanifest:7`), which has no browser toolbar and so no Back button. The shared app bar supports a back link (`templates/includes/ui.html:18`, `back=`), but no page passes one. Of the pages outside the app bar, these have no way back at all: `participant/certificate.html`, `tickets/digital_wallet.html`, `public/verify_success.html`, `live/leaderboard.html`, `login.html` and `register.html`.
+- **What to build:**
+  - **App bar:** on every page except the role's home (and `/`), a "Back" link. Its link is `utils_links.back_path` (the page on this site the visitor came from, else the role's home). Clicking it goes back in the browser history when the previous page is on this site, and otherwise follows the link.
+  - **The six pages without one:** the same Back link (shared include, hidden when printing).
+- **Effort:** S · **Depends on:** UPG-92 (`back_path`, DONE) · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: an inner page (for example `/participant/my_events`) has the Back link to the referring page on this site, or to the role's home; the role's home page has none; another site's referrer is never used.
+  2. Test: the six pages listed above render a Back link.
+  3. Test: the in-site back handler uses history only for a same-site referrer.
+
+#### UPG-104 — Student dashboard: unstyled on desktop, squeezed on phones, and tabs that don't match the events
+- **Status:** TODO
+- **Last verified:** 2026-10-17, commit `250252a` [R: Playwright at 375 and 1280 px on the demo database]
+- **Problem:** Owner report 2026-10-17: "in the student dashboard all the above buttons are just dummy … some details not properly mobile friendly".
+  - **CSS typo:** `templates/participant/dashboard.html:18` opens `@media (max-width: 767.98px) {` and never closes it. Every rule after it (51 of them: widgets, the attendance donut, ticket cards, QR boxes, past events, discovery) applies only on screens up to 767 px.
+    - On desktop the page is unstyled: the donut fills the width, QR codes are full-width images, and the cards have no layout.
+    - On phones the widget grid gets the desktop three columns, so a card is 495 px wide on a 375 px screen.
+    - It is the only unbalanced style block in the templates [R, a script over every `<style>`].
+  - **Upcoming:** a registration counts as upcoming by its event's status alone (`routes_participant.py:112`). Events whose date has passed (14 and 16 October, "Completed") and cancelled registrations sit under "My active tickets" and the Upcoming tab.
+  - **Category tabs:** the tabs are fixed (Technical, Cultural, Sports) whatever the student registered for. A "Management" event matches none of them, and a tab with nothing behind it empties the page without saying so. Every link on the page works (69 checked).
+- **What to build:**
+  - **CSS:** close the media query so the grid is three columns on desktop and one on phones.
+  - **Upcoming:** an event the student is registered for, not cancelled, dated today or later. Past or cancelled registrations go to past events.
+  - **Tabs from the student's data:** All, Upcoming (n), Past (n), one tab per category the student actually has (n), and Certificates (n) when there are any.
+  - **Empty tabs:** a tab with nothing to show says so.
+  - **Mobile:** no part of the page is wider than a 375 px screen.
+- **Effort:** M · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the dashboard's style block is balanced (no rule is trapped in a media query).
+  2. Test: a registration for a past-dated event and a cancelled registration are not among the upcoming tickets; a future one is.
+  3. Test: the tabs are built from the student's own registrations, with counts (a Management event gets its own tab; no tab for a category they don't have).
+  4. Checked [R] with Playwright at 375 px and 1280 px: the page is no wider than the screen, the donut and QR codes have their sizes, each tab shows its cards or an empty message, and there are no console errors.
+
+#### UPG-105 — Hide the referral section for now
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-105: …" on `production-ready` (parent `250252a`) [T]
+- **Problem:** Owner request 2026-10-17: "for now remove that referral section". The student dashboard shows "Refer students, earn rewards" with a link, counts, "₹ earned" and a Withdraw button (`templates/participant/dashboard.html:177-197`), and calls `/participant/referrals/api/stats` on every load (`:457`). No payout process exists behind it.
+- **What to build:** a `REFERRALS_ENABLED` setting, off by default. When it's off, the section, its script and its API call are not on the page. The referral routes stay in the code for later.
+- **Built:** `config.REFERRALS_ENABLED` (`config.py`, off unless `REFERRALS_ENABLED=true`). `templates/participant/dashboard.html` wraps the referral section and its script (the stats call, copy and withdraw) in `{% if config.get('REFERRALS_ENABLED') %}`. `routes_referrals.py` is unchanged.
+- **Files touched:** `config.py`, `templates/participant/dashboard.html`, `tests/test_student_dashboard.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: by default the dashboard has no referral section and makes no referral API call; with `REFERRALS_ENABLED=true` the section is back. [T `tests/test_student_dashboard.py::test_the_referral_section_is_hidden_unless_switched_on`; fails on the old code]
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3529,3 +3577,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | `a7fa6fd` (deployment; this line in "docs: …") | D-6, UPG-16, UPG-99 | **Google Cloud test deployment** for the owner (account queserateam07@gmail.com, project `saptha-event-261017`, Mumbai): Cloud Run service `saptha` (min 0, max 3 instances, 1 GiB, request timeout 30 min) from image `web:a7fa6fd` built by Cloud Build. Cloud SQL PostgreSQL 16 `saptha-db` (db-f1-micro, 10 GB HDD, zonal, daily backups, reached only through the Cloud SQL connector). Secret Manager holds every secret (new keys and Super Admin password; the Gmail app password and Razorpay **test** keys copied from `.env`). Uploads go to bucket `saptha-event-261017-uploads`. Cloud Scheduler runs the four cron jobs. A budget alert at 50/75/90/100% of the ₹28,796 trial credit. Migrations ran on the empty database (UPG-16 note). Checked [R]: home, events, login, `/health/ready` 200; webhook refuses an unsigned call; cron 200 with the secret and 403 without; Super Admin created by first login, and admin, payments and orders pages 200; public and private uploads work. Signed links don't (new **UPG-99**). Not yet done: the owner's Razorpay Test Mode checkout with the webhook (UPG-30 criterion 4). |
 | 2026-10-17 | "UPG-100: …" (parent `cc334ef`) | UPG-100, UPG-102 | **UPG-100 added and DONE** from the owner's pasted Pyrefly diagnostics: `pyrefly.toml` was unreadable (wrong keys), so Pyrefly fell back to a missing Python 3.9 path and flagged the optional imports. The config is rewritten, `pyrightconfig.json` says 3.11, and `routes_coordinator.py` imports `firestore`/`FieldFilter` directly: 0 errors there. `pyrefly==1.4.0` added to dev requirements. 2 new tests (both fail on the old files). **New UPG-102:** the 1,044 other Pyrefly errors, to work through file by file. Full pytest on SQLite: 966 passed, 1 skipped, 5 failed (known D-9); ruff clean. |
 | 2026-10-17 | "UPG-101: …" (parent `0d60c3a`) | UPG-101 | **UPG-101 added and DONE** at the owner's request. README: a live-demo button and section for https://saptha-967997581752.asia-south1.run.app, Cloud Run and Razorpay test-mode badges, "Run it locally" (venv, `.env.example`, app, tests), Payments, Deployment and Security text matching UPG-94 and UPG-97, and the test numbers of the 17 October run (967 passed, 1 skipped, 5 known failures). 1 new test. |
+| 2026-10-17 | "UPG-105: …" (parent `250252a`) | UPG-103, UPG-104, UPG-105 | Owner report (back navigation, student dashboard, referrals, mobile): UPG-103 (no Back in the installed app), UPG-104 (dashboard CSS trapped in an unclosed media query, upcoming and tabs that don't match the events) and UPG-105 added. **UPG-105 DONE:** the referral section is hidden unless `REFERRALS_ENABLED`. 1 new test. |

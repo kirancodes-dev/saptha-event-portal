@@ -3146,6 +3146,41 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: with key-less credentials (mocked), `signed_url` signs through `service_account_email` and `access_token` instead of raising.
   2. Checked [R] on Cloud Run: a private upload's signed link downloads, and the object's plain URL is refused.
 
+
+#### UPG-100 — The editor's type checker can't read its config, so it reports missing modules and the optional-import fallbacks
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-100: …" on `production-ready` (parent `cc334ef`) [T]
+- **Problem:** Owner report 2026-10-17 (Pyrefly diagnostics pasted from VS Code for `routes_coordinator.py`). `pyrefly.toml` used keys Pyrefly doesn't accept (`python_interpreter`, `[errors] ignore = [...]`), so Pyrefly 1.4 stopped with "TOML parse error … Fatal configuration error" and fell back to defaults. That gave:
+  - "Cannot find module `flask`" / "`google.cloud`" warnings, because it looked in a `.venv/lib/python3.9` that no longer exists (the venv is 3.11);
+  - four errors in `routes_coordinator.py` (`:54`, `:90`, `:276`, `:374`): `firestore` / `FieldFilter` "may be `None`". They are set to `None` when the import fails, and the code then uses `firestore.Query`, `ArrayUnion` and `DELETE_FIELD` without a check, so the fallback protected nothing. `google-cloud-firestore` is pinned in `requirements.txt`.
+
+  `pyrightconfig.json` also said Python 3.9.
+- **What to build:** a valid `pyrefly.toml` (interpreter, excludes for the old copies and generated folders, the two docstring-noise kinds and untyped third-party imports off), Python 3.11 in `pyrightconfig.json`, and a plain import in `routes_coordinator.py`.
+- **Built:**
+  - `pyrefly.toml` rewritten (`python-interpreter-path`, `project-excludes`, `[errors]` as kind = false); Pyrefly now uses `.venv/lib/python3.11/site-packages`.
+  - `routes_coordinator.py:5-8` imports `firestore` and `FieldFilter` directly, with a comment saying why.
+  - `pyrightconfig.json` says 3.11.
+  - `pyrefly==1.4.0` added to `requirements-dev.txt`.
+- **Not done here:** the other 1,044 Pyrefly errors in the project (UPG-102).
+- **Files touched:** `pyrefly.toml`, `pyrightconfig.json`, `routes_coordinator.py`, `requirements-dev.txt`, `tests/test_type_check_config.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** low; behaviour is unchanged where the package is installed, which is everywhere the app runs.
+- **Acceptance criteria:**
+  1. ✅ Test: `pyrefly.toml` is valid TOML with the known keys, and `pyrightconfig.json` says 3.11 [T `tests/test_type_check_config.py::test_the_pyrefly_config_is_valid_toml_with_known_keys`].
+  2. ✅ Test: Pyrefly accepts the config and reports 0 errors in `routes_coordinator.py` [T `::test_pyrefly_accepts_the_config_and_finds_no_errors_in_routes_coordinator`]. Both fail on the old files.
+
+#### UPG-102 — 1,044 Pyrefly type errors across the app
+- **Status:** TODO
+- **Last verified:** 2026-10-17, after UPG-100 [R]
+- **Problem:** With a working config (UPG-100), `pyrefly check` reports 1,044 errors in the app. The most are in `models_pg.py` (171, mostly SQLAlchemy `Column` typing), the report generators (`generate_*.py`, about 350), the seed scripts and `utils_certificate.py`. By kind: `bad-argument-type` 381, `unbound-name` 197, `missing-attribute` 151, `not-callable` 126, `unsupported-operation` 117. Most are type-checker noise (optional imports set to `None`, SQLAlchemy columns, dynamic proxies), but `unbound-name` and `not-callable` can hide real bugs.
+- **What to build:** go through them file by file:
+  - fix real bugs as their own items;
+  - type the database proxies and the optional imports properly;
+  - adopt SQLAlchemy 2's `Mapped[...]` in `models_pg.py`, or turn off the noise kinds there;
+  - add `pyrefly check` to CI once the count is low.
+- **Effort:** L · **Depends on:** UPG-100 · **Risk:** low per file; never change behaviour to quiet the checker.
+- **Acceptance criteria:**
+  1. Test: `pyrefly check` reports 0 errors in the routes, services and utils files, or each remaining kind is turned off with a reason in `pyrefly.toml`.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3477,3 +3512,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-97: …" (parent `ae9f7d2`) | UPG-97, BLK-02, UPG-35 | **UPG-97 added and DONE** from the owner's report (home-page registration asked an existing account to log in). Owner decision: register without logging in and email a cancel link. An existing account's email now registers straight away (free, paid or waitlist). Nobody is logged in, no account is created or changed, and the confirmation and ticket emails carry a signed "Not you? Cancel this registration" link. Its page asks first and cancels once, through the participant's own cancel logic, now shared. Same for the legacy public route. Three tests that pinned "log in first" changed with the owner's approval (BLK-02 criterion 1 and its legacy test, UPG-35 criterion 4; notes added to both items). 7 new tests in `tests/test_guest_registration.py`. Full pytest on SQLite: 962 passed, 1 skipped, 5 failed (known D-9); ruff clean. Rule 8: no early pass (no shared file changed). |
 | 2026-10-17 | "UPG-98: …" (parent `ec0b29a`) | UPG-98 | **UPG-98 added and DONE** (found preparing the Google Cloud deployment). `.dockerignore` now keeps the Firebase key, local database copies, Word documents, `android/`, `functions/` and `dataconnect/` out of the image. 2 new tests. |
 | 2026-10-17 | `a7fa6fd` (deployment; this line in "docs: …") | D-6, UPG-16, UPG-99 | **Google Cloud test deployment** for the owner (account queserateam07@gmail.com, project `saptha-event-261017`, Mumbai): Cloud Run service `saptha` (min 0, max 3 instances, 1 GiB, request timeout 30 min) from image `web:a7fa6fd` built by Cloud Build. Cloud SQL PostgreSQL 16 `saptha-db` (db-f1-micro, 10 GB HDD, zonal, daily backups, reached only through the Cloud SQL connector). Secret Manager holds every secret (new keys and Super Admin password; the Gmail app password and Razorpay **test** keys copied from `.env`). Uploads go to bucket `saptha-event-261017-uploads`. Cloud Scheduler runs the four cron jobs. A budget alert at 50/75/90/100% of the ₹28,796 trial credit. Migrations ran on the empty database (UPG-16 note). Checked [R]: home, events, login, `/health/ready` 200; webhook refuses an unsigned call; cron 200 with the secret and 403 without; Super Admin created by first login, and admin, payments and orders pages 200; public and private uploads work. Signed links don't (new **UPG-99**). Not yet done: the owner's Razorpay Test Mode checkout with the webhook (UPG-30 criterion 4). |
+| 2026-10-17 | "UPG-100: …" (parent `cc334ef`) | UPG-100, UPG-102 | **UPG-100 added and DONE** from the owner's pasted Pyrefly diagnostics: `pyrefly.toml` was unreadable (wrong keys), so Pyrefly fell back to a missing Python 3.9 path and flagged the optional imports. The config is rewritten, `pyrightconfig.json` says 3.11, and `routes_coordinator.py` imports `firestore`/`FieldFilter` directly: 0 errors there. `pyrefly==1.4.0` added to dev requirements. 2 new tests (both fail on the old files). **New UPG-102:** the 1,044 other Pyrefly errors, to work through file by file. Full pytest on SQLite: 966 passed, 1 skipped, 5 failed (known D-9); ruff clean. |

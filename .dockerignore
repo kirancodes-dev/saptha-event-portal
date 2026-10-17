@@ -29,3 +29,16 @@ scratch/
 instance/
 .env.*
 !.env.example
+
+# Credentials and local databases never go into the image (UPG-98)
+serviceAccountKey.json
+**/serviceAccountKey*.json
+**/*.db
+**/*.db-journal
+**/*.sqlite
+**/*.sqlite3
+*.docx
+# Not used by the web app (mobile build, the old functions copy, emulator data)
+android
+functions
+dataconnect

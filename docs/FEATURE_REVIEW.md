@@ -3117,6 +3117,23 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - The new test file can't import on the old code (no `make_cancel_token`); `::test_a_logged_in_registration_has_no_cancel_link` describes behaviour that is unchanged.
   - Full pytest on SQLite (the SQL layer; PostgreSQL 16 not run): **962 passed, 1 skipped, 5 failed**. The 5 failures are the known D-9 Stripe and matchmaker tests; with UPG-94 alone it was 955 passed. ruff clean.
 
+
+#### UPG-98 — The container image would include the Firebase key and local database copies
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-98: …" on `production-ready` (parent `ec0b29a`) [T]
+- **Problem:** Found preparing the Google Cloud deployment, 2026-10-17 [C]. `.dockerignore` excludes `.env` and `saptha_fallback.db` but not:
+  - `serviceAccountKey.json` (a Firebase service-account key; the app only reads it if present, `app.py:275-283`);
+  - `saptha_fallback.backup-2026-10-12-before-demo.db` (a database copy with user data);
+  - other `*.db` files.
+
+  `gcloud run deploy --source` skips them only because it falls back to `.gitignore`. A `docker build`, or Cloud Build with its own config, would put them in the image. The image also carried `android/` (64 MB), `functions/` (26 MB) and `dataconnect/`, none of which the web app imports.
+- **What to build:** exclude credentials, local databases, Word documents and those three folders in `.dockerignore`.
+- **Built:** `.dockerignore` adds `serviceAccountKey.json`, `**/serviceAccountKey*.json`, `**/*.db`, `**/*.db-journal`, `**/*.sqlite`, `**/*.sqlite3`, `*.docx`, `android`, `functions` and `dataconnect`. In production, Firebase (optional; the app runs on PostgreSQL) takes `FIREBASE_CREDENTIALS` from the environment instead.
+- **Files touched:** `.dockerignore`, `tests/test_dockerignore.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the key, `.env` files, local databases, Word documents and the three folders are excluded; the app's code, templates, static files, requirements and migrations are not [T `tests/test_dockerignore.py::test_credentials_and_local_data_stay_out_of_the_image`, `::test_the_app_itself_still_goes_in`; the first fails on the old file].
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3446,3 +3463,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | `da7700a` | UPG-62 | **UPG-62 implementation complete, pending D-9.** Free waitlist promotions now issue signed tickets, promotion emails use the correct generic-task payload, certificate access checks event completion before attendance, and seed-safety covers the unified `seed.py` without scanning Capacitor/VAPID utilities. Full pytest: 937 passed, 1 skipped, 5 failures, all five the documented obsolete Stripe/matchmaker tests awaiting the owner's D-9 decision; ruff clean. |
 | 2026-10-17 | "UPG-94: …" (parent `43f2c00`) | UPG-94, UPG-95, UPG-96 | **UPG-94 added and DONE** from the owner's Razorpay request; the owner chose to go ahead while UPG-30's manual Test Mode run is open. Verify confirms only when Razorpay says the order is paid (authorized payments captured; otherwise 202 and the webhook completes it). The order carries event, registration, payer, a unique receipt and `payment_capture`. The webhook also handles `payment.authorized`, `payment.failed`, `refund.processed` (dashboard refunds cancel the registration and stop the ticket) and `refund.failed`, and refuses plain http in production. The checkout page shows failure, cancellation and a retry on the page instead of `alert()`. New `/admin/payments/orders`. `.env.example` covers Test Mode and the live webhook. 12 new tests in `tests/test_razorpay_flow.py` (10 fail on the old code). Three existing Razorpay fakes gain `order.fetch`; no assertion changed. Full pytest on SQLite: 955 passed, 1 skipped, 5 failed (the known D-9 tests, failing before too); ruff clean. Rule 8: no early pass; none of the shared files (`db_adapter.py`, `models_pg.py`, `services_permission.py`, `tests/conftest.py`) changed. **New:** UPG-95 (clock-based registration IDs can collide and overwrite), UPG-96 (event title in the checkout script). |
 | 2026-10-17 | "UPG-97: …" (parent `ae9f7d2`) | UPG-97, BLK-02, UPG-35 | **UPG-97 added and DONE** from the owner's report (home-page registration asked an existing account to log in). Owner decision: register without logging in and email a cancel link. An existing account's email now registers straight away (free, paid or waitlist). Nobody is logged in, no account is created or changed, and the confirmation and ticket emails carry a signed "Not you? Cancel this registration" link. Its page asks first and cancels once, through the participant's own cancel logic, now shared. Same for the legacy public route. Three tests that pinned "log in first" changed with the owner's approval (BLK-02 criterion 1 and its legacy test, UPG-35 criterion 4; notes added to both items). 7 new tests in `tests/test_guest_registration.py`. Full pytest on SQLite: 962 passed, 1 skipped, 5 failed (known D-9); ruff clean. Rule 8: no early pass (no shared file changed). |
+| 2026-10-17 | "UPG-98: …" (parent `ec0b29a`) | UPG-98 | **UPG-98 added and DONE** (found preparing the Google Cloud deployment). `.dockerignore` now keeps the Firebase key, local database copies, Word documents, `android/`, `functions/` and `dataconnect/` out of the image. 2 new tests. |

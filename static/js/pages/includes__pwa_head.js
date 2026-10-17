@@ -78,12 +78,15 @@
         })
         .catch(function (err) { console.warn('SW registration failed:', err); });
 
+      // Reload only when an existing worker is replaced (an accepted update).
+      // On a first visit the new worker merely takes control of the page the
+      // person already has; reloading then cost a second page load (UPG-72).
+      const hadController = !!navigator.serviceWorker.controller;
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
-        }
+        if (!hadController || refreshing) return;
+        refreshing = true;
+        window.location.reload();
       });
     });
   }

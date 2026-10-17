@@ -2521,13 +2521,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   4. Test: ClubSPOC, EventCoordinator and Judge accounts can set a photo; a signed-out request changes nothing.
 
 #### UPG-72 — The first page view loads twice when the service worker installs
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-72: …" on `production-ready` (parent `d725b2e`) [T]
 - **Problem:** Found during UPG-71 [R, headless Chromium navigation log]. `static/js/pages/includes__pwa_head.js:82-85` reloads the page on `controllerchange`. On a first visit the new service worker claims the page, so the page the person just opened loads a second time. That costs a whole extra page load, and anything typed in the meantime is lost.
 - **What to build:** reload only when an *existing* controller is replaced (an update the person accepted), not when the first one takes control.
+- **Built (2026-10-17):**
+  - `static/js/pages/includes__pwa_head.js` notes whether a service worker already controlled the page when it loaded, and reloads on `controllerchange` only then (an update replacing an existing worker). On a first visit the new worker simply takes control of the page.
+- **Files touched:** `static/js/pages/includes__pwa_head.js`, `tests/test_first_visit_loads_once.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Headless: a first visit to `/profile/` in a fresh browser profile navigates once.
+  1. ✅ Headless: a first visit to `/profile/` in a fresh browser profile navigates once. [T `tests/test_first_visit_loads_once.py::test_a_first_visit_to_the_profile_navigates_once`: the real app on a local port, a fresh Chromium profile, the worker takes control, 1 navigation. The old script navigates twice.]
 
 #### UPG-73 — Event creation that fits every kind of event
 - **Status:** DONE
@@ -3725,3 +3728,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-68: …" (parent `9d7804d`) | UPG-68 | **UPG-68 DONE:** form-builder buttons appear only to those with `edit_event` on the event (hidden from coordinators rather than widening permissions). 1 new test. |
 | 2026-10-17 | "UPG-69: …" (parent `211b96a`) | UPG-69 | **UPG-69 DONE (ticket part; certificate verification deferred):** the database layer exposes `lead_email`/`lead_name`/`lead_phone` for registrations from their columns, so a seeded registration's owner opens their ticket and sees their name. 1 new test. Full pytest: 1002 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-70: …" (parent `24d6eec`) | UPG-70 | **UPG-70 DONE:** the verification pages' confetti runs without a worker, so the CSP logs no violation (CSP unchanged). 2 new tests. |
+| 2026-10-17 | "UPG-72: …" (parent `d725b2e`) | UPG-72 | **UPG-72 DONE:** a first visit no longer reloads when the service worker takes control (only an accepted update does). 1 new test. |

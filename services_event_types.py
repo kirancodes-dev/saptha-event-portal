@@ -654,3 +654,31 @@ def form_values(event: dict) -> Dict[str, Any]:
         if (ev.get('form_schema') or {}).get(flag):
             values[flag.replace('require_', 'req_')] = 'on'
     return values
+
+
+# ── The catalogue preset of a new event (the wizard and the API, UPG-82) ────
+PRESET_KEYS = ('workflow_config', 'evaluation_config', 'notification_rules', 'certificate_config')
+BASE_FORM_FIELDS = [
+    {'id': 'full_name', 'type': 'text', 'label': 'Full Name', 'placeholder': 'Enter your full name', 'required': True, 'options': [], 'help_text': ''},
+    {'id': 'email', 'type': 'email', 'label': 'Email Address', 'placeholder': 'you@example.com', 'required': True, 'options': [], 'help_text': ''},
+    {'id': 'phone', 'type': 'tel', 'label': 'Phone Number', 'placeholder': '10-digit mobile', 'required': True, 'options': [], 'help_text': ''},
+    {'id': 'usn', 'type': 'text', 'label': 'USN / Roll Number', 'placeholder': 'e.g. 1SN21CS001', 'required': False, 'options': [], 'help_text': ''},
+]
+
+
+def apply_preset(event_data: Dict[str, Any], spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Copy the type's catalogue preset settings (workflow, judging,
+    notifications, certificates; never its prices) onto a new event, and return
+    the preset's registration form fields, or [] when it has none."""
+    if not spec.get('preset'):
+        return []
+    from services_templates import TemplateService
+    preset = TemplateService.get_template(spec['preset'])
+    if not preset:
+        return []
+    for key in PRESET_KEYS:
+        if preset.get(key):
+            event_data[key] = preset[key]
+    if preset.get('form_config') and not spec.get('fest'):
+        return BASE_FORM_FIELDS + [dict(f, id=f.get('id') or f.get('field_name')) for f in preset['form_config']]
+    return []

@@ -2775,13 +2775,20 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: with a stale counter (645), the admin dashboard's chart and the SPOC dashboard's breakdown show the real 5 [T `tests/test_analytics_and_leaderboards.py::test_dashboards_count_registrations_not_the_cached_counter`]; the analytics page counts real registrations and paid revenue [T `::test_admin_analytics_counts_real_registrations_and_filters`, `::test_build_counts_registrations_not_the_cached_counter_and_compares_periods`].
 
 #### UPG-82 — The API creates live events that skip the draft and review flow
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-82: …" on `production-ready` (parent `1b65815`) [T]
 - **Problem:** Split from UPG-78 [C]. `POST /api/v1/events` (`routes_api_v1.py:270-310`) saves `status: 'active'` from a few fields, and `POST /api/v1/events/from-template` goes through `services_event.create_event` (`:165`, also `active`). Neither uses `services_event_types.parse_form` or starts as a draft. Changing them is API behaviour, so it needs the owner's decision.
 - **What to build:** either validate API input with `parse_form` and save a draft, or remove the endpoints if nothing uses them.
+- **Built (2026-10-17):**
+  - **Owner decision 2026-10-17:** API-created events start as drafts and go through the same review as the web form.
+  - **Checks and draft:** `routes_api_v1._save_api_draft` runs the API body through the wizard's own `services_event_types.parse_form` and refuses with its errors (`400 invalid_event`, every message in `details.errors`). Otherwise it saves a **draft** owned by the caller (`spoc_id`, organizer from the token, `source: "api"`, the wizard's warnings), so it shows in their SPOC console for review and publishing.
+  - **Old body keys** (`fee`, `deadline`, `min_team_size`, `max_team_size`, `capacity`, `is_team_event`) map onto the wizard's names, and the registration deadline defaults to the event date as before.
+  - **From template:** `POST /api/v1/events/from-template` picks the event type whose catalogue preset (or key) is the template, unknown templates get `400 invalid_template`, and the rest goes through the same path.
+  - **Shared preset step:** `services_event_types.apply_preset` (the preset's workflow, judging, notification and certificate settings, never its prices, plus its registration form) is used by the web wizard and the API alike; the wizard's behaviour is unchanged.
+- **Files touched:** `routes_api_v1.py`, `services_event_types.py`, `routes_spoc.py`, `tests/test_api_event_drafts.py` (new).
 - **Effort:** S–M · **Depends on:** UPG-73, owner decision · **Risk:** medium (API clients).
 - **Acceptance criteria:**
-  1. Test: an event created through the API starts as a draft and is refused with the same errors as the wizard.
+  1. ✅ Test: an event created through the API starts as a draft and is refused with the same errors as the wizard. [T `tests/test_api_event_drafts.py::test_an_api_event_starts_as_a_draft_owned_by_the_caller` (also: the owner opens its review page; it isn't public), `::test_the_api_refuses_with_the_wizards_own_errors` ×4 (the API's errors equal `parse_form`'s), `::test_from_template_is_a_draft_too_and_unknown_templates_are_refused`. All fail on the old code; the existing template test in `tests/test_workflow_engine.py` passes unchanged.]
 
 
 #### UPG-83 — Analytics pages that are correct, comparable and adjustable
@@ -3695,3 +3702,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-96: …" (parent `e070b2e`) | UPG-96 | **UPG-96 DONE:** the checkout script receives the event title as a JSON literal. 1 new test. |
 | 2026-10-17 | "UPG-62: …" (parent `858be1e`) | UPG-62 | **UPG-62 DONE.** D-9 decided by the owner: deleted `test_global_scale.py::test_stripe_create_session_simulation_fallback`, `::test_stripe_success_redirection_and_registration`, `test_next_gen.py::test_matchmaker_page_requires_auth`, `::test_matchmaker_endpoint_calculates_jaccard_matches` and `::test_matchmaker_message_exchange_simulates_realtime_replies` (Stripe removed and matchmaker hidden in UPG-14). Full pytest: 984 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-65: …" (parent `6c356b4`) | UPG-65 | **UPG-65 DONE** (owner: remove or hide every made-up figure and simulated feature; settles D-8). Demo pages behind `DEMO_PAGES_ENABLED` (off). Made-up figures removed. Computed service status. No fake NFC delay or 20 points. Event-page defaults not invented. Chatbot contact from `SUPPORT_EMAIL`. Found and fixed: the Zoho fallback that pasted the prompt (with the student's details) into the chat, and the fake 96% judge matches. Three existing tests updated to the instruction (named in the item). Certificate pages' address deferred. **New UPG-108.** Full pytest: 992 passed, 1 skipped, 0 failed. |
+| 2026-10-17 | "UPG-82: …" (parent `1b65815`) | UPG-82 | **UPG-82 DONE** (owner decision: API events are drafts with the wizard's review). Both API create endpoints run `parse_form` and save drafts owned by the caller; the preset step is shared with the wizard. 6 new tests. Full pytest: 998 passed, 1 skipped, 0 failed. |

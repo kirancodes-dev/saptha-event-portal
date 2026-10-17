@@ -298,14 +298,8 @@ def create_event():
                     event_data['venue'] = event_data['room_name']
 
         # The catalogue preset's workflow, judging and certificate settings; never its prices
-        preset = None
-        if spec['preset']:
-            from services_templates import TemplateService
-            preset = TemplateService.get_template(spec['preset'])
-        if preset:
-            for key in ('workflow_config', 'evaluation_config', 'notification_rules', 'certificate_config'):
-                if preset.get(key):
-                    event_data[key] = preset[key]
+        from services_event_types import apply_preset
+        preset_fields = apply_preset(event_data, spec)
 
         _, new_ref = db.collection('events').add(event_data)
         new_event_id = new_ref.id
@@ -327,15 +321,8 @@ def create_event():
             source = 'wizard'
         except json.JSONDecodeError:
             form_fields = []
-        if not (isinstance(form_fields, list) and form_fields) and preset and preset.get('form_config') \
-                and not spec['fest']:
-            base_fields = [
-                {'id': 'full_name', 'type': 'text', 'label': 'Full Name', 'placeholder': 'Enter your full name', 'required': True, 'options': [], 'help_text': ''},
-                {'id': 'email', 'type': 'email', 'label': 'Email Address', 'placeholder': 'you@example.com', 'required': True, 'options': [], 'help_text': ''},
-                {'id': 'phone', 'type': 'tel', 'label': 'Phone Number', 'placeholder': '10-digit mobile', 'required': True, 'options': [], 'help_text': ''},
-                {'id': 'usn', 'type': 'text', 'label': 'USN / Roll Number', 'placeholder': 'e.g. 1SN21CS001', 'required': False, 'options': [], 'help_text': ''},
-            ]
-            form_fields = base_fields + [dict(f, id=f.get('id') or f.get('field_name')) for f in preset['form_config']]
+        if not (isinstance(form_fields, list) and form_fields) and preset_fields:
+            form_fields = preset_fields
             source = 'template'
         if isinstance(form_fields, list) and form_fields:
             db.collection('event_forms').document(new_event_id).set({

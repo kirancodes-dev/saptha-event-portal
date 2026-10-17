@@ -13,9 +13,10 @@ import sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PATTERNS = ['seed_*.py', 'saptha_full_seed.py', 'demo_reset.py', 'setup_*.py', 'init_*.py',
+PATTERNS = ['seed.py', 'seed_*.py', 'saptha_full_seed.py', 'demo_reset.py', 'setup_*.py', 'init_*.py',
             'fix_superadmin.py', 'reset_system.py', 'wipe_data.py', 'delete_data.py',
-            'scripts/*.py', 'scratch/seed_*.py', 'scratch/set_*password*.py']
+            'scripts/seed_*.py', 'scripts/wipe_firestore.py',
+            'scratch/seed_*.py', 'scratch/set_*password*.py']
 SKIP = {'seed_safety.py'}
 
 
@@ -61,7 +62,10 @@ def _run(script, extra_env, *args):
 
 
 def test_there_are_scripts_to_check():
-    assert len(SCRIPTS) >= 25, SCRIPTS
+    assert len(SCRIPTS) == 19, SCRIPTS
+    assert 'seed.py' in SCRIPTS
+    assert 'scripts/configure_capacitor.py' not in SCRIPTS
+    assert 'scripts/generate_vapid.py' not in SCRIPTS
 
 
 @pytest.mark.parametrize('script', SCRIPTS)
@@ -179,7 +183,7 @@ def _run_firestore(script, env, *args):
 
 
 def test_there_are_firestore_scripts_to_check():
-    assert len(FIRESTORE_SCRIPTS) == 10, FIRESTORE_SCRIPTS
+    assert len(FIRESTORE_SCRIPTS) == 6, FIRESTORE_SCRIPTS
 
 
 @pytest.mark.parametrize('script', FIRESTORE_SCRIPTS)

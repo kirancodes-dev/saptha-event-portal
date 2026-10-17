@@ -228,14 +228,15 @@ def view_certificate(reg_id):
     if not is_owner:
         flash("Unauthorised access.", "danger")
         return redirect('/participant/dashboard')
-    if reg_data.get('attendance') != 'Present':
-        flash("Certificates are only issued to students who attended.", "warning")
-        return redirect('/participant/dashboard')
 
     event_data = db.collection('events').document(reg_data['event_id']).get().to_dict() or {}
     event_status = (event_data.get('status') or '').lower()
     if event_status not in ('completed', 'certified'):
         flash("Certificates are only available once the event is completed.", "warning")
+        return redirect('/participant/dashboard')
+
+    if reg_data.get('attendance') != 'Present':
+        flash("Certificates are only issued to students who attended.", "warning")
         return redirect('/participant/dashboard')
 
     rules = (event_data.get('workflow_config') or {}).get('rules', {})

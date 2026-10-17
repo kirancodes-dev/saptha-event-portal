@@ -80,10 +80,14 @@ def send_reminder_email_task(self, to_email: str, name: str, event_title: str,
     name='tasks.email_tasks.send_generic_email_task',
 )
 def send_generic_email_task(self, to_email: str, subject: str,
-                             body_text: str, body_html: str = ''):
+                             body_text: str = '', body_html: str = '',
+                             body: str = ''):
     """Generic fire-and-forget email for announcements, password resets, etc."""
     try:
         from utils_email import _send
+        # ``body`` is retained as a compatibility alias for older callers;
+        # new callers should use the explicit ``body_text`` name.
+        body_text = body_text or body
         html = body_html or f"<pre style='font-family:sans-serif'>{body_text}</pre>"
         _send(to_email, subject, html)
         logger.info("generic email sent to %s subject=%r", to_email, subject)

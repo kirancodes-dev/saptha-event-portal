@@ -54,7 +54,7 @@ except ImportError:
     def load_dotenv(*args, **kwargs): pass
 
 from config import Config, check_production_settings
-from utils import ROLE_REDIRECTS  # single source of truth
+from utils import ROLE_REDIRECTS, log_action  # single source of truth
 
 # =========================================================
 # WERKZEUG SCRYPT FIX — macOS Python 3.9 uses LibreSSL which
@@ -1320,6 +1320,30 @@ def verify_lookup():
 # =========================================================
 # REQUEST LOGGING MIDDLEWARE
 # =========================================================
+@app.before_request
+def end_sessions_of_deactivated_accounts():
+    """Every request re-checks the signed-in account: a Super Admin's
+    deactivation ends sessions that are already open, not just the next login
+    (UPG-76). One user lookup per request; static files and health checks skip it."""
+    email = session.get('user_id')
+    if not email or request.path.startswith('/static/') or request.path in ('/health', '/health/ready', '/favicon.ico'):
+        return None
+    try:
+        doc = db.collection('users').document(str(email).lower()).get()
+        user = (doc.to_dict() or {}) if doc.exists else {}
+    except Exception:
+        logger.exception("Account check failed for %s", email)
+        return None   # a database hiccup shouldn't sign everyone out
+    if user.get('is_active') is not False:
+        return None
+    session.clear()
+    log_action(db, "SESSION_ENDED_DEACTIVATED", f"Open session of deactivated account {email} ended")
+    if request.path.startswith('/api/') or request.accept_mimetypes.best == 'application/json':
+        return jsonify({'error': 'account_deactivated'}), 401
+    flash('This account has been deactivated. Contact the portal administrator.', 'danger')
+    return redirect('/login')
+
+
 @app.before_request
 def log_request():
     """Log all incoming requests"""

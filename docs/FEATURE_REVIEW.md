@@ -2650,13 +2650,18 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **To test later:** the full pytest.
 
 #### UPG-76 — A deactivated account keeps its open session
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-76: …" on `production-ready` (parent `f1426f4`) [T]
 - **Problem:** Found building UPG-75 [C]. Deactivating an account (UPG-75) is checked only at login. A session that's already open (up to its lifetime, or 30 days with "remember me") keeps working, because `login_required` (`utils.py`) doesn't look at the account again.
 - **What to build:** on deactivation, delete that user's server-side sessions (the `sessions` table), or have `login_required` refuse a session whose account is inactive (cached per request).
+- **Built (2026-10-17):**
+  - `app.end_sessions_of_deactivated_accounts` (`app.py`, a `before_request` hook) looks up the signed-in account on every request except static files and health checks. If it is deactivated (`is_active` false), the session is cleared and audit-logged (`SESSION_ENDED_DEACTIVATED`).
+    - Pages are sent to `/login` with "This account has been deactivated…"; JSON and `/api/` callers get `401 {"error": "account_deactivated"}`.
+    - A failed lookup lets the request through, so a database hiccup can't sign everyone out.
+- **Files touched:** `app.py`, `tests/test_deactivated_sessions.py` (new).
 - **Effort:** S · **Depends on:** UPG-75 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: a logged-in user who is then deactivated is sent to the login page on their next request.
+  1. ✅ Test: a logged-in user who is then deactivated is sent to the login page on their next request. [T `tests/test_deactivated_sessions.py::test_an_open_session_ends_when_the_account_is_deactivated`, through the admin's real deactivate action; also `::test_json_callers_get_401_and_active_accounts_are_untouched`]
 
 #### UPG-77 — The admin's announcement email puts the message into HTML unescaped
 - **Status:** TODO
@@ -3635,3 +3640,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-107: …" (parent `95a5b3f`) | UPG-107 | **UPG-107 added and DONE** at the owner's request: Google Search Console's ownership file is served at `/google8e55d49885709546.html`. 1 new test. |
 | 2026-10-17 | `fca39ec` (redeploy; this line in "docs: …") | UPG-103 to UPG-107 | **Redeployed** to Cloud Run: image `web:fca39ec` built by Cloud Build, revision `saptha-00004-q58`. No schema change since `a7fa6fd`, so no migration run; the migration job now points at the new image. Checked [R]: home, events, login, `/health/ready` and the Google verification file 200; the floating Back on `/login`; no errors logged by the new revision. |
 | 2026-10-17 | "UPG-95: …" (parent `72804cf`) | UPG-95 | **UPG-95 DONE** (owner's run, Part 1): registration and waitlist IDs come from `uuid4` (`REG-`/`WL-` + 20 hex), and new registrations are written only if the ID is free. 3 new tests. Full pytest on SQLite: 984 passed, 1 skipped, 5 failed (the D-9 tests, deleted in UPG-62). |
+| 2026-10-17 | "UPG-76: …" (parent `f1426f4`) | UPG-76 | **UPG-76 DONE:** every request re-checks the signed-in account; a deactivated account's open session ends (redirect to login, or 401 for JSON), audit-logged. 2 new tests. |

@@ -159,6 +159,20 @@ def upload_private(data: bytes, path: str, content_type: str) -> str:
     return key
 
 
+def _keyless_signer():
+    """{service_account_email, access_token} when the default credentials have
+    no private key (Cloud Run, GCE), so a URL can be signed through IAM's
+    signBlob; None when they can sign locally. Needs the runtime service
+    account to hold roles/iam.serviceAccountTokenCreator on itself (UPG-99)."""
+    import google.auth
+    from google.auth.transport.requests import Request
+    credentials, _ = google.auth.default()
+    if hasattr(credentials, 'sign_bytes') and getattr(credentials, 'signer', None) is not None:
+        return None
+    credentials.refresh(Request())
+    return {'service_account_email': credentials.service_account_email, 'access_token': credentials.token}
+
+
 def signed_url(key: str, expires_in: int = SIGNED_URL_SECONDS) -> str:
     """A download link for a private object that stops working after expires_in seconds."""
     storage_type = _storage_type()
@@ -169,7 +183,11 @@ def signed_url(key: str, expires_in: int = SIGNED_URL_SECONDS) -> str:
         import datetime
         from google.cloud import storage
         blob = storage.Client().bucket(os.environ['GCS_BUCKET_NAME']).blob(key)
-        return blob.generate_signed_url(expiration=datetime.timedelta(seconds=expires_in), version='v4')
+        expiration = datetime.timedelta(seconds=expires_in)
+        signer = _keyless_signer()
+        if signer:   # Cloud Run: no private key, so sign through IAM signBlob (UPG-99)
+            return blob.generate_signed_url(expiration=expiration, version='v4', **signer)
+        return blob.generate_signed_url(expiration=expiration, version='v4')
     if _production():
         raise StorageError("Local file storage is for development only.")
     base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')

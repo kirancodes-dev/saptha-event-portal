@@ -3219,13 +3219,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### UPG-99 — Signed download links fail on Cloud Run's default credentials
-- **Status:** TODO
-- **Last verified:** 2026-10-17, commit `a7fa6fd`, Google Cloud test deployment [R]
+- **Status:** DONE (criterion 2, the check on Cloud Run, waits for the next deploy; nothing is deployed in this run)
+- **Last verified:** 2026-10-17, commit "UPG-99: …" on `production-ready` (parent `34b8cde`) [T]
 - **Problem:** Found in the test deployment [R]. `utils_storage.signed_url` (`utils_storage.py:162`) calls `blob.generate_signed_url(...)` with the default credentials. On Cloud Run those are compute-engine credentials with no private key, so it raises `AttributeError: you need a private key to sign credentials`. The only caller is `tasks/export_tasks.py:187-188`, which nothing queues (UPG-14's list), so no feature fails today. Public uploads (`upload_file`, `make_public`) and private uploads work.
 - **What to build:** sign through the IAM signBlob API when the credentials have no key: pass `service_account_email` and `access_token` from refreshed default credentials to `generate_signed_url`, and grant the runtime service account `roles/iam.serviceAccountTokenCreator` on itself. Document the role in `docs/DEPLOY.md`.
+- **Built (2026-10-17):**
+  - `utils_storage._keyless_signer`: when the default credentials can't sign locally (no private key, as on Cloud Run), it refreshes them and returns their `service_account_email` and `access_token`. `signed_url` passes those to `generate_signed_url`, which signs through IAM signBlob. Credentials with a key still sign locally.
+  - `docs/DEPLOY.md` gains "Uploads and private file links": a fine-grained bucket, `roles/storage.objectAdmin`, and `roles/iam.serviceAccountTokenCreator` for the runtime service account on itself.
+- **Files touched:** `utils_storage.py`, `docs/DEPLOY.md`, `tests/test_signed_urls.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: with key-less credentials (mocked), `signed_url` signs through `service_account_email` and `access_token` instead of raising.
+  1. ✅ Test: with key-less credentials (mocked), `signed_url` signs through `service_account_email` and `access_token` instead of raising. [T `tests/test_signed_urls.py::test_keyless_credentials_sign_through_iam` (fails on the old code), `::test_credentials_with_a_key_still_sign_locally`]
   2. Checked [R] on Cloud Run: a private upload's signed link downloads, and the object's plain URL is refused.
 
 
@@ -3734,3 +3738,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-70: …" (parent `24d6eec`) | UPG-70 | **UPG-70 DONE:** the verification pages' confetti runs without a worker, so the CSP logs no violation (CSP unchanged). 2 new tests. |
 | 2026-10-17 | "UPG-72: …" (parent `d725b2e`) | UPG-72 | **UPG-72 DONE:** a first visit no longer reloads when the service worker takes control (only an accepted update does). 1 new test. |
 | 2026-10-17 | "UPG-64: …" (parent `c9353ba`) | UPG-64 | **UPG-64 DONE:** the six never-rendered templates are deleted (the deletions went into `24d6eec` by mistake), and a test keeps every template reachable. 1 new test. |
+| 2026-10-17 | "UPG-99: …" (parent `34b8cde`) | UPG-99 | **UPG-99 DONE** (Cloud Run check at the next deploy): signed links sign through IAM signBlob when the credentials have no key; DEPLOY.md documents the roles. 2 new tests. Full pytest: 1008 passed, 1 skipped, 0 failed. |

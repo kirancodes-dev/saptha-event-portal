@@ -51,6 +51,23 @@ new revision has written data the old schema can't hold).
 `alembic revision --autogenerate -m "what changed"` against a database at head,
 read the generated file, and commit it with the code.
 
+## Uploads and private file links (Cloud Storage)
+
+Set `STORAGE_TYPE=gcs` and `GCS_BUCKET_NAME` to a bucket with **fine-grained**
+access control (not uniform bucket-level access): public files are made public
+one by one, private ones stay private. Give the runtime service account
+`roles/storage.objectAdmin` on the bucket.
+
+Private files are shared through signed links. On Cloud Run the default
+credentials have no private key, so the app signs through IAM's signBlob
+(UPG-99); the runtime service account must be allowed to sign as itself:
+
+```bash
+SA=<project-number>-compute@developer.gserviceaccount.com
+gcloud iam service-accounts add-iam-policy-binding "$SA" \
+  --member="serviceAccount:$SA" --role=roles/iam.serviceAccountTokenCreator
+```
+
 ## Scheduled jobs
 
 Reminders, event lifecycle changes and clean-up run on a schedule.

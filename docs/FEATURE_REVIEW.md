@@ -2469,13 +2469,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: `/verify/<present reg_id>` and its preview show the lead's name.
 
 #### UPG-70 — The confetti library's worker is blocked by the CSP
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-70: …" on `production-ready` (parent `24d6eec`) [T]
 - **Problem:** Found during UPG-63 [R]. `canvas-confetti` on the certificate verification pages creates a `blob:` worker, and the CSP's `script-src`/`worker-src` refuse it. The browser console shows a CSP violation on every successful verification. The celebration is decorative; UPG-63 brands it and skips it for reduced motion.
 - **What to build:** pass `useWorker: false` (frontend), allow `worker-src blob:` (CSP change), or drop the effect.
+- **Built (2026-10-17):**
+  - Both verification scripts (`static/js/pages/public__verify_success.js`, `public__verify_certificate.js`) create their own confetti instance with `confetti.create(null, { resize: true, useWorker: false })`. The library's default instance starts a `blob:` worker, which the CSP refuses; this one draws on the page. The CSP is unchanged.
+  - `tests/headless.py` gains `stand_ins` (an outside file replaced offline) and `live_server`/`navigations_on_first_visit` (used by UPG-72).
+- **Files touched:** `static/js/pages/public__verify_success.js`, `static/js/pages/public__verify_certificate.js`, `tests/headless.py`, `tests/test_confetti_csp.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Headless: `/verify/<valid id>` logs no CSP violation.
+  1. ✅ Headless: `/verify/<valid id>` logs no CSP violation. [T `tests/test_confetti_csp.py::test_the_verification_confetti_needs_no_worker_under_the_apps_csp` ×2: headless Chromium, the app's real CSP header, canvas-confetti replaced offline by a stand-in that starts a blob worker unless told not to. Both fail on the old scripts with a CSP violation.]
 
 #### UPG-71 — A profile photo for every role
 - **Status:** DONE (full pytest 2026-10-13: 892 passed, 1 skipped, 21 failed = the 19 UPG-62 failures, UPG-90's time-of-day failure and one order-dependent new home test, since fixed; no regression from this item)
@@ -3720,3 +3724,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-67: …" (parent `dfcdb48`) | UPG-67 | **UPG-67 DONE:** the locked coordinator scanner no longer starts the camera, so it logs no error. New `tests/headless.py` for headless page checks. 2 new tests. |
 | 2026-10-17 | "UPG-68: …" (parent `9d7804d`) | UPG-68 | **UPG-68 DONE:** form-builder buttons appear only to those with `edit_event` on the event (hidden from coordinators rather than widening permissions). 1 new test. |
 | 2026-10-17 | "UPG-69: …" (parent `211b96a`) | UPG-69 | **UPG-69 DONE (ticket part; certificate verification deferred):** the database layer exposes `lead_email`/`lead_name`/`lead_phone` for registrations from their columns, so a seeded registration's owner opens their ticket and sees their name. 1 new test. Full pytest: 1002 passed, 1 skipped, 0 failed. |
+| 2026-10-17 | "UPG-70: …" (parent `24d6eec`) | UPG-70 | **UPG-70 DONE:** the verification pages' confetti runs without a worker, so the CSP logs no violation (CSP unchanged). 2 new tests. |

@@ -38,9 +38,10 @@ def _serve_static(route):
     return route.abort()
 
 
-def page_problems(html, path='/', csp=None, wait_ms=500):
+def page_problems(html, path='/', csp=None, wait_ms=500, stand_ins=None):
     """Load `html` as if served at `path` (with the given CSP header, if any);
-    return (page errors, CSP violations, navigations)."""
+    return (page errors, CSP violations, navigations). `stand_ins` maps a URL
+    substring to (body, content type) for an outside file the test replaces."""
     p, browser = chromium()
     try:
         page = browser.new_page()
@@ -56,11 +57,53 @@ def page_problems(html, path='/', csp=None, wait_ms=500):
                 if csp:
                     headers['Content-Security-Policy'] = csp
                 return route.fulfill(status=200, body=html, headers=headers)
+            for needle, (body, ctype) in (stand_ins or {}).items():
+                if needle in route.request.url:
+                    return route.fulfill(status=200, body=body, content_type=ctype)
             return _serve_static(route)
         page.route('**/*', handle)
         page.goto(ORIGIN + path, wait_until='load')
         page.wait_for_timeout(wait_ms)
         return errors, csp_violations, navigations
+    finally:
+        browser.close()
+        p.stop()
+
+
+class live_server:
+    """Serve the test app on 127.0.0.1 (a free port) in a thread, for checks
+    that need real requests, such as a service worker installing (UPG-72)."""
+    def __init__(self, flask_app):
+        from werkzeug.serving import make_server
+        self.server = make_server('127.0.0.1', 0, flask_app, threaded=True)
+        self.url = f'http://127.0.0.1:{self.server.server_port}'
+
+    def __enter__(self):
+        import threading
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        return self
+
+    def __exit__(self, *exc):
+        self.server.shutdown()
+        self.thread.join(timeout=5)
+
+
+def navigations_on_first_visit(url, cookies=(), settle_ms=2500):
+    """Open `url` in a fresh browser profile and count main-frame navigations
+    while the page settles (a service worker installs and takes control)."""
+    p, browser = chromium()
+    try:
+        context = browser.new_context()
+        if cookies:
+            context.add_cookies(list(cookies))
+        page = context.new_page()
+        navigations = []
+        page.on('framenavigated', lambda f: navigations.append(f.url) if f == page.main_frame else None)
+        page.goto(url, wait_until='load')
+        page.wait_for_timeout(settle_ms)
+        controlled = page.evaluate('!!(navigator.serviceWorker && navigator.serviceWorker.controller)')
+        return navigations, controlled
     finally:
         browser.close()
         p.stop()

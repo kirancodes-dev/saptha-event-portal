@@ -2446,8 +2446,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: for each role that sees the button, the link answers 200; roles that can't use it don't see it. [T `tests/test_form_builder_links.py::test_builder_links_are_shown_only_to_those_who_can_open_them`: the assigned coordinator sees none (and gets 403 at the builder); every link the owner SPOC and the Super Admin are shown answers 200. Fails on the old code.]
 
 #### UPG-69 — The legacy certificate check and the digital ticket lose the lead's name and email on the SQL adapter
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a` [R, SQLite dev database from `seed.py --all`]
+- **Status:** DONE for the ticket part (certificate verification deferred)
+- **Last verified:** 2026-10-17, commit "UPG-69: …" on `production-ready` (parent `211b96a`) [T]
 - **Problem:** Found during UPG-63. `registrations` `document(id).get().to_dict()` returns `leadEmail` and `leadName` but not `lead_email` and `lead_name`. As a result:
   - `/ticket/<reg_id>` sends the student who owns the registration back to the dashboard with "Unauthorised — this is not your ticket." The check is `routes_ticket.py:243`, `is_lead = reg.get('lead_email') == user_email`.
   - `/verify/<reg_id>` greets an empty name.
@@ -2457,9 +2457,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - The legacy `/verify/<reg_id>` route (`routes_verification.py:36-57`) checks attendance only, with no signature. The page now says exactly that (UPG-63).
   - `services_certificate.py:46-50` documents `generate_verification_hash` as HMAC-SHA256, but it is a truncated SHA-256 of the payload with the secret appended.
 - **What to build:** return the snake_case keys from the adapter for registrations, or read both forms in the routes. Decide whether the legacy registration-ID verification should stay. Make the certificate hash a real HMAC, or correct its documentation.
+- **Built (2026-10-17):**
+  - **Ticket part (the brief's scope):** `db_adapter.SQLDocumentReference._record_to_dict` always exposes `lead_email`, `lead_name` and `lead_phone` for registrations, from their columns. Before, those snake_case keys existed only in the stored document, so rows written straight into the table (`seed.py`) lost them, and the ticket's owner check (`routes_ticket.py`, `is_lead`) failed.
+  - **Re-checked [R]:** on a fresh database an app-written registration already carried both forms; the fault was seeded rows only, which the test reproduces.
+  - **Deferred with certificates (out of scope for this run):** `/verify/<reg_id>`, its preview's name, the legacy attendance-only verification, and the certificate hash's HMAC documentation (criterion 2).
+  - `db_adapter.py` is shared by many items, so rule 8's early re-verification ran; see the changelog.
+- **Files touched:** `db_adapter.py`, `tests/test_ticket_owner_seeded.py` (new).
 - **Effort:** M · **Depends on:** none · **Risk:** medium (touches the adapter that many routes use).
 - **Acceptance criteria:**
-  1. Test: on SQLite and PostgreSQL, a student opens `/ticket/<own reg_id>` (200) and sees their name.
+  1. ✅ Test: on SQLite and PostgreSQL, a student opens `/ticket/<own reg_id>` (200) and sees their name. [T on SQLite: `tests/test_ticket_owner_seeded.py::test_a_student_opens_their_seeded_registrations_ticket_and_sees_their_name` (a row inserted without its stored document; another student is still refused). Fails on the old code. PostgreSQL: in the Part 3 release check.]
   2. Test: `/verify/<present reg_id>` and its preview show the lead's name.
 
 #### UPG-70 — The confetti library's worker is blocked by the CSP
@@ -3713,3 +3719,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-82: …" (parent `1b65815`) | UPG-82 | **UPG-82 DONE** (owner decision: API events are drafts with the wizard's review). Both API create endpoints run `parse_form` and save drafts owned by the caller; the preset step is shared with the wizard. 6 new tests. Full pytest: 998 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-67: …" (parent `dfcdb48`) | UPG-67 | **UPG-67 DONE:** the locked coordinator scanner no longer starts the camera, so it logs no error. New `tests/headless.py` for headless page checks. 2 new tests. |
 | 2026-10-17 | "UPG-68: …" (parent `9d7804d`) | UPG-68 | **UPG-68 DONE:** form-builder buttons appear only to those with `edit_event` on the event (hidden from coordinators rather than widening permissions). 1 new test. |
+| 2026-10-17 | "UPG-69: …" (parent `211b96a`) | UPG-69 | **UPG-69 DONE (ticket part; certificate verification deferred):** the database layer exposes `lead_email`/`lead_name`/`lead_phone` for registrations from their columns, so a seeded registration's owner opens their ticket and sees their name. 1 new test. Full pytest: 1002 passed, 1 skipped, 0 failed. |

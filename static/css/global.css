@@ -447,6 +447,42 @@ small, .small { font-size: var(--fs-sm); }
     min-width: 0;
 }
 .app-bar__brand:hover { color: #fff; }
+/* Back (UPG-103): before the logo; on narrow phones it takes the logo's place */
+.app-bar__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 38px;
+    padding: 0 0.7rem;
+    margin-left: -0.35rem;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.app-bar__back:hover { color: #fff; background: rgba(255, 255, 255, 0.10); }
+.page-back-float {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    z-index: var(--z-header, 1000);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--brand-navy, #00185e);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.page-back-float:hover { color: #fff; filter: brightness(1.15); }
+@media print { .page-back-float, .app-bar__back { display: none !important; } }
 .app-bar__divider {
     width: 1px;
     height: 28px;
@@ -2274,6 +2310,9 @@ body.auth > .site-footer { border-top: 0; padding: 0; }
     .content-wrapper { padding: 0.9rem; }
     .app-bar__inner { gap: var(--sp-2); }
     .app-bar .brand-logo { height: 28px; }
+    .app-bar__link { padding: 0 0.5rem; }
+    .app-bar--has-back .app-bar__brand { display: none; }
+    .app-bar__back .app-bar__label { display: none; }
 }
 
 /* --------------------------------------------------------------------------

@@ -55,8 +55,19 @@
 {%- else -%}
   {%- set links = [('/dashboard', 'fa-th-large', 'Dashboard', 'dashboard')] -%}
 {%- endif -%}
-<header class="app-bar" role="banner">
+{#- Back on every page but the role's home: the installed app has no browser
+    toolbar (UPG-103). An explicit `back` (url, label) still wins. -#}
+{%- set auto_back = page_back() -%}
+{%- set back_href = back[0] if back else auto_back[1] -%}
+{%- set back_label = back[1] if back else 'Back' -%}
+{%- set show_back = back or auto_back[0] -%}
+<header class="app-bar{% if show_back %} app-bar--has-back{% endif %}" role="banner">
   <div class="app-bar__inner">
+    {%- if show_back %}
+    <a href="{{ back_href }}" class="app-bar__back" data-h-click="se:back-in-site" aria-label="{{ back_label }}" title="{{ back_label }}">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i><span class="app-bar__label">{{ back_label }}</span>
+    </a>
+    {%- endif %}
     <a href="/" class="app-bar__brand" aria-label="SapthaEvent — Sapthagiri NPS University home">
       <img src="/static/img/snpsu-logo-reversed.png" alt="Sapthagiri NPS University" class="brand-logo" width="143" height="36">
     </a>
@@ -66,9 +77,6 @@
       {%- if subtitle %}<span class="app-bar__sub">{{ subtitle }}</span>{% endif %}
     </div>
     <nav class="app-bar__nav" aria-label="Main navigation">
-      {%- if back %}
-      <a href="{{ back[0] }}" class="app-bar__link"><i class="fas fa-arrow-left" aria-hidden="true"></i><span class="app-bar__label">{{ back[1] }}</span></a>
-      {%- endif %}
       {%- for href, icon, label, key in links %}
       <a href="{{ href }}" class="app-bar__link app-bar__link--ws{% if key == active %} is-active{% endif %}"{% if key == active %} aria-current="page"{% endif %} title="{{ label }}">
         <i class="fas {{ icon }}" aria-hidden="true"></i><span class="app-bar__label">{{ label }}</span>

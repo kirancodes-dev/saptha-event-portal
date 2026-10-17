@@ -103,3 +103,39 @@ def back_path(default: str, skip_prefix: str = '') -> str:
             continue
         return path + (f'?{url.query}' if url.query else '')
     return default
+
+
+ROLE_HOMES = {
+    'Student': '/participant/dashboard', 'Participant': '/participant/dashboard',
+    'ClubSPOC': '/spoc/dashboard', 'SPOC': '/spoc/dashboard', 'UnitAdmin': '/spoc/dashboard',
+    'EventOrganizer': '/spoc/dashboard',
+    'EventCoordinator': '/coordinator/dashboard', 'Coordinator': '/coordinator/dashboard',
+    'Volunteer': '/coordinator/scanner', 'Judge': '/judge/dashboard',
+    'SuperAdmin': '/admin/dashboard', 'Super Admin': '/admin/dashboard', 'Admin': '/admin/dashboard',
+    'UniversityAdmin': '/admin/dashboard',
+}
+
+
+def role_home() -> str:
+    """The signed-in user's home page, or '/' for a visitor (UPG-103)."""
+    try:
+        from flask import has_request_context, session
+    except ImportError:
+        return '/'
+    if not has_request_context() or not session.get('user_id'):
+        return '/'
+    return ROLE_HOMES.get(session.get('role', ''), '/dashboard')
+
+
+def page_back() -> tuple:
+    """(show, href) for the app's Back link on this page: hidden on the role's
+    home and on '/', else the page this visitor came from on this site, or
+    the role's home (UPG-103)."""
+    try:
+        from flask import has_request_context, request
+    except ImportError:
+        return False, '/'
+    home = role_home()
+    if not has_request_context() or request.path in (home, '/'):
+        return False, home
+    return True, back_path(home, skip_prefix=request.path)

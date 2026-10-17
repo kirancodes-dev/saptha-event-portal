@@ -1,0 +1,5 @@
+{#- A floating "Back" for full-screen and standalone pages without the app
+    bar (UPG-103): to the page this visitor came from on this site, else
+    their home. Hidden when printing. -#}
+{%- set _back = page_back() -%}
+<a href="{{ _back[1] }}" class="page-back-float no-print" data-h-click="se:back-in-site" aria-label="Back"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back</a>

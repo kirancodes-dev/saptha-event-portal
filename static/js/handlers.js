@@ -25,6 +25,16 @@
     'se:go': function () { window.location.href = this.dataset.href; },
     // "Go back" links: back in history when there is one, else the link's own href
     'se:back': function () { if (window.history.length > 1) { window.history.back(); return false; } },
+    // The app's Back links (UPG-103): history only when the last page was on
+    // this site, so Back never leaves it; otherwise the link's own href
+    'se:back-in-site': function () {
+      var ref = document.referrer;
+      if (ref && window.history.length > 1) {
+        try {
+          if (new URL(ref).origin === window.location.origin) { window.history.back(); return false; }
+        } catch (e) { /* not a URL: follow the link */ }
+      }
+    },
     'se:call': function (event) {
       // data-call="fnName" data-args='["a", 1]' — this element is passed last
       var fn = window[this.dataset.call];

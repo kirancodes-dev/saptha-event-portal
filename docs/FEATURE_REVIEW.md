@@ -3198,17 +3198,26 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### UPG-103 — No way back to the previous page in the installed app
-- **Status:** TODO
-- **Last verified:** 2026-10-17, commit `250252a` [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-103: …" on `production-ready` (parent `ece4bf5`) [T; R: Playwright at 375 and 1280 px]
 - **Problem:** Owner report 2026-10-17: "for all pages I can't go back to the previous step". The app installs as a PWA with `"display": "standalone"` (`static/manifest.webmanifest:7`), which has no browser toolbar and so no Back button. The shared app bar supports a back link (`templates/includes/ui.html:18`, `back=`), but no page passes one. Of the pages outside the app bar, these have no way back at all: `participant/certificate.html`, `tickets/digital_wallet.html`, `public/verify_success.html`, `live/leaderboard.html`, `login.html` and `register.html`.
 - **What to build:**
   - **App bar:** on every page except the role's home (and `/`), a "Back" link. Its link is `utils_links.back_path` (the page on this site the visitor came from, else the role's home). Clicking it goes back in the browser history when the previous page is on this site, and otherwise follows the link.
   - **The six pages without one:** the same Back link (shared include, hidden when printing).
+- **Built:**
+  - **Helpers:** `utils_links.role_home()` (each role's home; `/` for a visitor) and `page_back()` (show it, and where it goes: `back_path(role home, skip_prefix=this page)`), both template globals (`app.py`).
+  - **App bar** (`templates/includes/ui.html`): a Back link before the logo on every page but the role's home and `/`; an explicit `app_back` still wins (the old in-nav back link is gone).
+  - **Handler:** `se:back-in-site` (`static/js/handlers.js`) goes back in history only when `document.referrer` has this site's origin, and otherwise follows the link.
+  - **Phones:** below 480 px the Back arrow takes the logo's place (home is in the bottom bar), and app-bar icons get 0.5 rem padding. That also fixes a 4 px overflow of the SPOC app bar.
+  - **The six pages without the app bar:** `includes/back_link.html`, a floating "← Back" pill, hidden in print.
+  - **Checked [R]:** the student dashboard, my events, events, the SPOC event view and SPOC analytics are no wider than the screen at 375 and 1280 px, with no console errors. Back shows on my events and not on the dashboard.
+- **Files touched:** `utils_links.py`, `app.py`, `templates/includes/ui.html`, `templates/includes/back_link.html` (new), `static/js/handlers.js`, `static/css/global.css`, the six templates above, `tests/test_back_navigation.py` (new).
 - **Effort:** S · **Depends on:** UPG-92 (`back_path`, DONE) · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: an inner page (for example `/participant/my_events`) has the Back link to the referring page on this site, or to the role's home; the role's home page has none; another site's referrer is never used.
-  2. Test: the six pages listed above render a Back link.
-  3. Test: the in-site back handler uses history only for a same-site referrer.
+  1. ✅ Test: an inner page (for example `/participant/my_events`) has the Back link to the referring page on this site, or to the role's home; the role's home page has none; another site's referrer is never used [T `tests/test_back_navigation.py::test_inner_pages_have_back_to_the_referring_page_on_this_site`, `::test_the_role_home_has_no_back`].
+  2. ✅ Test: the six pages listed above render a Back link [T `::test_the_pages_without_the_app_bar_get_a_floating_back`: each includes it; `/login` and `/register` render it].
+  3. ✅ Test: the in-site back handler uses history only for a same-site referrer [T `::test_the_in_site_back_handler_uses_history_only_for_this_site`]. Three of the four fail on the old code; the home page already had no Back.
+  - Full pytest on SQLite: 976 passed, 1 skipped, 5 failed (known D-9); ruff clean.
 
 #### UPG-104 — Student dashboard: unstyled on desktop, squeezed on phones, and tabs that don't match the events
 - **Status:** DONE
@@ -3604,3 +3613,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-105: …" (parent `250252a`) | UPG-103, UPG-104, UPG-105 | Owner report (back navigation, student dashboard, referrals, mobile): UPG-103 (no Back in the installed app), UPG-104 (dashboard CSS trapped in an unclosed media query, upcoming and tabs that don't match the events) and UPG-105 added. **UPG-105 DONE:** the referral section is hidden unless `REFERRALS_ENABLED`. 1 new test. |
 | 2026-10-17 | "UPG-104: …" (parent `7f623d0`) | UPG-104 | **UPG-104 DONE.** Student dashboard: the unclosed media query is fixed (styled on desktop, no 495 px card on phones); Upcoming means future and not cancelled; the tabs come from the student's registrations with counts and an empty-tab message. 3 new tests (fail on the old code); checked with Playwright at 375 and 1280 px. |
 | 2026-10-17 | "UPG-106: …" (parent `2fd03cf`) | UPG-106 | **UPG-106 added and DONE** (owner's phone screenshot): the SPOC event panel's grid is `minmax(0, 1fr)` on phones and its header stacks, so nothing runs off the screen or covers the title. 1 new test; checked with Playwright. |
+| 2026-10-17 | "UPG-103: …" (parent `ece4bf5`) | UPG-103 | **UPG-103 DONE.** Back on every page but the role's home: in the app bar (history when the last page was on this site, else `back_path`), and as a floating pill on the six pages without the app bar. On narrow phones the arrow replaces the logo. 4 new tests; checked with Playwright. Full pytest: 976 passed, 1 skipped, 5 failed (known D-9). |

@@ -1236,6 +1236,8 @@ def calendar_feed_url():
 
 
 app.jinja_env.globals.update(calendar_feed_url=calendar_feed_url)
+from utils_links import page_back, role_home  # noqa: E402
+app.jinja_env.globals.update(page_back=page_back, role_home=role_home)  # Back on every page (UPG-103)
 
 
 @app.route('/calendar/feed/rotate', methods=['POST'])

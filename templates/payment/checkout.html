@@ -224,7 +224,7 @@
                 currency:    'INR',
                 order_id:    data.order_id,
                 name:        'SapthaEvent — Sapthagiri NPS University',
-                description: "{{ event.title }}",
+                description: {{ event.title|tojson }},   {# a JSON literal, safe in a script (UPG-96) #}
                 image:       '/static/snpsu-logo.png',
                 prefill:     { name: data.name, email: data.email },
                 theme:       { color: '#00185e' },

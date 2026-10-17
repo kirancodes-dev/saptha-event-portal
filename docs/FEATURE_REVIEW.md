@@ -3075,13 +3075,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: two registrations created with the clock frozen get different IDs, and both rows exist. [T `tests/test_registration_ids.py::test_two_registrations_in_the_same_millisecond_get_different_ids`; also `::test_a_new_registration_is_never_written_over_an_existing_one`, `::test_ids_are_unique_in_bulk_and_waitlist_ids_too`. The file can't import on the old code.]
 
 #### UPG-96 — The checkout script puts the event title into a JavaScript string with HTML escaping only
-- **Status:** TODO
-- **Last verified:** 2026-10-17, commit `43f2c00` [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-96: …" on `production-ready` (parent `e070b2e`) [T]
 - **Problem:** Found building UPG-94 [C]. `templates/payment/checkout.html:227` writes `description: "{{ event.title }}"`. Autoescape turns quotes into `&#34;`, so a title can't break out of the string. But a title ending in a backslash ends the string early, the script fails, and Pay does nothing. Titles with `&` or quotes also reach Razorpay as `&amp;` and `&#34;`.
 - **What to build:** pass the title with `|tojson`, the way JSON values reach scripts elsewhere.
+- **Built (2026-10-17):**
+  - `templates/payment/checkout.html` passes the title to Razorpay's options as `{{ event.title|tojson }}`, a JSON literal (quotes, `&`, `<` and backslashes escaped for JavaScript), instead of an HTML-escaped string in quotes.
+- **Files touched:** `templates/payment/checkout.html`, `tests/test_checkout_title.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: the checkout page for an event titled `Rock & "Roll" \` renders a script whose description is that exact string as a JSON literal.
+  1. ✅ Test: the checkout page for an event titled `Rock & "Roll" \` renders a script whose description is that exact string as a JSON literal. [T `tests/test_checkout_title.py::test_the_checkout_script_gets_the_title_as_a_json_literal`]
 
 
 #### UPG-97 — Registering without logging in, for an email that already has an account
@@ -3645,3 +3648,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-95: …" (parent `72804cf`) | UPG-95 | **UPG-95 DONE** (owner's run, Part 1): registration and waitlist IDs come from `uuid4` (`REG-`/`WL-` + 20 hex), and new registrations are written only if the ID is free. 3 new tests. Full pytest on SQLite: 984 passed, 1 skipped, 5 failed (the D-9 tests, deleted in UPG-62). |
 | 2026-10-17 | "UPG-76: …" (parent `f1426f4`) | UPG-76 | **UPG-76 DONE:** every request re-checks the signed-in account; a deactivated account's open session ends (redirect to login, or 401 for JSON), audit-logged. 2 new tests. |
 | 2026-10-17 | "UPG-77: …" (parent `938048f`) | UPG-77 | **UPG-77 DONE:** the admin's announcement email escapes the message and subject (line breaks kept). 1 new test. |
+| 2026-10-17 | "UPG-96: …" (parent `e070b2e`) | UPG-96 | **UPG-96 DONE:** the checkout script receives the event title as a JSON literal. 1 new test. |

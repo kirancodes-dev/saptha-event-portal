@@ -2664,13 +2664,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: a logged-in user who is then deactivated is sent to the login page on their next request. [T `tests/test_deactivated_sessions.py::test_an_open_session_ends_when_the_account_is_deactivated`, through the admin's real deactivate action; also `::test_json_callers_get_401_and_active_accounts_are_untouched`]
 
 #### UPG-77 — The admin's announcement email puts the message into HTML unescaped
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-77: …" on `production-ready` (parent `938048f`) [T]
 - **Problem:** Found building UPG-75 [C]. `send_bulk_email` (`routes_admin.py`) builds the email body with `f'...{message}</div>'`, so whatever the admin types is sent as HTML. Only Super Admins can send, but a pasted `<` or a stray tag breaks the email, and nothing stops markup.
 - **What to build:** escape the message (`markupsafe.escape`) and keep the line breaks.
+- **Built (2026-10-17):**
+  - `routes_admin.send_bulk_email` escapes the message and the subject with `markupsafe.escape` before they go into the email's HTML. `white-space: pre-line` keeps the line breaks. The in-app notification is unchanged (its template escapes).
+- **Files touched:** `routes_admin.py`, `tests/test_announcement_escaping.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: a message containing `<b>` arrives as the text `<b>`, and line breaks are kept.
+  1. ✅ Test: a message containing `<b>` arrives as the text `<b>`, and line breaks are kept. [T `tests/test_announcement_escaping.py::test_markup_in_an_announcement_arrives_as_text`: `<b>`, `<script>`, `&` and a tag in the subject arrive as text, and the newline is kept]
 
 #### UPG-78 — Coordinators still create events through an old form that skips the draft flow
 - **Status:** DONE
@@ -3641,3 +3644,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | `fca39ec` (redeploy; this line in "docs: …") | UPG-103 to UPG-107 | **Redeployed** to Cloud Run: image `web:fca39ec` built by Cloud Build, revision `saptha-00004-q58`. No schema change since `a7fa6fd`, so no migration run; the migration job now points at the new image. Checked [R]: home, events, login, `/health/ready` and the Google verification file 200; the floating Back on `/login`; no errors logged by the new revision. |
 | 2026-10-17 | "UPG-95: …" (parent `72804cf`) | UPG-95 | **UPG-95 DONE** (owner's run, Part 1): registration and waitlist IDs come from `uuid4` (`REG-`/`WL-` + 20 hex), and new registrations are written only if the ID is free. 3 new tests. Full pytest on SQLite: 984 passed, 1 skipped, 5 failed (the D-9 tests, deleted in UPG-62). |
 | 2026-10-17 | "UPG-76: …" (parent `f1426f4`) | UPG-76 | **UPG-76 DONE:** every request re-checks the signed-in account; a deactivated account's open session ends (redirect to login, or 401 for JSON), audit-logged. 2 new tests. |
+| 2026-10-17 | "UPG-77: …" (parent `938048f`) | UPG-77 | **UPG-77 DONE:** the admin's announcement email escapes the message and subject (line breaks kept). 1 new test. |

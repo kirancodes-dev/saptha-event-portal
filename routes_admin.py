@@ -879,10 +879,12 @@ def send_bulk_email():
         # Send individually and count successes
         from utils_email import _html_wrapper, _send
         import utils_email as _ue
+        from markupsafe import escape
+        # What the admin typed is text, never markup; pre-line keeps its line breaks (UPG-77)
         html_body = _html_wrapper(
             f'<div style="color:#475569;font-size:14px;line-height:1.8;'
-            f'white-space:pre-line;">{message}</div>',
-            subject
+            f'white-space:pre-line;">{escape(message)}</div>',
+            str(escape(subject))
         )
         # Email, the in-app bell, or both (UPG-75)
         channel = request.form.get('channel', 'email')

@@ -16,8 +16,15 @@
 .portal-hero-meta-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .portal-hero-meta-item { font-size: var(--fs-sm); color: var(--text-muted); background: var(--surface-sunken); border: 1px solid var(--divider); border-radius: var(--radius-sm); padding: 4px 10px; }
 .portal-hero-meta-item strong { color: var(--text-strong); }
-@media (max-width: 767.98px) { .portal-widgets-grid { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: var(--grid-gap); margin-bottom: var(--section-gap); }
-@media (max-width: 991.98px) { .portal-widgets-grid { grid-template-columns: 1fr; } }
+/* Three widgets side by side on wide screens, stacked below 992px. This rule
+   used to open a media query it never closed, trapping every rule below it
+   on small screens only (UPG-104). */
+.portal-widgets-grid { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: var(--grid-gap); margin-bottom: var(--section-gap); }
+@media (max-width: 991.98px) { .portal-widgets-grid { grid-template-columns: minmax(0, 1fr); } }
+.portal-widget-card { min-width: 0; }
+.ticket-header-lms { flex-wrap: wrap; }
+.ticket-chip-cancelled { background: var(--danger-soft); color: var(--danger-text); }
+.portal-filter-pills .seg__count { font-size: var(--fs-xs); opacity: .75; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .portal-widget-card { display: flex; flex-direction: column; }
 .portal-widget-header { font-family: var(--font-heading); font-size: var(--fs-md); font-weight: 700; color: var(--text-strong); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .score-metric-value { font-family: var(--font-heading); font-size: 2.2rem; font-weight: 800; color: var(--brand-ink); line-height: 1; font-variant-numeric: tabular-nums; }
@@ -89,13 +96,16 @@
 </div>
 {% endif %}
 
+{# Tabs from the student's own registrations, with counts (UPG-104) #}
 <div class="portal-filter-pills seg" role="group" aria-label="Filter tickets">
-  <button type="button" class="seg__btn active" aria-pressed="true" data-filter="all">All tickets</button>
-  <button type="button" class="seg__btn" aria-pressed="false" data-filter="active">Upcoming</button>
-  <button type="button" class="seg__btn" aria-pressed="false" data-filter="technical">Technical</button>
-  <button type="button" class="seg__btn" aria-pressed="false" data-filter="cultural">Cultural</button>
-  <button type="button" class="seg__btn" aria-pressed="false" data-filter="sports">Sports</button>
-  <button type="button" class="seg__btn" aria-pressed="false" data-filter="certificates">Certificates</button>
+  {%- for key, label, n in (ticket_tabs or [('all', 'All', 0)]) %}
+  <button type="button" class="seg__btn{% if loop.first %} active{% endif %}" aria-pressed="{{ 'true' if loop.first else 'false' }}" data-filter="{{ key }}">{{ label }}<span class="seg__count">{{ n }}</span></button>
+  {%- endfor %}
+</div>
+<div id="tab-empty" class="empty-state" hidden>
+  <i class="fas fa-filter" aria-hidden="true"></i>
+  <h3>Nothing here yet</h3>
+  <p>No registrations match this tab. <a href="/events" class="fw-semibold">Explore events →</a></p>
 </div>
 
 <div class="page-head">
@@ -208,7 +218,7 @@
 
       {% if active_tickets %}
       {% for reg in active_tickets %}
-      <div class="ticket-card-lms" data-ticket="active" data-category="{{ (reg.event_cat or reg.category or 'technical')|lower }}">
+      <div class="ticket-card-lms" data-ticket="active" data-category="{{ reg.cat_key }}">
         <div class="ticket-header-lms">
           <div style="flex:1;min-width:0;">
             <h3 class="ticket-title-lms">{{ reg.event_title }}</h3>
@@ -341,13 +351,14 @@
 
       <div class="row g-3">
         {% for reg in completed_events %}
-        <div class="col-md-6 past-event-card" data-ticket="past" data-category="{{ (reg.event_cat or reg.category or 'technical')|lower }}" data-cert="{{ 'true' if reg.cert_eligible else 'false' }}">
+        <div class="col-md-6 past-event-card" data-ticket="past" data-category="{{ reg.cat_key }}" data-cert="{{ 'true' if reg.cert_eligible else 'false' }}">
           <div class="past-card">
             <div>
               <div class="past-card__title">{{ reg.event_title }}</div>
               <div class="past-card__meta">
                 {{ reg.event_date }}
                 {% if reg.final_rank %}&nbsp;·&nbsp;Rank #{{ reg.final_rank }}{% endif %}
+                {% if reg.is_cancelled %}&nbsp;<span class="ticket-chip ticket-chip-cancelled">Cancelled</span>{% endif %}
               </div>
             </div>
             <div class="d-flex gap-2">
@@ -492,51 +503,33 @@ function claimPayout() {
 function openCmdPalette() { if (window.openCommandPalette) window.openCommandPalette(); }
 function togglePushSubscription() { /* push stub, as before */ }
 
-/* Category Pill Filtering */
+/* Tabs (UPG-104): All, Upcoming, Past, one per category the student has, Certificates */
 document.querySelectorAll('.portal-filter-pills .seg__btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     document.querySelectorAll('.portal-filter-pills .seg__btn').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
     this.classList.add('active');
     this.setAttribute('aria-pressed', 'true');
     var filter = this.getAttribute('data-filter') || 'all';
-    var activeTickets = document.querySelectorAll('.ticket-card-lms');
-    var pastCards = document.querySelectorAll('.past-event-card');
-    var pastSection = document.getElementById('past');
     var ticketsSection = document.getElementById('tickets-section');
-
-    if (filter === 'all') {
-      activeTickets.forEach(function(t) { t.style.display = ''; });
-      pastCards.forEach(function(p) { p.style.display = ''; });
-      if (ticketsSection) ticketsSection.style.display = '';
-      if (pastSection) pastSection.style.display = '';
-    } else if (filter === 'active') {
-      activeTickets.forEach(function(t) { t.style.display = ''; });
-      if (ticketsSection) ticketsSection.style.display = '';
-      if (pastSection) pastSection.style.display = 'none';
-    } else if (filter === 'certificates') {
-      if (ticketsSection) ticketsSection.style.display = 'none';
-      if (pastSection) {
-        pastSection.style.display = '';
-        pastCards.forEach(function(p) {
-          p.style.display = (p.getAttribute('data-cert') === 'true') ? '' : 'none';
-        });
-        pastSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    } else {
-      // Technical, Cultural, Sports
-      if (ticketsSection) ticketsSection.style.display = '';
-      activeTickets.forEach(function(t) {
-        var c = (t.getAttribute('data-category') || '').toLowerCase();
-        t.style.display = (c.indexOf(filter) !== -1) ? '' : 'none';
-      });
-      if (pastSection) {
-        pastSection.style.display = '';
-        pastCards.forEach(function(p) {
-          var c = (p.getAttribute('data-category') || '').toLowerCase();
-          p.style.display = (c.indexOf(filter) !== -1) ? '' : 'none';
-        });
-      }
+    var pastSection = document.getElementById('past');
+    var shown = 0;
+    function show(card, yes) { card.style.display = yes ? '' : 'none'; if (yes) shown++; }
+    document.querySelectorAll('.ticket-card-lms').forEach(function(t) {
+      var cat = t.getAttribute('data-category');
+      show(t, filter === 'all' || filter === 'active' || filter === cat);
+    });
+    document.querySelectorAll('.past-event-card').forEach(function(p) {
+      var cat = p.getAttribute('data-category');
+      show(p, filter === 'all' || filter === 'past' || filter === cat ||
+              (filter === 'certificates' && p.getAttribute('data-cert') === 'true'));
+    });
+    function anyVisible(section, sel) {
+      return section && Array.prototype.some.call(section.querySelectorAll(sel), function(c) { return c.style.display !== 'none'; });
     }
+    if (ticketsSection) ticketsSection.style.display = (filter === 'all' || anyVisible(ticketsSection, '.ticket-card-lms')) ? '' : 'none';
+    if (pastSection) pastSection.style.display = anyVisible(pastSection, '.past-event-card') ? '' : 'none';
+    var empty = document.getElementById('tab-empty');
+    if (empty) empty.hidden = !(shown === 0 && filter !== 'all');
   });
 });
 </script>

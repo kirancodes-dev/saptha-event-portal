@@ -3211,8 +3211,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. Test: the in-site back handler uses history only for a same-site referrer.
 
 #### UPG-104 — Student dashboard: unstyled on desktop, squeezed on phones, and tabs that don't match the events
-- **Status:** TODO
-- **Last verified:** 2026-10-17, commit `250252a` [R: Playwright at 375 and 1280 px on the demo database]
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-104: …" on `production-ready` (parent `7f623d0`) [T; R: Playwright at 375 and 1280 px on the demo database]
 - **Problem:** Owner report 2026-10-17: "in the student dashboard all the above buttons are just dummy … some details not properly mobile friendly".
   - **CSS typo:** `templates/participant/dashboard.html:18` opens `@media (max-width: 767.98px) {` and never closes it. Every rule after it (51 of them: widgets, the attendance donut, ticket cards, QR boxes, past events, discovery) applies only on screens up to 767 px.
     - On desktop the page is unstyled: the donut fills the width, QR codes are full-width images, and the cards have no layout.
@@ -3226,12 +3226,19 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Tabs from the student's data:** All, Upcoming (n), Past (n), one tab per category the student actually has (n), and Certificates (n) when there are any.
   - **Empty tabs:** a tab with nothing to show says so.
   - **Mobile:** no part of the page is wider than a 375 px screen.
+- **Built:**
+  - **CSS:** the widget grid is a plain rule, 3 columns, with one column below 992 px. Widget cards get `min-width: 0` and ticket headers wrap, so nothing is pushed wider than the screen.
+  - **Upcoming:** `routes_participant.dashboard` puts a registration under Upcoming only if its event is live, dated today or later (or undated) and the registration isn't cancelled or refunded. Everything else goes to past events, where a cancelled one shows a "Cancelled" chip.
+  - **Tabs:** built in the route (`ticket_tabs`) from the student's registrations with counts: All, Upcoming, Past, one per category (keys from `_category_key`, for example `cat-management`), and Certificates when any are earned. Cards carry the same key.
+  - **Tab script:** exact matching, hides a section with nothing to show, and shows "Nothing here yet" for an empty tab.
+  - **Checked [R]** on the demo student (16 registrations): the tabs read All 16 · Upcoming 9 · Past 7 · Technical 6 · Cultural 5 · Sports 3 · Management 2 · Certificates 4. The two events whose dates had passed moved to Past. The page is 375 px wide on a 375 px screen (it was 495) and 1,280 on desktop, styled, with no console errors.
+- **Files touched:** `routes_participant.py`, `templates/participant/dashboard.html`, `tests/test_student_dashboard.py`.
 - **Effort:** M · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: the dashboard's style block is balanced (no rule is trapped in a media query).
-  2. Test: a registration for a past-dated event and a cancelled registration are not among the upcoming tickets; a future one is.
-  3. Test: the tabs are built from the student's own registrations, with counts (a Management event gets its own tab; no tab for a category they don't have).
-  4. Checked [R] with Playwright at 375 px and 1280 px: the page is no wider than the screen, the donut and QR codes have their sizes, each tab shows its cards or an empty message, and there are no console errors.
+  1. ✅ Test: the dashboard's style block is balanced (no rule is trapped in a media query) [T `tests/test_student_dashboard.py::test_the_dashboard_style_block_is_balanced`].
+  2. ✅ Test: a registration for a past-dated event and a cancelled registration are not among the upcoming tickets; a future one is [T `::test_only_future_not_cancelled_registrations_are_upcoming`].
+  3. ✅ Test: the tabs are built from the student's own registrations, with counts (a Management event gets its own tab; no tab for a category they don't have) [T `::test_the_tabs_come_from_the_students_own_registrations`]. All three fail on the old code.
+  4. ✅ Checked [R] with Playwright at 375 px and 1280 px: the page is no wider than the screen, the donut and QR codes have their sizes, each tab shows its cards or an empty message, and there are no console errors.
 
 #### UPG-105 — Hide the referral section for now
 - **Status:** DONE
@@ -3578,3 +3585,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-100: …" (parent `cc334ef`) | UPG-100, UPG-102 | **UPG-100 added and DONE** from the owner's pasted Pyrefly diagnostics: `pyrefly.toml` was unreadable (wrong keys), so Pyrefly fell back to a missing Python 3.9 path and flagged the optional imports. The config is rewritten, `pyrightconfig.json` says 3.11, and `routes_coordinator.py` imports `firestore`/`FieldFilter` directly: 0 errors there. `pyrefly==1.4.0` added to dev requirements. 2 new tests (both fail on the old files). **New UPG-102:** the 1,044 other Pyrefly errors, to work through file by file. Full pytest on SQLite: 966 passed, 1 skipped, 5 failed (known D-9); ruff clean. |
 | 2026-10-17 | "UPG-101: …" (parent `0d60c3a`) | UPG-101 | **UPG-101 added and DONE** at the owner's request. README: a live-demo button and section for https://saptha-967997581752.asia-south1.run.app, Cloud Run and Razorpay test-mode badges, "Run it locally" (venv, `.env.example`, app, tests), Payments, Deployment and Security text matching UPG-94 and UPG-97, and the test numbers of the 17 October run (967 passed, 1 skipped, 5 known failures). 1 new test. |
 | 2026-10-17 | "UPG-105: …" (parent `250252a`) | UPG-103, UPG-104, UPG-105 | Owner report (back navigation, student dashboard, referrals, mobile): UPG-103 (no Back in the installed app), UPG-104 (dashboard CSS trapped in an unclosed media query, upcoming and tabs that don't match the events) and UPG-105 added. **UPG-105 DONE:** the referral section is hidden unless `REFERRALS_ENABLED`. 1 new test. |
+| 2026-10-17 | "UPG-104: …" (parent `7f623d0`) | UPG-104 | **UPG-104 DONE.** Student dashboard: the unclosed media query is fixed (styled on desktop, no 495 px card on phones); Upcoming means future and not cancelled; the tabs come from the student's registrations with counts and an empty-tab message. 3 new tests (fail on the old code); checked with Playwright at 375 and 1280 px. |

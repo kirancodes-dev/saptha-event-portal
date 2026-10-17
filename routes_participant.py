@@ -48,6 +48,12 @@ def _ff(f, op, v):
     return FieldFilter(f, op, v)
 
 
+def _category_key(category) -> str:
+    """A dashboard tab key for an event category: 'Technical' -> 'cat-technical' (UPG-104)."""
+    slug = ''.join(ch if ch.isalnum() else '-' for ch in str(category or 'General').strip().lower()).strip('-')
+    return f"cat-{slug or 'general'}"
+
+
 def _days_until(date_str: str) -> "int | None":
     """Returns days until event date, or None if unparseable."""
     try:
@@ -111,7 +117,13 @@ def dashboard():
         # Feedback already submitted?
         r['feedback_done'] = bool(r.get('feedback'))
 
-        if evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress'):
+        # Upcoming: a live event dated today or later, not cancelled. A past
+        # date or a cancelled registration goes to past events (UPG-104).
+        r['is_cancelled'] = str(r.get('status') or '').strip().lower() in ('cancelled', 'refunded')
+        r['cat_key'] = _category_key(r['event_cat'])
+        live = evt.get('status') in ('active', 'published', 'registration_open', 'registration_closed', 'in_progress')
+        not_past = r['days_until'] is None or r['days_until'] >= 0
+        if live and not_past and not r['is_cancelled']:
             active_tickets.append(r)
         else:
             completed_events.append(r)
@@ -188,6 +200,18 @@ def dashboard():
     }
     last_updated = datetime.datetime.now().strftime('%d/%m/%Y  %I:%M %p')
 
+    # The tabs come from the student's own registrations, with counts (UPG-104)
+    by_cat = {}
+    for r in all_regs:
+        label, n = by_cat.get(r['cat_key'], (r['event_cat'] or 'General', 0))
+        by_cat[r['cat_key']] = (label, n + 1)
+    ticket_tabs = [('all', 'All', len(all_regs)), ('active', 'Upcoming', len(active_tickets)),
+                   ('past', 'Past', len(completed_events))]
+    ticket_tabs += [(key, label, n) for key, (label, n) in sorted(by_cat.items(), key=lambda kv: (-kv[1][1], kv[0]))]
+    certificates = sum(1 for r in completed_events if r.get('cert_eligible'))
+    if certificates:
+        ticket_tabs.append(('certificates', 'Certificates', certificates))
+
     return render_template(
         'participant/dashboard.html',
         active_tickets   = active_tickets,
@@ -204,6 +228,7 @@ def dashboard():
         total_regs_count = len(all_regs),
         cat_counts       = cat_counts,
         last_updated     = last_updated,
+        ticket_tabs      = ticket_tabs,
     )
 
 

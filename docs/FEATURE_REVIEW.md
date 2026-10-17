@@ -3277,6 +3277,19 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: the phone grid is `minmax(0, 1fr)`, and the header stacks below 768 px [T `tests/test_spoc_mobile.py::test_the_spoc_event_panel_fits_a_phone`; fails on the old code].
   2. ✅ Checked [R] with Playwright at 375 px: no part of the event view is wider than the screen.
 
+
+#### UPG-107 — Google Search Console ownership file
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-107: …" on `production-ready` (parent `95a5b3f`) [T]
+- **Problem:** Owner request 2026-10-17. Google Search Console verifies the site with an HTML file, `google8e55d49885709546.html`, that must be served at the site root. Cloud Run serves only what the app serves; there is no file manager.
+- **Built:** the file (53 bytes, as downloaded) is in `static/`, and `app.py` serves it at `/google8e55d49885709546.html` (`google_site_verification`, next to `robots.txt`).
+  - Note: pages keep `noindex` (`base_classic.html`) and `robots.txt` limits crawling. Verification works regardless, but what Google may index is a separate decision.
+- **Files touched:** `app.py`, `static/google8e55d49885709546.html` (new), `tests/test_site_verification.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: `GET /google8e55d49885709546.html` answers 200, `text/html`, with exactly `google-site-verification: google8e55d49885709546.html` [T `tests/test_site_verification.py::test_the_google_verification_file_is_served_at_the_root`].
+  2. Checked [R] on the deployment after the redeploy (see the changelog).
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3614,3 +3627,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-104: …" (parent `7f623d0`) | UPG-104 | **UPG-104 DONE.** Student dashboard: the unclosed media query is fixed (styled on desktop, no 495 px card on phones); Upcoming means future and not cancelled; the tabs come from the student's registrations with counts and an empty-tab message. 3 new tests (fail on the old code); checked with Playwright at 375 and 1280 px. |
 | 2026-10-17 | "UPG-106: …" (parent `2fd03cf`) | UPG-106 | **UPG-106 added and DONE** (owner's phone screenshot): the SPOC event panel's grid is `minmax(0, 1fr)` on phones and its header stacks, so nothing runs off the screen or covers the title. 1 new test; checked with Playwright. |
 | 2026-10-17 | "UPG-103: …" (parent `ece4bf5`) | UPG-103 | **UPG-103 DONE.** Back on every page but the role's home: in the app bar (history when the last page was on this site, else `back_path`), and as a floating pill on the six pages without the app bar. On narrow phones the arrow replaces the logo. 4 new tests; checked with Playwright. Full pytest: 976 passed, 1 skipped, 5 failed (known D-9). |
+| 2026-10-17 | "UPG-107: …" (parent `95a5b3f`) | UPG-107 | **UPG-107 added and DONE** at the owner's request: Google Search Console's ownership file is served at `/google8e55d49885709546.html`. 1 new test. |

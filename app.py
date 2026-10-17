@@ -9,7 +9,7 @@ except ImportError:
     firebase_admin = None
     credentials = None
     firestore = None
-from flask import Flask, render_template, session, redirect, request, jsonify, Response, g, flash
+from flask import Flask, render_template, session, redirect, request, jsonify, Response, g, flash, send_from_directory
 try:
     from flask_mail import Mail
 except ImportError:
@@ -1365,6 +1365,15 @@ def rate_limited(e):
 def server_error(e):
     logger.error(f"500 Server Error: {e}", exc_info=True)
     return render_template('500.html'), 500
+
+
+# =========================================================
+# GOOGLE SEARCH CONSOLE — site ownership file (UPG-107)
+# =========================================================
+@app.route('/google8e55d49885709546.html')
+def google_site_verification():
+    """Google Search Console's ownership check, served at the site root (UPG-107)."""
+    return send_from_directory(app.static_folder, 'google8e55d49885709546.html', mimetype='text/html')
 
 
 # =========================================================

@@ -4,7 +4,6 @@ import hmac as _hmac  # alias to avoid shadowing module with local var
 import json
 import os
 import secrets
-import time
 from flask import (Blueprint, flash, jsonify, redirect, render_template, request, session)
 from services_payments import (PaymentError, amount_inr, attach_registration, check_order, claim_order,
                                claim_paid_order, get_order, give_back_coupon_use, mark_unmatched,
@@ -13,7 +12,7 @@ from services_payments import (PaymentError, amount_inr, attach_registration, ch
                                simulation_enabled, take_coupon_use)
 
 COUPON_GONE = 'the coupon had no uses left when this late payment arrived'  # UPG-36
-from utils import login_required, record_form_submission, safe_int
+from utils import create_registration, generate_reg_id, login_required, record_form_submission, safe_int
 
 # What a payer sees when their money arrived but the registration couldn't be
 # completed (UPG-30)
@@ -115,7 +114,7 @@ def create_order():
         return jsonify({'error': 'Online payment is not configured. Please contact the organiser.'}), 503
 
     email = (reg_data.get('lead_email') or '').lower()
-    reg_id = str(reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}")
+    reg_id = str(reg_data.get('reg_id') or generate_reg_id())
     reg_data = dict(reg_data, reg_id=reg_id)
     coupon = price.get('coupon')
     if coupon:
@@ -404,7 +403,7 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
     email  = reg_data.get('lead_email')
     name   = reg_data.get('lead_name')
     phone  = reg_data.get('lead_phone', '')
-    reg_id = reg_data.get('reg_id') or f"REG-{int(time.time() * 1000)}"
+    reg_id = reg_data.get('reg_id') or generate_reg_id()
 
     try:
         blocking, held = _existing_registration(event_id, email, reg_id)
@@ -431,7 +430,10 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             'is_eliminated':        False,
             'current_round':        1,
         })
-        _db().collection('registrations').document(reg_id).set(reg_data)
+        if held is None:
+            create_registration(_db(), reg_id, reg_data)   # never over another (UPG-95)
+        else:   # the held (pending_payment) seat becomes the paid registration
+            _db().collection('registrations').document(reg_id).set(reg_data)
         if reg_data.get('form_answers'):
             record_form_submission(_db(), event_id, reg_id, email, name,
                                    reg_data['form_answers'])

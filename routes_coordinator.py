@@ -21,7 +21,7 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int
+from utils import login_required, role_required, log_action, safe_int, create_registration, generate_reg_id
 from utils_email import (send_appointment_email, send_broadcast_email,
                          send_ticket_email, send_result_email)
 from services_accounts import create_unverified_account, send_set_password_link
@@ -520,7 +520,6 @@ def on_spot_form():
 @role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
 def process_walkin():
     try:
-        import time as _time
         event_id = request.form.get('event_id', '')
         email    = request.form.get('email', '').lower().strip()
         name     = request.form.get('name', '').strip()
@@ -541,10 +540,10 @@ def process_walkin():
         if is_new:
             create_unverified_account(db, email, name, phone, usn=usn)
 
-        reg_id      = f"REG-{int(_time.time() * 1000)}"
+        reg_id      = generate_reg_id()   # UPG-95
         event_doc   = db.collection('events').document(event_id).get().to_dict() or {}
         event_title = event_doc.get('title', 'Event')
-        db.collection('registrations').document(reg_id).set({
+        create_registration(db, reg_id, {
             'reg_id': reg_id, 'event_id': event_id, 'event_title': event_title,
             'lead_name': name, 'lead_email': email, 'lead_usn': usn, 'lead_phone': phone,
             'team_name': name, 'members': [],

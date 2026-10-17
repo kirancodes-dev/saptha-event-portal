@@ -10,7 +10,6 @@ Fixes & additions in this version
 """
 import datetime
 import json
-import time
 
 from flask import (Blueprint, current_app, flash, jsonify, redirect, render_template,
                    request, session)
@@ -38,7 +37,7 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int
+from utils import login_required, role_required, log_action, safe_int, create_registration, generate_reg_id
 from utils_email import send_ticket_email
 
 participant_bp = Blueprint('participant', __name__, url_prefix='/participant')
@@ -464,7 +463,7 @@ def public_register(event_id):
             ):
                 wl_count += 1
 
-            wl_id = f"WL-{int(time.time() * 1000)}"
+            wl_id = generate_reg_id('WL')
             wl_entry = {
                 'id':            wl_id,
                 'event_id':      event_id,
@@ -486,10 +485,10 @@ def public_register(event_id):
                     'member_count': 1, 'attendance': 'Pending',
                     'registered_at': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     'is_eliminated': False, 'current_round': 1,
-                    'reg_id': f"REG-{int(time.time() * 1000)}",
+                    'reg_id': generate_reg_id(),
                 },
             }
-            db.collection('waitlists').document(wl_id).set(wl_entry)
+            create_registration(db, wl_id, wl_entry, collection='waitlists')
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
@@ -500,7 +499,7 @@ def public_register(event_id):
             create_unverified_account(db, email, full_name, phone)
             send_set_password_link(db, email, full_name)
 
-        reg_id   = f"REG-{int(time.time() * 1000)}"
+        reg_id   = generate_reg_id()   # UPG-95
         members  = [{'role': 'Team Leader', 'name': full_name,
                       'email': email, 'usn': usn, 'phone': phone}]
         for i, m_name in enumerate(request.form.getlist('member_name[]')):
@@ -541,7 +540,7 @@ def public_register(event_id):
             return redirect(f'/payment/checkout/{event_id}')
 
         reg_data.update({'status': 'Confirmed', 'payment_status': 'Free', 'amount_paid': 0})
-        db.collection('registrations').document(reg_id).set(reg_data)
+        create_registration(db, reg_id, reg_data)
 
         # Award +50 XP for registration
         try:

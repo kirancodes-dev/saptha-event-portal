@@ -21,7 +21,6 @@ import io
 import json
 import logging
 import re
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,8 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int, record_form_submission
+from utils import (login_required, role_required, log_action, safe_int, record_form_submission,
+                   create_registration, generate_reg_id)
 from utils_email import send_registration_confirmed_email
 from services_accounts import (cancel_url_for, create_unverified_account, load_cancel_token, resolve_registrant,
                                send_set_password_link)
@@ -699,7 +699,7 @@ def submit_form(event_id):
                     'email': email, 'usn': usn, 'phone': phone}] + (team_members if team_max > 1 else [])
 
         # Build registration
-        reg_id   = f"REG-{int(time.time() * 1000)}"
+        reg_id   = generate_reg_id()
         reg_data = {
             'reg_id':          reg_id,
             'event_id':        event_id,
@@ -758,7 +758,7 @@ def submit_form(event_id):
             ):
                 wl_count += 1
 
-            wl_id = f"WL-{int(time.time() * 1000)}"
+            wl_id = generate_reg_id('WL')
             wl_entry = {
                 'id':            wl_id,
                 'event_id':      event_id,
@@ -774,7 +774,7 @@ def submit_form(event_id):
                 'position':      wl_count + 1,
                 'reg_data':      reg_data,
             }
-            db.collection('waitlists').document(wl_id).set(wl_entry)
+            create_registration(db, wl_id, wl_entry, collection='waitlists')
 
             finish_submission(sub_key, 'waitlist')
             flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
@@ -796,7 +796,7 @@ def submit_form(event_id):
             'payment_status': 'Free',
             'amount_paid':    0
         })
-        db.collection('registrations').document(reg_id).set(reg_data)
+        create_registration(db, reg_id, reg_data)   # never over another (UPG-95)
         # Paid registrations record this once payment completes (routes_payment)
         record_form_submission(db, event_id, reg_id, email, full_name, answers)
 

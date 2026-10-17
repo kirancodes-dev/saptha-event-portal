@@ -142,10 +142,25 @@ def log_action(*args, **kwargs):
 # HELPER UTILITIES
 # =========================================================
 
-def generate_reg_id() -> str:
-    """Unique, timestamp-based registration ID."""
-    import time
-    return f"REG-{int(time.time() * 1000)}"
+def generate_reg_id(prefix: str = 'REG') -> str:
+    """A registration (or waitlist) ID that can't collide: the prefix and 20
+    hex characters of a random UUID. The old millisecond IDs repeated when two
+    people registered in the same millisecond (UPG-95)."""
+    import uuid
+    return f"{prefix}-{uuid.uuid4().hex[:20].upper()}"
+
+
+class RegistrationExists(Exception):
+    """A new registration's ID is already taken; nothing was written (UPG-95)."""
+
+
+def create_registration(db, reg_id: str, data: dict, collection: str = 'registrations') -> None:
+    """Write a new registration (or waitlist entry) under reg_id, never over an
+    existing one: the database layer's set() merges into whatever is there (UPG-95)."""
+    ref = db.collection(collection).document(reg_id)
+    if ref.get().exists:
+        raise RegistrationExists(reg_id)
+    ref.set(data)
 
 
 def safe_int(value, default: int = 0) -> int:

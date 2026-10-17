@@ -3053,13 +3053,18 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### UPG-95 — Registration IDs come from the clock, so two at the same millisecond overwrite each other
-- **Status:** TODO
-- **Last verified:** 2026-10-17, commit `43f2c00` [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-95: …" on `production-ready` (parent `72804cf`) [T]
 - **Problem:** Found building UPG-94 [C]. A registration's ID is `REG-<milliseconds>`. It's set in the form (`routes_forms.py:704`) and as a fallback when a payment completes (`routes_payment.py:407`), and becomes the document ID (`routes_payment.py:434`: `document(reg_id).set(...)`). Two registrations submitted in the same millisecond, on any instance, get the same ID, and the second `set` replaces the first, which may be a paid registration. Waitlist IDs (`WL-…`, `routes_forms.py:761`) have the same problem.
 - **What to build:** add a random part to the ID (for example `REG-<ms>-<6 hex>`), keeping the `REG-` prefix that tickets and exports show. Writing a new registration must never replace an existing one.
+- **Built (2026-10-17):**
+  - **New IDs:** `utils.generate_reg_id(prefix='REG')` (`utils.py:145`) is the prefix plus 20 hex characters of `uuid4` (80 random bits), for example `REG-9F2C…`; waitlist entries use `WL-`. Every place that built an ID from the clock now calls it: the registration form, its waitlist branch, the legacy public route and its waitlist, the coordinator's walk-in, and payment completion's fallback.
+  - **No overwriting:** `utils.create_registration` refuses (raises `RegistrationExists`) when the ID is already taken, because the database layer's `set()` merges into an existing record. New registrations and waitlist entries are written through it.
+    - A paid completion uses it unless the registration is the payer's own held (`pending_payment`) seat, which it updates as before.
+- **Files touched:** `utils.py`, `routes_forms.py`, `routes_participant.py`, `routes_coordinator.py`, `routes_payment.py`, `tests/test_registration_ids.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low; existing IDs are unchanged.
 - **Acceptance criteria:**
-  1. Test: two registrations created with the clock frozen get different IDs, and both rows exist.
+  1. ✅ Test: two registrations created with the clock frozen get different IDs, and both rows exist. [T `tests/test_registration_ids.py::test_two_registrations_in_the_same_millisecond_get_different_ids`; also `::test_a_new_registration_is_never_written_over_an_existing_one`, `::test_ids_are_unique_in_bulk_and_waitlist_ids_too`. The file can't import on the old code.]
 
 #### UPG-96 — The checkout script puts the event title into a JavaScript string with HTML escaping only
 - **Status:** TODO
@@ -3629,3 +3634,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-103: …" (parent `ece4bf5`) | UPG-103 | **UPG-103 DONE.** Back on every page but the role's home: in the app bar (history when the last page was on this site, else `back_path`), and as a floating pill on the six pages without the app bar. On narrow phones the arrow replaces the logo. 4 new tests; checked with Playwright. Full pytest: 976 passed, 1 skipped, 5 failed (known D-9). |
 | 2026-10-17 | "UPG-107: …" (parent `95a5b3f`) | UPG-107 | **UPG-107 added and DONE** at the owner's request: Google Search Console's ownership file is served at `/google8e55d49885709546.html`. 1 new test. |
 | 2026-10-17 | `fca39ec` (redeploy; this line in "docs: …") | UPG-103 to UPG-107 | **Redeployed** to Cloud Run: image `web:fca39ec` built by Cloud Build, revision `saptha-00004-q58`. No schema change since `a7fa6fd`, so no migration run; the migration job now points at the new image. Checked [R]: home, events, login, `/health/ready` and the Google verification file 200; the floating Back on `/login`; no errors logged by the new revision. |
+| 2026-10-17 | "UPG-95: …" (parent `72804cf`) | UPG-95 | **UPG-95 DONE** (owner's run, Part 1): registration and waitlist IDs come from `uuid4` (`REG-`/`WL-` + 20 hex), and new registrations are written only if the ID is free. 3 new tests. Full pytest on SQLite: 984 passed, 1 skipped, 5 failed (the D-9 tests, deleted in UPG-62). |

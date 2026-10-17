@@ -2353,13 +2353,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - printing the ticket, the wallet pass and the A4 report.
 
 #### UPG-64 — Six templates are still never rendered
-- **Status:** TODO
-- **Last verified:** 2026-10-11, commit `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-64: …" on `production-ready` (parent `c9353ba`) [T]
 - **Problem:** Found starting UPG-63 [C, every `render_template`/`include`/`extends` and every Python string checked]: `templates/admin/leaderboard.html`, `templates/includes/chatbot.html`, `templates/participant/success.html`, `templates/payment/success.html`, `templates/public/login.html` and `templates/public/register.html` are not rendered or included anywhere. UPG-15 removed 17 such templates; these remain. They are full HTML documents outside the shared layout with their own palettes, so they would look wrong if anything rendered them again. UPG-63 leaves them unchanged.
 - **What to build:** delete them, or wire them up if a route should render them.
+- **Built (2026-10-17):**
+  - Re-checked with a script over every template, `extends`/`include`/`import` and every Python string: still exactly these six. Deleted: `templates/admin/leaderboard.html`, `templates/includes/chatbot.html`, `templates/participant/success.html`, `templates/payment/success.html`, `templates/public/login.html`, `templates/public/register.html`. Nothing referred to them.
+- **Files touched:** the six templates (deleted), `tests/test_every_template_rendered.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: every file under `templates/` is rendered by a route or included/extended by a rendered template.
+  1. ✅ Test: every file under `templates/` is rendered by a route or included/extended by a rendered template. [T `tests/test_every_template_rendered.py::test_every_template_is_rendered_or_included`]
+  - **Commit note:** the six deletions were staged early and went into the UPG-69 commit (`24d6eec`) by mistake; this commit adds the test and this entry. Nothing was pushed, and the history wasn't rewritten.
 
 #### UPG-65 — Fabricated figures and simulated features on live pages
 - **Status:** DONE (the certificate pages' support address is deferred with certificates)
@@ -3729,3 +3733,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-69: …" (parent `211b96a`) | UPG-69 | **UPG-69 DONE (ticket part; certificate verification deferred):** the database layer exposes `lead_email`/`lead_name`/`lead_phone` for registrations from their columns, so a seeded registration's owner opens their ticket and sees their name. 1 new test. Full pytest: 1002 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-70: …" (parent `24d6eec`) | UPG-70 | **UPG-70 DONE:** the verification pages' confetti runs without a worker, so the CSP logs no violation (CSP unchanged). 2 new tests. |
 | 2026-10-17 | "UPG-72: …" (parent `d725b2e`) | UPG-72 | **UPG-72 DONE:** a first visit no longer reloads when the service worker takes control (only an accepted update does). 1 new test. |
+| 2026-10-17 | "UPG-64: …" (parent `c9353ba`) | UPG-64 | **UPG-64 DONE:** the six never-rendered templates are deleted (the deletions went into `24d6eec` by mistake), and a test keeps every template reachable. 1 new test. |

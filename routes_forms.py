@@ -53,7 +53,8 @@ class DynamicDBProxy:
 db = DynamicDBProxy()
 from utils import login_required, role_required, log_action, safe_int, record_form_submission
 from utils_email import send_registration_confirmed_email
-from services_accounts import create_unverified_account, resolve_registrant, send_set_password_link
+from services_accounts import (cancel_url_for, create_unverified_account, load_cancel_token, resolve_registrant,
+                               send_set_password_link)
 
 from extensions import limiter
 
@@ -608,7 +609,8 @@ def submit_form(event_id):
 
         # Extract core fields. BLK-02: registration never logs anyone in.
         core = _extract_core(answers)
-        email, login_redirect = resolve_registrant(db, core['email'], event_id)
+        # An existing account's email registers without logging in (UPG-97)
+        email, without_login = resolve_registrant(db, core['email'])
         full_name = core['full_name'] or (session.get('name', '') if session_email else '')
         phone     = core['phone']
         usn       = core['usn'].upper()
@@ -632,11 +634,6 @@ def submit_form(event_id):
         if team_error:
             flash(team_error, 'danger')
             return redirect(f'/forms/register/{event_id}')
-
-        if login_redirect:
-            flash("An account already exists for this email. Please log in to register; "
-                  "you'll come back to this form.", "info")
-            return redirect(login_redirect)
 
         # Placement drives: only students who meet the company's rules (UPG-57)
         from services_placement import eligibility, is_placement
@@ -681,7 +678,7 @@ def submit_form(event_id):
 
         # New email: an unverified account nobody can log in to until the
         # emailed one-time link is used (never a password in email or session)
-        is_new_user = not session_email
+        is_new_user = not session_email and not without_login
         if is_new_user:
             # A set-password link, never a password (UPG-33); faculty and external
             # participants keep the participant role and their own type (UPG-12)
@@ -689,8 +686,9 @@ def submit_form(event_id):
                                       designation=designation, institution=institution)
             send_set_password_link(db, email, full_name)
             flash("🆕 We've emailed you a link to set your password.", "info")
-        else:
-            # An existing account takes the type the first time it's given (UPG-12)
+        elif session_email:
+            # An existing account takes the type the first time it's given (UPG-12);
+            # never from someone who isn't logged in (UPG-97)
             prof = db.collection('users').document(email).get()
             if prof.exists and not (prof.to_dict() or {}).get('participant_type'):
                 db.collection('users').document(email).update(
@@ -724,6 +722,8 @@ def submit_form(event_id):
             'designation':     designation,
             'institution':     institution,
         }
+        if without_login:
+            reg_data['registered_without_login'] = True   # its emails carry a cancel link (UPG-97)
         record_consent(db, email, reg_data['privacy_consent'])
         if team_max > 1:
             reg_data['team_code'] = new_team_code(db)  # others join with it (UPG-08)
@@ -836,6 +836,7 @@ def submit_form(event_id):
             event_date=event_data.get('date', ''),
             venue=event_data.get('venue', ''),
             is_new_user=is_new_user,
+            cancel_url=cancel_url_for(reg_data),
         )
         # Each team member the lead listed hears they were added (UPG-48)
         for m in reg_data.get('members') or []:
@@ -1211,3 +1212,33 @@ def create_form():
         return redirect('/spoc/dashboard')
     return redirect('/coordinator/dashboard')
 
+
+# =========================================================
+# CANCEL BY EMAILED LINK (UPG-97)
+# =========================================================
+@forms_bp.route('/cancel/<token>', methods=['GET', 'POST'])
+def cancel_by_link(token):
+    """The 'Not you?' link emailed for a registration made without logging
+    in. Opening it only asks; the button cancels, once (so mail scanners that
+    open links cancel nothing)."""
+    reg_id, email, error = load_cancel_token(token)
+    doc = db.collection('registrations').document(reg_id).get() if not error else None
+    reg = (doc.to_dict() or {}) if doc is not None and doc.exists else {}
+    if (error or not reg or str(reg.get('lead_email') or '').lower() != email
+            or not reg.get('registered_without_login')):
+        return render_template('public/cancel_registration.html', state='invalid',
+                               expired=error == 'expired'), 400
+    event_doc = db.collection('events').document(str(reg.get('event_id', ''))).get()
+    title = ((event_doc.to_dict() or {}) if event_doc.exists else {}).get('title') or reg.get('event_title', '')
+    paid = str(reg.get('payment_status') or '').lower().startswith('paid')
+    if str(reg.get('status') or '').lower() == 'cancelled':
+        return render_template('public/cancel_registration.html', state='done', title=title, paid=paid)
+    if request.method == 'POST':
+        from routes_participant import cancel_registration_record
+        reason = "Cancelled from the emailed link: made without logging in"
+        if paid:
+            reason += "; the payment is to be refunded"
+        cancel_registration_record(reg_id, reg, f"{email} (emailed link)", reason)
+        return render_template('public/cancel_registration.html', state='done', title=title, paid=paid)
+    return render_template('public/cancel_registration.html', state='confirm', title=title, paid=paid,
+                           reg=reg, token=token)

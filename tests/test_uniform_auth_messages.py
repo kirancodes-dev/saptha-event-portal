@@ -83,7 +83,7 @@ def test_reset_requests_answer_alike_and_only_the_real_account_gets_a_link(accou
 
 # ── Criterion 4 ─────────────────────────────────────────────────────────────
 
-def test_sign_up_and_registration_still_tell_an_existing_email_to_log_in(accounts):
+def test_sign_up_still_tells_an_existing_email_to_log_in_and_registration_needs_no_login(accounts):
     flask_app, db, _, who = accounts
     client = flask_app.test_client()
     client.post('/register', data={'name': 'Again', 'email': who['student'], 'password': 'Brand-new-pass-42',
@@ -97,5 +97,6 @@ def test_sign_up_and_registration_still_tell_an_existing_email_to_log_in(account
     event_id = _spoc_event(flask_app, db)
     visitor = flask_app.test_client()
     resp = visitor.post(f'/forms/submit/{event_id}', data={**_form(who['student']), 'privacy_consent': 'yes'})
-    assert resp.headers['Location'] == f'/login?next=/forms/register/{event_id}'
-    assert any('already exists' in f and 'log in' in f for f in _flashes(visitor))
+    # UPG-97 (owner decision 2026-10-17): registration no longer asks an existing account to log in
+    assert resp.headers['Location'] == '/registration/confirmed'
+    assert not any('already exists' in f for f in _flashes(visitor))

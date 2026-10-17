@@ -3,7 +3,8 @@ services_accounts.py — who a public registration belongs to (BLK-02).
 
 Registration, waitlist and payment completion never log anyone in:
   * a logged-in visitor always registers as their session email;
-  * an email that already has an account must log in first;
+  * an anonymous visitor may register an email that already has an account,
+    without logging in; the account is emailed a link to cancel it (UPG-97);
   * a new email gets an unverified account with no usable password, plus a
     one-time set-password link by email. Following the link sets the password
     and logs in; the link stops working once the password changes.
@@ -13,7 +14,6 @@ import hashlib
 import logging
 import secrets
 from typing import Optional, Tuple
-from urllib.parse import quote
 
 from flask import current_app, session
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -25,6 +25,8 @@ SET_PASSWORD_SALT = 'sapthaevent-set-password'
 SET_PASSWORD_MAX_AGE = 3 * 24 * 3600  # 3 days
 RESET_SALT = 'sapthaevent-password-reset'
 RESET_MAX_AGE = 3600  # 1 hour
+CANCEL_SALT = 'sapthaevent-cancel-registration'
+CANCEL_MAX_AGE = 90 * 24 * 3600  # 90 days
 
 
 def _serializer(salt: str = SET_PASSWORD_SALT) -> URLSafeTimedSerializer:
@@ -36,23 +38,47 @@ def _fingerprint(password_hash: str) -> str:
     return hashlib.sha256((password_hash or '').encode()).hexdigest()[:16]
 
 
-def resolve_registrant(db, form_email: str, event_id: str) -> Tuple[str, Optional[str]]:
-    """Return (email, login_redirect).
+def resolve_registrant(db, form_email: str) -> Tuple[str, bool]:
+    """Return (email, without_login).
 
-    login_redirect is set when an anonymous visitor typed the email of an
-    existing account: they must log in first, and nothing may be created.
+    without_login is True when an anonymous visitor typed the email of an
+    existing account: they're registered under it without logging in, no
+    account is created or changed, and the account is emailed a link to
+    cancel the registration (UPG-97).
     """
     session_email = (session.get('user_id') or '').strip().lower()
     if session_email:
-        return session_email, None
+        return session_email, False
     email = (form_email or '').strip().lower()
-    if email and db.collection('users').document(email).get().exists:
-        return email, login_url(f'/forms/register/{event_id}')
-    return email, None
+    return email, bool(email and db.collection('users').document(email).get().exists)
 
 
-def login_url(next_path: str) -> str:
-    return f"/login?next={quote(next_path, safe='/')}"
+def make_cancel_token(reg_id: str, email: str) -> str:
+    """A link token that lets the account owner cancel a registration made
+    for their email without logging in (UPG-97)."""
+    return _serializer(CANCEL_SALT).dumps({'r': reg_id, 'e': (email or '').lower()})
+
+
+def load_cancel_token(token: str) -> Tuple[str, str, str]:
+    """Return (reg_id, email, error); error is 'expired', 'invalid' or ''."""
+    try:
+        data = _serializer(CANCEL_SALT).loads(token, max_age=CANCEL_MAX_AGE)
+    except SignatureExpired:
+        return '', '', 'expired'
+    except BadSignature:
+        return '', '', 'invalid'
+    if not isinstance(data, dict) or not data.get('r') or not data.get('e'):
+        return '', '', 'invalid'
+    return str(data['r']), str(data['e']), ''
+
+
+def cancel_url_for(reg: dict) -> str:
+    """The emailed cancel link for a registration made without logging in,
+    or '' for any other registration (UPG-97)."""
+    if not reg.get('registered_without_login') or str(reg.get('status', '')).lower() == 'cancelled':
+        return ''
+    from utils_email import _base_url
+    return f"{_base_url()}/forms/cancel/{make_cancel_token(reg.get('reg_id', ''), reg.get('lead_email', ''))}"
 
 
 def create_unverified_account(db, email: str, name: str, phone: str = '',

@@ -387,20 +387,17 @@ def public_register(event_id):
         sub_link   = request.form.get('submission_link', '').strip()
 
         # BLK-02: registration never logs anyone in. A logged-in visitor
-        # registers as themselves; an existing account must log in first.
-        from services_accounts import resolve_registrant
+        # registers as themselves; an existing account's email registers
+        # without logging in and is emailed a cancel link (UPG-97).
+        from services_accounts import cancel_url_for, resolve_registrant
         session_email = (session.get('user_id') or '').strip().lower()
-        email, login_redirect = resolve_registrant(db, email, event_id)
+        email, without_login = resolve_registrant(db, email)
         if not full_name and session_email:
             full_name = session.get('name', '')
 
         if not email or not full_name:
             flash("Name and email are required.", "warning")
             return redirect(f'/forms/register/{event_id}')
-
-        if login_redirect:
-            flash("An account already exists for this email. Please log in to register.", "info")
-            return redirect(login_redirect)
 
         # Duplicate check — redirect to their ticket if already registered
         existing = list(
@@ -472,7 +469,7 @@ def public_register(event_id):
             return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # New email: unverified account + one-time set-password link
-        is_new_user = not session_email
+        is_new_user = not session_email and not without_login
         if is_new_user:
             from services_accounts import create_unverified_account, send_set_password_link
             create_unverified_account(db, email, full_name, phone)
@@ -511,6 +508,8 @@ def public_register(event_id):
             'is_eliminated':   False,
             'current_round':   1,
         }
+        if without_login:
+            reg_data['registered_without_login'] = True   # its emails carry a cancel link (UPG-97)
 
         if fee > 0:
             session['pending_reg_data'] = reg_data
@@ -531,7 +530,7 @@ def public_register(event_id):
             'registration_count': firestore.Increment(1)
         })
         send_ticket_email(email, full_name, event_data.get('title', ''),
-                          reg_id, is_new_user=is_new_user)
+                          reg_id, is_new_user=is_new_user, cancel_url=cancel_url_for(reg_data))
         log_action(db, "REGISTRATION_CONFIRMED", f"{email} registered for {event_id}")
         if session_email:
             return redirect(f'/ticket/{reg_id}')
@@ -540,7 +539,7 @@ def public_register(event_id):
             'event_title': event_data.get('title', ''),
             'event_date':  event_data.get('date', ''),
             'venue':       event_data.get('venue', ''),
-            'is_new_user': True,
+            'is_new_user': is_new_user,
             'user_email':  email,
         }
         return redirect('/registration/confirmed')
@@ -568,10 +567,21 @@ def cancel_registration(reg_id):
         flash("Unauthorised.", "danger")
         return redirect('/participant/dashboard')
 
+    cancel_registration_record(reg_id, reg, session.get('user_id'))
+    flash("Your registration has been cancelled.", "info")
+    return redirect('/participant/dashboard')
+
+
+def cancel_registration_record(reg_id, reg, actor, reason=''):
+    """Cancel one registration: free its seat and promote the waitlist. The
+    participant's own cancel and the emailed cancel link share it (UPG-97)."""
     event_id = reg.get('event_id', '')
 
     # Mark as cancelled
-    db.collection('registrations').document(reg_id).update({'status': 'Cancelled'})
+    updates = {'status': 'Cancelled'}
+    if reason:
+        updates['cancel_reason'] = reason
+    db.collection('registrations').document(reg_id).update(updates)
 
     # Atomic decrement — floor at 0 handled server-side via max check after read
     db.collection('events').document(event_id).update({
@@ -588,9 +598,7 @@ def cancel_registration(reg_id):
     except Exception:
         pass
 
-    log_action(db, "REGISTRATION_CANCELLED", f"{session.get('user_id')} cancelled {reg_id}")
-    flash("Your registration has been cancelled.", "info")
-    return redirect('/participant/dashboard')
+    log_action(db, "REGISTRATION_CANCELLED", f"{actor} cancelled {reg_id}" + (f": {reason}" if reason else ''))
 
 
 # =========================================================

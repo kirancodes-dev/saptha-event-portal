@@ -2374,15 +2374,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. Test: the verification pages and the chatbot take the support address from `SUPPORT_EMAIL`.
 
 #### UPG-66 — Two forms post without a CSRF token
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit on `production-ready` [T]
 - **Problem:** Found during UPG-63 [C]. `templates/public/exam_interface.html:49` (`examForm`, also submitted by `static/js/proctor.js:99`) and `templates/hackathon/submit_project.html:29` post plain forms with no `csrf_token` field. `CSRFProtect` is on for the whole app (`app.py:146`), and the fetch helper (`static/js/pages/includes__csrf_fetch.js`) only covers `fetch()`. So both submissions should be refused with 400: an exam that is submitted (or force-submitted by the proctor) is lost, and a hackathon project can't be submitted.
 - **Who benefits:** students taking proctored exams; hackathon teams.
 - **What to build:** add `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` to both forms (frontend only), with a test.
+- **What was built:** Added hidden `csrf_token` input to `templates/public/exam_interface.html` (`#examForm`) and `templates/hackathon/submit_project.html`. Verified with `tests/test_upg66_csrf_forms.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: posting each form as rendered (token included) succeeds, and posting without the token is refused.
-  2. Test: every `<form method="POST">` in `templates/` contains a `csrf_token` field, except the routes that are exempt.
+  1. ✅ Test: posting each form as rendered (token included) succeeds, and posting without the token is refused (`tests/test_upg66_csrf_forms.py::test_hackathon_submission_csrf_protection`, `::test_exam_submission_csrf_protection`).
+  2. ✅ Test: every `<form method="POST">` in `templates/` contains a `csrf_token` field, except the routes that are exempt (`tests/test_upg66_csrf_forms.py::test_every_rendered_post_form_in_templates_has_csrf_token`).
 
 #### UPG-67 — The coordinator scanner throws a script error when it is locked
 - **Status:** TODO

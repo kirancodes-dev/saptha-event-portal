@@ -47,6 +47,7 @@
             <!-- MAIN QUESTION FORM -->
             <div class="col-lg-8">
                 <form id="examForm" action="{{ url_for('exams.submit_exam', event_id=event.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="attempt_id" value="{{ attempt_id }}">
 
                     {% for q in questions %}

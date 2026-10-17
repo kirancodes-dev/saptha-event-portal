@@ -3251,6 +3251,23 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ Test: by default the dashboard has no referral section and makes no referral API call; with `REFERRALS_ENABLED=true` the section is back. [T `tests/test_student_dashboard.py::test_the_referral_section_is_hidden_unless_switched_on`; fails on the old code]
 
+
+#### UPG-106 — The SPOC event panel runs off a phone screen, and its buttons squeeze the title
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-106: …" on `production-ready` (parent `2fd03cf`) [T; R: Playwright at 375 and 1280 px]
+- **Problem:** Owner report 2026-10-17, with a phone screenshot of a SPOC event. On a phone (375 px) [R]:
+  - `.dashboard-layout` used `grid-template-columns: 1fr` below 992 px (`templates/spoc/dashboard.html:38-44`). A plain `1fr` grows to its widest content, so the column was 465 px inside a 311 px container. The page also hides sideways overflow, so the right side was cut off and couldn't be scrolled to.
+  - The event header put the status and action buttons ("Review", "Edit", "Advance to …") in a column that doesn't shrink (398 px). The title and venue got 25 px, so the venue wrapped one word per line and the buttons covered the title.
+- **Built:**
+  - `grid-template-columns: minmax(0, 1fr)` below 992 px, and `min-width: 0; max-width: 100%` on the detail column and panel.
+  - Below 768 px the header (`.event-head`) stacks: title and venue first, then the status and actions left-aligned and wrapping (`.event-head-actions`).
+  - **Checked [R]:** the event view is 375 px on a 375 px screen, the header sections are 277 px each, the venue is on one line, and there are no console errors; the desktop layout is unchanged.
+- **Files touched:** `templates/spoc/dashboard.html`, `tests/test_spoc_mobile.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. ✅ Test: the phone grid is `minmax(0, 1fr)`, and the header stacks below 768 px [T `tests/test_spoc_mobile.py::test_the_spoc_event_panel_fits_a_phone`; fails on the old code].
+  2. ✅ Checked [R] with Playwright at 375 px: no part of the event view is wider than the screen.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3586,3 +3603,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-101: …" (parent `0d60c3a`) | UPG-101 | **UPG-101 added and DONE** at the owner's request. README: a live-demo button and section for https://saptha-967997581752.asia-south1.run.app, Cloud Run and Razorpay test-mode badges, "Run it locally" (venv, `.env.example`, app, tests), Payments, Deployment and Security text matching UPG-94 and UPG-97, and the test numbers of the 17 October run (967 passed, 1 skipped, 5 known failures). 1 new test. |
 | 2026-10-17 | "UPG-105: …" (parent `250252a`) | UPG-103, UPG-104, UPG-105 | Owner report (back navigation, student dashboard, referrals, mobile): UPG-103 (no Back in the installed app), UPG-104 (dashboard CSS trapped in an unclosed media query, upcoming and tabs that don't match the events) and UPG-105 added. **UPG-105 DONE:** the referral section is hidden unless `REFERRALS_ENABLED`. 1 new test. |
 | 2026-10-17 | "UPG-104: …" (parent `7f623d0`) | UPG-104 | **UPG-104 DONE.** Student dashboard: the unclosed media query is fixed (styled on desktop, no 495 px card on phones); Upcoming means future and not cancelled; the tabs come from the student's registrations with counts and an empty-tab message. 3 new tests (fail on the old code); checked with Playwright at 375 and 1280 px. |
+| 2026-10-17 | "UPG-106: …" (parent `2fd03cf`) | UPG-106 | **UPG-106 added and DONE** (owner's phone screenshot): the SPOC event panel's grid is `minmax(0, 1fr)` on phones and its header stacks, so nothing runs off the screen or covers the title. 1 new test; checked with Playwright. |

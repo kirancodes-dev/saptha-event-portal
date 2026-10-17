@@ -2434,12 +2434,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Headless: `/coordinator/scan/<event>` for an event on another day logs no page error. [T `tests/test_scanner_locked.py::test_a_locked_scanner_logs_no_page_error` (headless Chromium; fails on the old template with "Cannot read properties of null"), `::test_todays_scanner_still_has_its_camera_view`]
 
 #### UPG-68 — The coordinator dashboard links to a form builder coordinators can't open
-- **Status:** TODO
-- **Last verified:** 2026-10-12, working tree on `0fd9f3a`
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-68: …" on `production-ready` (parent `9d7804d`) [T]
 - **Problem:** Found during UPG-63 [R]. "Build registration form" on each event card of `/coordinator/dashboard` links to `/forms/builder/<event>`. That URL answers 403 for the seeded Event Coordinator (`coord1`) on their own assigned event, while the Club SPOC can open it. Either coordinators should be allowed to build forms (a permission change) or the button shouldn't be shown to them (a template change). That is an owner decision.
+- **Built (2026-10-17):**
+  - **Decision taken in this run (the brief left it open):** hide the button from those who can't use it rather than widen coordinators' permissions.
+  - The builder requires `edit_event` on the event (`routes_forms.builder`). The coordinator dashboard sets `can_edit_form` per event with that same check (`routes_coordinator.py`), and the form-responses page passes it too (`routes_forms.view_responses`). The templates show "Build/Edit registration form" and "Edit form" only when it's true (`templates/coordinator/dashboard.html`, `templates/coordinator/form_responses.html`).
+- **Files touched:** `routes_coordinator.py`, `routes_forms.py`, `templates/coordinator/dashboard.html`, `templates/coordinator/form_responses.html`, `tests/test_form_builder_links.py` (new).
 - **Effort:** S · **Depends on:** owner decision · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: for each role that sees the button, the link answers 200; roles that can't use it don't see it.
+  1. ✅ Test: for each role that sees the button, the link answers 200; roles that can't use it don't see it. [T `tests/test_form_builder_links.py::test_builder_links_are_shown_only_to_those_who_can_open_them`: the assigned coordinator sees none (and gets 403 at the builder); every link the owner SPOC and the Super Admin are shown answers 200. Fails on the old code.]
 
 #### UPG-69 — The legacy certificate check and the digital ticket lose the lead's name and email on the SQL adapter
 - **Status:** TODO
@@ -3708,3 +3712,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-65: …" (parent `6c356b4`) | UPG-65 | **UPG-65 DONE** (owner: remove or hide every made-up figure and simulated feature; settles D-8). Demo pages behind `DEMO_PAGES_ENABLED` (off). Made-up figures removed. Computed service status. No fake NFC delay or 20 points. Event-page defaults not invented. Chatbot contact from `SUPPORT_EMAIL`. Found and fixed: the Zoho fallback that pasted the prompt (with the student's details) into the chat, and the fake 96% judge matches. Three existing tests updated to the instruction (named in the item). Certificate pages' address deferred. **New UPG-108.** Full pytest: 992 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-82: …" (parent `1b65815`) | UPG-82 | **UPG-82 DONE** (owner decision: API events are drafts with the wizard's review). Both API create endpoints run `parse_form` and save drafts owned by the caller; the preset step is shared with the wizard. 6 new tests. Full pytest: 998 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-67: …" (parent `dfcdb48`) | UPG-67 | **UPG-67 DONE:** the locked coordinator scanner no longer starts the camera, so it logs no error. New `tests/headless.py` for headless page checks. 2 new tests. |
+| 2026-10-17 | "UPG-68: …" (parent `9d7804d`) | UPG-68 | **UPG-68 DONE:** form-builder buttons appear only to those with `edit_event` on the event (hidden from coordinators rather than widening permissions). 1 new test. |

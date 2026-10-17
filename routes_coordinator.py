@@ -108,6 +108,8 @@ def dashboard():
             d['scored_teams'] = sum(
                 1 for r in regs
                 if not r.get('is_eliminated') and r.get('scores'))
+            # The form builder needs edit_event: show its button only to those who have it (UPG-68)
+            d['can_edit_form'] = can(session, 'edit_event', d, db=db)
             events.append(d)
     except Exception as exc:
         flash(f"Dashboard error: {exc}", "danger")

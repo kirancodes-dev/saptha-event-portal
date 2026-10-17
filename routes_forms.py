@@ -913,7 +913,8 @@ def view_responses(event_id):
 
     return render_template(
         'coordinator/form_responses.html',
-        event=event, schema=schema, submissions=page.items, page=page, total=len(submissions)
+        event=event, schema=schema, submissions=page.items, page=page, total=len(submissions),
+        can_edit_form=_allowed(event_id, event, 'edit_event'),   # the builder's own check (UPG-68)
     )
 
 

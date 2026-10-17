@@ -150,6 +150,8 @@
                     <div class="mt-auto d-grid gap-2">
                         {% if event.status == 'active' %}
 
+                            {# Only for those who can edit the event; the builder refuses others (UPG-68) #}
+                            {% if event.can_edit_form %}
                             <!-- ★ FORM BUILDER BUTTON ★ -->
                             <a href="/forms/builder/{{ event.id }}"
                                class="btn btn-primary">
@@ -160,6 +162,7 @@
                                     Build registration form
                                 {% endif %}
                             </a>
+                            {% endif %}
 
                             <!-- View Responses -->
                             {% if event.get('has_custom_form') %}

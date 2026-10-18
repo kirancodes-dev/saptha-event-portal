@@ -516,12 +516,15 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. The certificate shows the hours when the event has them.
 
 #### UPG-12 — Faculty and external participants (FDPs, guest lectures, conferences)
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-12: …" on `production-ready` (parent `33437e4`)
+- **Status:** DONE (criterion 2, the certificate, deferred with certificates)
+- **Last verified:** 2026-10-17, commit "UPG-12: …" on `production-ready` (parent `33b31af`) [T]
 - **Problem:** Every registrant is created as `Student`: registration through `services_accounts.create_unverified_account` (its role defaults to `Student`, `services_accounts.py:59,66`; used at `routes_forms.py:571`), and sign-up at `routes_auth.py:306`. There's no faculty or external participant type (`utils.py:24-36`, `services_permission.py:53-80`), so FDPs and conferences can't be run for their real audience.
 - **Who benefits:** HR/IQAC (FDP records), departments running FDPs and conferences, external delegates.
 - **What to build:** `participant_type` (student / faculty / external) with designation and institution; the same participant dashboard; FDP certificate wording; analytics split by type.
 - **Files touched:** `routes_forms.py`, `routes_auth.py`, `models_pg.py` + migration, `routes_participant.py`, `utils_certificate.py`, tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** Criterion 2 (certificate wording) stays deferred with certificates.
+- **Files touched:** `tests/test_participant_types.py` (new).
 - **Effort:** M · **Depends on:** BLK-02, BLK-06 · **Risk:** role checks assume `Student`.
 - **What was built (2026-10-10, owner's second run; no certificate work):**
   - **Data:** `participant_type` (student / faculty / external), `designation` and `institution` on users and registrations (`models_pg.py`; migration `0006_participant_types`, which matches the models with 0 differences on PostgreSQL 16 and downgrades cleanly). `services_participants.py` holds the types, labels and helpers; records without a type are students.
@@ -534,9 +537,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Checked by hand [R] on a temporary database: an FDP (faculty only) form fixes the type and shows the affiliation fields; a conference (faculty + external) offers two choices; a plain event doesn't ask; missing designation and a student registering for the FDP are refused with the reason; a valid faculty registration stores type and affiliation and creates a faculty account waiting for its set-password link, who opens the ticket and dashboard (200); exports, report sheet, the faculty-filtered department export (6 FDP hours) and the analytics table show the split. Export, form, team, journey, adapter and ticketing tests pass.
 - **To test later:** criteria 1 and 3, plus the event's allowed types being enforced, the affiliation fields being required only for faculty and external, and the department export filter. Criterion 2 is deferred (certificates).
 - **Acceptance criteria:**
-  1. Test: a faculty registration creates a user with `participant_type = faculty` who can open their ticket.
+  1. ✅ Test: a faculty registration creates a user with `participant_type = faculty` who can open their ticket. [T `tests/test_participant_types.py::test_a_faculty_registration_makes_a_faculty_account_that_opens_its_ticket`]
   2. ~~Test: the FDP certificate shows designation and institution.~~ Certificate part deferred (owner, 2026-10-10).
-  3. Test: the admin analytics split counts by participant type.
+  3. ✅ Test: the admin analytics split counts by participant type. [T `::test_the_analytics_split_counts_by_participant_type` (exact counts from `services_insights.build`), `::test_the_admin_analytics_page_shows_the_split`]
+  - "To test later" extras: `::test_the_events_allowed_types_are_enforced`, `::test_the_affiliation_is_required_only_for_faculty_and_external`, `::test_the_department_export_filters_by_participant_type`.
 
 #### UPG-13 — Sports tournaments: fixtures, results, standings
 - **Status:** BUILT (untested)
@@ -3783,3 +3787,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-44: …" (parent `ad988a5`) | UPG-44 | **UPG-44 DONE** (Part 2, tested as built): empty, missing, `unpaid` and `Paid` payment statuses read back as written and the `unpaid` filter finds only the explicit one, on SQLite and PostgreSQL 16.2 (local `pgserver`). 1 new test. |
 | 2026-10-17 | "UPG-56: …" (parent `5525921`) | UPG-56 | **UPG-56 DONE** (Part 2, tested as built): the checkout coupon field sends the code, the order is priced on the server, and the preview shows the discount or the server's error with the full price. 3 new tests. |
 | 2026-10-17 | "UPG-10: …" (parent `0f7ce11`) | UPG-10 | **UPG-10 DONE** (Part 2, tested as built): roster import creates and then updates students in place; Google sign-in outside the university domain is refused. 3 new tests. |
+| 2026-10-17 | "UPG-12: …" (parent `33b31af`) | UPG-12 | **UPG-12 DONE** (Part 2, tested as built; certificate part deferred): faculty registration and ticket, allowed types, affiliation only for faculty/external, the export filter and the analytics split. 6 new tests. |

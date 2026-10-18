@@ -678,6 +678,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   2. Test: with production config, an S3 failure raises and nothing is written under `static/uploads/`.
   3. Test: exports are uploaded without a public ACL and handed out as signed URLs that expire.
   4. Test: a certificate uploaded through one app instance is readable through a second instance (shared stubbed bucket), and after an app restart. *(Re-verification 2026-10-08: nothing uploads certificates any more; this criterion and criterion 3 have nothing live to test. Proposed in D-5: keep criteria 1–2 and fold them into UPG-21.)*
+  - **2026-10-18:** its criteria are tested under UPG-21 (`tests/test_storage_endpoints.py`).
 
 #### UPG-18 — Background tasks without a broker: inline with timeouts, plus an outbox for retries
 - **Status:** BUILT (untested)
@@ -765,12 +766,17 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   6. Test: production responses carry HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy` and a frame policy.
 
 #### UPG-21 — Daily database backups and a tested restore
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-21: …" on `production-ready` (parent `4889b2e`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-21: …" on `production-ready` (parent `79768c5`) [T]
 - **Problem:** MISSING [C]. Nothing in the repo dumps or restores the database (searched for `pg_dump` and backup scripts; the only "backup" hits are 2FA backup codes). Whether the Supabase plan in use keeps its own backups isn't known; don't rely on it.
 - **Who benefits:** the university (every record of every event).
 - **What to build:** `scripts/backup_db.sh` (`pg_dump -Fc` to a private bucket, dated names, retention), run daily by the external scheduler (Cloud Scheduler + a Cloud Run job, or GitHub Actions); `scripts/restore_db.sh`; a documented restore drill. Dumps are never committed.
 - **Files touched:** `scripts/backup_db.sh`, `scripts/restore_db.sh`, `.gitignore`, `tests/test_repo_hygiene.py`, `docs/DEPLOY.md`, tests.
+- **Built (2026-10-17):**
+  - **Tested in Part 2.**
+  - **Found and fixed:** criterion 2 wasn't built. `.gitignore` refused `*.dump`/`*.sql`/`*.sql.gz`/`*.backup`, but the hygiene test's forbidden list had no such pattern, so a tracked dump would have passed. The pattern and examples are added to `tests/test_repo_hygiene.py` (a stricter test; nothing tracked matches).
+  - The backup test uses the PostgreSQL tools from `pgserver` and a stand-in `aws` command that keeps the bucket in a local folder.
+- **Files touched:** `tests/test_repo_hygiene.py`, `tests/test_backup_restore.py` (new), `tests/test_storage_endpoints.py` (new).
 - **Effort:** S · **Depends on:** UPG-17 (bucket settings) · **Risk:** a dump holds all personal data; the bucket must be private and access-limited.
 - **What was built (2026-10-10, development-only run; UPG-17 folded in, D-5):**
   - **`scripts/backup_db.sh`**: `pg_dump --format=custom` of `DATABASE_URL`, a `pg_restore --list` check, upload to `BACKUP_BUCKET` (`s3://`, with `S3_ENDPOINT_URL` for Supabase Storage, or `gs://`) as `saptha-<UTC time>.dump`, and deletion of dumps older than `BACKUP_RETENTION_DAYS` (30) by the date in their names. The local copy is removed on exit.
@@ -783,9 +789,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Checked by hand [R] on PostgreSQL 16 (bundled `pg_dump`/`pg_restore`, a local stand-in for the `aws` CLI): the backup of a database with 7 users and 3 events uploaded one dump and pruned a 2020 one; restoring it into an empty database gave the same counts and Alembic revision; restoring again into the now non-empty database was refused (exit 3). With stubbed boto3: the endpoint reaches the client, private uploads carry no ACL, a signed URL comes back, and a production failure raises without writing locally.
 - **To test later:** criteria 1–3 below (backup against a test PostgreSQL → restore into an empty database gives the same row counts per table; the hygiene test fails on a tracked `*.dump`/`*.sql`/`*.sql.gz`/`*.backup`; the guide section), plus UPG-17's criteria 1–2 (the S3 endpoint is used; a production S3 failure raises and writes nothing under `static/uploads/`) and the signed, non-public export upload.
 - **Acceptance criteria:**
-  1. Test: the backup script against a test PostgreSQL produces a dump; restoring it into an empty database gives the same row counts per table.
-  2. Test: the hygiene test fails if a `*.dump`, `*.sql`, `*.sql.gz` or `*.backup` file is tracked.
-  3. `docs/DEPLOY.md` documents the schedule, retention, bucket permissions and the restore drill.
+  1. ✅ Test: the backup script against a test PostgreSQL produces a dump; restoring it into an empty database gives the same row counts per table. [T on **PostgreSQL 16.2**: `tests/test_backup_restore.py::test_a_backup_restores_into_an_empty_database_with_the_same_rows` (a migrated database with 7 users; one dump uploaded and a 2020 one pruned; restored with identical row counts in every table and the same Alembic revision; a second restore into the non-empty database refused with exit 3)]
+  2. ✅ Test: the hygiene test fails if a `*.dump`, `*.sql`, `*.sql.gz` or `*.backup` file is tracked. [T `tests/test_repo_hygiene.py::test_patterns_flag_forbidden_paths` (now including dump files) and `::test_gitignore_rules`]
+  3. ✅ `docs/DEPLOY.md` documents the schedule, retention, bucket permissions and the restore drill. [T `tests/test_backup_restore.py::test_the_guide_documents_backups_and_the_restore_drill`]
+  - UPG-17's part: `tests/test_storage_endpoints.py` (boto3 stubbed): the S3 endpoint reaches the client and the URL; private uploads carry no ACL and come back through a 15-minute signed link; in production an S3 failure raises and nothing is written under `static/uploads/`.
 
 #### UPG-22 — Privacy notice, consent at registration, working data export and deletion
 - **Status:** BUILT (untested)
@@ -3835,3 +3842,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-110: …" (parent `46bc891`) | UPG-110, UPG-111 | **UPG-110 added and DONE:** background tasks read the bound Flask app at run time, not from their first binding. This cured two order-dependent failures (a cancel link and a QR signed under a stale app in the tests; production has one app). **New UPG-111** (the scanner list's invented venue, found testing UPG-43). Full pytest: 1041 passed, 2 skipped, 0 failed. |
 | 2026-10-17 | "UPG-48: …" (parent `baeb512`) | UPG-48 | **UPG-48 DONE** (Part 2, tested as built): every team member gets the confirmation, day-before ticket, change and cancellation notices once (any email case). 3 new tests. |
 | 2026-10-17 | "UPG-16: …" (parent `64c6eaf`) | UPG-16 | **UPG-16 DONE** (Part 2, tested as built): `alembic upgrade head` builds empty SQLite and PostgreSQL databases that match the models; downgrade/upgrade works on PostgreSQL; production start-up refuses an unmigrated database and never alters one. 5 new tests. |
+| 2026-10-17 | "UPG-21: …" (parent `79768c5`) | UPG-21 | **UPG-21 DONE** (Part 2): backup → restore on PostgreSQL gives identical row counts and revision, and refuses a non-empty target. Found and fixed: the hygiene test didn't refuse tracked database dumps (criterion 2). The storage endpoint and private-link checks (UPG-17) are tested too. 5 new tests (plus 8 hygiene cases). |

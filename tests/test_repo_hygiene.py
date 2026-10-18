@@ -26,6 +26,7 @@ FORBIDDEN = [
     (re.compile(r'(^|/)__pycache__/'), 'compiled Python cache'),
     (re.compile(r'^dataconnect/\.dataconnect/'), 'Data Connect emulator data (local Postgres)'),
     (re.compile(r'^instance/'), 'Flask instance folder (local config / databases)'),
+    (re.compile(r'\.(dump|sql|sql\.gz|backup)$'), 'database dump (everyone\'s personal data, UPG-21)'),
 ]
 ALLOWED = [re.compile(r'(^|/)\.env\.example$')]
 
@@ -82,6 +83,7 @@ def test_no_service_account_credentials_in_tracked_json(tracked_files):
     '.env', '.env.production', 'config/.env.local', 'saptha_fallback.db', 'instance/event_portal.db',
     'data/app.sqlite3', 'x.sqlite-journal', 'serviceAccountKey.json', 'keys/service-account-prod.json',
     '__pycache__/app.cpython-311.pyc', 'pkg/mod.pyc', 'dataconnect/.dataconnect/pgliteData/pg17/PG_VERSION',
+    'saptha-20261018T020000Z.dump', 'backups/full.sql', 'exports/db.sql.gz', 'old/prod.backup',
 ])
 def test_patterns_flag_forbidden_paths(path):
     assert forbidden_reason(path)
@@ -103,6 +105,7 @@ def test_patterns_allow_normal_paths(path):
     ('__pycache__/m.cpython-311.pyc', True), ('pkg/m.pyc', True),
     ('service-account.json', True), ('service-account-prod.json', True), ('serviceAccountKey.json', True),
     ('dataconnect/schema/schema.gql', False),
+    ('saptha-20261018T020000Z.dump', True), ('backups/full.sql', True), ('db.sql.gz', True), ('prod.backup', True),
 ])
 def test_gitignore_rules(tracked_files, path, ignored):
     # Only this repo's .gitignore counts, not a developer's global excludes file;

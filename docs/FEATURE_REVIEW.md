@@ -880,7 +880,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **What to build:** a role-aware shared layout (extend `base_classic.html`, with blocks for per-role navigation, and a minimal child layout for full-screen pages such as the kiosk, scanners and printable certificate). Move pages one area at a time, one commit each: 23a public, 23b participant, 23c teams/profile/payment, 23d SPOC, 23e coordinator, 23f judge, 23g admin, 23h marketing. Keep the existing design tokens in `static/css/global.css`; no redesign. Where a headless browser is available, screenshot each area's key pages at 375px and 1280px before and after.
 - **Files touched:** `templates/**`, `templates/base_classic.html`, tests.
 - **Built (2026-10-18):**
-  - **Tested in Part 2 (all of 23a–h at once), as built; no change to the app.** 30 key pages across six roles: anonymous (8), student (5), SPOC (3), coordinator (2), judge (1) and Super Admin (4).
+  - **Tested in Part 2 (all of 23a–h at once), as built; no change to the app.** 23 key pages across six roles: anonymous (8), student (5), SPOC (3), coordinator (2), judge (1) and Super Admin (4).
   - **The 375px check runs in headless Chromium.** Each page is loaded as the app rendered it for that role, with `/static` from disk and Bootstrap from `tests/fixtures/bootstrap-5.3.3.min.css`, the exact file the templates load (a test checks its SHA-384 against their `integrity` attribute). There are no before-screenshots, so "nothing lost" is checked against the same page at 1280px: every heading and form field visible there is visible at 375px. Sideways scroll counts when the page itself scrolls (`window.scrollX`), or when text, an image or a control sticks out past the screen without a box the user can scroll around it. Removing an admin table's `.table-responsive` fails it.
   - **Recorded as intended, not lost:**
     - the login page's brand panel shows on wide screens only (`static/css/global.css` `.auth-info-panel`), and the form is complete on a phone;
@@ -926,12 +926,15 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   3. ✅ Test: only the font families used by `global.css` are requested. [T `::test_only_the_three_families_are_declared_and_nothing_loads_web_fonts`, `::test_a_page_requests_only_the_self_hosted_fonts` (4 pages, headless)]
 
 #### UPG-25 — Move inline scripts into static files; remove `'unsafe-inline'` from `script-src`
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-25: …" on `production-ready` (parent `244b889`)
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-25: …" on `production-ready` (parent `d29e2de`) [T]
 - **Problem:** [C at `56a014d`] 70 templates contain inline `<script>` blocks, and 76 templates contain 483 inline event handlers (`onclick=` and similar; re-counted 2026-10-08: 72, 78 and 490 at `986d108`). So the CSP's `script-src` allows `'unsafe-inline'` (`app.py:221`), which removes most of its protection against injected scripts; `content_security_policy_nonce_in=[]` (`app.py:236`).
 - **Who benefits:** every user (XSS protection).
 - **What to build:** page scripts in `static/js/`; event handlers bound with `addEventListener`; a per-request nonce (`content_security_policy_nonce_in=['script-src']`) for anything that must stay inline (e.g. a small JSON bootstrap); then remove `'unsafe-inline'` from `script-src`.
 - **Files touched:** `templates/**`, `static/js/**`, `app.py`, tests.
+- **Built (2026-10-18):**
+  - **Tested in Part 2, as built; no change to the app.** The browser check is now in the repo (it ran from a scratch harness at build time). Each of UPG-23's 23 key pages is loaded in headless Chromium under the exact CSP header the app sent with it, and every `data-h-*` key on the page must have a registered handler (`handlers.js` warns otherwise). Removing the nonce from one inline script on the admin dashboard fails both the template scan and the browser check. The template scan also covers the app's own JS files, which build HTML strings.
+- **Files touched:** `tests/test_csp_strict.py` (new).
 - **Effort:** L (split by area like UPG-23) · **Depends on:** UPG-23 · **Risk:** a missed handler breaks a button; a headless click-through catches CSP violations.
 - **What was built (2026-10-10, development-only run):**
   - **`script-src` has no `'unsafe-inline'`**; it carries a per-request nonce (`content_security_policy_nonce_in=['script-src']`, `app.py`). Since the nonce makes browsers ignore `'unsafe-inline'` anyway, every inline script and handler had to move first.
@@ -943,9 +946,9 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - **Checked [R] in Chromium (Playwright) over every page that answers 200 for some role (240 page loads):** every `data-h-*` handler on each page is bound; **no script CSP violation** under the strict policy; no page error or console error that the same pass doesn't also show on the code before UPG-23a (the only new message is the HUD scanner reaching its camera start in headless Chromium, which before this run never loaded its QR library: the CSP blocked unpkg, fixed by UPG-24). Click-throughs: the login password toggle, the SPOC dashboard's event selection, and the form builder's add / select / rename / delete of a field drawn at run time all work. The 858-fetch crawl's text is unchanged; full pytest 893 passed, 1 skipped; the HTML-sink scan now also reads `static/js/pages/` and `static/js/handlers/` and passes (two `data-href` values use `safeUrl`).
 - **To test later:** criteria 1–2 (the header has no `'unsafe-inline'` in `script-src`; no live template has an inline `<script>` without the nonce or an `on…=` attribute) and 3 (key pages load with no CSP violation; the Playwright pass used here is in the scratch harness, not in the repo yet; UPG-28 adds a browser check to the repo).
 - **Acceptance criteria:**
-  1. Test: the CSP header's `script-src` has no `'unsafe-inline'`.
-  2. Test: no template has an inline `<script>` without the nonce, and no inline `on*=` handler.
-  3. Key pages load with no CSP violation in the browser console (headless check, when available).
+  1. ✅ Test: the CSP header's `script-src` has no `'unsafe-inline'`. [T `tests/test_csp_strict.py::test_script_src_has_a_nonce_and_no_unsafe_inline` (no `'unsafe-inline'` or `'unsafe-eval'`; a fresh nonce per response; the page's inline scripts carry it)]
+  2. ✅ Test: no template has an inline `<script>` without the nonce, and no inline `on*=` handler. [T `::test_no_template_has_an_inline_script_without_the_nonce_or_a_handler_attribute`, `::test_no_app_script_builds_an_inline_handler_into_html`]
+  3. ✅ Key pages load with no CSP violation in the browser console (headless check, when available). [T `::test_key_pages_load_with_no_csp_violation_and_every_handler_bound` (23 pages, 6 roles)]
 
 #### UPG-26 — Forms: visible labels, clear errors, a loading state and one submit per click
 - **Status:** BUILT (untested)
@@ -3976,5 +3979,6 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "docs: …" | UPG-114 | New (found in UPG-112): the waitlist status page and join message show a stored position that can repeat. TODO. |
 | 2026-10-18 | "UPG-19: …" (parent `1536aae`) | UPG-19 | **UPG-19 DONE** (Part 2, tested as built): 10 lists page at 25 (page 5 = last 20), search by name/email/USN combines with the page, `per_page` capped at 100, the users list pages in SQL; dashboard status filters, totals and audit-log filters checked. 36 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-20: …" (parent `5b18a3d`) | UPG-20 | **UPG-20 DONE** (Part 2): production boot refuses with one error naming every problem and starts with strong settings (SQLite and PostgreSQL); health 503/200 with no error text; JSON logs; Sentry only with a DSN and no personal data; production headers. Found and fixed: `.env.example` lacked ten settings added since; the dead `NO_SCHEDULER` dropped. 7 new tests, also run on PostgreSQL. |
-| 2026-10-18 | "UPG-23: …" (parent `216f7a3`) | UPG-23 | **UPG-23 DONE** (Part 2, 23a–h tested as built): every rendered template extends the shared document; 30 key pages for 6 roles answer with the footer and navigation; at 375px none scrolls sideways or loses a heading or field seen at 1280px (headless Chromium, Bootstrap from an integrity-checked fixture). 4 new tests. |
+| 2026-10-18 | "UPG-23: …" (parent `216f7a3`) | UPG-23 | **UPG-23 DONE** (Part 2, 23a–h tested as built): every rendered template extends the shared document; 23 key pages for 6 roles answer with the footer and navigation; at 375px none scrolls sideways or loses a heading or field seen at 1280px (headless Chromium, Bootstrap from an integrity-checked fixture). 4 new tests. |
 | 2026-10-18 | "UPG-24: …" (parent `9d6ea24`) | UPG-24 | **UPG-24 DONE** (Part 2, tested as built): one Bootstrap 5.3.3 in the layout partials; every CDN script and stylesheet hashed (Razorpay's checkout.js the one exception); only Inter, Plus Jakarta Sans and Outfit, self-hosted, are declared or requested. 8 new tests. |
+| 2026-10-18 | "UPG-25: …" (parent `d29e2de`) | UPG-25 | **UPG-25 DONE** (Part 2, tested as built): `script-src` has a fresh nonce and no `'unsafe-inline'`; no template has an un-nonced inline script or an `on…=` handler, and no app script builds one; 23 key pages load under their own CSP with no violation and every handler bound. 4 new tests. (Also corrects UPG-23's entry: 23 key pages, not 30.) |

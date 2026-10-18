@@ -149,7 +149,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 
 | Step | Result | Where it breaks |
 |---|---|---|
-| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, built, untested). Since UPG-73: every kind of event, saved as a draft, then reviewed and published. |
+| Create event (seminar / hackathon / sports) | Created [R] | All settings persist since BLK-09 [R]. Sports fixtures & standings generated on tournament page (UPG-13, tested). Since UPG-73: every kind of event, saved as a draft, then reviewed and published. |
 | Build form | Page OK [R] | — |
 | Publish (pending → approve → open) | OK [R] | Two steps after approval; not obvious from the UI copy. |
 | Manage registrations / waitlist | Partly [R] | Exports work since UPG-03 (CSV and Excel with every column); no waitlist screen. |
@@ -201,7 +201,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Workshop | Same as seminar; preset applied (`routes_spoc.py:154`); Own type with trainer, prerequisites, what to bring (UPG-73) | Same; paid workshops: payments are verified safely since BLK-03 and confirmed with Razorpay since UPG-94, not yet run against Razorpay test mode | + UPG-30 |
 | Guest lecture | Same as seminar (no own template); Own type (UPG-73) | Speaker invite and attendance list | Seminar items |
 | Hackathon | Create, judges, project submission page, rubric scoring (UPG-04), leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08); Own type: duration, themes, judging criteria, rounds, prizes in the wizard (UPG-73) | Round shortlists | UPG-66 (the project submission form posts without a CSRF token) |
-| Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings (UPG-13, built, untested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74) | Whiteboard/Excel replaced | — |
+| Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings: knockout and league, results by the SPOC or an assigned coordinator, public fixtures page (UPG-13, tested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74) | Whiteboard/Excel replaced | — |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06); Cultural competition (discipline, solo/group, time on stage) and show/concert types; a cultural fest holds them as sub-events (UPG-73, UPG-74) | Slots, judging sheets | — (rubric judging done, UPG-04) |
 | Club activities | Org units can be clubs (`routes_admin.py:812`); Club activity type (UPG-73) | Membership lists, recurring meetings, attendance across the year | Membership not yet listed (activity points ledger done, UPG-11) |
 | Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, built, untested); Placement drive type with company and eligibility in the wizard (UPG-73) | Company communication | — |
@@ -552,13 +552,16 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - "To test later" extras: `::test_the_events_allowed_types_are_enforced`, `::test_the_affiliation_is_required_only_for_faculty_and_external`, `::test_the_department_export_filters_by_participant_type`.
 
 #### UPG-13 — Sports tournaments: fixtures, results, standings
-- **Status:** BUILT (untested)
+- **Status:** DONE
 - **Evidence:** `routes_sports.py:1-132`, `services_sports.py:1-192`, `templates/spoc/tournament.html:1-221`, `templates/includes/tournament.html:1-80`, `templates/public/tournament_fixtures.html:1-48`, `templates/public/event_details.html:541-546`, `templates/spoc/dashboard.html:1957-1961`, `app.py:320,347,946-976`
-- **Last verified:** 2026-10-10, commit "UPG-13: …" on `production-ready` (parent `a26b6b2`)
+- **Last verified:** 2026-10-18, commit "UPG-13: …" on `production-ready` (parent `737d7be`) [T]
 - **Problem:** The sports template promises "fixture brackets, live match score updates, point tables" (`services_templates.py:392-434`), but no model, route or template builds fixtures or standings. The only mentions are checklist labels (`services_event.py:63`, `services_copilot.py:180`; the second was missed before). Sports officers run tournaments on whiteboards and in Excel.
 - **Who benefits:** Physical Education department, sports clubs, inter-department tournaments.
 - **What to build:** a fixture generator (knockout and league) from confirmed teams; coordinator result entry; automatic advancement or points table; a public fixtures page.
 - **Files touched:** new `routes_sports.py`, `services_sports.py`, `models_pg.py` + migration, templates, tests.
+- **Built (2026-10-18):**
+  - **Tested in Part 2, as built; no change to the code.** Through the routes on the real database layer: generate, results, schedule permissions and the public pages. Removing the result route's permission check, or stopping winners advancing, fails the tests. Passes on SQLite and PostgreSQL 16. Team ids in a tournament are the registrations' stored ids (the SQL layer keeps a registration id as a `uuid5` of the one given, `db_adapter.py:337`); the tests read them back rather than assume the id they wrote.
+- **Files touched:** `tests/test_sports_tournament.py` (new).
 - **Effort:** L · **Depends on:** UPG-08, BLK-06 · **Risk:** scope creep; start with knockout and league only.
 - **What was built (2026-10-10, owner's second run; no certificate/medal work):**
   - **Team rosters:** `services_sports.confirmed_teams` pulls confirmed registrations for the event (teams with members since UPG-08 or individual participants).
@@ -570,10 +573,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Checked by hand [R] on temporary database: 5-team knockout generates 7 matches with 3 byes; entering results advances winner; 4-team league generates 6 matches and updates points table; public routes `/tournament/fixtures/<event_id>`, `/sports/fixtures/<event_id>`, and `/event/<event_id>` render with 200 without login.
 - **To test later:** criteria 1–4.
 - **Acceptance criteria:**
-  1. Test: 8 teams → a knockout with 7 matches; entering results advances the winners to a single champion.
-  2. Test: a 4-team league points table is correct after 6 results.
-  3. Test: only the SPOC or assigned coordinator can enter results (unauthorized returns 403).
-  4. The public fixtures page renders without login.
+  1. ✅ Test: 8 teams → a knockout with 7 matches; entering results advances the winners to a single champion. [T `tests/test_sports_tournament.py::test_eight_teams_make_a_seven_match_knockout_with_one_champion` (a cancelled team isn't drawn; a tie goes to the chosen side; the public page names the champion)]
+  2. ✅ Test: a 4-team league points table is correct after 6 results. [T `::test_a_four_team_league_table_is_right_after_six_results` (played/won/drawn/lost/for/against/points, ties broken on goal difference, the public table in that order; entered by the assigned coordinator)]
+  3. ✅ Test: only the SPOC or assigned coordinator can enter results (unauthorized returns 403). [T `::test_only_the_spoc_or_an_assigned_coordinator_can_enter_results` (another SPOC, an unassigned coordinator and a student get 403 on results and the staff page; only the SPOC can generate, the assigned coordinator gets 403 there)]
+  4. ✅ The public fixtures page renders without login. [T `::test_the_public_fixtures_page_renders_without_login` (also `/sports/fixtures/<id>` redirects there; the staff page needs a login)]
 
 ### C. Remove / merge
 
@@ -3867,3 +3870,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-04: …" (parent `778f973`) | UPG-04 | **UPG-04 DONE** (Part 2): rubric scores are stored and shown, over-maximum scores refused, newer states listed, locked scoring refused. Found and fixed: JSON scores without remarks always failed. 4 new tests. |
 | 2026-10-18 | "UPG-09: …" (parent `813b0ee`) | UPG-09 | **UPG-09 DONE** (Part 2, tested as built): a booked room is refused on create with no event made; approval confirms the tentative booking; the calendar shows the room name. 3 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-11: …" (parent `74cc875`) | UPG-11 | **UPG-11 DONE** (Part 2, tested as built; certificate criterion deferred): Present credits, Absent doesn't, rescans don't double; ledger totals across 3 events; department export lists every student with totals. 3 new tests, also run on PostgreSQL. Event-type rows updated (FDP's row also for UPG-12, which Part 2 had tested but left marked untested there). |
+| 2026-10-18 | "UPG-13: …" (parent `737d7be`) | UPG-13 | **UPG-13 DONE** (Part 2, tested as built): 8-team knockout of 7 matches to one champion; 4-team league table right after 6 results; results only by the SPOC or an assigned coordinator; public fixtures page without login. 4 new tests, also run on PostgreSQL. |

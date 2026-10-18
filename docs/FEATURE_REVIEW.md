@@ -3533,14 +3533,18 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. `git ls-files` has no `scheduler_enhanced.py`, and `security_middleware.py` has no login-attempt functions (after the owner's decision).
 
 #### UPG-113 — CI's bandit step fails on the showcase seeder's table wipes
-- **Status:** TODO
-- **Last verified:** 2026-10-18 [R]
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-113: …" on `production-ready` (parent `4cdd02b`) [T]
 - **Problem:** Found testing UPG-15. CI runs `bandit -r . -x tests/,__pycache__/ -ll -q` (`.github/workflows/ci.yml:146`). Since the final-submission commit (`ee483fa`), that reports two Medium B608 findings (SQL built from a string) in the showcase seeder, now `seeds/showcase.py:75` and `:692`: `DELETE FROM "{t}"` over the table names it empties. The names come from the database's own table list and the code's collection names, not from input, so it isn't injectable, but the step fails on any Medium. Every other tracked file is clean at `-ll`.
 - **What to build:** delete through SQLAlchemy's table objects (`table.delete()`) or quote the name with the dialect's identifier preparer, or, if the owner prefers, a `# nosec B608` with that reason on each line, as BLK-11 did for its findings.
+- **Built (2026-10-18):**
+  - **Fixed in code, no `# nosec`:** the SQLite wipe deletes through the schema's own table objects (`MetaData.reflect` then `table.delete()`), and the end-of-run clean-up of `outbox`, `login_attempts` and `flask_sessions` uses `Table(..., autoload_with=conn).delete()` (`seeds/showcase.py:65-84,692-699`). The PostgreSQL `TRUNCATE` now quotes each name with the dialect's identifier preparer instead of hand-made quotes; bandit never flagged it.
+  - Bandit at `-ll` over every tracked non-test file now reports nothing. The showcase still empties and rebuilds the portal on SQLite (`tests/test_seed_command.py`) and on PostgreSQL 16, run by hand twice on a freshly migrated database: 72 accounts, 48 events and 544 registrations each time, so the second run's `TRUNCATE` emptied the first.
+- **Files touched:** `seeds/showcase.py`, `tests/test_bandit_clean.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
-  1. `bandit -ll -q` over the tracked non-test files reports no Medium or High finding.
-  2. Test: `python seed.py --profile showcase` still empties the tables and rebuilds the portal (`tests/test_seed_command.py`).
+  1. ✅ `bandit -ll -q` over the tracked non-test files reports no Medium or High finding. [T `tests/test_bandit_clean.py::test_bandit_finds_nothing_medium_or_high` (fails on the old code with the two B608 findings)]
+  2. ✅ Test: `python seed.py --profile showcase` still empties the tables and rebuilds the portal (`tests/test_seed_command.py`). [T `tests/test_seed_command.py::test_the_showcase_profile_rebuilds_the_portal_and_writes_its_summary`; PostgreSQL by hand, above]
 
 ---
 
@@ -3920,3 +3924,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-14: …" (parent `12cb6ed`) | UPG-14 | **UPG-14 DONE** (Part 2): the notification feed, no Stripe, no old scheduler import, matchmaker hidden. Found and fixed: `FEATURE_MATCHMAKER` was never read from the environment. 8 new tests. The rest of its problem list is now **UPG-112** (TODO; parts need the owner's rule 5 decision). |
 | 2026-10-18 | "UPG-15: …" (parent `cddc491`) | UPG-15 | **UPG-15 DONE** (Part 2): links and form actions all reach a route, removed copies and unregistered blueprints stay gone, no default walk-in password. Finished the one seed command: `seed.py` with a `seeds/` package and a showcase profile, six unused seeders removed. Found and fixed: the production override didn't reach the seed modules. 15 new tests; the seed-safety tests now cover the moved modules. Full suite 1063 passed, 6 skipped (the drop is the removed scripts' parametrized cases). New: **UPG-113**. |
 | 2026-10-18 | "UPG-18: …" (parent `5eff67c`) | UPG-18 | **UPG-18 DONE** (Part 2, tested as built): failing tasks leave one outbox row and the request succeeds; slow tasks return at the limit; the cron job retries once, never twice, and gives up at the maximum; secret, clean-up and broker mode checked. 11 new tests, also run on PostgreSQL. |
+| 2026-10-18 | "UPG-113: …" (parent `4cdd02b`) | UPG-113 | **UPG-113 DONE** (owner's instruction, before UPG-19): the showcase seeder's two string-built `DELETE`s now use SQLAlchemy table objects; bandit `-ll` is clean over every tracked file, so CI's security step passes. 1 new test. |

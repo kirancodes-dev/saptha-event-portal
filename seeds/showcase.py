@@ -64,18 +64,22 @@ DOMAIN = 'snpsu.test'          # reserved: mail to it is never delivered (RFC 26
 
 def wipe():
     """Delete every row of every table except the migration record."""
-    from sqlalchemy import inspect, text
+    from sqlalchemy import MetaData, inspect, text
     from db_pg import get_engine
     engine = get_engine()
     tables = [t for t in inspect(engine).get_table_names() if t != 'alembic_version']
     with engine.begin() as conn:
         if engine.dialect.name == 'sqlite':
+            # The schema's own table objects, so no SQL is built from strings (UPG-113)
+            meta = MetaData()
+            meta.reflect(bind=conn, only=tables)
             conn.execute(text('PRAGMA foreign_keys=OFF'))
             for t in tables:
-                conn.execute(text(f'DELETE FROM "{t}"'))
+                conn.execute(meta.tables[t].delete())
             conn.execute(text('PRAGMA foreign_keys=ON'))
         else:
-            conn.execute(text('TRUNCATE ' + ', '.join(f'"{t}"' for t in tables) + ' CASCADE'))
+            quote = engine.dialect.identifier_preparer.quote
+            conn.execute(text('TRUNCATE ' + ', '.join(quote(t) for t in tables) + ' CASCADE'))
     return len(tables)
 
 
@@ -686,10 +690,10 @@ def main():
         # Nothing queued to send later, and nobody left logged in from the run
         for coll in ('outbox', 'login_attempts', 'flask_sessions'):
             try:
-                from sqlalchemy import text
+                from sqlalchemy import MetaData, Table
                 from db_pg import get_engine
                 with get_engine().begin() as conn:
-                    conn.execute(text(f'DELETE FROM "{coll}"'))
+                    conn.execute(Table(coll, MetaData(), autoload_with=conn).delete())
             except Exception:
                 pass
 

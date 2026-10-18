@@ -44,6 +44,10 @@ def rzp(real_app, monkeypatch):
     class FakePayments:
         def refund(self, payment_id, data):
             calls['refunds'].append((payment_id, data))
+            if calls.get('during_refund'):            # lets a test act mid-refund (UPG-51)
+                calls.pop('during_refund')()
+            if payment_id in calls.get('refund_fail', {}):
+                raise RuntimeError(calls['refund_fail'][payment_id])
             return {'id': f"rfnd_{_unique('r')}", 'payment_id': payment_id, 'amount': data['amount']}
 
         def fetch(self, payment_id):

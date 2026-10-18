@@ -2041,12 +2041,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 ### G. Added 2026-10-10 (owner's run prompt)
 
 #### UPG-51 — Cancelling a paid event refunds nobody
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-51: …" on `production-ready` (parent `351b3e3`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-51: …" on `production-ready` (parent `72bac11`) [T]
 - **Problem:** [C] Cancelling an event (`services_workflow.WorkflowEngine.transition_event` → `cancelled`) sends the cancellation notice (UPG-31) but touches no payment. The admin's refund action (`routes_admin.py:527`, `services_payments.start_refund`, `services_payments.py:265`) only refunds paid orders that have **no** registration, so the paid registrations of a cancelled event can only be marked "refunded" by hand, with the money returned outside the app.
 - **Who benefits:** paying participants of a cancelled event; the finance office.
 - **What to build:** when an event is cancelled, its staff and the Super Admin see its paid registrations, with a "Refund all through Razorpay" action: a confirm step (ticked box and the total), one Razorpay refund per payment, never twice (an atomic claim per order, as in UPG-30), failures listed with their reason and retryable, every refund audit-logged and emailed to the student.
 - **Files touched:** `routes_admin.py`, `services_payments.py`, `utils_email.py`, `templates/admin/payments.html` (or a new cancelled-event refunds page), tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** The shared Razorpay fake in `tests/test_paid_events.py` gains two hooks: `refund_fail` (a payment's refund raises) and `during_refund` (run something while a refund call is in flight).
+- **Files touched:** `tests/test_cancelled_event_refunds.py` (new), `tests/test_paid_events.py` (fake hooks only).
 - **Effort:** M · **Depends on:** UPG-30 · **Risk:** moves real money; the confirm step and the per-order claim guard it.
 - **What was built (2026-10-10, development-only run):**
   - **Page `/admin/events/<event_id>/refunds`** (`routes_admin.event_refunds`; `templates/admin/event_refunds.html`): every paid registration of the event with its amount, payment ID and refund state (to refund, in progress, refunded with the refund ID, failed with the reason, or "no Razorpay order on record: refund by hand"). Open to the Super Admin and anyone who may edit the event (its owner SPOC); others 403 (`_refund_event_or_abort`).
@@ -2055,10 +2058,11 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Checked by hand [R] with Razorpay mocked: 3 paid registrations listed; no confirmation → no call; with it, 3 calls (one failing with "gateway timeout", shown as failed), 2 emails; the retry calls only the failed one and emails it; a third press calls nothing; 3 audit lines; another SPOC gets 403 on both routes, the owner 200; a non-cancelled event is refused.
 - **To test later:** criteria 1–4 below; also two concurrent "refund all" requests call Razorpay once per payment, and a registration without an order is listed for a manual refund.
 - **Acceptance criteria:**
-  1. Test (Razorpay mocked): a cancelled event with 3 paid registrations lists all 3; "Refund all" without the confirmation does nothing.
-  2. Test: with the confirmation, the refund API is called once per payment with its ID and amount; each is recorded, audit-logged and emailed once; pressing again calls nothing.
-  3. Test: one failed refund is listed with its reason, the others complete; retrying refunds only the failed one.
-  4. Test: a non-admin who isn't the event's owner gets 403; refunds are refused for an event that isn't cancelled.
+  1. ✅ Test (Razorpay mocked): a cancelled event with 3 paid registrations lists all 3; "Refund all" without the confirmation does nothing. [T `tests/test_cancelled_event_refunds.py::test_refund_all_needs_the_confirmation_then_refunds_each_payment_once`]
+  2. ✅ Test: with the confirmation, the refund API is called once per payment with its ID and amount; each is recorded, audit-logged and emailed once; pressing again calls nothing. [T same test: one call per payment with its ID and ₹250, each order `refunded` with its refund ID, the registration `Refunded`/`cancelled`, one email and one `PAYMENT_REFUNDED` line each; a second press calls nothing]
+  3. ✅ Test: one failed refund is listed with its reason, the others complete; retrying refunds only the failed one. [T `::test_a_failed_refund_is_listed_and_only_it_is_retried`]
+  4. ✅ Test: a non-admin who isn't the event's owner gets 403; refunds are refused for an event that isn't cancelled. [T `::test_only_the_admin_and_the_owner_may_refund_and_only_a_cancelled_event`]
+  - "To test later" extras: `::test_two_requests_at_once_refund_each_payment_once` (a second "refund all" runs to completion inside the first request's first Razorpay call; each payment is still refunded once, with 3 audit lines), `::test_a_registration_without_an_order_is_listed_for_a_manual_refund`.
 
 #### UPG-52 — Joining a team can overwrite another join or exceed `team_max`
 - **Status:** BUILT (untested)
@@ -3766,3 +3770,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | `40c9888` | Rule 8 (end of Part 1), UPG-85, UPG-109 | **Re-verification of every open item at the end of Part 1** (47 open). This also covers the early pass that `db_adapter.py` (UPG-69) required. Method: the files Part 1 changed, against each item's citations, then each item's claims about the changed code (registration IDs, the lead-key aliases, the deactivation check, the preset step, the demo pages, signed links, the bulk email, AI matching, the made-up defaults, the support address). 37 items cite a changed file. Of those, 9 mention changed code; their claims hold except as noted: UPG-60 (reels hidden), UPG-59 (matching without AI now errors; **new UPG-109**), UPG-22 (alias note, holds). The other 28 cite changed files for unrelated code. **UPG-85 DROPPED** (owner: no new AI features). Full pytest at `40c9888`: 1008 passed, 1 skipped, 0 failed; ruff clean. |
 | 2026-10-17 | "UPG-109: …" (parent `848d402`) | UPG-109 | **UPG-109 DONE** (owner, before Part 2): judge matching without an AI provider says "AI matching isn't set up; assign judges manually" (503, no plan saved; the page shows the notice and disables the button). 2 new tests. |
 | 2026-10-17 | "UPG-108: …" (parent `034e0e5`) | UPG-108 | **UPG-108 DONE for now** (owner, before Part 2): the chatbot states no campus facts; campus questions get "Please check with the college office." (directly, and as the AI's instruction), and the prompt keeps only the portal FAQ. 6 new tests. Full pytest: 1016 passed, 1 skipped, 0 failed. |
+| 2026-10-17 | "UPG-51: …" (parent `72bac11`) | UPG-51 | **UPG-51 DONE** (Part 2, tested as built): 5 tests on the real database with Razorpay mocked (confirmation, once per payment, failure and retry, two requests at once, no-order registration, 403 and non-cancelled refusal). No bug found. |

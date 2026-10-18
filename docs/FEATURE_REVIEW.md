@@ -1989,8 +1989,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **759 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-42 — The privacy, terms and payment-failed pages give the old Gmail account as the contact address
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-42: …" on `production-ready` (parent `e82943b`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-42: …" on `production-ready` (parent `1644907`) [T]
 - **Problem:** Found 2026-10-07 while building UPG-41 [C]. Three public pages tell people to write to the old mail account, the one whose password was changed on 2026-09-30 (BLK-01, UPG-41):
   - `templates/public/privacy.html:60` (exercising data rights) and `:77`;
   - `templates/public/terms.html:68`;
@@ -2000,12 +2000,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **What to build:** one contact address from a setting (e.g. `SUPPORT_EMAIL`, documented in `.env.example`), used by all three pages. When it's unset, the pages show no address rather than a personal one.
 - **Needs from the owner:** ~~the contact address (D-4).~~ Decided 2026-10-10: `events@your-university-domain` (D-4).
 - **Files touched:** `config.py` or a context processor in `app.py`, the three templates, `.env.example`, tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** With `SUPPORT_EMAIL` set, `/privacy`, `/terms` and `/payment/failed` each show it as a `mailto:` link; unset, none has a `mailto:`. The old team account's address is in no tracked file outside the plan docs.
+- **Files touched:** `tests/test_contact_and_links.py` (new; also holds UPG-46's tests).
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **What was built (2026-10-10, owner's second run; D-4):** the address comes from the `SUPPORT_EMAIL` setting through a template context value (`app.py`, `inject_auth_features`). The privacy page (rights and contact), terms page (contact) and payment-failed page show it as a `mailto:` link when it's set, and no address when it isn't (the privacy page then points to the profile page's data tools). The old Gmail address is gone from every tracked file. `.env.example` documents `SUPPORT_EMAIL` with the placeholder `events@your-university-domain`; the owner sets the real value in the deployment. Checked by hand [R]: with it unset, the three pages answer 200 with no `mailto:`; set to a test address, all three show it.
 - **To test later:** criteria 1–2.
 - **Acceptance criteria:**
-  1. Test: with `SUPPORT_EMAIL` set, the privacy, terms and payment-failed pages show it, and no tracked template outside `functions/` and `scratch/` contains the old account's address.
-  2. Test: with it unset, those pages render without a `mailto:` link.
+  1. ✅ Test: with `SUPPORT_EMAIL` set, the privacy, terms and payment-failed pages show it, and no tracked template outside `functions/` and `scratch/` contains the old account's address. [T `tests/test_contact_and_links.py::test_the_contact_pages_show_support_email`, `::test_the_old_account_is_in_no_tracked_file`]
+  2. ✅ Test: with it unset, those pages render without a `mailto:` link. [T `::test_without_support_email_the_pages_show_no_address`]
 
 #### UPG-43 — Event-day lists show only events whose status is the old `active`
 - **Status:** DONE
@@ -4031,3 +4034,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "docs: …" | UPG-111 | Widened (found testing UPG-46): the invented "SNPSU Campus" venue is in 13 more pages and emails, not just the scanner list. Still TODO. |
 | 2026-10-19 | "test: …" | UPG-23 | The 375px check counts content in a self-scrolling (animated) track as reachable: the home page's photo marquee failed it in the full run only. Test-only. |
 | 2026-10-19 | "UPG-38: …" (parent `5bc9d85`) | UPG-38 | **UPG-38 DONE** (Part 2, tested as built): no tracked workflow runs Jekyll. Criterion 2 (no Jekyll check on GitHub's next CI run) waits for a push. 1 new test. |
+| 2026-10-19 | "UPG-42: …" (parent `1644907`) | UPG-42 | **UPG-42 DONE** (Part 2, tested as built): the three pages show `SUPPORT_EMAIL`, or no address when it's unset; the old account is gone from every tracked file. 3 new tests. |

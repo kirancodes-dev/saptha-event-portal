@@ -69,4 +69,4 @@ When configured with primary PostgreSQL and secondary Firestore, changes are pro
 ## 5. Migrations & Seeders
 - `setup_db.py`: Initializes tables and baseline roles.
 - `init_superadmin.py`: Provisions the initial root administrator account.
-- `seed_data.py` & `seed_demo.py`: Populates sample organizations, multi-category events, and demo evaluation rubrics.
+- `seed.py`: the one seed command. `python seed.py --profile demo` (default) adds a demo account for each role and a flagship hackathon; `--profile events` adds 7 template events; `--profile showcase [--summary FILE]` empties every table and builds a realistic portal through the app's routes; `--profile scale` bulk-loads registrations into PostgreSQL (needs `DATABASE_URL`). The data sets live in `seeds/`. Every profile refuses a production-looking database (`seed_safety.guard`).

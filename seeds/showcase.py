@@ -20,7 +20,7 @@ account uses the reserved domain @snpsu.test, which never delivers mail, so the
 demo can't write to a real person. Passwords come from seed_safety (one per
 role; SEED_<ROLE>_PASSWORD or random) and are printed once at the end.
 
-    python seed_showcase.py [--summary demo_summary.json]
+    python seed.py --profile showcase [--summary demo_summary.json]
 
 Refuses production-looking databases (seed_safety.guard, BLK-10).
 """

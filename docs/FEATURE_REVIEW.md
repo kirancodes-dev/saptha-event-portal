@@ -13,7 +13,7 @@ This file is the source of truth for planned work. Agents and developers work on
 - `file:line` points at the code as of the item's "Last verified" commit (`56a014d` for everything re-checked in Phase 0). Items built on `production-ready` cite their own commit by message and parent hash (e.g. "BLK-02: …", parent `07ad7b2`), because a commit can't contain its own hash; find it with `git log --grep '^BLK-02:'`.
 - **How checks are run (from Phase 0):** Python 3.11 venv with `requirements-dev.txt`; full pytest on a temp SQLite database **and** on PostgreSQL 16 (an embedded server from the `pgserver` package, one empty database per run, passed as `TEST_DATABASE_URL`); `ruff check .`. Every key in the developer's `.env` is pre-set to a blank or dummy value first, because `app.py` calls `load_dotenv()` and python-dotenv never overrides a variable that's already set (BLK-05 removes the need for this). Baseline at `56a014d`: **414 passed, 1 xfailed** on both databases; ruff clean.
 - **Python version:** since `1f4cdc8`, requirements are pinned and tested on Python 3.11 (as in CI and the Dockerfile). The repo's local `.venv` is Python 3.9 and fails 5 tests on `hashlib.scrypt` (the branch fails the same 5 on 3.9). Recreate `.venv` with 3.11.
-- **[R]** means verified by running: a sandbox copy of the repo, no `.env`, no `serviceAccountKey.json`, `DATABASE_TYPE=postgres` code path through `db_adapter.py` on a throwaway SQLite file, seeded with `seed_all_roles_demo.py` + `seed_events_universal.py`, then driven over HTTP as each role.
+- **[R]** means verified by running: a sandbox copy of the repo, no `.env`, no `serviceAccountKey.json`, `DATABASE_TYPE=postgres` code path through `db_adapter.py` on a throwaway SQLite file, seeded with `seed_all_roles_demo.py` + `seed_events_universal.py` (now `python seed.py --profile demo` and `--profile events`, UPG-15), then driven over HTTP as each role.
 - **[C]** means verified by reading the code only.
 - The planning docs (`GAP_ANALYSIS.md`, `UNIVERSAL_EVENT_ENGINE_PLAN.md`, `PHASED_IMPLEMENTATION_PLAN.md`, `upgrade-log.md`, `reports/`) and commit messages were treated as claims, not facts. Example: commit `79c8e92` says "14 turnkey templates"; `services_templates.TEMPLATES_CATALOG` has 7 (hackathon, conference, workshop, seminar, sports, cultural, webinar).
 - `pytest` (tests/ folder): **312 passed** at `694c729` [R], but those tests didn't exercise the SQL adapter the app uses by default (BLK-05). At `1f4cdc8`: **334 passed** on Python 3.11 with pinned requirements [R], including 7 HTTP integration tests and 15 document-fidelity tests that run on the real adapter.
@@ -40,7 +40,7 @@ This file is the source of truth for planned work. Agents and developers work on
    - a user database and old credentials were in the public GitHub history (BLK-01: branches rewritten and force-pushed 2026-10-01; the 47 PR refs wait on GitHub Support).
 7. **Not production-ready yet (Phase 0, 2026-09-30):** uploads live on the container's disk (UPG-17; sessions moved to the database, BLK-08), an empty database can't be built through migrations (UPG-16), background jobs need a broker that the Cloud Run target doesn't have (UPG-18, UPG-07), and 111 of 129 templates are standalone pages (UPG-23). Section 7 has the phased plan. *(End of Phase 2, 2026-10-08: nothing live stores files any more (UPG-17 corrected, D-5); scheduled jobs run through the cron endpoint (UPG-07); migrations (UPG-16), inline background tasks (UPG-18) and 107 standalone templates (UPG-23) remain.)*
 5. Biggest gap 3 — **the event day still happens outside the app:** the camera scanners reject real ticket QRs and certificates fail to generate [R at `694c729`; not changed by BLK-09]. Departments still need paper sign-in and a separate certificate tool. *(Since UPG-02, 2026-10-07: every scanner, the kiosk and the offline queue check real tickets in through one endpoint; since UPG-06, 2026-10-08, certificates are issued, emailed and verifiable.)*
-6. About 20 templates are never rendered, 3 blueprints are never registered, there are 2 parallel notification systems, 2 payment stacks, 13 seed scripts and a diverged copy of the whole app in `functions/saptha_app/` (UPG-14/15).
+6. About 20 templates are never rendered, 3 blueprints are never registered, there are 2 parallel notification systems, 2 payment stacks, 13 seed scripts and a diverged copy of the whole app in `functions/saptha_app/` (UPG-14/15). *(2026-10-18: all resolved and tested; one seed command, `seed.py`, since UPG-15.)*
 
 ---
 
@@ -184,7 +184,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 |---|---|---|
 | Departments / clubs (org units) | Works [R at BLK-07] | Viewing never migrates; migration previews first and keeps everyone's access (BLK-07). |
 | Approvals | OK [R] | — |
-| Users / roles | Role assignment page OK [R]; `/admin/users` lists accounts and resends set-password links (UPG-40) [R]; the dead `/admin/events` link is gone from every template [C at `986d108`] | Other dead links: UPG-15. |
+| Users / roles | Role assignment page OK [R]; `/admin/users` lists accounts and resends set-password links (UPG-40) [R]; the dead `/admin/events` link is gone from every template [C at `986d108`] | Every internal link, form action and fetch URL in the templates and scripts reaches a route [T at UPG-15]. |
 | Calendar | OK [R] | — |
 | Analytics / exports | Pages OK [R]; exports not re-run | Names read back since BLK-06 [R round-trip]; UPG-03. |
 | Bulk student import | WORKING (untested) [C] | UPG-10: SuperAdmin CSV roster import with USN, department, year, section; Google sign-in restricted to university domain. |
@@ -616,13 +616,13 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. Test: `/participant/matchmaker/` → 404 unless the feature flag is on.
 
 #### UPG-15 — Delete dead code and fix dead links
-- **Status:** BUILT (untested)
+- **Status:** DONE (criterion 5's check of the old Zoho deploy's walk-in accounts is the owner's)
 - **Evidence:** `git rm` `functions/saptha_app/`, `catalyst.json`, `saptha-event-portal`, `routes_public.py`, `routes_head.py`, `routes_super.py`, `routes_api.py`, 17 unrendered templates; `app.py:300-335`, `templates/participant/my_events.html:143`; `seed.py`, `scripts/generate_vapid.py`, `git rm` `reset_system.py`, `run_alembic.py`, `scratch/` (26 files), redundant `seed_*.py` files
-- **Last verified:** 2026-10-10, commit `UPG-15`
+- **Last verified:** 2026-10-18, commit "UPG-15: …" on `production-ready` (parent `cddc491`) [T]
 - **To test later:**
-  1. Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`.
+  1. ✅ Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`. [T `tests/test_dead_code_and_links.py::test_every_internal_link_action_and_fetch_url_reaches_a_route` (749 URLs in templates and `static/js`, 184 of them templated; `::test_the_link_check_catches_a_dead_link` proves the check fails on dead ones); `::test_every_blueprint_in_a_route_module_is_registered`]
   2. Test: `git ls-files` lists nothing under `functions/saptha_app/`, `scratch/`, no `catalyst.json`, no `reset_system.py`, and no unregistered route blueprints.
-  3. Test: `python seed.py --profile demo|events|scale` executes under `seed_safety.guard()`. Note: `test_seed_safety.py` scripts count assertion (`assert len(SCRIPTS) >= 25`) needs updating for consolidated seed structure.
+  3. ✅ Test: `python seed.py --profile demo|events|scale` executes under `seed_safety.guard()`. Note: `test_seed_safety.py` scripts count assertion (`assert len(SCRIPTS) >= 25`) needs updating for consolidated seed structure. [T `::test_the_removed_copies_and_scripts_stay_gone` (fails before this change); `tests/test_seed_command.py` (demo, events and showcase profiles run; scale needs `DATABASE_URL`); `::test_every_seed_profile_is_behind_the_guard`, `::test_the_override_flag_reaches_every_profile` (fails before the guard fix)]
   4. Test: no tracked file sets a default walk-in password (`WALKIN_DEFAULT_PASSWORD`).
 - **Problem:**
   - **Unregistered blueprints:** `routes_public.py`, `routes_head.py` and `routes_super.py` (not in `app.py:302-395`), yet live pages link to them: `/event_head/*` from `templates/coordinator/manage_event.html:50` and `/super_admin/*` from `templates/public/home.html:528`.
@@ -637,13 +637,27 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - **The `functions/saptha_app` copy also keeps the kiosk and ticket holes the root app fixed** (BLK-12) and the bandit findings (BLK-11).
 - **What to build:** remove or merge the above; move `scratch/` tools worth keeping into `scripts/` and delete the rest; fold the seed scripts into one seed command (with BLK-10's guard). Remove `functions/saptha_app/` and `catalyst.json`: Cloud Run is the only deploy target (D-1, owner, 2026-10-01), so no Catalyst build step replaces them.
 - **Files touched:** listed above, plus a new test.
+- **Built (2026-10-18):**
+  - **Tested in Part 2.** Links, removed files, blueprints and the walk-in password were as built. The seed part wasn't: Phase 5 gave `seed.py` its profiles but left 10 `seed_*.py` scripts tracked, so criterion 3 failed. **Finished here:**
+    - the four data sets `seed.py` runs moved, unchanged, into a `seeds/` package (`seeds/all_roles_demo.py`, `events_universal.py`, `scale_test.py`, `showcase.py`). Each still calls `seed_safety.guard()` first and is still checked by `tests/test_seed_safety.py` (its patterns now include `seeds/*.py`);
+    - `seed.py --profile showcase [--summary FILE]` replaces `python seed_showcase.py` (UPG-88);
+    - the six seeders no profile used are deleted: `seed_demo.py`, `saptha_full_seed.py` and `scripts/seed_events.py` (Firestore), `scripts/seed_emulator.py` (the Firebase SQL Connect emulator), `seed_data.py` and `seed_events.py`.
+  - **Tests moved with the scripts, none weakened:**
+    - `tests/test_seed_safety.py`'s Firestore-guard tests targeted `seed_demo.py`; they now target `setup_db.py`, which has the same guard and key loading.
+    - Its count checks now read 13 scripts and 3 Firestore scripts, and name the four `seeds/` modules.
+    - Its parametrized cases fell from 131 to 92 with the six scripts.
+    - `tests/test_universal_seeder.py` and `tests/test_registration_forms.py` import `seeds.events_universal`.
+  - **Found and fixed:** `seed_safety.guard()` takes `--i-know-this-is-production` out of `sys.argv`, so the guard a seed module runs when `seed.py` imports it refused again. That broke the override for the showcase profile (which worked as `python seed_showcase.py`), and in practice for demo and events too. The guard now remembers an override given on the process's own command line (`seed_safety.py:129-145`); an environment variable still can't stand in for it.
+  - **Ran for real** on a throwaway SQLite database: demo (9 accounts, the flagship), events (+7), showcase (72 accounts, 48 events, 17 s).
+  - **Found, not fixed (UPG-113):** bandit's two Medium B608 findings in the showcase seeder.
+- **Files touched:** `seed.py`, `seeds/` (moved from `seed_all_roles_demo.py`, `seed_events_universal.py`, `seed_scale_test.py`, `seed_showcase.py`), `seed_safety.py`, `docs/DATABASE.md`, deleted `seed_demo.py`, `seed_data.py`, `seed_events.py`, `saptha_full_seed.py`, `scripts/seed_events.py`, `scripts/seed_emulator.py`; tests `tests/test_dead_code_and_links.py`, `tests/test_seed_command.py` (new), `tests/test_seed_safety.py`, `tests/test_universal_seeder.py`, `tests/test_registration_forms.py`.
 - **Effort:** M · **Depends on:** none · **Risk:** low for deploys (nothing else deploys the copy, D-1).
 - **Acceptance criteria:**
   1. Test: parse every template's internal `href`/`action`/`fetch` URL and assert each matches a rule in `app.url_map`.
   2. ✅ Test: `/debug-modal` → 404 (`tests/test_integration_flow.py:198`, `test_removed_debug_and_legacy_endpoints`, since BLK-09).
   3. `git ls-files` lists nothing under `functions/saptha_app/`, no `catalyst.json`, and no `seed_*.py` beyond the kept one. This also completes BLK-12 criterion 4 and BLK-14 criterion 3.
   4. ~~The Catalyst deploy still works via the build step (manual check).~~ Dropped: D-1 (owner, 2026-10-01) ends the Catalyst deploy, so there's no build step to check. Covered instead by criterion 3 (`catalyst.json` is gone).
-  5. Walk-in accounts created on the Zoho deploy with the old default password have been forced to reset (owner check), and no tracked file sets a default walk-in password (test).
+  5. ✅ Walk-in accounts created on the Zoho deploy with the old default password have been forced to reset (owner check), and no tracked file sets a default walk-in password (test). [T `::test_no_tracked_file_sets_a_default_walk_in_password`; the owner's check of the old Zoho deploy remains]
 
 ### D. Production setup (added in Phase 0, 2026-09-30)
 
@@ -3515,6 +3529,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: one waitlist promotion path, used by the cancel route and the waitlist routes, issues a ticket in `joined_at` order.
   2. `git ls-files` has no `scheduler_enhanced.py`, and `security_middleware.py` has no login-attempt functions (after the owner's decision).
 
+#### UPG-113 — CI's bandit step fails on the showcase seeder's table wipes
+- **Status:** TODO
+- **Last verified:** 2026-10-18 [R]
+- **Problem:** Found testing UPG-15. CI runs `bandit -r . -x tests/,__pycache__/ -ll -q` (`.github/workflows/ci.yml:146`). Since the final-submission commit (`ee483fa`), that reports two Medium B608 findings (SQL built from a string) in the showcase seeder, now `seeds/showcase.py:75` and `:692`: `DELETE FROM "{t}"` over the table names it empties. The names come from the database's own table list and the code's collection names, not from input, so it isn't injectable, but the step fails on any Medium. Every other tracked file is clean at `-ll`.
+- **What to build:** delete through SQLAlchemy's table objects (`table.delete()`) or quote the name with the dialect's identifier preparer, or, if the owner prefers, a `# nosec B608` with that reason on each line, as BLK-11 did for its findings.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. `bandit -ll -q` over the tracked non-test files reports no Medium or High finding.
+  2. Test: `python seed.py --profile showcase` still empties the tables and rebuilds the portal (`tests/test_seed_command.py`).
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3891,3 +3915,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-11: …" (parent `74cc875`) | UPG-11 | **UPG-11 DONE** (Part 2, tested as built; certificate criterion deferred): Present credits, Absent doesn't, rescans don't double; ledger totals across 3 events; department export lists every student with totals. 3 new tests, also run on PostgreSQL. Event-type rows updated (FDP's row also for UPG-12, which Part 2 had tested but left marked untested there). |
 | 2026-10-18 | "UPG-13: …" (parent `737d7be`) | UPG-13 | **UPG-13 DONE** (Part 2, tested as built): 8-team knockout of 7 matches to one champion; 4-team league table right after 6 results; results only by the SPOC or an assigned coordinator; public fixtures page without login. 4 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-14: …" (parent `12cb6ed`) | UPG-14 | **UPG-14 DONE** (Part 2): the notification feed, no Stripe, no old scheduler import, matchmaker hidden. Found and fixed: `FEATURE_MATCHMAKER` was never read from the environment. 8 new tests. The rest of its problem list is now **UPG-112** (TODO; parts need the owner's rule 5 decision). |
+| 2026-10-18 | "UPG-15: …" (parent `cddc491`) | UPG-15 | **UPG-15 DONE** (Part 2): links and form actions all reach a route, removed copies and unregistered blueprints stay gone, no default walk-in password. Finished the one seed command: `seed.py` with a `seeds/` package and a showcase profile, six unused seeders removed. Found and fixed: the production override didn't reach the seed modules. 15 new tests; the seed-safety tests now cover the moved modules. Full suite 1063 passed, 6 skipped (the drop is the removed scripts' parametrized cases). New: **UPG-113**. |

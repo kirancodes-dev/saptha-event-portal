@@ -126,12 +126,21 @@ def _refuse(lines):
     sys.exit(REFUSED_EXIT)
 
 
+# The operator passed the override on this process's command line. guard()
+# takes the flag out of sys.argv, so a seed module that seed.py imports, and
+# that calls guard() itself, still honours it (UPG-15)
+_overridden = False
+
+
 def guard(firestore=False, argv=None):
+    global _overridden
     argv = sys.argv if argv is None else argv
     _load_dotenv()
 
+    if argv is sys.argv and OVERRIDE_FLAG in argv:
+        _overridden = True
     reasons = production_reasons()
-    if reasons and OVERRIDE_FLAG not in argv:
+    if reasons and OVERRIDE_FLAG not in argv and not (argv is sys.argv and _overridden):
         _refuse(reasons + [f'If this really is intended, run again with {OVERRIDE_FLAG}.'])
 
     if firestore and not os.environ.get('FIRESTORE_EMULATOR_HOST', '').startswith(('localhost', '127.0.0.1')):

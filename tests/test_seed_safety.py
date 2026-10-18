@@ -16,8 +16,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PATTERNS = ['seed.py', 'seed_*.py', 'saptha_full_seed.py', 'demo_reset.py', 'setup_*.py', 'init_*.py',
             'fix_superadmin.py', 'reset_system.py', 'wipe_data.py', 'delete_data.py',
             'scripts/seed_*.py', 'scripts/wipe_firestore.py',
-            'scratch/seed_*.py', 'scratch/set_*password*.py']
-SKIP = {'seed_safety.py'}
+            'scratch/seed_*.py', 'scratch/set_*password*.py',
+            'seeds/*.py']                     # the data sets behind seed.py's profiles (UPG-15)
+SKIP = {'seed_safety.py', '__init__.py'}
 
 
 def _tracked():
@@ -62,8 +63,12 @@ def _run(script, extra_env, *args):
 
 
 def test_there_are_scripts_to_check():
-    assert len(SCRIPTS) == 19, SCRIPTS
+    # UPG-15 folded the seeders into seed.py's profiles: six superseded ones
+    # went, the four it runs moved to seeds/ and are still checked here
+    assert len(SCRIPTS) == 13, SCRIPTS
     assert 'seed.py' in SCRIPTS
+    assert {'seeds/all_roles_demo.py', 'seeds/events_universal.py', 'seeds/scale_test.py',
+            'seeds/showcase.py'} <= set(SCRIPTS)
     assert 'scripts/configure_capacitor.py' not in SCRIPTS
     assert 'scripts/generate_vapid.py' not in SCRIPTS
 
@@ -99,7 +104,7 @@ def test_production_like_targets_are_refused_before_any_connection(script, case)
 
 
 def test_only_the_command_line_flag_overrides_the_guard():
-    script = 'seed_all_roles_demo.py'
+    script = 'seeds/all_roles_demo.py'
     env = PRODUCTION_LIKE['remote DATABASE_URL']
     # An environment variable can't stand in for the flag
     refused = _run(script, dict(env, I_KNOW_THIS_IS_PRODUCTION='1', SEED_OVERRIDE='--i-know-this-is-production'))
@@ -110,7 +115,7 @@ def test_only_the_command_line_flag_overrides_the_guard():
 
 
 def test_firestore_scripts_also_need_the_project_named(fake_key):
-    script = 'seed_demo.py'
+    script = 'setup_db.py'   # seed_demo.py until UPG-15 removed it; the same guard and key loading
     # FIREBASE_CREDENTIALS comes first, so a developer's own (git-ignored)
     # serviceAccountKey.json can't change the outcome (BLK-15)
     env = _firestore_env(FIREBASE_CREDENTIALS=json.dumps(fake_key('demo-project')))
@@ -183,7 +188,8 @@ def _run_firestore(script, env, *args):
 
 
 def test_there_are_firestore_scripts_to_check():
-    assert len(FIRESTORE_SCRIPTS) == 6, FIRESTORE_SCRIPTS
+    # delete_data.py, scripts/wipe_firestore.py, setup_db.py (UPG-15 removed the three Firestore seeders)
+    assert len(FIRESTORE_SCRIPTS) == 3, FIRESTORE_SCRIPTS
 
 
 @pytest.mark.parametrize('script', FIRESTORE_SCRIPTS)
@@ -204,7 +210,7 @@ def test_each_firestore_script_connects_with_the_project_the_guard_confirmed(scr
 def test_unreadable_credentials_are_refused_whatever_project_is_named(source):
     env = _firestore_env(**source)
     for args in ((), ('--confirm-firestore-project=anything',), ('--confirm-firestore-project=',)):
-        result = _run_firestore('seed_demo.py', env, *args)
+        result = _run_firestore('setup_db.py', env, *args)
         assert result.returncode == 3, (args, result.returncode, result.stderr[-500:])
         assert 'CONNECT-PROJECT' not in result.stderr
 
@@ -217,7 +223,7 @@ def test_no_key_anywhere_is_refused(tmp_path, monkeypatch):
     monkeypatch.setattr(seed_safety, 'PROJECT_KEY', str(tmp_path / 'missing.json'))
     assert seed_safety.firestore_credentials() == (None, None)
     with pytest.raises(SystemExit) as refused:
-        seed_safety.guard(firestore=True, argv=['seed_demo.py', '--confirm-firestore-project=anything'])
+        seed_safety.guard(firestore=True, argv=['setup_db.py', '--confirm-firestore-project=anything'])
     assert refused.value.code == 3
 
 
@@ -230,15 +236,15 @@ def test_the_guard_checks_the_key_the_script_will_use(tmp_path, fake_key, monkey
     # FIREBASE_CREDENTIALS (A) beats FIREBASE_KEY_PATH (B)
     env = _firestore_env(FIREBASE_CREDENTIALS=json.dumps(fake_key('project-a')),
                          FIREBASE_KEY_PATH=str(keys['project-b']))
-    assert _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-b').returncode == 3
-    named = _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-a')
+    assert _run_firestore('setup_db.py', env, '--confirm-firestore-project=project-b').returncode == 3
+    named = _run_firestore('setup_db.py', env, '--confirm-firestore-project=project-a')
     assert named.returncode == 99 and 'CONNECT-PROJECT=project-a' in named.stderr, named.stderr[-500:]
 
     # FIREBASE_KEY_PATH (B) beats the project's own key file and GOOGLE_APPLICATION_CREDENTIALS (C)
     env = _firestore_env(FIREBASE_KEY_PATH=str(keys['project-b']),
                          GOOGLE_APPLICATION_CREDENTIALS=str(keys['project-c']))
-    assert _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-c').returncode == 3
-    named = _run_firestore('seed_demo.py', env, '--confirm-firestore-project=project-b')
+    assert _run_firestore('setup_db.py', env, '--confirm-firestore-project=project-c').returncode == 3
+    named = _run_firestore('setup_db.py', env, '--confirm-firestore-project=project-b')
     assert named.returncode == 99 and 'CONNECT-PROJECT=project-b' in named.stderr, named.stderr[-500:]
 
     # A key in the current directory (D) beats GOOGLE_APPLICATION_CREDENTIALS (C)
@@ -289,7 +295,7 @@ def _seed(tmp_path, name, **env):
                    **{k: v for k, v in env.items()})
     for role in ('SUPERADMIN', 'CLUBSPOC', 'EVENTCOORDINATOR', 'JUDGE', 'STUDENT'):
         run_env.setdefault(f'SEED_{role}_PASSWORD', '')
-    out = subprocess.run([sys.executable, 'seed_all_roles_demo.py'], cwd=ROOT, env=run_env,
+    out = subprocess.run([sys.executable, '-m', 'seeds.all_roles_demo'], cwd=ROOT, env=run_env,
                          capture_output=True, text=True, timeout=300)
     assert out.returncode == 0, out.stderr[-1500:]
     import sqlite3

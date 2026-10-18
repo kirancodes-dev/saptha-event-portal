@@ -2119,17 +2119,20 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Verify running `scripts/configure_capacitor.py` with `BASE_URL=https://events.example.edu` sets `url` to `https://events.example.edu` and `allowNavigation` to `["events.example.edu"]`.
 
 #### UPG-55 — Google sign-in and 2FA exist but nothing links to them
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-55: …" on `production-ready` (parent `2acf8a5`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-55: …" on `production-ready` (parent `22e20d7`) [T]
 - **Evidence:** `app.py:425-443`, `templates/login.html:206-215`, `templates/profile/dashboard.html:238-285`, `auth_oauth.py:35`, `auth_2fa.py:169-181`
 - **Problem:** [C] `auth_oauth.py` serves `/auth/google` and `auth_2fa.py` serves `/auth/2fa/*`, but no template links to either (`grep -rn 'auth/google\|auth/2fa' templates` finds nothing). Users can't find them. (The matchmaker's `MOCK_STUDENTS`, also on the launch list, is already UPG-14 criterion 4.)
 - **Who benefits:** every user (one-click login, a second factor for staff accounts).
 - **What to build:** a "Sign in with Google" button on the login page only when Google OAuth is configured; a "Two-factor authentication" section on the profile page (set up / turn off) only when 2FA is available. UPG-10 later restricts Google sign-in to the university domain.
 - **Files touched:** `templates/login.html`, the profile template, `app.py` (a context flag), tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.**
+- **Files touched:** `tests/test_google_and_2fa_links.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: with Google OAuth configured, the login page links `/auth/google`; without it, it doesn't.
-  2. Test: the profile page links the 2FA set-up when 2FA is available and not when it isn't.
+  1. ✅ Test: with Google OAuth configured, the login page links `/auth/google`; without it, it doesn't. [T `tests/test_google_and_2fa_links.py::test_the_login_page_links_google_only_when_configured` (and `/auth/google` redirects to Google's consent page)]
+  2. ✅ Test: the profile page links the 2FA set-up when 2FA is available and not when it isn't. [T `::test_the_profile_offers_2fa_only_when_available` (and `/auth/2fa/setup` opens, 200)]
 - **To test later:**
   - Verify `/login` displays the "Sign in with Google" button linking `/auth/google` when `OAUTH_GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_ID` is set, and omits it when empty.
   - Verify `/profile/` displays the 2FA section with "Set Up 2FA" linking `/auth/2fa/setup` when 2FA dependencies are available, and omits the section when unavailable.
@@ -3788,3 +3791,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-56: …" (parent `5525921`) | UPG-56 | **UPG-56 DONE** (Part 2, tested as built): the checkout coupon field sends the code, the order is priced on the server, and the preview shows the discount or the server's error with the full price. 3 new tests. |
 | 2026-10-17 | "UPG-10: …" (parent `0f7ce11`) | UPG-10 | **UPG-10 DONE** (Part 2, tested as built): roster import creates and then updates students in place; Google sign-in outside the university domain is refused. 3 new tests. |
 | 2026-10-17 | "UPG-12: …" (parent `33b31af`) | UPG-12 | **UPG-12 DONE** (Part 2, tested as built; certificate part deferred): faculty registration and ticket, allowed types, affiliation only for faculty/external, the export filter and the analytics split. 6 new tests. |
+| 2026-10-17 | "UPG-55: …" (parent `22e20d7`) | UPG-55 | **UPG-55 DONE** (Part 2, tested as built): the Google button and the 2FA set-up appear only when configured or available, and both links open. 2 new tests. |

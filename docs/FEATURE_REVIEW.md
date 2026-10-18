@@ -903,12 +903,15 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. ✅ No URL changes. [T `tests/test_dead_code_and_links.py::test_every_internal_link_action_and_fetch_url_reaches_a_route` (UPG-15)]
 
 #### UPG-24 — One Bootstrap version and one font set, loaded once, with SRI
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-24: …" on `production-ready` (parent `0c49f70`)
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-24: …" on `production-ready` (parent `9d6ea24`) [T]
 - **Problem:** [C at `56a014d`] Bootstrap 5.3.0 is loaded by 46 templates and 5.3.3 by 34 (re-counted 2026-10-08; 50 and 34 at `986d108`, before four pages moved onto the shared layout). Google Fonts families: Inter (29 templates), Poppins (27), Plus Jakarta Sans (4), Cinzel (3), Orbitron (1), Outfit (1), while `static/css/global.css` uses Inter, Plus Jakarta Sans and Outfit (`global.css:189,201,897`). Of 261 CDN `<script>`/`<link>` tags, 2 have an `integrity` hash (still 2 on 2026-10-08; the font and tag counts fell slightly as pages moved onto the shared layout).
 - **Who benefits:** every user (one download, consistent look); security (SRI).
 - **What to build:** Bootstrap 5.3.3 and the font set `global.css` uses, loaded once in the layout, with `integrity` and `crossorigin` on every CDN file.
 - **Files touched:** `templates/base_classic.html`, templates still carrying their own tags, tests.
+- **Built (2026-10-18):**
+  - **Tested in Part 2, as built; no change to the app.** The template scan covers every file under `templates/`. The font check loads four pages in headless Chromium and records every font request: only the three files in `static/fonts/` (and Font Awesome's own icon font). Removing a partial's `integrity` attribute fails criterion 2's test. The Poppins → Outfit screenshot comparison has no "before" to compare with. UPG-23's 375px check now covers those pages' headings and fields.
+- **Files touched:** `tests/test_assets_and_fonts.py` (new).
 - **Effort:** S (after UPG-23) · **Depends on:** UPG-23 · **Risk:** pages relying on 5.3.0 quirks or on Poppins; check in screenshots.
 - **What was built (2026-10-10, development-only run):**
   - **One Bootstrap (5.3.3) and one Font Awesome (6.5.1)**, each defined once, with `integrity` and `crossorigin`: `templates/layouts/_bootstrap_css.html`, `_bootstrap_js.html`, `_fontawesome.html`. Every page that loaded any Bootstrap 5.3.x or Font Awesome 6.x copy now includes the partial **at the same place** its own tag was (88 CSS, 45 JS, 99 icon tags; a page that loaded one twice keeps one), so the order of stylesheets, and with it the cascade, is unchanged. No template references `bootstrap@5.3.0` any more, and Bootstrap tags exist only in the layout partials. Pages that never loaded Bootstrap (the `base_classic.html` pages) still don't, which avoids a redesign.
@@ -918,9 +921,9 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Checked [R]: the 858-fetch crawl gives the same status, title and visible text; template, security and offline tests pass; ruff clean; app starts. Hashes were computed from the CDN files themselves (Bootstrap's match the published ones).
 - **To test later:** criteria 1–3 below, with Razorpay's `checkout.js` as the one allowed exception to criterion 2, and a screenshot comparison of pages that used Poppins.
 - **Acceptance criteria:**
-  1. Test: no template references `bootstrap@5.3.0`; Bootstrap CSS and JS appear only in the layout files.
-  2. Test: every CDN `<script>` and stylesheet `<link>` has `integrity` and `crossorigin`.
-  3. Test: only the font families used by `global.css` are requested.
+  1. ✅ Test: no template references `bootstrap@5.3.0`; Bootstrap CSS and JS appear only in the layout files. [T `tests/test_assets_and_fonts.py::test_one_bootstrap_defined_only_in_the_layout_partials`]
+  2. ✅ Test: every CDN `<script>` and stylesheet `<link>` has `integrity` and `crossorigin`. [T `::test_every_cdn_script_and_stylesheet_has_integrity_and_crossorigin`, `::test_razorpay_is_the_only_unhashed_script` (only `checkout.razorpay.com/v1/checkout.js`); Bootstrap's hash is also checked against the file itself at UPG-23]
+  3. ✅ Test: only the font families used by `global.css` are requested. [T `::test_only_the_three_families_are_declared_and_nothing_loads_web_fonts`, `::test_a_page_requests_only_the_self_hosted_fonts` (4 pages, headless)]
 
 #### UPG-25 — Move inline scripts into static files; remove `'unsafe-inline'` from `script-src`
 - **Status:** BUILT (untested)
@@ -3974,3 +3977,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-19: …" (parent `1536aae`) | UPG-19 | **UPG-19 DONE** (Part 2, tested as built): 10 lists page at 25 (page 5 = last 20), search by name/email/USN combines with the page, `per_page` capped at 100, the users list pages in SQL; dashboard status filters, totals and audit-log filters checked. 36 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-20: …" (parent `5b18a3d`) | UPG-20 | **UPG-20 DONE** (Part 2): production boot refuses with one error naming every problem and starts with strong settings (SQLite and PostgreSQL); health 503/200 with no error text; JSON logs; Sentry only with a DSN and no personal data; production headers. Found and fixed: `.env.example` lacked ten settings added since; the dead `NO_SCHEDULER` dropped. 7 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-23: …" (parent `216f7a3`) | UPG-23 | **UPG-23 DONE** (Part 2, 23a–h tested as built): every rendered template extends the shared document; 30 key pages for 6 roles answer with the footer and navigation; at 375px none scrolls sideways or loses a heading or field seen at 1280px (headless Chromium, Bootstrap from an integrity-checked fixture). 4 new tests. |
+| 2026-10-18 | "UPG-24: …" (parent `9d6ea24`) | UPG-24 | **UPG-24 DONE** (Part 2, tested as built): one Bootstrap 5.3.3 in the layout partials; every CDN script and stylesheet hashed (Razorpay's checkout.js the one exception); only Inter, Plus Jakarta Sans and Outfit, self-hosted, are declared or requested. 8 new tests. |

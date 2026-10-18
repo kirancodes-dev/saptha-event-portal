@@ -795,12 +795,15 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - UPG-17's part: `tests/test_storage_endpoints.py` (boto3 stubbed): the S3 endpoint reaches the client and the URL; private uploads carry no ACL and come back through a 15-minute signed link; in production an S3 failure raises and nothing is written under `static/uploads/`.
 
 #### UPG-22 — Privacy notice, consent at registration, working data export and deletion
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-22: …" on `production-ready` (parent `baae6b7`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-22: …" on `production-ready` (parent `b72a9b5`) [T]
 - **Problem:** [C at `56a014d`] `routes_compliance.py` has data export (`:50`), deletion request (`:126`), cancel deletion (`:188`) and consent (`:211`, `:250`) endpoints, never run end to end. The registration form has no consent checkbox (no "consent" in `templates/public/registration_form.html`). The privacy page is linked from only 5 templates, because pages don't share a footer (UPG-23).
 - **Who benefits:** every student and external participant; the university's DPDP obligations.
 - **What to build:** a privacy notice linked from the shared footer; a required consent checkbox at registration and sign-up, stored with the time and notice version; a working export (the user's own data as a download) and deletion (account removed, registrations anonymised, kept only where records must be retained).
 - **Files touched:** `routes_compliance.py`, `routes_forms.py`, `routes_auth.py`, `templates/public/registration_form.html`, the shared layout, tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** Payment orders and the audit log keeping the email is still the open policy decision D-7.
+- **Files touched:** `tests/test_privacy_rights.py` (new).
 - **Effort:** M · **Depends on:** BLK-02, UPG-23 (footer) · **Risk:** what must be kept (e.g. certificates, finance records) is a policy question; record it under "Decisions needed" if it blocks.
 - **Noted in UPG-07 (2026-10-08):** the scheduled lifecycle job used to delete events 5 days after their date and registrations after 30 days. It now only changes statuses, so nothing is deleted on a schedule. If old data should go after some time, that rule belongs here, with the policy above.
 - **What was built (2026-10-10, development-only run):**
@@ -813,10 +816,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Checked by hand [R]: without the box, no registration and the message; with it, the consent is stored with time and version; a member's export holds nothing about the lead; scheduling, then processing 31 days later, removes the account (login fails) and leaves "Deleted user" with a placeholder email in both the led registration and the other team's member entry; the privacy page shows the version and the shared footer links it.
 - **To test later:** criteria 1–4 below, plus the cancel path, the member-view export (no other person's data, aliases included) and that the cron `cleanup` processes only due requests.
 - **Acceptance criteria:**
-  1. Test: registration without consent → refused with a clear message; with consent → stored with time and notice version.
-  2. Test: export returns the user's profile and registrations and nothing about anyone else.
-  3. Test: after deletion is processed, the user can't log in and their registrations hold no name, email or phone.
-  4. Test: every page on the shared layout links the privacy notice.
+  1. ✅ Test: registration without consent → refused with a clear message; with consent → stored with time and notice version. [T `tests/test_privacy_rights.py::test_registration_needs_consent_and_stores_it_with_time_and_version`]
+  2. ✅ Test: export returns the user's profile and registrations and nothing about anyone else. [T `::test_the_export_holds_only_the_persons_own_data` (a team member's export holds none of the lead's name, email or phone, nor another registrant's)]
+  3. ✅ Test: after deletion is processed, the user can't log in and their registrations hold no name, email or phone. [T `::test_deletion_can_be_cancelled_and_the_cleanup_only_does_due_requests` (no confirmation → nothing; cancel; through `/internal/cron/cleanup` only the due request is carried out; login then fails and the registrations hold no name or email; the not-due person is untouched)]
+  4. ✅ Test: every page on the shared layout links the privacy notice. [T `::test_shared_layout_pages_link_the_privacy_notice`]
   - **Re-verified at the end of Part 1 (2026-10-17):** since UPG-69 the SQL layer always returns `lead_email`/`lead_name`/`lead_phone` for registrations as well as `leadEmail`. The team member's allow-list still leaves the lead's details out (it lists what to keep, not what to drop).
 
 ### E. Frontend (added in Phase 0, 2026-09-30)
@@ -3843,3 +3846,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-48: …" (parent `baeb512`) | UPG-48 | **UPG-48 DONE** (Part 2, tested as built): every team member gets the confirmation, day-before ticket, change and cancellation notices once (any email case). 3 new tests. |
 | 2026-10-17 | "UPG-16: …" (parent `64c6eaf`) | UPG-16 | **UPG-16 DONE** (Part 2, tested as built): `alembic upgrade head` builds empty SQLite and PostgreSQL databases that match the models; downgrade/upgrade works on PostgreSQL; production start-up refuses an unmigrated database and never alters one. 5 new tests. |
 | 2026-10-17 | "UPG-21: …" (parent `79768c5`) | UPG-21 | **UPG-21 DONE** (Part 2): backup → restore on PostgreSQL gives identical row counts and revision, and refuses a non-empty target. Found and fixed: the hygiene test didn't refuse tracked database dumps (criterion 2). The storage endpoint and private-link checks (UPG-17) are tested too. 5 new tests (plus 8 hygiene cases). |
+| 2026-10-17 | "UPG-22: …" (parent `b72a9b5`) | UPG-22 | **UPG-22 DONE** (Part 2, tested as built): consent stored with version, own-data export, cancellable deletion carried out only when due (login then fails, registrations anonymised), privacy link on shared pages. 4 new tests. |

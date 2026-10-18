@@ -2128,17 +2128,20 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Verify `/profile/` displays the 2FA section with "Set Up 2FA" linking `/auth/2fa/setup` when 2FA dependencies are available, and omits the section when unavailable.
 
 #### UPG-56 — Checkout has no coupon field
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-56: …" on `production-ready` (parent `21d107a`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-56: …" on `production-ready` (parent `5525921`) [T]
 - **Evidence:** `routes_payment.py:97,231-285`, `templates/payment/checkout.html:45-140`
 - **Problem:** [C] The server applies a coupon validated on the server when `create_order` gets one (`services_payments.server_price`, `services_payments.py:77`; uses held since UPG-36), but no template or script sends one: `grep -rni coupon templates static/js` finds only marketing copy.
 - **Who benefits:** organisers running discounts; students with a code.
 - **What to build:** a coupon field on the checkout page with an "Apply" button that shows the server's price (fee, discount, total) before paying, and sends the code with the order. The server's price stays the only price.
 - **Files touched:** `templates/payment/checkout.html`, its script, `routes_payment.py` (a price-preview endpoint if needed), tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.**
+- **Files touched:** `tests/test_checkout_coupon.py` (new).
 - **Effort:** S · **Depends on:** UPG-36 · **Risk:** low; the server already validates.
 - **Acceptance criteria:**
-  1. Test: the checkout page has a coupon input and its script sends the code with the order.
-  2. Test: the price preview with a valid code shows the discounted total from the server; an invalid code shows the server's error and the full price.
+  1. ✅ Test: the checkout page has a coupon input and its script sends the code with the order. [T `tests/test_checkout_coupon.py::test_the_checkout_page_has_a_coupon_field_whose_code_goes_with_the_order`, `::test_the_order_is_priced_with_the_code_on_the_server` (₹500 less 50% → 25000 paise)]
+  2. ✅ Test: the price preview with a valid code shows the discounted total from the server; an invalid code shows the server's error and the full price. [T `::test_the_preview_shows_the_servers_discount_or_its_error_and_the_full_price`]
 - **To test later:**
   - Verify `templates/payment/checkout.html` renders the coupon input and "Apply" button, and passes `coupon` with `/payment/create_order`.
   - Verify `/payment/price_preview` returns `valid: True` and discounted total for a valid coupon code, and `valid: False` with server error and full price for an invalid code.
@@ -3775,3 +3778,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-108: …" (parent `034e0e5`) | UPG-108 | **UPG-108 DONE for now** (owner, before Part 2): the chatbot states no campus facts; campus questions get "Please check with the college office." (directly, and as the AI's instruction), and the prompt keeps only the portal FAQ. 6 new tests. Full pytest: 1016 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-51: …" (parent `72bac11`) | UPG-51 | **UPG-51 DONE** (Part 2, tested as built): 5 tests on the real database with Razorpay mocked (confirmation, once per payment, failure and retry, two requests at once, no-order registration, 403 and non-cancelled refusal). No bug found. |
 | 2026-10-17 | "UPG-44: …" (parent `ad988a5`) | UPG-44 | **UPG-44 DONE** (Part 2, tested as built): empty, missing, `unpaid` and `Paid` payment statuses read back as written and the `unpaid` filter finds only the explicit one, on SQLite and PostgreSQL 16.2 (local `pgserver`). 1 new test. |
+| 2026-10-17 | "UPG-56: …" (parent `5525921`) | UPG-56 | **UPG-56 DONE** (Part 2, tested as built): the checkout coupon field sends the code, the order is priced on the server, and the preview shows the discount or the server's error with the full price. 3 new tests. |

@@ -2267,14 +2267,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Re-verified at the end of Part 1 (2026-10-17):** the reels page is now hidden unless `DEMO_PAGES_ENABLED` (UPG-65), so its demo videos no longer show by default; the other findings are unchanged.
 
 #### UPG-61 — A development database made before a NOT NULL column was added breaks every query on its table
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-61: …" (parent `f9ebbeb`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-61: …" on `production-ready` (parent `5ce60e6`) [T]
 - **Problem:** Found starting UPG-59 [R]. Development start-up (`db_pg.init_db`) added only *nullable* columns to existing tables. UPG-11 added `events.activity_points` and `activity_hours` as NOT NULL with a default, so on any development database created before UPG-11 every events query failed with "no such column: events.activity_points" and most pages answered 500. Production is unaffected (migration `0005` adds them).
 - **What was built:** `init_db` (`db_pg.py`) also adds a NOT NULL column when it has a constant default, as `ADD COLUMN … NOT NULL DEFAULT <value>`, so existing rows get the default. Columns without a constant default are still skipped (as before). Checked by hand [R] on a database created before UPG-11: after start-up both columns exist with default 0.0 and the SPOC dashboard answers 200. Adapter tests pass.
 - **To test later:** criterion 1.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** The test builds the old database in a subprocess (the models' tables with `events.activity_points` dropped), then starts the app in development mode against it.
+- **Files touched:** `tests/test_dev_schema_catch_up.py` (new).
 - **Effort:** S · **Depends on:** UPG-16 · **Risk:** low; development only.
 - **Acceptance criteria:**
-  1. Test: a SQLite database created without `events.activity_points` gets it (NOT NULL, default 0) at development start-up, and `/spoc/dashboard` answers 200.
+  1. ✅ Test: a SQLite database created without `events.activity_points` gets it (NOT NULL, default 0) at development start-up, and `/spoc/dashboard` answers 200. [T `tests/test_dev_schema_catch_up.py::test_an_old_development_database_gets_the_not_null_column_and_the_dashboard_works`]
 
 #### UPG-62 — 19 existing tests fail since the clean-up and seed commits
 - **Status:** DONE
@@ -3851,3 +3854,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-21: …" (parent `79768c5`) | UPG-21 | **UPG-21 DONE** (Part 2): backup → restore on PostgreSQL gives identical row counts and revision, and refuses a non-empty target. Found and fixed: the hygiene test didn't refuse tracked database dumps (criterion 2). The storage endpoint and private-link checks (UPG-17) are tested too. 5 new tests (plus 8 hygiene cases). |
 | 2026-10-17 | "UPG-22: …" (parent `b72a9b5`) | UPG-22 | **UPG-22 DONE** (Part 2, tested as built): consent stored with version, own-data export, cancellable deletion carried out only when due (login then fails, registrations anonymised), privacy link on shared pages. 4 new tests. |
 | 2026-10-17 | "UPG-58: …" (parent `afd6daf`) | UPG-58 | **UPG-58 DONE** (Part 2, tested as built): `native_document_store` comes from its migration (SQLite and PostgreSQL), and production reads and writes issue no DDL. 2 new tests. |
+| 2026-10-17 | "UPG-61: …" (parent `5ce60e6`) | UPG-61 | **UPG-61 DONE** (Part 2, tested as built): an old development database gets the NOT NULL column with its default at start-up, and the SPOC dashboard answers 200. 1 new test. |

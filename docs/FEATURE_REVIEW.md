@@ -1902,8 +1902,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: with it unset, those pages render without a `mailto:` link.
 
 #### UPG-43 — Event-day lists show only events whose status is the old `active`
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-43: …" on `production-ready` (parent `932afdd`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-43: …" on `production-ready` (parent `cf71222`) [T]
 - **Problem:** Found while building UPG-02 [C]. Events created by SPOCs move through workflow states (`services_workflow.py:25-40`: published, registration_open, in_progress, …) and never become `active`, but:
   - the coordinator's scanner list shows only `active` events (`routes_coordinator.py:636`), so an assigned coordinator doesn't see today's event and needs the direct link `/coordinator/scan/<event>`;
   - the walk-in form lists only `active` events (`routes_coordinator.py:548`);
@@ -1914,6 +1914,10 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Who benefits:** coordinators and volunteers on event day; participants using self check-in.
 - **What to build:** one helper that says whether an event is running for event-day purposes (published, registration open or closed, in progress, and the old `active`; not draft, pending, cancelled or completed), used by these three places.
 - **Files touched:** `routes_coordinator.py`, `routes_checkin.py`, `services_workflow.py` (the helper), `tasks/scheduled_tasks.py`, tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.**
+  - **Found:** the scanner list falls back to the invented venue "SNPSU Campus" (`routes_coordinator.scanner_selector`). It's logged as a new item, not fixed here.
+- **Files touched:** `tests/test_event_day_statuses.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **What was built (2026-10-10, development-only run):**
   - One helper: `services_workflow.EVENT_DAY_STATUSES` (published, registration open or closed, in progress, and the old `active`) and `is_event_day_status` (`services_workflow.py:63-71`), plus `REGISTRATION_OPEN_STATUSES`.
@@ -1922,10 +1926,10 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - The judge dashboard is left for UPG-04 (Phase 6), as the item says.
 - **To test later:** criteria 1–4 below (real database): the scanner list and walk-in form list a `registration_open` event today and not a `cancelled` one; venue self check-in for `in_progress` vs `cancelled`; the day-before reminder through `/internal/cron/reminders` for a `registration_closed` event tomorrow and not a `cancelled` one. Existing `tests/test_cron.py` and `tests/test_notices.py` use `active` events and still pass.
 - **Acceptance criteria:**
-  1. Test (real DB): an assigned coordinator's scanner list shows today's `registration_open` event; a `cancelled` one isn't listed.
-  2. Test: the walk-in form lists the same event.
-  3. Test: venue self check-in works for an `in_progress` event and refuses a `cancelled` one.
-  4. Test: the day-before reminder, through `/internal/cron/reminders`, reaches registrants of a `registration_closed` event tomorrow, and not of a `cancelled` one.
+  1. ✅ Test (real DB): an assigned coordinator's scanner list shows today's `registration_open` event; a `cancelled` one isn't listed. [T `tests/test_event_day_statuses.py::test_the_scanner_list_and_walk_in_form_show_open_events_not_cancelled_ones`]
+  2. ✅ Test: the walk-in form lists the same event. [T same test (`/coordinator/on_spot`)]
+  3. ✅ Test: venue self check-in works for an `in_progress` event and refuses a `cancelled` one. [T `::test_venue_self_check_in_works_while_running_and_not_when_cancelled` (a signed venue code; `in_progress` marks Present; `cancelled` answers 400 "This event is not running")]
+  4. ✅ Test: the day-before reminder, through `/internal/cron/reminders`, reaches registrants of a `registration_closed` event tomorrow, and not of a `cancelled` one. [T `::test_the_day_before_reminder_reaches_closed_registration_events_not_cancelled_ones` (cron endpoint, Brevo's API mocked, network blocked)]
 - **Not scheduled yet:** it fits Phase 2 next to UPG-29 (owner's call).
 
 #### UPG-44 — An empty payment status reads back as `unpaid` (postgres mode)
@@ -3792,3 +3796,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-10: …" (parent `0f7ce11`) | UPG-10 | **UPG-10 DONE** (Part 2, tested as built): roster import creates and then updates students in place; Google sign-in outside the university domain is refused. 3 new tests. |
 | 2026-10-17 | "UPG-12: …" (parent `33b31af`) | UPG-12 | **UPG-12 DONE** (Part 2, tested as built; certificate part deferred): faculty registration and ticket, allowed types, affiliation only for faculty/external, the export filter and the analytics split. 6 new tests. |
 | 2026-10-17 | "UPG-55: …" (parent `22e20d7`) | UPG-55 | **UPG-55 DONE** (Part 2, tested as built): the Google button and the 2FA set-up appear only when configured or available, and both links open. 2 new tests. |
+| 2026-10-17 | "UPG-43: …" (parent `cf71222`) | UPG-43 | **UPG-43 DONE** (Part 2, tested as built): the scanner list, walk-in form, venue self check-in and day-before reminder follow the event-day statuses and skip cancelled events. 3 new tests. Found the scanner list's invented venue fallback (new item). |

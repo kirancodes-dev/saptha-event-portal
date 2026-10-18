@@ -2093,8 +2093,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet** (owner's call; it fits next to UPG-31).
 
 #### UPG-47 — Events saved without times get the save time as their start and end (postgres mode)
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-47: …" on `production-ready` (parent `2aeef46`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-47: …" on `production-ready` (parent `aae62ea`) [T]
 - **Problem:** Found while building UPG-07 [R]. The SQL adapter stores an event's `start_datetime` and `end_datetime` through `parse_datetime`, which returns *now* for an empty value (`db_adapter.py:1126-1127,1938-1940`). The SPOC's create form sends neither, so every such event reads back with its save time as start and end, not its `date`. Readers trust them [C]:
   - room-conflict checks (`services_venue.py:377,408,463`, `services_workflow.py:204`) compare the wrong times;
   - the calendar feeds read `start_datetime` before `date` (`app.py:1069-1070,1106-1111`), so they place each event at its save time;
@@ -2102,6 +2102,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Who benefits:** SPOCs booking rooms; anyone reading the calendar.
 - **What to build:** an empty start or end reads back empty (or derived from `date` and `time`), not the save time; readers fall back to `date`.
 - **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** Since UPG-73's wizard, an event created through the SPOC form with no time is stored as its date's whole day, 00:00–23:59 (criterion 1's "one on its date"), and its page says "Time to be announced". The adapter's own fix still matters for events saved with no times at all (API v1 drafts, seeds): they read back with none. Restoring the old "save time" fallback (`db_adapter.py:1157-1158`) fails that test. Room clashes for time-less events go by the date. Passes on SQLite and PostgreSQL 16.
+- **Files touched:** `tests/test_untimed_events.py` (new).
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** existing rows already hold save times; decide whether to clear them (a one-off script) or leave them.
 - **What was built (2026-10-10, owner's second run):**
   - **Times stay empty.** Creating an event on the SQL layer no longer stores the save time when no start or end is given: `start_datetime` and `end_datetime` stay empty (`db_adapter.py`, the events branch of `_dict_to_new_record`). Updates already kept empty times empty. Existing rows aren't changed (the item's open question: they keep their save times; a one-off clean-up would need the owner's go-ahead).
@@ -2110,8 +2113,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Checked by hand [R]: an event saved without times reads back with no start or end and its page says "Time to be announced"; the same-day booking clashes, the next day's doesn't. Venue, calendar, adapter and cron tests pass.
 - **To test later:** criteria 1–2.
 - **Acceptance criteria:**
-  1. Test (real DB): an event created through the SPOC form reads back with no `end_datetime` (or one on its `date`), never its save time.
-  2. Test: a room conflict check for an event saved without times uses its date: a second event in the same room on that date and time clashes, one on another day doesn't.
+  1. ✅ Test (real DB): an event created through the SPOC form reads back with no `end_datetime` (or one on its `date`), never its save time. [T `tests/test_untimed_events.py::test_an_event_saved_without_a_time_has_no_start_or_end` (the form: the date's whole day, never the save time), `::test_the_database_layer_keeps_missing_times_empty` (no times through the SQL layer: none back)]
+  2. ✅ Test: a room conflict check for an event saved without times uses its date: a second event in the same room on that date and time clashes, one on another day doesn't. [T `::test_untimed_events_clash_by_their_date` (same day clashes, the next day doesn't)]
 - **Not scheduled yet** (owner's call).
 
 #### UPG-48 — Team members get no confirmation, reminder or notice
@@ -4039,3 +4042,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-38: …" (parent `5bc9d85`) | UPG-38 | **UPG-38 DONE** (Part 2, tested as built): no tracked workflow runs Jekyll. Criterion 2 (no Jekyll check on GitHub's next CI run) waits for a push. 1 new test. |
 | 2026-10-19 | "UPG-42: …" (parent `1644907`) | UPG-42 | **UPG-42 DONE** (Part 2, tested as built): the three pages show `SUPPORT_EMAIL`, or no address when it's unset; the old account is gone from every tracked file. 3 new tests. |
 | 2026-10-19 | "UPG-46: …" (parent `869741f`) | UPG-46 | **UPG-46 DONE** (Part 2, tested as built): the briefing and the velocity alert link only to `BASE_URL`. 2 new tests. |
+| 2026-10-19 | "UPG-47: …" (parent `aae62ea`) | UPG-47 | **UPG-47 DONE** (Part 2, tested as built): a time-less event from the form spans its date, one saved with no times reads back with none, never the save time; room clashes go by the date. 4 new tests, also run on PostgreSQL. |

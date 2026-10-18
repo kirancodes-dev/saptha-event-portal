@@ -2239,17 +2239,20 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Verify `/` returns 200, renders the empty state ("No Events Currently Listed") and contains neither `demo-hackathon-2026` nor "SapthaHack 2026" when no events exist in the database.
 
 #### UPG-54 — The Android app loads an old Railway URL
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-54: …" on `production-ready` (parent `7c0bd90`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-54: …" on `production-ready` (parent `cbd5e5c`) [T]
 - **Evidence:** `capacitor.config.json`, `scripts/configure_capacitor.py`, `package.json:8`, `docs/DEPLOY.md:252-269`
 - **Problem:** [C] `capacitor.config.json:5-6` points the Android webview at `https://saptha-portal.railway.app`, a retired host; `allowNavigation` lists `*.railway.app` and `*.firebaseapp.com`. An APK built today opens a dead site.
 - **Who benefits:** students using the Android app.
 - **What to build:** the server URL comes from `BASE_URL` at build time (a `capacitor.config.ts` or a small script that writes the JSON before `npx cap sync`); `allowNavigation` holds only that host; the build steps are documented.
 - **Files touched:** `capacitor.config.json` (or `.ts`), `package.json` script, `docs/DEPLOY.md`, tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** No tracked Capacitor config, nor the config script or `package.json`, mentions `railway.app` or `firebaseapp.com`. The config step, run with `BASE_URL=https://events.example.edu/` into a temporary file, writes that URL (trailing slash dropped) and only that host in `allowNavigation`; `package.json`'s `cap:config` runs it. The committed `capacitor.config.json` holds the placeholder host, which the build step replaces.
+- **Files touched:** `tests/test_home_empty_and_app_config.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** low; the Flutter app under `~/development/saptha_app` is separate.
 - **Acceptance criteria:**
-  1. Test: no tracked file outside `functions/` and `scratch/` contains `railway.app` in the Capacitor config.
-  2. Test: running the config step with `BASE_URL=https://events.example.edu` gives a config whose server URL and `allowNavigation` use only that host.
+  1. ✅ Test: no tracked file outside `functions/` and `scratch/` contains `railway.app` in the Capacitor config. [T `tests/test_home_empty_and_app_config.py::test_the_capacitor_config_never_points_at_railway`]
+  2. ✅ Test: running the config step with `BASE_URL=https://events.example.edu` gives a config whose server URL and `allowNavigation` use only that host. [T `::test_the_config_step_writes_only_the_base_url_host`]
 - **To test later:**
   - Verify `capacitor.config.json` contains no reference to `railway.app`.
   - Verify running `scripts/configure_capacitor.py` with `BASE_URL=https://events.example.edu` sets `url` to `https://events.example.edu` and `allowNavigation` to `["events.example.edu"]`.
@@ -4055,3 +4058,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-49: …" (parent `dfd7cef`) | UPG-49 | **UPG-49 DONE** (Part 2, tested as built): the automation's WhatsApp channel sends once for an opted-in user, is off without Twilio, and records a refused send as a failure. 5 new tests. |
 | 2026-10-19 | "UPG-50: …" (parent `cb9fa04`) | UPG-50 | **UPG-50 DONE** (Part 2, tested as built; certificate email deferred): names and titles with markup show as text in the confirmation, the briefing and the 3-day reminder. 2 new tests. |
 | 2026-10-19 | "UPG-53: …" (parent `701c14b`) | UPG-53 | **UPG-53 DONE** (Part 2, tested as built): with no events, the home page shows its empty state, no made-up hackathon. 1 new test. |
+| 2026-10-19 | "UPG-54: …" (parent `cbd5e5c`) | UPG-54 | **UPG-54 DONE** (Part 2, tested as built): the Android app's config never points at Railway, and the config step writes only `BASE_URL`'s host. 2 new tests. |

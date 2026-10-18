@@ -203,10 +203,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Hackathon | Create, judges, project submission page, rubric scoring (UPG-04), leaderboard, QR check-in (UPG-02), winner and participation certificates (UPG-06), team registration with invite codes (UPG-08); Own type: duration, themes, judging criteria, rounds, prizes in the wizard (UPG-73) | Round shortlists | UPG-66 (the project submission form posts without a CSRF token) |
 | Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings (UPG-13, built, untested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74) | Whiteboard/Excel replaced | — |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06); Cultural competition (discipline, solo/group, time on stage) and show/concert types; a cultural fest holds them as sub-events (UPG-73, UPG-74) | Slots, judging sheets | — (rubric judging done, UPG-04) |
-| Club activities | Org units can be clubs (`routes_admin.py:812`); Club activity type (UPG-73) | Membership lists, recurring meetings, attendance across the year | UPG-11 (ledger); membership not yet listed |
+| Club activities | Org units can be clubs (`routes_admin.py:812`); Club activity type (UPG-73) | Membership lists, recurring meetings, attendance across the year | Membership not yet listed (activity points ledger done, UPG-11) |
 | Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, built, untested); Placement drive type with company and eligibility in the wizard (UPG-73) | Company communication | — |
-| FDPs | Faculty-only events: faculty register with designation and institution (UPG-12, built, untested); hours credited in the ledger (UPG-11); FDP type: faculty and external by default, resource persons, multi-day dates (UPG-73) | Faculty registration, multi-day attendance, hours on certificate | UPG-12, UPG-11 |
-| NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a; NSS/NCC activity and social drive types with volunteer hours (UPG-73) | Volunteer hours register, unit rolls, hours certificates | UPG-11 |
+| FDPs | Faculty-only events: faculty register with designation and institution (UPG-12, tested); hours credited in the ledger and the department export (UPG-11, tested); FDP type: faculty and external by default, resource persons, multi-day dates (UPG-73) | Faculty registration, multi-day attendance, hours on certificate | Certificate wording and hours deferred with certificates (UPG-12, UPG-11) |
+| NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a; NSS/NCC activity and social drive types with volunteer hours (UPG-73); hours register per student and department export (UPG-11, tested) | Unit rolls, hours certificates | Hours on certificates deferred with certificates (UPG-11) |
 | Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R]; "My department only" visibility in the wizard; listings respect it (UPG-73) | Same as seminar | Seminar items |
 | Conference / webinar | Templates exist; their forms work since UPG-01 [R]; faculty and external participants register (UPG-12, built, untested); Own types; webinar is online with a meeting link shown to registrants (UPG-73) | — | — |
 
@@ -499,21 +499,24 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. The login page shows the Google button when OAuth is configured. *(2026-10-10: moved to UPG-55, which links Google sign-in and 2FA before launch; UPG-10 adds the domain rule.)*
 
 #### UPG-11 — Participation ledger: activity points and NSS / NCC / FDP hours
-- **Status:** BUILT (untested)
-- **Evidence:** `models_pg.py:64-65`, `migrations/versions/0005_activity_points_hours.py`, `routes_spoc.py:127-128,266-267,1140-1141`, `templates/spoc/create_event.html:641-650`, `templates/spoc/edit_event.html:361-370`, `routes_ticket.py:181-188`, `services_export.py:210-307`, `routes_admin.py:338-341,372-389`, `routes_participant.py:321-360`, `templates/participant/ledger.html`, `utils_certificate.py:165,653-659`, `templates/participant/certificate.html:36-39`
-- **Last verified:** 2026-10-10, commit `UPG-11`
+- **Status:** DONE (criterion 4, the certificate, deferred with certificates)
+- **Evidence:** `models_pg.py:64-65`, `migrations/versions/0005_activity_points_hours.py`, `services_event_types.py:481-482,543-544` (the wizard's fields since UPG-73), `routes_spoc.py:589` (SPOC export), `:1366` (edit), `services_ledger.py:12-17`, `services_export.py:221-319`, `routes_admin.py:209-213,243-263`, `routes_participant.py:859-947`, `templates/participant/ledger.html` (the certificate lines were reverted, see below)
+- **Last verified:** 2026-10-18, commit "UPG-11: …" on `production-ready` (parent `74cc875`) [T]
 - **Changed 2026-10-10 (owner's second run prompt, Step 0):**
   - **Credit once per registration.** Points and hours are worked out from the registration's current attendance by one helper, `services_ledger.credit_for`, used by the ledger page (`routes_participant.participation_ledger`) and the department export (`services_export.department_activity_data`, which already counts each registration once). Check-in no longer writes `activity_points_credited`/`activity_hours_credited` (nothing read them, and they went stale when attendance was undone). Checked by hand [R] on a temporary database: two scans of one ticket (the second answers "already in"), then attendance undone and redone: the ledger and the export show 5 points / 2 hours, one event, each time; 0 while undone.
   - **Certificate part reverted, deferred (owner, 2026-10-10):** the hours line on the certificate page and in the PDF (`templates/participant/certificate.html`, `utils_certificate.py`) is removed; criterion 4 waits until certificate work resumes.
 - **To test later:**
-  1. Test: an event worth 2 hours / 5 points credits a Present attendee and not an Absent one.
-  2. Test: the ledger totals across 3 events are correct.
-  3. Test: the department export lists every student in the department with totals.
+  1. ✅ Test: an event worth 2 hours / 5 points credits a Present attendee and not an Absent one. [T `tests/test_participation_ledger.py::test_a_present_attendee_is_credited_and_an_absent_one_is_not` (also: a second scan credits nothing more)]
+  2. ✅ Test: the ledger totals across 3 events are correct. [T `::test_the_ledger_adds_up_three_events` (5+3+10 points, 2+1.5+4 hours; a fourth event registered but not attended adds nothing; the page shows the same totals)]
+  3. ✅ Test: the department export lists every student in the department with totals. [T `::test_the_department_export_lists_every_student_with_totals` (a student with no events is listed with 0; another department's student isn't)]
   4. ~~The certificate shows the hours when the event has them.~~ Certificate part deferred (owner, 2026-10-10).
 - **Problem:** MISSING. No points or hours fields exist anywhere (searched routes, services and templates for activity points, AICTE, NSS/volunteer/credit hours). Mentors and NSS/NCC officers keep these registers in Excel or on paper.
 - **Who benefits:** every student (activity points), NSS/NCC units, faculty (FDP hours), IQAC.
 - **What to build:** per-event points and/or hours set by the organiser; credited on attendance; a per-student ledger page; department/unit export; hours printed on certificates.
 - **Files touched:** `models_pg.py` + migration, `routes_spoc.py`, `routes_participant.py`, `services_export.py`, `utils_certificate.py`, tests.
+- **Built (2026-10-18):**
+  - **Tested in Part 2, as built; no change to the code.** Points and hours are set on the create form, a SPOC check-in credits them, an admin's "absent" doesn't, and a second scan doesn't credit twice. Breaking `credit_for` fails criteria 1 and 2's tests. Passes on SQLite and PostgreSQL 16. Criterion 4 stays deferred with certificates.
+- **Files touched:** `tests/test_participation_ledger.py` (new).
 - **Effort:** M · **Depends on:** UPG-02, BLK-06 · **Risk:** low.
 - **Acceptance criteria:**
   1. Test: an event worth 2 hours / 5 points credits a Present attendee and not an Absent one.
@@ -3863,3 +3866,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-61: …" (parent `5ce60e6`) | UPG-61 | **UPG-61 DONE** (Part 2, tested as built): an old development database gets the NOT NULL column with its default at start-up, and the SPOC dashboard answers 200. 1 new test. |
 | 2026-10-17 | "UPG-04: …" (parent `778f973`) | UPG-04 | **UPG-04 DONE** (Part 2): rubric scores are stored and shown, over-maximum scores refused, newer states listed, locked scoring refused. Found and fixed: JSON scores without remarks always failed. 4 new tests. |
 | 2026-10-18 | "UPG-09: …" (parent `813b0ee`) | UPG-09 | **UPG-09 DONE** (Part 2, tested as built): a booked room is refused on create with no event made; approval confirms the tentative booking; the calendar shows the room name. 3 new tests, also run on PostgreSQL. |
+| 2026-10-18 | "UPG-11: …" (parent `74cc875`) | UPG-11 | **UPG-11 DONE** (Part 2, tested as built; certificate criterion deferred): Present credits, Absent doesn't, rescans don't double; ledger totals across 3 events; department export lists every student with totals. 3 new tests, also run on PostgreSQL. Event-type rows updated (FDP's row also for UPG-12, which Part 2 had tested but left marked untested there). |

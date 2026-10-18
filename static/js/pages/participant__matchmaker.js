@@ -95,7 +95,7 @@
                 </div>
 
                 <div class="text-center my-3">
-                    <img class="avatar-circle mb-3" src="${safeUrl(m.avatar)}">
+                    <img class="avatar-circle mb-3" src="${safeUrl(m.avatar)}" alt="${escapeHtml(m.name)}" loading="lazy">
                     <h5 class="fw-bold text-strong m-0">${escapeHtml(m.name)}</h5>
                     <p class="text-muted small m-0">${escapeHtml(m.college)}</p>
                 </div>

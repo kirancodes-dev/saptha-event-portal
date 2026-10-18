@@ -975,19 +975,25 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. ✅ The payment button is disabled after one click until the payment result arrives (headless check, when available). [T `::test_the_payment_button_stays_disabled_until_the_result_arrives` (headless: a second click creates no second order; cancelling re-enables it; a payment leaves it disabled as "Payment received")]
 
 #### UPG-27 — Images: compress, lazy-load, alt text; visible keyboard focus
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit `UPG-27` (parent `3c9f9d1`)
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-27: …" on `production-ready` (parent `07d3508`) [T]
 - **Evidence:** `static/img` (797 KB total; 6 WebP images + 1 PNG), `templates/**/*.html` (111 `<img>` tags all have `alt` and `loading`), `static/css/global.css:229` (`:focus-visible` outline style).
 - **To test later:** criterion 1 (static/img totals under 1.5 MB), criterion 2 (alt on every img; loading="lazy" outside first screen), criterion 3 (global.css focus-visible).
 - **Problem:** [C at `56a014d`] `static/img` is 4.5 MB in 7 files: `event_slide1–4.png` are 0.8–1.06 MB each, `feature-showcase.png` 0.6 MB, `hero-banner.png` 0.39 MB. Of 111 `<img>` tags in templates, 4 have no `alt` and 77 have no `loading` attribute. Keyboard focus styles haven't been checked.
 - **Who benefits:** students on mobile data; keyboard and screen-reader users.
 - **What to build:** compressed images (WebP where it helps, same dimensions and look); `loading="lazy"` below the fold; `alt` on every image; a visible `:focus-visible` style in `global.css` that uses the existing tokens.
 - **Files touched:** `static/img/*`, templates, `static/css/global.css`, tests.
+- **Built (2026-10-18):**
+  - **Tested in Part 2. Found and fixed:**
+    - the profile page's avatar picker loaded its eight images eagerly below the first screen; they now load lazily (`templates/profile/dashboard.html:137`);
+    - the matchmaker's script built teammate photos with no `alt` (now the person's name, escaped, and lazy; `static/js/pages/participant__matchmaker.js:98`).
+  - **Notes:** `static/img` is 1.06 MB. The lazy-loading check loads UPG-23's 23 key pages at 1280×800, with the test event given a banner and a sponsor logo so images appear further down. The brand logos without a `loading` attribute all sit in the first screen, where eager loading is right. The focus check tabs through the login page in headless Chromium and needs a visible outline or focus ring on each control.
+- **Files touched:** `templates/profile/dashboard.html`, `static/js/pages/participant__matchmaker.js`, `tests/test_images_and_focus.py` (new).
 - **Effort:** S · **Depends on:** UPG-23 (fewer places to edit) · **Risk:** low.
 - **Acceptance criteria:**
-  1. `static/img` totals under 1.5 MB.
-  2. Test: every `<img>` in templates has `alt`; every image outside the first screen has `loading="lazy"`.
-  3. Test: `global.css` defines a `:focus-visible` style.
+  1. ✅ `static/img` totals under 1.5 MB. [T `tests/test_images_and_focus.py::test_static_img_is_under_1_5_mb`]
+  2. ✅ Test: every `<img>` in templates has `alt`; every image outside the first screen has `loading="lazy"`. [T `::test_every_template_image_has_alt`, `::test_every_image_the_app_scripts_build_has_alt` (failed on the matchmaker), `::test_images_below_the_first_screen_load_lazily` (failed on the avatar picker)]
+  3. ✅ Test: `global.css` defines a `:focus-visible` style. [T `::test_global_css_defines_a_focus_visible_style`, `::test_a_keyboard_user_sees_where_the_focus_is`]
 
 #### UPG-28 — The student journey and the scanner work on a 375px phone
 - **Status:** BUILT (untested)
@@ -4002,3 +4008,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-25: …" (parent `d29e2de`) | UPG-25 | **UPG-25 DONE** (Part 2, tested as built): `script-src` has a fresh nonce and no `'unsafe-inline'`; no template has an un-nonced inline script or an `on…=` handler, and no app script builds one; 23 key pages load under their own CSP with no violation and every handler bound. 4 new tests. (Also corrects UPG-23's entry: 23 key pages, not 30.) |
 | 2026-10-18 | "UPG-26: …" (parent `0680785`) | UPG-26 | **UPG-26 DONE** (Part 2): every form page loads the submit guard; every visible field on 20 form pages is labelled; the same registration sent twice, in turn or at once, registers once; the payment button stays disabled until the result. Found and fixed: the roster upload's file input had no label. 6 new tests. New: **UPG-115**. |
 | 2026-10-18 | "docs: …" | UPG-115 | New (found in UPG-26): two registration forms for one email sent at the same instant both register. TODO. |
+| 2026-10-18 | "UPG-27: …" (parent `07d3508`) | UPG-27 | **UPG-27 DONE** (Part 2): `static/img` 1.06 MB; every image has `alt`; images below the first screen of the key pages load lazily; `:focus-visible` is defined and visible on tab. Found and fixed: the avatar picker loaded eagerly, the matchmaker's photos had no `alt`. 6 new tests. |

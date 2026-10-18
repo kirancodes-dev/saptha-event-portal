@@ -134,7 +134,7 @@
                                         {% for key in avatar_presets %}
                                         <div>
                                             <input class="preset-opt" type="radio" name="preset" id="preset-{{ key }}" value="{{ key }}" {% if avatar == 'preset:' ~ key %}checked{% endif %} required>
-                                            <label class="preset-label" for="preset-{{ key }}" title="{{ key|capitalize }}"><img src="/static/img/avatars/{{ key }}.svg" alt="{{ key|capitalize }} avatar" width="128" height="128"></label>
+                                            <label class="preset-label" for="preset-{{ key }}" title="{{ key|capitalize }}"><img src="/static/img/avatars/{{ key }}.svg" alt="{{ key|capitalize }} avatar" width="128" height="128" loading="lazy"></label>
                                         </div>
                                         {% endfor %}
                                     </div>

@@ -1922,17 +1922,20 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet:** it fits Phase 2 next to UPG-29 (owner's call).
 
 #### UPG-44 — An empty payment status reads back as `unpaid` (postgres mode)
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-44: …" on `production-ready` (parent `737bd0c`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-44: …" on `production-ready` (parent `ad988a5`) [T]
 - **Problem:** Found while building UPG-02 [R]. A registration written with `payment_status: ''` reads back as `'unpaid'` on the SQL adapter: the enum column gets its default and the read returns it. Every live registration path sets a status (form, waitlist, walk-in, payment), so this affects old, seeded or imported rows. Reports then count them as unpaid. Before UPG-02's rule (a free event owes nothing), such an attendee would have been refused at the gate.
 - **Who benefits:** organisers reading payment figures.
 - **What to build:** an empty or missing payment status reads back as written, as other fields do since BLK-06b; an explicit `unpaid` still reads `unpaid`.
 - **Files touched:** `db_adapter.py`, tests. Touches a shared file: run rule 8's early pass.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** PostgreSQL for this run comes from `pgserver` (PostgreSQL 16.2 in the project's environment, dev only); the tests use it through `TEST_DATABASE_URL`, confirmed by the engine's dialect.
+- **Files touched:** `tests/test_empty_payment_status.py` (new).
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
 - **What was built (2026-10-10, owner's second run):** when the SQL layer overlays the stored document on the columns, an empty or missing `payment_status` now reads back as written instead of the enum column's default `unpaid` (`EMPTY_READS_BACK`, `db_adapter.py:696`, used in `_merge_shadow`). An explicit `unpaid` still reads `unpaid`, and the `payment_status == 'unpaid'` filter finds only it (the filter compares the document value). Checked by hand [R] on SQLite and PostgreSQL 16: `''` → `''`, missing → missing, `'unpaid'` → `'unpaid'`, `'Paid'` → `'Paid'`; the filter returns only the explicit one; updating the empty one to `unpaid` reads `unpaid`. Adapter, filter, payment, export and check-in tests pass.
 - **To test later:** criterion 1 (SQLite and PostgreSQL). Touches `db_adapter.py` (a shared file); rule 8 is off for this run.
 - **Acceptance criteria:**
-  1. Test (SQLite and PostgreSQL): `''` and a missing `payment_status` read back as `''` and missing; `'unpaid'` reads back `'unpaid'`; filters on `payment_status == 'unpaid'` find only the explicit one.
+  1. ✅ Test (SQLite and PostgreSQL): `''` and a missing `payment_status` read back as `''` and missing; `'unpaid'` reads back `'unpaid'`; filters on `payment_status == 'unpaid'` find only the explicit one. [T `tests/test_empty_payment_status.py::test_empty_and_missing_payment_status_read_back_as_written`, passing on **SQLite and PostgreSQL 16.2**; it also checks that writing `unpaid` over an empty status reads `unpaid`]
 
 #### UPG-45 — Form submissions lose who sent them, and read back flattened (postgres mode)
 - **Status:** DONE
@@ -3771,3 +3774,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-109: …" (parent `848d402`) | UPG-109 | **UPG-109 DONE** (owner, before Part 2): judge matching without an AI provider says "AI matching isn't set up; assign judges manually" (503, no plan saved; the page shows the notice and disables the button). 2 new tests. |
 | 2026-10-17 | "UPG-108: …" (parent `034e0e5`) | UPG-108 | **UPG-108 DONE for now** (owner, before Part 2): the chatbot states no campus facts; campus questions get "Please check with the college office." (directly, and as the AI's instruction), and the prompt keeps only the portal FAQ. 6 new tests. Full pytest: 1016 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | "UPG-51: …" (parent `72bac11`) | UPG-51 | **UPG-51 DONE** (Part 2, tested as built): 5 tests on the real database with Razorpay mocked (confirmation, once per payment, failure and retry, two requests at once, no-order registration, 403 and non-cancelled refusal). No bug found. |
+| 2026-10-17 | "UPG-44: …" (parent `ad988a5`) | UPG-44 | **UPG-44 DONE** (Part 2, tested as built): empty, missing, `unpaid` and `Paid` payment statuses read back as written and the `unpaid` filter finds only the explicit one, on SQLite and PostgreSQL 16.2 (local `pgserver`). 1 new test. |

@@ -204,7 +204,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Sports | Create, registration (teams since UPG-08), leaderboard page, fixtures & standings: knockout and league, results by the SPOC or an assigned coordinator, public fixtures page (UPG-13, tested); tournament and fixtures pages on the design system (UPG-63); Tournament (sport, format, gender category), athletics and e-sports types; a sports meet is a fest with sub-events (UPG-73, UPG-74) | Whiteboard/Excel replaced | — |
 | Cultural | Template exists (`services_templates.py:494`); judging as hackathon; certificates (UPG-06); Cultural competition (discipline, solo/group, time on stage) and show/concert types; a cultural fest holds them as sub-events (UPG-73, UPG-74) | Slots, judging sheets | — (rubric judging done, UPG-04) |
 | Club activities | Org units can be clubs (`routes_admin.py:812`); Club activity type (UPG-73) | Membership lists, recurring meetings, attendance across the year | Membership not yet listed (activity points ledger done, UPG-11) |
-| Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, built, untested); Placement drive type with company and eligibility in the wizard (UPG-73) | Company communication | — |
+| Placement drives | Company details, eligibility from the roster (branch, year, CGPA, backlogs) checked at registration, rounds with shortlist/reject notices and per-round exports (UPG-57, tested); Placement drive type with company and eligibility in the wizard (UPG-73) | Company communication | — |
 | FDPs | Faculty-only events: faculty register with designation and institution (UPG-12, tested); hours credited in the ledger and the department export (UPG-11, tested); FDP type: faculty and external by default, resource persons, multi-day dates (UPG-73) | Faculty registration, multi-day attendance, hours on certificate | Certificate wording and hours deferred with certificates (UPG-12, UPG-11) |
 | NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a; NSS/NCC activity and social drive types with volunteer hours (UPG-73); hours register per student and department export (UPG-11, tested) | Unit rolls, hours certificates | Hours on certificates deferred with certificates (UPG-11) |
 | Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R]; "My department only" visibility in the wizard; listings respect it (UPG-73) | Same as seminar | Seminar items |
@@ -2296,12 +2296,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Verify `/payment/price_preview` returns `valid: True` and discounted total for a valid coupon code, and `valid: False` with server error and full price for an invalid code.
 
 #### UPG-57 — Placement drives: eligibility rules and shortlist rounds
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-57: …" on `production-ready` (parent `9abcb79`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-57: …" on `production-ready` (parent `eaab561`) [T]
 - **Problem:** MISSING [C]. The event-type table lists placement drives as "Generic registration only": eligibility (branch, CGPA, backlogs), shortlists per round and the company's lists are kept in Excel.
 - **Who benefits:** the placement cell, students, recruiting companies.
 - **What to build:** eligibility rules on the event (allowed branches, minimum CGPA, maximum active backlogs), checked at registration against what the student enters (or their roster record, UPG-10); named shortlist rounds the organiser moves registrations through (selected / rejected per round); an export per round.
 - **Files touched:** `routes_spoc.py` (or a new `routes_placement.py`), `routes_forms.py`, `services_export.py`, templates, tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** Students come in through the admin's real roster CSV import (with `cgpa` and `backlogs`). Each drive gets a unique branch, so other tests' students don't change its eligible count. Approving everyone in `eligibility` fails six of the tests. Passes on SQLite and PostgreSQL 16.
+- **Files touched:** `tests/test_placement_drives.py` (new).
 - **Effort:** M · **Depends on:** UPG-01 · **Risk:** self-declared CGPA can be wrong until the roster import holds it.
 - **What was built (2026-10-10, owner's second run):**
   - **On the event:** "This is a placement drive" with company, role, package and job-description link, and the eligibility rules (branches or departments, years, minimum CGPA, maximum active backlogs) on the SPOC's create and edit forms, stored as `is_placement` and `placement` (`services_placement.from_form`; rounds survive edits).
@@ -2313,9 +2316,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Checked by hand [R] on a temporary database: a roster of three imported with CGPA and backlogs; for a CSE, year-4, CGPA ≥ 7, 0-backlog drive the CGPA-6.5 and the ECE students were refused with the reason, an unknown email was refused without creating an account, the eligible student registered; the page showed 1 eligible and 1 registered; adding Aptitude and shortlisting the student twice sent one notice; CSV and Excel exports listed them with USN, branch, CGPA and result; another SPOC got 403 on the page and the move; the ticket showed "Aptitude: Shortlisted"; the profile showed the CGPA and a profile update couldn't change it; the admin form changed another student's CGPA.
 - **To test later:** criteria 1–3, plus the roster columns, the admin-only academic record, the eligible-vs-registered count, the one-notice-per-move rule and the per-round export.
 - **Acceptance criteria:**
-  1. Test: a student whose branch isn't allowed, or whose CGPA is below the minimum, or with too many backlogs is refused with the reason; an eligible one registers.
-  2. Test: the organiser moves 2 of 3 registrations into round 2; the round-2 export lists exactly those 2.
-  3. Test: only the event's staff can move registrations or export a round.
+  1. ✅ Test: a student whose branch isn't allowed, or whose CGPA is below the minimum, or with too many backlogs is refused with the reason; an eligible one registers. [T `tests/test_placement_drives.py::test_an_ineligible_student_is_refused_with_the_reason` (branch, CGPA, backlogs, year), `::test_someone_not_on_the_roster_is_refused_and_no_account_is_made`, `::test_an_eligible_student_registers`; roster and admin-only record: `::test_the_roster_import_stores_cgpa_and_only_an_admin_changes_it`]
+  2. ✅ Test: the organiser moves 2 of 3 registrations into round 2; the round-2 export lists exactly those 2. [T `::test_round_2_holds_the_two_moved_and_only_staff_can_move_or_export` (4 eligible against 3 registered on the page; moving twice sends one notice each; the round-2 CSV lists exactly the two; the Excel export opens)]
+  3. ✅ Test: only the event's staff can move registrations or export a round. [T same test: another SPOC and a student get 403 on the page, the move and the export, and the third registration is unchanged]
 
 #### UPG-58 — The native document store creates its table at runtime, outside migrations
 - **Status:** DONE
@@ -4059,3 +4062,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-50: …" (parent `cb9fa04`) | UPG-50 | **UPG-50 DONE** (Part 2, tested as built; certificate email deferred): names and titles with markup show as text in the confirmation, the briefing and the 3-day reminder. 2 new tests. |
 | 2026-10-19 | "UPG-53: …" (parent `701c14b`) | UPG-53 | **UPG-53 DONE** (Part 2, tested as built): with no events, the home page shows its empty state, no made-up hackathon. 1 new test. |
 | 2026-10-19 | "UPG-54: …" (parent `cbd5e5c`) | UPG-54 | **UPG-54 DONE** (Part 2, tested as built): the Android app's config never points at Railway, and the config step writes only `BASE_URL`'s host. 2 new tests. |
+| 2026-10-19 | "UPG-57: …" (parent `eaab561`) | UPG-57 | **UPG-57 DONE** (Part 2, tested as built): ineligible students refused with the reason, an eligible one registers; the roster stores CGPA and backlogs, only an admin changes them; round 2's export lists exactly the two moved, each notified once; only staff move or export. 8 new tests, also run on PostgreSQL. |

@@ -242,7 +242,8 @@ def submit_score(reg_id):
         avg_score = round(total_score / len(norm_criteria), 1) if norm_criteria else total_score
         avg_score = int(avg_score) if avg_score == int(avg_score) else avg_score
         judge_email = session.get('user_id')
-        remarks     = (json_data.get('remarks') if json_data else request.form.get('remarks', '')).strip()
+        # A JSON score may leave out its remarks (UPG-04: None.strip() refused every such score)
+        remarks     = str((json_data.get('remarks') if json_data else request.form.get('remarks', '')) or '').strip()
 
         reg_ref.set({
             'scores': {

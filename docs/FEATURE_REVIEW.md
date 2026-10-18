@@ -310,18 +310,21 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Full pytest: **826 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-04 — Judging works for rubric criteria from the create form and for new workflow states
-- **Status:** BUILT (untested)
+- **Status:** DONE
 - **Evidence:** `routes_judge.py:45-98,149,208-254,269-317,330`, `templates/judge/teams.html:177-275`
-- **Last verified:** 2026-10-10, commit `UPG-04`
+- **Last verified:** 2026-10-17, commit "UPG-04: …" on `production-ready` (parent `778f973`) [T]
 - **To test later:**
-  1. Test: criteria `[{"name":"Innovation","max_score":10}]` → `submit_score` stores 8 and the leaderboard shows 8.
-  2. Test: a score of 11 on a max-10 criterion returns 400.
-  3. Test: an assigned judge's dashboard lists an event in `in_progress` and in `evaluation`.
-  4. Test: scoring after the SPOC locks it returns "locked".
+  1. ✅ Test: criteria `[{"name":"Innovation","max_score":10}]` → `submit_score` stores 8 and the leaderboard shows 8. [T `tests/test_rubric_judging.py::test_a_rubric_score_is_stored_and_shown_on_the_leaderboard` (fails on the old code through the remarks bug)]
+  2. ✅ Test: a score of 11 on a max-10 criterion returns 400. [T `::test_a_score_above_the_maximum_is_refused`]
+  3. ✅ Test: an assigned judge's dashboard lists an event in `in_progress` and in `evaluation`. [T `::test_the_dashboard_lists_events_in_progress_and_in_evaluation`]
+  4. ✅ Test: scoring after the SPOC locks it returns "locked". [T `::test_scoring_after_the_spoc_locks_it_is_refused`]
 - **Problem:** The create form saves criteria as `{name, description, max_score}` (`templates/spoc/create_event.html:1117`). `submit_score` calls `c.replace` (`routes_judge.py:158`) and `score_inline` uses the dict as a key → errors / 500 [R]. The judge dashboard lists only `status == 'active'` (`routes_judge.py:59`), so events in `registration_open`, `in_progress` or `evaluation` never show up [R]. There's no max-score validation. The missing `abort` import in `routes_judge.py` (a pre-existing `master` bug, where an unassigned judge got a swallowed `NameError` instead of a 403) was **fixed in `4699478`** at the owner's request, as part of finishing BLK-09. It's pinned by `tests/test_integration_flow.py::test_unassigned_judge_gets_403_and_nothing_is_saved`.
 - **Who benefits:** judges and SPOCs of every competitive event (hackathon, cultural, quiz); removes paper score sheets.
 - **What to build:** a single criteria normaliser (strings or objects → `{name, max_score}`) used by every judge route and template; validate `0 ≤ score ≤ max_score`; the dashboard lists assigned events in any judging-relevant state.
 - **Files touched:** `routes_judge.py`, `templates/judge/teams.html`, `routes_spoc.py` (results), tests.
+- **Built (2026-10-17):**
+  - **Tested in Part 2. Found and fixed:** `routes_judge.submit_score` read the remarks as `json_data.get('remarks').strip()`, so every JSON score without remarks failed ("'NoneType' object has no attribute 'strip'") and redirected to the dashboard with nothing saved. A missing remark now reads as empty.
+- **Files touched:** `routes_judge.py`, `tests/test_rubric_judging.py` (new).
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
 - **Acceptance criteria:**
   1. Test: criteria `[{"name":"Innovation","max_score":10}]` → `submit_score` stores 8 and the leaderboard shows 8.
@@ -3855,3 +3858,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-22: …" (parent `b72a9b5`) | UPG-22 | **UPG-22 DONE** (Part 2, tested as built): consent stored with version, own-data export, cancellable deletion carried out only when due (login then fails, registrations anonymised), privacy link on shared pages. 4 new tests. |
 | 2026-10-17 | "UPG-58: …" (parent `afd6daf`) | UPG-58 | **UPG-58 DONE** (Part 2, tested as built): `native_document_store` comes from its migration (SQLite and PostgreSQL), and production reads and writes issue no DDL. 2 new tests. |
 | 2026-10-17 | "UPG-61: …" (parent `5ce60e6`) | UPG-61 | **UPG-61 DONE** (Part 2, tested as built): an old development database gets the NOT NULL column with its default at start-up, and the SPOC dashboard answers 200. 1 new test. |
+| 2026-10-17 | "UPG-04: …" (parent `778f973`) | UPG-04 | **UPG-04 DONE** (Part 2): rubric scores are stored and shown, over-maximum scores refused, newer states listed, locked scoring refused. Found and fixed: JSON scores without remarks always failed. 4 new tests. |

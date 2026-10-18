@@ -3564,14 +3564,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: a task built while one app is bound runs in the app bound afterwards [T `tests/test_task_app_context.py::test_a_task_runs_in_the_app_bound_most_recently`; fails on the old code with `['first']`].
   2. ✅ The full pytest passes in its normal order: 1041 passed, 2 skipped, 0 failed.
 
-#### UPG-111 — The coordinator's scanner list invents a venue for events without one
+#### UPG-111 — Pages and emails invent a venue ("SNPSU Campus") for events without one
 - **Status:** TODO
 - **Last verified:** 2026-10-18 [C]
 - **Problem:** Found testing UPG-43. `routes_coordinator.scanner_selector` shows `d.get('venue', 'SNPSU Campus')`, an invented place, for an event with no venue. UPG-65 replaced the same default on the event page.
-- **What to build:** show "Venue to be announced" (as the event page does), or nothing.
+- **Widened 2026-10-18 (testing UPG-46):** the same default appears in 13 more places: emails (`tasks/scheduled_tasks.py:79,143,277,417`, the day-before, briefing, 3-day and velocity emails; `routes_waitlist.py:320`, the promotion email), pages (`routes_live.py:47`, `routes_participant.py:92,720`, `routes_portfolio.py:59`; `templates/live/leaderboard.html:200`, `participant/dashboard.html:228`, `public/calendar.html:136`, `spoc/ai_report.html:52`). Found with `git grep "SNPSU Campus"`; the demo seed's real hall name and the hidden live-streams demo page are not defaults.
+- **What to build:** show "Venue to be announced" (as the event page does), or nothing, everywhere a venue is missing.
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
   1. Test: an event without a venue appears in the scanner list without "SNPSU Campus".
+  2. Test: no app code or template outside the seeds uses "SNPSU Campus" as a fallback (a scan), and an email for an event without a venue doesn't name one.
 
 #### UPG-112 — UPG-14's leftover duplicates
 - **Status:** DONE
@@ -4022,3 +4024,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "docs: …" | UPG-115 | New (found in UPG-26): two registration forms for one email sent at the same instant both register. TODO. |
 | 2026-10-18 | "UPG-27: …" (parent `07d3508`) | UPG-27 | **UPG-27 DONE** (Part 2): `static/img` 1.06 MB; every image has `alt`; images below the first screen of the key pages load lazily; `:focus-visible` is defined and visible on tab. Found and fixed: the avatar picker loaded eagerly, the matchmaker's photos had no `alt`. 6 new tests. |
 | 2026-10-18 | "UPG-28: …" (parent `7ea50d4`) | UPG-28 | **UPG-28 DONE** (Part 2): the student journey (login → discover → register → ticket → pay page → check-in by a mocked camera → feedback) and the scanner pass at 375px and 1280px in headless Chromium; screenshots for the summary. Found and fixed: the checkout title was unreadable (navy on navy); the ticket's pinned footer covered its text. Playwright added to `requirements-dev.txt`. 1 new test. |
+| 2026-10-18 | "docs: …" | UPG-111 | Widened (found testing UPG-46): the invented "SNPSU Campus" venue is in 13 more pages and emails, not just the scanner list. Still TODO. |

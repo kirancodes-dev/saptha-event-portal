@@ -1,6 +1,6 @@
 {% extends "layouts/standalone.html" %}
 {#- On the shared document since UPG-23b. -#}
-{% set site_footer_fixed = true %}
+{#- The footer follows the ticket: pinned, it covered the ticket's own footer on a phone (UPG-28) -#}
 {% block head %}
     <title>My Ticket | SapthaEvent</title>
     {% include "layouts/_bootstrap_css.html" %}
@@ -13,9 +13,10 @@
             background: #040b33;
             min-height: 100vh;
             display: flex;
+            flex-direction: column;   /* the ticket, then the site footer below it (UPG-28) */
             align-items: center;
             justify-content: center;
-            padding: 24px 16px 56px;  /* room for the fixed site footer */
+            padding: 24px 16px;
             font-family: var(--font-body);
         }
 

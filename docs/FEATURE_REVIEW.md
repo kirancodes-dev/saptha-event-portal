@@ -996,8 +996,8 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   3. ✅ Test: `global.css` defines a `:focus-visible` style. [T `::test_global_css_defines_a_focus_visible_style`, `::test_a_keyboard_user_sees_where_the_focus_is`]
 
 #### UPG-28 — The student journey and the scanner work on a 375px phone
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit `UPG-28` (parent `68cafdf`)
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-28: …" on `production-ready` (parent `7ea50d4`) [T]
 - **Evidence:** `templates/layouts/document.html:23` (`html, body { max-width: 100%; overflow-x: hidden; }`), `templates/participant/certificate.html:20-33` (mobile container scaling), journey and scanner templates verified responsive.
 - **Changed 2026-10-10 (owner, Step 0):** the certificate page's phone scaling (`templates/participant/certificate.html`) is reverted: certificate part deferred (owner, 2026-10-10). The layout's overflow safeguard stays.
 - **To test later:** criteria 1–3 (headless browser check of student journey discover → register → pay → ticket → scanner → feedback → certificate at 375px; scrollWidth <= innerWidth; mock camera token submit; screenshots).
@@ -1005,11 +1005,23 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Who benefits:** students (most use phones) and coordinators scanning on phones.
 - **What to build:** a Playwright (Chromium) check, as a dev dependency, that walks the student journey and opens the scanner at 375×812 and 1280×800 with seed data, checks for horizontal scroll, and saves screenshots outside git; fix what it finds.
 - **Files touched:** `tests/e2e/` (or `scripts/`), `requirements-dev.txt`, templates/CSS as needed.
+- **Built (2026-10-18):**
+  - **Tested in Part 2.** `tests/test_phone_journey.py` runs the app on a local server and walks it in headless Chromium at 375×812 and 1280×800:
+    - log in → dashboard → events → event page → registration form, filled and sent → confirmation → ticket;
+    - a paid event's form → payment page;
+    - the coordinator's scanner, with the camera replaced by a stand-in that "reads" the student's ticket QR; the real check-in marks them present;
+    - the feedback form.
+    Every page is checked for sideways scroll and cut-off text, images or controls (UPG-23's measure). The certificate step is deferred with certificates. Playwright 1.64.0 is now in `requirements-dev.txt`. CI doesn't download Chromium, so the browser tests skip there.
+  - **The screenshots showed two problems, now fixed, each with a check that fails without the fix:**
+    - the payment page's "Order summary" title was navy on navy (contrast 1.1:1): the panel's white-heading rule covered `h2`/`h3`, but the title is an `h1` (`templates/payment/checkout.html:12`). Check: every heading on the journey must reach 3:1 against its background;
+    - the ticket page pinned the site footer to the bottom of the screen, where it covered the ticket's own footer on a phone (and on a desktop). The footer now follows the ticket, and the page stacks as a column (`templates/participant/ticket.html:3,12-19`). Check: no text under a pinned footer at the top or the bottom of the page.
+  - **Screenshots** (20, outside git): the scratch folder `shots/upg28/` for this run; set `UPG28_SHOTS` to keep them. Listed in the Part 2 summary.
+- **Files touched:** `templates/payment/checkout.html`, `templates/participant/ticket.html`, `requirements-dev.txt`, `tests/test_phone_journey.py` (new).
 - **Effort:** M · **Depends on:** UPG-23, UPG-26 · **Risk:** the browser download needs network access in CI.
 - **Acceptance criteria:**
-  1. Headless check: every journey page at 375px has `document.documentElement.scrollWidth <= innerWidth`.
-  2. Headless check: the scanner page loads at 375px with the camera mocked and a token can be submitted.
-  3. The phase report includes the 375px and 1280px screenshots.
+  1. ✅ Headless check: every journey page at 375px has `document.documentElement.scrollWidth <= innerWidth`. [T `tests/test_phone_journey.py::test_the_student_journey_and_the_scanner_fit_a_phone` (10 pages; no sideways scroll and nothing cut off. The page-wide `scrollWidth` alone over-reports when a wide table scrolls inside its own box, UPG-23)]
+  2. ✅ Headless check: the scanner page loads at 375px with the camera mocked and a token can be submitted. [T same test: the scanner at 375px, camera mocked, the ticket's token "read" → the real check-in → "Checked in" and attendance Present]
+  3. ✅ The phase report includes the 375px and 1280px screenshots. [screenshots at 375px and 1280px of all 10 pages, written by the test; in the Part 2 summary]
 
 ### F. Event-day flows and release (added in Phase 0, 2026-09-30)
 
@@ -4009,3 +4021,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-26: …" (parent `0680785`) | UPG-26 | **UPG-26 DONE** (Part 2): every form page loads the submit guard; every visible field on 20 form pages is labelled; the same registration sent twice, in turn or at once, registers once; the payment button stays disabled until the result. Found and fixed: the roster upload's file input had no label. 6 new tests. New: **UPG-115**. |
 | 2026-10-18 | "docs: …" | UPG-115 | New (found in UPG-26): two registration forms for one email sent at the same instant both register. TODO. |
 | 2026-10-18 | "UPG-27: …" (parent `07d3508`) | UPG-27 | **UPG-27 DONE** (Part 2): `static/img` 1.06 MB; every image has `alt`; images below the first screen of the key pages load lazily; `:focus-visible` is defined and visible on tab. Found and fixed: the avatar picker loaded eagerly, the matchmaker's photos had no `alt`. 6 new tests. |
+| 2026-10-18 | "UPG-28: …" (parent `7ea50d4`) | UPG-28 | **UPG-28 DONE** (Part 2): the student journey (login → discover → register → ticket → pay page → check-in by a mocked camera → feedback) and the scanner pass at 375px and 1280px in headless Chromium; screenshots for the summary. Found and fixed: the checkout title was unreadable (navy on navy); the ticket's pinned footer covered its text. Playwright added to `requirements-dev.txt`. 1 new test. |

@@ -51,6 +51,7 @@ Firestore writes
 import datetime
 import json
 import logging
+import os
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
 try:
@@ -75,6 +76,16 @@ COORD_ROLES = ['ClubSPOC', 'Coordinator', 'SuperAdmin', 'Super Admin']
 
 def _ff(f, op, v):
     return FieldFilter(f, op, v)
+
+
+NOT_SET_UP = "AI matching isn't set up; assign judges manually."
+
+
+def _ai_configured() -> bool:
+    """Gemini or Zoho QuickML is configured. Without either there is nothing
+    to match with, and the page says so instead of failing (UPG-109)."""
+    return bool(current_app.config.get('GEMINI_API_KEY') or os.environ.get('GEMINI_API_KEY')
+                or os.environ.get('ZOHO_AUTH_TOKEN') or os.environ.get('CATALYST_AUTH_TOKEN'))
 
 
 def _gemini_client():
@@ -130,6 +141,8 @@ def match_judges(event_id):
 
         event_data = event_doc.to_dict()
         event_title = event_data.get('title', 'Event')
+        if not _ai_configured():   # nothing saved, nothing called (UPG-109)
+            return jsonify({'status': 'not_configured', 'message': NOT_SET_UP}), 503
 
         # ── 1. Collect judges + their expertise ──────────────
         raw_judges = [s for s in event_data.get('staff', []) if s.get('role') == 'Judge']
@@ -477,6 +490,7 @@ def match_page(event_id):
         teams      = teams,
         saved_plan = saved_plan,
         applied    = applied,
+        ai_configured = _ai_configured(),   # UPG-109
         user_name  = session.get('name'),
     )
 

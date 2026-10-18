@@ -3391,13 +3391,18 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### UPG-109 — AI judge matching without any AI provider answers 500 with the raw error
-- **Status:** TODO
-- **Last verified:** 2026-10-17, end of Part 1 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-109: …" on `production-ready` (parent `848d402`) [T]
 - **Problem:** Found re-verifying UPG-59 after UPG-65. With neither Zoho QuickML nor `GEMINI_API_KEY` configured, `POST /ai/match_judges/<event>` (`routes_ai_matching.py`) falls through to Gemini, which raises, and the route answers `500 {"status": "error", "message": <exception text>}`. Before UPG-65 the Zoho fallback invented a round-robin "96%-confident" plan instead.
 - **What to build:** answer `503` with "AI matching isn't set up: add GEMINI_API_KEY (or Zoho QuickML)", and offer a plain manual assignment, clearly labelled as not AI.
+- **Built (2026-10-17):**
+  - **Owner's wording (2026-10-18):** "AI matching isn't set up; assign judges manually."
+  - **Route:** `routes_ai_matching._ai_configured()` checks for `GEMINI_API_KEY` (config or environment) or a Zoho QuickML token (`ZOHO_AUTH_TOKEN`/`CATALYST_AUTH_TOKEN`). Without either, `POST /ai/match_judges/<event>` answers `503 {"status": "not_configured", "message": …}` before calling anything, and saves no plan.
+  - **Page:** `/ai/match_page/<event>` shows the message as an information notice and disables "Generate Match Plan" (`templates/coordinator/ai_matching.html`). A 503 reply also shows as a notice, not as "Matching failed".
+- **Files touched:** `routes_ai_matching.py`, `templates/coordinator/ai_matching.html`, `tests/test_ai_matching_not_set_up.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: without AI keys the route answers 503 with that message and saves no plan.
+  1. ✅ Test: without AI keys the route answers 503 with that message and saves no plan. [T `tests/test_ai_matching_not_set_up.py::test_matching_without_an_ai_provider_says_so_and_saves_nothing`, `::test_the_matching_page_shows_the_notice_and_disables_the_button`. Both fail on the old code.]
 
 ---
 
@@ -3753,3 +3758,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-64: …" (parent `c9353ba`) | UPG-64 | **UPG-64 DONE:** the six never-rendered templates are deleted (the deletions went into `24d6eec` by mistake), and a test keeps every template reachable. 1 new test. |
 | 2026-10-17 | "UPG-99: …" (parent `34b8cde`) | UPG-99 | **UPG-99 DONE** (Cloud Run check at the next deploy): signed links sign through IAM signBlob when the credentials have no key; DEPLOY.md documents the roles. 2 new tests. Full pytest: 1008 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | `40c9888` | Rule 8 (end of Part 1), UPG-85, UPG-109 | **Re-verification of every open item at the end of Part 1** (47 open). This also covers the early pass that `db_adapter.py` (UPG-69) required. Method: the files Part 1 changed, against each item's citations, then each item's claims about the changed code (registration IDs, the lead-key aliases, the deactivation check, the preset step, the demo pages, signed links, the bulk email, AI matching, the made-up defaults, the support address). 37 items cite a changed file. Of those, 9 mention changed code; their claims hold except as noted: UPG-60 (reels hidden), UPG-59 (matching without AI now errors; **new UPG-109**), UPG-22 (alias note, holds). The other 28 cite changed files for unrelated code. **UPG-85 DROPPED** (owner: no new AI features). Full pytest at `40c9888`: 1008 passed, 1 skipped, 0 failed; ruff clean. |
+| 2026-10-17 | "UPG-109: …" (parent `848d402`) | UPG-109 | **UPG-109 DONE** (owner, before Part 2): judge matching without an AI provider says "AI matching isn't set up; assign judges manually" (503, no plan saved; the page shows the notice and disables the button). 2 new tests. |

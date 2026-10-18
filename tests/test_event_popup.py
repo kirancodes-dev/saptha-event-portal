@@ -7,6 +7,7 @@ page the visitor came from on this site, never another site.
 """
 import datetime
 import os
+import re
 
 import pytest
 
@@ -68,7 +69,9 @@ def test_registrations_shown_are_counted_not_cached(event):
             {'event_id': eid, 'status': status, 'user_id': f'p{i}@test.edu'})
     try:
         popup = flask_app.test_client().get(f'/event/{eid}?fragment=1').get_data(as_text=True)
-        assert '999' not in popup and '<span class="cap-count">2</span>' in popup and '48 spots remaining' in popup
+        # The cached 999 as a number anywhere (not the digits inside a random id, UPG-116)
+        assert not re.search(r'(?<![\w-])999(?![\w-])', popup)
+        assert '<span class="cap-count">2</span>' in popup and '48 spots remaining' in popup
     finally:
         for i in range(3):
             db.collection('registrations').document(f'{eid}-pop{i}').delete()

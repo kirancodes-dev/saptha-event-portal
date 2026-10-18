@@ -3674,6 +3674,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. Test: on SQLite and PostgreSQL.
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code (`routes_forms.py:647-656` reads, then writes). Still TODO.
 
+#### UPG-116 — A popup test fails when a random event id contains "999"
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-116: …" on `production-ready` [T]
+- **Problem:** Found in the end-of-Part-2 full run. `tests/test_event_popup.py::test_registrations_shown_are_counted_not_cached` plants a cached count of 999 and checked `'999' not in popup`. The page includes the event's random id (in the `.ics` link); when that id held "999" (`…-29997b0f4084`), the test failed with nothing wrong in the app.
+- **Built (2026-10-19):** the check looks for 999 as a number on its own (not inside a word or an id), so it still catches the cached count shown and no longer trips on an id.
+- **Files touched:** `tests/test_event_popup.py`.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: the popup test passes whatever the event id is, and still fails if the cached count is shown. [T `tests/test_event_popup.py::test_registrations_shown_are_counted_not_cached`; a page showing "999 registered" still fails it]
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4079,3 +4089,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-60: …" (parent `203e1ec`) | UPG-60 | **UPG-60 DONE** (Part 2, tested as built): 30 pages for six roles load in headless Chromium with the real CDN libraries (integrity-checked cached copies) with no page error and no missing static file. 1 new test. |
 | 2026-10-19 | "docs: …" | rule 8 | **End-of-Part-2 re-verification** of every open item: UPG-102 re-counted (1,058 Pyrefly errors); UPG-111, UPG-114, UPG-115 match the code; UPG-30, UPG-32, UPG-99, UPG-108 and BLK-01 unchanged. BLK-12 and BLK-14 closed (UPG-15 removed the `functions/` copy, tested). Ten feature-inventory and event-type rows that still said "built, untested" now point at their tests. |
 | 2026-10-19 | "test: …" | UPG-23 | The marquee rule looked for the animation only up to the first clipping box, so each image's own `overflow: hidden` wrapper still counted it as cut off (second full run). An animated ancestor anywhere now counts. Checked with 30 events on the home page. Test-only. |
+| 2026-10-19 | "UPG-116: …" | UPG-116 | **UPG-116 DONE**: the popup test no longer fails when a random event id contains "999"; it still catches the cached count. Test-only. |

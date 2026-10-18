@@ -2338,12 +2338,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. ✅ Test: with production settings, reading and writing a native collection issues no `CREATE`. [T same tests: with production settings, a write and a read on `announcements` issue no CREATE or ALTER]
 
 #### UPG-59 — Five pages answer 500 for any role
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-59: …" on `production-ready` (parent `3477667`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-59: …" on `production-ready` (parent `6980bf9`) [T]
 - **Problem:** Found by UPG-23's route crawl [R], on a seeded event with one registration, the same before this run (`932afdd`) and after: `/ai/match_page/<event>`, `/exams/<event>`, `/gamification/leaderboard`, `/hackathon/submit/<event>` (Super Admin, SPOC, coordinator, judge, and the leaderboard for students too) and `/spoc/api/stats` (SPOC) answer 500. Causes not yet traced.
 - **Who benefits:** whoever opens those pages (judging matcher, online exams, the XP leaderboard, hackathon submissions, SPOC dashboard stats).
 - **What to build:** trace each 500 and fix it, or remove the page if UPG-15 finds it dead.
 - **Files touched:** `routes_ai_matching.py`, `routes_exams.py`, `routes_gamification.py`, `routes_hackathon.py`, `routes_spoc.py`, tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** All six roles plus a student not registered for the event open the five pages, with the data that broke each one: a judge on the staff list with no name, the unregistered student, nobody with XP yet. None answers 500, and the people each page is for get it. The empty registration time can only occur in the document store (the SQL layer falls back to the row's creation time), so that case runs on the mock database. Undoing the stats sort fix fails it. The match-judges JSON route's 500 without an AI provider was UPG-109, fixed in Part 1.
+- **Files touched:** `tests/test_five_pages_no_500.py` (new).
 - **Effort:** S–M · **Depends on:** none · **Risk:** low.
 - **What was built (2026-10-10, owner's second run):** each 500 traced and fixed; none of the pages was dead, so none was removed.
   - `/ai/match_page/<event>`: a judge's staff entry without a `name` raised `KeyError`; the name now falls back to the account's name, then the email (`routes_ai_matching.py:439`).
@@ -2354,7 +2357,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Checked [R]: a crawl of every GET route as six roles (888 fetches) answers no 500; the five pages answer 200 for whoever may use them and redirect the others.
 - **To test later:** criterion 1.
 - **Acceptance criteria:**
-  1. Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500.
+  1. ✅ Test: each page answers 200 (or a deliberate 403/404) for each role on a seeded event; none answers 500. [T `tests/test_five_pages_no_500.py::test_the_five_pages_never_answer_500`, `::test_not_registered_is_sent_to_the_event_page`, `::test_the_stats_api_counts_every_registration`, `::test_the_stats_api_survives_a_registration_with_no_time`]
   - **Re-verified at the end of Part 1 (2026-10-17):** UPG-65 removed the Zoho round-robin "96%" fallback. With neither Zoho QuickML nor `GEMINI_API_KEY` configured, `POST /ai/match_judges/<event>` now answers a JSON error (500, the exception text) instead of an invented plan. Logged as UPG-109. The pages this item lists are otherwise unchanged.
 
 #### UPG-60 — Front-end errors the browser pass found (before and after this run)
@@ -4063,3 +4066,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-53: …" (parent `701c14b`) | UPG-53 | **UPG-53 DONE** (Part 2, tested as built): with no events, the home page shows its empty state, no made-up hackathon. 1 new test. |
 | 2026-10-19 | "UPG-54: …" (parent `cbd5e5c`) | UPG-54 | **UPG-54 DONE** (Part 2, tested as built): the Android app's config never points at Railway, and the config step writes only `BASE_URL`'s host. 2 new tests. |
 | 2026-10-19 | "UPG-57: …" (parent `eaab561`) | UPG-57 | **UPG-57 DONE** (Part 2, tested as built): ineligible students refused with the reason, an eligible one registers; the roster stores CGPA and backlogs, only an admin changes them; round 2's export lists exactly the two moved, each notified once; only staff move or export. 8 new tests, also run on PostgreSQL. |
+| 2026-10-19 | "UPG-59: …" (parent `6980bf9`) | UPG-59 | **UPG-59 DONE** (Part 2, tested as built): the AI match page, exams, leaderboard, hackathon submission and SPOC stats never answer 500 for any role, with the data that broke each. 4 new tests. |

@@ -817,9 +817,9 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   2. Test: export returns the user's profile and registrations and nothing about anyone else.
   3. Test: after deletion is processed, the user can't log in and their registrations hold no name, email or phone.
   4. Test: every page on the shared layout links the privacy notice.
+  - **Re-verified at the end of Part 1 (2026-10-17):** since UPG-69 the SQL layer always returns `lead_email`/`lead_name`/`lead_phone` for registrations as well as `leadEmail`. The team member's allow-list still leaves the lead's details out (it lists what to keep, not what to drop).
 
 ### E. Frontend (added in Phase 0, 2026-09-30)
-  - **Re-verified at the end of Part 1 (2026-10-17):** since UPG-69 the SQL layer always returns `lead_email`/`lead_name`/`lead_phone` for registrations as well as `leadEmail`. The team member's allow-list still leaves the lead's details out (it lists what to keep, not what to drop).
 
 #### UPG-23 — Every page on one shared layout (split by area: UPG-23a–h)
 - **Status:** BUILT (untested)

@@ -1905,16 +1905,19 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **722 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-38 — Delete the sample Jekyll workflow
-- **Status:** BUILT (untested)
+- **Status:** DONE (criterion 2, the next CI run on GitHub, waits for a push)
 - **Evidence:** `git rm .github/workflows/jekyll-docker.yml`
-- **Last verified:** 2026-10-10, commit `UPG-38`
+- **Last verified:** 2026-10-19, commit "UPG-38: …" on `production-ready` (parent `5bc9d85`) [T]
 - **To test later:**
-  1. Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`).
+  1. ✅ Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`). [T `tests/test_repo_hygiene.py::test_no_workflow_runs_jekyll`]
   2. The next CI run on GitHub shows no "Jekyll site CI" check.
 - **Problem:** From the code review of PR #48 (owner, 2026-10-02). `.github/workflows/jekyll-docker.yml` is GitHub's "Jekyll site CI" sample: it builds a Jekyll site in Docker on every push and pull request to `master`. The repo has no Jekyll site (no `_config.yml` or `Gemfile`), so the check means nothing and costs CI time.
 - **Who benefits:** developers (CI shows only real checks).
 - **What to build:** delete the file.
 - **Files touched:** `.github/workflows/jekyll-docker.yml`, `tests/test_repo_hygiene.py`.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built.** No tracked workflow mentions Jekyll, and `.github/workflows/jekyll-docker.yml` isn't tracked. Criterion 2 can only be seen on GitHub after a push, which this run doesn't do.
+- **Files touched:** `tests/test_repo_hygiene.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
   1. Test: no tracked workflow file runs Jekyll (`tests/test_repo_hygiene.py`).
@@ -4027,3 +4030,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-28: …" (parent `7ea50d4`) | UPG-28 | **UPG-28 DONE** (Part 2): the student journey (login → discover → register → ticket → pay page → check-in by a mocked camera → feedback) and the scanner pass at 375px and 1280px in headless Chromium; screenshots for the summary. Found and fixed: the checkout title was unreadable (navy on navy); the ticket's pinned footer covered its text. Playwright added to `requirements-dev.txt`. 1 new test. |
 | 2026-10-18 | "docs: …" | UPG-111 | Widened (found testing UPG-46): the invented "SNPSU Campus" venue is in 13 more pages and emails, not just the scanner list. Still TODO. |
 | 2026-10-19 | "test: …" | UPG-23 | The 375px check counts content in a self-scrolling (animated) track as reachable: the home page's photo marquee failed it in the full run only. Test-only. |
+| 2026-10-19 | "UPG-38: …" (parent `5bc9d85`) | UPG-38 | **UPG-38 DONE** (Part 2, tested as built): no tracked workflow runs Jekyll. Criterion 2 (no Jekyll check on GitHub's next CI run) waits for a push. 1 new test. |

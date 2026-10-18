@@ -254,3 +254,14 @@ def test_the_mail_password_check_allows_names_and_lookups(source):
 ])
 def test_the_mail_password_check_reads_config_and_docs(text, flagged):
     assert bool(_mail_password_in_text(_example(text))) is flagged
+
+
+def test_no_workflow_runs_jekyll():
+    """UPG-38: GitHub's sample "Jekyll site CI" workflow is gone; the repo has no
+    Jekyll site, so no tracked workflow may build one."""
+    tracked = subprocess.run(['git', 'ls-files', '.github/workflows'], cwd=ROOT, capture_output=True,
+                             text=True, check=True).stdout.split()
+    assert tracked and '.github/workflows/jekyll-docker.yml' not in tracked
+    for path in tracked:
+        with open(os.path.join(ROOT, path), encoding='utf-8') as f:
+            assert 'jekyll' not in f.read().lower(), path

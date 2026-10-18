@@ -231,6 +231,10 @@ class Config:
     # likes and chat). They answer 404 unless this is switched on.
     DEMO_PAGES_ENABLED = os.environ.get('DEMO_PAGES_ENABLED', '').strip().lower() in ('1', 'true', 'yes')
 
+    # The teammate matchmaker suggests made-up people until it uses real
+    # profiles, so /participant/matchmaker/ answers 404 unless this is on (UPG-14)
+    FEATURE_MATCHMAKER = os.environ.get('FEATURE_MATCHMAKER', '').strip().lower() in ('1', 'true', 'yes')
+
     # =========================================================
     # 7. TWILIO WHATSAPP
     # ─────────────────────────────────────────────────────────

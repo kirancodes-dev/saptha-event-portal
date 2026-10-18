@@ -63,7 +63,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Auto-account on registration (no auto-login) | WORKING [R at BLK-02, T at UPG-97] | `services_accounts.py:41-80`, `routes_forms.py:613-726,1220`, `routes_auth.py:236` | Fixed by BLK-02: no path logs anyone in. Since UPG-97 (owner decision 2026-10-17), an existing account's email registers without logging in, changes no account, and is emailed a "Not you? Cancel this registration" link (it was "log in first" before). New emails get an unverified account and a one-time set-password link; no password is shown or emailed. Since UPG-33 the same goes for walk-ins and for staff and SPOC accounts someone else creates, and reset links work once. |
 | Waitlist | PARTLY BUILT [R at BLK-03, UPG-62] | `routes_forms.py`, `routes_waitlist.py:185-338`, `tasks/waitlist_tasks.py`, `services_ticket.py:139-217` | Promotion on a paid event holds the seat as `pending_payment` with a pay link (BLK-03); a free promotion now issues the same signed ticket as a normal registration and sends the promotion email with the canonical task arguments (UPG-62). Two promotion code paths remain (UPG-14). No SPOC UI link to `/waitlist/list`. |
 | Paid registration (Razorpay) | WORKING in tests [R at UPG-30, T at UPG-94] | `routes_payment.py`, `services_payments.py`, `routes_admin.py:586-775`, `templates/payment/checkout.html` | Server-side price, recorded orders, single-use payment IDs (BLK-03). Since UPG-94: the order carries event, registration and payer with a unique receipt and asks for automatic capture. Verify confirms only when Razorpay says the order is paid (an authorized payment is captured) and otherwise waits for the webhook. The webhook also handles `payment.authorized`, `payment.failed`, `refund.processed` (dashboard refunds cancel the registration) and `refund.failed`, and needs https in production. The checkout page shows failure, cancellation and a retry on the page. `/admin/payments/orders` lists every order's status. A receipt email after payment. Capacity is re-checked at completion; a paid order that can't complete stays paid and is listed for the admin to complete or refund (Razorpay refund with confirmation). A signed `payment.captured` webhook completes registrations whose browser closed. Admins mark registrations refunded or cancelled, and those tickets stop checking in. Not yet run against Razorpay test mode (criterion 4). Cancelling a paid event offers "Refund all through Razorpay" (once per payment, failures retryable, emailed, audited; UPG-51, built, untested). |
-| Stripe payments | REMOVED | None (removed by UPG-14) | Removed in favor of Razorpay as the single payment provider. |
+| Stripe payments | REMOVED [T at UPG-14] | None (removed by UPG-14) | Removed in favor of Razorpay as the single payment provider. |
 | Coupons | NOT CONNECTED in the UI [C] | `routes_coupons.py`, `services_payments.py:36-73` | `create_order` applies a coupon validated on the server if one is sent (BLK-03), but no template or JS sends one or calls `/coupons/*`. Since UPG-36 each order holds a use when it's created (race-free), so `max_uses` holds even when payers check out together. |
 | Digital ticket page | PARTLY BUILT [R] | `routes_ticket.py:224-281` | New registrations open; the seeded registration shows "not your ticket" because `is_lead` reads `lead_email` (`routes_ticket.py:243`), which postgres mode returned as `leadEmail` at `694c729`. At `1f4cdc8` the key reads back correctly [R round-trip]; the page wasn't re-run. Re-run 2026-10-12 [R, SQLite dev seed]: the owner is sent back "not your ticket" again, because `to_dict()` returns only `leadEmail` (UPG-69). The page is restyled on the brand (UPG-63). |
 | Camera QR check-in (coordinator, SPOC, HUD) | WORKING [R at UPG-02] | `routes_ticket.py:123-217`, `templates/coordinator/scan.html:238`, `templates/spoc/scan.html:454`, `templates/coordinator/scan_hud.html:340` | Every scanner posts the scanned ticket to `POST /ticket/api/checkin`: signed tokens only, assigned staff only (`can`, BLK-18), one payment rule (free/waived/paid in any case; a free event owes nothing), idempotent with the first check-in time, refuses another event's ticket and a ticket whose event is gone. Tested on the real database and against the page scripts; not yet driven with a phone camera. Scanner list shows events in every event-day status since UPG-43 (built, untested). |
@@ -87,7 +87,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Announcements | not run [C] | `routes_spoc.py:696-771` | — |
 | Email (Brevo / Resend / Gmail) | WORKING in tests [R at UPG-31, UPG-62] | `utils_email.py`, `tasks/email_tasks.py:82-96`, `routes_auth.py:473-478` | Confirmation, day-before ticket with the entry QR, and change and cancellation notices go through Brevo once each (`tests/test_notices.py`, HTTP mocked); not yet sent through a real Brevo account. Notices reach only the registration's lead (UPG-48). Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). The generic task uses `body_text` and accepts the legacy `body` alias for older callers (UPG-62). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
 | WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. The day-before reminder and the payment receipt tasks call their functions correctly since UPG-31; the automation's WhatsApp channel still doesn't (UPG-49). |
-| In-app notifications | BUILT (untested) [UPG-14] | `routes_notifications_v2.py:22-150` | Consolidated onto `notifications_v2` with dashboard feed (`/notifications/feed`), `mark_read`, and bulk operations; v1 removed. |
+| In-app notifications | WORKING [T at UPG-14] | `routes_notifications_v2.py:22-150,283-350`, `static/js/notifications.js` | One system, `notifications_v2`: a notification from `create_notification` shows in `/notifications/feed`, which the bell on every app-layout page loads (only the user's own); `mark_read` and bulk operations; v1 removed. |
 | Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:534`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders read every event-day status since UPG-43 (built, untested); the ticket-email signature was fixed in UPG-31. |
 | Registration exports (CSV/Excel) | WORKING [R at UPG-03] | `services_export.py`, `routes_spoc.py:346,355`, `routes_coordinator.py:523,533`, `routes_admin.py:285` | One export for SPOC, coordinator and admin: lead name, USN, department, year, email, phone, team, members, attendance, payment, amount, score, rank, certificate ID. 403 without `export_data` on the event. Department and year are inferred from the profile, form or USN when not asked. |
 | Admin dashboard / analytics / report | WORKING [T, R at UPG-83] | `routes_admin.py:44,143`, `routes_spoc.py:630`, `services_insights.py`, `templates/analytics/hub.html`, `static/js/se-echarts.js` | Analytics for the Super Admin (every event) and SPOCs (their events): period and category filters, an adjustable comparison of every event with a table view, trend, heatmap, funnel, revenue and no-shows on Apache ECharts; dashboards count real registrations (UPG-81, UPG-83). `/analytics` redirects by role. |
@@ -97,7 +97,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Student portfolio `/u/<usn>` | WORKING [R at `1f4cdc8`] | `routes_portfolio.py:27` | Shows the right student; at `694c729` the ignored `usn` filter showed the Super Admin. |
 | XP / gamification leaderboard | not re-run [C] | `routes_gamification.py` | `xp`/`badges` now persist [R round-trip at `1f4cdc8`]; leaderboard not re-run. |
 | Referrals | not re-run [C] | `routes_referrals.py:39` | Filters on document-only fields now apply (`tests/test_db_documents.py:95`); referral page not re-run. |
-| Teammate matchmaker | Demo only [C] | `routes_matchmaker.py:12,115` | Suggests hard-coded `MOCK_STUDENTS`. |
+| Teammate matchmaker | Hidden [T at UPG-14] | `routes_matchmaker.py:12-16`, `config.py:233-236` | Suggests hard-coded `MOCK_STUDENTS`, so it answers 404 unless `FEATURE_MATCHMAKER=true`. |
 | Online exams / proctoring | PARTLY BUILT [R at `1f4cdc8`] | `templates/spoc/proctor_monitor.html:1` | SPOC proctor page now 200 [R]; exam flow not run. Submitting should be refused [C]: the form posts without a CSRF token (UPG-66). |
 | Privacy (DPDP export/delete/consent) | BUILT (untested) [R by hand at UPG-22] | `services_privacy.py`, `routes_compliance.py`, `templates/profile/dashboard.html` | Consent (time and notice version) required at registration and sign-up; own-data download and account deletion (30-day grace, then anonymised by the cron clean-up) from the profile page; privacy notice linked in the shared footer. Retention of payment and audit records: D-7. |
 | Audit log | WORKING [R at BLK-06a] | `utils.py` `log_action`, `templates/admin/audit_log.html` | The page shows the actor again (reads the document's `user` key, now preserved). The SQL `actorEmail` column holds the acting user since BLK-06a [R]. |
@@ -581,14 +581,14 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### C. Remove / merge
 
 #### UPG-14 — Merge duplicate subsystems
-- **Status:** BUILT (untested)
-- **Evidence:** `routes_notifications_v2.py:280-350`, `routes_matchmaker.py:12-16`, `app.py:315-395`, `scheduler_enhanced.py:1-170`, `tasks/waitlist_tasks.py:28-40`, git rm `routes_notifications.py`, `routes_payment_stripe.py`, `scheduler.py`, `tests.py`
-- **Last verified:** 2026-10-10, commit `UPG-14`
+- **Status:** DONE
+- **Evidence:** `routes_notifications_v2.py:280-350`, `static/js/notifications.js:34`, `routes_matchmaker.py:12-16`, `config.py:233-236`, `app.py:315-395`, `scheduler_enhanced.py:1-170`, `tasks/waitlist_tasks.py:28-40`, git rm `routes_notifications.py`, `routes_payment_stripe.py`, `scheduler.py`, `tests.py`
+- **Last verified:** 2026-10-18, commit "UPG-14: …" on `production-ready` (parent `12cb6ed`) [T]
 - **To test later:**
-  1. Test: a notification created with `create_notification` appears in the dashboard feed endpoint (`/notifications/feed`).
-  2. Test: `/payment/stripe/create_session` → 404.
-  3. `grep -r "import scheduler" *.py` finds nothing and `pytest` passes.
-  4. Test: `/participant/matchmaker/` → 404 unless `FEATURE_MATCHMAKER=true` is set.
+  1. ✅ Test: a notification created with `create_notification` appears in the dashboard feed endpoint (`/notifications/feed`). [T `tests/test_merged_subsystems.py::test_a_created_notification_appears_in_the_dashboard_feed` (another user's notification isn't shown; the dashboard loads `notifications.js`, which fetches the feed)]
+  2. ✅ Test: `/payment/stripe/create_session` → 404. [T `::test_stripe_checkout_is_gone` (GET and POST)]
+  3. ✅ `grep -r "import scheduler" *.py` finds nothing and `pytest` passes. [T `::test_nothing_imports_the_old_scheduler_and_the_duplicates_are_gone` (no tracked file imports `scheduler`; `scheduler.py`, `tests.py`, the v1 notifications and Stripe routes aren't tracked); full suite 1087 passed, 6 skipped]
+  4. ✅ Test: `/participant/matchmaker/` → 404 unless `FEATURE_MATCHMAKER=true` is set. [T `::test_the_matchmaker_is_404_unless_the_flag_is_on`, `::test_the_matchmaker_flag_comes_from_the_environment` (fail on the old code)]
 - **Problem:**
   - **Notifications:** the v1 feed reads `notifications` (`routes_notifications.py:20`), but every writer uses `notifications_v2` (`routes_notifications_v2.py:70`, `services_automation.py:185`, `routes_waitlist.py:96`). The student dashboard feed (`templates/participant/dashboard.html:1759`) is always empty, while the header badge counts v2.
   - **Payments:** Stripe has no UI reference (`routes_payment_stripe.py`).
@@ -604,6 +604,10 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Who benefits:** developers; students get a working notification feed.
 - **What to build:** a v2-only notification API and dashboard feed; remove v1, Stripe, both scheduler files and `tests.py`; hide the matchmaker behind a flag until it uses real profiles.
 - **Files touched:** `routes_notifications.py`, `templates/participant/dashboard.html`, `app.py`, `routes_payment_stripe.py`, `scheduler*.py`, `routes_matchmaker.py`, `tests.py`.
+- **Built (2026-10-18):**
+  - **Tested in Part 2. Found and fixed:** the matchmaker's guard reads `FEATURE_MATCHMAKER` from the app config, but `config.Config` never set it, so the flag could not be switched on from the environment (criterion 4). `Config.FEATURE_MATCHMAKER` now comes from the environment (`config.py:233-236`), off by default.
+  - **Not built, moved to UPG-112:** the rest of the problem list (`scheduler_enhanced.py`, the dead login throttling, the second waitlist promotion, unqueued tasks, other check-in paths). Several need the owner's decision because removing them deletes tests.
+- **Files touched:** `config.py`, `tests/test_merged_subsystems.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
   1. Test: a notification created with `create_notification` appears in the dashboard feed endpoint.
@@ -3496,6 +3500,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: an event without a venue appears in the scanner list without "SNPSU Campus".
 
+#### UPG-112 — UPG-14's leftover duplicates
+- **Status:** TODO
+- **Last verified:** 2026-10-18 [C]
+- **Problem:** Found testing UPG-14. Its criteria are met, but parts of its problem list were never built:
+  - **`scheduler_enhanced.py` stays.** Nothing in the app imports it; only `tests/test_event_maintenance.py:10,144` does. Removing it means deleting or moving those tests, which needs the owner's decision (rule 5), as D-9 was for Stripe.
+  - **Dead login throttling:** `security_middleware.record_login_attempt`, `is_account_locked` and `block_ip` (`security_middleware.py:25-90`) are called only by `tests/test_security.py`; `services_login_throttle.py` does the real work. Removing them also removes those tests (owner's decision, rule 5).
+  - **Two waitlist promotions:** `routes_waitlist.auto_promote` (`routes_waitlist.py:216`, ordered by `position`) and `tasks/waitlist_tasks.promote_from_waitlist` (ordered by `joined_at`, issues a ticket).
+  - **Tasks nothing queues:** `tasks/export_tasks.py` and `tasks/webhook_tasks.py` are only registered in `celery_app.py:53-54,85-86`; `tests/test_tasks.py` tests `process_razorpay_payment` (owner's decision, rule 5).
+  - **Check-in paths** beside the shared check-in (the SPOC manual list, the coordinator's `get_ticket`/`mark_attendance_granular`), and the two certificate stores (deferred with certificates).
+- **What to build:** after the owner decides on the tests named above, remove the dead code and merge the waitlist promotion into one.
+- **Effort:** M · **Depends on:** the owner's rule 5 decision · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: one waitlist promotion path, used by the cancel route and the waitlist routes, issues a ticket in `joined_at` order.
+  2. `git ls-files` has no `scheduler_enhanced.py`, and `security_middleware.py` has no login-attempt functions (after the owner's decision).
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3871,3 +3890,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-09: …" (parent `813b0ee`) | UPG-09 | **UPG-09 DONE** (Part 2, tested as built): a booked room is refused on create with no event made; approval confirms the tentative booking; the calendar shows the room name. 3 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-11: …" (parent `74cc875`) | UPG-11 | **UPG-11 DONE** (Part 2, tested as built; certificate criterion deferred): Present credits, Absent doesn't, rescans don't double; ledger totals across 3 events; department export lists every student with totals. 3 new tests, also run on PostgreSQL. Event-type rows updated (FDP's row also for UPG-12, which Part 2 had tested but left marked untested there). |
 | 2026-10-18 | "UPG-13: …" (parent `737d7be`) | UPG-13 | **UPG-13 DONE** (Part 2, tested as built): 8-team knockout of 7 matches to one champion; 4-team league table right after 6 results; results only by the SPOC or an assigned coordinator; public fixtures page without login. 4 new tests, also run on PostgreSQL. |
+| 2026-10-18 | "UPG-14: …" (parent `12cb6ed`) | UPG-14 | **UPG-14 DONE** (Part 2): the notification feed, no Stripe, no old scheduler import, matchmaker hidden. Found and fixed: `FEATURE_MATCHMAKER` was never read from the environment. 8 new tests. The rest of its problem list is now **UPG-112** (TODO; parts need the owner's rule 5 decision). |

@@ -2076,17 +2076,20 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **832 passed** on SQLite and PostgreSQL 16; ruff clean.
 - **Rule 8 (early pass, `db_adapter.py` changed):** all 35 open items checked against this change. Only UPG-01 reads form submissions (its criterion 2 needs this item). UPG-16's citation of the schema check's call site (`db_adapter.py:1822` at `986d108`) is now at `:1840`; its claims are unchanged. No other open item's claims change.
 #### UPG-46 — Scheduled emails link to a fixed `sapthaevent.in`, not `BASE_URL`
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-46: …" on `production-ready` (parent `29d859b`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-46: …" on `production-ready` (parent `869741f`) [T]
 - **Problem:** Found while building UPG-07 [C]. The coordinators' day-before briefing links `https://sapthaevent.in/coordinator/scanner` (`tasks/scheduled_tasks.py:183`), and the SPOC's velocity alert links `https://sapthaevent.in/forms/register/<event>` (`:416`). BLK-16 moved every other emailed link to `BASE_URL`; these two point at a domain the deployment may not use.
 - **Who benefits:** coordinators and SPOCs who click the link.
 - **What to build:** both links built from `BASE_URL`, like the other emails (BLK-16's helper).
 - **Files touched:** `tasks/scheduled_tasks.py`, tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** The real tasks run (`send_24h_reminders`, `check_registration_velocity`), with the generic email task captured and `BASE_URL=https://events.example.edu`. Every link in the coordinators' briefing and the SPOC's low-registration alert starts with that host, and the briefing's scanner link reaches a real route. Making the helper return the old domain fails both tests. Both emails still name an invented venue when an event has none (now part of UPG-111).
+- **Files touched:** `tests/test_contact_and_links.py`.
 - **Effort:** S · **Depends on:** BLK-16 · **Risk:** low.
 - **What was built (2026-10-10, owner's second run):** `tasks/scheduled_tasks.py` builds both links from `BASE_URL` through a `_base_url()` helper (it uses `utils_email._base_url`, BLK-16's): the coordinators' day-before briefing (in `send_24h_reminders`) links `<BASE_URL>/coordinator/scanner`, and the SPOC's velocity alert (`check_registration_velocity`) links `<BASE_URL>/forms/register/<event>`. No tracked file mentions `sapthaevent.in` any more. Checked by hand [R] with `BASE_URL=https://events.example.edu`: both emails link only to `events.example.edu`.
 - **To test later:** criterion 1.
 - **Acceptance criteria:**
-  1. Test: with `BASE_URL=https://events.example.edu`, the briefing and the velocity alert link only to that host; `sapthaevent.in` appears in neither.
+  1. ✅ Test: with `BASE_URL=https://events.example.edu`, the briefing and the velocity alert link only to that host; `sapthaevent.in` appears in neither. [T `tests/test_contact_and_links.py::test_the_coordinator_briefing_links_to_base_url`, `::test_the_low_registration_alert_links_to_base_url`]
 - **Not scheduled yet** (owner's call; it fits next to UPG-31).
 
 #### UPG-47 — Events saved without times get the save time as their start and end (postgres mode)
@@ -4035,3 +4038,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "test: …" | UPG-23 | The 375px check counts content in a self-scrolling (animated) track as reachable: the home page's photo marquee failed it in the full run only. Test-only. |
 | 2026-10-19 | "UPG-38: …" (parent `5bc9d85`) | UPG-38 | **UPG-38 DONE** (Part 2, tested as built): no tracked workflow runs Jekyll. Criterion 2 (no Jekyll check on GitHub's next CI run) waits for a push. 1 new test. |
 | 2026-10-19 | "UPG-42: …" (parent `1644907`) | UPG-42 | **UPG-42 DONE** (Part 2, tested as built): the three pages show `SUPPORT_EMAIL`, or no address when it's unset; the old account is gone from every tracked file. 3 new tests. |
+| 2026-10-19 | "UPG-46: …" (parent `869741f`) | UPG-46 | **UPG-46 DONE** (Part 2, tested as built): the briefing and the velocity alert link only to `BASE_URL`. 2 new tests. |

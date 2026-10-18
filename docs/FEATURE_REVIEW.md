@@ -951,20 +951,28 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   3. ✅ Key pages load with no CSP violation in the browser console (headless check, when available). [T `::test_key_pages_load_with_no_csp_violation_and_every_handler_bound` (23 pages, 6 roles)]
 
 #### UPG-26 — Forms: visible labels, clear errors, a loading state and one submit per click
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit `UPG-26` (parent `715dc88`)
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-26: …" on `production-ready` (parent `0680785`) [T]
 - **Evidence:** `static/js/forms.js:1-72`, `templates/layouts/document.html:20`, `routes_forms.py:228-240,480-496,539-546,598-610`, `services_idempotency.py:1-70`, `models_pg.py:640-648`, `migrations/versions/0004_submission_keys.py:1-33`
 - **To test later:** criterion 1 (every form loads submit guard), criterion 2 (visible inputs have `<label for>` or `aria-label`), criterion 3 (posting registration twice quickly creates one registration), criterion 4 (payment button disabled after one click).
 - **Problem:** [C at `56a014d`] The only double-submit guard is the "button loading state" in `static/js/global.js:211-229`, and only 24 of 129 templates load `global.js` (25 at `986d108`); the payment pages `payment/checkout.html` and `public/payment_gateway.html` don't. The guard also re-enables the button after 15 seconds. Labels and error messages haven't been checked across forms.
 - **Who benefits:** every user, especially on slow mobile networks (double registrations, double payments).
 - **What to build:** the submit guard in the shared layout for every form (payment buttons stay disabled until the result arrives); a visible label for every input; field-level error messages from the server; server-side idempotency for registration submits.
 - **Files touched:** `static/js/global.js`, the layout, form templates, `routes_forms.py`, tests.
+- **Built (2026-10-18):**
+  - **Tested in Part 2. Found and fixed:** the roster CSV upload on `/admin/users` (UPG-10) had a file input with no label. It now has a visually hidden `<label for="roster-csv">` (`templates/admin/users.html:47-49`).
+  - **Notes on the checks:**
+    - The label check loads 20 pages with fields in headless Chromium (UPG-23's key pages plus forgot-password, sign-up, the SPOC's edit form and the admin's send-email page). Each visible field needs a label (`for` or wrapping), `aria-label` or `aria-labelledby`.
+    - The payment check runs the real checkout page with Razorpay's `checkout.js` replaced by a stand-in and the order and verify calls answered by the test.
+    - Switching the submission-key claim off lets two simultaneous copies make two registrations (1 run in 3), so the race test catches a broken key.
+  - **Found, not fixed (UPG-115):** two different forms for the same email sent at the same instant (two tabs) make two registrations every time (6 of 6). The duplicate-email check is a read before the write (`routes_forms.py:647-656`).
+- **Files touched:** `templates/admin/users.html`, `tests/test_forms_guard.py` (new).
 - **Effort:** M · **Depends on:** UPG-23 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: every page with a `<form>` loads the submit guard (through the layout).
-  2. Test: every visible input, select and textarea has a `<label for>` or `aria-label`.
-  3. Test: posting the same registration twice quickly creates one registration.
-  4. The payment button is disabled after one click until the payment result arrives (headless check, when available).
+  1. ✅ Test: every page with a `<form>` loads the submit guard (through the layout). [T `tests/test_forms_guard.py::test_the_shared_document_loads_the_guard_for_every_page` (every rendered template with a form sits on the document, which loads `forms.js`), `::test_each_key_page_with_a_form_loads_the_guard`]
+  2. ✅ Test: every visible input, select and textarea has a `<label for>` or `aria-label`. [T `::test_every_visible_field_on_the_key_pages_has_a_label` (failed on the roster upload before the fix)]
+  3. ✅ Test: posting the same registration twice quickly creates one registration. [T `::test_the_same_registration_sent_twice_registers_once`, `::test_two_copies_sent_at_the_same_instant_register_once`]
+  4. ✅ The payment button is disabled after one click until the payment result arrives (headless check, when available). [T `::test_the_payment_button_stays_disabled_until_the_result_arrives` (headless: a second click creates no second order; cancelling re-enables it; a payment leaves it disabled as "Payment received")]
 
 #### UPG-27 — Images: compress, lazy-load, alt text; visible keyboard focus
 - **Status:** BUILT (untested)
@@ -3596,6 +3604,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: after one promotion and one departure, each person still waiting sees a distinct place that matches the order they'll be promoted in.
 
+#### UPG-115 — Two registration forms sent at the same instant register the same person twice
+- **Status:** TODO
+- **Last verified:** 2026-10-18 [T]
+- **Problem:** Found testing UPG-26. The duplicate check in `routes_forms.submit_form` (`routes_forms.py:647-656`) reads the event's registrations for the email, then writes a new one. Two different forms for one email (two tabs, or the form and a resend with a new `submission_id`) sent at the same instant both pass the read: 6 of 6 tries made two registrations. UPG-26's submission key covers one form sent twice, not two forms. On a paid event each holds a seat and can reach checkout.
+- **What to build:** make "one registration per person per event" atomic: a unique claim on (event, lead email) taken before the write (as UPG-26's submission keys are), released if the registration fails; or a unique index if the native table can carry one.
+- **Effort:** S · **Depends on:** none · **Risk:** low; existing duplicates (if any) must be checked before adding a constraint.
+- **Acceptance criteria:**
+  1. Test: two different forms for the same email, sent at the same instant (a barrier, repeated), make exactly one registration; the other answer says the person is already registered.
+  2. Test: on SQLite and PostgreSQL.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3982,3 +4000,5 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-23: …" (parent `216f7a3`) | UPG-23 | **UPG-23 DONE** (Part 2, 23a–h tested as built): every rendered template extends the shared document; 23 key pages for 6 roles answer with the footer and navigation; at 375px none scrolls sideways or loses a heading or field seen at 1280px (headless Chromium, Bootstrap from an integrity-checked fixture). 4 new tests. |
 | 2026-10-18 | "UPG-24: …" (parent `9d6ea24`) | UPG-24 | **UPG-24 DONE** (Part 2, tested as built): one Bootstrap 5.3.3 in the layout partials; every CDN script and stylesheet hashed (Razorpay's checkout.js the one exception); only Inter, Plus Jakarta Sans and Outfit, self-hosted, are declared or requested. 8 new tests. |
 | 2026-10-18 | "UPG-25: …" (parent `d29e2de`) | UPG-25 | **UPG-25 DONE** (Part 2, tested as built): `script-src` has a fresh nonce and no `'unsafe-inline'`; no template has an un-nonced inline script or an `on…=` handler, and no app script builds one; 23 key pages load under their own CSP with no violation and every handler bound. 4 new tests. (Also corrects UPG-23's entry: 23 key pages, not 30.) |
+| 2026-10-18 | "UPG-26: …" (parent `0680785`) | UPG-26 | **UPG-26 DONE** (Part 2): every form page loads the submit guard; every visible field on 20 form pages is labelled; the same registration sent twice, in turn or at once, registers once; the payment button stays disabled until the result. Found and fixed: the roster upload's file input had no label. 6 new tests. New: **UPG-115**. |
+| 2026-10-18 | "docs: …" | UPG-115 | New (found in UPG-26): two registration forms for one email sent at the same instant both register. TODO. |

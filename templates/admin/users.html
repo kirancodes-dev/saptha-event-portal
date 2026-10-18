@@ -45,7 +45,8 @@
                 <form method="POST" action="/admin/users/import_csv" enctype="multipart/form-data" class="row g-2 align-items-center">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="col-auto">
-                        <input type="file" name="file" accept=".csv,text/csv" required class="form-control form-control-sm">
+                        <label for="roster-csv" class="visually-hidden">Roster CSV file</label>
+                        <input type="file" id="roster-csv" name="file" accept=".csv,text/csv" required class="form-control form-control-sm">
                     </div>
                     <div class="col-auto">
                         <button type="submit" class="btn btn-sm btn-primary">Upload & Import Roster</button>

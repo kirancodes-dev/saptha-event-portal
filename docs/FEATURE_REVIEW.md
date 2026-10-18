@@ -93,7 +93,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Admin dashboard / analytics / report | WORKING [T, R at UPG-83] | `routes_admin.py:44,143`, `routes_spoc.py:630`, `services_insights.py`, `templates/analytics/hub.html`, `static/js/se-echarts.js` | Analytics for the Super Admin (every event) and SPOCs (their events): period and category filters, an adjustable comparison of every event with a table view, trend, heatmap, funnel, revenue and no-shows on Apache ECharts; dashboards count real registrations (UPG-81, UPG-83). `/analytics` redirects by role. |
 | Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:429-467`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. 25 a page with search since UPG-19 (built, untested). |
 | Org units, scoped roles | WORKING [R at BLK-07] | `routes_admin.py:756-950` | Viewing never migrates; "Migrate roles" previews first, and migrated SuperAdmin and SPOC accounts keep access (BLK-07). |
-| Venues, rooms, conflict check | PARTLY BUILT [C] | `routes_admin.py:957-1153`, `routes_spoc.py:1138-1144`, `services_workflow.py:190-218` | Admin CRUD page loads [R]; the create-event form has no room field, so conflicts are only checked on edit/publish. |
+| Venues, rooms, conflict check | WORKING [T at UPG-09] | `routes_admin.py:957-1153`, `routes_spoc.py:244-253,292-314`, `services_workflow.py:190-235,287-296` | Admin CRUD page loads [R]. The create form's room picker refuses a room with a confirmed overlapping booking and books a free one tentatively; approval confirms it; the calendar shows the room name (`tests/test_venue_booking_on_create.py`). Edit and publish also check. |
 | Student portfolio `/u/<usn>` | WORKING [R at `1f4cdc8`] | `routes_portfolio.py:27` | Shows the right student; at `694c729` the ignored `usn` filter showed the Super Admin. |
 | XP / gamification leaderboard | not re-run [C] | `routes_gamification.py` | `xp`/`badges` now persist [R round-trip at `1f4cdc8`]; leaderboard not re-run. |
 | Referrals | not re-run [C] | `routes_referrals.py:39` | Filters on document-only fields now apply (`tests/test_db_documents.py:95`); referral page not re-run. |
@@ -454,17 +454,20 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - Full pytest: **855 passed** on SQLite and PostgreSQL 16; ruff clean.
 
 #### UPG-09 — Book the venue while creating the event
-- **Status:** BUILT (untested)
-- **Evidence:** `routes_spoc.py:126,134-156,237-261`, `templates/spoc/create_event.html:631-640`, `services_workflow.py:282-300`, `app.py:1047-1055`
-- **Last verified:** 2026-10-10, commit `UPG-09`
+- **Status:** DONE
+- **Evidence:** `routes_spoc.py:142-143,244-253,292-314` (moved by UPG-82's wizard rework; same behaviour), `templates/spoc/create_event.html:211-213`, `services_workflow.py:287-296`, `app.py:1126-1133,1168,1204`
+- **Last verified:** 2026-10-18, commit "UPG-09: …" on `production-ready` (parent `813b0ee`) [T]
 - **To test later:**
-  1. Test: creating an event in a room already booked for an overlapping time → error, no event created.
-  2. Test: approval turns the tentative booking into confirmed.
-  3. The calendar shows the room name for the event.
+  1. ✅ Test: creating an event in a room already booked for an overlapping time → error, no event created. [T `tests/test_venue_booking_on_create.py::test_a_room_booked_for_an_overlapping_time_is_refused_and_no_event_is_made`]
+  2. ✅ Test: approval turns the tentative booking into confirmed. [T `::test_approval_turns_the_tentative_booking_into_confirmed` (also: the confirmed booking then refuses a second event at that time)]
+  3. ✅ The calendar shows the room name for the event. [T `::test_the_calendar_shows_the_room_name_for_the_event` (`/api/calendar` and `/calendar`)]
 - **Problem:** Room conflict detection exists (`services_venue.check_room_conflict`), but it runs only on edit (`routes_spoc.py:1138-1144`) and publish (`services_workflow.py:190-218`). The create form has no room field (no `room_id` in `templates/spoc/create_event.html`), so clashes surface late and rooms are booked by email or phone.
 - **Who benefits:** SPOCs, the estates/admin office, and anyone who double-books halls.
 - **What to build:** a room picker with availability on create; a booking created as tentative on submit and confirmed on approval.
 - **Files touched:** `routes_spoc.py`, `templates/spoc/create_event.html`, `services_venue.py`, tests.
+- **Built (2026-10-18):**
+  - **Tested in Part 2, as built.** No bug found. Each check was confirmed to catch its regression: with the create-time conflict check removed, criterion 1's test fails; with the approval confirm removed, criterion 2's fails. Passes on SQLite and PostgreSQL 16. A tentative booking does not block another create; only confirmed ones do, and a clash between two tentative ones surfaces when the second one is published (the publish guard).
+- **Files touched:** `tests/test_venue_booking_on_create.py` (new).
 - **Effort:** S · **Depends on:** BLK-06 · **Risk:** low.
 - **Acceptance criteria:**
   1. Test: creating an event in a room already booked for an overlapping time → error, no event created.
@@ -3859,3 +3862,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-58: …" (parent `afd6daf`) | UPG-58 | **UPG-58 DONE** (Part 2, tested as built): `native_document_store` comes from its migration (SQLite and PostgreSQL), and production reads and writes issue no DDL. 2 new tests. |
 | 2026-10-17 | "UPG-61: …" (parent `5ce60e6`) | UPG-61 | **UPG-61 DONE** (Part 2, tested as built): an old development database gets the NOT NULL column with its default at start-up, and the SPOC dashboard answers 200. 1 new test. |
 | 2026-10-17 | "UPG-04: …" (parent `778f973`) | UPG-04 | **UPG-04 DONE** (Part 2): rubric scores are stored and shown, over-maximum scores refused, newer states listed, locked scoring refused. Found and fixed: JSON scores without remarks always failed. 4 new tests. |
+| 2026-10-18 | "UPG-09: …" (parent `813b0ee`) | UPG-09 | **UPG-09 DONE** (Part 2, tested as built): a booked room is refused on create with no event made; approval confirms the tentative booking; the calendar shows the room name. 3 new tests, also run on PostgreSQL. |

@@ -2361,8 +2361,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Re-verified at the end of Part 1 (2026-10-17):** UPG-65 removed the Zoho round-robin "96%" fallback. With neither Zoho QuickML nor `GEMINI_API_KEY` configured, `POST /ai/match_judges/<event>` now answers a JSON error (500, the exception text) instead of an invented plan. Logged as UPG-109. The pages this item lists are otherwise unchanged.
 
 #### UPG-60 — Front-end errors the browser pass found (before and after this run)
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-60: …" on `production-ready` (parent `59f081f`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-60: …" on `production-ready` (parent `203e1ec`) [T]
 - **Problem:** Found by UPG-25's Chromium pass over every page [R]; each also appears on the code before UPG-23a:
   - files the pages ask for don't exist: `/static/favicon.ico` (linked by the app layout and most pages, so nearly every page logs a 404), `/static/banner-bg.png`, and the payment logos under `/static/assets/logo/` (`visa.svg`, `mastercard.svg`, `upi.svg`, `netbanking.svg`);
   - the reels page plays sample videos from `commondatastorage.googleapis.com`, which the CSP's `media-src` refuses, so it shows nothing;
@@ -2372,6 +2372,9 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Who benefits:** everyone (no broken images or icons); SPOCs creating events.
 - **What to build:** add the favicon and the missing images (or drop the references); give the reels page real event media or remove the demo videos; fix the two script errors and the chart options.
 - **Files touched:** `static/`, `templates/public/reels.html`, `static/js/pages/spoc__create_event*.js`, `static/js/pages/spoc__ai_report.js`, tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the app.** 30 pages for six roles: UPG-23's key pages plus the pages UPG-60 fixed (round panel, AI report, tournament and fixtures, payments, audit log, verify). They load in headless Chromium with the app's static files and the real CDN libraries. `tests/headless.py` now keeps integrity-checked copies of every hashed CDN file in a git-ignored cache (`tests/.cdn-cache/`), downloaded once; the test skips if they can't be had offline. A planted missing image and a planted script error on `/login` both fail it. The create-event page loads without a page error, so its script runs.
+- **Files touched:** `tests/test_frontend_errors.py` (new), `tests/headless.py` (CDN cache), `.gitignore`.
 - **Effort:** S · **Depends on:** UPG-25 · **Risk:** low.
 - **What was built (2026-10-10, owner's second run):**
   - **Favicon:** `static/favicon.ico` (16/32/48 px, from `static/app-icon.png`), linked by `layouts/document.html`; the existing `/favicon.ico` route now finds it.
@@ -2383,7 +2386,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Checked [R] in Chromium over every page that answers 200 for some role (254 page loads): no page error, no 404 for a `/static/` file, no CSP violation; the only messages are the scanner HUD's "camera not supported" warnings in headless Chromium.
 - **To test later:** criterion 1 (headless check, no 404 or page error), plus the create-event wizard working end to end now that its script runs.
 - **Acceptance criteria:**
-  1. Headless check: no page logs a 404 for a `/static/` file or a page error.
+  1. ✅ Headless check: no page logs a 404 for a `/static/` file or a page error. [T `tests/test_frontend_errors.py::test_no_page_logs_an_error_or_a_missing_static_file`]
   - **Re-verified at the end of Part 1 (2026-10-17):** the reels page is now hidden unless `DEMO_PAGES_ENABLED` (UPG-65), so its demo videos no longer show by default; the other findings are unchanged.
 
 #### UPG-61 — A development database made before a NOT NULL column was added breaks every query on its table
@@ -4067,3 +4070,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-54: …" (parent `cbd5e5c`) | UPG-54 | **UPG-54 DONE** (Part 2, tested as built): the Android app's config never points at Railway, and the config step writes only `BASE_URL`'s host. 2 new tests. |
 | 2026-10-19 | "UPG-57: …" (parent `eaab561`) | UPG-57 | **UPG-57 DONE** (Part 2, tested as built): ineligible students refused with the reason, an eligible one registers; the roster stores CGPA and backlogs, only an admin changes them; round 2's export lists exactly the two moved, each notified once; only staff move or export. 8 new tests, also run on PostgreSQL. |
 | 2026-10-19 | "UPG-59: …" (parent `6980bf9`) | UPG-59 | **UPG-59 DONE** (Part 2, tested as built): the AI match page, exams, leaderboard, hackathon submission and SPOC stats never answer 500 for any role, with the data that broke each. 4 new tests. |
+| 2026-10-19 | "UPG-60: …" (parent `203e1ec`) | UPG-60 | **UPG-60 DONE** (Part 2, tested as built): 30 pages for six roles load in headless Chromium with the real CDN libraries (integrity-checked cached copies) with no page error and no missing static file. 1 new test. |

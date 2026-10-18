@@ -107,3 +107,70 @@ def navigations_on_first_visit(url, cookies=(), settle_ms=2500):
     finally:
         browser.close()
         p.stop()
+
+
+# ── The CDN files the templates load, for browser checks that need them ──────
+# Every CDN <script>/<link> carries an integrity hash (UPG-24). A copy is
+# downloaded once into tests/.cdn-cache (git-ignored), kept only if it matches
+# that hash, and served in place of the CDN; the browser checks the hash again.
+
+CDN_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cdn-cache')
+
+
+def cdn_files():
+    """{url: integrity} for every hashed CDN file a template loads."""
+    import glob
+    import re
+    found = {}
+    root = os.path.join(os.path.dirname(STATIC), 'templates')
+    for path in glob.glob(os.path.join(root, '**', '*.html'), recursive=True):
+        with open(path, encoding='utf-8') as fh:
+            for tag in re.findall(r'<(?:script|link)\b[^>]*>', fh.read(), re.S):
+                url = re.search(r'''(?:src|href)="(https://[^"]+)"''', tag)
+                sri = re.search(r'integrity="(sha(?:256|384|512)-[^"]+)"', tag)
+                if url and sri:
+                    found[url.group(1)] = sri.group(1)
+    return found
+
+
+def _matches(body, integrity):
+    import base64
+    import hashlib
+    algo, _, digest = integrity.partition('-')
+    return base64.b64encode(hashlib.new(algo, body).digest()).decode() == digest
+
+
+def cdn_body(url, integrity):
+    """The file's bytes from the cache, downloading it once; None when it can't
+    be fetched or doesn't match its hash."""
+    import hashlib
+    import urllib.request
+    os.makedirs(CDN_CACHE, exist_ok=True)
+    local = os.path.join(CDN_CACHE, hashlib.sha256(url.encode()).hexdigest())
+    if os.path.isfile(local):
+        with open(local, 'rb') as fh:
+            body = fh.read()
+        if _matches(body, integrity):
+            return body
+    try:
+        with urllib.request.urlopen(url, timeout=30) as resp:   # nosec B310 (fixed https CDN URLs from our templates)
+            body = resp.read()
+    except Exception:
+        return None
+    if not _matches(body, integrity):
+        return None
+    with open(local, 'wb') as fh:
+        fh.write(body)
+    return body
+
+
+def cdn_stand_ins():
+    """{url: (body, content type)} for every hashed CDN file; skips the test if
+    any can't be had (offline and not cached yet)."""
+    out = {}
+    for url, sri in cdn_files().items():
+        body = cdn_body(url, sri)
+        if body is None:
+            pytest.skip(f'CDN file unavailable offline and not cached: {url}')
+        out[url] = (body, 'text/css' if url.endswith('.css') else 'application/javascript')
+    return out

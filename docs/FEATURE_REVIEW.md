@@ -901,6 +901,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   2. ✅ Test: each key page returns 200 for its role and contains the shared navigation and footer landmarks. [T `::test_each_key_page_answers_with_the_shared_footer_and_navigation` (30 pages, 6 roles)]
   3. ✅ At 375px no key page scrolls horizontally, and no content is lost compared with the before-screenshot (headless check, when available). [T `::test_key_pages_fit_a_375px_phone_and_lose_nothing`, `::test_the_bootstrap_fixture_is_the_file_the_templates_load`]
   4. ✅ No URL changes. [T `tests/test_dead_code_and_links.py::test_every_internal_link_action_and_fetch_url_reaches_a_route` (UPG-15)]
+- **2026-10-19, in the full run:** with many events in the database, the home page's photo marquee (a strip that scrolls by itself, a CSS animation) has images past the screen edge. They come into view on their own, so the 375px check now treats content inside a running animation like content in a box the user can scroll. Test-only change.
 
 #### UPG-24 — One Bootstrap version and one font set, loaded once, with SRI
 - **Status:** DONE
@@ -4025,3 +4026,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-27: …" (parent `07d3508`) | UPG-27 | **UPG-27 DONE** (Part 2): `static/img` 1.06 MB; every image has `alt`; images below the first screen of the key pages load lazily; `:focus-visible` is defined and visible on tab. Found and fixed: the avatar picker loaded eagerly, the matchmaker's photos had no `alt`. 6 new tests. |
 | 2026-10-18 | "UPG-28: …" (parent `7ea50d4`) | UPG-28 | **UPG-28 DONE** (Part 2): the student journey (login → discover → register → ticket → pay page → check-in by a mocked camera → feedback) and the scanner pass at 375px and 1280px in headless Chromium; screenshots for the summary. Found and fixed: the checkout title was unreadable (navy on navy); the ticket's pinned footer covered its text. Playwright added to `requirements-dev.txt`. 1 new test. |
 | 2026-10-18 | "docs: …" | UPG-111 | Widened (found testing UPG-46): the invented "SNPSU Campus" venue is in 13 more pages and emails, not just the scanner list. Still TODO. |
+| 2026-10-19 | "test: …" | UPG-23 | The 375px check counts content in a self-scrolling (animated) track as reachable: the home page's photo marquee failed it in the full run only. Test-only. |

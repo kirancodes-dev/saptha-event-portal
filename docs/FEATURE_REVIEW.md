@@ -2079,18 +2079,22 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - "To test later" extras: `::test_two_requests_at_once_refund_each_payment_once` (a second "refund all" runs to completion inside the first request's first Razorpay call; each payment is still refunded once, with 3 audit lines), `::test_a_registration_without_an_order_is_listed_for_a_manual_refund`.
 
 #### UPG-52 — Joining a team can overwrite another join or exceed `team_max`
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-52: …" on `production-ready` (parent `7fc5292`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-52: …" on `production-ready` (parent `74a7e81`) [T]
 - **Problem:** [C] `routes_teams.join_team` (`routes_teams.py:64-102`) reads the registration's `members`, checks `len(members) >= team_max` (`:91`), appends, and writes the whole list back (`_save_members`, `:51`). Two people joining at once both read the same list: the second write drops the first member, or both pass the size check and the team exceeds `team_max`.
 - **Who benefits:** team leads and members of hackathons and sports events.
 - **What to build:** adding a member is atomic: a row lock (`SELECT … FOR UPDATE` on PostgreSQL) or a conditional update that only succeeds if `members` is unchanged, retried a few times; the size check runs inside it.
 - **Files touched:** `routes_teams.py`, `db_adapter.py` (or a small SQL helper), tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** Two threads call `routes_teams._add_member` released together by a barrier, for 5 rounds.
+  - **The test catches the bug:** with the row lock removed (and a short pause between counting and inserting), the one-place test fails with both joins added.
+- **Files touched:** `tests/test_team_join_race.py` (new).
 - **Effort:** S · **Depends on:** UPG-08 · **Risk:** touches the adapter (rule 8's early pass when tested).
 - **What was built (2026-10-10, development-only run):** `routes_teams._add_member` (`routes_teams.py:55`) adds a member in one transaction on the SQL layer: it locks the registration row (`SELECT … FOR UPDATE`), counts its `team_members` rows, refuses a duplicate or a full team, and inserts the one new member row, instead of rewriting the whole list. `join_team` keeps its early checks for clear messages and uses `_add_member` for the decision (`'added'`, `'full'`, `'already'`). Firestore mode (legacy) keeps the read-then-write. Checked by hand [R] on PostgreSQL 16, five rounds each: two simultaneous joins to a team with one free place left exactly one new member and the team at `team_max` (4); with two free places, both joined. Existing `tests/test_teams.py` passes. On SQLite `FOR UPDATE` is ignored (writes are serialised by the file lock), so the race guarantee is PostgreSQL's.
 - **To test later:** criteria 1–2 below (PostgreSQL, concurrent joins).
 - **Acceptance criteria:**
-  1. Test (PostgreSQL): two joins to a team with one free place, run concurrently, leave exactly one new member and `team_max` holds.
-  2. Test: two joins to a team with two free places, run concurrently, keep both members.
+  1. ✅ Test (PostgreSQL): two joins to a team with one free place, run concurrently, leave exactly one new member and `team_max` holds. [T on **PostgreSQL 16.2**: `tests/test_team_join_race.py::test_two_joins_for_the_last_place_leave_exactly_one` (5 rounds: `added` + `full`, team at 4). Skipped on SQLite, where writes are serialised.]
+  2. ✅ Test: two joins to a team with two free places, run concurrently, keep both members. [T `::test_two_joins_with_two_free_places_keep_both` (PostgreSQL: concurrent, 5 rounds; SQLite: one after the other)]
 
 #### UPG-53 — The home page shows a fake hackathon when there are no events
 - **Status:** BUILT (untested)
@@ -3797,3 +3801,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-12: …" (parent `33b31af`) | UPG-12 | **UPG-12 DONE** (Part 2, tested as built; certificate part deferred): faculty registration and ticket, allowed types, affiliation only for faculty/external, the export filter and the analytics split. 6 new tests. |
 | 2026-10-17 | "UPG-55: …" (parent `22e20d7`) | UPG-55 | **UPG-55 DONE** (Part 2, tested as built): the Google button and the 2FA set-up appear only when configured or available, and both links open. 2 new tests. |
 | 2026-10-17 | "UPG-43: …" (parent `cf71222`) | UPG-43 | **UPG-43 DONE** (Part 2, tested as built): the scanner list, walk-in form, venue self check-in and day-before reminder follow the event-day statuses and skip cancelled events. 3 new tests. Found the scanner list's invented venue fallback (new item). |
+| 2026-10-17 | "UPG-52: …" (parent `74a7e81`) | UPG-52 | **UPG-52 DONE** (Part 2, tested as built): concurrent joins on PostgreSQL never overfill a team and keep both when there's room; the test fails without the row lock. 2 new tests. |

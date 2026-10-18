@@ -3073,7 +3073,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **What was built:** `scheduler_enhanced.py:149` loads university timezone (`TIMEZONE` setting, defaulting to `Asia/Kolkata` via `ZoneInfo`), ensuring date comparisons match local event days regardless of midnight UTC skew.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. ✅ Test: with the clock at 00:30 IST, an active event dated yesterday is transitioned (`tests/test_event_maintenance.py::test_event_auto_transition_job_at_midnight_ist`).
+  1. ✅ Test: with the clock at 00:30 IST, an active event dated yesterday is transitioned. Since UPG-112 this runs on the live job, `tests/test_cron.py::test_just_after_midnight_ist_yesterdays_events_are_completed` (the cron `lifecycle` job, `tasks/scheduled_tasks.run_event_lifecycle`, which already used IST). The first test was on `scheduler_enhanced.py`, which the app never ran and UPG-112 removed.
 
 
 #### UPG-91 — Emails: the logo shows, and links open where the portal is being used
@@ -3518,8 +3518,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: an event without a venue appears in the scanner list without "SNPSU Campus".
 
 #### UPG-112 — UPG-14's leftover duplicates
-- **Status:** TODO
-- **Last verified:** 2026-10-18 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-112: …" on `production-ready` (parent `4ee3f27`) [T]
 - **Problem:** Found testing UPG-14. Its criteria are met, but parts of its problem list were never built:
   - **`scheduler_enhanced.py` stays.** Nothing in the app imports it; only `tests/test_event_maintenance.py:10,144` does. Removing it means deleting or moving those tests, which needs the owner's decision (rule 5), as D-9 was for Stripe.
   - **Dead login throttling:** `security_middleware.record_login_attempt`, `is_account_locked` and `block_ip` (`security_middleware.py:25-90`) are called only by `tests/test_security.py`; `services_login_throttle.py` does the real work. Removing them also removes those tests (owner's decision, rule 5).
@@ -3527,10 +3527,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Tasks nothing queues:** `tasks/export_tasks.py` and `tasks/webhook_tasks.py` are only registered in `celery_app.py:53-54,85-86`; `tests/test_tasks.py` tests `process_razorpay_payment` (owner's decision, rule 5).
   - **Check-in paths** beside the shared check-in (the SPOC manual list, the coordinator's `get_ticket`/`mark_attendance_granular`), and the two certificate stores (deferred with certificates).
 - **What to build:** after the owner decides on the tests named above, remove the dead code and merge the waitlist promotion into one.
+- **Built (2026-10-18):**
+  - **Owner's rule (2026-10-18, as D-9):** a test may go only if the code it tests was removed on purpose in UPG-14; a leftover still used anywhere stays, with its tests.
+  - **Removed (UPG-14 had listed each for removal; nothing in the app used them):**
+    - `scheduler_enhanced.py`: nothing imported it but `tests/test_event_maintenance.py`. The live jobs are the cron endpoint's (UPG-07).
+    - The in-memory IP blocking and login tracking in `security_middleware.py` (`block_ip`, `unblock_ip`, `is_ip_blocked`, `record_login_attempt`, `is_account_locked`, `get_remaining_lockout` and their stores), and the per-request `check_ip_block` hook, which could never block anyone because nothing called `block_ip`. Login throttling is `services_login_throttle.py` (BLK-13).
+    - `tasks/export_tasks.py` and `tasks/webhook_tasks.py`, with their lines in `celery_app.py`'s `include` and routes; nothing queued them (exports are served by `services_export`, payments by `routes_payment`'s webhook).
+  - **Fixed:** the waitlist promotion took the lowest `position`. Both join paths (`routes_waitlist.join_waitlist`, `routes_forms`) set it to the number still waiting plus one, so after a promotion or a departure a later joiner could get a lower position and be promoted first. `auto_promote` and the SPOC's list now order by `joined_at` (`routes_waitlist.py:176,227`). The task already called `auto_promote` (UPG-14), so there was one path; it issues the ticket for a free seat.
+  - **Kept, still used:** the SPOC manual check-in list (`/spoc/api/checkin`, used by `templates/spoc/scan.html` and `nfc_scanner.html`) and the coordinator's `mark_attendance_granular` (`templates/coordinator/scan.html`). Also kept: the coordinator's `get_ticket`. No page calls it, but UPG-14 never meant to remove it, and its access rules are tested (`tests/test_coordinator_authz.py`, `tests/test_volunteer_scope.py`). The two certificate stores stay deferred with certificates.
+  - **Not fixed (shown, not used to order):** the waitlist status page still reports the stored `position`, which can repeat as described above.
+  - **UPG-90's test moved to the live job:** `tests/test_cron.py::test_just_after_midnight_ist_yesterdays_events_are_completed`. Switching the live job to UTC makes it fail.
+- **Files touched:** deleted `scheduler_enhanced.py`, `tasks/export_tasks.py`, `tasks/webhook_tasks.py`; `security_middleware.py`, `celery_app.py`, `routes_waitlist.py`; tests `tests/test_waitlist_promotion.py` (new), `tests/test_cron.py`, `tests/test_merged_subsystems.py`, `tests/test_security.py`, `tests/test_event_maintenance.py`, `tests/test_tasks.py`.
 - **Effort:** M · **Depends on:** the owner's rule 5 decision · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: one waitlist promotion path, used by the cancel route and the waitlist routes, issues a ticket in `joined_at` order.
-  2. `git ls-files` has no `scheduler_enhanced.py`, and `security_middleware.py` has no login-attempt functions (after the owner's decision).
+  1. ✅ Test: one waitlist promotion path, used by the cancel route and the waitlist routes, issues a ticket in `joined_at` order. [T `tests/test_waitlist_promotion.py::test_promotion_follows_join_order_and_issues_a_ticket` (SPOC promote, a departure, a later joiner with a lower position, then a student's cancellation promotes the earlier joiner with a ticket; fails on the old order), `::test_the_task_and_the_spoc_route_share_one_promotion`]
+  2. ✅ `git ls-files` has no `scheduler_enhanced.py`, and `security_middleware.py` has no login-attempt functions (after the owner's decision). [T `tests/test_merged_subsystems.py::test_upg_14s_leftovers_are_gone`]
 
 #### UPG-113 — CI's bandit step fails on the showcase seeder's table wipes
 - **Status:** DONE
@@ -3925,3 +3936,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-15: …" (parent `cddc491`) | UPG-15 | **UPG-15 DONE** (Part 2): links and form actions all reach a route, removed copies and unregistered blueprints stay gone, no default walk-in password. Finished the one seed command: `seed.py` with a `seeds/` package and a showcase profile, six unused seeders removed. Found and fixed: the production override didn't reach the seed modules. 15 new tests; the seed-safety tests now cover the moved modules. Full suite 1063 passed, 6 skipped (the drop is the removed scripts' parametrized cases). New: **UPG-113**. |
 | 2026-10-18 | "UPG-18: …" (parent `5eff67c`) | UPG-18 | **UPG-18 DONE** (Part 2, tested as built): failing tasks leave one outbox row and the request succeeds; slow tasks return at the limit; the cron job retries once, never twice, and gives up at the maximum; secret, clean-up and broker mode checked. 11 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-113: …" (parent `4cdd02b`) | UPG-113 | **UPG-113 DONE** (owner's instruction, before UPG-19): the showcase seeder's two string-built `DELETE`s now use SQLAlchemy table objects; bandit `-ll` is clean over every tracked file, so CI's security step passes. 1 new test. |
+| 2026-10-18 | "UPG-112: …" (parent `4ee3f27`) | UPG-112 | **UPG-112 DONE** (owner's instruction, rule as D-9). Removed `scheduler_enhanced.py`, the never-called in-memory login tracking and IP blocking in `security_middleware.py`, and the never-queued `tasks/export_tasks.py` and `tasks/webhook_tasks.py`. Fixed: waitlist promotion now goes in join order. Kept, as still used: the SPOC manual check-in list, the coordinator's attendance route and `get_ticket`. **Tests deleted with the removed code (13):** · `tests/test_security.py::TestIPBlocking`: `test_block_ip` (a blocked IP is blocked until unblocked), `test_unblocked_ip_allowed` (an unknown IP isn't blocked), `test_block_expires` (a block ends after its time). · `::TestLoginAttemptTracking`: `test_record_successful_login` (a success clears the IP's attempts), `test_record_failed_login` (a failure is counted per IP), `test_account_lockout_after_5_failures`, `test_lockout_has_remaining_time`, `test_unlocked_account_returns_zero`. All of the above tested the in-memory tracker the app never called. · `tests/test_event_maintenance.py`: `test_event_auto_transition_job` (the scheduler's active→completed), `test_event_auto_transition_job_at_midnight_ist` (UPG-90, now on the live job in `tests/test_cron.py`), `test_safe_cleanup_archives_instead_of_deleting` (the scheduler's archiving of events completed over 180 days ago; no live job archives). · `tests/test_tasks.py::TestProcessRazorpayPayment`: `test_idempotent_on_already_paid`, `test_missing_reg_id_exits_gracefully` (the unqueued webhook task; the live webhook's idempotency is tested at UPG-30/UPG-94). 4 new tests. Full suite 1066 passed, 6 skipped. |

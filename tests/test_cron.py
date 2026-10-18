@@ -184,3 +184,32 @@ def test_the_github_workflow_and_the_deploy_guide_target_the_endpoint():
     assert 'gcloud scheduler jobs create http' in guide
     assert all(f'/internal/cron/{job}' in guide for job in ('reminders', 'lifecycle', 'cleanup'))
     assert 'X-Cron-Secret' in guide and 'CRON_SECRET' in (root / '.env.example').read_text()
+
+
+def test_just_after_midnight_ist_yesterdays_events_are_completed(cron, monkeypatch):
+    """UPG-90, on the live job (its first test was on scheduler_enhanced.py,
+    never run by the app and removed in UPG-112): at 00:30 IST, 19:00 UTC the
+    day before, an event dated yesterday in IST is over."""
+    import types
+
+    import tasks.scheduled_tasks as scheduled
+    d = cron
+    real = datetime.datetime
+    today_ist = real.now(IST).date()
+    fake_now = real(today_ist.year, today_ist.month, today_ist.day, 0, 30, tzinfo=IST)
+    assert fake_now.astimezone(datetime.timezone.utc).date() < today_ist   # still yesterday in UTC
+
+    class Clock(real):
+        @classmethod
+        def now(cls, tz=None):
+            return fake_now.astimezone(tz) if tz else fake_now.replace(tzinfo=None)
+
+    clock = types.ModuleType('datetime')
+    clock.__dict__.update(datetime.__dict__)
+    clock.datetime = Clock
+    monkeypatch.setattr(scheduled, 'datetime', clock)
+
+    yesterday = _day(-1)
+    event_id = d['event'](yesterday, status='active')
+    assert d['call']('lifecycle').status_code == 200
+    assert _status(d, event_id) == 'completed'

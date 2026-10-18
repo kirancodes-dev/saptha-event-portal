@@ -1,67 +1,10 @@
 """
 test_security.py — Tests for Security Middleware & Hardening
 
-Covers: IP blocking, login attempt tracking, account lockout,
-security headers, input sanitization, and audit logging.
+Covers: security headers, input sanitization, and audit logging. (The tests
+of the never-called in-memory IP blocking and login tracking went with that
+code in UPG-112; login throttling is tested in tests/test_login_throttle.py.)
 """
-import time
-
-
-class TestIPBlocking:
-    """Test IP blocking and unblocking."""
-
-    def test_block_ip(self):
-        from security_middleware import block_ip, is_ip_blocked, unblock_ip
-        block_ip("192.168.1.100", duration_seconds=10)
-        assert is_ip_blocked("192.168.1.100") is True
-        unblock_ip("192.168.1.100")
-        assert is_ip_blocked("192.168.1.100") is False
-
-    def test_unblocked_ip_allowed(self):
-        from security_middleware import is_ip_blocked
-        assert is_ip_blocked("10.0.0.1") is False
-
-    def test_block_expires(self):
-        from security_middleware import block_ip, is_ip_blocked
-        block_ip("10.0.0.99", duration_seconds=1)
-        assert is_ip_blocked("10.0.0.99") is True
-        time.sleep(1.5)
-        assert is_ip_blocked("10.0.0.99") is False
-
-
-class TestLoginAttemptTracking:
-    """Test login attempt rate limiting."""
-
-    def test_record_successful_login(self):
-        from security_middleware import record_login_attempt, _login_attempts
-        record_login_attempt("10.0.0.1", email="user@test.edu", success=True)
-        # Should clear any tracked attempts
-        assert len(_login_attempts.get("10.0.0.1", [])) == 0
-
-    def test_record_failed_login(self):
-        from security_middleware import record_login_attempt, _login_attempts
-        ip = "10.0.0.50"
-        record_login_attempt(ip, email="fail@test.edu", success=False)
-        assert len(_login_attempts.get(ip, [])) >= 1
-
-    def test_account_lockout_after_5_failures(self):
-        from security_middleware import record_login_attempt, is_account_locked
-        email = "locked@test.edu"
-        for i in range(5):
-            record_login_attempt(f"10.0.{i}.1", email=email, success=False)
-        assert is_account_locked(email) is True
-
-    def test_lockout_has_remaining_time(self):
-        from security_middleware import record_login_attempt, get_remaining_lockout
-        email = "timed@test.edu"
-        for i in range(5):
-            record_login_attempt(f"10.1.{i}.1", email=email, success=False)
-        remaining = get_remaining_lockout(email)
-        assert remaining > 0
-
-    def test_unlocked_account_returns_zero(self):
-        from security_middleware import get_remaining_lockout
-        assert get_remaining_lockout("free@test.edu") == 0
 
 
 class TestSecurityHeaders:

@@ -173,7 +173,7 @@ def view_waitlist(event_id):
         db.collection("waitlists")
         .where(filter=FieldFilter("event_id", "==", event_id))
         .where(filter=FieldFilter("status", "==", "waiting"))
-        .order_by("position")
+        .order_by("joined_at")   # join order: `position` repeats once someone is promoted (UPG-112)
         .stream()
     ):
         wl = doc.to_dict()
@@ -224,7 +224,7 @@ def auto_promote(db, event_id: str):
         db.collection("waitlists")
         .where(filter=FieldFilter("event_id", "==", event_id))
         .where(filter=FieldFilter("status", "==", "waiting"))
-        .order_by("position")
+        .order_by("joined_at")   # join order: `position` repeats once someone is promoted (UPG-112)
         .limit(1)
         .stream()
     ):

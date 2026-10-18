@@ -78,3 +78,17 @@ def test_the_matchmaker_flag_comes_from_the_environment(value, on):
     out = subprocess.run([sys.executable, '-c', 'from config import Config; print(Config.FEATURE_MATCHMAKER)'],
                          cwd=ROOT, env=env, capture_output=True, text=True, check=True).stdout.strip()
     assert out == str(on)
+
+
+def test_upg_14s_leftovers_are_gone():
+    """UPG-112: the scheduler file nothing ran, the never-called in-memory login
+    tracking and IP blocking, and the two task modules nothing queued."""
+    import security_middleware
+    tracked = subprocess.run(['git', 'ls-files'], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    for gone in ('scheduler_enhanced.py', 'tasks/export_tasks.py', 'tasks/webhook_tasks.py'):
+        assert gone not in tracked, gone
+    for name in ('record_login_attempt', 'is_account_locked', 'get_remaining_lockout', 'block_ip', 'unblock_ip',
+                 'is_ip_blocked'):
+        assert not hasattr(security_middleware, name), name
+    from celery_app import celery
+    assert not [m for m in celery.conf.include if m in ('tasks.export_tasks', 'tasks.webhook_tasks')]

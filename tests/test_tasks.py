@@ -85,49 +85,6 @@ class TestDailyRollup:
 
 # ── Webhook tasks ─────────────────────────────────────────
 
-class TestProcessRazorpayPayment:
-    def test_idempotent_on_already_paid(self):
-        try:
-            from tasks.webhook_tasks import process_razorpay_payment
-        except Exception:
-            tasks = None
-
-        mock_reg_doc = MagicMock()
-        mock_reg_doc.exists = True
-        mock_reg_doc.to_dict.return_value = {'payment_status': 'Paid'}
-
-        mock_db = MagicMock()
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_reg_doc
-
-        with patch('tasks.webhook_tasks.db', mock_db):
-            process_razorpay_payment({
-                'reg_id': 'REG-PAID',
-                'event_id': 'EVT-001',
-                'razorpay_payment_id': 'pay_abc',
-                'amount': 500,
-                'lead_email': 'user@test.local',
-                'lead_name': 'User',
-                'lead_phone': '',
-            })
-
-        # Should NOT update if already paid (idempotency)
-        mock_db.collection.return_value.document.return_value.update.assert_not_called()
-
-    def test_missing_reg_id_exits_gracefully(self):
-        try:
-            from tasks.webhook_tasks import process_razorpay_payment
-        except Exception:
-            tasks = None
-
-        mock_db = MagicMock()
-        with patch('tasks.webhook_tasks.db', mock_db):
-            process_razorpay_payment({})  # no reg_id
-
-        mock_db.collection.assert_not_called()
-
-
-# ── Scheduled tasks ───────────────────────────────────────
-
 class TestRunEventLifecycle:
     def test_closes_overdue_registrations(self):
         import datetime

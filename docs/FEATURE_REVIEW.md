@@ -3557,6 +3557,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ `bandit -ll -q` over the tracked non-test files reports no Medium or High finding. [T `tests/test_bandit_clean.py::test_bandit_finds_nothing_medium_or_high` (fails on the old code with the two B608 findings)]
   2. ✅ Test: `python seed.py --profile showcase` still empties the tables and rebuilds the portal (`tests/test_seed_command.py`). [T `tests/test_seed_command.py::test_the_showcase_profile_rebuilds_the_portal_and_writes_its_summary`; PostgreSQL by hand, above]
 
+#### UPG-114 — The waitlist shows a position that can repeat
+- **Status:** TODO
+- **Last verified:** 2026-10-18 [T]
+- **Problem:** Found in UPG-112. Both join paths store `position` as the number still waiting plus one (`routes_waitlist.py:70-88`, `routes_forms.py:751-774`), so after a promotion or a departure two people can hold the same number, or a later joiner a lower one (shown in `tests/test_waitlist_promotion.py`). Promotion no longer uses it (join order since UPG-112), but `/waitlist/status/<event_id>` and the "joined the waitlist at position #N" message still show it.
+- **What to build:** work out the place in line at read time (how many waiting people joined earlier, plus one), and show that.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: after one promotion and one departure, each person still waiting sees a distinct place that matches the order they'll be promoted in.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3937,3 +3946,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-18 | "UPG-18: …" (parent `5eff67c`) | UPG-18 | **UPG-18 DONE** (Part 2, tested as built): failing tasks leave one outbox row and the request succeeds; slow tasks return at the limit; the cron job retries once, never twice, and gives up at the maximum; secret, clean-up and broker mode checked. 11 new tests, also run on PostgreSQL. |
 | 2026-10-18 | "UPG-113: …" (parent `4cdd02b`) | UPG-113 | **UPG-113 DONE** (owner's instruction, before UPG-19): the showcase seeder's two string-built `DELETE`s now use SQLAlchemy table objects; bandit `-ll` is clean over every tracked file, so CI's security step passes. 1 new test. |
 | 2026-10-18 | "UPG-112: …" (parent `4ee3f27`) | UPG-112 | **UPG-112 DONE** (owner's instruction, rule as D-9). Removed `scheduler_enhanced.py`, the never-called in-memory login tracking and IP blocking in `security_middleware.py`, and the never-queued `tasks/export_tasks.py` and `tasks/webhook_tasks.py`. Fixed: waitlist promotion now goes in join order. Kept, as still used: the SPOC manual check-in list, the coordinator's attendance route and `get_ticket`. **Tests deleted with the removed code (13):** · `tests/test_security.py::TestIPBlocking`: `test_block_ip` (a blocked IP is blocked until unblocked), `test_unblocked_ip_allowed` (an unknown IP isn't blocked), `test_block_expires` (a block ends after its time). · `::TestLoginAttemptTracking`: `test_record_successful_login` (a success clears the IP's attempts), `test_record_failed_login` (a failure is counted per IP), `test_account_lockout_after_5_failures`, `test_lockout_has_remaining_time`, `test_unlocked_account_returns_zero`. All of the above tested the in-memory tracker the app never called. · `tests/test_event_maintenance.py`: `test_event_auto_transition_job` (the scheduler's active→completed), `test_event_auto_transition_job_at_midnight_ist` (UPG-90, now on the live job in `tests/test_cron.py`), `test_safe_cleanup_archives_instead_of_deleting` (the scheduler's archiving of events completed over 180 days ago; no live job archives). · `tests/test_tasks.py::TestProcessRazorpayPayment`: `test_idempotent_on_already_paid`, `test_missing_reg_id_exits_gracefully` (the unqueued webhook task; the live webhook's idempotency is tested at UPG-30/UPG-94). 4 new tests. Full suite 1066 passed, 6 skipped. |
+| 2026-10-18 | "docs: …" | UPG-114 | New (found in UPG-112): the waitlist status page and join message show a stored position that can repeat. TODO. |

@@ -88,7 +88,7 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Email (Brevo / Resend / Gmail) | WORKING in tests [R at UPG-31, UPG-62] | `utils_email.py`, `tasks/email_tasks.py:82-96`, `routes_auth.py:473-478` | Confirmation, day-before ticket with the entry QR, and change and cancellation notices go through Brevo once each (`tests/test_notices.py`, HTTP mocked); not yet sent through a real Brevo account. Notices reach only the registration's lead (UPG-48). Every link in an email comes from `BASE_URL`, never the request's host (BLK-16). The generic task uses `body_text` and accepts the legacy `body` alias for older callers (UPG-62). No built-in sender or password: the sender is `MAIL_FROM`, else `MAIL_USER`; with neither, Brevo and Resend refuse to send (UPG-41). The SPOC blast email's `spoc_id` gate (`routes_spoc.py:972`) passes for the owner since BLK-09; not re-run. |
 | WhatsApp (Twilio) | not run [C] | `utils_whatsapp.py` | Needs a paid Twilio sender. The day-before reminder and the payment receipt tasks call their functions correctly since UPG-31; the automation's WhatsApp channel still doesn't (UPG-49). |
 | In-app notifications | WORKING [T at UPG-14] | `routes_notifications_v2.py:22-150,283-350`, `static/js/notifications.js` | One system, `notifications_v2`: a notification from `create_notification` shows in `/notifications/feed`, which the bell on every app-layout page loads (only the user's own); `mark_read` and bulk operations; v1 removed. |
-| Scheduled reminders / lifecycle | BUILT [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:534`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders read every event-day status since UPG-43 (built, untested); the ticket-email signature was fixed in UPG-31. |
+| Scheduled reminders / lifecycle | WORKING [T at UPG-07] | `routes_cron.py:45`, `tasks/scheduled_tasks.py:534`, `.github/workflows/cron.yml`, `docs/DEPLOY.md` | Self-hosted, Celery beat runs them (`docker-compose.yml`); on a single web service, Cloud Scheduler or GitHub Actions calls `POST /internal/cron/<job>` with a shared secret. The lifecycle closes registration and completes past events, and no longer deletes anything. The reminders read every event-day status since UPG-43 (built, untested); the ticket-email signature was fixed in UPG-31. |
 | Registration exports (CSV/Excel) | WORKING [R at UPG-03] | `services_export.py`, `routes_spoc.py:346,355`, `routes_coordinator.py:523,533`, `routes_admin.py:285` | One export for SPOC, coordinator and admin: lead name, USN, department, year, email, phone, team, members, attendance, payment, amount, score, rank, certificate ID. 403 without `export_data` on the event. Department and year are inferred from the profile, form or USN when not asked. |
 | Admin dashboard / analytics / report | WORKING [T, R at UPG-83] | `routes_admin.py:44,143`, `routes_spoc.py:630`, `services_insights.py`, `templates/analytics/hub.html`, `static/js/se-echarts.js` | Analytics for the Super Admin (every event) and SPOCs (their events): period and category filters, an adjustable comparison of every event with a table view, trend, heatmap, funnel, revenue and no-shows on Apache ECharts; dashboards count real registrations (UPG-81, UPG-83). `/analytics` redirects by role. |
 | Users page (Super Admin) | WORKING [R at UPG-40] | `routes_admin.py:429-467`, `templates/admin/users.html` | Lists every account with its role and whether it has set a password; resends the set-password link to accounts still waiting (not to Super Admins or accounts with a password), audit-logged. 25 a page with search since UPG-19 (built, untested). |
@@ -99,26 +99,26 @@ Status: WORKING · PARTLY BUILT (says where it breaks) · NOT CONNECTED (code ex
 | Referrals | not re-run [C] | `routes_referrals.py:39` | Filters on document-only fields now apply (`tests/test_db_documents.py:95`); referral page not re-run. |
 | Teammate matchmaker | Hidden [T at UPG-14] | `routes_matchmaker.py:12-16`, `config.py:233-236` | Suggests hard-coded `MOCK_STUDENTS`, so it answers 404 unless `FEATURE_MATCHMAKER=true`. |
 | Online exams / proctoring | PARTLY BUILT [R at `1f4cdc8`] | `templates/spoc/proctor_monitor.html:1` | SPOC proctor page now 200 [R]; exam flow not run. Submitting should be refused [C]: the form posts without a CSRF token (UPG-66). |
-| Privacy (DPDP export/delete/consent) | BUILT (untested) [R by hand at UPG-22] | `services_privacy.py`, `routes_compliance.py`, `templates/profile/dashboard.html` | Consent (time and notice version) required at registration and sign-up; own-data download and account deletion (30-day grace, then anonymised by the cron clean-up) from the profile page; privacy notice linked in the shared footer. Retention of payment and audit records: D-7. |
+| Privacy (DPDP export/delete/consent) | WORKING [T at UPG-22] | `services_privacy.py`, `routes_compliance.py`, `templates/profile/dashboard.html` | Consent (time and notice version) required at registration and sign-up; own-data download and account deletion (30-day grace, then anonymised by the cron clean-up) from the profile page; privacy notice linked in the shared footer. Retention of payment and audit records: D-7. |
 | Audit log | WORKING [R at BLK-06a] | `utils.py` `log_action`, `templates/admin/audit_log.html` | The page shows the actor again (reads the document's `user` key, now preserved). The SQL `actorEmail` column holds the acting user since BLK-06a [R]. |
 | REST API v1 (JWT) + multi-tenant control plane | NOT CONNECTED [C] | `routes_api_v1.py` | Only the AI copilot endpoints are called from a template. Finance, analytics, evaluation, certificate and control-plane services are used only here. |
 | AI copilot (admin) | not run [C] | `routes_api_v1.py:1466-1507`, `auth_jwt.py:212-242` | Session fallback exists; no Gemini key in sandbox. |
-| Android app | Webview wrapper (built, untested) [R at UPG-54] | `capacitor.config.json`, `scripts/configure_capacitor.py` | Server URL derived from `BASE_URL` at build time; `allowNavigation` restricted to host; documented in `docs/DEPLOY.md` (UPG-54). |
+| Android app | Webview wrapper [T at UPG-54] | `capacitor.config.json`, `scripts/configure_capacitor.py` | Server URL derived from `BASE_URL` at build time; `allowNavigation` restricted to host; documented in `docs/DEPLOY.md` (UPG-54). |
 | Payment failure page | WORKING [R at `1f4cdc8`] | `templates/payment/failed.html:1` | Now extends `base_classic.html`; 200 [R]. |
 | Login rate limiting | WORKING [R at BLK-13] | `services_login_throttle.py`, `routes_auth.py:83-86,337-341`, `routes_api_v1.py:62-88` | 5 failed logins (web + API, one counter) or reset requests per IP and per account per minute, and 20 failed logins per account per hour (UPG-37), then 429 "try again in N seconds"; counters in the database (Redis if `REDIS_URL`), shared by every instance (BLK-13). The old in-memory helpers in `security_middleware.py` are unused (UPG-14). |
 | Sessions | WORKING [R at BLK-08] | `session_store.py`, `config.py:49-64` | In the database (Redis if `REDIS_URL`): survive restarts, shared by instances, none for plain anonymous page views (BLK-08). |
-| Database migrations | BUILT (untested) [R by hand at UPG-16] | `migrations/versions/0001_baseline.py`, `db_pg.py:186`, `db_adapter.py:1847` | One baseline builds an empty PostgreSQL or SQLite database; production start-up issues no DDL and refuses a database not at head; development still aligns at start-up. `docs/DEPLOY.md` has the step (UPG-16). |
-| File uploads (certificates, exports) | NOT USED by the app; helper fixed (built, untested) | `utils_storage.py` | Nothing live stores files (UPG-06, UPG-03). Since UPG-21 (UPG-17 folded in): `S3_ENDPOINT_URL` for Supabase Storage, private uploads with 15-minute signed links for exports, and no silent local fallback in production. |
+| Database migrations | WORKING [T at UPG-16, on SQLite and PostgreSQL] | `migrations/versions/0001_baseline.py`, `db_pg.py:186`, `db_adapter.py:1847` | One baseline builds an empty PostgreSQL or SQLite database; production start-up issues no DDL and refuses a database not at head; development still aligns at start-up. `docs/DEPLOY.md` has the step (UPG-16). |
+| File uploads (certificates, exports) | NOT USED by the app; helper fixed [T at UPG-21] | `utils_storage.py` | Nothing live stores files (UPG-06, UPG-03). Since UPG-21 (UPG-17 folded in): `S3_ENDPOINT_URL` for Supabase Storage, private uploads with 15-minute signed links for exports, and no silent local fallback in production. |
 | Background jobs | WORKING [T at UPG-18] | `celery_app.py:33`, `services_outbox.py` | Without a Redis broker, each task runs inline once under a timeout; failures and timeouts go to the `outbox` table, retried by `POST /internal/cron/outbox` with backoff (UPG-18). Scheduled jobs run through the cron endpoint since UPG-07. |
 | Health check | WORKING [T at UPG-20] | `app.py:522-560` | `SELECT 1` (or one document read in Firestore mode); 200 or 503 with no error text (UPG-20). |
 | Error monitoring (Sentry) | WORKING [T at UPG-20] | `app.py:102-125`, `utils_logging.py` | On when `SENTRY_DSN` is set, no personal data, release = Cloud Run revision; documented in `.env.example`. Logs are JSON lines with `severity` in production (UPG-20). |
-| Database backups | BUILT (untested) [R by hand at UPG-21] | `scripts/backup_db.sh`, `scripts/restore_db.sh`, `.github/workflows/backup.yml` | Daily `pg_dump` to a private bucket with 30-day retention; restore into an empty database only; documented drill in `docs/DEPLOY.md` (UPG-21). |
+| Database backups | WORKING [T at UPG-21: backup and restore on PostgreSQL] | `scripts/backup_db.sh`, `scripts/restore_db.sh`, `.github/workflows/backup.yml` | Daily `pg_dump` to a private bucket with 30-day retention; restore into an empty database only; documented drill in `docs/DEPLOY.md` (UPG-21). |
 | Pagination on web lists | WORKING [T at UPG-19] | `utils_pagination.py`, `templates/includes/pagination.html` | 25 a page with search on users, audit log, payments, the admin/SPOC/coordinator dashboards' events, event registrations and form responses; page and filters in the URL; users and the audit log page in SQL (UPG-19). |
 | Shared page layout | WORKING [T at UPG-23] | `templates/layouts/document.html`, `templates/base_classic.html` | Every template a route renders extends the shared document (app layout, standalone or full-screen child); only unrendered templates remain standalone (UPG-15) (UPG-23). Since UPG-63 (built, untested), signed-in pages use one app bar, page head and flash (`templates/base_classic.html`, `templates/includes/ui.html`), and status pages use `templates/layouts/status.html`. |
-| Portal design system | BUILT (untested) [R headless sweep at UPG-63] | `static/css/global.css` (v9), `static/js/chart-theme.js`, `docs/FRONTEND_CHECKLIST.md` | One navy-and-gold token set, light by default with an optional dark theme, one heading and one body font, shared components, and a validated chart palette. Every rendered template is on it (56 rebuilt on the app/status layout, 49 restyled in place). Checked at 1280px and 360px for every role (UPG-63). |
-| Super Admin control centre | BUILT (untested) [R dev server at UPG-75] | `routes_admin.py:1588-1920`, `templates/admin/{events,user_detail,registrations,system}.html` | Every event (approvals, any workflow status, hand to another SPOC), every account (add any role, edit role/department/category, deactivate; login refuses deactivated accounts), every registration (search, attendance, cancel), system status (integrations yes/no, failed jobs, retry), announcements in the app; dashboard "needs attention" (UPG-75). |
+| Portal design system | WORKING [T at UPG-63; 375px checks at UPG-23, UPG-28] | `static/css/global.css` (v9), `static/js/chart-theme.js`, `docs/FRONTEND_CHECKLIST.md` | One navy-and-gold token set, light by default with an optional dark theme, one heading and one body font, shared components, and a validated chart palette. Every rendered template is on it (56 rebuilt on the app/status layout, 49 restyled in place). Checked at 1280px and 360px for every role (UPG-63). |
+| Super Admin control centre | WORKING [T at UPG-75] | `routes_admin.py:1588-1920`, `templates/admin/{events,user_detail,registrations,system}.html` | Every event (approvals, any workflow status, hand to another SPOC), every account (add any role, edit role/department/category, deactivate; login refuses deactivated accounts), every registration (search, attendance, cancel), system status (integrations yes/no, failed jobs, retry), announcements in the app; dashboard "needs attention" (UPG-75). |
 | Coordinator view (Super Admin) | WORKING [T, R at UPG-80] | `routes_coordinator.py:80-125`, `templates/coordinator/dashboard.html` | Labelled "Coordinator view · Seen as Super Admin" with a way back to the admin dashboard; counts real registrations. Events are created only in the wizard; the old coordinator form and route are retired (UPG-78). |
-| Profile photos | BUILT (untested) [R headless at UPG-71] | `routes_profile.py:119-221`, `static/img/avatars/`, `templates/profile/dashboard.html` | Every role can upload a photo (validated and re-encoded as a 512px WebP) or choose one of 8 brand avatars; shown in the app bar and on the profile; a Google/Microsoft photo is used when nothing was chosen (UPG-71). |
+| Profile photos | WORKING [T at UPG-71] | `routes_profile.py:119-221`, `static/img/avatars/`, `templates/profile/dashboard.html` | Every role can upload a photo (validated and re-encoded as a 512px WebP) or choose one of 8 brand avatars; shown in the app bar and on the profile; a Google/Microsoft photo is used when nothing was chosen (UPG-71). |
 
 ---
 
@@ -187,7 +187,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | Users / roles | Role assignment page OK [R]; `/admin/users` lists accounts and resends set-password links (UPG-40) [R]; the dead `/admin/events` link is gone from every template [C at `986d108`] | Every internal link, form action and fetch URL in the templates and scripts reaches a route [T at UPG-15]. |
 | Calendar | OK [R] | — |
 | Analytics / exports | Pages OK [R]; exports not re-run | Names read back since BLK-06 [R round-trip]; UPG-03. |
-| Bulk student import | WORKING (untested) [C] | UPG-10: SuperAdmin CSV roster import with USN, department, year, section; Google sign-in restricted to university domain. |
+| Bulk student import | WORKING [T at UPG-10; CGPA and backlog columns at UPG-57] | UPG-10: SuperAdmin CSV roster import with USN, department, year, section; Google sign-in restricted to university domain. |
 
 ---
 
@@ -208,7 +208,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 | FDPs | Faculty-only events: faculty register with designation and institution (UPG-12, tested); hours credited in the ledger and the department export (UPG-11, tested); FDP type: faculty and external by default, resource persons, multi-day dates (UPG-73) | Faculty registration, multi-day attendance, hours on certificate | Certificate wording and hours deferred with certificates (UPG-12, UPG-11) |
 | NSS / NCC | Category kept as `NSS` / `NCC` since BLK-06a; NSS/NCC activity and social drive types with volunteer hours (UPG-73); hours register per student and department export (UPG-11, tested) | Unit rolls, hours certificates | Hours on certificates deferred with certificates (UPG-11) |
 | Department events | Department-only visibility (`app.py:1011-1014`), unit approval [R]; "My department only" visibility in the wizard; listings respect it (UPG-73) | Same as seminar | Seminar items |
-| Conference / webinar | Templates exist; their forms work since UPG-01 [R]; faculty and external participants register (UPG-12, built, untested); Own types; webinar is online with a meeting link shown to registrants (UPG-73) | — | — |
+| Conference / webinar | Templates exist; their forms work since UPG-01 [R]; faculty and external participants register (UPG-12, tested); Own types; webinar is online with a meeting link shown to registrants (UPG-73) | — | — |
 
 ---
 
@@ -1097,6 +1097,7 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
   - Also: `::test_the_finance_export_has_one_row_per_payment`.
   - Full pytest: **867 passed** on SQLite and PostgreSQL 16; ruff clean.
 - **Rule 8 (early pass, `db_adapter.py` and `models_pg.py` changed):** the change only adds columns to `payment_orders`. Of the 32 open items, UPG-16 lists that table for its baseline; its line now names the new columns. The other items citing `models_pg.py` (UPG-11 to UPG-14, UPG-18) don't touch `payment_orders`, and their claims are unchanged.
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; criterion 4 (the owner's checkout with Razorpay test keys) goes on Part 3's go-live checklist.
 
 #### UPG-31 — Notifications: confirmation, day-before reminder, change and cancellation notices through Brevo
 - **Status:** DONE
@@ -1139,6 +1140,7 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
   1. Each release-check step above passes, with its output recorded in the changelog.
   2. `docs/DEPLOY.md` covers every topic listed.
   3. The final report lists every item's status, anything not DONE and why, and a go-live checklist.
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** still TODO; it is Part 3 of the production-ready run. Since it was written, the browser checks it asks for are in the repo (`tests/headless.py`; UPG-23, UPG-25 to UPG-28, UPG-60) and Playwright is in `requirements-dev.txt`.
 
 ---
 
@@ -1228,6 +1230,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. ✅ **Met:** the CI job "Repo hygiene & secret scan" runs that test and the gitleaks scan. Demonstrated on a throwaway branch in a scratch clone: a commit adding `.env`, `local.db`, a `.pyc` and a fake AWS-style key made the test fail (1 failed, naming the 3 files) and gitleaks exit 1 [R].
   3. ✅ **Met for now: there's no production deployment** (owner, 2026-09-30), so nothing accepts the old SuperAdmin password or master key. The next deploy must pass **"Before the next deploy"** (new `SECRET_KEY`, `MASTER_SECRET_KEY`, `JWT_SECRET_KEY`, `SUPER_ADMIN_PASS`, `RAZORPAY_KEY_SECRET`, and a PostgreSQL `DATABASE_URL`, all set first). The start-up refusal for published values exists (`tests/test_integration_flow.py:205`).
   4. ✅ **Met:** both Google API keys are revoked (owner, 2026-09-30) and accepted in `.gitleaksignore`. The full-history gitleaks scan finds **no leaks in 212 commits** [R]. ✅ **On GitHub:** CI run 36886209908 on the pushed `master` (`56a014d`, 2026-10-01) passed "Repo hygiene & secret scan" and "Lint (ruff)" [R, GitHub Actions API]. The bandit job failed on the known BLK-11 findings and pytest on BLK-15's causes. The old password and master key remain as literals in history (gitleaks doesn't flag them); they're unused and must not be reused (criterion 3).
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; only GitHub Support's removal of the PR refs is left (owner).
 
 #### BLK-02 — The public registration form logs the visitor in as any email they type
 - **Status:** DONE
@@ -1545,7 +1548,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. ✅ `ruff check .` is clean and the full pytest passes: **689 passed** on SQLite and PostgreSQL 16.
 
 #### BLK-12 — Kiosk and ticket-verify holes (and tests for them on the real database)
-- **Status:** DONE for the root app (criterion 4 is met when UPG-15 removes the `functions/` copy in Phase 5; D-1)
+- **Status:** DONE (the last criterion met by UPG-15: the `functions/` copy is gone, `tests/test_dead_code_and_links.py::test_the_removed_copies_and_scripts_stay_gone`; re-verified 2026-10-19)
 - **Last verified:** 2026-10-01, commit "BLK-12: …" on `production-ready` (parent `f2ce15b`)
 - **Problem:** Added in Phase 0 from the production-ready plan's list: unauthenticated kiosk search and confirm, a raw registration ID accepted by ticket verify, a GET that marks attendance, and self check-in by email alone.
   - **Already fixed in the root app** (by the BLK-09 merge, branch commit `348aceb`) [C at `56a014d`]:
@@ -1600,7 +1603,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Full pytest: **673 passed** on SQLite and on PostgreSQL 16; ruff clean; bandit shows only the 5 known BLK-11 findings. With CI's environment (fresh clone, `REDIS_URL` and the Celery broker on a Redis server, CI's command): 672 passed, 1 failed, the known BLK-15 test.
 
 #### BLK-14 — Anyone can create a SuperAdmin account through the public tenant sign-up
-- **Status:** DONE (criterion 3 is met when UPG-15 removes the `functions/` copy in Phase 5; D-1)
+- **Status:** DONE (the last criterion met by UPG-15: the `functions/` copy is gone, `tests/test_dead_code_and_links.py::test_the_removed_copies_and_scripts_stay_gone`; re-verified 2026-10-19)
 - **Last verified:** 2026-09-30, commit "BLK-14: …" on `production-ready` (parent `ee74fae`)
 - **Problem (as found):** Found while working on BLK-02 [R]. `POST /onboarding/signup` (`routes_onboarding.py:17-84` at `dc8ea5a`, registered unconditionally at `app.py:377`) took an organisation name, an email and a password from anyone, created an `organizations` row and a user with role `SuperAdmin`, and logged the visitor in as `SuperAdmin`, with no master key and no invitation. `SuperAdmin` is a wildcard in `utils.role_required` (`utils.py:61-63`), so the fresh session got 200 on `/admin/dashboard`, `/admin/org_units` and `/admin/audit_log`. `MULTI_TENANT_ENABLED` existed (`config.py:218`, default `false`) but the route didn't check it. The `functions/saptha_app` copy has the same route (`functions/saptha_app/routes_onboarding.py:69`).
 - **Who benefits:** the whole university (full admin takeover by anyone).
@@ -3408,7 +3411,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ Test: with key-less credentials (mocked), `signed_url` signs through `service_account_email` and `access_token` instead of raising. [T `tests/test_signed_urls.py::test_keyless_credentials_sign_through_iam` (fails on the old code), `::test_credentials_with_a_key_still_sign_locally`]
   2. Checked [R] on Cloud Run: a private upload's signed link downloads, and the object's plain URL is refused.
-
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; criterion 2 waits for the next deploy (none in this run).
 
 #### UPG-100 — The editor's type checker can't read its config, so it reports missing modules and the optional-import fallbacks
 - **Status:** DONE
@@ -3458,7 +3461,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Effort:** L · **Depends on:** UPG-100 · **Risk:** low per file; never change behaviour to quiet the checker.
 - **Acceptance criteria:**
   1. Test: `pyrefly check` reports 0 errors in the routes, services and utils files, or each remaining kind is turned off with a reason in `pyrefly.toml`.
-
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** `pyrefly check` now reports 1,058 errors (1 suppressed), up from 1,044; the new code and tests since added the difference. Still TODO.
 
 #### UPG-103 — No way back to the previous page in the installed app
 - **Status:** DONE
@@ -3568,7 +3571,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Effort:** S · **Depends on:** owner input · **Risk:** low.
 - **Acceptance criteria:**
   1. ✅ Test: (owner, 2026-10-18) until the facts are confirmed, campus questions get "Please check with the college office." and the prompt carries no campus facts. [T `tests/test_chatbot_campus_facts.py::test_campus_questions_get_the_college_office` ×5, `::test_the_ai_prompt_carries_no_campus_facts`. All fail on the old code.]
-
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; the campus facts still wait for the owner's confirmation.
 
 #### UPG-109 — AI judge matching without any AI provider answers 500 with the raw error
 - **Status:** DONE
@@ -3608,6 +3611,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: an event without a venue appears in the scanner list without "SNPSU Campus".
   2. Test: no app code or template outside the seeds uses "SNPSU Campus" as a fallback (a scan), and an email for an event without a venue doesn't name one.
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code (widened the same day). Still TODO.
 
 #### UPG-112 — UPG-14's leftover duplicates
 - **Status:** DONE
@@ -3657,6 +3661,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
   1. Test: after one promotion and one departure, each person still waiting sees a distinct place that matches the order they'll be promoted in.
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code. Still TODO.
 
 #### UPG-115 — Two registration forms sent at the same instant register the same person twice
 - **Status:** TODO
@@ -3667,6 +3672,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: two different forms for the same email, sent at the same instant (a barrier, repeated), make exactly one registration; the other answer says the person is already registered.
   2. Test: on SQLite and PostgreSQL.
+- **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code (`routes_forms.py:647-656` reads, then writes). Still TODO.
 
 ---
 
@@ -4071,3 +4077,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-57: …" (parent `eaab561`) | UPG-57 | **UPG-57 DONE** (Part 2, tested as built): ineligible students refused with the reason, an eligible one registers; the roster stores CGPA and backlogs, only an admin changes them; round 2's export lists exactly the two moved, each notified once; only staff move or export. 8 new tests, also run on PostgreSQL. |
 | 2026-10-19 | "UPG-59: …" (parent `6980bf9`) | UPG-59 | **UPG-59 DONE** (Part 2, tested as built): the AI match page, exams, leaderboard, hackathon submission and SPOC stats never answer 500 for any role, with the data that broke each. 4 new tests. |
 | 2026-10-19 | "UPG-60: …" (parent `203e1ec`) | UPG-60 | **UPG-60 DONE** (Part 2, tested as built): 30 pages for six roles load in headless Chromium with the real CDN libraries (integrity-checked cached copies) with no page error and no missing static file. 1 new test. |
+| 2026-10-19 | "docs: …" | rule 8 | **End-of-Part-2 re-verification** of every open item: UPG-102 re-counted (1,058 Pyrefly errors); UPG-111, UPG-114, UPG-115 match the code; UPG-30, UPG-32, UPG-99, UPG-108 and BLK-01 unchanged. BLK-12 and BLK-14 closed (UPG-15 removed the `functions/` copy, tested). Ten feature-inventory and event-type rows that still said "built, untested" now point at their tests. |

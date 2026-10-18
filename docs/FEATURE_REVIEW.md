@@ -3438,6 +3438,29 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ Test: without AI keys the route answers 503 with that message and saves no plan. [T `tests/test_ai_matching_not_set_up.py::test_matching_without_an_ai_provider_says_so_and_saves_nothing`, `::test_the_matching_page_shows_the_notice_and_disables_the_button`. Both fail on the old code.]
 
+
+#### UPG-110 — Background tasks run in a stale Flask app (the suite turns order-dependent)
+- **Status:** DONE
+- **Last verified:** 2026-10-18, commit "UPG-110: …" on `production-ready` (parent `46bc891`) [T]
+- **Problem:** Found in Part 2 [R]. After the Part 2 test files were added, the full run failed two tests that pass alone: `tests/test_guest_registration.py::test_a_paid_registration_without_login_gets_the_link_in_its_ticket_email` (the emailed cancel link answered 400) and `tests/test_notices.py::test_the_day_before_ticket_goes_out_once_with_the_entry_qr` (the emailed QR differed from the expected one).
+  - **Traced:** the ticket email's signed link was made under one Flask app instance and checked under another, with different `SECRET_KEY`s. `celery_app.init_celery` gave `ContextTask` the app in a closure, and task classes are built once, the first time a task is used. The tests' `client` fixture reloads the app module (a new app and a new `init_celery` call), but tasks kept pushing the first app.
+  - **Production:** one app and one `init_celery`, so production behaved correctly; the suite just depended on test order.
+- **Built:** `init_celery` records the app in a module-level `_flask_app`, which `ContextTask` reads when a task runs, so a later binding reaches every task (`celery_app.py`).
+- **Files touched:** `celery_app.py`, `tests/test_task_app_context.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. ✅ Test: a task built while one app is bound runs in the app bound afterwards [T `tests/test_task_app_context.py::test_a_task_runs_in_the_app_bound_most_recently`; fails on the old code with `['first']`].
+  2. ✅ The full pytest passes in its normal order: 1041 passed, 2 skipped, 0 failed.
+
+#### UPG-111 — The coordinator's scanner list invents a venue for events without one
+- **Status:** TODO
+- **Last verified:** 2026-10-18 [C]
+- **Problem:** Found testing UPG-43. `routes_coordinator.scanner_selector` shows `d.get('venue', 'SNPSU Campus')`, an invented place, for an event with no venue. UPG-65 replaced the same default on the event page.
+- **What to build:** show "Venue to be announced" (as the event page does), or nothing.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: an event without a venue appears in the scanner list without "SNPSU Campus".
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -3802,3 +3825,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-55: …" (parent `22e20d7`) | UPG-55 | **UPG-55 DONE** (Part 2, tested as built): the Google button and the 2FA set-up appear only when configured or available, and both links open. 2 new tests. |
 | 2026-10-17 | "UPG-43: …" (parent `cf71222`) | UPG-43 | **UPG-43 DONE** (Part 2, tested as built): the scanner list, walk-in form, venue self check-in and day-before reminder follow the event-day statuses and skip cancelled events. 3 new tests. Found the scanner list's invented venue fallback (new item). |
 | 2026-10-17 | "UPG-52: …" (parent `74a7e81`) | UPG-52 | **UPG-52 DONE** (Part 2, tested as built): concurrent joins on PostgreSQL never overfill a team and keep both when there's room; the test fails without the row lock. 2 new tests. |
+| 2026-10-18 | "UPG-110: …" (parent `46bc891`) | UPG-110, UPG-111 | **UPG-110 added and DONE:** background tasks read the bound Flask app at run time, not from their first binding. This cured two order-dependent failures (a cancel link and a QR signed under a stale app in the tests; production has one app). **New UPG-111** (the scanner list's invented venue, found testing UPG-43). Full pytest: 1041 passed, 2 skipped, 0 failed. |

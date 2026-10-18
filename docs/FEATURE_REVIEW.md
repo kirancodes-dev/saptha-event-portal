@@ -2143,17 +2143,20 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - "To test later" extra: `::test_listed_members_and_a_joiner_get_the_confirmation_once` (listed members at registration; a joiner by code, joining twice).
 
 #### UPG-49 — The automation's WhatsApp channel calls a function that doesn't exist
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-49: …" on `production-ready` (parent `86dcdee`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-49: …" on `production-ready` (parent `dfd7cef`) [T]
 - **Problem:** Found while building UPG-31 [C]. `services_automation.dispatch_trigger` sends WhatsApp through `utils_whatsapp.send_whatsapp_message` (`services_automation.py:223`), which doesn't exist; the error is caught and recorded as `whatsapp_fallback`. The default rules for check-in and event reminders use that channel (`services_automation.py:51,75`), so those WhatsApp messages never go out.
 - **Who benefits:** participants who opt in to WhatsApp.
 - **What to build:** the channel sends through `utils_whatsapp._send`, and a failure is recorded as a failure, not a fallback.
 - **Files touched:** `services_automation.py` or `utils_whatsapp.py`, tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** Twilio is replaced by a stand-in client. For a user who opted in, one message goes to their number in WhatsApp format, through a custom rule and through the default event-reminder rule. Someone who didn't opt in gets none; without Twilio settings the channel is skipped and no client is made; a refused send is recorded as `whatsapp (failed)`, never as a fallback.
+- **Files touched:** `tests/test_whatsapp_and_escaping.py` (new; also holds UPG-50's tests).
 - **Effort:** S · **Depends on:** none · **Risk:** low; nothing goes out without Twilio settings.
 - **What was built (2026-10-10, owner's second run):** `utils_whatsapp.send_whatsapp_message(phone, body)` exists now (it sends through `_send`, Twilio) together with `whatsapp_configured()`. The automation's WhatsApp channel (`services_automation.NotificationAutomationEngine.dispatch_trigger`) is off cleanly when Twilio isn't configured (recorded as skipped "whatsapp (not configured)", nothing attempted); when it is configured, it sends to a user who opted in and records a failed send as "whatsapp (failed)", no longer as a "fallback". Checked by hand [R] with Twilio mocked: configured and opted in → one Twilio call, channel dispatched; not configured → skipped, no call. Automation, notice and notification tests pass.
 - **To test later:** criterion 1, plus the unconfigured and failed cases.
 - **Acceptance criteria:**
-  1. Test: a trigger with the WhatsApp channel, for a user who opted in, calls the Twilio client once (mocked).
+  1. ✅ Test: a trigger with the WhatsApp channel, for a user who opted in, calls the Twilio client once (mocked). [T `tests/test_whatsapp_and_escaping.py::test_an_opted_in_user_gets_one_whatsapp_message`, `::test_the_default_reminder_rule_reaches_whatsapp_too`; extras: `::test_a_user_who_didnt_opt_in_gets_none`, `::test_without_twilio_settings_the_channel_is_off`, `::test_a_refused_send_is_a_failure_not_a_fallback`]
 - **Not scheduled yet** (owner's call).
 
 #### UPG-50 — Email templates insert names and titles without escaping
@@ -4043,3 +4046,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-42: …" (parent `1644907`) | UPG-42 | **UPG-42 DONE** (Part 2, tested as built): the three pages show `SUPPORT_EMAIL`, or no address when it's unset; the old account is gone from every tracked file. 3 new tests. |
 | 2026-10-19 | "UPG-46: …" (parent `869741f`) | UPG-46 | **UPG-46 DONE** (Part 2, tested as built): the briefing and the velocity alert link only to `BASE_URL`. 2 new tests. |
 | 2026-10-19 | "UPG-47: …" (parent `aae62ea`) | UPG-47 | **UPG-47 DONE** (Part 2, tested as built): a time-less event from the form spans its date, one saved with no times reads back with none, never the save time; room clashes go by the date. 4 new tests, also run on PostgreSQL. |
+| 2026-10-19 | "UPG-49: …" (parent `dfd7cef`) | UPG-49 | **UPG-49 DONE** (Part 2, tested as built): the automation's WhatsApp channel sends once for an opted-in user, is off without Twilio, and records a refused send as a failure. 5 new tests. |

@@ -51,7 +51,7 @@ def test_no_template_has_a_hard_coded_count_or_invented_figure():
 def test_the_chatbot_takes_its_contact_from_support_email(real_app, monkeypatch, support):
     flask_app, _ = real_app
     monkeypatch.setenv('SUPPORT_EMAIL', support)
-    reply = flask_app.test_client().post('/chatbot/ask', json={'message': 'Where do I park?'}).get_json()['reply']
+    reply = flask_app.test_client().post('/chatbot/ask', json={'message': 'When is the next hackathon?'}).get_json()['reply']
     assert 'support@snpsu.edu.in' not in reply and 'help@sapthagiri.edu' not in reply and 'Zoho Zia' not in reply
     assert (support in reply) if support else ('write to' not in reply)
     with open('chatbot_routes.py', encoding='utf-8') as fh:

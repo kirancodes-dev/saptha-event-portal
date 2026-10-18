@@ -3381,13 +3381,19 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 
 
 #### UPG-108 — The chatbot's built-in campus FAQ states unconfirmed facts
-- **Status:** TODO
-- **Last verified:** 2026-10-17, commit "UPG-65: …" [C]
+- **Status:** DONE for now (the campus facts await the owner's confirmation)
+- **Last verified:** 2026-10-17, commit "UPG-108: …" on `production-ready` (parent `034e0e5`) [T]
 - **Problem:** Found building UPG-65. The prompt sent to the AI assistant (`chatbot_routes.py`, `FAQ_CONTEXT`) presents campus facts as true: where Zones A–D are, "parking at the North Gate", "the Student Food Court near the Basketball court", how certificates are downloaded. Nobody has confirmed them for Sapthagiri NPS University; the AI repeats them to students. UPG-65 replaced its invented contact address with `SUPPORT_EMAIL`.
 - **What to build:** the owner confirms each fact, or the FAQ moves to configuration (or an admin-editable page) and only confirmed answers are sent.
+- **Built (2026-10-17):**
+  - **Owner instruction 2026-10-18:** until the campus facts are confirmed, the chatbot doesn't state them; it answers "Please check with the college office." The facts still need the owner's confirmation before any of them comes back.
+  - **Prompt:** `chatbot_routes.py` no longer sends the unconfirmed campus FAQ (zones, parking, food court, help desk and contact, the ID-card rule). What's left is a short "PORTAL FAQ" about the portal itself (check-in with the ticket QR; certificates under past events), plus an instruction to answer campus questions with exactly that sentence.
+  - **Direct answer:** a question clearly about the campus (parking, canteen, hostel, toilets, Wi-Fi, directions, a block, building, zone or gate, transport, ID card; `_CAMPUS_QUESTION`) gets "Please check with the college office." before any AI is called. Event details come from the database and are still answered.
+  - `tests/test_no_made_up_figures.py`'s chatbot test (UPG-65) now asks a non-campus question, so it still reaches the support-address fallback it checks.
+- **Files touched:** `chatbot_routes.py`, `tests/test_chatbot_campus_facts.py` (new), `tests/test_no_made_up_figures.py`.
 - **Effort:** S · **Depends on:** owner input · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: the prompt contains only FAQ entries that come from configuration or are marked confirmed.
+  1. ✅ Test: (owner, 2026-10-18) until the facts are confirmed, campus questions get "Please check with the college office." and the prompt carries no campus facts. [T `tests/test_chatbot_campus_facts.py::test_campus_questions_get_the_college_office` ×5, `::test_the_ai_prompt_carries_no_campus_facts`. All fail on the old code.]
 
 
 #### UPG-109 — AI judge matching without any AI provider answers 500 with the raw error
@@ -3759,3 +3765,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-99: …" (parent `34b8cde`) | UPG-99 | **UPG-99 DONE** (Cloud Run check at the next deploy): signed links sign through IAM signBlob when the credentials have no key; DEPLOY.md documents the roles. 2 new tests. Full pytest: 1008 passed, 1 skipped, 0 failed. |
 | 2026-10-17 | `40c9888` | Rule 8 (end of Part 1), UPG-85, UPG-109 | **Re-verification of every open item at the end of Part 1** (47 open). This also covers the early pass that `db_adapter.py` (UPG-69) required. Method: the files Part 1 changed, against each item's citations, then each item's claims about the changed code (registration IDs, the lead-key aliases, the deactivation check, the preset step, the demo pages, signed links, the bulk email, AI matching, the made-up defaults, the support address). 37 items cite a changed file. Of those, 9 mention changed code; their claims hold except as noted: UPG-60 (reels hidden), UPG-59 (matching without AI now errors; **new UPG-109**), UPG-22 (alias note, holds). The other 28 cite changed files for unrelated code. **UPG-85 DROPPED** (owner: no new AI features). Full pytest at `40c9888`: 1008 passed, 1 skipped, 0 failed; ruff clean. |
 | 2026-10-17 | "UPG-109: …" (parent `848d402`) | UPG-109 | **UPG-109 DONE** (owner, before Part 2): judge matching without an AI provider says "AI matching isn't set up; assign judges manually" (503, no plan saved; the page shows the notice and disables the button). 2 new tests. |
+| 2026-10-17 | "UPG-108: …" (parent `034e0e5`) | UPG-108 | **UPG-108 DONE for now** (owner, before Part 2): the chatbot states no campus facts; campus questions get "Please check with the college office." (directly, and as the AI's instruction), and the prompt keeps only the portal FAQ. 6 new tests. Full pytest: 1016 passed, 1 skipped, 0 failed. |

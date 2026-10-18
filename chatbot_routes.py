@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import re
 from flask import Blueprint, current_app, jsonify, request
 try:
     from google import genai
@@ -15,6 +16,15 @@ from extensions import limiter
 
 logger     = logging.getLogger(__name__)
 chatbot_bp = Blueprint('chatbot', __name__, url_prefix='/chatbot')
+
+# Until the owner confirms the campus facts, the assistant doesn't state any
+# (UPG-108): questions clearly about the campus get this answer straight away.
+CHECK_WITH_OFFICE = "Please check with the college office."
+_CAMPUS_QUESTION = re.compile(
+    r"\b(parking|park my|canteen|cafeteria|food court|mess|hostel|toilets?|washrooms?|restrooms?|wi-?fi|"
+    r"help ?desk|campus map|directions?|how (do i|to) (get|reach)|which (block|building|floor)|"
+    r"where is (the )?(zone|block|building|library|office|auditorium|seminar hall|lab|gate|stadium)|"
+    r"zone [a-d]\b|north gate|main gate|bus|transport|id card)", re.I)
 
 _client = None  # initialised lazily so we always read the live config value
 
@@ -48,6 +58,9 @@ def ask():
         user_message = data.get('message', '').strip()[:500]   # cap message length
         if not user_message:
             return jsonify({'reply': "I didn't catch that — please ask again!"})
+        # Campus questions get the college office, never an unconfirmed fact (UPG-108)
+        if _CAMPUS_QUESTION.search(user_message):
+            return jsonify({'reply': CHECK_WITH_OFFICE})
 
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
@@ -121,42 +134,28 @@ def ask():
             except Exception as e:
                 logger.warning("Failed to fetch student registrations for chatbot: %s", e)
 
+        # Campus facts (zones, parking, food, help desks, ID rules) are not stated
+        # until the owner confirms them (UPG-108): the assistant refers students
+        # to the college office instead. Only how the portal itself works is here.
         FAQ_CONTEXT = """
-CAMPUS LOGISTICS & FAQ:
-1. Q: Where is Zone A / Main Auditorium?
-   A: Main Auditorium (Zone A) is located in the Administration Block on the Ground Floor.
-2. Q: Where is Zone B / Seminar Hall?
-   A: Seminar Hall (Zone B) is in the Library Block, 1st Floor.
-3. Q: Where is Zone C / CS Labs?
-   A: CS Labs (Zone C) is in the Computer Science Block, 3rd Floor.
-4. Q: Where is Zone D / Sports Stadium?
-   A: Sports Stadium (Zone D) is located in the Sports Arena, East Campus.
-5. Q: Is parking available on campus?
-   A: Yes, student and visitor parking is available at the North Gate Parking lot. Inner campus parking is prohibited.
-6. Q: Where can we get food/refreshments?
-   A: The main Student Food Court is situated near the Basketball court. Snack kiosks are also open near the CS Block.
-7. Q: Who to contact for help/emergencies?
-   A: Visit the main registration desk at the main arch entrance{SUPPORT_LINE}.
-8. Q: What is required for check-in?
-   A: Carry your college student ID card and your digital ticket QR code.
-9. Q: How to download certificates?
-   A: If you were marked 'Present' at the event, go to your dashboard, scroll to 'Completed Events', and click 'Download Certificate'.
+PORTAL FAQ:
+1. Q: What do I need for check-in?
+   A: Your digital ticket QR code, from your dashboard.
+2. Q: How do I download a certificate?
+   A: If you were marked 'Present' at the event, open your dashboard and find it under past events.
 """
-        # The contact comes from SUPPORT_EMAIL, never a made-up address (UPG-65)
-        support = (os.environ.get('SUPPORT_EMAIL') or '').strip()
-        FAQ_CONTEXT = FAQ_CONTEXT.replace('{SUPPORT_LINE}', f', or email {support}' if support else '')
 
         system_prompt = (
             "You are 'Sparky', the official AI assistant for the Sapthagiri NPS University "
             "Event Portal. Help students with event questions. Be concise (2–3 sentences), "
             "enthusiastic, and accurate. Use occasional emojis.\n\n"
             f"LIVE DATABASE CONTEXT:\n{context}\n\n"
-            f"CAMPUS LOGISTICS & FAQ:\n{FAQ_CONTEXT}\n\n"
+            f"{FAQ_CONTEXT}\n"
             f"PERSONALIZED STUDENT CONTEXT:\n{user_context}\n\n"
             "If the student asks about their own registration status, ticket details, room assignments, "
             "assigned judges, or attendance status, refer directly to the PERSONALIZED STUDENT CONTEXT.\n"
-            "If the student asks about campus directions, food, parking, help desks, or certificates, "
-            "refer to the CAMPUS LOGISTICS & FAQ.\n"
+            "If the student asks about check-in or certificates, refer to the PORTAL FAQ.\n"
+            f"If the student asks about the campus itself (directions, buildings, parking, food, hostels, help desks, contacts, rules), you have no confirmed information: reply exactly \"{CHECK_WITH_OFFICE}\"\n"
             "If an event has passed, say registration is closed. "
             "If the question is not about the listed events, logistics, or user data, say you don't have that info.\n\n"
             f"Student's question: {user_message}"

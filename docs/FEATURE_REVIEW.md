@@ -2204,18 +2204,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. Test: only the event's staff can move registrations or export a round.
 
 #### UPG-58 — The native document store creates its table at runtime, outside migrations
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-58: …" on `production-ready` (parent `8de071c`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-58: …" on `production-ready` (parent `afd6daf`) [T]
 - **Problem:** Found while building UPG-19 [C]. Collections with no SQL model live in `native_document_store`, which `_ensure_native_table` (`db_adapter.py:523`) creates with a raw `CREATE TABLE IF NOT EXISTS` on **every** read and write. The table isn't in `models_pg.py`, so UPG-16's baseline doesn't build it and `compare_metadata` doesn't see it; in production this is DDL at runtime (UPG-16 forbids it at start-up) and needs the app's database user to hold `CREATE`.
 - **Who benefits:** whoever deploys the app (a database user with no DDL rights works); every request touching those collections (one statement fewer).
 - **What to build:** a `NativeDocument` model for the table and a migration (`0003`), and `_ensure_native_table` only in development.
 - **Files touched:** `models_pg.py`, `migrations/versions/`, `db_adapter.py`, tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.**
+- **Files touched:** `tests/test_native_store_migration.py` (new).
 - **Effort:** S · **Depends on:** UPG-16 · **Risk:** a production database created before this already has the table; the migration must create it only if missing.
 - **What was built (2026-10-10, development-only run):** a `NativeDocument` model for `native_document_store` (`models_pg.py`, before `OutboxTask`) and migration `migrations/versions/0003_native_document_store.py`, which creates the table only if a pre-migration database doesn't already have it. `_ensure_native_table` (`db_adapter.py:526`) now runs at most once per process and never in production. Checked by hand [R] on PostgreSQL 16: `upgrade head` → 0 metadata differences; `downgrade base` → `upgrade head` → 0; with production settings, a write and a read on `announcements` (a native collection) issue no DDL, and the home page loads with none.
 - **To test later:** criteria 1–2 below.
 - **Acceptance criteria:**
-  1. Test: `alembic upgrade head` on an empty database creates `native_document_store`, and `compare_metadata` stays empty.
-  2. Test: with production settings, reading and writing a native collection issues no `CREATE`.
+  1. ✅ Test: `alembic upgrade head` on an empty database creates `native_document_store`, and `compare_metadata` stays empty. [T `tests/test_native_store_migration.py` on SQLite and **PostgreSQL 16.2**: after `upgrade head` the table exists and `compare_metadata` is empty]
+  2. ✅ Test: with production settings, reading and writing a native collection issues no `CREATE`. [T same tests: with production settings, a write and a read on `announcements` issue no CREATE or ALTER]
 
 #### UPG-59 — Five pages answer 500 for any role
 - **Status:** BUILT (untested)
@@ -3847,3 +3850,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-16: …" (parent `64c6eaf`) | UPG-16 | **UPG-16 DONE** (Part 2, tested as built): `alembic upgrade head` builds empty SQLite and PostgreSQL databases that match the models; downgrade/upgrade works on PostgreSQL; production start-up refuses an unmigrated database and never alters one. 5 new tests. |
 | 2026-10-17 | "UPG-21: …" (parent `79768c5`) | UPG-21 | **UPG-21 DONE** (Part 2): backup → restore on PostgreSQL gives identical row counts and revision, and refuses a non-empty target. Found and fixed: the hygiene test didn't refuse tracked database dumps (criterion 2). The storage endpoint and private-link checks (UPG-17) are tested too. 5 new tests (plus 8 hygiene cases). |
 | 2026-10-17 | "UPG-22: …" (parent `b72a9b5`) | UPG-22 | **UPG-22 DONE** (Part 2, tested as built): consent stored with version, own-data export, cancellable deletion carried out only when due (login then fails, registrations anonymised), privacy link on shared pages. 4 new tests. |
+| 2026-10-17 | "UPG-58: …" (parent `afd6daf`) | UPG-58 | **UPG-58 DONE** (Part 2, tested as built): `native_document_store` comes from its migration (SQLite and PostgreSQL), and production reads and writes issue no DDL. 2 new tests. |

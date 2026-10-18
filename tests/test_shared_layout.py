@@ -155,8 +155,10 @@ MEASURE = """() => {
   // Overflowing content is fine inside a box the user can scroll (a .table-responsive);
   // cut off by a box that hides it, or by the page edge, it's lost.
   // ...or inside a track that moves by itself (the home page's photo marquee, a CSS animation)
-  const scrollable = el => { for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+  const scrollable = el => {
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement)
       if (getComputedStyle(a).animationName !== 'none') return true;
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
       const o = getComputedStyle(a).overflowX;
       if (o === 'auto' || o === 'scroll') return a.getBoundingClientRect().right <= vw + 1;
       if (o !== 'visible') return false; }

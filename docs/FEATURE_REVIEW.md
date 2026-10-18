@@ -2003,12 +2003,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet** (owner's call).
 
 #### UPG-48 — Team members get no confirmation, reminder or notice
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-48: …" on `production-ready` (parent `457e2b0`)
+- **Status:** DONE
+- **Last verified:** 2026-10-17, commit "UPG-48: …" on `production-ready` (parent `baeb512`) [T]
 - **Problem:** Found while building UPG-31 [C]. Since UPG-08 a team's members are on the registration and can open its ticket, but every message goes to the lead only: the confirmation (`routes_forms.py:702`), the day-before ticket and the 3-day reminder (`tasks/scheduled_tasks.py:81,279`), and the change and cancellation notices (`services_venue.py:550`, `services_workflow.py:300`). Members find out only from the lead.
 - **Who benefits:** every team member.
 - **What to build:** each member with an email gets the day-before ticket (with the same QR) and the change and cancellation notices, once each, keyed per person; the confirmation tells members they were added.
 - **Files touched:** `tasks/scheduled_tasks.py`, `services_venue.py`, `services_workflow.py`, `routes_forms.py`, `routes_teams.py`, tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** The team of three includes a member whose email is in capitals.
+- **Files touched:** `tests/test_team_member_notices.py` (new).
 - **Effort:** S · **Depends on:** UPG-08, UPG-31 · **Risk:** more email volume (Brevo's free tier allows 300 a day).
 - **What was built (2026-10-10, owner's second run):**
   - **One list of recipients per registration:** `services_recipients.registration_people` gives the lead and every team member with an email, each once (case-insensitive), with name and phone.
@@ -2019,9 +2022,10 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - Not changed: people who join a team after its day-before ticket went out don't get a late ticket (they can open it from the team page).
 - **To test later:** criteria 1–2, plus the member confirmation at registration and on joining.
 - **Acceptance criteria:**
-  1. Test: for a team of three, the day-before reminder through the cron endpoint emails each member once.
-  2. Test: a venue change and a cancellation reach each member once.
+  1. ✅ Test: for a team of three, the day-before reminder through the cron endpoint emails each member once. [T `tests/test_team_member_notices.py::test_the_day_before_ticket_reaches_each_member_once` (cron run twice)]
+  2. ✅ Test: a venue change and a cancellation reach each member once. [T `::test_a_venue_change_and_a_cancellation_reach_each_member_once` (each sent twice)]
 - **Not scheduled yet** (owner's call).
+  - "To test later" extra: `::test_listed_members_and_a_joiner_get_the_confirmation_once` (listed members at registration; a joiner by code, joining twice).
 
 #### UPG-49 — The automation's WhatsApp channel calls a function that doesn't exist
 - **Status:** BUILT (untested)
@@ -3826,3 +3830,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-43: …" (parent `cf71222`) | UPG-43 | **UPG-43 DONE** (Part 2, tested as built): the scanner list, walk-in form, venue self check-in and day-before reminder follow the event-day statuses and skip cancelled events. 3 new tests. Found the scanner list's invented venue fallback (new item). |
 | 2026-10-17 | "UPG-52: …" (parent `74a7e81`) | UPG-52 | **UPG-52 DONE** (Part 2, tested as built): concurrent joins on PostgreSQL never overfill a team and keep both when there's room; the test fails without the row lock. 2 new tests. |
 | 2026-10-18 | "UPG-110: …" (parent `46bc891`) | UPG-110, UPG-111 | **UPG-110 added and DONE:** background tasks read the bound Flask app at run time, not from their first binding. This cured two order-dependent failures (a cancel link and a QR signed under a stale app in the tests; production has one app). **New UPG-111** (the scanner list's invented venue, found testing UPG-43). Full pytest: 1041 passed, 2 skipped, 0 failed. |
+| 2026-10-17 | "UPG-48: …" (parent `baeb512`) | UPG-48 | **UPG-48 DONE** (Part 2, tested as built): every team member gets the confirmation, day-before ticket, change and cancellation notices once (any email case). 3 new tests. |

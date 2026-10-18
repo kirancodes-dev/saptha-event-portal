@@ -2222,16 +2222,19 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. ✅ Test: two joins to a team with two free places, run concurrently, keep both members. [T `::test_two_joins_with_two_free_places_keep_both` (PostgreSQL: concurrent, 5 rounds; SQLite: one after the other)]
 
 #### UPG-53 — The home page shows a fake hackathon when there are no events
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-53: …" on `production-ready` (parent `486bc08`)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-53: …" on `production-ready` (parent `701c14b`) [T]
 - **Evidence:** `app.py:698`, `templates/index.html:1186-1196`
 - **Problem:** [C] When no event is listed, the home page builds a demo event (`app.py:704-706`, id `demo-hackathon-2026`, "SapthaHack 2026 — National AI Hackathon") and shows it as if it were real. Its links go nowhere real.
 - **Who benefits:** visitors (no fake event); the university (nothing misleading on launch day).
 - **What to build:** with no events, the home page shows an empty state ("No upcoming events yet") instead.
 - **Files touched:** `app.py`, `templates/public/home.html` (or the home template in use), tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** The app starts in a subprocess on a fresh database with no events (the test checks the count is 0). `/` answers 200 with "No Events Currently Listed" and neither `demo-hackathon-2026` nor "SapthaHack 2026".
+- **Files touched:** `tests/test_home_empty_and_app_config.py` (new; also holds UPG-54's tests).
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
-  1. Test: with no events, `/` returns 200, shows the empty state and doesn't contain `demo-hackathon-2026` or "SapthaHack 2026".
+  1. ✅ Test: with no events, `/` returns 200, shows the empty state and doesn't contain `demo-hackathon-2026` or "SapthaHack 2026". [T `tests/test_home_empty_and_app_config.py::test_with_no_events_the_home_page_shows_its_empty_state`]
 - **To test later:**
   - Verify `/` returns 200, renders the empty state ("No Events Currently Listed") and contains neither `demo-hackathon-2026` nor "SapthaHack 2026" when no events exist in the database.
 
@@ -4051,3 +4054,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-47: …" (parent `aae62ea`) | UPG-47 | **UPG-47 DONE** (Part 2, tested as built): a time-less event from the form spans its date, one saved with no times reads back with none, never the save time; room clashes go by the date. 4 new tests, also run on PostgreSQL. |
 | 2026-10-19 | "UPG-49: …" (parent `dfd7cef`) | UPG-49 | **UPG-49 DONE** (Part 2, tested as built): the automation's WhatsApp channel sends once for an opted-in user, is off without Twilio, and records a refused send as a failure. 5 new tests. |
 | 2026-10-19 | "UPG-50: …" (parent `cb9fa04`) | UPG-50 | **UPG-50 DONE** (Part 2, tested as built; certificate email deferred): names and titles with markup show as text in the confirmation, the briefing and the 3-day reminder. 2 new tests. |
+| 2026-10-19 | "UPG-53: …" (parent `701c14b`) | UPG-53 | **UPG-53 DONE** (Part 2, tested as built): with no events, the home page shows its empty state, no made-up hackathon. 1 new test. |

@@ -471,17 +471,20 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 ### B. New features the university needs
 
 #### UPG-10 — Student roster import and university Google sign-in
-- **Status:** BUILT (untested)
+- **Status:** DONE
 - **Evidence:** `routes_admin.py:461-572`, `templates/admin/users.html:23-45`, `auth_oauth.py:51-57,205-217`, `config.py:296-297`
-- **Last verified:** 2026-10-10, commit `UPG-10`
+- **Last verified:** 2026-10-17, commit "UPG-10: …" on `production-ready` (parent `0f7ce11`) [T]
 - **To test later:**
-  1. Test: uploading 3 rows creates 3 users with USN and department read back.
-  2. Test: re-uploading updates in place, with no duplicates.
-  3. Test: a Google callback with a non-university domain is rejected.
+  1. ✅ Test: uploading 3 rows creates 3 users with USN and department read back. [T `tests/test_roster_and_google_domain.py::test_a_roster_creates_students_and_a_second_upload_updates_them_in_place`]
+  2. ✅ Test: re-uploading updates in place, with no duplicates. [T same test: the second upload changes one student's USN, department and name, and the three emails are still three accounts]
+  3. ✅ Test: a Google callback with a non-university domain is rejected. [T `::test_google_sign_in_is_limited_to_the_university_domain` ×2: through `/auth/google/callback` with Google mocked, a gmail account is refused with no account or session, and a `snpsu.edu.in` one signs in]
 - **Problem:** Accounts come only from self sign-up (`routes_auth.py:276-323`) or registration, which creates an unverified account since BLK-02 (`routes_forms.py:570-572`, `services_accounts.py:58`). There's no bulk import (not found). USN is now stored (fixed by BLK-09 [R round-trip at `1f4cdc8`]), but department and year are often blank, so department filters and reports are unreliable. OAuth routes exist, configured via `config.py:227-230`, but at `986d108` no template links to `/auth/google` or `/auth/microsoft`, and `auth_oauth.py` has no university-domain restriction [C].
 - **Who benefits:** every student (one-click login) and every report that needs department/year.
 - **What to build:** a SuperAdmin CSV upload (email, name, USN, department, year, section) that creates or updates users. Show a "Sign in with Google" button restricted to the university domain.
 - **Files touched:** `routes_admin.py`, `templates/admin/*`, `auth_oauth.py`, `templates/login.html`, `config.py`, tests.
+- **Built (2026-10-17):**
+  - **Tested as built (Part 2); no change to the code.** Criterion 4 (the Google button) belongs to UPG-55.
+- **Files touched:** `tests/test_roster_and_google_domain.py` (new).
 - **Effort:** M · **Depends on:** BLK-06, BLK-02 · **Risk:** account merging for existing emails.
 - **Acceptance criteria:**
   1. Test: uploading 3 rows creates 3 users with USN and department read back.
@@ -3779,3 +3782,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-17 | "UPG-51: …" (parent `72bac11`) | UPG-51 | **UPG-51 DONE** (Part 2, tested as built): 5 tests on the real database with Razorpay mocked (confirmation, once per payment, failure and retry, two requests at once, no-order registration, 403 and non-cancelled refusal). No bug found. |
 | 2026-10-17 | "UPG-44: …" (parent `ad988a5`) | UPG-44 | **UPG-44 DONE** (Part 2, tested as built): empty, missing, `unpaid` and `Paid` payment statuses read back as written and the `unpaid` filter finds only the explicit one, on SQLite and PostgreSQL 16.2 (local `pgserver`). 1 new test. |
 | 2026-10-17 | "UPG-56: …" (parent `5525921`) | UPG-56 | **UPG-56 DONE** (Part 2, tested as built): the checkout coupon field sends the code, the order is priced on the server, and the preview shows the discount or the server's error with the full price. 3 new tests. |
+| 2026-10-17 | "UPG-10: …" (parent `0f7ce11`) | UPG-10 | **UPG-10 DONE** (Part 2, tested as built): roster import creates and then updates students in place; Google sign-in outside the university domain is refused. 3 new tests. |

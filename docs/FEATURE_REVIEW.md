@@ -2160,18 +2160,21 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet** (owner's call).
 
 #### UPG-50 — Email templates insert names and titles without escaping
-- **Status:** BUILT (untested)
-- **Last verified:** 2026-10-10, commit "UPG-50: …" on `production-ready` (parent `0db8a4f`)
+- **Status:** DONE (the certificate email deferred with certificates)
+- **Last verified:** 2026-10-19, commit "UPG-50: …" on `production-ready` (parent `cb9fa04`) [T]
 - **Problem:** Found while building UPG-31 [C]. The HTML emails put the recipient's name, the event title and messages straight into the markup (for example `utils_email.py:499,501,563,565,744,764,793`). A name typed at registration, or an event title, containing HTML is rendered as HTML in the email. Today the typed text mostly reaches its own author or comes from staff (titles, broadcast messages), so the risk is low; the notices from UPG-31 already escape.
 - **Who benefits:** everyone who gets email from the app.
 - **What to build:** escape every value inserted into an email template (one helper), keeping the templates' own markup.
 - **Files touched:** `utils_email.py`, `tasks/scheduled_tasks.py` (the briefing and 3-day emails), tests.
+- **Built (2026-10-19):**
+  - **Tested in Part 2, as built; no change to the code.** The real confirmation is built and captured at `_send` (`real_app` normally stubs it out). A registrant named `<b>Ann</b>` for "Fest & <i>Fun</i>" sees both as text. The coordinators' briefing and the 3-day reminder (run through their tasks) show the title as text, and an attendee named `<script>x</script>` doesn't reach the reminder's HTML as markup. Making `_e` a no-op fails both tests. The certificate email stays deferred.
+- **Files touched:** `tests/test_whatsapp_and_escaping.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **What was built (2026-10-10, owner's second run):** one helper `_e()` (`utils_email.py`, and the same in `tasks/scheduled_tasks.py`) escapes every value put into an email's HTML: names, emails, event titles, dates, venues, rooms, roles, links, scores and messages, in the confirmation, ticket, credentials, password reset and set-password, receipt, refund, appointment, result, broadcast, room-assignment and advancement emails and in each email's `<title>`; and in the coordinators' day-before briefing, the 3-day reminder and the SPOC's velocity alert. Subjects stay plain text (they aren't HTML). The broadcast message is now text, like the notices (UPG-31). Checked by hand [R]: a registrant named `<b>Ann</b>` for "Fest & <i>Fun</i>" gets the text, not markup. Email tests (notices, sender, account emails, paid events, cron, links, tasks) pass.
   - **Certificate part deferred (owner, 2026-10-10):** the certificate email (`utils_email._send_cert_email`) is unchanged.
 - **To test later:** criterion 1, plus the briefing and 3-day emails with a title containing markup.
 - **Acceptance criteria:**
-  1. Test: a registrant named `<b>Ann</b>` gets a confirmation that shows the text `<b>Ann</b>`, not bold.
+  1. ✅ Test: a registrant named `<b>Ann</b>` gets a confirmation that shows the text `<b>Ann</b>`, not bold. [T `tests/test_whatsapp_and_escaping.py::test_a_name_with_markup_shows_as_text_in_the_confirmation`, `::test_the_briefing_and_the_3_day_reminder_show_a_title_as_text`]
 - **Not scheduled yet** (owner's call).
 
 ### G. Added 2026-10-10 (owner's run prompt)
@@ -4047,3 +4050,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-46: …" (parent `869741f`) | UPG-46 | **UPG-46 DONE** (Part 2, tested as built): the briefing and the velocity alert link only to `BASE_URL`. 2 new tests. |
 | 2026-10-19 | "UPG-47: …" (parent `aae62ea`) | UPG-47 | **UPG-47 DONE** (Part 2, tested as built): a time-less event from the form spans its date, one saved with no times reads back with none, never the save time; room clashes go by the date. 4 new tests, also run on PostgreSQL. |
 | 2026-10-19 | "UPG-49: …" (parent `dfd7cef`) | UPG-49 | **UPG-49 DONE** (Part 2, tested as built): the automation's WhatsApp channel sends once for an opted-in user, is off without Twilio, and records a refused send as a failure. 5 new tests. |
+| 2026-10-19 | "UPG-50: …" (parent `cb9fa04`) | UPG-50 | **UPG-50 DONE** (Part 2, tested as built; certificate email deferred): names and titles with markup show as text in the confirmation, the briefing and the 3-day reminder. 2 new tests. |

@@ -120,6 +120,12 @@ def _token_from_scan(scanned: str) -> str:
     return scanned
 
 
+def _ist_today() -> str:
+    """Today's date where the university is (attendance is counted per day there)."""
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=5, minutes=30))).date().isoformat()
+
+
 def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
              source: str = 'scan') -> Tuple[Dict[str, Any], int]:
     """Mark one registration present. Returns (JSON body, HTTP status).
@@ -169,8 +175,18 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
     if str(reg.get('status') or '').strip().lower() in ('cancelled', 'refunded'):
         return answer('cancelled', f"This registration was {str(reg.get('status')).lower()}; no entry.", 409, **details)
 
+    # Each day attended is recorded, so a multi-day event can certify people who
+    # came on enough of its days (UPG-122). A second scan on the same day changes nothing.
+    today = _ist_today()
+    days = list(reg.get('attendance_days') or [])
     if str(reg.get('attendance') or '').strip().lower() == 'present':
         first = reg.get('checkin_time') or ''
+        if days and today not in days:
+            db.collection('registrations').document(reg_id).update({'attendance_days': days + [today]})
+            log_action(db, "CHECKIN", f"Reg {reg_id} checked in for another day, {today} ({source})")
+            return answer('success', f'Entry granted (day {len(days) + 1}).', 200, checkin_time=first, **details)
+        if not days:   # checked in before days were recorded: today counts as that day
+            db.collection('registrations').document(reg_id).update({'attendance_days': [today]})
         message = f"Already checked in at {first[:5]}." if first else "Already checked in."
         return answer('already_in', message, 200, checkin_time=first, **details)
 
@@ -181,9 +197,10 @@ def check_in(reg_id: str, actor, expected_event_id: Optional[str] = None,
     # Activity points and hours aren't written here: the ledger credits a
     # registration once from its attendance (services_ledger, UPG-11).
     db.collection('registrations').document(reg_id).update({
-        'attendance':    'Present',
-        'checkin_time':  checkin_time,
-        'checked_in_by': user_email,
+        'attendance':      'Present',
+        'checkin_time':    checkin_time,
+        'checked_in_by':   user_email,
+        'attendance_days': sorted(set(days + [today])),
     })
     if reg.get('ticket_id'):
         try:

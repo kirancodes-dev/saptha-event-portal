@@ -192,3 +192,65 @@ def signed_url(key: str, expires_in: int = SIGNED_URL_SECONDS) -> str:
         raise StorageError("Local file storage is for development only.")
     base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
     return f"{base_url.rstrip('/')}/static/uploads/{key.replace('/', '_')}"
+
+
+# ── Private files the app serves itself: certificates and signature images ───
+# Never at a public URL (UPG-122, UPG-123): S3 or Cloud Storage without a public
+# ACL, or locally a folder outside static/ (development only). The app reads
+# them back and serves them only to whoever may see them.
+
+def _private_dir():
+    return os.environ.get('PRIVATE_STORAGE_DIR') or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'instance', 'private')
+
+
+def _private_local_path(key: str) -> str:
+    safe = key.lstrip('/').replace('..', '_')
+    path = os.path.normpath(os.path.join(_private_dir(), safe))
+    if not path.startswith(os.path.normpath(_private_dir()) + os.sep):
+        raise StorageError("Bad storage key.")
+    return path
+
+
+def put_private(data: bytes, key: str, content_type: str) -> str:
+    """Store a private file under key; returns the key."""
+    key = key.lstrip('/')
+    storage_type = _storage_type()
+    if storage_type == 's3':
+        try:
+            _s3_client().put_object(Bucket=_s3_bucket(), Key=key, Body=data, ContentType=content_type)
+            return key
+        except Exception as exc:
+            _cloud_failed('AWS S3', exc)
+    elif storage_type == 'gcs':
+        try:
+            from google.cloud import storage
+            storage.Client().bucket(os.environ['GCS_BUCKET_NAME']).blob(key).upload_from_string(
+                data, content_type=content_type)
+            return key
+        except Exception as exc:
+            _cloud_failed('Google Cloud Storage', exc)
+    if _production():
+        raise StorageError("Local file storage is for development only; set STORAGE_TYPE=s3 or gcs.")
+    path = _private_local_path(key)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'wb') as fh:
+        fh.write(data)
+    return key
+
+
+def get_private(key: str) -> bytes:
+    """A private file's bytes; StorageError when it can't be read."""
+    storage_type = _storage_type()
+    try:
+        if storage_type == 's3':
+            return _s3_client().get_object(Bucket=_s3_bucket(), Key=key)['Body'].read()
+        if storage_type == 'gcs':
+            from google.cloud import storage
+            return storage.Client().bucket(os.environ['GCS_BUCKET_NAME']).blob(key).download_as_bytes()
+        with open(_private_local_path(key), 'rb') as fh:
+            return fh.read()
+    except StorageError:
+        raise
+    except Exception as exc:
+        raise StorageError(f"Couldn't read {key}: {exc}") from exc

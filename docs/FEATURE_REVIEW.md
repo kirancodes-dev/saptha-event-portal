@@ -3786,8 +3786,8 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 The items below are built in this order, one commit each; each deferred part is built with the section it belongs to.
 
 #### UPG-122 — Certificate types, who gets them, and one record per person, event and type
-- **Status:** TODO
-- **Last verified:** 2026-10-19 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-122: …" on `production-ready` (parent `c8ea1db`) [T]
 - **What to build:**
   - **Types:** participation; winner, runner-up and other positions (from published results); merit or special mention; volunteer; coordinator or organiser; judge; speaker or resource person; FDP or workshop completion with hours; NSS / NCC / extension hours.
   - **Eligibility:**
@@ -3797,13 +3797,21 @@ The items below are built in this order, one commit each; each deferred part is 
     - faculty and external participants carry designation and institution (UPG-12);
     - the event's activity points and hours are on the record when the event has them (UPG-11).
   - **One store:** a `certificates` table (migration 0008) replaces `verified_certificates` and API v1's `certificates/<id>` documents. A unique index keeps at most one current certificate per person, event and type, so issuing again never makes a duplicate.
+- **Built (2026-10-19):**
+  - **One store:** a `certificates` table (`models_pg.py:685-721` `Certificate`; migration `0008_certificates.py`): number, version, current flag, status (valid / revoked / superseded), event, person key, recipient name and email, registration, type, position, the wording as issued (`dataJson`), the private PDF key and its SHA-256, who issued it and when, and the revocation fields. A unique partial index (`uq_certificates_current`: event, person, type WHERE current) keeps at most one current certificate per person, event and type; `(number, version)` is unique.
+  - **Who gets what** (`services_certificates.py`): `TYPES` (`:31`) covers participation, completion (workshop, FDP, orientation), extension hours (NSS/NCC, social drives), position, merit, volunteer, coordinator, organiser, judge and speaker. `recipients()` (`:177`) lists every certificate the event owes: participants marked Present (lead and each team member by their own attendance), positions from published results (`services_leaderboard` podium), staff by role, the organiser, and listed speakers or resource persons; deduplicated by person and type.
+  - **Attendance per day:** check-in records each IST day attended (`routes_ticket.py:123`, `:180-203`: a second day's scan on a Present ticket is "Entry granted (day N)"); a multi-day event needs the organiser's minimum share of days (`min_attendance`, default 80%; `attended_enough` `:104`).
+  - **Designation, institution, hours and points** are on each record's wording (UPG-12, UPG-11).
+  - **Issuing never duplicates:** `claim()` (`:250`) inserts the record and treats the index's refusal as "already issued"; `issue_event()` (`:404`) renders only the PDFs it claimed, stores them privately with their SHA-256 (`store_pdf` `:363`; `utils_storage.put_private`/`get_private`, never under `static/`), and takes over a record left without a PDF for 10 minutes by a conditional update (`_take_over` `:376`), so two runs at once draw each PDF once.
+  - The PDF itself is still the old generator here; UPG-123 replaces it.
+- **Files touched:** `models_pg.py`, `migrations/versions/0008_certificates.py` (new), `services_certificates.py` (new), `utils_storage.py`, `routes_ticket.py`, `.env.example`, `tests/test_certificate_types.py` (new)
 - **Effort:** L · **Depends on:** UPG-06, UPG-11, UPG-12 · **Risk:** medium (the store moves).
 - **Acceptance criteria:**
-  1. Test: an Absent participant gets no participation certificate; a multi-day event with an 80% minimum certifies someone who attended 4 of 5 days and not 3 of 5.
-  2. Test: a team of 3 present members gets 3 certificates, each in the member's own name.
-  3. Test: positions from published results give winner/runner-up/position certificates; staff on the event get volunteer, coordinator and judge certificates; listed speakers get speaker certificates; an FDP gives completion certificates with hours; an NSS event gives extension-hours certificates.
-  4. Test: issuing twice, or two runs at once, leaves exactly one certificate per person, event and type (the database refuses a second); on SQLite and PostgreSQL.
-  5. Test: a faculty participant's certificate record carries designation and institution; an event's hours and points are on its certificates.
+  1. ✅ Test: an Absent participant gets no participation certificate; a multi-day event with an 80% minimum certifies someone who attended 4 of 5 days and not 3 of 5. [T `tests/test_certificate_types.py`::test_absent_people_and_too_few_days_get_no_participation_certificate, ::test_check_in_records_each_day_attended]
+  2. ✅ Test: a team of 3 present members gets 3 certificates, each in the member's own name. [T `tests/test_certificate_types.py`::test_every_team_member_gets_their_own_certificate]
+  3. ✅ Test: positions from published results give winner/runner-up/position certificates; staff on the event get volunteer, coordinator and judge certificates; listed speakers get speaker certificates; an FDP gives completion certificates with hours; an NSS event gives extension-hours certificates. [T `tests/test_certificate_types.py`::test_positions_staff_organiser_and_speakers, ::test_unpublished_results_give_no_position_certificates, ::test_fdp_gives_completion_with_hours_and_nss_gives_extension_hours]
+  4. ✅ Test: issuing twice, or two runs at once, leaves exactly one certificate per person, event and type (the database refuses a second); on SQLite and PostgreSQL. [T `tests/test_certificate_types.py`::test_issuing_twice_never_duplicates, ::test_two_runs_at_once_leave_one_certificate_each, ::test_the_database_refuses_a_second_current_certificate, ::test_a_record_left_without_a_pdf_is_finished_by_a_later_run; SQLite and PostgreSQL]
+  5. ✅ Test: a faculty participant's certificate record carries designation and institution; an event's hours and points are on its certificates. [T `tests/test_certificate_types.py`::test_faculty_designation_and_event_hours_are_on_the_record]
 
 #### UPG-123 — Certificate templates, branding and each event's signatories
 - **Status:** TODO
@@ -4352,3 +4360,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-120: …" | UPG-120 | **UPG-120 DONE** (found by the Part 3 browser pass): volunteers couldn't log in (no Volunteer option on the form) or open their scanner; now they can, for the events they're staff on only. 4 new tests. |
 | 2026-10-19 | "UPG-121: …" | UPG-121 | **UPG-121 DONE** (found by the Part 3 browser pass): the audit log's table scrolls inside its card on a phone instead of being cut off; the 375px check covers the audit log and payments pages. |
 | 2026-10-19 | "docs: …" | UPG-122 to UPG-137 | **Certificates in scope (owner, 2026-10-19).** Step 0 stock-take of the certificate code and every deferred certificate part; 8 new items, one per section of the owner's brief (UPG-122 types and eligibility, UPG-123 templates and signatories, UPG-124 issuing, UPG-125 delivery, UPG-126 verification, UPG-127 corrections and revocation, UPG-128 lists and reports, UPG-129 permissions), and 8 for the deferred parts (UPG-130 to UPG-137, from UPG-11, 12, 28, 50, 65, 69, 111, 112). |
+| 2026-10-19 | "UPG-122: …" (parent `c8ea1db`) | UPG-122 | Certificate types and eligibility, on one `certificates` table (migration 0008) with a unique index on the current certificate per person, event and type; check-in records each day attended; private file storage (`put_private`). 12 new tests, passing on SQLite and PostgreSQL. The old certificate code and stores stay in use until UPG-124/UPG-126/UPG-137 switch them over. |

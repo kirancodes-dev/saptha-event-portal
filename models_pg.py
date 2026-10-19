@@ -682,6 +682,45 @@ class NativeDocument(Base):
     updated_at      = Column(DateTime, nullable=True, default=_utcnow)
 
 
+CURRENT_CERTIFICATE_INDEX = "uq_certificates_current"
+
+
+class Certificate(Base):
+    """One issued certificate (UPG-122): who, which event, which type, and the
+    stored PDF. `number` is random and public (it's on the certificate and in
+    its QR code); a correction keeps the number with a new `version`, and only
+    one version is current. At most one current certificate per person, event
+    and type: the partial unique index refuses a second."""
+    __tablename__ = "certificates"
+    __table_args__ = (
+        Index(CURRENT_CERTIFICATE_INDEX, "eventId", "personKey", "certType", unique=True,
+              postgresql_where=text("is_current"), sqlite_where=text("is_current")),
+        Index("uq_certificates_number_version", "number", "version", unique=True),
+    )
+
+    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    number         = Column(String(32), nullable=False, index=True)
+    version        = Column(Integer, nullable=False, default=1)
+    is_current     = Column(Boolean, nullable=False, default=True)
+    status         = Column(String(20), nullable=False, default="valid")   # valid | revoked | superseded
+    event_id       = Column("eventId", String(128), nullable=False, index=True)
+    person_key     = Column("personKey", String(320), nullable=False, index=True)
+    recipient_email = Column("recipientEmail", String(255), nullable=True, index=True)
+    recipient_name = Column("recipientName", String(300), nullable=False)
+    reg_id         = Column("regId", String(128), nullable=True)
+    cert_type      = Column("certType", String(30), nullable=False)
+    position       = Column(Integer, nullable=True)
+    data_json      = Column("dataJson", Text, nullable=False, default="{}")     # wording and signatories, as issued
+    pdf_key        = Column("pdfKey", String(500), nullable=True)
+    pdf_sha256     = Column("pdfSha256", String(64), nullable=True)
+    issued_at      = Column("issuedAt", DateTime(timezone=True), nullable=False, default=_utcnow)
+    issued_by      = Column("issuedBy", String(255), nullable=True)
+    emailed_at     = Column("emailedAt", DateTime(timezone=True), nullable=True)
+    revoked_at     = Column("revokedAt", DateTime(timezone=True), nullable=True)
+    revoked_by     = Column("revokedBy", String(255), nullable=True)
+    revoked_reason = Column("revokedReason", Text, nullable=True)
+
+
 class OutboxTask(Base):
     """A background task that failed or timed out while running inline (no
     broker), kept for the cron endpoint's `outbox` job to retry (UPG-18).

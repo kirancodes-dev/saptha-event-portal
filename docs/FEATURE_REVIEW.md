@@ -4081,13 +4081,16 @@ The items below are built in this order, one commit each; each deferred part is 
   1. ✅ Test: `log_action` called with no request (as a background task does) writes its row, with user and role "system"; inside a request it still records the signed-in user. [T `tests/test_audit_outside_request.py::test_an_audit_row_with_no_request_is_written_as_system` (a worker thread; fails on the old code), `::test_inside_a_request_the_row_names_the_signed_in_user`]
 
 #### UPG-141 — The participant's certificate page prints "at ." for an event without a venue
-- **Status:** TODO
-- **Last verified:** 2026-10-19, at `47fd4f0` [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-141: …" on `production-ready` (parent `020cb88`) [T]
 - **Problem:** Found building UPG-132. `templates/participant/certificate.html` says "held on <date> at {{ event.venue }}." With no venue the sentence ends "at ." UPG-111 gave every page `venue_label` ("Venue to be announced" or "Online"); this page wasn't on its list because it prints the raw field with no fallback.
 - **What to build:** use `venue_label(event)` there.
+- **Built (2026-10-19):**
+  - `templates/participant/certificate.html:181` prints `venue_label(event)`: the venue or room, "Online", or "Venue to be announced".
+- **Files touched:** `templates/participant/certificate.html`, `tests/test_certificate_wording.py`
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
-  1. Test: the participant's certificate page for an event with no venue says "Venue to be announced" (or "Online"), never "at .".
+  1. ✅ Test: the participant's certificate page for an event with no venue says "Venue to be announced" (or "Online"), never "at .". [T `tests/test_certificate_wording.py::test_upg141_the_participant_certificate_page_never_says_at_nothing`: fails on the old page]
 
 ---
 
@@ -4527,3 +4530,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "docs: ..." (parent `47fd4f0`) | UPG-140, UPG-141 | **Two new items.** UPG-140 (found building UPG-127): `log_action` drops every audit row written outside a request. UPG-141 (found building UPG-132): the participant's certificate page prints "at ." for an event without a venue. |
 | 2026-10-19 | "UPG-140: …" (parent `2368312`) | UPG-140 | Audit rows written outside a request (background tasks, scheduled jobs, certificate runs) are kept, as "system"; before, every one was dropped with a warning. |
 | 2026-10-19 | "UPG-127: …" (parent `979a228`) | UPG-127 | Corrections and revocation: a student asks for a name correction, the organiser approves (version 2, same number, emailed; version 1's file then checks as replaced) or rejects (nothing changes); revoking needs a reason and shows on verification with the date; every issue, correction and revocation is audit-logged. 2 new tests, passing on SQLite and PostgreSQL. |
+| 2026-10-19 | "UPG-141: …" (parent `020cb88`) | UPG-141 | The participant's certificate page says "at Venue to be announced" or "at Online" for an event without a venue, not "at .". |

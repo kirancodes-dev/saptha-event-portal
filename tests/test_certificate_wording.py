@@ -2,7 +2,8 @@
 tests/test_certificate_wording.py — what an issued certificate's PDF says, on
 the real database layer: the event's hours (UPG-130), a faculty member's
 designation and institution on an FDP certificate (UPG-131), and no invented
-venue on a certificate or its preview (UPG-136).
+venue on a certificate, its preview (UPG-136) or the participant's certificate
+page (UPG-141).
 """
 import pytest
 
@@ -64,3 +65,16 @@ def test_upg136_no_certificate_page_or_pdf_invents_a_venue(issue):
         assert 'Main Campus' not in page and 'Venue to be announced' in page, path
     db.collection('events').document(event_id).update({'event_mode': 'online'})
     assert 'Online' in client.get(f'/verify/{old_hash}/preview').get_data(as_text=True)
+
+
+def test_upg141_the_participant_certificate_page_never_says_at_nothing(issue):
+    db = issue['db']
+    from tests.test_integration_flow import _login, _user
+    event_id, cert, _ = issue['run']({'lead_name': 'Nila Noplace', 'lead_email': f"{_unique('nila')}@test.edu"},
+                                     venue='', room_name='', event_mode='offline')
+    _user(db, cert['email'], 'Student')
+    student = _login(issue['app'], cert['email'], 'Student')
+    page = student.get(f"/participant/certificate/{cert['reg_id']}").get_data(as_text=True)
+    assert 'at Venue to be announced.' in page and 'at .' not in page
+    db.collection('events').document(event_id).update({'event_mode': 'online'})
+    assert 'at Online.' in student.get(f"/participant/certificate/{cert['reg_id']}").get_data(as_text=True)

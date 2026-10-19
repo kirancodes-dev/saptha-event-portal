@@ -90,6 +90,10 @@ def roles(real_app):
                                                     'email': people['student'], 'phone': '9876543210',
                                                     'usn': '1SN20CS321'})
     [reg] = db.collection('registrations').where('event_id', '==', event_id).stream()
+    db.collection('audit_log').document(_unique('LOG')).set({    # so the audit log has rows to lay out (UPG-121)
+        'action': 'LAYOUT_CHECK', 'user': people['admin'], 'role': 'SuperAdmin',
+        'details': 'A long enough entry to fill the details column of the audit log table on a phone',
+        'timestamp': datetime.datetime.now().isoformat()})
     admin = flask_app.test_client()
     resp = admin.post('/login', data={'role': 'SuperAdmin', 'email': people['admin'], 'password': PASSWORD,
                                       'secret_key': flask_app.config.get('MASTER_SECRET_KEY', '')})
@@ -110,7 +114,8 @@ def _key_pages(d):
         'spoc': ['/spoc/dashboard', '/spoc/create_event', f'/spoc/event/{e}/review'],
         'coord': ['/coordinator/dashboard', f'/coordinator/registrations/{e}'],
         'judge': ['/judge/dashboard'],
-        'admin': ['/admin/dashboard', '/admin/users', '/admin/events', '/admin/registrations'],
+        'admin': ['/admin/dashboard', '/admin/users', '/admin/events', '/admin/registrations', '/admin/audit_log',
+                  '/admin/payments'],
     }
 
 

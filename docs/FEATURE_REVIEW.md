@@ -3754,6 +3754,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: a volunteer logs in and lands on the scanner list. [T `tests/test_volunteer_login.py::test_a_volunteer_logs_in_and_lands_on_the_scanner`, `::test_the_login_form_offers_every_role_an_account_can_have` (both fail on the old form)]
   2. ✅ Test: they see and open only the events they're staff on, and can't log in as another role. [T `::test_a_volunteer_scans_only_the_events_they_are_staff_on`, `::test_a_volunteer_cant_log_in_as_another_role`]
 
+#### UPG-121 — The admin audit log's table is cut off on a phone
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-121: …" on `production-ready` [T]
+- **Problem:** Found by Part 3's browser pass of every role (production build, 375px). The audit log's table sits in a card with `overflow: hidden` (`templates/admin/audit_log.html`), so on a phone its right-hand columns were clipped and couldn't be scrolled to. UPG-23's key pages didn't include the audit log.
+- **Built (2026-10-19):** the table is wrapped in Bootstrap's `.table-responsive`, so it scrolls sideways inside its card. UPG-23's 375px check now includes `/admin/audit_log` (with a row to lay out) and `/admin/payments`.
+- **Files touched:** `templates/admin/audit_log.html`, `tests/test_shared_layout.py`.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ Test: at 375px the audit log has no clipped content and doesn't scroll the page sideways. [T `tests/test_shared_layout.py::test_key_pages_fit_a_375px_phone_and_lose_nothing` (fails on the old template)]
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4169,3 +4179,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-118: …" | UPG-118 | **UPG-118 DONE**: the boot test makes its dummy secrets at run time; the three findings in its first commit are accepted test dummies in `.gitleaksignore`. Full-history gitleaks clean. |
 | 2026-10-19 | "UPG-119: …" | UPG-119 | **UPG-119 DONE**: Werkzeug pinned to 3.1.9 (PYSEC-2026-4312, Windows-only; found by pip-audit). setuptools 79.0.1's advisory is about building packages and comes with the virtual environment: recorded. |
 | 2026-10-19 | "UPG-120: …" | UPG-120 | **UPG-120 DONE** (found by the Part 3 browser pass): volunteers couldn't log in (no Volunteer option on the form) or open their scanner; now they can, for the events they're staff on only. 4 new tests. |
+| 2026-10-19 | "UPG-121: …" | UPG-121 | **UPG-121 DONE** (found by the Part 3 browser pass): the audit log's table scrolls inside its card on a phone instead of being cut off; the 375px check covers the audit log and payments pages. |

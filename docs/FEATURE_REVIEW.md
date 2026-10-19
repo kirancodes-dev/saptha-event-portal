@@ -4061,6 +4061,25 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Acceptance criteria:**
   1. ✅ Test: after the coordinator publishes, the event has `results_published` set, and its podium owes position certificates. [T `tests/test_analytics_and_leaderboards.py::test_upg139_the_coordinators_publish_marks_the_results_published`: the SPOC's results page stops offering "Publish results", and the three joint winners are owed winner certificates; fails without the fix]
 
+
+#### UPG-140 — Audit rows written outside a request are lost
+- **Status:** TODO
+- **Last verified:** 2026-10-19, at `47fd4f0` [T]
+- **Problem:** Found building UPG-127. `utils.log_action` (`utils.py:90-138`) reads `session` for the user and role whatever the context. Outside a request (a background task, a scheduled job, a thread such as the certificate runs of UPG-124) that raises "Working outside of request context", which the function catches and logs as a warning, so the audit row is never written. Every `log_action` call from `tasks/` and from services run in the background is affected.
+- **What to build:** outside a request, write the row with the user and role "system" (or the actor passed in the details) instead of dropping it.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: `log_action` called with no request (as a background task does) writes its row, with user and role "system"; inside a request it still records the signed-in user.
+
+#### UPG-141 — The participant's certificate page prints "at ." for an event without a venue
+- **Status:** TODO
+- **Last verified:** 2026-10-19, at `47fd4f0` [C]
+- **Problem:** Found building UPG-132. `templates/participant/certificate.html` says "held on <date> at {{ event.venue }}." With no venue the sentence ends "at ." UPG-111 gave every page `venue_label` ("Venue to be announced" or "Online"); this page wasn't on its list because it prints the raw field with no fallback.
+- **What to build:** use `venue_label(event)` there.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: the participant's certificate page for an event with no venue says "Venue to be announced" (or "Online"), never "at .".
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4496,3 +4515,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-132: …" (parent `d72ae12`) | UPG-132 | UPG-28's certificate part: the participant's certificate page fits a 375px phone (it hung off both sides before); "My certificates" downloads on a phone (UPG-125). |
 | 2026-10-19 | "UPG-133: …" (parent `77e843b`) | UPG-133 | UPG-50's deferred part: the certificate email shows a name or event title with markup as text. |
 | 2026-10-19 | "UPG-124/125/126 follow-up: ..." (parent `cb0e937`) | UPG-124, UPG-125, UPG-126 | The full SQLite run at `45899bf` (1,234 passed, 7 skipped) failed one check: `CERT_CHUNK_SIZE`, `CERT_LINK_DAYS` and `VERIFY_RATE_LIMIT` were not in `.env.example`. Added. |
+| 2026-10-19 | "docs: ..." (parent `47fd4f0`) | UPG-140, UPG-141 | **Two new items.** UPG-140 (found building UPG-127): `log_action` drops every audit row written outside a request. UPG-141 (found building UPG-132): the participant's certificate page prints "at ." for an event without a venue. |

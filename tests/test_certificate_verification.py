@@ -2,10 +2,12 @@
 tests/test_certificate_verification.py — on the real database layer:
 UPG-126 (the public page of a certificate number: valid, not found, revoked,
 replaced; no personal data; rate limits; the lookup form and the legacy check
-lead to it) and UPG-134 (SUPPORT_EMAIL on every verification page, nothing
-hard-coded).
+lead to it), UPG-134 (SUPPORT_EMAIL on every verification page, nothing
+hard-coded) and UPG-135 (the legacy registration check and its preview show
+the lead's name on seeded rows; the old hash's documentation says how it's made).
 """
 import datetime
+import hashlib
 import uuid
 
 import pytest
@@ -156,3 +158,30 @@ def test_upg134_verification_pages_show_support_email_or_none(site, monkeypatch)
     import glob
     for template in glob.glob('templates/public/verify_*.html') + ['templates/certificates/verify.html']:
         assert 'support@' not in open(template, encoding='utf-8').read(), template
+
+
+# ── UPG-135 ─────────────────────────────────────────────────────────────────
+
+def test_upg135_the_legacy_check_shows_the_leads_name_on_a_seeded_row(site):
+    from db_adapter import to_uuid
+    from db_pg import get_session
+    from models_pg import Registration
+    d = site
+    event_id = _create_event(d['owner'], d['db'], _unique('Seeded Check'), '2030-03-03', team=False)
+    reg_uuid = uuid.uuid4()
+    with get_session() as s:      # the columns only, no stored document: what seed.py writes
+        s.add(Registration(id=reg_uuid, event_id=to_uuid(event_id), lead_name='Seeded Sita',
+                           lead_email=f"{_unique('sita')}@test.edu", lead_phone='9876543210'))
+    d['db'].collection('registrations').document(str(reg_uuid)).update({'attendance': 'Present'})
+    page = d['visitor'].get(f'/verify/{reg_uuid}').get_data(as_text=True)
+    assert 'Congratulations, Seeded Sita!' in page
+    assert 'Seeded Sita' in d['visitor'].get(f'/verify/{reg_uuid}/preview').get_data(as_text=True)
+
+
+def test_upg135_the_old_hash_is_documented_as_it_is_made():
+    from services_certificate import CertificateService, _get_cert_secret
+    doc = CertificateService.generate_verification_hash.__doc__
+    assert 'not an HMAC' in doc and 'first 24 hex characters of a SHA-256' in doc
+    expected = hashlib.sha256(f"c1:e1:ann@x.edu:{_get_cert_secret()}".encode()).hexdigest()[:24]
+    assert CertificateService.generate_verification_hash('c1', 'e1', ' Ann@x.edu ') == expected
+    assert 'random' in certs.new_number.__doc__

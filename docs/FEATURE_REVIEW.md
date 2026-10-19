@@ -2652,7 +2652,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: for each role that sees the button, the link answers 200; roles that can't use it don't see it. [T `tests/test_form_builder_links.py::test_builder_links_are_shown_only_to_those_who_can_open_them`: the assigned coordinator sees none (and gets 403 at the builder); every link the owner SPOC and the Super Admin are shown answers 200. Fails on the old code.]
 
 #### UPG-69 — The legacy certificate check and the digital ticket lose the lead's name and email on the SQL adapter
-- **Status:** DONE for the ticket part (certificate verification deferred)
+- **Status:** DONE (the ticket part here; the certificate verification part, deferred with certificates, is UPG-135, DONE)
 - **Last verified:** 2026-10-17, commit "UPG-69: …" on `production-ready` (parent `211b96a`) [T]
 - **Problem:** Found during UPG-63. `registrations` `document(id).get().to_dict()` returns `leadEmail` and `leadName` but not `lead_email` and `lead_name`. As a result:
   - `/ticket/<reg_id>` sends the student who owns the registration back to the dashboard with "Unauthorised — this is not your ticket." The check is `routes_ticket.py:243`, `is_lead = reg.get('lead_email') == user_email`.
@@ -4002,8 +4002,11 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-126).
 
 #### UPG-135 — Certificate verification keeps the lead's name and email (UPG-69's deferred part)
-- **Status:** TODO · **Built with:** UPG-126
-- **Acceptance criteria:** 1. Test: `/verify/<present reg_id>` (the legacy form) and its preview show the lead's name, on seeded rows too, and the certificate number's documentation describes how it's made.
+- **Status:** DONE · **Built with:** UPG-126
+- **Last verified:** 2026-10-19, commit "UPG-135: …" on `production-ready` (parent `177db09`) [T]
+- **Built (2026-10-19):** the legacy registration check (`/verify/<reg_id>`) and its preview read the lead's name, which the SQL layer now gives every registration from its columns (UPG-69's adapter fix), so a seeded row shows it too; the test seeds one. `services_certificate.CertificateService.generate_verification_hash` (API v1) is documented as what it is: the first 24 hex characters of a SHA-256 of the ID, event, email and secret, not an HMAC (`services_certificate.py:46-49`); new certificates carry a random number instead (`services_certificates.new_number`). The legacy check stays, labelled an attendance check (UPG-63), until UPG-138 moves registrations to the new certificates.
+- **Files touched:** `services_certificate.py`, `tests/test_certificate_verification.py`
+- **Acceptance criteria:** 1. ✅ Test: `/verify/<present reg_id>` (the legacy form) and its preview show the lead's name, on seeded rows too, and the certificate number's documentation describes how it's made. [T `tests/test_certificate_verification.py::test_upg135_the_legacy_check_shows_the_leads_name_on_a_seeded_row`, `::test_upg135_the_old_hash_is_documented_as_it_is_made`]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-126).
 
 #### UPG-136 — No invented venue in the certificate preview (UPG-111's deferred part)
@@ -4472,3 +4475,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-122 follow-up: …" (parent `c035f44`) | UPG-122 | The full run of the UPG-122 commit (1,211 passed, 7 skipped) had one failure: migration 0008 refused a development database whose start-up had already created the `certificates` table. 0008 now accepts the table and adds only the missing indexes. |
 | 2026-10-19 | "UPG-126: …" (parent `45899bf`) | UPG-126 | The public page of a certificate number: valid, revoked with the date, or replaced, with the name, event, dates, type and college and no personal data; one rate limit over every lookup; the lookup form and the coordinator's legacy check lead to it. Criterion 3 reworded: old IDs keep their legacy pages. 6 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-134: …" (parent `6e472df`) | UPG-134 | UPG-65's deferred part: every certificate verification page shows `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded. |
+| 2026-10-19 | "UPG-135: …" (parent `177db09`) | UPG-135 | UPG-69's deferred part: the legacy registration check and its preview show the lead's name on seeded rows; API v1's verification hash is documented as a truncated SHA-256, not an HMAC. |

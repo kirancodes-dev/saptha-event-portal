@@ -9,12 +9,23 @@ an FDP gives completion with hours and an NSS activity extension hours;
 faculty carry designation and institution; issuing twice, or at once, never
 duplicates (the database refuses).
 """
+import io
 import threading
 
 import pytest
+from PIL import Image, ImageDraw
 
 import services_certificates as certs
+import services_signatories
 from tests.test_integration_flow import _create_event, _login, _unique, _user
+
+
+def _signature():
+    image = Image.new('RGB', (400, 150), 'white')
+    ImageDraw.Draw(image).line([(40, 110), (200, 40), (360, 100)], fill='navy', width=6)
+    buf = io.BytesIO()
+    image.save(buf, format='PNG')
+    return buf.getvalue()
 
 
 @pytest.fixture
@@ -27,6 +38,8 @@ def ev(real_app):
     def make(**fields):
         event_id = _create_event(owner, db, _unique('Cert Event'), '2031-08-08', team=False)
         db.collection('events').document(event_id).update(dict({'status': 'completed', 'staff': []}, **fields))
+        # A signatory with a signature, without which nothing is issued (UPG-123)
+        services_signatories.add(db, event_id, name='Dr. A. Kumar', title='Principal', image=_signature(), actor=spoc)
         return event_id
 
     def reg(event_id, name, attendance='Present', **fields):

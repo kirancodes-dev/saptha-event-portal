@@ -1,0 +1,104 @@
+{% extends "base_classic.html" %}
+
+{% block title %}Certificates — {{ event.title }}{% endblock %}
+{#- The event's certificates: signatories, template and preview (UPG-123). -#}
+{% block page_title %}Certificates{% endblock %}
+{% block page_sub %}{{ event.title }}{% endblock %}
+{% block page_actions %}<a href="/spoc/event/{{ event.id }}/review" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Event</a>{% endblock %}
+
+{% block content %}
+{% if not ready %}
+<div class="callout callout--warning mb-3" role="status">{{ missing }}</div>
+{% endif %}
+
+<div class="card mb-3" id="signatories">
+    <div class="card-body">
+        <h2 class="h5">Certificate signatories</h2>
+        <p class="text-muted small">Up to {{ max_signatories }}, shown left to right on every certificate of this event.
+            Changes apply to certificates issued from now on; ones already issued keep their signatures.</p>
+
+        {% if signatories %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/signatories/order">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th scope="col">Order</th><th scope="col">Signatory</th><th scope="col">Signature</th>{% if can_edit %}<th scope="col"><span class="visually-hidden">Remove</span></th>{% endif %}</tr></thead>
+                <tbody>
+                {% for s in signatories %}
+                <tr>
+                    <td style="width:90px">
+                        <label for="order-{{ s.id }}" class="visually-hidden">Place of {{ s.name }}</label>
+                        <input type="number" min="1" max="{{ max_signatories }}" class="form-control form-control-sm" id="order-{{ s.id }}"
+                               name="order_{{ s.id }}" value="{{ s.order }}" {% if not can_edit %}disabled{% endif %}>
+                    </td>
+                    <td><strong>{{ s.name }}</strong><br><span class="text-muted small">{{ s.title }}</span></td>
+                    <td>{% if s.image_key %}<img src="/certificates/events/{{ event.id }}/signatories/{{ s.id }}/image" alt="Signature of {{ s.name }}" style="max-height:48px;max-width:180px" loading="lazy">{% else %}<span class="text-muted">No signature</span>{% endif %}</td>
+                    {% if can_edit %}
+                    <td class="text-end">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" formaction="/certificates/events/{{ event.id }}/signatories/{{ s.id }}/delete">Remove</button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% if can_edit and signatories|length > 1 %}<button type="submit" class="btn btn-sm btn-outline-primary">Save order</button>{% endif %}
+        </form>
+        {% else %}
+        <p class="text-muted">No signatories yet.</p>
+        {% endif %}
+
+        {% if can_edit and signatories|length < max_signatories %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/signatories" enctype="multipart/form-data" class="row g-2 align-items-end mt-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-3">
+                <label class="form-label" for="sig-name">Name</label>
+                <input class="form-control" id="sig-name" name="name" required maxlength="120" placeholder="Dr. A. Kumar">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="sig-title">Title</label>
+                <input class="form-control" id="sig-title" name="title" required maxlength="160" placeholder="Principal">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="sig-file">Signature (PNG or JPG, up to 1 MB, white or transparent background)</label>
+                <input class="form-control" type="file" id="sig-file" name="signature" accept="image/png,image/jpeg" required>
+            </div>
+            <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+        </form>
+        {% endif %}
+
+        {% if can_edit and copy_sources %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/signatories/copy" class="d-flex gap-2 flex-wrap align-items-end mt-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="form-label" for="copy-source">Copy signatories from one of your events</label>
+                <select class="form-select" id="copy-source" name="source_event_id">
+                    {% for e in copy_sources %}<option value="{{ e.id }}">{{ e.title }} ({{ e.date }}, {{ e.count }})</option>{% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline-primary">Copy</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-3" id="template">
+    <div class="card-body">
+        <h2 class="h5">Template and preview</h2>
+        {% if can_edit %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/style" class="d-flex gap-2 flex-wrap align-items-end mb-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="form-label" for="cert-style">Template</label>
+                <select class="form-select" id="cert-style" name="style">
+                    {% for s in styles %}<option value="{{ s }}" {% if s == style %}selected{% endif %}>{{ s|capitalize }}</option>{% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline-primary">Save template</button>
+        </form>
+        {% endif %}
+        <img src="/certificates/events/{{ event.id }}/preview.png" alt="Preview of this event's certificate with sample data" class="img-fluid border rounded" loading="lazy">
+    </div>
+</div>
+{% endblock %}

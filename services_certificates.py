@@ -325,7 +325,9 @@ def update(cert_id: str, **values) -> None:
 
 
 def wording(event: dict, recipient: dict) -> dict:
-    """What the certificate says, as issued: kept on the record."""
+    """What the certificate says, as issued: kept on the record, with the
+    signatories and template of that moment (a later change to the event's
+    signatories doesn't touch it, UPG-123)."""
     kind = recipient['cert_type']
     spec = TYPES[kind]
     phrase = spec['phrase']
@@ -337,7 +339,10 @@ def wording(event: dict, recipient: dict) -> dict:
             'designation': recipient.get('designation') or '', 'institution': recipient.get('institution') or '',
             'team': recipient.get('team') or '', 'role': recipient.get('role') or '',
             'hours': recipient.get('hours'), 'points': recipient.get('points'),
-            'position': recipient.get('position')}
+            'position': recipient.get('position'),
+            'signatories': [{k: sig.get(k) for k in ('id', 'name', 'title', 'order', 'image_key')}
+                            for sig in sorted(event.get('cert_signatories') or [], key=lambda x: x.get('order', 0))],
+            'style': event.get('cert_style') or 'classic'}
 
 
 def _ordinal(n: int) -> str:
@@ -350,14 +355,23 @@ def pdf_key(event_id: str, number: str, version: int) -> str:
     return f"certificates/{event_id}/{number}-v{version}.pdf"
 
 
+def verify_url(number: str) -> str:
+    from utils_email import _base_url
+    return f"{_base_url().rstrip('/')}/verify/{number}"
+
+
 def render(event: dict, cert: dict) -> bytes:
-    """The certificate's PDF. UPG-123 gives each type its template, the
-    college's branding and the event's signatories."""
-    from utils_certificate import generate_certificate_pdf
-    return generate_certificate_pdf(student_name=cert['name'], event_title=cert['data'].get('event_title', ''),
-                                    reg_id=cert.get('reg_id') or '', cert_type=cert['cert_type'],
-                                    rank=cert.get('position') or 0, event_date=str(cert['data'].get('date', '')),
-                                    certificate_id=cert['number'])
+    """The certificate's PDF: its type's template in the event's style, the
+    college's branding, and the signatories it was issued with (UPG-123)."""
+    import certificate_pdf
+    from services_signatories import image_bytes
+    data = cert['data']
+    signatories = data.get('signatories') or []
+    issued = cert.get('issued_at') or datetime.datetime.now(datetime.timezone.utc)
+    return certificate_pdf.render(number=cert['number'], name=cert['name'], data=data, cert_type=cert['cert_type'],
+                                  signatories=signatories, verify_url=verify_url(cert['number']),
+                                  issued_on=issued.strftime('%d %B %Y') if hasattr(issued, 'strftime') else str(issued)[:10],
+                                  style=data.get('style') or 'classic', signature_bytes=image_bytes(signatories))
 
 
 def store_pdf(cert: dict, pdf: bytes) -> dict:
@@ -388,6 +402,14 @@ def _take_over(cert_id: str) -> bool:
         return result.rowcount == 1
 
 
+def require_signatories(event: dict) -> None:
+    """No certificate without a signatory who has signed (UPG-123)."""
+    from services_signatories import missing_message, ready
+    signatories = event.get('cert_signatories') or []
+    if not ready(signatories):
+        raise CertificateError(missing_message(signatories))
+
+
 def issue_one(event_id: str, event: dict, recipient: dict, actor: str = '') -> Optional[dict]:
     """Issue this person's certificate of this type, once: None when they have it
     already. Only the run that created the record renders its PDF; a record a
@@ -408,6 +430,7 @@ def issue_event(db, event_id: str, actor: str = '', only: Optional[Iterable[str]
     if not doc.exists:
         raise CertificateError('Event not found.')
     event = doc.to_dict() or {}
+    require_signatories(event)
     counts = {'issued': 0, 'already': 0, 'failed': 0}
     wanted = set(only) if only else None
     for r in recipients(db, event_id, event):

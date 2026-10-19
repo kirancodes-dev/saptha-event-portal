@@ -2,7 +2,8 @@
 tests/test_certificate_delivery.py — UPG-125 on the real database layer: one
 email per certificate with a signed download link that expires (and fails
 when altered), "My certificates" for students and faculty (team members
-too), the ledger's links, the PNG for LinkedIn and the share link.
+too), the ledger's links, the PNG for LinkedIn and the share link; UPG-133:
+the certificate email escapes what it prints.
 """
 import io
 import re
@@ -170,3 +171,22 @@ def test_the_png_is_an_image_of_the_certificate_and_the_share_link_verifies(site
     for kind in ('pdf', 'png'):
         assert _login(d['app'], stranger, 'Student').get(f"/certificates/c/{cert['number']}/{kind}").status_code == 403
     assert d['owner'].get(f"/certificates/c/{cert['number']}/pdf").status_code == 200        # the event's organiser
+
+
+# ── UPG-133 ─────────────────────────────────────────────────────────────────
+
+def test_upg133_the_certificate_email_shows_markup_as_text(site):
+    d = site
+    event_id = d['event'](title='<i>Ital</i> & Co')
+    email = d['person'](event_id, '<b>Ann</b>')
+    _issue(d, event_id)
+    [message] = [m for m in d['mail'] if m['to'] == email]
+    assert '&lt;b&gt;Ann&lt;/b&gt;' in message['html'] and '<b>Ann</b>' not in message['html']
+    assert '&lt;i&gt;Ital&lt;/i&gt; &amp; Co' in message['html'] and '<i>Ital</i>' not in message['html']
+    # The old path's email too, while it still sends (until UPG-138)
+    import utils_email
+    utils_email._send_cert_email('ann@test.edu', '<b>Ann</b>', '<i>Ital</i> & Co', 'participation', 0, 0, b'%PDF',
+                                 reg_id='REG-<x>', certificate_id='abc')
+    old = d['mail'][-1]['html']
+    assert '&lt;b&gt;Ann&lt;/b&gt;' in old and '<b>Ann</b>' not in old and '<i>Ital</i>' not in old
+    assert 'REG-&lt;x&gt;' in old

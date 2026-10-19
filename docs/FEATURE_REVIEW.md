@@ -2185,7 +2185,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Not scheduled yet** (owner's call).
 
 #### UPG-50 — Email templates insert names and titles without escaping
-- **Status:** DONE (the certificate email deferred with certificates)
+- **Status:** DONE (the certificate email, deferred with certificates, is UPG-133, DONE)
 - **Last verified:** 2026-10-19, commit "UPG-50: …" on `production-ready` (parent `cb9fa04`) [T]
 - **Problem:** Found while building UPG-31 [C]. The HTML emails put the recipient's name, the event title and messages straight into the markup (for example `utils_email.py:499,501,563,565,744,764,793`). A name typed at registration, or an event title, containing HTML is rendered as HTML in the email. Today the typed text mostly reaches its own author or comes from staff (titles, broadcast messages), so the risk is low; the notices from UPG-31 already escape.
 - **Who benefits:** everyone who gets email from the app.
@@ -3999,8 +3999,11 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-125).
 
 #### UPG-133 — Escaping in the certificate email (UPG-50's deferred part)
-- **Status:** TODO · **Built with:** UPG-125
-- **Acceptance criteria:** 1. Test: a recipient named `<b>Ann</b>` gets a certificate email showing the text, not markup.
+- **Status:** DONE · **Built with:** UPG-125
+- **Last verified:** 2026-10-19, commit "UPG-133: …" on `production-ready` (parent `77e843b`) [T]
+- **Built (2026-10-19):** the new certificate email (`utils_email.send_certificate_issued_email`, UPG-125) escapes every value it prints with `_e()`: the name, the event, the type, the number and both links. The old path's email (`utils_email._send_cert_email`, sent by end-event until UPG-138) printed the name, event title and certificate ID raw; it now escapes them too.
+- **Files touched:** `utils_email.py` (`_send_cert_email`), `tests/test_certificate_delivery.py`
+- **Acceptance criteria:** 1. ✅ Test: a recipient named `<b>Ann</b>` gets a certificate email showing the text, not markup. [T `tests/test_certificate_delivery.py::test_upg133_the_certificate_email_shows_markup_as_text`: a recipient named `<b>Ann</b>` at an event called `<i>Ital</i> & Co`, issued and emailed through the real path, and the old path's email; fails on the old code]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-125).
 
 #### UPG-134 — The support address on the verification pages (UPG-65's deferred part)
@@ -4488,3 +4491,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-135: …" (parent `177db09`) | UPG-135 | UPG-69's deferred part: the legacy registration check and its preview show the lead's name on seeded rows; API v1's verification hash is documented as a truncated SHA-256, not an HMAC. |
 | 2026-10-19 | "UPG-125: …" (parent `9b1be9f`) | UPG-125 | Delivery: one email per certificate with a signed link that expires (30 days) and refuses alteration, sent once through the outbox; "My certificates" for students and faculty with PDF, LinkedIn image and share links; the ledger links each event's certificate; checked at 375px and 1280px in headless Chromium with a real download. 6 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-132: …" (parent `d72ae12`) | UPG-132 | UPG-28's certificate part: the participant's certificate page fits a 375px phone (it hung off both sides before); "My certificates" downloads on a phone (UPG-125). |
+| 2026-10-19 | "UPG-133: …" (parent `77e843b`) | UPG-133 | UPG-50's deferred part: the certificate email shows a name or event title with markup as text. |

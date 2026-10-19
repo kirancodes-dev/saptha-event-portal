@@ -896,6 +896,7 @@ def _send_cert_email(to_email: str, student_name: str,
         cert_color = "#1d4ed8"  # blue
 
     base = _base_url().rstrip('/')
+    title_html, name_html = _e(event_title), _e(student_name)        # shown as text (UPG-133)
     # The certificate's own ID when it has one (UPG-06), else the registration's
     verify_id = certificate_id or reg_id
     verify_url = f"{base}/verify/{verify_id}" if verify_id else "#"
@@ -916,7 +917,7 @@ def _send_cert_email(to_email: str, student_name: str,
               </tr>
               <tr>
                 <td style="padding: 6px 0; color: #64748b; text-transform: uppercase; font-weight: 700; font-size: 12px;">Certificate ID</td>
-                <td style="padding: 6px 0; font-family: monospace; color: #0f172a; font-weight: 700; text-align: right;">{reg_id}</td>
+                <td style="padding: 6px 0; font-family: monospace; color: #0f172a; font-weight: 700; text-align: right;">{_e(reg_id)}</td>
               </tr>
             </table>
           </div>
@@ -925,7 +926,7 @@ def _send_cert_email(to_email: str, student_name: str,
 
     button_block = f"""
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{verify_url}" style="background-color: #1d4ed8; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);">
+      <a href="{_e(verify_url)}" style="background-color: #1d4ed8; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);">
         Claim Your Certificate
       </a>
     </div>
@@ -937,22 +938,22 @@ def _send_cert_email(to_email: str, student_name: str,
         <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 24px 0; font-size: 13px; color: #166534;">
           <span style="background-color: #166534; color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-right: 8px; vertical-align: middle;">Secure</span>
           <strong>Verify Your Certificate:</strong> This credential is cryptographically signed and can be verified via the link below:<br>
-          <a href="{verify_url}" style="color: #15803d; word-break: break-all; font-weight: 600; text-decoration: underline; display: block; margin-top: 8px;">{verify_url}</a>
+          <a href="{_e(verify_url)}" style="color: #15803d; word-break: break-all; font-weight: 600; text-decoration: underline; display: block; margin-top: 8px;">{_e(verify_url)}</a>
         </div>
         """
 
     content = f"""
     <h3 style="color:#0f172a; font-size:20px; font-weight:700; margin-top:0; margin-bottom:16px;">Your Certificate Is Ready 🚀</h3>
     <p style="margin-bottom: 20px;">
-      Thank you for participating in <strong>{event_title}</strong>. Your creativity, speed, and technical skills made the event truly unforgettable.
+      Thank you for participating in <strong>{title_html}</strong>. Your creativity, speed, and technical skills made the event truly unforgettable.
     </p>
 
     <p style="font-size:18px; color:#1d4ed8; font-weight:700; margin: 24px 0;">
-      Congratulations, {student_name}!
+      Congratulations, {name_html}!
     </p>
 
     <p>
-      We're excited to officially award you a certificate for your participation in <strong>{event_title}</strong>. Your contribution and enthusiasm helped make this event an incredible experience.
+      We're excited to officially award you a certificate for your participation in <strong>{title_html}</strong>. Your contribution and enthusiasm helped make this event an incredible experience.
     </p>
 
     {verified_block}
@@ -965,7 +966,7 @@ def _send_cert_email(to_email: str, student_name: str,
     </p>
     """
 
-    html = _html_wrapper(content, f"Certificate Ready — {event_title}")
+    html = _html_wrapper(content, f"Certificate Ready — {title_html}")
 
     safe  = event_title.replace(' ', '_')[:35]
     label = 'Achievement' if cert_type == 'winner' else 'Participation'

@@ -3764,6 +3764,177 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ Test: at 375px the audit log has no clipped content and doesn't scroll the page sideways. [T `tests/test_shared_layout.py::test_key_pages_fit_a_375px_phone_and_lose_nothing` (fails on the old template)]
 
+### H. Certificates (owner, 2026-10-19: "Certificates are now in scope")
+
+**Step 0, stock-take (2026-10-19, at `eaea1fe`).** Certificates were out of scope from 2026-10-10. What exists:
+- **One issuing path:** `utils_certificate.issue_event_certificates` (UPG-06), called by end-event (`tasks/cert_tasks.bulk_generate_certificates`) and the SPOC's bulk button (`routes_spoc.bulk_certs`). For each registration marked Present without a `certificate_id`, it gives:
+  - the top three scorers a "winner" certificate, everyone else "participation";
+  - only the team lead, never the members;
+  - a PDF drawn by ReportLab (`generate_certificate_pdf`, or an uploaded image template), not stored;
+  - a record in `verified_certificates/<id>` and the ID on the registration;
+  - an emailed PDF.
+- **Weak spots:**
+  - The ID is a SHA-256 of who and what (`certificate_id_for`), so it's deterministic, not random.
+  - The college name, "Dean of Student Affairs" and three signature blocks are hard-coded.
+  - There are no signatories, no other types, no hours or points (UPG-11 criterion 4), no designation or institution (UPG-12 criterion 2), and no multi-day rule.
+  - PDFs are re-drawn on download (`/verify/<id>/download`), so nothing detects a changed file.
+  - There's no revocation or correction.
+  - API v1 has a second store, `services_certificate.CertificateService` writing `certificates/<id>`, which `/verify` never reads (UPG-14/UPG-112).
+- **Verification today:** `routes_verification.py` (`/verify/<hash>`, `/preview`, `/download`); `app.py` `/verify` (a lookup form); `routes_coordinator.py` `/certificate/<reg_id>/<usn>` (the legacy attendance check). The verification pages hard-code a support address (UPG-65).
+- **Fonts:** Helvetica only. ReportLab 5 shapes Kannada and Devanagari correctly with `uharfbuzz` and `shapeStr` (checked: conjuncts and vowel signs right). Text extracted from a PDF can't round-trip shaped Indian-language glyphs, so the PDF-text test uses a Latin name.
+
+The items below are built in this order, one commit each; each deferred part is built with the section it belongs to.
+
+#### UPG-122 — Certificate types, who gets them, and one record per person, event and type
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:**
+  - **Types:** participation; winner, runner-up and other positions (from published results); merit or special mention; volunteer; coordinator or organiser; judge; speaker or resource person; FDP or workshop completion with hours; NSS / NCC / extension hours.
+  - **Eligibility:**
+    - participation and completion only for people marked Present;
+    - multi-day events need a minimum share of days attended that the organiser sets (default 80%), counted from check-ins recorded per day;
+    - every team member gets their own certificate, by their own attendance;
+    - faculty and external participants carry designation and institution (UPG-12);
+    - the event's activity points and hours are on the record when the event has them (UPG-11).
+  - **One store:** a `certificates` table (migration 0008) replaces `verified_certificates` and API v1's `certificates/<id>` documents. A unique index keeps at most one current certificate per person, event and type, so issuing again never makes a duplicate.
+- **Effort:** L · **Depends on:** UPG-06, UPG-11, UPG-12 · **Risk:** medium (the store moves).
+- **Acceptance criteria:**
+  1. Test: an Absent participant gets no participation certificate; a multi-day event with an 80% minimum certifies someone who attended 4 of 5 days and not 3 of 5.
+  2. Test: a team of 3 present members gets 3 certificates, each in the member's own name.
+  3. Test: positions from published results give winner/runner-up/position certificates; staff on the event get volunteer, coordinator and judge certificates; listed speakers get speaker certificates; an FDP gives completion certificates with hours; an NSS event gives extension-hours certificates.
+  4. Test: issuing twice, or two runs at once, leaves exactly one certificate per person, event and type (the database refuses a second); on SQLite and PostgreSQL.
+  5. Test: a faculty participant's certificate record carries designation and institution; an event's hours and points are on its certificates.
+
+#### UPG-123 — Certificate templates, branding and each event's signatories
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:**
+  - **Templates:** a default template per type, with the college's name, logo and colours from settings.
+  - **Signatories, per event:** 1 to 3 on the event's page ("Certificate signatories"), each with a name, title, order and signature image. The image must be PNG or JPG, at most 1 MB, with a white or transparent background; it's trimmed and resized, and anything else is refused with a clear message.
+  - **Copying:** a SPOC can copy the signatories from one of their own earlier events.
+  - **Private storage:** signature images are stored privately and served only inside certificates and to the event's staff.
+  - **Gate:** certificates can't be issued until the event has at least one signatory with a signature, and the button says what's missing.
+  - **History:** changes affect only certificates issued afterwards (each certificate keeps a snapshot) and are audit-logged.
+  - **Per event:** the organiser picks the template, and a live preview shows the real signatories with sample data.
+  - **Wording:** filled from the event (name, title, type, department, dates, position or role, hours, issue date).
+  - **Fonts and safety:** Noto Sans with Kannada and Devanagari, shaped; every value is escaped, and long names shrink to fit.
+  - **Number and QR:** each certificate has a unique, unguessable number and a QR code to its verification page on `BASE_URL`.
+- **Effort:** L · **Depends on:** UPG-122, UPG-21, UPG-99 · **Risk:** medium.
+- **Acceptance criteria:**
+  1. Test: only someone with `edit_event` on the event can add, reorder, remove or copy signatories; a fourth is refused; a GIF, a 2 MB file, a non-image and a dark-background image are refused with a clear message; an accepted image is trimmed and resized.
+  2. Test: a signature image is never at a public URL: the event's staff can fetch it, another SPOC and a student get 403.
+  3. Test: issuing is refused, with a message saying what's missing, until a signatory has a signature.
+  4. Test: certificates issued before a signatory change keep the old signatories; later ones show the new; each change is audit-logged.
+  5. Test: the preview shows the real signatories and sample data; the college name and logo come from settings.
+  6. Test: the PDF's text holds the recipient's name, the event and the certificate number (extracted in the test); a 120-character name stays inside the page; markup in a name is printed as text; a Kannada name uses the Kannada font; the number is random, not derived from the person; the QR encodes `BASE_URL/verify/<number>`.
+
+#### UPG-124 — Issuing certificates: in bulk in the background, automatically on results, and by hand
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:**
+  - **Bulk:** from the event's page after the event ends, and automatically when results are published (the organiser can switch the automatic issue off).
+  - **Background:** runs through the outbox (UPG-18) in chunks, with progress, failures and a retry shown to the organiser.
+  - **By hand:** issue to one person (a late attendance fix), and see who got which certificate.
+  - **Integrity:** each PDF is stored privately with its SHA-256 on the record, so a changed file is detected.
+- **Effort:** M · **Depends on:** UPG-122, UPG-123, UPG-18 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a bulk issue for 1,200 eligible people runs in chunks and finishes; progress reports done and failed counts; a failed chunk can be retried and issues nothing twice.
+  2. Test: publishing results issues the position certificates; with the automatic issue switched off it doesn't.
+  3. Test: issuing before the event ends is refused; issuing to one person works and is audit-logged; the organiser's list shows who got which certificate.
+  4. Test: the stored PDF's SHA-256 matches the record; a changed file is reported as changed.
+
+#### UPG-125 — Delivering certificates: email, "My certificates", sharing and phones
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:**
+  - **Email:** one per certificate, with a signed, expiring download link (never sent twice).
+  - **"My certificates":** a list on the student and faculty dashboards, with links from the participation ledger (UPG-11).
+  - **Sharing:** a share link, and "download PNG for LinkedIn".
+  - **Phones:** downloads work on a 375px phone screen (UPG-28's certificate part).
+- **Effort:** M · **Depends on:** UPG-124 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: each certificate sends exactly one email whose link downloads the PDF; the link stops working after it expires and when altered; a re-run sends nothing.
+  2. Test: "My certificates" lists the person's certificates (team members included) and the ledger links them.
+  3. Test: the PNG download is a real image of the certificate; the share link opens the public verification page.
+  4. Test: at 375px the list and the download work in headless Chromium, with no sideways scroll.
+
+#### UPG-126 — Verifying a certificate
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:**
+  - **`/verify/<certificate number>`:** valid, revoked (with the date) or replaced, showing the name, event, date, type and college, never email, phone or other personal data.
+  - **Support address** from `SUPPORT_EMAIL` (UPG-65).
+  - **Limits:** rate limits on the page and the lookup.
+  - **Legacy routes:** the old check routes and old certificate IDs redirect to the new page.
+- **Effort:** M · **Depends on:** UPG-122 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a valid certificate shows valid with the name, event, date, type and college, and no email or phone; an unknown number shows not found; a revoked one shows revoked and the date; a replaced version shows it was replaced.
+  2. Test: more than the limit of lookups a minute from one address gets 429.
+  3. Test: the legacy lookup form, `/verify/<old hash>` and the coordinator's legacy check redirect to the new page.
+
+#### UPG-127 — Correcting and revoking certificates
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:**
+  - **Corrections:** a student asks for a name correction from "My certificates", and the organiser approves or rejects it. On approval, a new version replaces the old one with the same number, and the old file no longer verifies as current.
+  - **Revocation:** an organiser or admin revokes with a reason, and verification shows "revoked" and the date.
+  - **Audit:** every issue, correction and revocation is audit-logged.
+- **Effort:** M · **Depends on:** UPG-124, UPG-126 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: a correction request, approved, gives version 2 with the same number and the new name; version 1's hash no longer verifies as current; a rejected request changes nothing; only the certificate's owner can ask.
+  2. Test: a revocation needs a reason, shows on verification with the date, and is audit-logged.
+
+#### UPG-128 — Certificate lists, exports and college-wide counts
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:**
+  - **Per event:** the certificate list with search and pages (UPG-19), and CSV and XLSX exports.
+  - **College-wide:** certificates issued per department, event type and month, as a data source for the NAAC/AQAR report (not built now).
+- **Effort:** S · **Depends on:** UPG-122 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the event's list pages at 25, searches by name, number and type, and exports the same rows as CSV and XLSX.
+  2. Test: the college-wide counts per department, event type and month match the certificates issued.
+
+#### UPG-129 — Who may issue, revoke, approve and download certificates
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [C]
+- **What to build:** issuing, revoking and approving corrections only for the event's owner or someone holding `issue_certificates` on that event (`services_permission.can`); students download only their own certificates.
+- **Effort:** S · **Depends on:** UPG-124, UPG-127 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test, for each role (owner SPOC, another SPOC, coordinator, judge, volunteer, student, Super Admin): only the owner, Super Admin and anyone holding `issue_certificates` on the event can issue, revoke or approve; a student downloads their own certificate and gets 403 for someone else's.
+
+#### UPG-130 — Hours on the certificate (UPG-11's deferred criterion 4)
+- **Status:** TODO · **Built with:** UPG-122/UPG-123
+- **Acceptance criteria:** 1. Test: a certificate for an event with hours shows the hours in its PDF text.
+
+#### UPG-131 — FDP wording with designation and institution (UPG-12's deferred criterion 2)
+- **Status:** TODO · **Built with:** UPG-123
+- **Acceptance criteria:** 1. Test: an FDP certificate's PDF text shows the faculty member's designation and institution.
+
+#### UPG-132 — The certificate page and download on a phone (UPG-28's certificate part)
+- **Status:** TODO · **Built with:** UPG-125
+- **Acceptance criteria:** 1. Test: at 375px the certificate page has no sideways scroll and its download works (headless).
+
+#### UPG-133 — Escaping in the certificate email (UPG-50's deferred part)
+- **Status:** TODO · **Built with:** UPG-125
+- **Acceptance criteria:** 1. Test: a recipient named `<b>Ann</b>` gets a certificate email showing the text, not markup.
+
+#### UPG-134 — The support address on the verification pages (UPG-65's deferred part)
+- **Status:** TODO · **Built with:** UPG-126
+- **Acceptance criteria:** 1. Test: the verification pages show `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded.
+
+#### UPG-135 — Certificate verification keeps the lead's name and email (UPG-69's deferred part)
+- **Status:** TODO · **Built with:** UPG-126
+- **Acceptance criteria:** 1. Test: `/verify/<present reg_id>` (the legacy form) and its preview show the lead's name, on seeded rows too, and the certificate number's documentation describes how it's made.
+
+#### UPG-136 — No invented venue in the certificate preview (UPG-111's deferred part)
+- **Status:** TODO · **Built with:** UPG-123
+- **Acceptance criteria:** 1. Test: no certificate page or PDF says "Main Campus" for an event without a venue.
+
+#### UPG-137 — One certificate store (UPG-112's "two certificate stores")
+- **Status:** TODO · **Built with:** UPG-122
+- **Acceptance criteria:** 1. Test: API v1's issue and verify endpoints use the same `certificates` records as the web, and `/verify` finds an API-issued certificate.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4180,3 +4351,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-119: …" | UPG-119 | **UPG-119 DONE**: Werkzeug pinned to 3.1.9 (PYSEC-2026-4312, Windows-only; found by pip-audit). setuptools 79.0.1's advisory is about building packages and comes with the virtual environment: recorded. |
 | 2026-10-19 | "UPG-120: …" | UPG-120 | **UPG-120 DONE** (found by the Part 3 browser pass): volunteers couldn't log in (no Volunteer option on the form) or open their scanner; now they can, for the events they're staff on only. 4 new tests. |
 | 2026-10-19 | "UPG-121: …" | UPG-121 | **UPG-121 DONE** (found by the Part 3 browser pass): the audit log's table scrolls inside its card on a phone instead of being cut off; the 375px check covers the audit log and payments pages. |
+| 2026-10-19 | "docs: …" | UPG-122 to UPG-137 | **Certificates in scope (owner, 2026-10-19).** Step 0 stock-take of the certificate code and every deferred certificate part; 8 new items, one per section of the owner's brief (UPG-122 types and eligibility, UPG-123 templates and signatories, UPG-124 issuing, UPG-125 delivery, UPG-126 verification, UPG-127 corrections and revocation, UPG-128 lists and reports, UPG-129 permissions), and 8 for the deferred parts (UPG-130 to UPG-137, from UPG-11, 12, 28, 50, 65, 69, 111, 112). |

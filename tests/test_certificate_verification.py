@@ -185,3 +185,25 @@ def test_upg135_the_old_hash_is_documented_as_it_is_made():
     expected = hashlib.sha256(f"c1:e1:ann@x.edu:{_get_cert_secret()}".encode()).hexdigest()[:24]
     assert CertificateService.generate_verification_hash('c1', 'e1', ' Ann@x.edu ') == expected
     assert 'random' in certs.new_number.__doc__
+
+
+def test_the_verification_limits_work_without_flask_limiter_too(monkeypatch):
+    """extensions.py falls back to a no-op limiter when flask-limiter isn't installed;
+    the verification routes' shared limit must exist there too. The module's code
+    runs in its own namespace, so the app's limiter is untouched."""
+    import builtins
+    real_import = builtins.__import__
+
+    def no_limiter(name, *a, **k):
+        if name.startswith('flask_limiter'):
+            raise ImportError(name)
+        return real_import(name, *a, **k)
+    namespace = {'__name__': 'extensions_without_flask_limiter'}
+    with open('extensions.py', encoding='utf-8') as fh:
+        code = compile(fh.read(), 'extensions.py', 'exec')
+    monkeypatch.setattr(builtins, '__import__', no_limiter)
+    exec(code, namespace)   # nosec B102 (the repo's own module, run to test its fallback)
+    monkeypatch.setattr(builtins, '__import__', real_import)
+    fallback = namespace['limiter']
+    view = fallback.shared_limit('5 per minute', scope='certificate-verify')(lambda: 'page')
+    assert type(fallback).__name__ == 'DummyLimiter' and view() == 'page'

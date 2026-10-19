@@ -4128,6 +4128,16 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Acceptance criteria:**
   1. Test: the organiser awards a merit and a special-mention certificate to two registered people; each is issued once, emailed and audit-logged; someone without `issue_certificates` gets 403.
 
+
+#### UPG-143 — Tests that make an event "today" fail when a run crosses midnight
+- **Status:** TODO
+- **Last verified:** 2026-10-20, at `8666965` [T]
+- **Problem:** Found in the final PostgreSQL run of the certificate phase. `tests/test_teams.py::test_joining_by_code_adds_the_member_and_they_can_open_the_ticket` builds its event for `datetime.date.today()`; the run created it at 23:53 and joined at 00:09, when the event was in the past and closed, so the join was refused. Re-run the next day it passes on both databases (6 of 6). Other fixtures that use "today" (`tests/test_certificates.py`, `tests/test_phone_journey.py`) can fail the same way.
+- **What to build:** those fixtures use a date a day or more ahead where "today" isn't the point, or fix the clock for the test.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. Test: the team-join test passes with the clock set to 23:59 at the start and 00:01 by the join.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4575,3 +4585,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-126 follow-up: ..." (parent `34d69ac`) | UPG-126 | Pyrefly found that the fallback limiter (no flask-limiter installed) lacked `shared_limit`, which the verification routes use; added, with a test. |
 | 2026-10-19 | "docs: ..." (parent `71c2f09`) | ALL open (re-verification at the end of the certificate phase) | **Rule 8 re-verification of the 4 open items at `71c2f09`** (BLK-01, UPG-30, UPG-102, UPG-117); none changed status. Every certificate item, UPG-122 to UPG-141, is DONE. |
 | 2026-10-19 | "docs: ..." (parent `e8351d0`) | UPG-142 | **New item, found making the sample emails:** merit and special-mention certificates exist as types but nothing in the app awards them. |
+| 2026-10-20 | "docs: ..." (parent `8666965`) | UPG-143 | **Final full run of the certificate phase, at `3456f1a`:** SQLite 1,264 passed, 7 skipped; PostgreSQL 1,270 passed, 1 failed, the team-join test, because the run crossed midnight with an event made for "today" (re-run: 6 of 6 on both). New item UPG-143. The tests changed after `3456f1a` pass on both databases. |

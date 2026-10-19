@@ -189,7 +189,12 @@
     </div>
 
     <button class="print-btn" data-h-click="participant/certificate:1">Save as PDF / print</button>
-    {% if certificate_id %}
+    {% if certificate_number %}
+    <p class="no-print" style="text-align:center;margin-top:12px;font-family:'Inter',sans-serif;font-size:14px;">
+      <a href="/certificates/c/{{ certificate_number }}/pdf">Download the official certificate (PDF)</a>
+      · <a href="/verify/{{ certificate_number }}">Verification page</a>
+    </p>
+    {% elif certificate_id %}
     <p class="no-print" style="text-align:center;margin-top:12px;font-family:'Inter',sans-serif;font-size:14px;">
       <a href="/verify/{{ certificate_id }}/download">Download the official certificate (PDF)</a>
       · <a href="/verify/{{ certificate_id }}">Verification page</a>

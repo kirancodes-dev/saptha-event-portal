@@ -6,7 +6,6 @@ import re
 import io
 import json
 from utils import login_required, role_required, log_action
-from utils_email import _base_url as _public_base_url
 from services_accounts import create_unverified_account, send_set_password_link
 
 XLSX_MIMETYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -806,17 +805,16 @@ def end_event(event_id):
             'cert_template_id': template_id,
             'cert_issued_by': issued_by,
         })
-        # Certificates go out through the one issuing path (UPG-06); the task
-        # runs inline without a broker, and directly if it can't be queued
-        from tasks.cert_tasks import bulk_generate_certificates
+        # Certificates go out through the one issuing path, in the background (UPG-138)
+        import services_certificate_runs
+        import services_certificates
         try:
-            bulk_generate_certificates.delay(event_id, triggered_by=session.get('user_id', 'spoc'))
-        except Exception as exc:
-            current_app.logger.warning("Certificate task for %s not queued (%s); issuing inline", event_id, exc)
-            from utils_certificate import issue_event_certificates
-            issue_event_certificates(event_id, base_url=_public_base_url())
+            run = services_certificate_runs.start(db, event_id, session.get('user_id', ''), reason='event ended')
+            note = f"{run['total']} certificates are being issued."
+        except services_certificates.CertificateError as exc:
+            note = f"Certificates weren't issued: {exc}"
         _award_achievements(event_id)
-        flash("Event ended. Certificates sent, achievements awarded!", "success")
+        flash(f"Event ended and achievements awarded. {note}", "success")
     except Exception as e:
         flash(f"Error ending event: {e}", "danger")
     return redirect('/spoc/dashboard')
@@ -2142,19 +2140,18 @@ def bulk_certs(event_id):
         flash("No checked-in attendees found. Mark attendance via QR Scanner first.", "warning")
         return redirect(f'/spoc/dashboard#event-{event_id}')
 
+    # The same issuing path as ending the event (UPG-138); repeats issue nothing twice
+    import services_certificate_runs
+    import services_certificates
     try:
-        # The same issuing path as ending the event (UPG-06); repeats issue nothing twice
-        from utils_certificate import issue_event_certificates
-        result = issue_event_certificates(event_id, base_url=_public_base_url())
-        log_action(db, "BULK_CERTS",
-                   f"SPOC {session.get('user_id')} issued certificates for event {event_id}: {result}")
-        if result['failed']:
-            flash(f"{result['issued']} certificate(s) issued; {result['failed']} failed. Try again to retry those.", "warning")
-        else:
-            flash(f"✅ {result['issued']} certificate(s) issued and {result['emailed']} emailed; "
-                  f"{result['already_issued']} attendee(s) already had one.", "success")
-    except Exception as e:
-        flash(f"Error sending certificates: {e}", "danger")
+        run = services_certificate_runs.start(db, event_id, session.get('user_id', ''), reason='bulk button')
+        log_action(db, "BULK_CERTS", f"SPOC {session.get('user_id')} started certificates for event {event_id}")
+        progress = services_certificate_runs.progress(services_certificate_runs.get(db, run['id']) or run)
+        flash(f"Certificates: {progress['issued']} issued, {progress['done'] - progress['issued']} already had one, "
+              f"{progress['failed']} failed (of {run['total']}). Progress and retries: the event's certificate page.",
+              "warning" if progress['failed'] else "success")
+    except services_certificates.CertificateError as exc:
+        flash(f"Certificates weren't issued: {exc}", "warning")
 
     return redirect(f'/spoc/dashboard#event-{event_id}')
 

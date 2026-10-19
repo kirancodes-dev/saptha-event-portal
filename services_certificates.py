@@ -194,7 +194,7 @@ def recipients(db, event_id: str, event: Optional[dict] = None) -> List[dict]:
             continue
         place = ranks.get(str(reg_id))
         for name, email, usn, member in _people(reg, reg_id):
-            common = {'name': name, 'email': email, 'reg_id': reg_id,
+            common = {'name': name, 'email': email, 'reg_id': reg_id, 'lead': member is None,
                       'person_key': person_key(email, usn, name, reg_id),
                       'designation': (reg.get('designation') if member is None else member.get('designation')) or '',
                       'institution': (reg.get('institution') if member is None else member.get('institution')) or '',
@@ -517,8 +517,30 @@ def issue_one(event_id: str, event: dict, recipient: dict, actor: str = '') -> O
         _release(cert['id'])          # so a retry can issue it at once (UPG-124)
         raise
     _audit_issue(cert, actor)
+    _link_registration(recipient, cert)
     deliver(cert)
     return cert
+
+
+def _link_registration(recipient: dict, cert: dict) -> None:
+    """The lead's registration keeps its certificate's number and link, as before
+    UPG-138, for the dashboards, exports and the participant's page. A place
+    (winner, runner-up) takes precedence over attendance."""
+    if not recipient.get('lead') or not recipient.get('reg_id'):
+        return
+    if cert['cert_type'] not in ATTENDED_TYPES + POSITION_TYPES:
+        return
+    try:
+        from models import db
+        ref = db.collection('registrations').document(recipient['reg_id'])
+        reg = ref.get().to_dict() or {}
+        if reg.get('certificate_type') in POSITION_TYPES and cert['cert_type'] in ATTENDED_TYPES:
+            return
+        ref.update({'certificate_id': cert['number'], 'certificate_verify_url': verify_url(cert['number']),
+                    'certificate_type': cert['cert_type'],
+                    'certificate_issued_at': datetime.datetime.now(datetime.timezone.utc).isoformat()})
+    except Exception:
+        logger.exception("Registration %s not linked to certificate %s", recipient.get('reg_id'), cert.get('number'))
 
 
 def _audit_issue(cert: dict, actor: str) -> None:

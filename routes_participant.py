@@ -271,10 +271,16 @@ def view_certificate(reg_id):
         flash("Please provide your feedback to receive your certificate.", "info")
         return redirect(f'/participant/feedback/{reg_id}')
 
+    # The viewer's own certificate for this event (UPG-138), else an older one on the registration
+    import services_certificates
+    own = [c for c in services_certificates.for_person([user_email or ''])
+           if str(c['event_id']) == str(reg_data.get('event_id')) and c['status'] == 'valid']
+    own.sort(key=lambda c: c['cert_type'] not in services_certificates.ATTENDED_TYPES)
     return render_template('participant/certificate.html',
                             student_name=reg_data.get('lead_name'),
                             event=event_data,
-                            certificate_id=reg_data.get('certificate_id'))  # issued by UPG-06's path
+                            certificate_number=own[0]['number'] if own else '',
+                            certificate_id=reg_data.get('certificate_id'))
 
 
 # =========================================================

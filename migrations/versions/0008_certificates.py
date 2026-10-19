@@ -22,6 +22,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # A development database can already have the table: development start-up
+    # creates missing tables (db_pg.init_db) when it runs before this migration.
+    existing = sa.inspect(op.get_bind())
+    if existing.has_table('certificates'):
+        names = {ix['name'] for ix in existing.get_indexes('certificates')}
+        _indexes(skip=names)
+        return
     op.create_table(
         'certificates',
         sa.Column('id', sa.Uuid(), nullable=False),
@@ -47,13 +54,20 @@ def upgrade() -> None:
         sa.Column('revokedReason', sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint('id'),
     )
-    op.create_index('ix_certificates_number', 'certificates', ['number'])
-    op.create_index('ix_certificates_eventId', 'certificates', ['eventId'])
-    op.create_index('ix_certificates_personKey', 'certificates', ['personKey'])
-    op.create_index('ix_certificates_recipientEmail', 'certificates', ['recipientEmail'])
-    op.create_index('uq_certificates_number_version', 'certificates', ['number', 'version'], unique=True)
-    op.create_index('uq_certificates_current', 'certificates', ['eventId', 'personKey', 'certType'], unique=True,
-                    postgresql_where=sa.text('is_current'), sqlite_where=sa.text('is_current'))
+    _indexes(skip=set())
+
+
+def _indexes(skip) -> None:
+    for name, columns, extra in (
+            ('ix_certificates_number', ['number'], {}),
+            ('ix_certificates_eventId', ['eventId'], {}),
+            ('ix_certificates_personKey', ['personKey'], {}),
+            ('ix_certificates_recipientEmail', ['recipientEmail'], {}),
+            ('uq_certificates_number_version', ['number', 'version'], {'unique': True}),
+            ('uq_certificates_current', ['eventId', 'personKey', 'certType'],
+             {'unique': True, 'postgresql_where': sa.text('is_current'), 'sqlite_where': sa.text('is_current')})):
+        if name not in skip:
+            op.create_index(name, 'certificates', columns, **extra)
 
 
 def downgrade() -> None:

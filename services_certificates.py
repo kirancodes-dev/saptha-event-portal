@@ -402,6 +402,39 @@ def _take_over(cert_id: str) -> bool:
         return result.rowcount == 1
 
 
+ENDED_STATUSES = ('completed', 'archived')
+NOT_HELD_STATUSES = ('draft', 'pending', 'pending_approval', 'changes_requested', 'rejected', 'cancelled')
+
+
+def _ist_today() -> datetime.date:
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=5, minutes=30))).date()
+
+
+def event_ended(event: dict) -> bool:
+    """Certificates are issued once the event is over: completed, or past its last day (IST)."""
+    status = str(event.get('status') or '').lower()
+    if status in ENDED_STATUSES:
+        return True
+    if status in NOT_HELD_STATUSES:
+        return False
+    days = [d for d in (_date(event.get('date')), _date(event.get('end_date')), _date(event.get('end_datetime'))) if d]
+    return bool(days) and max(days) < _ist_today()
+
+
+def file_check(cert: dict) -> str:
+    """'ok' when the stored PDF matches the SHA-256 on the record, 'changed' when
+    it doesn't, 'missing' when there's no file (UPG-124)."""
+    import hashlib
+    from utils_storage import StorageError, get_private
+    if not cert.get('pdf_key') or not cert.get('pdf_sha256'):
+        return 'missing'
+    try:
+        data = get_private(cert['pdf_key'])
+    except (StorageError, OSError):
+        return 'missing'
+    return 'ok' if hashlib.sha256(data).hexdigest() == cert['pdf_sha256'] else 'changed'
+
+
 def require_signatories(event: dict) -> None:
     """No certificate without a signatory who has signed (UPG-123)."""
     from services_signatories import missing_message, ready
@@ -420,7 +453,23 @@ def issue_one(event_id: str, event: dict, recipient: dict, actor: str = '') -> O
         if not existing or existing.get('pdf_key') or not _take_over(existing['id']):
             return None
         cert = existing
-    return store_pdf(cert, render(event, cert))
+    try:
+        return store_pdf(cert, render(event, cert))
+    except Exception:
+        _release(cert['id'])          # so a retry can issue it at once (UPG-124)
+        raise
+
+
+def _release(cert_id: str) -> None:
+    """Drop a record whose PDF couldn't be made (only while it has none)."""
+    import uuid
+    from sqlalchemy import delete
+    from models_pg import Certificate
+    try:
+        with _session() as s, s.begin():
+            s.execute(delete(Certificate).where(Certificate.id == uuid.UUID(str(cert_id)), Certificate.pdf_key.is_(None)))
+    except Exception:
+        logger.exception("Certificate record %s not released; a later run takes it over", cert_id)
 
 
 def issue_event(db, event_id: str, actor: str = '', only: Optional[Iterable[str]] = None) -> dict:

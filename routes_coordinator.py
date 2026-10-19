@@ -480,6 +480,10 @@ def publish_results(event_id):
 
         log_action(db, "RESULTS_PUBLISHED", f"Event {event_id} by {session.get('user_id')}")
         flash("Results published! Top 3 notified. AI summaries generating in background.", "success")
+        from services_certificate_runs import on_results_published   # position certificates (UPG-124)
+        note = on_results_published(db, event_id, session.get('user_id', ''))
+        if note:
+            flash(note, 'info')
     except Exception as exc:
         flash(f"Publish error: {exc}", "danger")
     return redirect('/coordinator/dashboard')

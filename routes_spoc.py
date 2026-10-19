@@ -1043,6 +1043,10 @@ def publish_results(event_id):
             'results_published': True
         })
         flash("Results have been published to the student portal!", "success")
+        from services_certificate_runs import on_results_published   # position certificates (UPG-124)
+        note = on_results_published(db, event_id, session.get('user_id', ''))
+        if note:
+            flash(note, 'info')
     except Exception as e:
         flash(f"Error: {e}", "danger")
 

@@ -56,13 +56,28 @@ def _own_events_with_signatories(event_id):
 def manage(event_id):
     import certificate_pdf
     import services_signatories as sigs
+    import services_certificate_runs as runs
+    import services_certificates as certs
     event = _event_or_abort(event_id, 'edit_event', 'issue_certificates')
     signatories = sigs.listing(db, event_id, event)
+    issued = {(c['person_key'], c['cert_type']): c for c in certs.for_event(event_id)}
+    owed = certs.recipients(db, event_id, event)
+    people = [dict(r, pair=f"{r['person_key']}|{r['cert_type']}", cert=issued.get((r['person_key'], r['cert_type'])),
+                   type_title=certs.TYPES[r['cert_type']]['title']) for r in owed]
+    owed_keys = {(r['person_key'], r['cert_type']) for r in owed}
+    others = [dict(c, type_title=certs.TYPES.get(c['cert_type'], {}).get('title', c['cert_type']))
+              for key, c in issued.items() if key not in owed_keys]     # issued earlier, no longer owed
+    event_runs = [dict(runs.progress(r), id=r['id'], started_at=r.get('started_at', ''), reason=r.get('reason', ''))
+                  for r in runs.for_event(db, event_id)[:5]]
     return render_template('certificates/manage.html', event=event, signatories=signatories,
                            ready=sigs.ready(signatories), missing=sigs.missing_message(signatories),
                            styles=certificate_pdf.STYLES, style=event.get('cert_style') or 'classic',
                            copy_sources=_own_events_with_signatories(event_id),
-                           can_edit=_can(event, 'edit_event'), max_signatories=sigs.MAX_SIGNATORIES)
+                           can_edit=_can(event, 'edit_event'), max_signatories=sigs.MAX_SIGNATORIES,
+                           can_issue=_can(event, 'issue_certificates'), issue_problem=runs.ready_to_issue(event),
+                           auto_issue=event.get('cert_auto_issue') is not False, runs=event_runs,
+                           running=any(r['status'] in ('queued', 'running') for r in event_runs),
+                           people=people, others=others, issued_count=len(issued))
 
 
 def _can(event, permission):
@@ -201,3 +216,108 @@ def preview(event_id):
                                  signature_bytes=sigs.image_bytes(signatories))
     return Response(certificate_pdf.to_png(pdf, scale=1.4), mimetype='image/png',
                     headers={'Cache-Control': 'private, no-store'})
+
+
+# ── Issuing (UPG-124) ───────────────────────────────────────────────────────
+
+@certificates_bp.route('/events/<event_id>/issue', methods=['POST'])
+@login_required
+def issue(event_id):
+    """Issue everyone's certificates in the background, in chunks."""
+    import services_certificate_runs as runs
+    import services_certificates as certs
+    _event_or_abort(event_id, 'issue_certificates')
+    try:
+        run = runs.start(db, event_id, session.get('user_id', ''))
+        flash(f"Issuing {run['total']} certificates in the background. This page shows the progress.", 'success')
+    except certs.CertificateError as exc:
+        flash(str(exc), 'danger')
+    return _back(event_id)
+
+
+@certificates_bp.route('/events/<event_id>/runs/<run_id>')
+@login_required
+def run_progress(event_id, run_id):
+    import services_certificate_runs as runs
+    _event_or_abort(event_id, 'issue_certificates', 'edit_event')
+    run = runs.get(db, run_id)
+    if not run or run.get('event_id') != event_id:
+        abort(404)
+    return dict(runs.progress(run), id=run_id)
+
+
+@certificates_bp.route('/events/<event_id>/runs/<run_id>/retry', methods=['POST'])
+@login_required
+def retry_run(event_id, run_id):
+    import services_certificate_runs as runs
+    import services_certificates as certs
+    _event_or_abort(event_id, 'issue_certificates')
+    run = runs.get(db, run_id)
+    if not run or run.get('event_id') != event_id:
+        abort(404)
+    try:
+        runs.retry(db, run_id, session.get('user_id', ''))
+        flash("Retrying the certificates that failed.", 'success')
+    except certs.CertificateError as exc:
+        flash(str(exc), 'danger')
+    return _back(event_id)
+
+
+@certificates_bp.route('/events/<event_id>/issue_one', methods=['POST'])
+@login_required
+def issue_one(event_id):
+    """Issue one person's certificate by hand (e.g. after a late attendance fix)."""
+    import services_certificate_runs as runs
+    import services_certificates as certs
+    from utils import log_action
+    event = _event_or_abort(event_id, 'issue_certificates')
+    problem = runs.ready_to_issue(event)
+    if problem:
+        flash(problem, 'danger')
+        return _back(event_id)
+    pair = request.form.get('pair', '')
+    owed = next((r for r in certs.recipients(db, event_id, event) if f"{r['person_key']}|{r['cert_type']}" == pair), None)
+    if owed is None:
+        flash("That person isn't owed that certificate (check their attendance first).", 'danger')
+        return _back(event_id)
+    try:
+        cert = certs.issue_one(event_id, event, owed, session.get('user_id', ''))
+    except Exception as exc:
+        flash(f"The certificate couldn't be made: {exc}", 'danger')
+        return _back(event_id)
+    if cert is None:
+        flash(f"{owed['name']} already has this certificate.", 'info')
+    else:
+        log_action(db, "CERT_ISSUED_BY_HAND", f"{session.get('user_id')}: {cert['number']} "
+                                              f"({owed['cert_type']}) to {owed['name']} for event {event_id}")
+        flash(f"Certificate {cert['number']} issued to {owed['name']}.", 'success')
+    return _back(event_id)
+
+
+@certificates_bp.route('/events/<event_id>/auto', methods=['POST'])
+@login_required
+def auto_issue(event_id):
+    """Switch the automatic issue on published results on or off."""
+    from utils import log_action
+    _event_or_abort(event_id, 'issue_certificates')
+    on = request.form.get('auto') == 'on'
+    db.collection('events').document(event_id).update({'cert_auto_issue': on})
+    log_action(db, "CERT_AUTO_ISSUE", f"{session.get('user_id')}: {'on' if on else 'off'} for event {event_id}")
+    flash("Position certificates will be issued when results are published." if on else
+          "Position certificates won't be issued automatically.", 'success')
+    return _back(event_id)
+
+
+@certificates_bp.route('/events/<event_id>/check_files', methods=['POST'])
+@login_required
+def check_files(event_id):
+    """Check every stored PDF against the SHA-256 on its record."""
+    import services_certificates as certs
+    _event_or_abort(event_id, 'issue_certificates', 'edit_event')
+    results = {c['number']: certs.file_check(c) for c in certs.for_event(event_id)}
+    bad = sorted(n for n, r in results.items() if r != 'ok')
+    if bad:
+        flash(f"{len(bad)} of {len(results)} certificate files don't match their record: {', '.join(bad[:20])}", 'danger')
+    else:
+        flash(f"All {len(results)} certificate files match their records.", 'success')
+    return _back(event_id)

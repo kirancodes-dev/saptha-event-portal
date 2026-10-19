@@ -39,3 +39,26 @@ def bulk_generate_certificates(self, event_id: str, triggered_by: str = 'admin')
     except Exception as exc:
         logger.error("bulk_generate_certificates failed event=%s: %s", event_id, exc)
         raise self.retry(exc=exc)
+
+
+@celery.task(
+    bind=True,
+    queue='certs',
+    max_retries=2,
+    default_retry_delay=120,
+    name='tasks.cert_tasks.issue_certificate_run',
+    time_limit=3600,
+)
+def issue_certificate_run(self, run_id: str):
+    """Work through a certificate run's unfinished chunks (UPG-124). Each
+    person's certificate is issued once, so a retry only finishes the rest."""
+    import services_certificates
+    from services_certificate_runs import work
+    try:
+        return work(None, run_id)
+    except services_certificates.CertificateError as exc:   # no such run or event: nothing to retry
+        logger.warning("issue_certificate_run %s: %s", run_id, exc)
+        return {'run_id': run_id, 'error': str(exc)}
+    except Exception as exc:
+        logger.error("issue_certificate_run %s failed: %s", run_id, exc)
+        raise self.retry(exc=exc)

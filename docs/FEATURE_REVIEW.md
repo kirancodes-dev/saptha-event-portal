@@ -3733,6 +3733,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ `gitleaks git --redact --exit-code 1 --gitleaks-ignore-path .gitleaksignore .` over the full history finds nothing [R, Part 3 release check]; `tests/test_production_boot.py` still passes.
 
+#### UPG-119 — Werkzeug 3.1.8 has a known vulnerability (fixed in 3.1.9)
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-119: …" on `production-ready` [T]
+- **Problem:** Found by Part 3's `pip-audit` of a fresh install of `requirements-dev.txt`: Werkzeug 3.1.8 has PYSEC-2026-4312 (`safe_join` accepts Windows device names with an empty ADS marker, so `send_from_directory` can hang on Windows/NTFS). The app runs on Linux (Cloud Run), so it isn't exposed, but the fix is a patch release. The same audit lists setuptools 79.0.1 (PYSEC-2026-3447, building source distributions on macOS); setuptools comes with the virtual environment, not from `requirements.txt`, and the app never builds packages, so it's recorded, not changed.
+- **Built (2026-10-19):** `requirements.txt` pins `Werkzeug==3.1.9`.
+- **Files touched:** `requirements.txt`.
+- **Effort:** S · **Depends on:** none · **Risk:** low (patch release).
+- **Acceptance criteria:**
+  1. ✅ `pip-audit` reports no vulnerability in the app's requirements [R, Part 3 release check]; the full pytest passes on Werkzeug 3.1.9 [T, Part 3 release check].
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4146,3 +4156,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-111: …" (parent `644b882`) | UPG-111 | **UPG-111 DONE** (owner's instruction, before Part 3): an event with no venue says "Venue to be announced" ("Online" for online events) on every page and email, through one helper; no invented "SNPSU Campus"/"SNPSU" anywhere (the certificate preview deferred). 12 new tests. |
 | 2026-10-19 | "UPG-115: …" | UPG-115, UPG-111 | Follow-ups found by the full run: the one-registration index now skips rows with no lead email (they blocked each other), and UPG-111's calendar check looks at its own event's entry. 1 new test; SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-118: …" | UPG-118 | **UPG-118 DONE**: the boot test makes its dummy secrets at run time; the three findings in its first commit are accepted test dummies in `.gitleaksignore`. Full-history gitleaks clean. |
+| 2026-10-19 | "UPG-119: …" | UPG-119 | **UPG-119 DONE**: Werkzeug pinned to 3.1.9 (PYSEC-2026-4312, Windows-only; found by pip-audit). setuptools 79.0.1's advisory is about building packages and comes with the virtual environment: recorded. |

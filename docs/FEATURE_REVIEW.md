@@ -1129,18 +1129,38 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
   - Full pytest: **888 passed** on PostgreSQL 16, **887 passed and 1 skipped** on SQLite; ruff clean.
 
 #### UPG-32 — Release check and `docs/DEPLOY.md`
-- **Status:** TODO
-- **Last verified:** 2026-10-08, commit `1b7fd7c` (end-of-Phase 2 re-verification)
+- **Status:** DONE, except the container step (no Docker on the release machine; it is on the go-live checklist)
+- **Last verified:** 2026-10-19, commit "UPG-32: …" on `production-ready` (parent `845476b`) [T]
 - **Problem:** There's no deploy guide for Cloud Run + Supabase, and no end-to-end release check from a fresh clone. `docs/DEPLOY.md` has only the scheduled-jobs section (UPG-07); `docs/DEPLOYMENT.md` covers the container and settings in general. *(Corrected 2026-10-08: `README.md` has no Railway/Render deploy guide; it names Cloud Run (`README.md:287,542`) and calls Brevo "Railway-safe" (`:211`).)*
 - **Who benefits:** whoever deploys and runs the app.
 - **What to build:** the Phase 6 release check (fresh clone → `docker-compose up` → `alembic upgrade head` on an empty PostgreSQL → non-production seed → every role end to end at 375px and 1280px; production boot with strong dummy settings, then with one missing; restart mid-session and two instances; full pytest on SQLite and PostgreSQL, ruff, bandit, pip-audit, full-history gitleaks) and `docs/DEPLOY.md`: Cloud Run + Supabase set-up, every setting and how to generate it, the migration step, first Super Admin creation, rollback (redeploy the previous revision), backups and restore, monitoring.
 - **Files touched:** `docs/DEPLOY.md`, `README.md` (link), this review (final report).
+- **Built (2026-10-19):**
+  - **`docs/DEPLOY.md`** is the deploy guide: Google Cloud set-up (project, region, Cloud SQL, Secret Manager, the Cloud Run service and the migration job, with the `gcloud` commands); every setting and how to make it; migrations; first Super Admin; uploads and private links; scheduled jobs (Cloud Scheduler schedules matching the table); background tasks; backups and the restore drill; rollback (redeploy the previous revision); monitoring; the release check (9 steps); and the go-live checklist of owner-only tasks. Linked from `README.md:254`.
+  - **The release check**, run on 2026-10-19 from a fresh clone of `production-ready` at `eaea1fe` (scripts and logs kept outside the repo):
+    1. Fresh install of `requirements-dev.txt` and Chromium in a new virtual environment: OK.
+    2. `pip-audit -r requirements.txt --no-deps --disable-pip`: no known vulnerabilities (re-run after UPG-123's two new packages: still none); the environment-wide audit flagged only Werkzeug (fixed, UPG-119) and setuptools 79.0.1 (build tooling, not shipped; recorded). `gitleaks` over the full history: 3 test-only dummy secrets (fixed, UPG-118), then no leaks (re-run at `845476b`: no leaks).
+    3. `ruff check .`: clean. `bandit -ll` on the tracked app files: no findings (re-run at `845476b`: none).
+    4. `alembic upgrade head` on an empty PostgreSQL database: 0001 to 0007 in order (0008 since, checked by `tests/test_migrations_baseline.py` on PostgreSQL). Non-production seed (`showcase`): 72 accounts, 48 events, 544 registrations.
+    5. Production boot with strong dummy settings: `/` and `/health` answer 200 with HSTS and a CSP nonce; plain HTTP redirects. With the mail provider removed, start-up is refused (exit 1) and the log names "no mail provider".
+    6. Two gunicorn instances on one database: a login on A works on B, and still works after A restarts; a forged session cookie goes to `/login`.
+    7. Full pytest from the clone: SQLite 1,199 passed, 7 skipped, 1 failed; PostgreSQL 1,205 passed, 1 skipped, 1 failed. The one failure on both is `tests/test_type_check_config.py::test_pyrefly_accepts_the_config_and_finds_no_errors_in_routes_coordinator`, because the clone's virtual environment wasn't at `.venv` (the test runs `.venv/bin/python`); it passes with the environment at `.venv`, and the release check now says so (`docs/DEPLOY.md` step 1).
+    8. Browser pass, headless Chromium against the production build over HTTPS with real logins: 31 key pages for each of 7 roles (Super Admin, SPOC, coordinator, judge, volunteer, student, faculty) at 375px and 1280px: 0 problems after two fixes it found (UPG-120: volunteers had no login option; UPG-121: the audit log was cut off on a phone).
+    9. Container (`docker compose up --build`): **not run**, Docker isn't available on this machine. Cloud Build builds the same `Dockerfile` on deploy; it's on the go-live checklist.
+- **Files touched:** `docs/DEPLOY.md`, this review
 - **Effort:** M · **Depends on:** every other item in phases 1–5 · **Risk:** none.
 - **Acceptance criteria:**
-  1. Each release-check step above passes, with its output recorded in the changelog.
-  2. `docs/DEPLOY.md` covers every topic listed.
-  3. The final report lists every item's status, anything not DONE and why, and a go-live checklist.
+  1. ✅ Each release-check step above passes, with its output recorded in the changelog. [R: steps 1–8 pass, with their results above and in the changelog; step 9 (container) not run, no Docker here, left to the owner]
+  2. ✅ `docs/DEPLOY.md` covers every topic listed. [R `docs/DEPLOY.md`: every topic listed has its section]
+  3. ✅ The final report lists every item's status, anything not DONE and why, and a go-live checklist. [R: the final report below; the go-live checklist is `docs/DEPLOY.md` "Go-live checklist"]
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** still TODO; it is Part 3 of the production-ready run. Since it was written, the browser checks it asks for are in the repo (`tests/headless.py`; UPG-23, UPG-25 to UPG-28, UPG-60) and Playwright is in `requirements-dev.txt`.
+- **Final report (Part 3, 2026-10-19).** 156 items: 139 DONE (this one included, and UPG-122, 123, 130, 131 and 136 from the certificate work), 13 TODO, 2 IN PROGRESS, 1 merged (UPG-17 into UPG-21), 1 dropped (UPG-85, no new AI features). Not DONE, and why:
+  - **BLK-01** (IN PROGRESS): only GitHub Support's removal of the old pull-request refs is left, which only the owner can ask for.
+  - **UPG-30** (IN PROGRESS): criterion 4 is the owner's Razorpay Test Mode checkout and refund.
+  - **UPG-102** (TODO): 1,044 Pyrefly type errors, mostly checker noise; a separate clean-up, not needed for go-live.
+  - **UPG-117** (TODO): found in UPG-114; the JSON waitlist join refuses new events. No page calls it.
+  - **UPG-124 to UPG-129, UPG-132 to UPG-135, UPG-137** (TODO): the certificate system, in scope since 2026-10-19 and being built now. The release check will be run again when it's done.
+- **Go-live checklist:** `docs/DEPLOY.md` "Go-live checklist" (email, Razorpay Test Mode then live keys, Sentry, Cloud Scheduler, budget alert, `SUPPORT_EMAIL`, campus facts, the login limit, backups, the signed-link check on Cloud Run, old data, GitHub refs, the container).
 
 ---
 
@@ -4383,3 +4403,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-130: …" (parent `2312681`) | UPG-130 | UPG-11's deferred criterion 4: an issued certificate's PDF shows the event's hours and points (test reads the stored PDF). |
 | 2026-10-19 | "UPG-131: …" (parent `f2d7fcc`) | UPG-131 | UPG-12's deferred criterion 2: an FDP completion certificate's PDF shows the faculty member's designation and institution, and the hours. |
 | 2026-10-19 | "UPG-136: …" (parent `389c8ad`) | UPG-136 | UPG-111's deferred part: the old certificate preview shows the event's venue, "Online" or "Venue to be announced", never "Main Campus"; the issued PDF names no venue; the scan for invented places covers every file. |
+| 2026-10-19 | "UPG-32: …" (parent `845476b`) | UPG-32 | **Part 3, the release check.** From a fresh clone at `eaea1fe`: fresh install OK; pip-audit clean (Werkzeug fixed, UPG-119); gitleaks clean after UPG-118; ruff and bandit clean; `alembic upgrade head` on empty PostgreSQL; production boot serves with HSTS and a CSP nonce and refuses with a setting missing; two instances share sessions through a restart; pytest SQLite 1,199 passed / 7 skipped and PostgreSQL 1,205 passed / 1 skipped, the one failure on each being the clone's virtual environment not at `.venv` (now in the guide); browser pass of 7 roles × 31 pages × 375/1280px with 0 problems after UPG-120 and UPG-121. Container step not run (no Docker). `docs/DEPLOY.md` rewritten as the deploy guide with the go-live checklist. |

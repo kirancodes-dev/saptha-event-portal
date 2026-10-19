@@ -1100,6 +1100,7 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
 - **Rule 8 (early pass, `db_adapter.py` and `models_pg.py` changed):** the change only adds columns to `payment_orders`. Of the 32 open items, UPG-16 lists that table for its baseline; its line now names the new columns. The other items citing `models_pg.py` (UPG-11 to UPG-14, UPG-18) don't touch `payment_orders`, and their claims are unchanged.
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; criterion 4 (the owner's checkout with Razorpay test keys) goes on Part 3's go-live checklist.
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still IN PROGRESS; `routes_payment.py` unchanged since UPG-115. Criterion 4 is the owner's Test Mode checkout and refund (go-live checklist).
+- **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still IN PROGRESS; `routes_payment.py` untouched by the certificate work. Criterion 4 is the owner's Test Mode checkout and refund.
 
 #### UPG-31 — Notifications: confirmation, day-before reminder, change and cancellation notices through Brevo
 - **Status:** DONE
@@ -1254,6 +1255,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   4. ✅ **Met:** both Google API keys are revoked (owner, 2026-09-30) and accepted in `.gitleaksignore`. The full-history gitleaks scan finds **no leaks in 212 commits** [R]. ✅ **On GitHub:** CI run 36886209908 on the pushed `master` (`56a014d`, 2026-10-01) passed "Repo hygiene & secret scan" and "Lint (ruff)" [R, GitHub Actions API]. The bandit job failed on the known BLK-11 findings and pytest on BLK-15's causes. The old password and master key remain as literals in history (gitleaks doesn't flag them); they're unused and must not be reused (criterion 3).
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; only GitHub Support's removal of the PR refs is left (owner).
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still IN PROGRESS; nothing in the code changes it. Only GitHub Support's removal of the old pull-request refs is left (owner; on the go-live checklist).
+- **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still IN PROGRESS; only GitHub Support's removal of the old pull-request refs is left (owner).
 
 #### BLK-02 — The public registration form logs the visitor in as any email they type
 - **Status:** DONE
@@ -3486,6 +3488,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. Test: `pyrefly check` reports 0 errors in the routes, services and utils files, or each remaining kind is turned off with a reason in `pyrefly.toml`.
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** `pyrefly check` now reports 1,058 errors (1 suppressed), up from 1,044; the new code and tests since added the difference. Still TODO.
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. `pyrefly check` now reports 1,081 errors (1,044 when written): 7 are in the new certificate code (`certificate_pdf.py:172`, `services_certificates.py:402`, `services_signatories.py:53-67`), all of the noise kinds above (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`); the rest come from Parts 2–3.
+- **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO. `pyrefly check` reports 1,119 errors (1,081 at the end of Part 3). The certificate code adds 9, all of the known noise kinds (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`, a lookup that can't be `None` after an update in `services_certificate_changes.revoke`); the one real finding (the fallback limiter without `shared_limit`) is fixed as a UPG-126 follow-up. `routes_coordinator.py` stays at 0 (`tests/test_type_check_config.py`).
 
 #### UPG-103 — No way back to the previous page in the installed app
 - **Status:** DONE
@@ -3747,6 +3750,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: joining a full `registration_open` event through the endpoint adds the person to the waitlist; a cancelled or completed event is refused.
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
+- **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
 
 #### UPG-118 — The CI secret scan flags the production boot test's dummy settings
 - **Status:** DONE
@@ -4559,3 +4563,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-138: …" (parent `161d0a8`) | UPG-138 | One issuing path again: end-event, the bulk button and the queued task start runs of the new issuing; the old `issue_event_certificates` is retired; registrations keep their certificate number and link; the participant's certificate page links the new certificate and still opens older ones. UPG-06's tests moved check by check (winners now from published results, per the brief). |
 | 2026-10-19 | "UPG-124 follow-up: ..." (parent `3456f1a`) | UPG-124 | Final headless pass of issuing: the organiser signs, issues 31 certificates and opens the list in the browser, measured at 375px and 1280px with no problem found (the student's download and the verification page were measured with UPG-125). |
 | 2026-10-19 | "UPG-126 follow-up: ..." (parent `34d69ac`) | UPG-126 | Pyrefly found that the fallback limiter (no flask-limiter installed) lacked `shared_limit`, which the verification routes use; added, with a test. |
+| 2026-10-19 | "docs: ..." (parent `71c2f09`) | ALL open (re-verification at the end of the certificate phase) | **Rule 8 re-verification of the 4 open items at `71c2f09`** (BLK-01, UPG-30, UPG-102, UPG-117); none changed status. Every certificate item, UPG-122 to UPG-141, is DONE. |

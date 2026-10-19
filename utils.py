@@ -120,17 +120,19 @@ def log_action(*args, **kwargs):
     try:
         if db_client is not None:
             ip_addr = '127.0.0.1'
+            user, role = 'system', 'system'     # a background task or job (UPG-140)
             if has_request_context():
                 try:
                     ip_addr = request.remote_addr
                 except Exception:
                     pass
+                user, role = session.get('user_id', 'anonymous'), session.get('role', 'unknown')
 
             db_client.collection('audit_log').add({
                 'action':    action,
                 'details':   details,
-                'user':      session.get('user_id', 'anonymous'),
-                'role':      session.get('role', 'unknown'),
+                'user':      user,
+                'role':      role,
                 'ip':        ip_addr,
                 'timestamp': datetime.datetime.now(datetime.timezone.utc)
             })

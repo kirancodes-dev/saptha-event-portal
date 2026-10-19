@@ -90,6 +90,8 @@ def join_waitlist(event_id):
         "joined_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
     db.collection("waitlists").document(wl_id).set(wl_data)
+    from services_waitlist import place_in_line
+    place = place_in_line(db, event_id, email) or current_count + 1   # join order (UPG-114)
 
     # Notify user
     try:
@@ -97,7 +99,7 @@ def join_waitlist(event_id):
         create_notification(
             db, user_email=email, notif_type="system_alert",
             title=f"Waitlisted for {ev.get('title', 'event')}",
-            message=f"You are #{current_count + 1} on the waitlist. We'll notify you if a spot opens.",
+            message=f"You are #{place} on the waitlist. We'll notify you if a spot opens.",
             link=f"/event/{event_id}",
         )
     except Exception:
@@ -105,7 +107,7 @@ def join_waitlist(event_id):
 
     return jsonify({
         "message": "Added to waitlist",
-        "position": current_count + 1,
+        "position": place,
         "waitlist_id": wl_id,
     }), 201
 
@@ -125,8 +127,8 @@ def waitlist_status(event_id):
         .limit(1)
         .stream()
     ):
-        wl = doc.to_dict()
-        return jsonify({"on_waitlist": True, "position": wl.get("position", 0), "id": doc.id})
+        from services_waitlist import place_in_line
+        return jsonify({"on_waitlist": True, "position": place_in_line(db, event_id, email), "id": doc.id})
 
     return jsonify({"on_waitlist": False})
 
@@ -167,18 +169,11 @@ def promote_next(event_id):
 @role_required(["ClubSPOC", "Admin", "Coordinator"])
 def view_waitlist(event_id):
     """View the waitlist for an event."""
+    from services_waitlist import waiting
     db = _db()
-    waitlist = []
-    for doc in (
-        db.collection("waitlists")
-        .where(filter=FieldFilter("event_id", "==", event_id))
-        .where(filter=FieldFilter("status", "==", "waiting"))
-        .order_by("joined_at")   # join order: `position` repeats once someone is promoted (UPG-112)
-        .stream()
-    ):
-        wl = doc.to_dict()
-        wl["id"] = doc.id
-        waitlist.append(wl)
+    # In join order, each with their place now (UPG-114), not the place they joined at
+    waitlist = [dict(wl, id=wl_id, position=place)
+                for place, (wl_id, wl) in enumerate(waiting(db, event_id), start=1)]
     return jsonify({"waitlist": waitlist, "total": len(waitlist)})
 
 
@@ -219,21 +214,14 @@ def auto_promote(db, event_id: str):
     Called when a registration is cancelled. Creates a registration
     for the promoted user and sends them a notification.
     """
-    # Find next in line
-    for doc in (
-        db.collection("waitlists")
-        .where(filter=FieldFilter("event_id", "==", event_id))
-        .where(filter=FieldFilter("status", "==", "waiting"))
-        .order_by("joined_at")   # join order: `position` repeats once someone is promoted (UPG-112)
-        .limit(1)
-        .stream()
-    ):
-        wl = doc.to_dict()
+    # The first in line by join order (UPG-112, UPG-114)
+    from services_waitlist import waiting
+    for wl_id, wl in waiting(db, event_id)[:1]:
         email = wl.get("user_email") or wl.get("email", "")
         name = wl.get("name", "Participant")
 
         # Update waitlist status
-        db.collection("waitlists").document(doc.id).update({
+        db.collection("waitlists").document(wl_id).update({
             "status": "promoted",
             "promoted_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         })
@@ -277,7 +265,7 @@ def auto_promote(db, event_id: str):
                 raise
             # Already registered another way: they don't need the seat; the next
             # person in line gets it (UPG-115)
-            db.collection("waitlists").document(doc.id).update({"status": "already_registered"})
+            db.collection("waitlists").document(wl_id).update({"status": "already_registered"})
             return auto_promote(db, event_id)
 
         # Free promotions are confirmed immediately, so issue the same signed

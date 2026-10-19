@@ -490,7 +490,9 @@ def public_register(event_id):
                 },
             }
             create_registration(db, wl_id, wl_entry, collection='waitlists')
-            flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
+            from services_waitlist import place_in_line
+            place = place_in_line(db, event_id, email) or wl_count + 1   # join order (UPG-114)
+            flash(f"This event is full! You've joined the waitlist at position #{place}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # New email: unverified account + one-time set-password link
@@ -644,6 +646,7 @@ def waitlist_status():
           .where(filter=_ff('status', '==', 'waiting'))
           .stream()
     )
+    from services_waitlist import place_in_line
     result = []
     for e in entries:
         d = e.to_dict()
@@ -656,7 +659,7 @@ def waitlist_status():
         result.append({
             'event_title': event_title,
             'event_id':    event_id,
-            'position':    d.get('position', '?'),
+            'position':    place_in_line(db, event_id, d.get('user_email') or d.get('email', '')) or '?',   # UPG-114
         })
     return jsonify(result)
 

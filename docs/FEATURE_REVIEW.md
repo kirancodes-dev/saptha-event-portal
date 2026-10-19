@@ -3654,13 +3654,24 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. ✅ Test: `python seed.py --profile showcase` still empties the tables and rebuilds the portal (`tests/test_seed_command.py`). [T `tests/test_seed_command.py::test_the_showcase_profile_rebuilds_the_portal_and_writes_its_summary`; PostgreSQL by hand, above]
 
 #### UPG-114 — The waitlist shows a position that can repeat
-- **Status:** TODO
-- **Last verified:** 2026-10-18 [T]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-114: …" on `production-ready` (parent `6f35c5e`) [T]
 - **Problem:** Found in UPG-112. Both join paths store `position` as the number still waiting plus one (`routes_waitlist.py:70-88`, `routes_forms.py:751-774`), so after a promotion or a departure two people can hold the same number, or a later joiner a lower one (shown in `tests/test_waitlist_promotion.py`). Promotion no longer uses it (join order since UPG-112), but `/waitlist/status/<event_id>` and the "joined the waitlist at position #N" message still show it.
 - **What to build:** work out the place in line at read time (how many waiting people joined earlier, plus one), and show that.
+- **Built (2026-10-19):**
+  - **One order, worked out when shown:** `services_waitlist.py` gives the waitlist in join order (`joined_at`, then the entry's id for two joined in the same instant). A place is one more than the number still waiting who joined earlier. It's used by:
+    - the join answer and its notice (`routes_waitlist.join_waitlist`);
+    - the status endpoint (`waitlist_status`);
+    - the organiser's list (`view_waitlist`, each row with its place now);
+    - the student's waitlist badge (`routes_participant.waitlist_status`);
+    - the "joined the waitlist at position #N" message on both registration forms (`routes_forms`, `routes_participant`);
+    - promotion (`auto_promote`).
+    So places never repeat, close up when someone ahead leaves or is promoted, and match the order of promotion. The stored `position` is only the place on the day the person joined. Putting back the old status and list code fails the main test.
+  - **Found, not fixed (UPG-117):** the JSON join (`POST /waitlist/join/<event>`) accepts only events in the old `active` status, not `registration_open`. No page calls it (the registration form waitlists people itself).
+- **Files touched:** `services_waitlist.py` (new), `routes_waitlist.py`, `routes_forms.py`, `routes_participant.py`, `tests/test_waitlist_places.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
-  1. Test: after one promotion and one departure, each person still waiting sees a distinct place that matches the order they'll be promoted in.
+  1. ✅ Test: after one promotion and one departure, each person still waiting sees a distinct place that matches the order they'll be promoted in. [T `tests/test_waitlist_places.py::test_places_follow_join_order_and_never_repeat` (status, organiser's list, badge and promotion agree after a promotion and a departure), `::test_two_who_joined_in_the_same_instant_still_get_different_places`, `::test_the_registration_form_says_the_right_place`]
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code. Still TODO.
 
 #### UPG-115 — Two registration forms sent at the same instant register the same person twice
@@ -3693,6 +3704,15 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
   1. ✅ Test: the popup test passes whatever the event id is, and still fails if the cached count is shown. [T `tests/test_event_popup.py::test_registrations_shown_are_counted_not_cached`; a page showing "999 registered" still fails it]
+
+#### UPG-117 — The JSON waitlist join only takes events in the old "active" status
+- **Status:** TODO
+- **Last verified:** 2026-10-19 [T]
+- **Problem:** Found in UPG-114. `POST /waitlist/join/<event_id>` (`routes_waitlist.join_waitlist`) answers "Event is not active" (400) unless the event's status is `active`. Since UPG-73, an event that is taking registrations is `registration_open` (or `published`), so the endpoint refuses every new event. No page calls it today: the registration form puts people on the waitlist itself when an event is full.
+- **What to build:** accept the statuses in which registration is open (as the form does), and refuse the rest with the same message the form gives; or remove the endpoint if nothing will call it.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: joining a full `registration_open` event through the endpoint adds the person to the waitlist; a cancelled or completed event is refused.
 
 ---
 
@@ -4102,3 +4122,5 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-116: …" | UPG-116 | **UPG-116 DONE**: the popup test no longer fails when a random event id contains "999"; it still catches the cached count. Test-only. |
 | 2026-10-19 | "docs: …" | Part 2 summary | **Part 2 done: every BUILT (untested) item is tested on the real database layer.** 41 items DONE: UPG-04, 09–16, 18–28, 38, 42–44, 46–61 (all but 45), 76. **Bugs found and fixed:** JSON scores without remarks failed (UPG-04); `FEATURE_MATCHMAKER` never read (UPG-14); the production override never reached the seed modules (UPG-15); `.env.example` missing 10 settings (UPG-20); dumps not refused by the hygiene test (UPG-21); an unlabelled upload field (UPG-26); an eager avatar picker and photos without `alt` (UPG-27); an unreadable checkout title and a ticket footer covering the ticket (UPG-28); background tasks running in a stale Flask app (UPG-110). **Owner-requested:** UPG-112 (leftover duplicates removed with 13 tests of removed code; waitlist promotion fixed to join order) and UPG-113 (bandit clean). **New, TODO:** UPG-111 (widened), UPG-114, UPG-115. UPG-116 (a flaky test) fixed. Seeding is one command (`seed.py`, `seeds/`). Browser checks run in the repo (Playwright, integrity-checked CDN copies). **Checks:** full pytest 1,170 passed, 7 skipped (the 7 need PostgreSQL; each ran on PostgreSQL 16 in its item); ruff clean; bandit `-ll` clean; rule 8 re-verification done. **Waiting on the owner:** UPG-38 criterion 2 and UPG-99 criterion 2 (need a push or deploy); UPG-15 criterion 5 (old Zoho walk-in accounts); UPG-30 criterion 4 (Razorpay test checkout); UPG-108 (campus facts); BLK-01 (GitHub Support). **Next:** Part 3 (UPG-32), after the owner's "continue". |
 | 2026-10-19 | "UPG-115: …" (parent `3910397`) | UPG-115 | **UPG-115 DONE** (owner's instruction, before Part 3): one active registration per person per event is a database rule (partial unique index, migration 0007, which refuses to run over existing duplicates and lists them). Two tabs at once give one registration and a friendly "already registered"; every write path handles the refusal (a refused paid order stays for a refund; the waitlist skips the person). Also fixed: two tabs for a new email both creating the account. 10 new tests, on SQLite and PostgreSQL. |
+| 2026-10-19 | "UPG-114: …" (parent `6f35c5e`) | UPG-114 | **UPG-114 DONE** (owner's instruction, before Part 3): waitlist places come from join order, worked out when shown, never repeat, and match the order of promotion, everywhere a place appears. 3 new tests. New: **UPG-117**. |
+| 2026-10-19 | "docs: …" | UPG-117 | New (found in UPG-114): the JSON waitlist join refuses events that aren't in the old `active` status. TODO. |

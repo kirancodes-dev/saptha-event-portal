@@ -779,7 +779,9 @@ def submit_form(event_id):
             create_registration(db, wl_id, wl_entry, collection='waitlists')
 
             finish_submission(sub_key, 'waitlist')
-            flash(f"This event is full! You've joined the waitlist at position #{wl_count + 1}. We'll email you if a spot opens.", "info")
+            from services_waitlist import place_in_line
+            place = place_in_line(db, event_id, email) or wl_count + 1   # join order (UPG-114)
+            flash(f"This event is full! You've joined the waitlist at position #{place}. We'll email you if a spot opens.", "info")
             return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # Free vs paid

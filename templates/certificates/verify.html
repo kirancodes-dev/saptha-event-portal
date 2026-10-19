@@ -1,4 +1,5 @@
 {% extends "layouts/status.html" %}
+{% set site_footer_fixed = false %}{#- the facts make it longer than a phone screen -#}
 {#- Public verification of a certificate number (UPG-126): its status, name,
     event, date, type and college; never an email, phone or other personal data. -#}
 {% if not view %}{% set status_tone = 'danger' %}{% set status_icon = 'fa-circle-xmark' %}

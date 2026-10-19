@@ -3898,19 +3898,26 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Note:** the 1,200-person test stubs out drawing the PDF (its content is tested in UPG-123); the database, storage, chunks, task and outbox path are real.
 
 #### UPG-125 — Delivering certificates: email, "My certificates", sharing and phones
-- **Status:** TODO
-- **Last verified:** 2026-10-19 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-125: …" on `production-ready` (parent `9b1be9f`) [T]
 - **What to build:**
   - **Email:** one per certificate, with a signed, expiring download link (never sent twice).
   - **"My certificates":** a list on the student and faculty dashboards, with links from the participation ledger (UPG-11).
   - **Sharing:** a share link, and "download PNG for LinkedIn".
   - **Phones:** downloads work on a 375px phone screen (UPG-28's certificate part).
+- **Built (2026-10-19):**
+  - **Email, once:** each issued certificate queues `tasks.email_tasks.send_certificate_email` (`services_certificates.deliver` `:561`; outbox-backed). `email_once` (`:572`) claims the send with a conditional update on `emailedAt`, so it goes out once; a failed send gives the claim back and the outbox retries it. The email (`utils_email.send_certificate_issued_email`, `utils_email.py:1139`) has a signed download link, how long it works, the number and the verification link; every value is escaped.
+  - **Signed links:** `itsdangerous` with the app's `SECRET_KEY` and its own salt, carrying the number and version (`download_token` `:547`), valid for `CERT_LINK_DAYS` (default 30; `read_token` `:551`). `/certificates/download/<token>` (`routes_certificates.py:393`) serves the stored PDF if the file still matches its SHA-256; an expired link says so (410), an altered one isn't valid (404), and a replaced or revoked certificate's link says it was replaced (410), each on `templates/certificates/link_problem.html` (new).
+  - **"My certificates"** (`/certificates/mine`, `:356`; `templates/certificates/mine.html`, new): the signed-in person's current certificates (team members get their own, by their email), with Download PDF, Image for LinkedIn, a share link (the public page) and Share on LinkedIn. Linked from the student navigation, the dashboard (students and faculty share it) and the participation ledger, whose rows link each event's certificate (`routes_participant.py:901-935`, `templates/participant/ledger.html`).
+  - **Own downloads:** `/certificates/c/<number>/pdf` and `/png` (`:377`, `:383`) are for the certificate's own person and the event's staff who manage certificates (`_may_download` `:328`); the PNG is drawn from the stored PDF (`certificate_pdf.to_png`, 2×).
+  - **Phones:** the status layout lets a page unpin its footer (`templates/layouts/status.html`; the default stays pinned), and the verification page does, as it can be longer than a phone screen.
+- **Files touched:** `services_certificates.py`, `utils_email.py`, `tasks/email_tasks.py`, `routes_certificates.py`, `templates/certificates/mine.html` (new), `templates/certificates/link_problem.html` (new), `templates/certificates/verify.html`, `templates/layouts/status.html`, `templates/includes/ui.html`, `templates/participant/dashboard.html`, `templates/participant/ledger.html`, `routes_participant.py`, `tests/test_certificate_delivery.py` (new), `tests/test_certificate_phone.py` (new)
 - **Effort:** M · **Depends on:** UPG-124 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: each certificate sends exactly one email whose link downloads the PDF; the link stops working after it expires and when altered; a re-run sends nothing.
-  2. Test: "My certificates" lists the person's certificates (team members included) and the ledger links them.
-  3. Test: the PNG download is a real image of the certificate; the share link opens the public verification page.
-  4. Test: at 375px the list and the download work in headless Chromium, with no sideways scroll.
+  1. ✅ Test: each certificate sends exactly one email whose link downloads the PDF; the link stops working after it expires and when altered; a re-run sends nothing. [T `tests/test_certificate_delivery.py`::test_one_email_per_certificate_with_a_link_that_expires_and_resists_tampering, ::test_a_failed_send_is_retried_and_still_sent_once, ::test_a_replaced_certificates_link_says_so]
+  2. ✅ Test: "My certificates" lists the person's certificates (team members included) and the ledger links them. [T `tests/test_certificate_delivery.py`::test_my_certificates_lists_the_persons_own_including_team_members]
+  3. ✅ Test: the PNG download is a real image of the certificate; the share link opens the public verification page. [T `tests/test_certificate_delivery.py`::test_the_png_is_an_image_of_the_certificate_and_the_share_link_verifies]
+  4. ✅ Test: at 375px the list and the download work in headless Chromium, with no sideways scroll. [T `tests/test_certificate_phone.py::test_certificates_fit_a_phone_and_download_from_it`: real login, the list and the verification page measured at 375 and 1280, the PDF downloaded in the browser and compared with the stored file]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; nothing delivers the new certificates yet.
 
 #### UPG-126 — Verifying a certificate
@@ -4476,3 +4483,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-126: …" (parent `45899bf`) | UPG-126 | The public page of a certificate number: valid, revoked with the date, or replaced, with the name, event, dates, type and college and no personal data; one rate limit over every lookup; the lookup form and the coordinator's legacy check lead to it. Criterion 3 reworded: old IDs keep their legacy pages. 6 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-134: …" (parent `6e472df`) | UPG-134 | UPG-65's deferred part: every certificate verification page shows `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded. |
 | 2026-10-19 | "UPG-135: …" (parent `177db09`) | UPG-135 | UPG-69's deferred part: the legacy registration check and its preview show the lead's name on seeded rows; API v1's verification hash is documented as a truncated SHA-256, not an HMAC. |
+| 2026-10-19 | "UPG-125: …" (parent `9b1be9f`) | UPG-125 | Delivery: one email per certificate with a signed link that expires (30 days) and refuses alteration, sent once through the outbox; "My certificates" for students and faculty with PDF, LinkedIn image and share links; the ledger links each event's certificate; checked at 375px and 1280px in headless Chromium with a real download. 6 new tests, passing on SQLite and PostgreSQL. |

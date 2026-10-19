@@ -895,6 +895,13 @@ def participation_ledger():
     total_points = 0.0
     total_hours = 0.0
 
+    # The person's certificates, one per event for the ledger (the attendance one first, UPG-125)
+    import services_certificates
+    issued = {}
+    for c in sorted(services_certificates.for_person([user_email]),
+                    key=lambda c: c['cert_type'] not in services_certificates.ATTENDED_TYPES):
+        issued.setdefault(str(c['event_id']), c)
+
     for reg_id, reg in sorted(registrations, key=lambda x: str(x[1].get('registered_at') or ''), reverse=True):
         event_id = str(reg.get('event_id') or '')
         event = events_map.get(event_id, {})
@@ -925,6 +932,7 @@ def participation_ledger():
             'points_earned': points_earned,
             'hours_earned': hours_earned,
             'certificate_id': reg.get('certificate_id', ''),
+            'certificate_number': (issued.get(event_id) or {}).get('number', ''),
         })
 
     is_json = (

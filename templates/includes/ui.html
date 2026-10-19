@@ -30,6 +30,7 @@
 {%- elif role in ('Student', 'Participant') -%}
   {%- set links = [('/participant/dashboard', 'fa-th-large', 'Dashboard', 'dashboard'),
                    ('/participant/my_events', 'fa-ticket-alt', 'My events', 'my_events'),
+                   ('/certificates/mine', 'fa-award', 'Certificates', 'certificates'),
                    ('/events', 'fa-compass', 'Events', 'events'),
                    ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar')] -%}
 {%- elif role in ('ClubSPOC', 'SPOC', 'UnitAdmin', 'EventOrganizer') -%}

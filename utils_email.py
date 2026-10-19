@@ -1134,3 +1134,24 @@ def generate_ics_content(event_title: str, date_val: str, venue: str = '') -> by
         "END:VCALENDAR"
     ]
     return "\r\n".join(ics_lines).encode("utf-8")
+
+
+def send_certificate_issued_email(to_email: str, name: str, event_title: str, type_title: str, number: str,
+                                  download_url: str, verify_url: str, link_days: int) -> bool:
+    """A certificate is ready (UPG-125): a signed download link that expires,
+    and the public verification page. Every value is escaped (UPG-133)."""
+    content = f"""
+    <h3 style="color:#0f172a; font-size:20px; font-weight:700; margin-top:0;">Your certificate is ready</h3>
+    <p>Dear {_e(name)},</p>
+    <p>Your <strong>{_e(type_title)}</strong> for <strong>{_e(event_title)}</strong> has been issued.</p>
+    <div style="text-align:center; margin:28px 0;">
+      <a href="{_e(download_url)}" style="background-color:#1d4ed8; color:#ffffff; padding:14px 32px; border-radius:8px;
+         text-decoration:none; font-weight:700; display:inline-block;">Download your certificate (PDF)</a>
+    </div>
+    <p style="font-size:13px; color:#475569;">This download link works for {int(link_days)} days. After that, sign in
+      and open <strong>My certificates</strong> to download it again.</p>
+    <p style="font-size:13px; color:#475569;">Certificate number <strong style="font-family:monospace;">{_e(number)}</strong>.
+      Anyone can check it at <a href="{_e(verify_url)}">{_e(verify_url)}</a>.</p>
+    <p style="margin-top:30px; border-top:1px solid #e2e8f0; padding-top:20px; color:#64748b;">&mdash; Team SapthaEvent</p>
+    """
+    return _send(to_email, f"Your certificate: {event_title}", _html_wrapper(content, f"Certificate: {_e(event_title)}"))

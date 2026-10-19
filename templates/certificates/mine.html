@@ -1,0 +1,32 @@
+{% extends "base_classic.html" %}
+{#- The signed-in person's certificates (UPG-125): download, image for LinkedIn, share. -#}
+{% set app_active = 'certificates' %}
+{% block title %}My certificates{% endblock %}
+{% block page_sub %}Every certificate issued to you, ready to download or share.{% endblock %}
+
+{% block content %}
+{% if certificates %}
+<div class="row g-3">
+    {% for c in certificates %}
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h6 mb-1">{{ c.type_title }}{% if c.position %} ({{ c.position }}){% endif %}</h2>
+                <p class="mb-1"><strong>{{ c.event_title }}</strong></p>
+                <p class="text-muted small mb-3">No. <code>{{ c.number }}</code>{% if c.issued_at %} · issued {{ c.issued_at.strftime('%d %b %Y') }}{% endif %}</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/certificates/c/{{ c.number }}/pdf" class="btn btn-primary btn-sm"><i class="fas fa-file-pdf" aria-hidden="true"></i> Download PDF</a>
+                    <a href="/certificates/c/{{ c.number }}/png" class="btn btn-outline-primary btn-sm"><i class="fas fa-image" aria-hidden="true"></i> Image for LinkedIn</a>
+                    <a href="{{ c.verify }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-link" aria-hidden="true"></i> Share link</a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ c.verify|urlencode }}" class="btn btn-outline-secondary btn-sm"
+                       rel="noopener" target="_blank"><i class="fab fa-linkedin" aria-hidden="true"></i> Share on LinkedIn<span class="visually-hidden"> (opens in a new tab)</span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="card-body text-muted">No certificates yet. They appear here once an event you attended issues them.</div></div>
+{% endif %}
+{% endblock %}

@@ -186,3 +186,20 @@ def _reminder_html(name, event_title, event_date, venue, reg_id, ticket_url):
     """
     return _html_wrapper(content, f"Event Reminder — {event_title}")
 
+
+
+@celery.task(
+    bind=True,
+    queue='email',
+    max_retries=3,
+    default_retry_delay=300,
+    name='tasks.email_tasks.send_certificate_email',
+)
+def send_certificate_email(self, cert_id: str):
+    """Email one certificate's download link, once (UPG-125)."""
+    import services_certificates
+    try:
+        return services_certificates.email_once(cert_id)
+    except Exception as exc:
+        logger.warning("Certificate email %s not sent: %s", cert_id, exc)
+        raise self.retry(exc=exc)

@@ -22,6 +22,7 @@ The number is random (`new_number`), never derived from the person.
 import datetime
 import json
 import logging
+import os
 import re
 import secrets
 from typing import Dict, Iterable, List, Optional
@@ -511,10 +512,93 @@ def issue_one(event_id: str, event: dict, recipient: dict, actor: str = '') -> O
             return None
         cert = existing
     try:
-        return store_pdf(cert, render(event, cert))
+        cert = store_pdf(cert, render(event, cert))
     except Exception:
         _release(cert['id'])          # so a retry can issue it at once (UPG-124)
         raise
+    deliver(cert)
+    return cert
+
+
+# ── Delivery (UPG-125) ──────────────────────────────────────────────────────
+
+TOKEN_SALT = 'certificate-download'
+
+
+def link_days() -> int:
+    return max(1, int(os.environ.get('CERT_LINK_DAYS', '30')))
+
+
+def _secret() -> str:
+    """The app's SECRET_KEY, also from a background thread with no app context."""
+    from flask import current_app
+    try:
+        return current_app.config['SECRET_KEY']
+    except RuntimeError:
+        import app as app_module
+        return app_module.app.config['SECRET_KEY']
+
+
+def _serializer():
+    from itsdangerous import URLSafeTimedSerializer
+    return URLSafeTimedSerializer(_secret(), salt=TOKEN_SALT)
+
+
+def download_token(cert: dict) -> str:
+    return _serializer().dumps({'n': cert['number'], 'v': cert['version']})
+
+
+def read_token(token: str) -> dict:
+    """{'n': number, 'v': version}; itsdangerous' SignatureExpired or BadSignature if not."""
+    return _serializer().loads(token, max_age=link_days() * 86400)
+
+
+def download_url(cert: dict) -> str:
+    from utils_email import _base_url
+    return f"{_base_url().rstrip('/')}/certificates/download/{download_token(cert)}"
+
+
+def deliver(cert: dict) -> None:
+    """Queue the certificate's email (sent once; the outbox retries a failure)."""
+    if not cert.get('email'):
+        return
+    try:
+        from tasks.email_tasks import send_certificate_email
+        send_certificate_email.delay(cert['id'])
+    except Exception:
+        logger.exception("Certificate email for %s not queued", cert.get('number'))
+
+
+def email_once(cert_id: str) -> str:
+    """Send the certificate's email unless it was sent: 'sent', 'already' or 'no address'.
+    The send is claimed with a conditional update, so it goes out once; a failed
+    send gives the claim back for the retry."""
+    import uuid
+    from sqlalchemy import select
+    from sqlalchemy import update as sql_update
+    from models_pg import Certificate
+    from utils_email import send_certificate_issued_email
+    with _session() as s, s.begin():
+        claimed = s.execute(sql_update(Certificate)
+                            .where(Certificate.id == uuid.UUID(str(cert_id)), Certificate.emailed_at.is_(None))
+                            .values(emailed_at=datetime.datetime.now(datetime.timezone.utc))).rowcount == 1
+    if not claimed:
+        return 'already'
+    with _session() as s:
+        row = s.execute(select(Certificate).where(Certificate.id == uuid.UUID(str(cert_id)))).scalars().first()
+        cert = _row_dict(row)
+    if not cert.get('email'):
+        return 'no address'
+    try:
+        ok = send_certificate_issued_email(cert['email'], cert['name'], cert['data'].get('event_title') or 'Event',
+                                           TYPES.get(cert['cert_type'], {}).get('title', 'Certificate'), cert['number'],
+                                           download_url(cert), verify_url(cert['number']), link_days())
+    except Exception:
+        ok = False
+    if not ok:
+        update(cert_id, emailed_at=None)
+        raise CertificateError(f"The email for certificate {cert['number']} wasn't sent.")
+    return 'sent'
 
 
 def _release(cert_id: str) -> None:

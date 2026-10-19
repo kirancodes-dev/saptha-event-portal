@@ -321,3 +321,89 @@ def check_files(event_id):
     else:
         flash(f"All {len(results)} certificate files match their records.", 'success')
     return _back(event_id)
+
+
+# ── Delivery (UPG-125) ──────────────────────────────────────────────────────
+
+def _may_download(cert) -> bool:
+    """The certificate's own person, or the event's staff who manage certificates."""
+    viewer = (session.get('user_id') or '').strip().lower()
+    if viewer and viewer == (cert.get('email') or '').lower():
+        return True
+    doc = db.collection('events').document(cert['event_id']).get()
+    event = dict(doc.to_dict() or {}, id=cert['event_id']) if doc.exists else {'id': cert['event_id']}
+    return _can(event, 'issue_certificates') or _can(event, 'edit_event')
+
+
+def _stored_pdf(cert):
+    """The stored PDF, if it still matches its record; else abort."""
+    import services_certificates as certs
+    from utils_storage import get_private
+    state = certs.file_check(cert)
+    if state != 'ok':
+        abort(404 if state == 'missing' else 409)
+    return get_private(cert['pdf_key'])
+
+
+def _pdf_response(cert):
+    return Response(_stored_pdf(cert), mimetype='application/pdf', headers={
+        'Content-Disposition': f"attachment; filename=Certificate-{cert['number']}.pdf",
+        'Cache-Control': 'private, no-store'})
+
+
+@certificates_bp.route('/mine')
+@login_required
+def mine():
+    """The signed-in person's certificates (students and faculty)."""
+    import services_certificates as certs
+    rows = [dict(c, type_title=certs.TYPES.get(c['cert_type'], {}).get('title', 'Certificate'),
+                 event_title=(c['data'] or {}).get('event_title') or 'Event', verify=certs.verify_url(c['number']))
+            for c in certs.for_person([session.get('user_id', '')])]
+    return render_template('certificates/mine.html', certificates=rows)
+
+
+def _own(number):
+    import services_certificates as certs
+    cert = certs.by_number(str(number).strip().upper())
+    if not cert:
+        abort(404)
+    if not _may_download(cert):
+        abort(403)
+    return cert
+
+
+@certificates_bp.route('/c/<number>/pdf')
+@login_required
+def own_pdf(number):
+    return _pdf_response(_own(number))
+
+
+@certificates_bp.route('/c/<number>/png')
+@login_required
+def own_png(number):
+    """The certificate as an image, to post on LinkedIn."""
+    import certificate_pdf
+    cert = _own(number)
+    return Response(certificate_pdf.to_png(_stored_pdf(cert), scale=2.0), mimetype='image/png', headers={
+        'Content-Disposition': f"attachment; filename=Certificate-{cert['number']}.png",
+        'Cache-Control': 'private, no-store'})
+
+
+@certificates_bp.route('/download/<token>')
+def signed_download(token):
+    """The emailed link: signed, and it expires (CERT_LINK_DAYS)."""
+    import services_certificates as certs
+    from itsdangerous import BadSignature, SignatureExpired
+    try:
+        claim = certs.read_token(token)
+    except SignatureExpired:
+        return render_template('certificates/link_problem.html', expired=True), 410
+    except BadSignature:
+        return render_template('certificates/link_problem.html', expired=False), 404
+    cert = certs.by_number(claim.get('n', ''), claim.get('v'))
+    if not cert:
+        abort(404)
+    if not cert['is_current'] or cert['status'] != 'valid':
+        return render_template('certificates/link_problem.html', expired=False, replaced=True,
+                               number=cert['number']), 410
+    return _pdf_response(cert)

@@ -3896,6 +3896,7 @@ The items below are built in this order, one commit each; each deferred part is 
   4. ✅ Test: the stored PDF's SHA-256 matches the record; a changed file is reported as changed. [T `tests/test_certificate_issuing.py`::test_the_stored_pdf_matches_its_hash_and_a_changed_file_is_reported, ::test_a_failed_render_leaves_nothing_behind]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. Since written, UPG-122 stores each PDF privately with its SHA-256 on the record (`services_certificates.store_pdf`) and issues in one call (`issue_event`), and UPG-123 adds the signatory gate the button must show; what's left is the outbox chunks and progress, the automatic issue on results with its switch, issuing to one person, the after-the-event check, the list, the changed-file check, and moving end-event and the bulk button (`utils_certificate.issue_event_certificates`, UPG-06) onto the new service.
 - **Note:** the 1,200-person test stubs out drawing the PDF (its content is tested in UPG-123); the database, storage, chunks, task and outbox path are real.
+- **2026-10-19 (follow-up, from the full run at `45899bf`):** `CERT_CHUNK_SIZE` was missing from `.env.example`, which `tests/test_production_boot.py::test_every_environment_variable_the_app_reads_is_in_env_example` requires; added.
 
 #### UPG-125 — Delivering certificates: email, "My certificates", sharing and phones
 - **Status:** DONE
@@ -3919,6 +3920,7 @@ The items below are built in this order, one commit each; each deferred part is 
   3. ✅ Test: the PNG download is a real image of the certificate; the share link opens the public verification page. [T `tests/test_certificate_delivery.py`::test_the_png_is_an_image_of_the_certificate_and_the_share_link_verifies]
   4. ✅ Test: at 375px the list and the download work in headless Chromium, with no sideways scroll. [T `tests/test_certificate_phone.py::test_certificates_fit_a_phone_and_download_from_it`: real login, the list and the verification page measured at 375 and 1280, the PDF downloaded in the browser and compared with the stored file]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; nothing delivers the new certificates yet.
+- **2026-10-19 (follow-up, from the full run at `45899bf`):** `CERT_LINK_DAYS` was missing from `.env.example`, which `tests/test_production_boot.py::test_every_environment_variable_the_app_reads_is_in_env_example` requires; added.
 
 #### UPG-126 — Verifying a certificate
 - **Status:** DONE
@@ -3941,6 +3943,7 @@ The items below are built in this order, one commit each; each deferred part is 
   2. ✅ Test: more than the limit of lookups a minute from one address gets 429. [T `tests/test_certificate_verification.py`::test_lookups_past_the_limit_get_429]
   3. ✅ Test: the lookup form and the coordinator's legacy check redirect to the new page; `/verify/<old hash>` keeps showing its legacy record. *(Reworded 2026-10-19 while building: old hashes and registration IDs are printed on certificates already issued and have no new number, so they keep their own pages at the same address until UPG-138 retires the old store; UPG-06's tests check those pages and stay as they are.)* [T `tests/test_certificate_verification.py`::test_the_lookup_form_and_the_legacy_check_lead_to_the_new_page; UPG-06's `tests/test_certificates.py` and `tests/test_coordinator_authz.py` unchanged and passing]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `/verify/<number>` doesn't exist yet. UPG-136 changed only the old preview's venue (`routes_verification.py:87-91`).
+- **2026-10-19 (follow-up, from the full run at `45899bf`):** `VERIFY_RATE_LIMIT` was missing from `.env.example`, which `tests/test_production_boot.py::test_every_environment_variable_the_app_reads_is_in_env_example` requires; added.
 
 #### UPG-127 — Correcting and revoking certificates
 - **Status:** TODO
@@ -4492,3 +4495,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-125: …" (parent `9b1be9f`) | UPG-125 | Delivery: one email per certificate with a signed link that expires (30 days) and refuses alteration, sent once through the outbox; "My certificates" for students and faculty with PDF, LinkedIn image and share links; the ledger links each event's certificate; checked at 375px and 1280px in headless Chromium with a real download. 6 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-132: …" (parent `d72ae12`) | UPG-132 | UPG-28's certificate part: the participant's certificate page fits a 375px phone (it hung off both sides before); "My certificates" downloads on a phone (UPG-125). |
 | 2026-10-19 | "UPG-133: …" (parent `77e843b`) | UPG-133 | UPG-50's deferred part: the certificate email shows a name or event title with markup as text. |
+| 2026-10-19 | "UPG-124/125/126 follow-up: ..." (parent `cb0e937`) | UPG-124, UPG-125, UPG-126 | The full SQLite run at `45899bf` (1,234 passed, 7 skipped) failed one check: `CERT_CHUNK_SIZE`, `CERT_LINK_DAYS` and `VERIFY_RATE_LIMIT` were not in `.env.example`. Added. |

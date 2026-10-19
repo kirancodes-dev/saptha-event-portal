@@ -30,6 +30,21 @@ def _number_page(number, version=None):
     return render_template('certificates/verify.html', view=view, number=str(number).strip().upper()), (200 if view else 404)
 
 
+@verification_bp.route('/verify/<number>/file', methods=['POST'])
+@verify_rate
+def verify_file(number):
+    """Is the PDF someone holds the current version of this number? (UPG-127)"""
+    from flask import request
+    import services_certificate_changes as changes
+    import services_certificates as certs
+    upload = request.files.get('file')
+    data = upload.read(5 * 1024 * 1024 + 1) if upload else b''
+    result = changes.check_file(number, data) if data and len(data) <= 5 * 1024 * 1024 else {'state': 'unknown'}
+    view = certs.public_view(number, result.get('version')) if result.get('version') else certs.public_view(number)
+    return render_template('certificates/verify.html', view=view, number=str(number).strip().upper(),
+                           file_check=result), (200 if view else 404)
+
+
 @verification_bp.route('/verify/<number>/v<int:version>')
 @verify_rate
 def verify_version(number, version):

@@ -145,6 +145,34 @@
     </div>
 </div>
 
+{% if corrections %}
+<div class="card mb-3" id="corrections">
+    <div class="card-body">
+        <h2 class="h5">Name corrections asked for</h2>
+        <ul class="list-unstyled mb-0">
+        {% for r in corrections %}
+            <li class="mb-3">
+                <code>{{ r.number }}</code>: <strong>{{ r.old_name }}</strong> → <strong>{{ r.new_name }}</strong>
+                {% if r.reason %}<br><span class="small text-muted">{{ r.reason }}</span>{% endif %}
+                {% if can_issue %}
+                <div class="d-flex gap-2 mt-1 flex-wrap">
+                    <form method="POST" action="/certificates/events/{{ event.id }}/corrections/{{ r.id }}/approve">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-primary">Approve (issue version 2)</button>
+                    </form>
+                    <form method="POST" action="/certificates/events/{{ event.id }}/corrections/{{ r.id }}/reject">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Reject</button>
+                    </form>
+                </div>
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
 <div class="card mb-3" id="people">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -163,8 +191,19 @@
             <tr>
                 <td>{{ p.name }}{% if p.team %}<br><span class="text-muted small">{{ p.team }}</span>{% endif %}</td>
                 <td>{{ p.type_title }}{% if p.position %} ({{ p.position }}){% endif %}</td>
-                <td>{% if p.cert %}<code>{{ p.cert.number }}</code>{% else %}<span class="text-muted">Not yet</span>{% endif %}</td>
+                <td>{% if p.cert %}<code>{{ p.cert.number }}</code>{% if p.cert.status == 'revoked' %} <span class="badge text-bg-danger">Revoked</span>{% endif %}{% else %}<span class="text-muted">Not yet</span>{% endif %}</td>
                 <td>{% if p.cert %}{{ p.cert.issued_at.strftime('%d %b %Y') if p.cert.issued_at else '' }}
+                    {% if can_issue and p.cert.status == 'valid' %}
+                    <details class="mt-1"><summary class="small">Revoke</summary>
+                        <form method="POST" action="/certificates/events/{{ event.id }}/revoke" class="mt-1">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="number" value="{{ p.cert.number }}">
+                            <label class="form-label small" for="revoke-{{ p.cert.number }}">Reason</label>
+                            <input class="form-control form-control-sm" id="revoke-{{ p.cert.number }}" name="reason" required maxlength="500">
+                            <button type="submit" class="btn btn-sm btn-outline-danger mt-1">Revoke certificate</button>
+                        </form>
+                    </details>
+                    {% endif %}
                     {% elif can_issue and not issue_problem %}
                     <form method="POST" action="/certificates/events/{{ event.id }}/issue_one">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

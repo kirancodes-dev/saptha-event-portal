@@ -56,6 +56,7 @@ def _own_events_with_signatories(event_id):
 def manage(event_id):
     import certificate_pdf
     import services_signatories as sigs
+    import services_certificate_changes as changes
     import services_certificate_runs as runs
     import services_certificates as certs
     event = _event_or_abort(event_id, 'edit_event', 'issue_certificates')
@@ -77,7 +78,8 @@ def manage(event_id):
                            can_issue=_can(event, 'issue_certificates'), issue_problem=runs.ready_to_issue(event),
                            auto_issue=event.get('cert_auto_issue') is not False, runs=event_runs,
                            running=any(r['status'] in ('queued', 'running') for r in event_runs),
-                           people=people, others=others, issued_count=len(issued))
+                           people=people, others=others, issued_count=len(issued),
+                           corrections=changes.for_event(db, event_id))
 
 
 def _can(event, permission):
@@ -356,8 +358,10 @@ def _pdf_response(cert):
 def mine():
     """The signed-in person's certificates (students and faculty)."""
     import services_certificates as certs
+    import services_certificate_changes as changes
     rows = [dict(c, type_title=certs.TYPES.get(c['cert_type'], {}).get('title', 'Certificate'),
-                 event_title=(c['data'] or {}).get('event_title') or 'Event', verify=certs.verify_url(c['number']))
+                 event_title=(c['data'] or {}).get('event_title') or 'Event', verify=certs.verify_url(c['number']),
+                 pending=changes.pending_for(db, c['number']))
             for c in certs.for_person([session.get('user_id', '')])]
     return render_template('certificates/mine.html', certificates=rows)
 
@@ -369,6 +373,8 @@ def _own(number):
         abort(404)
     if not _may_download(cert):
         abort(403)
+    if cert['status'] != 'valid':
+        abort(410)                    # revoked (UPG-127)
     return cert
 
 
@@ -407,3 +413,56 @@ def signed_download(token):
         return render_template('certificates/link_problem.html', expired=False, replaced=True,
                                number=cert['number']), 410
     return _pdf_response(cert)
+
+
+# ── Corrections and revocation (UPG-127) ────────────────────────────────────
+
+@certificates_bp.route('/c/<number>/correction', methods=['POST'])
+@login_required
+def ask_correction(number):
+    """The certificate's own person asks for their name to be corrected."""
+    import services_certificate_changes as changes
+    try:
+        changes.request_correction(db, str(number).strip().upper(), session.get('user_id', ''),
+                                   request.form.get('new_name', ''), request.form.get('reason', ''))
+        flash("Your correction was sent to the event's organiser.", 'success')
+    except changes.ChangeError as exc:
+        flash(str(exc), 'danger')
+    return redirect('/certificates/mine')
+
+
+@certificates_bp.route('/events/<event_id>/corrections/<request_id>/<decision>', methods=['POST'])
+@login_required
+def decide_correction(event_id, request_id, decision):
+    import services_certificate_changes as changes
+    _event_or_abort(event_id, 'issue_certificates')
+    if decision not in ('approve', 'reject'):
+        abort(404)
+    actor = session.get('user_id', '')
+    try:
+        if decision == 'approve':
+            cert = changes.approve(db, event_id, request_id, actor)
+            flash(f"Corrected: {cert['number']} is now version {cert['version']} in the name {cert['name']}.", 'success')
+        else:
+            changes.reject(db, event_id, request_id, actor, request.form.get('note', ''))
+            flash("Correction rejected; the certificate is unchanged.", 'success')
+    except changes.ChangeError as exc:
+        flash(str(exc), 'danger')
+    return _back(event_id)
+
+
+@certificates_bp.route('/events/<event_id>/revoke', methods=['POST'])
+@login_required
+def revoke(event_id):
+    import services_certificate_changes as changes
+    import services_certificates as certs
+    _event_or_abort(event_id, 'issue_certificates')
+    cert = certs.by_number(str(request.form.get('number', '')).strip().upper())
+    if not cert or cert['event_id'] != event_id:
+        abort(404)
+    try:
+        changes.revoke(db, cert['number'], session.get('user_id', ''), request.form.get('reason', ''))
+        flash(f"Certificate {cert['number']} revoked.", 'success')
+    except changes.ChangeError as exc:
+        flash(str(exc), 'danger')
+    return _back(event_id)

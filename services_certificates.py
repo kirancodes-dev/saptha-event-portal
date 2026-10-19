@@ -516,8 +516,20 @@ def issue_one(event_id: str, event: dict, recipient: dict, actor: str = '') -> O
     except Exception:
         _release(cert['id'])          # so a retry can issue it at once (UPG-124)
         raise
+    _audit_issue(cert, actor)
     deliver(cert)
     return cert
+
+
+def _audit_issue(cert: dict, actor: str) -> None:
+    """Every certificate issued is in the audit log (UPG-127)."""
+    try:
+        from models import db
+        from utils import log_action
+        log_action(db, "CERT_ISSUED", f"{actor or 'system'}: {cert['number']} ({cert['cert_type']}) to "
+                                      f"{cert['name']} for event {cert['event_id']}")
+    except Exception:
+        logger.exception("Audit row for certificate %s not written", cert.get('number'))
 
 
 # ── Delivery (UPG-125) ──────────────────────────────────────────────────────

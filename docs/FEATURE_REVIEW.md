@@ -3946,16 +3946,22 @@ The items below are built in this order, one commit each; each deferred part is 
 - **2026-10-19 (follow-up, from the full run at `45899bf`):** `VERIFY_RATE_LIMIT` was missing from `.env.example`, which `tests/test_production_boot.py::test_every_environment_variable_the_app_reads_is_in_env_example` requires; added.
 
 #### UPG-127 — Correcting and revoking certificates
-- **Status:** TODO
-- **Last verified:** 2026-10-19 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-127: …" on `production-ready` (parent `979a228`) [T]
 - **What to build:**
   - **Corrections:** a student asks for a name correction from "My certificates", and the organiser approves or rejects it. On approval, a new version replaces the old one with the same number, and the old file no longer verifies as current.
   - **Revocation:** an organiser or admin revokes with a reason, and verification shows "revoked" and the date.
   - **Audit:** every issue, correction and revocation is audit-logged.
+- **Built (2026-10-19):**
+  - **Corrections** (`services_certificate_changes.py`, new): the certificate's own person asks from "My certificates" (`POST /certificates/c/<number>/correction`, `routes_certificates.py:422`; `request_correction` `:59`), one open request per certificate, kept in `certificate_corrections/<id>`. The event's certificate page lists open requests; whoever holds `issue_certificates` approves or rejects (`routes_certificates.py:436`). Approving (`approve` `:99`, `new_version` `:110`) marks the current version superseded and adds the next version under the same number with the new name in one transaction, then draws, stores (with its SHA-256) and emails it. Rejecting changes nothing.
+  - **Checking a file:** the verification page takes an uploaded PDF (`POST /verify/<number>/file`, `routes_verification.py:35`, rate-limited) and says whether it is the current version, a replaced one, a revoked one or not ours (`check_file` `:164`, by SHA-256).
+  - **Revocation:** a reason is required (`revoke` `:146`; `POST /certificates/events/<id>/revoke`, `routes_certificates.py:456`); the verification page shows "revoked" with the date, never the reason; "My certificates" shows it revoked with no download, and its own download answers 410 (`:377`).
+  - **Audit:** every certificate issued (`CERT_ISSUED`, `services_certificates._audit_issue` `:524`; possible from background runs since UPG-140), every correction asked for, approved or rejected, and every revocation with its reason.
+- **Files touched:** `services_certificate_changes.py` (new), `services_certificates.py`, `routes_certificates.py`, `routes_verification.py`, `templates/certificates/manage.html`, `templates/certificates/mine.html`, `templates/certificates/verify.html`, `tests/test_certificate_changes.py` (new)
 - **Effort:** M · **Depends on:** UPG-124, UPG-126 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: a correction request, approved, gives version 2 with the same number and the new name; version 1's hash no longer verifies as current; a rejected request changes nothing; only the certificate's owner can ask.
-  2. Test: a revocation needs a reason, shows on verification with the date, and is audit-logged.
+  1. ✅ Test: a correction request, approved, gives version 2 with the same number and the new name; version 1's hash no longer verifies as current; a rejected request changes nothing; only the certificate's owner can ask. [T `tests/test_certificate_changes.py`::test_a_correction_gives_version_2_with_the_same_number_and_version_1_stops_verifying]
+  2. ✅ Test: a revocation needs a reason, shows on verification with the date, and is audit-logged. [T `tests/test_certificate_changes.py`::test_a_revocation_needs_a_reason_shows_on_verification_and_is_audited]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; the `certificates` table has the version, status and revocation fields it needs (UPG-122).
 
 #### UPG-128 — Certificate lists, exports and college-wide counts
@@ -4520,3 +4526,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-124/125/126 follow-up: ..." (parent `cb0e937`) | UPG-124, UPG-125, UPG-126 | The full SQLite run at `45899bf` (1,234 passed, 7 skipped) failed one check: `CERT_CHUNK_SIZE`, `CERT_LINK_DAYS` and `VERIFY_RATE_LIMIT` were not in `.env.example`. Added. |
 | 2026-10-19 | "docs: ..." (parent `47fd4f0`) | UPG-140, UPG-141 | **Two new items.** UPG-140 (found building UPG-127): `log_action` drops every audit row written outside a request. UPG-141 (found building UPG-132): the participant's certificate page prints "at ." for an event without a venue. |
 | 2026-10-19 | "UPG-140: …" (parent `2368312`) | UPG-140 | Audit rows written outside a request (background tasks, scheduled jobs, certificate runs) are kept, as "system"; before, every one was dropped with a warning. |
+| 2026-10-19 | "UPG-127: …" (parent `979a228`) | UPG-127 | Corrections and revocation: a student asks for a name correction, the organiser approves (version 2, same number, emailed; version 1's file then checks as replaced) or rejects (nothing changes); revoking needs a reason and shows on verification with the date; every issue, correction and revocation is audit-logged. 2 new tests, passing on SQLite and PostgreSQL. |

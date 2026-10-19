@@ -13,7 +13,10 @@
             <div class="card-body">
                 <h2 class="h6 mb-1">{{ c.type_title }}{% if c.position %} ({{ c.position }}){% endif %}</h2>
                 <p class="mb-1"><strong>{{ c.event_title }}</strong></p>
-                <p class="text-muted small mb-3">No. <code>{{ c.number }}</code>{% if c.issued_at %} · issued {{ c.issued_at.strftime('%d %b %Y') }}{% endif %}</p>
+                <p class="text-muted small mb-3">No. <code>{{ c.number }}</code>{% if c.version > 1 %} · version {{ c.version }}{% endif %}{% if c.issued_at %} · issued {{ c.issued_at.strftime('%d %b %Y') }}{% endif %}</p>
+                {% if c.status == 'revoked' %}
+                <p class="text-danger small mb-0">This certificate was revoked{% if c.revoked_at %} on {{ c.revoked_at.strftime('%d %b %Y') }}{% endif %}.</p>
+                {% else %}
                 <div class="d-flex flex-wrap gap-2">
                     <a href="/certificates/c/{{ c.number }}/pdf" class="btn btn-primary btn-sm"><i class="fas fa-file-pdf" aria-hidden="true"></i> Download PDF</a>
                     <a href="/certificates/c/{{ c.number }}/png" class="btn btn-outline-primary btn-sm"><i class="fas fa-image" aria-hidden="true"></i> Image for LinkedIn</a>
@@ -21,6 +24,22 @@
                     <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ c.verify|urlencode }}" class="btn btn-outline-secondary btn-sm"
                        rel="noopener" target="_blank"><i class="fab fa-linkedin" aria-hidden="true"></i> Share on LinkedIn<span class="visually-hidden"> (opens in a new tab)</span></a>
                 </div>
+                {% if c.pending %}
+                <p class="small text-muted mt-3 mb-0">You asked for the name to be corrected to <strong>{{ c.pending.new_name }}</strong>; the organiser hasn't decided yet.</p>
+                {% else %}
+                <details class="mt-3">
+                    <summary class="small">Name wrong on the certificate?</summary>
+                    <form method="POST" action="/certificates/c/{{ c.number }}/correction" class="mt-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label class="form-label small" for="fix-{{ c.number }}">Your name as it should appear</label>
+                        <input class="form-control form-control-sm" id="fix-{{ c.number }}" name="new_name" required maxlength="300" value="{{ c.name }}">
+                        <label class="form-label small mt-2" for="why-{{ c.number }}">What's wrong (optional)</label>
+                        <input class="form-control form-control-sm" id="why-{{ c.number }}" name="reason" maxlength="500">
+                        <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Ask for a correction</button>
+                    </form>
+                </details>
+                {% endif %}
+                {% endif %}
             </div>
         </div>
     </div>

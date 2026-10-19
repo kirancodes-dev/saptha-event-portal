@@ -41,6 +41,22 @@
     <dt>Issued on</dt><dd>{{ view.issued_on }}</dd>
     <dt>Number</dt><dd class="verify-number">{{ view.number }}{% if view.versions > 1 %} · version {{ view.version }}{% endif %}</dd>
   </dl>
+  {% if file_check %}
+  <div class="callout {{ 'callout--success' if file_check.state == 'current' else 'callout--danger' }} text-start small mt-3" role="status" id="file-result">
+    {% if file_check.state == 'current' %}The file you checked is this certificate, as issued (version {{ file_check.version }}).
+    {% elif file_check.state == 'replaced' %}The file you checked is version {{ file_check.version }}, which was replaced: it is not the current certificate.
+    {% elif file_check.state == 'revoked' %}The file you checked is this certificate, but it was revoked.
+    {% else %}The file you checked doesn't match any version of this certificate: it may have been altered.{% endif %}
+  </div>
+  {% endif %}
+  <form method="POST" action="/verify/{{ view.number }}/file" enctype="multipart/form-data" class="text-start mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label small" for="verify-file">Check a copy you were sent (PDF)</label>
+    <div class="d-flex gap-2 flex-wrap">
+      <input class="form-control form-control-sm" type="file" id="verify-file" name="file" accept="application/pdf" required style="max-width:100%">
+      <button type="submit" class="btn btn-sm btn-outline-primary">Check the file</button>
+    </div>
+  </form>
 {% endif %}
   {% if support_email %}
   <p class="small text-muted mt-3 mb-0">Questions about a certificate: <a href="mailto:{{ support_email }}">{{ support_email }}</a></p>

@@ -77,9 +77,14 @@ def test_pages_say_venue_to_be_announced(placeless):
         'event page': d['app'].test_client().get(f'/event/{event_id}'),
         'student dashboard': student.get('/participant/dashboard'),
     }
+    title = d['db'].collection('events').document(event_id).get().to_dict()['title']
     for name, resp in pages.items():
         assert resp.status_code == 200, name
-        assert _shows(resp.get_data(as_text=True), 'Venue to be announced'), name
+        html = resp.get_data(as_text=True)
+        if name == 'calendar':       # lists every event, some with a real venue of their own: look at this one
+            at = html.index(title)
+            html = html[at:at + 2500]
+        assert _shows(html, 'Venue to be announced'), name
     feed = [e for e in d['app'].test_client().get('/api/calendar').get_json() if e['id'] == event_id]
     assert feed and feed[0]['venue'] == 'Venue to be announced'
 

@@ -430,7 +430,9 @@ class Event(Base):
 
 
 ACTIVE_LEAD_INDEX = "uq_registrations_active_lead"
-ACTIVE_WHERE = "status NOT IN ('cancelled', 'waitlisted')"
+# Only registrations that name a person: one with no lead email (old or imported
+# rows) has nobody to be unique for
+ACTIVE_WHERE = "status NOT IN ('cancelled', 'waitlisted') AND \"leadEmail\" <> ''"
 
 
 class Registration(Base):

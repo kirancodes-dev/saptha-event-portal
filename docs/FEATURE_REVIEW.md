@@ -3619,6 +3619,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: an event without a venue appears in the scanner list without "SNPSU Campus". [T `tests/test_venue_label.py::test_pages_say_venue_to_be_announced` (the scanner list, calendar and its feed, event page, student dashboard)]
   2. ✅ Test: no app code or template outside the seeds uses "SNPSU Campus" as a fallback (a scan), and an email for an event without a venue doesn't name one. [T `::test_no_app_code_or_page_falls_back_to_an_invented_place`, `::test_the_briefing_email_never_invents_a_venue` (in-person: "Venue to be announced"; online: "Online"), `::test_an_online_event_says_online`, `::test_the_label_never_invents_a_place`]
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code (widened the same day). Still TODO.
+- **2026-10-19 (Part 3 full run):** the calendar page lists every event, and other events have "Main Campus" as their real venue, so the test now checks the placeless event's own entry. Test-only.
 
 #### UPG-112 — UPG-14's leftover duplicates
 - **Status:** DONE
@@ -3701,6 +3702,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   1. ✅ Test: two different forms for the same email, sent at the same instant (a barrier, repeated), make exactly one registration; the other answer says the person is already registered. [T `tests/test_one_registration.py::test_two_tabs_at_once_give_one_registration` (5 tries, each one registration and one "already registered"), `::test_the_database_refuses_a_second_active_registration_in_any_case`, `::test_a_cancelled_registration_doesnt_block_registering_again`, `::test_a_paid_order_the_database_refuses_is_kept_for_a_refund`, `::test_the_waitlist_skips_someone_already_registered`, `::test_the_migration_refuses_to_run_over_duplicates`]
   2. ✅ Test: on SQLite and PostgreSQL. [T the same file on PostgreSQL 16 (`TEST_DATABASE_URL`): 10 passed; `tests/test_migrations_baseline.py` builds the schema from empty with 0007 and matches the models]
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code (`routes_forms.py:647-656` reads, then writes). Still TODO.
+- **Corrected 2026-10-19 (Part 3 full run):** the index also covered registrations with no lead email (old or imported rows, and some tests), so two of those in one event blocked each other (`tests/test_event_popup.py` failed). The rule now applies only to rows that name a person (`"leadEmail" <> ''`, `models_pg.ACTIVE_WHERE` and migration 0007, which hadn't run on any deployed database). New test: `tests/test_one_registration.py::test_registrations_without_an_email_dont_block_each_other`. A development database that already got the first version of the index keeps it until the index is dropped (`DROP INDEX uq_registrations_active_lead`) and the app restarted.
 
 #### UPG-116 — A popup test fails when a random event id contains "999"
 - **Status:** DONE
@@ -4132,3 +4134,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-114: …" (parent `6f35c5e`) | UPG-114 | **UPG-114 DONE** (owner's instruction, before Part 3): waitlist places come from join order, worked out when shown, never repeat, and match the order of promotion, everywhere a place appears. 3 new tests. New: **UPG-117**. |
 | 2026-10-19 | "docs: …" | UPG-117 | New (found in UPG-114): the JSON waitlist join refuses events that aren't in the old `active` status. TODO. |
 | 2026-10-19 | "UPG-111: …" (parent `644b882`) | UPG-111 | **UPG-111 DONE** (owner's instruction, before Part 3): an event with no venue says "Venue to be announced" ("Online" for online events) on every page and email, through one helper; no invented "SNPSU Campus"/"SNPSU" anywhere (the certificate preview deferred). 12 new tests. |
+| 2026-10-19 | "UPG-115: …" | UPG-115, UPG-111 | Follow-ups found by the full run: the one-registration index now skips rows with no lead email (they blocked each other), and UPG-111's calendar check looks at its own event's entry. 1 new test; SQLite and PostgreSQL. |

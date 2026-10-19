@@ -63,6 +63,16 @@ def test_the_database_refuses_a_second_active_registration_in_any_case(paid):  #
     assert len([r for r in d['db'].collection('registrations').where('event_id', '==', event_id).stream()]) == 1
 
 
+def test_registrations_without_an_email_dont_block_each_other(paid):  # noqa: F811
+    """Old or imported rows with no lead email name nobody, so the rule doesn't apply."""
+    d = paid
+    event_id = _free_event(d)
+    for _ in range(2):
+        d['db'].collection('registrations').document(_unique('REG')).set({'event_id': event_id, 'status': 'Confirmed',
+                                                                           'user_id': f"{_unique('anon')}@test.edu"})
+    assert len(list(d['db'].collection('registrations').where('event_id', '==', event_id).stream())) == 2
+
+
 def test_a_cancelled_registration_doesnt_block_registering_again(paid):  # noqa: F811
     d = paid
     event_id = _free_event(d)

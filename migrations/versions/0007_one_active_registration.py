@@ -25,7 +25,7 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 INDEX = 'uq_registrations_active_lead'
-ACTIVE = "status NOT IN ('cancelled', 'waitlisted')"
+ACTIVE = "status NOT IN ('cancelled', 'waitlisted') AND \"leadEmail\" <> ''"   # rows naming a person
 
 
 def upgrade() -> None:

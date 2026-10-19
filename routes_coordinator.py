@@ -21,7 +21,8 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int, create_registration, generate_reg_id
+from utils import (login_required, role_required, log_action, safe_int, create_registration, generate_reg_id,
+                   AlreadyRegistered)
 from utils_email import (send_appointment_email, send_broadcast_email,
                          send_ticket_email, send_result_email)
 from services_accounts import create_unverified_account, send_set_password_link
@@ -545,17 +546,21 @@ def process_walkin():
         reg_id      = generate_reg_id()   # UPG-95
         event_doc   = db.collection('events').document(event_id).get().to_dict() or {}
         event_title = event_doc.get('title', 'Event')
-        create_registration(db, reg_id, {
-            'reg_id': reg_id, 'event_id': event_id, 'event_title': event_title,
-            'lead_name': name, 'lead_email': email, 'lead_usn': usn, 'lead_phone': phone,
-            'team_name': name, 'members': [],
-            'status': 'Confirmed', 'payment_status': 'Paid',
-            'amount_paid': event_doc.get('fees', {}).get('regular', 0),
-            'payment_mode': request.form.get('payment_mode', 'Cash'),
-            'registered_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'attendance': 'Present',
-            'checkin_time': datetime.datetime.now().strftime("%H:%M:%S"),
-            'is_eliminated': False, 'current_round': event_doc.get('active_round', 1)})
+        try:
+            create_registration(db, reg_id, {
+                'reg_id': reg_id, 'event_id': event_id, 'event_title': event_title,
+                'lead_name': name, 'lead_email': email, 'lead_usn': usn, 'lead_phone': phone,
+                'team_name': name, 'members': [],
+                'status': 'Confirmed', 'payment_status': 'Paid',
+                'amount_paid': event_doc.get('fees', {}).get('regular', 0),
+                'payment_mode': request.form.get('payment_mode', 'Cash'),
+                'registered_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'attendance': 'Present',
+                'checkin_time': datetime.datetime.now().strftime("%H:%M:%S"),
+                'is_eliminated': False, 'current_round': event_doc.get('active_round', 1)})
+        except AlreadyRegistered:   # the database keeps one active registration per person (UPG-115)
+            flash(f"{email} is already registered for {event_title}; check them in from the scanner instead.", "info")
+            return redirect('/coordinator/on_spot')
 
         # Generate QR code bytes so it can be attached to the ticket email
         try:

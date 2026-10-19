@@ -12,7 +12,8 @@ from services_payments import (PaymentError, amount_inr, attach_registration, ch
                                simulation_enabled, take_coupon_use)
 
 COUPON_GONE = 'the coupon had no uses left when this late payment arrived'  # UPG-36
-from utils import create_registration, generate_reg_id, login_required, record_form_submission, safe_int
+from utils import (AlreadyRegistered, create_registration, generate_reg_id, login_required, record_form_submission,
+                   safe_int)
 
 # What a payer sees when their money arrived but the registration couldn't be
 # completed (UPG-30)
@@ -431,7 +432,11 @@ def _complete_registration(event_id, reg_data, payment_status='Paid',
             'current_round':        1,
         })
         if held is None:
-            create_registration(_db(), reg_id, reg_data)   # never over another (UPG-95)
+            try:
+                create_registration(_db(), reg_id, reg_data)   # never over another (UPG-95)
+            except AlreadyRegistered:   # another form for this person got there first (UPG-115)
+                session.pop('pending_reg_data', None)
+                return {'error': 'already_registered'}
         else:   # the held (pending_payment) seat becomes the paid registration
             _db().collection('registrations').document(reg_id).set(reg_data)
         if reg_data.get('form_answers'):

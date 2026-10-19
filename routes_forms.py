@@ -51,7 +51,7 @@ class DynamicDBProxy:
 
 db = DynamicDBProxy()
 from utils import (login_required, role_required, log_action, safe_int, record_form_submission,
-                   create_registration, generate_reg_id)
+                   create_registration, generate_reg_id, AlreadyRegistered)
 from utils_email import send_registration_confirmed_email
 from services_accounts import (cancel_url_for, create_unverified_account, load_cancel_token, resolve_registrant,
                                send_set_password_link)
@@ -682,10 +682,12 @@ def submit_form(event_id):
         if is_new_user:
             # A set-password link, never a password (UPG-33); faculty and external
             # participants keep the participant role and their own type (UPG-12)
-            create_unverified_account(db, email, full_name, phone, participant_type=ptype,
-                                      designation=designation, institution=institution)
-            send_set_password_link(db, email, full_name)
-            flash("🆕 We've emailed you a link to set your password.", "info")
+            created = create_unverified_account(db, email, full_name, phone, participant_type=ptype,
+                                                designation=designation, institution=institution)
+            if created:   # else another tab made the account a moment ago and sent the link (UPG-115)
+                send_set_password_link(db, email, full_name)
+                flash("🆕 We've emailed you a link to set your password.", "info")
+            is_new_user = created
         elif session_email:
             # An existing account takes the type the first time it's given (UPG-12);
             # never from someone who isn't logged in (UPG-97)
@@ -872,6 +874,15 @@ def submit_form(event_id):
         }
         finish_submission(sub_key, reg_id)
         return redirect('/registration/confirmed')
+
+    except AlreadyRegistered:
+        # Another form for this person got there first (two tabs): the database
+        # keeps one active registration per person per event (UPG-115)
+        if sub_key:
+            from services_idempotency import release_submission
+            release_submission(sub_key)
+        flash("You're already registered for this event.", "info")
+        return redirect('/participant/dashboard' if session.get('user_id') else f'/event/{event_id}')
 
     except Exception as exc:
         if sub_key:

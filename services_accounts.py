@@ -82,10 +82,22 @@ def cancel_url_for(reg: dict) -> str:
 
 
 def create_unverified_account(db, email: str, name: str, phone: str = '',
-                              role: str = 'Student', **fields) -> None:
+                              role: str = 'Student', **fields) -> bool:
     """Create an account nobody can log in to until the emailed set-password
     link is used: for registrations (BLK-02), and for walk-ins and staff that
-    someone else creates (UPG-33). Its random password is never shown."""
+    someone else creates (UPG-33). Its random password is never shown.
+    False when another request created the same account a moment earlier (two
+    tabs, UPG-115): the database's unique email refused this one."""
+    try:
+        _write_unverified(db, email, name, phone, role, fields)
+    except Exception as exc:
+        if 'users' in str(getattr(exc, 'orig', exc)) and ('UNIQUE' in str(exc) or 'unique' in str(exc).lower()):
+            return False
+        raise
+    return True
+
+
+def _write_unverified(db, email, name, phone, role, fields):
     db.collection('users').document(email).set({
         'email':                email,
         'name':                 name,

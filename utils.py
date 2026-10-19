@@ -154,13 +154,33 @@ class RegistrationExists(Exception):
     """A new registration's ID is already taken; nothing was written (UPG-95)."""
 
 
+class AlreadyRegistered(Exception):
+    """This person already holds an active registration for the event: the
+    database refused a second (UPG-115). Nothing was written."""
+
+
+def is_active_duplicate(exc) -> bool:
+    """Whether a database error is the one-active-registration index refusing."""
+    from models_pg import ACTIVE_LEAD_INDEX
+    text = str(getattr(exc, 'orig', exc))
+    return ACTIVE_LEAD_INDEX in text or ('UNIQUE constraint failed' in text and 'registrations' in text
+                                         and 'registrations.id' not in text)
+
+
 def create_registration(db, reg_id: str, data: dict, collection: str = 'registrations') -> None:
     """Write a new registration (or waitlist entry) under reg_id, never over an
-    existing one: the database layer's set() merges into whatever is there (UPG-95)."""
+    existing one: the database layer's set() merges into whatever is there (UPG-95).
+    Raises AlreadyRegistered when the person already holds an active
+    registration for the event (the database's unique index, UPG-115)."""
     ref = db.collection(collection).document(reg_id)
     if ref.get().exists:
         raise RegistrationExists(reg_id)
-    ref.set(data)
+    try:
+        ref.set(data)
+    except Exception as exc:
+        if collection == 'registrations' and is_active_duplicate(exc):
+            raise AlreadyRegistered(data.get('lead_email', '')) from exc
+        raise
 
 
 def safe_int(value, default: int = 0) -> int:

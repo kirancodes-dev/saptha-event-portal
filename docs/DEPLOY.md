@@ -11,7 +11,7 @@ The schema is built and changed only by Alembic migrations (`migrations/versions
 In production (`FLASK_ENV=production`) the app never creates or alters tables at
 start-up: it checks that the database is at the newest migration and refuses to
 start otherwise, with a message saying what to run. In development, start-up still
-creates missing tables and columns so a local SQLite file just works.
+creates missing tables, columns and indexes so a local SQLite file just works.
 
 Run migrations **before** the new revision serves traffic, once per deploy, from
 the same image (so the migration files match the code):
@@ -33,6 +33,14 @@ Don't run migrations from every container's start command: several instances
 starting together would race.
 
 **A new, empty database:** `alembic upgrade head` builds every table.
+
+**Migration `0007_one_active_registration`** adds the database rule that a person
+holds at most one active (not cancelled or waitlisted) registration per event. If
+an existing database already has someone registered twice for one event, the
+upgrade stops before changing anything and lists each case (event, email). Cancel
+the extra registrations from the Super Admin's registrations page (keep one each;
+refund any extra payment from the payments page), then run `alembic upgrade head`
+again. It never cancels or deletes a registration itself.
 
 **A database created before migrations existed** (by the old start-up
 `create_all`/`ALTER TABLE`): bring it to the current models once with a

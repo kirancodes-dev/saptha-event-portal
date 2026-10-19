@@ -269,7 +269,16 @@ def auto_promote(db, event_id: str):
                 "source": "waitlist_promotion",
                 "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             }
-        db.collection("registrations").document(reg_id).set(reg_data)
+        try:
+            db.collection("registrations").document(reg_id).set(reg_data)
+        except Exception as exc:
+            from utils import is_active_duplicate
+            if not is_active_duplicate(exc):
+                raise
+            # Already registered another way: they don't need the seat; the next
+            # person in line gets it (UPG-115)
+            db.collection("waitlists").document(doc.id).update({"status": "already_registered"})
+            return auto_promote(db, event_id)
 
         # Free promotions are confirmed immediately, so issue the same signed
         # ticket that a normal registration receives.  Paid promotions remain

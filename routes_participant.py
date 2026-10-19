@@ -37,7 +37,8 @@ class DynamicDBProxy:
             raise AttributeError(f"No DB available for attribute '{name}'")
 
 db = DynamicDBProxy()
-from utils import login_required, role_required, log_action, safe_int, create_registration, generate_reg_id
+from utils import (login_required, role_required, log_action, safe_int, create_registration, generate_reg_id,
+                   AlreadyRegistered)
 from utils_email import send_ticket_email
 
 participant_bp = Blueprint('participant', __name__, url_prefix='/participant')
@@ -540,7 +541,11 @@ def public_register(event_id):
             return redirect(f'/payment/checkout/{event_id}')
 
         reg_data.update({'status': 'Confirmed', 'payment_status': 'Free', 'amount_paid': 0})
-        create_registration(db, reg_id, reg_data)
+        try:
+            create_registration(db, reg_id, reg_data)
+        except AlreadyRegistered:   # another form for this person got there first (UPG-115)
+            flash("You're already registered for this event.", "info")
+            return redirect('/participant/dashboard' if session_email else f'/event/{event_id}')
 
         # Award +50 XP for registration
         try:

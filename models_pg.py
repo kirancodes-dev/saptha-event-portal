@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 try:
     from sqlalchemy import (
         Boolean, Column, DateTime, Enum, Float, ForeignKey,
-        Integer, String, Text, Date, Index
+        Integer, String, Text, Date, Index, text
     )
 except Exception:
     sqlalchemy = None
@@ -429,10 +429,19 @@ class Event(Base):
         }
 
 
+ACTIVE_LEAD_INDEX = "uq_registrations_active_lead"
+ACTIVE_WHERE = "status NOT IN ('cancelled', 'waitlisted')"
+
+
 class Registration(Base):
     __tablename__ = "registrations"
     __table_args__ = (
         Index("idx_registrations_event_attendance_status", "eventId", "attendance", "status"),
+        # One active registration per person per event, whatever the email's case:
+        # the database refuses a second, so two forms sent at once can't both
+        # register (UPG-115; migration 0007_one_active_registration)
+        Index(ACTIVE_LEAD_INDEX, "eventId", text('lower("leadEmail")'), unique=True,
+              postgresql_where=text(ACTIVE_WHERE), sqlite_where=text(ACTIVE_WHERE)),
     )
 
     id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

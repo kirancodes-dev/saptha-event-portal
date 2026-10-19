@@ -3743,6 +3743,17 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ `pip-audit` reports no vulnerability in the app's requirements [R, Part 3 release check]; the full pytest passes on Werkzeug 3.1.9 [T, Part 3 release check].
 
+#### UPG-120 — Volunteers can't log in
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-120: …" on `production-ready` [T]
+- **Problem:** Found by Part 3's browser pass of every role. A volunteer account's role is `Volunteer` (staff appointment, the showcase seed), but the login form offered Student, Event coordinator, Club SPOC, Judge and Super admin only. The login refuses a role that doesn't match the account (`routes_auth.py`), so a volunteer could never sign in. Their home, the scanner list, and the scan page also admitted only coordinators and admins. `tests/test_volunteer_scope.py` had covered volunteers' check-in rights by setting the session directly, so it never met the login.
+- **Built (2026-10-19):** the form offers "Event volunteer" (`templates/login.html`). The scanner list and the scan page admit volunteers (`routes_coordinator.py`); both already show and open only the events where the person is on the staff, and the check-in still checks the event (UPG-02, BLK-18).
+- **Files touched:** `templates/login.html`, `routes_coordinator.py`, `tests/test_volunteer_login.py` (new).
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Acceptance criteria:**
+  1. ✅ Test: a volunteer logs in and lands on the scanner list. [T `tests/test_volunteer_login.py::test_a_volunteer_logs_in_and_lands_on_the_scanner`, `::test_the_login_form_offers_every_role_an_account_can_have` (both fail on the old form)]
+  2. ✅ Test: they see and open only the events they're staff on, and can't log in as another role. [T `::test_a_volunteer_scans_only_the_events_they_are_staff_on`, `::test_a_volunteer_cant_log_in_as_another_role`]
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4157,3 +4168,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-115: …" | UPG-115, UPG-111 | Follow-ups found by the full run: the one-registration index now skips rows with no lead email (they blocked each other), and UPG-111's calendar check looks at its own event's entry. 1 new test; SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-118: …" | UPG-118 | **UPG-118 DONE**: the boot test makes its dummy secrets at run time; the three findings in its first commit are accepted test dummies in `.gitleaksignore`. Full-history gitleaks clean. |
 | 2026-10-19 | "UPG-119: …" | UPG-119 | **UPG-119 DONE**: Werkzeug pinned to 3.1.9 (PYSEC-2026-4312, Windows-only; found by pip-audit). setuptools 79.0.1's advisory is about building packages and comes with the virtual environment: recorded. |
+| 2026-10-19 | "UPG-120: …" | UPG-120 | **UPG-120 DONE** (found by the Part 3 browser pass): volunteers couldn't log in (no Volunteer option on the form) or open their scanner; now they can, for the events they're staff on only. 4 new tests. |

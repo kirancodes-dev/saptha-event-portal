@@ -595,7 +595,7 @@ def process_walkin():
 # 15. QR SCANNER
 @coord_bp.route('/scanner')
 @login_required
-@role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
+@role_required(['EventCoordinator', 'Volunteer', 'SuperAdmin', 'Super Admin'])   # volunteers scan where assigned (UPG-120)
 def scanner_selector():
     user_email = session.get('user_id', '')
     user_name  = session.get('name', user_email.split('@')[0].title())
@@ -644,7 +644,7 @@ def scanner_selector():
 
 @coord_bp.route('/scan/<event_id>')
 @login_required
-@role_required(['EventCoordinator', 'SuperAdmin', 'Super Admin'])
+@role_required(['EventCoordinator', 'Volunteer', 'SuperAdmin', 'Super Admin'])   # volunteers scan where assigned (UPG-120)
 def scan_page(event_id):
     doc = db.collection('events').document(event_id).get()
     if not doc.exists:

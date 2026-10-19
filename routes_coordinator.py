@@ -454,7 +454,7 @@ def publish_results(event_id):
                 _wa(send_result_whatsapp, winner['phone'], winner['lead_name'],
                     event_title, winner['rank'], winner['score'])
 
-        event_ref.update({'status': 'completed', 'winners': winners,
+        event_ref.update({'status': 'completed', 'winners': winners, 'results_published': True,   # as the SPOC's (UPG-139)
                           'completed_at': datetime.datetime.now(datetime.timezone.utc)})
 
         # Kick off AI summaries in background (best-effort — won't block publish)

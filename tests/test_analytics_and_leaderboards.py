@@ -246,6 +246,21 @@ def test_publishing_results_keeps_decimals_and_shared_places(s):
     assert {w['rank'] for w in ev['winners']} == {1}
 
 
+def test_upg139_the_coordinators_publish_marks_the_results_published(s):
+    import services_certificates
+    eid = s['mine']
+    assert not services_certificates._ranks(s['db'], eid, s['db'].collection('events').document(eid).get().to_dict())
+    button = f'action="/spoc/publish_results/{eid}"'
+    assert button in s['spoc'].get(f'/spoc/results/{eid}').get_data(as_text=True)
+    s['admin'].post(f"/coordinator/publish_results/{eid}")
+    ev = s['db'].collection('events').document(eid).get().to_dict()
+    assert ev['results_published'] is True
+    assert button not in s['spoc'].get(f'/spoc/results/{eid}').get_data(as_text=True)   # the SPOC sees them published
+    owed = {(r['name'], r['cert_type'], r['position']) for r in services_certificates.recipients(s['db'], eid)
+            if r['cert_type'] in services_certificates.POSITION_TYPES}
+    assert owed == {('Alpha Lead', 'winner', 1), ('Bravo Lead', 'winner', 1), ('Charlie Lead', 'winner', 1)}
+
+
 def test_spoc_live_stats_survive_attendance_without_a_checkin_time(s):
     resp = s['spoc'].get('/spoc/api/stats')
     assert resp.status_code == 200 and resp.get_json()['total_regs'] >= 5

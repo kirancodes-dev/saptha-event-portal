@@ -4009,13 +4009,16 @@ The items below are built in this order, one commit each; each deferred part is 
   3. Test: every check in UPG-06's tests still holds on the new path (none deleted or weakened).
 
 #### UPG-139 — The coordinator's "publish results" doesn't mark the results published
-- **Status:** TODO
-- **Last verified:** 2026-10-19, at `4483ec0` [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-139: …" on `production-ready` (parent `2572093`) [T]
 - **Problem:** Found starting UPG-124. `POST /coordinator/publish_results/<id>` (`routes_coordinator.py:422-484`) ranks the event, writes each place, emails the top three and marks the event completed, but never sets `results_published`. The SPOC's route does (`routes_spoc.py:1041-1044`). So after a coordinator publishes, the SPOC's results page still says the results aren't published (`templates/spoc/results.html:10`), and nothing that waits for published results (position certificates, `services_certificates._ranks`) sees them.
 - **What to build:** the coordinator's route sets `results_published` as the SPOC's does.
+- **Built (2026-10-19):**
+  - `routes_coordinator.publish_results` sets `results_published` with the winners and the completed status (`routes_coordinator.py:457`), as the SPOC's route does.
+- **Files touched:** `routes_coordinator.py`, `tests/test_analytics_and_leaderboards.py`
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: after the coordinator publishes, the event has `results_published` set, and its podium owes position certificates.
+  1. ✅ Test: after the coordinator publishes, the event has `results_published` set, and its podium owes position certificates. [T `tests/test_analytics_and_leaderboards.py::test_upg139_the_coordinators_publish_marks_the_results_published`: the SPOC's results page stops offering "Publish results", and the three joint winners are owed winner certificates; fails without the fix]
 
 ---
 
@@ -4442,3 +4445,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-32: …" (parent `845476b`) | UPG-32 | **Part 3, the release check.** From a fresh clone at `eaea1fe`: fresh install OK; pip-audit clean (Werkzeug fixed, UPG-119); gitleaks clean after UPG-118; ruff and bandit clean; `alembic upgrade head` on empty PostgreSQL; production boot serves with HSTS and a CSP nonce and refuses with a setting missing; two instances share sessions through a restart; pytest SQLite 1,199 passed / 7 skipped and PostgreSQL 1,205 passed / 1 skipped, the one failure on each being the clone's virtual environment not at `.venv` (now in the guide); browser pass of 7 roles × 31 pages × 375/1280px with 0 problems after UPG-120 and UPG-121. Container step not run (no Docker). `docs/DEPLOY.md` rewritten as the deploy guide with the go-live checklist. |
 | 2026-10-19 | "docs: …" (parent `221cef3`) | ALL open (re-verification at the end of Part 3) | **Rule 8 re-verification of the 15 open items at `221cef3`.** No item changed status. UPG-124's remaining work is narrowed (PDF storage with its hash and the signatory gate came with UPG-122/123); UPG-102's count is now 1,081 (7 from the certificate code, all noise of its known kinds). The certificate work continues with UPG-124. |
 | 2026-10-19 | "docs: …" (parent `4483ec0`) | UPG-138, UPG-139 | **Two new items, found starting UPG-124.** UPG-138: the old issuing path's callers (end-event, the bulk button, the participant page, the ledger) move to the new certificates once delivery and verification exist; until then UPG-124 builds beside the old path. UPG-139: the coordinator's "publish results" never sets `results_published`. |
+| 2026-10-19 | "UPG-139: …" (parent `2572093`) | UPG-139 | The coordinator's "publish results" now marks the results published, so the SPOC's results page and the position certificates follow it. |

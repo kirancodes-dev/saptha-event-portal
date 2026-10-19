@@ -500,17 +500,17 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. The login page shows the Google button when OAuth is configured. *(2026-10-10: moved to UPG-55, which links Google sign-in and 2FA before launch; UPG-10 adds the domain rule.)*
 
 #### UPG-11 — Participation ledger: activity points and NSS / NCC / FDP hours
-- **Status:** DONE (criterion 4, the certificate, deferred with certificates)
+- **Status:** DONE (criterion 4, the certificate, is UPG-130, DONE 2026-10-19)
 - **Evidence:** `models_pg.py:64-65`, `migrations/versions/0005_activity_points_hours.py`, `services_event_types.py:481-482,543-544` (the wizard's fields since UPG-73), `routes_spoc.py:589` (SPOC export), `:1366` (edit), `services_ledger.py:12-17`, `services_export.py:221-319`, `routes_admin.py:209-213,243-263`, `routes_participant.py:859-947`, `templates/participant/ledger.html` (the certificate lines were reverted, see below)
 - **Last verified:** 2026-10-18, commit "UPG-11: …" on `production-ready` (parent `74cc875`) [T]
 - **Changed 2026-10-10 (owner's second run prompt, Step 0):**
   - **Credit once per registration.** Points and hours are worked out from the registration's current attendance by one helper, `services_ledger.credit_for`, used by the ledger page (`routes_participant.participation_ledger`) and the department export (`services_export.department_activity_data`, which already counts each registration once). Check-in no longer writes `activity_points_credited`/`activity_hours_credited` (nothing read them, and they went stale when attendance was undone). Checked by hand [R] on a temporary database: two scans of one ticket (the second answers "already in"), then attendance undone and redone: the ledger and the export show 5 points / 2 hours, one event, each time; 0 while undone.
-  - **Certificate part reverted, deferred (owner, 2026-10-10):** the hours line on the certificate page and in the PDF (`templates/participant/certificate.html`, `utils_certificate.py`) is removed; criterion 4 waits until certificate work resumes.
+  - **Certificate part reverted, deferred (owner, 2026-10-10):** the hours line on the certificate page and in the PDF (`templates/participant/certificate.html`, `utils_certificate.py`) is removed; criterion 4 waited until certificate work resumed, and is UPG-130 (DONE 2026-10-19).
 - **To test later:**
   1. ✅ Test: an event worth 2 hours / 5 points credits a Present attendee and not an Absent one. [T `tests/test_participation_ledger.py::test_a_present_attendee_is_credited_and_an_absent_one_is_not` (also: a second scan credits nothing more)]
   2. ✅ Test: the ledger totals across 3 events are correct. [T `::test_the_ledger_adds_up_three_events` (5+3+10 points, 2+1.5+4 hours; a fourth event registered but not attended adds nothing; the page shows the same totals)]
   3. ✅ Test: the department export lists every student in the department with totals. [T `::test_the_department_export_lists_every_student_with_totals` (a student with no events is listed with 0; another department's student isn't)]
-  4. ~~The certificate shows the hours when the event has them.~~ Certificate part deferred (owner, 2026-10-10).
+  4. ~~The certificate shows the hours when the event has them.~~ Certificate part deferred (owner, 2026-10-10); built and tested as UPG-130 (2026-10-19).
 - **Problem:** MISSING. No points or hours fields exist anywhere (searched routes, services and templates for activity points, AICTE, NSS/volunteer/credit hours). Mentors and NSS/NCC officers keep these registers in Excel or on paper.
 - **Who benefits:** every student (activity points), NSS/NCC units, faculty (FDP hours), IQAC.
 - **What to build:** per-event points and/or hours set by the organiser; credited on attendance; a per-student ledger page; department/unit export; hours printed on certificates.
@@ -526,14 +526,14 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   4. The certificate shows the hours when the event has them.
 
 #### UPG-12 — Faculty and external participants (FDPs, guest lectures, conferences)
-- **Status:** DONE (criterion 2, the certificate, deferred with certificates)
+- **Status:** DONE (criterion 2, the certificate, is UPG-131, DONE 2026-10-19)
 - **Last verified:** 2026-10-17, commit "UPG-12: …" on `production-ready` (parent `33b31af`) [T]
 - **Problem:** Every registrant is created as `Student`: registration through `services_accounts.create_unverified_account` (its role defaults to `Student`, `services_accounts.py:59,66`; used at `routes_forms.py:571`), and sign-up at `routes_auth.py:306`. There's no faculty or external participant type (`utils.py:24-36`, `services_permission.py:53-80`), so FDPs and conferences can't be run for their real audience.
 - **Who benefits:** HR/IQAC (FDP records), departments running FDPs and conferences, external delegates.
 - **What to build:** `participant_type` (student / faculty / external) with designation and institution; the same participant dashboard; FDP certificate wording; analytics split by type.
 - **Files touched:** `routes_forms.py`, `routes_auth.py`, `models_pg.py` + migration, `routes_participant.py`, `utils_certificate.py`, tests.
 - **Built (2026-10-17):**
-  - **Tested as built (Part 2); no change to the code.** Criterion 2 (certificate wording) stays deferred with certificates.
+  - **Tested as built (Part 2); no change to the code.** Criterion 2 (certificate wording) was deferred with certificates; it is UPG-131 (DONE).
 - **Files touched:** `tests/test_participant_types.py` (new).
 - **Effort:** M · **Depends on:** BLK-02, BLK-06 · **Risk:** role checks assume `Student`.
 - **What was built (2026-10-10, owner's second run; no certificate work):**
@@ -543,12 +543,12 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
   - **Same journey as students:** the account keeps the participant role, so faculty and external participants use the same dashboard, ticket, check-in and feedback.
   - **Ledger and department export:** the department export (`services_export.department_activity_*`) includes faculty FDP hours, has a Participant Type column and a `?participant_type=` filter on the SPOC and admin export routes. The ledger page already works for any signed-in participant.
   - **Analytics and exports:** registration exports gain Participant Type, Designation and Institution; the event report has a "By participant type" sheet (registered and present); the admin analytics page shows registrations and attendance by participant type.
-  - **Certificate part deferred (owner, 2026-10-10):** criterion 2 (FDP certificate wording with designation and institution) isn't built.
+  - **Certificate part deferred (owner, 2026-10-10):** criterion 2 (FDP certificate wording with designation and institution) wasn't built then; it is UPG-131 (DONE 2026-10-19).
   - Checked by hand [R] on a temporary database: an FDP (faculty only) form fixes the type and shows the affiliation fields; a conference (faculty + external) offers two choices; a plain event doesn't ask; missing designation and a student registering for the FDP are refused with the reason; a valid faculty registration stores type and affiliation and creates a faculty account waiting for its set-password link, who opens the ticket and dashboard (200); exports, report sheet, the faculty-filtered department export (6 FDP hours) and the analytics table show the split. Export, form, team, journey, adapter and ticketing tests pass.
-- **To test later:** criteria 1 and 3, plus the event's allowed types being enforced, the affiliation fields being required only for faculty and external, and the department export filter. Criterion 2 is deferred (certificates).
+- **To test later:** criteria 1 and 3, plus the event's allowed types being enforced, the affiliation fields being required only for faculty and external, and the department export filter. Criterion 2 was deferred (certificates); it is UPG-131 (DONE).
 - **Acceptance criteria:**
   1. ✅ Test: a faculty registration creates a user with `participant_type = faculty` who can open their ticket. [T `tests/test_participant_types.py::test_a_faculty_registration_makes_a_faculty_account_that_opens_its_ticket`]
-  2. ~~Test: the FDP certificate shows designation and institution.~~ Certificate part deferred (owner, 2026-10-10).
+  2. ~~Test: the FDP certificate shows designation and institution.~~ Certificate part deferred (owner, 2026-10-10); built and tested as UPG-131 (2026-10-19).
   3. ✅ Test: the admin analytics split counts by participant type. [T `::test_the_analytics_split_counts_by_participant_type` (exact counts from `services_insights.build`), `::test_the_admin_analytics_page_shows_the_split`]
   - "To test later" extras: `::test_the_events_allowed_types_are_enforced`, `::test_the_affiliation_is_required_only_for_faculty_and_external`, `::test_the_department_export_filters_by_participant_type`.
 
@@ -2197,7 +2197,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Files touched:** `tests/test_whatsapp_and_escaping.py`.
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **What was built (2026-10-10, owner's second run):** one helper `_e()` (`utils_email.py`, and the same in `tasks/scheduled_tasks.py`) escapes every value put into an email's HTML: names, emails, event titles, dates, venues, rooms, roles, links, scores and messages, in the confirmation, ticket, credentials, password reset and set-password, receipt, refund, appointment, result, broadcast, room-assignment and advancement emails and in each email's `<title>`; and in the coordinators' day-before briefing, the 3-day reminder and the SPOC's velocity alert. Subjects stay plain text (they aren't HTML). The broadcast message is now text, like the notices (UPG-31). Checked by hand [R]: a registrant named `<b>Ann</b>` for "Fest & <i>Fun</i>" gets the text, not markup. Email tests (notices, sender, account emails, paid events, cron, links, tasks) pass.
-  - **Certificate part deferred (owner, 2026-10-10):** the certificate email (`utils_email._send_cert_email`) is unchanged.
+  - **Certificate part deferred (owner, 2026-10-10):** the certificate email (`utils_email._send_cert_email`) was left unchanged then; UPG-133 (2026-10-19) escapes it and the new certificate email.
 - **To test later:** criterion 1, plus the briefing and 3-day emails with a title containing markup.
 - **Acceptance criteria:**
   1. ✅ Test: a registrant named `<b>Ann</b>` gets a confirmation that shows the text `<b>Ann</b>`, not bold. [T `tests/test_whatsapp_and_escaping.py::test_a_name_with_markup_shows_as_text_in_the_confirmation`, `::test_the_briefing_and_the_3_day_reminder_show_a_title_as_text`]
@@ -2605,14 +2605,14 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Existing tests changed by this instruction:**
     - `tests/test_global_scale.py::test_sla_uptime_page` now checks the computed status and that the invented strings are absent;
     - `tests/test_next_gen.py::test_live_streams_page_returns_200` and `::test_live_reels_page_returns_200` check 404 by default and the same content with the setting on.
-  - **Deferred (certificates are out of scope for this run):** the support address hard-coded on the certificate verification pages (`templates/public/verify_success.html`, `verify_certificate.html`); criterion 3 is met for the chatbot only.
+  - **Deferred then, done since (UPG-134, 2026-10-19):** the support address hard-coded on the certificate verification pages (`templates/public/verify_success.html`, `verify_certificate.html`); criterion 3 is met for the chatbot only.
   - **New:** UPG-108 (the chatbot FAQ's campus facts are unconfirmed).
 - **Files touched:** `config.py`, `routes_marketing.py`, `routes_live.py`, `routes_compliance.py`, `routes_participant.py`, `routes_ai_matching.py`, `app.py`, `chatbot_routes.py`, `zoho_zia.py`, `static/js/command-palette.js`, `templates/compliance/sla.html`, `templates/marketing/landing.html`, `templates/spoc/nfc_scanner.html`, `tests/test_no_made_up_figures.py` (new), `tests/test_global_scale.py`, `tests/test_next_gen.py`.
 - **Effort:** M · **Depends on:** D-8 · **Risk:** low.
 - **Acceptance criteria:**
   1. ✅ Test: the home page and the platform landing page show no figure that isn't computed from the database or configuration. [T `tests/test_no_made_up_figures.py::test_the_home_page_and_platform_pages_show_no_invented_figures`]
   2. ✅ Test: no template has a hard-coded `data-count` figure or the strings "99.9%", "500K+" or "Verified-2026". [T `::test_no_template_has_a_hard_coded_count_or_invented_figure`]
-  3. ✅ Test: the verification pages and the chatbot take the support address from `SUPPORT_EMAIL`. [T `::test_the_chatbot_takes_its_contact_from_support_email` ×2; the verification pages are **deferred** with certificates]
+  3. ✅ Test: the verification pages and the chatbot take the support address from `SUPPORT_EMAIL`. [T `::test_the_chatbot_takes_its_contact_from_support_email` ×2; the verification pages: UPG-134, `tests/test_certificate_verification.py::test_upg134_verification_pages_show_support_email_or_none`]
   - Also: `::test_a_new_student_starts_with_zero_points`, `::test_an_event_without_venue_or_limit_shows_no_invented_values`, `::test_without_zoho_the_ai_helpers_simulate_nothing`, `::test_the_status_page_and_nfc_terminal_simulate_nothing`. 7 of the 8 fail on the old code. Full pytest: 992 passed, 1 skipped, 0 failed.
 
 #### UPG-66 — Two forms post without a CSRF token
@@ -2667,7 +2667,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Built (2026-10-17):**
   - **Ticket part (the brief's scope):** `db_adapter.SQLDocumentReference._record_to_dict` always exposes `lead_email`, `lead_name` and `lead_phone` for registrations, from their columns. Before, those snake_case keys existed only in the stored document, so rows written straight into the table (`seed.py`) lost them, and the ticket's owner check (`routes_ticket.py`, `is_lead`) failed.
   - **Re-checked [R]:** on a fresh database an app-written registration already carried both forms; the fault was seeded rows only, which the test reproduces.
-  - **Deferred with certificates (out of scope for this run):** `/verify/<reg_id>`, its preview's name, the legacy attendance-only verification, and the certificate hash's HMAC documentation (criterion 2).
+  - **Deferred then, done since (UPG-135, 2026-10-19):** `/verify/<reg_id>`, its preview's name, the legacy attendance-only verification, and the certificate hash's HMAC documentation (criterion 2).
   - `db_adapter.py` is shared by many items, so rule 8's early re-verification ran; see the changelog.
 - **Files touched:** `db_adapter.py`, `tests/test_ticket_owner_seeded.py` (new).
 - **Effort:** M · **Depends on:** none · **Risk:** medium (touches the adapter that many routes use).
@@ -3653,7 +3653,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Dead login throttling:** `security_middleware.record_login_attempt`, `is_account_locked` and `block_ip` (`security_middleware.py:25-90`) are called only by `tests/test_security.py`; `services_login_throttle.py` does the real work. Removing them also removes those tests (owner's decision, rule 5).
   - **Two waitlist promotions:** `routes_waitlist.auto_promote` (`routes_waitlist.py:216`, ordered by `position`) and `tasks/waitlist_tasks.promote_from_waitlist` (ordered by `joined_at`, issues a ticket).
   - **Tasks nothing queues:** `tasks/export_tasks.py` and `tasks/webhook_tasks.py` are only registered in `celery_app.py:53-54,85-86`; `tests/test_tasks.py` tests `process_razorpay_payment` (owner's decision, rule 5).
-  - **Check-in paths** beside the shared check-in (the SPOC manual list, the coordinator's `get_ticket`/`mark_attendance_granular`), and the two certificate stores (deferred with certificates).
+  - **Check-in paths** beside the shared check-in (the SPOC manual list, the coordinator's `get_ticket`/`mark_attendance_granular`), and the two certificate stores (deferred with certificates; one store since UPG-137).
 - **What to build:** after the owner decides on the tests named above, remove the dead code and merge the waitlist promotion into one.
 - **Built (2026-10-18):**
   - **Owner's rule (2026-10-18, as D-9):** a test may go only if the code it tests was removed on purpose in UPG-14; a leftover still used anywhere stays, with its tests.

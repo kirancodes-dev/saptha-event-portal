@@ -9,8 +9,9 @@ has the container basics. The go-live checklist at the end lists what only the
 owner can do.
 
 Contents: Google Cloud set-up · Settings · Database migrations · First Super
-Admin · Uploads · Scheduled jobs · Background tasks · Backups · Restore drill ·
-Rollback · Monitoring · Android app · Release check · Go-live checklist.
+Admin · Uploads · Certificates · Scheduled jobs · Background tasks · Backups ·
+Restore drill · Rollback · Monitoring · Android app · Release check · Go-live
+checklist.
 
 ## Google Cloud set-up
 
@@ -83,8 +84,9 @@ is missing or weak (UPG-20):
 
 Also set: `SUPPORT_EMAIL` (shown on the privacy, terms and payment-failed pages),
 `LOGIN_THROTTLE_IP_LIMIT=50` (many students share one campus IP),
-`SENTRY_DSN` (error reports), `STORAGE_TYPE=gcs` and `GCS_BUCKET_NAME` (uploads), and
-the optional features in `.env.example` (all off by default).
+`SENTRY_DSN` (error reports), `STORAGE_TYPE=gcs` and `GCS_BUCKET_NAME` (uploads), the
+certificate settings (see "Certificates"), and the optional features in
+`.env.example` (all off by default).
 
 ## Database migrations
 
@@ -122,6 +124,11 @@ upgrade stops before changing anything and lists each case (event, email). Cance
 the extra registrations from the Super Admin's registrations page (keep one each;
 refund any extra payment from the payments page), then run `alembic upgrade head`
 again. It never cancels or deletes a registration itself.
+
+**Migration `0008_certificates`** adds the `certificates` table (one current
+certificate per person, event and type, enforced by a unique index). It changes
+no existing table. Certificates issued before it stay in the old
+`verified_certificates` documents and keep verifying at their old addresses.
 
 **A database created before migrations existed** (by the old start-up
 `create_all`/`ALTER TABLE`): bring it to the current models once with a
@@ -172,6 +179,30 @@ SA=<project-number>-compute@developer.gserviceaccount.com
 gcloud iam service-accounts add-iam-policy-binding "$SA" \
   --member="serviceAccount:$SA" --role=roles/iam.serviceAccountTokenCreator
 ```
+
+## Certificates
+
+Certificates are PDFs stored **privately** (in the bucket above, never under a
+public URL, or in `PRIVATE_STORAGE_DIR` with local storage) with each file's
+SHA-256 on its record. People download their own after signing in, or through
+the emailed link, which is signed with `SECRET_KEY` and expires after
+`CERT_LINK_DAYS` (default 30). Changing `SECRET_KEY` voids every emailed link
+(people can still download from "My certificates").
+
+| Setting | What to put there |
+|---|---|
+| `COLLEGE_NAME` | The college's name as printed on certificates and the verification page |
+| `COLLEGE_LOGO_PATH` | A logo file under `static/` (default `static/img/email-logo.png`, drawn on a dark panel) |
+| `CERT_PRIMARY_COLOR`, `CERT_ACCENT_COLOR` | Hex colours (default `#0c1240` and `#c9a020`) |
+| `CERT_CHUNK_SIZE` | Certificates per background step (default 100) |
+| `CERT_LINK_DAYS` | How long an emailed download link works (default 30) |
+| `VERIFY_RATE_LIMIT` | Lookups per address on the verification pages (default `30 per minute`) |
+
+Issuing runs in the background through the outbox: without a Redis broker it
+runs inside the request for up to `TASK_INLINE_TIMEOUT` seconds and carries on
+in a thread; if the instance stops first, the `outbox` cron job finishes it.
+Each event needs at least one signatory with a signature (on the event's
+certificate page) before anything is issued.
 
 ## Scheduled jobs
 
@@ -478,6 +509,12 @@ Tick each before opening the portal to students.
 - [ ] **`SUPPORT_EMAIL`:** set it to a monitored address
   (`events@<university domain>`, D-4); the privacy, terms and payment-failed
   pages show it.
+- [ ] **Certificates:** set `COLLEGE_NAME` (and the logo and colours if the
+  defaults aren't right). For each event, the organiser adds 1–3 signatories
+  with their names, titles and signature images (PNG or JPG, 1 MB or less, on
+  white paper or a transparent background) on the event's certificate page;
+  collect the signature scans from the people who will sign. Issue one test
+  certificate and check it at `/verify/<number>`.
 - [ ] **Campus facts:** confirm or correct the chatbot's campus facts
   (UPG-108); until then it refers campus questions to the college office.
 - [ ] **Login limit:** `LOGIN_THROTTLE_IP_LIMIT=50` (many students share one

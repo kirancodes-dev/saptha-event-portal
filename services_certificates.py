@@ -294,6 +294,63 @@ def by_number(number: str, version: Optional[int] = None) -> Optional[dict]:
         return _row_dict(row) if row else None
 
 
+NUMBER_PATTERN = re.compile(r'^SE(-[0-9A-Z]{4}){3}-[0-9A-Z]$')
+
+
+def looks_like_number(value: str) -> bool:
+    return bool(NUMBER_PATTERN.match(str(value or '').strip().upper()))
+
+
+def versions(number: str) -> List[dict]:
+    """Every version of a certificate number, oldest first."""
+    from sqlalchemy import select
+    from models_pg import Certificate
+    with _session() as s:
+        q = select(Certificate).where(Certificate.number == number).order_by(Certificate.version)
+        return [_row_dict(r) for r in s.execute(q).scalars()]
+
+
+def _day(value) -> str:
+    return value.strftime('%d %B %Y') if hasattr(value, 'strftime') else str(value or '')[:10]
+
+
+def public_view(number: str, version: Optional[int] = None) -> Optional[dict]:
+    """What the public verification page shows (UPG-126): the status, name,
+    event, date, type and college; never an email, phone or other personal data.
+    Without a version, the current one; a version that was replaced says so."""
+    import certificate_pdf
+    number = str(number or '').strip().upper()
+    every = versions(number)
+    if not every:
+        return None
+    current_row = next((c for c in every if c['is_current']), every[-1])
+    cert = current_row if version is None else next((c for c in every if c['version'] == version), None)
+    if cert is None:
+        return None
+    data = cert['data'] or {}
+    if cert['status'] == 'revoked':
+        state = 'revoked'
+    elif not cert['is_current']:
+        state = 'replaced'
+    else:
+        state = 'valid'
+    spec = TYPES.get(cert['cert_type'], {})
+    return {'number': number, 'version': cert['version'], 'state': state, 'name': cert['name'],
+            'event_title': data.get('event_title') or 'Event', 'date': _date_text(data),
+            'type_title': spec.get('title', 'Certificate'), 'position': cert.get('position'),
+            'college': certificate_pdf.branding()['name'], 'issued_on': _day(cert['issued_at']),
+            'revoked_on': _day(cert['revoked_at']) if cert['status'] == 'revoked' else '',
+            'current_version': current_row['version'], 'current_issued_on': _day(current_row['issued_at']),
+            'versions': len(every)}
+
+
+def _date_text(data: dict) -> str:
+    start, end = _date(data.get('date')), _date(data.get('end_date'))
+    if start and end and end != start:
+        return f"{start.strftime('%d %B %Y')} to {end.strftime('%d %B %Y')}"
+    return start.strftime('%d %B %Y') if start else ''
+
+
 def for_event(event_id: str, current_only: bool = True) -> List[dict]:
     from sqlalchemy import select
     from models_pg import Certificate

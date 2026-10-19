@@ -3914,18 +3914,25 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; nothing delivers the new certificates yet.
 
 #### UPG-126 — Verifying a certificate
-- **Status:** TODO
-- **Last verified:** 2026-10-19 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-126: …" on `production-ready` (parent `45899bf`) [T]
 - **What to build:**
   - **`/verify/<certificate number>`:** valid, revoked (with the date) or replaced, showing the name, event, date, type and college, never email, phone or other personal data.
   - **Support address** from `SUPPORT_EMAIL` (UPG-65).
   - **Limits:** rate limits on the page and the lookup.
-  - **Legacy routes:** the old check routes and old certificate IDs redirect to the new page.
+  - **Legacy routes:** the lookup form and the coordinator's legacy check go to the new page; old certificate IDs keep their legacy pages (see criterion 3).
+- **Built (2026-10-19):**
+  - **`/verify/<number>`** (`routes_verification.py:54`, `_number_page` `:27`; `templates/certificates/verify.html`, new): a certificate number shows "Valid", "Revoked" with the date (not the reason), or, for `/verify/<number>/v<n>` (`:35`), "Replaced" with the current version and its date. It shows the name, the type (and place), the event, its dates, the college (`COLLEGE_NAME`), the issue date and the number, from `services_certificates.public_view` (`:317`), which never returns an email, phone, USN or registration ID. An unknown number is a 404 "Certificate not found". Numbers are accepted in any case (`looks_like_number` `:300`).
+  - **Support address:** the new page shows `SUPPORT_EMAIL` when it's set (UPG-134 does the legacy pages).
+  - **Limits:** every lookup (`/verify/<id>`, its version, preview and download, and the lookup form's POST, `app.py:1315`) shares one limit per address, `VERIFY_RATE_LIMIT` (default 30 a minute; `verify_rate` `:24`), then 429.
+  - **The form and the legacy check:** the lookup form takes a number in any case, with spaces, and redirects to its page; the coordinator's `/coordinator/certificate/<reg>/<usn>` redirects to the person's new certificate when they have one (`routes_coordinator.py:796`) and otherwise shows the old page as before.
+  - **Older IDs:** `verified_certificates` hashes and registration IDs keep their pages at the same address (criterion 3's note).
+- **Files touched:** `routes_verification.py`, `templates/certificates/verify.html` (new), `services_certificates.py`, `app.py`, `templates/public/verify_lookup.html`, `routes_coordinator.py`, `tests/test_certificate_verification.py` (new)
 - **Effort:** M · **Depends on:** UPG-122 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: a valid certificate shows valid with the name, event, date, type and college, and no email or phone; an unknown number shows not found; a revoked one shows revoked and the date; a replaced version shows it was replaced.
-  2. Test: more than the limit of lookups a minute from one address gets 429.
-  3. Test: the legacy lookup form, `/verify/<old hash>` and the coordinator's legacy check redirect to the new page.
+  1. ✅ Test: a valid certificate shows valid with the name, event, date, type and college, and no email or phone; an unknown number shows not found; a revoked one shows revoked and the date; a replaced version shows it was replaced. [T `tests/test_certificate_verification.py`::test_a_valid_certificate_shows_its_facts_and_no_personal_data, ::test_an_unknown_number_is_not_found, ::test_a_revoked_certificate_shows_revoked_and_the_date, ::test_a_replaced_version_says_it_was_replaced]
+  2. ✅ Test: more than the limit of lookups a minute from one address gets 429. [T `tests/test_certificate_verification.py`::test_lookups_past_the_limit_get_429]
+  3. ✅ Test: the lookup form and the coordinator's legacy check redirect to the new page; `/verify/<old hash>` keeps showing its legacy record. *(Reworded 2026-10-19 while building: old hashes and registration IDs are printed on certificates already issued and have no new number, so they keep their own pages at the same address until UPG-138 retires the old store; UPG-06's tests check those pages and stay as they are.)* [T `tests/test_certificate_verification.py`::test_the_lookup_form_and_the_legacy_check_lead_to_the_new_page; UPG-06's `tests/test_certificates.py` and `tests/test_coordinator_authz.py` unchanged and passing]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `/verify/<number>` doesn't exist yet. UPG-136 changed only the old preview's venue (`routes_verification.py:87-91`).
 
 #### UPG-127 — Correcting and revoking certificates
@@ -4460,3 +4467,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-139: …" (parent `2572093`) | UPG-139 | The coordinator's "publish results" now marks the results published, so the SPOC's results page and the position certificates follow it. |
 | 2026-10-19 | "UPG-124: …" (parent `cd1842b`) | UPG-124 | Issuing in the background in chunks through the outbox, with progress, failures and a retry; position certificates when results are published (with an off switch); not before the event ends; by hand to one person; the organiser's list; the stored PDF checked against its SHA-256. 8 new tests, passing on SQLite and PostgreSQL (the 1,200-person run included). |
 | 2026-10-19 | "UPG-122 follow-up: …" (parent `c035f44`) | UPG-122 | The full run of the UPG-122 commit (1,211 passed, 7 skipped) had one failure: migration 0008 refused a development database whose start-up had already created the `certificates` table. 0008 now accepts the table and adds only the missing indexes. |
+| 2026-10-19 | "UPG-126: …" (parent `45899bf`) | UPG-126 | The public page of a certificate number: valid, revoked with the date, or replaced, with the name, event, dates, type and college and no personal data; one rate limit over every lookup; the lookup form and the coordinator's legacy check lead to it. Criterion 3 reworded: old IDs keep their legacy pages. 6 new tests, passing on SQLite and PostgreSQL. |

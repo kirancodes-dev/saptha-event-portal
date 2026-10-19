@@ -793,6 +793,15 @@ def generate_certificate(reg_id, usn):
                 break
     if not student_name:
         return "Student not found in this registration.", 404
+    # Their certificate from the new store, if issued: its public page (UPG-126)
+    import services_certificates
+    from db_adapter import to_uuid
+    ids = {str(reg_id), str(to_uuid(reg_id))}            # the SQL layer keys registrations by UUID
+    issued = [c for c in services_certificates.for_event(data['event_id'])
+              if str(c.get('reg_id')) in ids and c.get('name') == student_name]
+    if issued:
+        issued.sort(key=lambda c: c['cert_type'] not in services_certificates.ATTENDED_TYPES)
+        return redirect(f"/verify/{issued[0]['number']}")
     event_data = db.collection('events').document(data['event_id']).get().to_dict()
     return render_template('participant/certificate.html',
                             student_name=student_name, event=event_data)

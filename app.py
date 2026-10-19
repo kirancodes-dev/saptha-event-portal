@@ -318,6 +318,7 @@ from routes_sponsors    import sponsors_bp     # noqa: E402
 from routes_teams          import teams_bp           # noqa: E402
 from routes_placement      import placement_bp       # noqa: E402  (UPG-57)
 from routes_certificates   import certificates_bp    # noqa: E402  (UPG-123)
+from routes_verification   import verify_limit       # noqa: E402  (UPG-126)
 from routes_sports         import sports_bp          # noqa: E402  (UPG-13)
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
@@ -1310,12 +1311,17 @@ def personal_calendar_feed():
 # CERTIFICATE VERIFICATION
 # =========================================================
 @app.route('/verify', methods=['GET', 'POST'])
+@limiter.shared_limit(verify_limit, scope='certificate-verify', methods=['POST'])
 def verify_lookup():
-    """Public lookup form: paste a certificate ID and redirect to verifier."""
+    """Public lookup form: paste a certificate number and go to its page (UPG-126)."""
     if request.method == 'POST':
+        from urllib.parse import quote
+        import services_certificates
         cert_id = (request.form.get('cert_id') or '').strip()
         if cert_id:
-            return redirect(f'/verify/{cert_id}')
+            if services_certificates.looks_like_number(cert_id):
+                cert_id = cert_id.upper()
+            return redirect(f"/verify/{quote(cert_id, safe='-_.')}")
     return render_template('public/verify_lookup.html')
 
 

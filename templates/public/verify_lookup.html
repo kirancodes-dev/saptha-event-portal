@@ -14,16 +14,16 @@
   <p>Confirm that a SapthaEvent certificate is authentic.</p>
   <form method="POST" action="/verify" class="text-start mt-3">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label class="form-label" for="cert-id">Certificate / ticket ID</label>
+    <label class="form-label" for="cert-id">Certificate number</label>
     <input id="cert-id" type="text" name="cert_id" class="form-control form-control-lg verify-id"
-           placeholder="e.g. REG-ABC123" autocomplete="off" required autofocus>
+           placeholder="e.g. SE-7KQ4-M2XD-9HTR-P" autocomplete="off" required autofocus>
     <button type="submit" class="btn btn-gold btn-lg w-100 mt-3">
       <i class="fas fa-check-circle" aria-hidden="true"></i> Verify now
     </button>
   </form>
   <div class="callout callout--info text-start small mt-3 mb-0">
     <i class="fas fa-info-circle me-1" aria-hidden="true"></i>
-    You can also scan the QR code on a certificate — it opens <code>/verify/&lt;id&gt;</code> on this portal.
+    You can also scan the QR code on a certificate — it opens <code>/verify/&lt;number&gt;</code> on this portal.
   </div>
   <div class="status-actions">
     <a href="/" class="btn btn-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to home</a>

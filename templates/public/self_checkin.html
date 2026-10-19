@@ -7,7 +7,7 @@
   <p class="small text-subtle">
     <i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>{{ event.get('date','TBD') }}
     &nbsp;·&nbsp;
-    <i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ event.get('venue','SNPSU') }}
+    <i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ venue_label(event) }}
   </p>
 
   <form method="POST" action="/checkin/{{ event.id }}/submit" class="mt-3">

@@ -3602,15 +3602,22 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   2. ✅ The full pytest passes in its normal order: 1041 passed, 2 skipped, 0 failed.
 
 #### UPG-111 — Pages and emails invent a venue ("SNPSU Campus") for events without one
-- **Status:** TODO
-- **Last verified:** 2026-10-18 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-111: …" on `production-ready` (parent `644b882`) [T]
 - **Problem:** Found testing UPG-43. `routes_coordinator.scanner_selector` shows `d.get('venue', 'SNPSU Campus')`, an invented place, for an event with no venue. UPG-65 replaced the same default on the event page.
 - **Widened 2026-10-18 (testing UPG-46):** the same default appears in 13 more places: emails (`tasks/scheduled_tasks.py:79,143,277,417`, the day-before, briefing, 3-day and velocity emails; `routes_waitlist.py:320`, the promotion email), pages (`routes_live.py:47`, `routes_participant.py:92,720`, `routes_portfolio.py:59`; `templates/live/leaderboard.html:200`, `participant/dashboard.html:228`, `public/calendar.html:136`, `spoc/ai_report.html:52`). Found with `git grep "SNPSU Campus"`; the demo seed's real hall name and the hidden live-streams demo page are not defaults.
 - **What to build:** show "Venue to be announced" (as the event page does), or nothing, everywhere a venue is missing.
+- **Built (2026-10-19):**
+  - **One helper, `utils.venue_label(event)`:** the room's name or the venue; "Online" for an online event with neither (owner, 2026-10-19); else "Venue to be announced". Templates reach it as the `venue_label` global. It replaces every invented fallback:
+    - **app code:** the scanner list (`routes_coordinator`), live board (`routes_live`), student dashboard and my-events (`routes_participant`), portfolio (`routes_portfolio`), waitlist promotion email (`routes_waitlist`), the day-before, briefing, 3-day and velocity emails (`tasks/scheduled_tasks.py`, 4 places), both calendar feeds (`app.py`, which said "SNPSU") and the event page;
+    - **templates:** `live/leaderboard.html`, `participant/dashboard.html` (2), `public/calendar.html`, `public/self_checkin.html` (it said "SNPSU"), `spoc/ai_report.html`; and the ticket, wallet and judge pages, which already said "Venue to be announced" but now also say "Online".
+  - **Left, deferred with certificates:** the certificate preview's "Main Campus" (`routes_verification.py:90`, `templates/public/certificate_preview_embed.html`). `db_adapter.py`'s "Main Campus" is a campus record's default name, not a venue.
+  - Stashing the change fails 5 of the 12 tests.
+- **Files touched:** `utils.py`, `app.py`, `routes_coordinator.py`, `routes_live.py`, `routes_participant.py`, `routes_portfolio.py`, `routes_waitlist.py`, `tasks/scheduled_tasks.py`, 9 templates, `tests/test_venue_label.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** none.
 - **Acceptance criteria:**
-  1. Test: an event without a venue appears in the scanner list without "SNPSU Campus".
-  2. Test: no app code or template outside the seeds uses "SNPSU Campus" as a fallback (a scan), and an email for an event without a venue doesn't name one.
+  1. ✅ Test: an event without a venue appears in the scanner list without "SNPSU Campus". [T `tests/test_venue_label.py::test_pages_say_venue_to_be_announced` (the scanner list, calendar and its feed, event page, student dashboard)]
+  2. ✅ Test: no app code or template outside the seeds uses "SNPSU Campus" as a fallback (a scan), and an email for an event without a venue doesn't name one. [T `::test_no_app_code_or_page_falls_back_to_an_invented_place`, `::test_the_briefing_email_never_invents_a_venue` (in-person: "Venue to be announced"; online: "Online"), `::test_an_online_event_says_online`, `::test_the_label_never_invents_a_place`]
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** matches the code (widened the same day). Still TODO.
 
 #### UPG-112 — UPG-14's leftover duplicates
@@ -4124,3 +4131,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-115: …" (parent `3910397`) | UPG-115 | **UPG-115 DONE** (owner's instruction, before Part 3): one active registration per person per event is a database rule (partial unique index, migration 0007, which refuses to run over existing duplicates and lists them). Two tabs at once give one registration and a friendly "already registered"; every write path handles the refusal (a refused paid order stays for a refund; the waitlist skips the person). Also fixed: two tabs for a new email both creating the account. 10 new tests, on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-114: …" (parent `6f35c5e`) | UPG-114 | **UPG-114 DONE** (owner's instruction, before Part 3): waitlist places come from join order, worked out when shown, never repeat, and match the order of promotion, everywhere a place appears. 3 new tests. New: **UPG-117**. |
 | 2026-10-19 | "docs: …" | UPG-117 | New (found in UPG-114): the JSON waitlist join refuses events that aren't in the old `active` status. TODO. |
+| 2026-10-19 | "UPG-111: …" (parent `644b882`) | UPG-111 | **UPG-111 DONE** (owner's instruction, before Part 3): an event with no venue says "Venue to be announced" ("Online" for online events) on every page and email, through one helper; no invented "SNPSU Campus"/"SNPSU" anywhere (the certificate preview deferred). 12 new tests. |

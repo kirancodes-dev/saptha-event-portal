@@ -38,7 +38,7 @@ class DynamicDBProxy:
 
 db = DynamicDBProxy()
 from utils import (login_required, role_required, log_action, safe_int, create_registration, generate_reg_id,
-                   AlreadyRegistered)
+                   AlreadyRegistered, venue_label)
 from utils_email import send_ticket_email
 
 participant_bp = Blueprint('participant', __name__, url_prefix='/participant')
@@ -90,7 +90,7 @@ def dashboard():
         r['event_banner'] = evt.get('banner_url', '')
         r['event_date']   = evt.get('date', '')
         r['event_title']  = evt.get('title', r.get('event_title', ''))
-        r['event_venue']  = evt.get('venue', 'SNPSU Campus')
+        r['event_venue']  = venue_label(evt)   # UPG-111
         r['event_cat']    = evt.get('category', 'General')
         r['days_until']   = _days_until(evt.get('date', ''))
 
@@ -725,7 +725,7 @@ def my_events():
 
             # Enrich registration object
             r['event_title'] = evt.get('title') or r.get('event_title', 'Campus Event')
-            r['event_venue'] = evt.get('room_name') or evt.get('venue') or 'SNPSU Campus'
+            r['event_venue'] = venue_label(evt)   # UPG-111
             r['event_date'] = evt.get('date') or ''
             r['event_start'] = evt.get('start_datetime') or evt.get('date') or ''
             r['event_category'] = evt.get('category') or 'General'

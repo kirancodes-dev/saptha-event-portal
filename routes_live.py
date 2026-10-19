@@ -18,6 +18,7 @@ except ImportError:
     FieldFilter = None
 
 from models import db
+from utils import venue_label  # never an invented place (UPG-111)
 
 live_bp = Blueprint('live', __name__, url_prefix='/live')
 
@@ -44,7 +45,7 @@ def _compute_leaderboard(event_id: str) -> "dict | None":
     return {
         'event_id':     event_id,
         'event_title':  event.get('title', 'Event'),
-        'venue':        event.get('venue', 'SNPSU Campus'),
+        'venue':        venue_label(event),   # UPG-111
         'category':     event.get('category', ''),
         'cur_round':    cur_round,
         'round_label':  _ROUND_LABEL.get(cur_round, f'Round {cur_round}'),

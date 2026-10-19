@@ -22,7 +22,7 @@ class DynamicDBProxy:
 
 db = DynamicDBProxy()
 from utils import (login_required, role_required, log_action, safe_int, create_registration, generate_reg_id,
-                   AlreadyRegistered)
+                   AlreadyRegistered, venue_label)
 from utils_email import (send_appointment_email, send_broadcast_email,
                          send_ticket_email, send_result_email)
 from services_accounts import create_unverified_account, send_set_password_link
@@ -620,7 +620,7 @@ def scanner_selector():
             'title':    d.get('title', 'Untitled'),
             'date':     ev_date,
             'time':     d.get('time', ''),
-            'venue':    d.get('venue', 'SNPSU Campus'),
+            'venue':    venue_label(d),   # UPG-111
             'category': d.get('category', 'General'),
             'reg_count': int(d.get('registration_count', 0) or 0),
             'max_cap':   int((d.get('limits') or {}).get('max_participants', 0) or 0),

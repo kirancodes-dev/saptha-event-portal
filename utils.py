@@ -263,3 +263,20 @@ def record_form_submission(db, event_id, reg_id, email, name, answers):
         'answers':      answers,
         'submitted_at': _dt.datetime.now(_dt.timezone.utc).isoformat(),
     })
+
+
+TO_BE_ANNOUNCED = 'Venue to be announced'
+
+
+def venue_label(event) -> str:
+    """Where an event is, for any page or email: its room or venue; "Online" for an
+    online event with neither; else "Venue to be announced". Never an invented
+    place such as "SNPSU Campus" (UPG-111)."""
+    event = event or {}
+    get = event.get if hasattr(event, 'get') else (lambda k, d=None: getattr(event, k, d))
+    place = str(get('room_name') or get('venue') or '').strip()
+    if place:
+        return place
+    if str(get('event_mode') or get('mode') or '').strip().lower() == 'online':
+        return 'Online'
+    return TO_BE_ANNOUNCED

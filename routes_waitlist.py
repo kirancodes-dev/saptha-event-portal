@@ -16,7 +16,7 @@ try:
 except ImportError:
     FieldFilter = None
 
-from utils import login_required, role_required, safe_int
+from utils import login_required, role_required, safe_int, venue_label
 
 logger = logging.getLogger(__name__)
 waitlist_bp = Blueprint("waitlist", __name__, url_prefix="/waitlist")
@@ -314,7 +314,7 @@ def auto_promote(db, event_id: str):
                 f"{terms['email_line']}"
                 f"Registration ID: {reg_id}\n"
                 f"Event Date: {ev.get('date', '')}\n"
-                f"Venue: {ev.get('venue', 'SNPSU Campus')}\n\n"
+                f"Venue: {venue_label(ev)}\n\n"
                 f"See you there!\n— SapthaEvent Team"
             )
             send_generic_email_task.delay(

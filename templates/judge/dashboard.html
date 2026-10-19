@@ -47,7 +47,7 @@
       <h2 class="judge-event__title">{{ event.title }}</h2>
       <div class="judge-event__meta">
         <span><i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>{{ event.date or 'Date to be announced' }}</span>
-        <span><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ event.venue or 'Venue to be announced' }}</span>
+        <span><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ venue_label(event) }}</span>
       </div>
       {% if event.open_hall_mode %}
       <span class="se-badge se-badge--gold mt-2"><i class="fas fa-door-open" aria-hidden="true"></i> Open hall mode</span>

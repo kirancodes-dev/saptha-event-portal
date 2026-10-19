@@ -225,7 +225,7 @@
             <h1 class="event-title">{{ event.title or 'Event pass' }}</h1>
             <div class="event-meta">
                 <span><i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>{{ event.date or event.start_datetime or 'Date to be announced' }}</span>
-                <span><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ event.venue or 'Venue to be announced' }}</span>
+                <span><i class="fas fa-map-marker-alt me-1" aria-hidden="true"></i>{{ venue_label(event) }}</span>
             </div>
         </div>
 

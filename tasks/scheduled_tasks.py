@@ -19,6 +19,7 @@ from models import db
 # Statuses an event runs in (reminders, lifecycle) and takes registrations in;
 # `active` is the old single "running" status (UPG-43).
 from services_workflow import EVENT_DAY_STATUSES as RUNNING, REGISTRATION_OPEN_STATUSES as REGISTRATION_OPEN
+from utils import venue_label  # never an invented place (UPG-111)
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ def send_24h_reminders(self):
             event_id    = event['id']
             event_title = event.get('title', 'Event')
             event_date  = event.get('date', tomorrow_str)
-            venue       = event.get('venue', 'SNPSU Campus')
+            venue       = venue_label(event)
 
             regs = db.collection('registrations').where('event_id', '==', event_id).stream()
 
@@ -140,7 +141,7 @@ def send_24h_reminders(self):
             title    = event.get('title', 'Event')
             date_str = event.get('date', tomorrow_str)
             time_str = event.get('time', 'TBD')
-            venue    = event.get('venue', 'SNPSU Campus')
+            venue    = venue_label(event)
             reg_count = int(event.get('registration_count', 0) or 0)
             max_cap   = int((event.get('limits') or {}).get('max_participants', 0) or 0)
             cap_line  = f"{reg_count} / {max_cap}" if max_cap else str(reg_count)
@@ -274,7 +275,7 @@ def send_3day_reminders(self):
             event_id    = event['id']
             event_title = event.get('title', 'Event')
             event_date  = event.get('date', target_str)
-            venue       = event.get('venue', 'SNPSU Campus')
+            venue       = venue_label(event)
 
             regs = db.collection('registrations').where('event_id', '==', event_id).stream()
 
@@ -414,7 +415,7 @@ def check_registration_velocity(self):
 
             title     = e.get('title', 'Event')
             event_date = e.get('date', '')
-            venue     = e.get('venue', 'SNPSU Campus')
+            venue     = venue_label(e)
             reg_count = int(e.get('registration_count', 0) or 0)
             max_cap   = int((e.get('limits') or {}).get('max_participants', 0) or 0)
 

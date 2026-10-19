@@ -11,6 +11,7 @@ except ImportError:
     FieldFilter = None
 
 from models import db
+from utils import venue_label  # never an invented place (UPG-111)
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
@@ -56,7 +57,7 @@ def public_portfolio(usn):
         d['event_title']  = evt.get('title', d.get('event_title', 'Event'))
         d['event_date']   = evt.get('date', '')
         d['event_cat']    = evt.get('category', 'General')
-        d['event_venue']  = evt.get('venue', 'SNPSU Campus')
+        d['event_venue']  = venue_label(evt)   # UPG-111
         d['event_status'] = evt.get('status', 'active')
         regs.append(d)
 

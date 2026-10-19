@@ -904,7 +904,8 @@ def event_details(event_id):
             }
         event.setdefault('date',               'TBD')
         event.setdefault('deadline',           '')
-        event.setdefault('venue',              'Venue to be announced')   # not an invented place (UPG-65)
+        if not event.get('venue'):
+            event['venue'] = venue_label(event)   # its room, "Online" or "Venue to be announced" (UPG-65, UPG-111)
         event.setdefault('category',           'General')
         event.setdefault('entry_fee',          0)
         event.setdefault('is_team_event',      False)
@@ -1165,7 +1166,7 @@ def get_calendar_json():
                 'url': f"/forms/register/{ev.get('id')}",
                 'color': color_map.get(cat, '#1a2557'),
                 'category': cat,
-                'venue': ev.get('room_name') or ev.get('venue', 'SNPSU'),
+                'venue': venue_label(ev),
                 'google_calendar_url': ev.get('google_calendar_url'),
                 'ics_url': ev.get('ics_url'),
                 'event_mode': ev.get('event_mode', 'offline'),
@@ -1201,7 +1202,7 @@ def events_calendar():
                 'url':      f"/forms/register/{d.get('id')}",
                 'color':    color_map.get(cat, '#1a2557'),
                 'category': cat,
-                'venue':    d.get('room_name') or d.get('venue', 'SNPSU'),
+                'venue':    venue_label(d),
                 'google_calendar_url': d.get('google_calendar_url'),
                 'ics_url': d.get('ics_url'),
             })
@@ -1236,6 +1237,8 @@ def calendar_feed_url():
 
 
 app.jinja_env.globals.update(calendar_feed_url=calendar_feed_url)
+from utils import venue_label  # noqa: E402
+app.jinja_env.globals.update(venue_label=venue_label)  # never an invented place (UPG-111)
 from utils_links import page_back, role_home  # noqa: E402
 app.jinja_env.globals.update(page_back=page_back, role_home=role_home)  # Back on every page (UPG-103)
 

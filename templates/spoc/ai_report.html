@@ -49,7 +49,7 @@
     <h1 id="page-title">{{ event.title }}</h1>
     <div class="meta">
       <span><i class="fas fa-calendar-alt"></i> {{ event.date or 'TBD' }}</span>
-      <span><i class="fas fa-map-marker-alt"></i> {{ event.venue or 'SNPSU Campus' }}</span>
+      <span><i class="fas fa-map-marker-alt"></i> {{ venue_label(event) }}</span>
       <span><i class="fas fa-tag"></i> {{ event.category or 'General' }}</span>
       <span><i class="fas fa-clock"></i> Generated {{ generated_at }}</span>
     </div>

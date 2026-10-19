@@ -4118,6 +4118,16 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Acceptance criteria:**
   1. ✅ Test: the participant's certificate page for an event with no venue says "Venue to be announced" (or "Online"), never "at .". [T `tests/test_certificate_wording.py::test_upg141_the_participant_certificate_page_never_says_at_nothing`: fails on the old page]
 
+
+#### UPG-142 — Merit and special-mention certificates can't be awarded
+- **Status:** TODO
+- **Last verified:** 2026-10-19, at `e8351d0` [C]
+- **Problem:** Found while making the sample emails. `services_certificates.TYPES` has "merit" and "special_mention" (the brief's "merit or special mention"), and the PDF has their wording and colours, but nothing awards them: `recipients()` never lists them and "issue to one person" (UPG-124) only issues certificates someone is already owed. UPG-122's criterion 3 didn't ask for them, so its tests didn't notice.
+- **What to build:** on the event's certificate page, the organiser picks a registered person and awards "merit" or "special mention" (with an optional line of wording); it is then issued like any other (once, emailed, audit-logged), with `issue_certificates` on the event.
+- **Effort:** S · **Depends on:** UPG-124 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the organiser awards a merit and a special-mention certificate to two registered people; each is issued once, emailed and audit-logged; someone without `issue_certificates` gets 403.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4564,3 +4574,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-124 follow-up: ..." (parent `3456f1a`) | UPG-124 | Final headless pass of issuing: the organiser signs, issues 31 certificates and opens the list in the browser, measured at 375px and 1280px with no problem found (the student's download and the verification page were measured with UPG-125). |
 | 2026-10-19 | "UPG-126 follow-up: ..." (parent `34d69ac`) | UPG-126 | Pyrefly found that the fallback limiter (no flask-limiter installed) lacked `shared_limit`, which the verification routes use; added, with a test. |
 | 2026-10-19 | "docs: ..." (parent `71c2f09`) | ALL open (re-verification at the end of the certificate phase) | **Rule 8 re-verification of the 4 open items at `71c2f09`** (BLK-01, UPG-30, UPG-102, UPG-117); none changed status. Every certificate item, UPG-122 to UPG-141, is DONE. |
+| 2026-10-19 | "docs: ..." (parent `e8351d0`) | UPG-142 | **New item, found making the sample emails:** merit and special-mention certificates exist as types but nothing in the app awards them. |

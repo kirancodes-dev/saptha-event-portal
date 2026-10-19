@@ -129,11 +129,11 @@
             {% if cert_type == 'winner' %}
                 for securing <strong>Rank {{ rank }}</strong> in the prestigious university event<br>
                 <strong>{{ event.title }}</strong><br>
-                held on {{ event.date }} at {{ event.venue or 'Main Campus' }}.
+                held on {{ event.date }} at {{ venue_label(event) }}.
             {% else %}
                 for their active and outstanding participation in the prestigious university event<br>
                 <strong>{{ event.title }}</strong><br>
-                held on {{ event.date }} at {{ event.venue or 'Main Campus' }}.
+                held on {{ event.date }} at {{ venue_label(event) }}.
             {% endif %}
         </div>
         

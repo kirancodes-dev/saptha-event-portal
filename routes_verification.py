@@ -84,11 +84,11 @@ def verify_certificate_preview(cert_hash):
             cert_type = cert_data.get('cert_type', 'participation')
             rank = cert_data.get('rank', 0)
             score = cert_data.get('score', 0)
-            event = {
-                'title': event_title,
-                'date': cert_data.get('issued_at', '')[:10],
-                'venue': 'Main Campus'
-            }
+            source = {}
+            if cert_data.get('event_id'):
+                source_doc = db_conn.collection('events').document(cert_data['event_id']).get()
+                source = source_doc.to_dict() or {} if source_doc.exists else {}
+            event = dict(source, title=event_title, date=cert_data.get('issued_at', '')[:10])
             return render_template('public/certificate_preview_embed.html',
                                    student_name=student_name,
                                    event=event,

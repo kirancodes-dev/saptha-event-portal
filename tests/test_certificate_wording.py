@@ -1,7 +1,8 @@
 """
 tests/test_certificate_wording.py — what an issued certificate's PDF says, on
-the real database layer: the event's hours (UPG-130), and a faculty member's
-designation and institution on an FDP certificate (UPG-131).
+the real database layer: the event's hours (UPG-130), a faculty member's
+designation and institution on an FDP certificate (UPG-131), and no invented
+venue on a certificate or its preview (UPG-136).
 """
 import pytest
 
@@ -44,3 +45,22 @@ def test_upg131_an_fdp_certificate_shows_designation_and_institution(issue):
     assert cert['cert_type'] == 'completion'
     assert 'Dr. Meera Iyer' in text and 'Assistant Professor, Example College of Engineering' in text
     assert '30 hours' in text
+
+
+def test_upg136_no_certificate_page_or_pdf_invents_a_venue(issue):
+    db, client = issue['db'], issue['owner']
+    event_id, cert, text = issue['run']({'lead_name': 'Vera Venueless'}, venue='', room_name='', event_mode='offline')
+    assert 'Main Campus' not in text
+    reg_id = _unique('REG')
+    db.collection('registrations').document(reg_id).set({
+        'event_id': event_id, 'lead_name': 'Legacy Lee', 'lead_email': f"{_unique('lee')}@test.edu",
+        'status': 'Confirmed', 'attendance': 'Present'})
+    old_hash = 'a' * 63 + 'b'
+    db.collection('verified_certificates').document(old_hash).set({
+        'student_name': 'Hashed Hana', 'event_title': 'Worded Event', 'event_id': event_id,
+        'cert_type': 'participation', 'issued_at': '2031-07-07T10:00:00'})
+    for path in (f'/verify/{reg_id}/preview', f'/verify/{old_hash}/preview'):
+        page = client.get(path).get_data(as_text=True)
+        assert 'Main Campus' not in page and 'Venue to be announced' in page, path
+    db.collection('events').document(event_id).update({'event_mode': 'online'})
+    assert 'Online' in client.get(f'/verify/{old_hash}/preview').get_data(as_text=True)

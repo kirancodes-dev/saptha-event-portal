@@ -3611,7 +3611,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **One helper, `utils.venue_label(event)`:** the room's name or the venue; "Online" for an online event with neither (owner, 2026-10-19); else "Venue to be announced". Templates reach it as the `venue_label` global. It replaces every invented fallback:
     - **app code:** the scanner list (`routes_coordinator`), live board (`routes_live`), student dashboard and my-events (`routes_participant`), portfolio (`routes_portfolio`), waitlist promotion email (`routes_waitlist`), the day-before, briefing, 3-day and velocity emails (`tasks/scheduled_tasks.py`, 4 places), both calendar feeds (`app.py`, which said "SNPSU") and the event page;
     - **templates:** `live/leaderboard.html`, `participant/dashboard.html` (2), `public/calendar.html`, `public/self_checkin.html` (it said "SNPSU"), `spoc/ai_report.html`; and the ticket, wallet and judge pages, which already said "Venue to be announced" but now also say "Online".
-  - **Left, deferred with certificates:** the certificate preview's "Main Campus" (`routes_verification.py:90`, `templates/public/certificate_preview_embed.html`). `db_adapter.py`'s "Main Campus" is a campus record's default name, not a venue.
+  - **The certificate preview's "Main Campus"** was deferred with certificates and is fixed by UPG-136. `db_adapter.py`'s "Main Campus" is a campus record's default name, not a venue.
   - Stashing the change fails 5 of the 12 tests.
 - **Files touched:** `utils.py`, `app.py`, `routes_coordinator.py`, `routes_live.py`, `routes_participant.py`, `routes_portfolio.py`, `routes_waitlist.py`, `tasks/scheduled_tasks.py`, 9 templates, `tests/test_venue_label.py` (new).
 - **Effort:** S · **Depends on:** none · **Risk:** none.
@@ -3951,8 +3951,11 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Acceptance criteria:** 1. Test: `/verify/<present reg_id>` (the legacy form) and its preview show the lead's name, on seeded rows too, and the certificate number's documentation describes how it's made.
 
 #### UPG-136 — No invented venue in the certificate preview (UPG-111's deferred part)
-- **Status:** TODO · **Built with:** UPG-123
-- **Acceptance criteria:** 1. Test: no certificate page or PDF says "Main Campus" for an event without a venue.
+- **Status:** DONE · **Built with:** UPG-123
+- **Last verified:** 2026-10-19, commit "UPG-136: …" on `production-ready` (parent `389c8ad`) [T]
+- **Built (2026-10-19):** the old certificate preview (`/verify/<id>/preview`, `routes_verification.py:87-91`) takes the venue from the certificate's event and prints `venue_label(event)` (`templates/public/certificate_preview_embed.html:132,136`): the venue or room, "Online", or "Venue to be announced". The new certificate (UPG-123) prints no venue. `tests/test_venue_label.py` no longer exempts these two files from its scan for invented places.
+- **Files touched:** `routes_verification.py`, `templates/public/certificate_preview_embed.html`, `tests/test_venue_label.py`, `tests/test_certificate_wording.py`
+- **Acceptance criteria:** 1. ✅ Test: no certificate page or PDF says "Main Campus" for an event without a venue. [T `tests/test_certificate_wording.py::test_upg136_no_certificate_page_or_pdf_invents_a_venue`, `tests/test_venue_label.py::test_no_app_code_or_page_falls_back_to_an_invented_place` (no exemptions)]
 
 #### UPG-137 — One certificate store (UPG-112's "two certificate stores")
 - **Status:** TODO · **Built with:** UPG-122
@@ -4379,3 +4382,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-123: …" (parent `912a445`) | UPG-123 | Certificate templates (two, coloured per type) with the college's branding from settings; Noto fonts with Kannada and Devanagari shaping; 1–3 signatories per event with checked, trimmed, privately stored signatures, copying from an own event, audit-logged changes and a snapshot on each certificate; the event's certificate page with a live preview; no issuing without a signature. 11 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-130: …" (parent `2312681`) | UPG-130 | UPG-11's deferred criterion 4: an issued certificate's PDF shows the event's hours and points (test reads the stored PDF). |
 | 2026-10-19 | "UPG-131: …" (parent `f2d7fcc`) | UPG-131 | UPG-12's deferred criterion 2: an FDP completion certificate's PDF shows the faculty member's designation and institution, and the hours. |
+| 2026-10-19 | "UPG-136: …" (parent `389c8ad`) | UPG-136 | UPG-111's deferred part: the old certificate preview shows the event's venue, "Online" or "Venue to be announced", never "Main Campus"; the issued PDF names no venue; the scan for invented places covers every file. |

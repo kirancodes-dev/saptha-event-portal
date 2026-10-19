@@ -33,10 +33,8 @@ def test_the_label_never_invents_a_place(event, label):
 
 
 def test_no_app_code_or_page_falls_back_to_an_invented_place():
-    # The certificate preview's wording is deferred with certificates
     hits = subprocess.run(['git', 'grep', '-n', '-E', "'SNPSU Campus'|'Main Campus'|get\\('venue', ?'SNPSU'|or 'Campus'",
-                           '--', '*.py', '*.html', ':!tests/', ':!seeds/', ':!db_adapter.py',
-                           ':!templates/public/certificate_preview_embed.html', ':!routes_verification.py'],
+                           '--', '*.py', '*.html', ':!tests/', ':!seeds/', ':!db_adapter.py'],
                           cwd=ROOT, capture_output=True, text=True).stdout.strip()
     assert hits == ''
 

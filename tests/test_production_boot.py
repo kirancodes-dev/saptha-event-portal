@@ -12,6 +12,7 @@ import ast
 import json
 import os
 import re
+import secrets
 import subprocess
 import sys
 import types
@@ -22,15 +23,17 @@ from tests.test_migrations_baseline import pg_url  # noqa: F401  (fixture)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Strong dummy settings, made fresh for each run so no secret-looking literal sits
+# in the repo (the CI secret scan, UPG-118)
 STRONG = {
     'FLASK_ENV': 'production',
-    'SECRET_KEY': 'k9Vq2x7LmPz4RtYw8NbHc3JdFs6GaUe1QoXiKlMn',
-    'MASTER_SECRET_KEY': 'Mz7pQ2vX9kLr4TbN',
-    'JWT_SECRET_KEY': 'Jw4tR8yU2iO6pA1sD5fG9hJ3kL7zX0cV',
+    'SECRET_KEY': secrets.token_urlsafe(32),
+    'MASTER_SECRET_KEY': secrets.token_urlsafe(16),
+    'JWT_SECRET_KEY': secrets.token_urlsafe(32),
     'BASE_URL': 'https://events.example.edu',
-    'BREVO_API_KEY': 'xkeysib-dummy-for-the-boot-test',
+    'BREVO_API_KEY': 'dummy-' + secrets.token_hex(8),
     'MAIL_FROM': 'events@example.edu',
-    'CRON_SECRET': 'cr0n-Secret-for-the-boot-test-2026',
+    'CRON_SECRET': secrets.token_urlsafe(24),
     'CELERY_BROKER_URL': '', 'RAZORPAY_KEY_ID': '', 'RAZORPAY_KEY_SECRET': '', 'RAZORPAY_WEBHOOK_SECRET': '',
     'PAYMENT_SIMULATION': '', 'SUPER_ADMIN_PASS': '', 'SENTRY_DSN': '', 'CLOUD_SQL_INSTANCE': '',
     'DATABASE_TYPE': 'postgres',

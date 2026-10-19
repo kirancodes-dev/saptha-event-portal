@@ -3723,6 +3723,16 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: joining a full `registration_open` event through the endpoint adds the person to the waitlist; a cancelled or completed event is refused.
 
+#### UPG-118 — The CI secret scan flags the production boot test's dummy settings
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-118: …" on `production-ready` [T]
+- **Problem:** Found in Part 3's full-history gitleaks scan (8.30.1, CI's version and command). `tests/test_production_boot.py` (UPG-20, commit `216f7a3`) held its strong dummy `SECRET_KEY`, `MASTER_SECRET_KEY` and `JWT_SECRET_KEY` as literals; gitleaks reported them as 3 `generic-api-key` leaks, so CI's secret-scan job would fail. They were never real values.
+- **Built (2026-10-19):** the test makes its dummy settings at run time (`secrets.token_urlsafe`), so no secret-looking literal remains; the three findings in commit `216f7a3` are listed in `.gitleaksignore` as accepted test dummies, as the repo records the others.
+- **Files touched:** `tests/test_production_boot.py`, `.gitleaksignore`.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Acceptance criteria:**
+  1. ✅ `gitleaks git --redact --exit-code 1 --gitleaks-ignore-path .gitleaksignore .` over the full history finds nothing [R, Part 3 release check]; `tests/test_production_boot.py` still passes.
+
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4135,3 +4145,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "docs: …" | UPG-117 | New (found in UPG-114): the JSON waitlist join refuses events that aren't in the old `active` status. TODO. |
 | 2026-10-19 | "UPG-111: …" (parent `644b882`) | UPG-111 | **UPG-111 DONE** (owner's instruction, before Part 3): an event with no venue says "Venue to be announced" ("Online" for online events) on every page and email, through one helper; no invented "SNPSU Campus"/"SNPSU" anywhere (the certificate preview deferred). 12 new tests. |
 | 2026-10-19 | "UPG-115: …" | UPG-115, UPG-111 | Follow-ups found by the full run: the one-registration index now skips rows with no lead email (they blocked each other), and UPG-111's calendar check looks at its own event's entry. 1 new test; SQLite and PostgreSQL. |
+| 2026-10-19 | "UPG-118: …" | UPG-118 | **UPG-118 DONE**: the boot test makes its dummy secrets at run time; the three findings in its first commit are accepted test dummies in `.gitleaksignore`. Full-history gitleaks clean. |

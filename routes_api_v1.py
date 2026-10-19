@@ -1054,39 +1054,56 @@ def api_event_leaderboard(event_id):
 
 
 @api_v1_bp.route("/events/<event_id>/issue-certificates", methods=["POST"])
-@jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "Organizer"])
+@jwt_roles_required(["SuperAdmin", "Admin", "SPOC", "ClubSPOC", "Organizer"])
 def api_bulk_issue_certificates(event_id):
-    """Bulk issue certificates for an event (winners, runner ups, participants)."""
-    from services_certificate import CertificateService
+    """Issue an event's certificates through the web's issuing (UPG-137): the
+    same `certificates` records, in the background, each person once. Optional
+    JSON `category`: one certificate type (e.g. "participation", "winner")."""
+    import services_certificate_runs as runs
+    import services_certificates as certs
+    from services_permission import can
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
-
-    data = request.get_json(silent=True) or {}
-    category = data.get("category")
-
+    doc = db.collection("events").document(event_id).get()
+    if not doc.exists:
+        return api_error("not_found", "Event not found", status=404)
+    caller = {"user_id": g.jwt_user.get("sub", ""), "role": g.jwt_user.get("role", "")}
+    if not can(caller, "issue_certificates", dict(doc.to_dict() or {}, id=event_id), db=db):
+        return api_error("forbidden", "You can't issue this event's certificates", status=403)
+    category = (request.get_json(silent=True) or {}).get("category")
+    if category and category not in certs.TYPES:
+        return api_error("bad_request", f"Unknown certificate type: {category}", status=400)
     try:
-        certs = CertificateService.bulk_issue_event_certificates(db, event_id, category=category)
-        return api_success({
-            "event_id": event_id,
-            "issued_count": len(certs),
-            "certificates": certs,
-        }, status=201)
-    except ValueError as e:
-        return api_error("not_found", str(e), status=404)
-    except Exception as e:
-        logger.error("Error bulk issuing certificates: %s", e)
-        return api_error("internal_error", str(e), status=500)
+        run = runs.start(db, event_id, caller["user_id"], kinds=[category] if category else None, reason="api")
+    except certs.CertificateError as e:
+        return api_error("not_ready", str(e), status=409)
+    run = runs.get(db, run["id"]) or run
+    return api_success(dict(runs.progress(run), run_id=run["id"],
+                            certificates=[{"number": c["number"], "name": c["name"], "type": c["cert_type"],
+                                           "verify_url": certs.verify_url(c["number"])}
+                                          for c in certs.for_event(event_id)
+                                          if not category or c["cert_type"] == category]), status=202)
 
 
 @api_v1_bp.route("/certificates/<cert_id>", methods=["GET"])
 def api_verify_certificate(cert_id):
-    """Public certificate verification endpoint."""
-    from services_certificate import CertificateService
+    """Public certificate verification: a certificate number from the web's
+    store (UPG-137), else an ID from the older API store."""
+    import services_certificates as certs
     db = _db()
     if db is None:
         return api_error("service_unavailable", "Database not available", status=503)
-
+    if certs.looks_like_number(cert_id):
+        view = certs.public_view(cert_id)
+        if not view:
+            return api_error("not_found", "No certificate has this number", status=404)
+        return api_success({"verified": view["state"] == "valid", "message": view["state"],
+                            "certificate": {k: view[k] for k in ("number", "version", "state", "name", "event_title",
+                                                                 "date", "type_title", "position", "college",
+                                                                 "issued_on", "revoked_on")},
+                            "verify_url": certs.verify_url(view["number"])})
+    from services_certificate import CertificateService
     valid, message, cert_data = CertificateService.verify_certificate(db, cert_id)
     if not valid and not cert_data:
         return api_error("not_found", message, status=404)

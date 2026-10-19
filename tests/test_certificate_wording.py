@@ -1,6 +1,7 @@
 """
 tests/test_certificate_wording.py — what an issued certificate's PDF says, on
-the real database layer: the event's hours (UPG-130).
+the real database layer: the event's hours (UPG-130), and a faculty member's
+designation and institution on an FDP certificate (UPG-131).
 """
 import pytest
 
@@ -35,3 +36,11 @@ def issue(real_app):
 def test_upg130_the_hours_are_in_the_pdf(issue):
     _, cert, text = issue['run']({'lead_name': 'Hari Hours'}, activity_hours=12, activity_points=5)
     assert '12 hours' in text and '5 activity points' in text and 'Hari Hours' in text
+
+
+def test_upg131_an_fdp_certificate_shows_designation_and_institution(issue):
+    _, cert, text = issue['run']({'lead_name': 'Dr. Meera Iyer', 'designation': 'Assistant Professor',
+                                  'institution': 'Example College of Engineering'}, event_type='fdp', activity_hours=30)
+    assert cert['cert_type'] == 'completion'
+    assert 'Dr. Meera Iyer' in text and 'Assistant Professor, Example College of Engineering' in text
+    assert '30 hours' in text

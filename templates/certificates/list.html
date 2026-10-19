@@ -1,0 +1,43 @@
+{% extends "base_classic.html" %}
+{#- Every certificate an event issued, with search, pages and exports (UPG-128). -#}
+{% block title %}Certificates issued — {{ event.title }}{% endblock %}
+{% block page_title %}Certificates issued{% endblock %}
+{% block page_sub %}{{ event.title }}{% endblock %}
+{% block page_actions %}<a href="/certificates/events/{{ event.id }}" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Certificates</a>{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <form method="GET" class="d-flex gap-2 flex-wrap align-items-end mb-2" role="search">
+            <div class="flex-grow-1">
+                <label class="form-label" for="cert-q">Search by name, number or certificate</label>
+                <input class="form-control" id="cert-q" name="q" value="{{ page.q }}" placeholder="e.g. Ananya, SE-7KQ4 or Winner">
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+        <div class="d-flex gap-2 flex-wrap mb-2">
+            <a class="btn btn-sm btn-outline-secondary" href="/certificates/events/{{ event.id }}/export.csv{% if page.q %}?q={{ page.q|urlencode }}{% endif %}"><i class="fas fa-file-csv" aria-hidden="true"></i> CSV</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/certificates/events/{{ event.id }}/export.xlsx{% if page.q %}?q={{ page.q|urlencode }}{% endif %}"><i class="fas fa-file-excel" aria-hidden="true"></i> Excel</a>
+        </div>
+        {% if page.items %}
+        <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead><tr><th scope="col">Name</th><th scope="col">Certificate</th><th scope="col">Number</th><th scope="col">Status</th><th scope="col">Issued</th></tr></thead>
+            <tbody>
+            {% for c in page.items %}
+            <tr>
+                <td>{{ c.name }}</td>
+                <td>{{ c.type_title }}{% if c.position %} ({{ c.position }}){% endif %}</td>
+                <td><code>{{ c.number }}</code>{% if c.version > 1 %} <span class="text-muted small">v{{ c.version }}</span>{% endif %}</td>
+                <td>{{ c.status|capitalize }}</td>
+                <td>{{ c.issued_on }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% endif %}
+        {% include "includes/pagination.html" %}
+    </div>
+</div>
+{% endblock %}

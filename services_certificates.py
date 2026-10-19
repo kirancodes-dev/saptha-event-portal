@@ -647,3 +647,41 @@ def issue_event(db, event_id: str, actor: str = '', only: Optional[Iterable[str]
             logger.exception("Certificate for %s (%s) at %s failed", r.get('person_key'), r['cert_type'], event_id)
             counts['failed'] += 1
     return counts
+
+
+# ── Lists, exports and counts (UPG-128) ─────────────────────────────────────
+
+EXPORT_COLUMNS = ['Number', 'Version', 'Name', 'Email', 'Certificate', 'Place', 'Status', 'Issued on', 'Emailed on']
+
+
+def list_rows(event_id: str) -> List[dict]:
+    """The event's current certificates, for its organisers' list and exports."""
+    return [dict(c, type_title=TYPES.get(c['cert_type'], {}).get('title', c['cert_type']),
+                 issued_on=_day(c['issued_at']) if c['issued_at'] else '',
+                 emailed_on=_day(c['emailed_at']) if c['emailed_at'] else '')
+            for c in for_event(event_id)]
+
+
+def export_rows(rows: List[dict]) -> List[list]:
+    return [[r['number'], r['version'], r['name'], r['email'] or '', r['type_title'], r['position'] or '',
+             r['status'], r['issued_on'], r['emailed_on']] for r in rows]
+
+
+def college_counts(db) -> List[dict]:
+    """Valid current certificates per department, event type and month of issue:
+    a data source for the NAAC/AQAR report (not built yet)."""
+    from collections import Counter
+    from sqlalchemy import select
+    from models_pg import Certificate
+    events = {str(d.id): d.to_dict() or {} for d in db.collection('events').stream()}
+    counts = Counter()
+    with _session() as s:
+        q = select(Certificate.event_id, Certificate.issued_at).where(Certificate.is_current.is_(True),
+                                                                      Certificate.status == 'valid')
+        for event_id, issued_at in s.execute(q):
+            event = events.get(str(event_id), {})
+            month = issued_at.strftime('%Y-%m') if hasattr(issued_at, 'strftime') else str(issued_at or '')[:7]
+            counts[(event.get('department') or 'Not set', event.get('event_type') or event.get('category') or 'Not set',
+                    month)] += 1
+    return [{'department': d, 'event_type': t, 'month': m, 'certificates': n}
+            for (d, t, m), n in sorted(counts.items())]

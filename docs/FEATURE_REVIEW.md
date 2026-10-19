@@ -3965,15 +3965,20 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; the `certificates` table has the version, status and revocation fields it needs (UPG-122).
 
 #### UPG-128 — Certificate lists, exports and college-wide counts
-- **Status:** TODO
-- **Last verified:** 2026-10-19 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-128: …" on `production-ready` (parent `cb8772c`) [T]
 - **What to build:**
   - **Per event:** the certificate list with search and pages (UPG-19), and CSV and XLSX exports.
   - **College-wide:** certificates issued per department, event type and month, as a data source for the NAAC/AQAR report (not built now).
+- **Built (2026-10-19):**
+  - **The event's list** (`/certificates/events/<id>/list`, `routes_certificates.py:485`; `templates/certificates/list.html`, new; linked from the certificate page): every current certificate with name, type and place, number and version, status and issue date, 25 a page with the shared pager (UPG-19), searched by name, number or type. For the event's staff (`edit_event` or `issue_certificates`).
+  - **Exports** (`/certificates/events/<id>/export.csv` and `.xlsx`, `routes_certificates.py:496`): the list's rows, with its search, through `services_export` (formula-safe cells); columns `EXPORT_COLUMNS` (`services_certificates.py:654`).
+  - **College-wide counts** (`services_certificates.college_counts`, `services_certificates.py:670`): valid current certificates per department, event type and month of issue, a data source for the NAAC/AQAR report (not built). Super Admins see them at `/certificates/reports/counts` (`templates/certificates/counts.html`, new; linked from the admin dashboard) and download them as CSV.
+- **Files touched:** `services_certificates.py`, `routes_certificates.py`, `templates/certificates/list.html` (new), `templates/certificates/counts.html` (new), `templates/certificates/manage.html`, `templates/admin/dashboard.html`, `tests/test_certificate_lists.py` (new)
 - **Effort:** S · **Depends on:** UPG-122 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test: the event's list pages at 25, searches by name, number and type, and exports the same rows as CSV and XLSX.
-  2. Test: the college-wide counts per department, event type and month match the certificates issued.
+  1. ✅ Test: the event's list pages at 25, searches by name, number and type, and exports the same rows as CSV and XLSX. [T `tests/test_certificate_lists.py`::test_the_list_pages_at_25_searches_and_exports_the_same_rows]
+  2. ✅ Test: the college-wide counts per department, event type and month match the certificates issued. [T `tests/test_certificate_lists.py`::test_the_college_wide_counts_match_the_certificates_issued: a revoked certificate and a back-dated one included]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO.
 
 #### UPG-129 — Who may issue, revoke, approve and download certificates
@@ -4531,3 +4536,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-140: …" (parent `2368312`) | UPG-140 | Audit rows written outside a request (background tasks, scheduled jobs, certificate runs) are kept, as "system"; before, every one was dropped with a warning. |
 | 2026-10-19 | "UPG-127: …" (parent `979a228`) | UPG-127 | Corrections and revocation: a student asks for a name correction, the organiser approves (version 2, same number, emailed; version 1's file then checks as replaced) or rejects (nothing changes); revoking needs a reason and shows on verification with the date; every issue, correction and revocation is audit-logged. 2 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-141: …" (parent `020cb88`) | UPG-141 | The participant's certificate page says "at Venue to be announced" or "at Online" for an event without a venue, not "at .". |
+| 2026-10-19 | "UPG-128: …" (parent `cb8772c`) | UPG-128 | The event's certificate list (25 a page, search by name, number or type) with CSV and Excel exports of the same rows; college-wide counts per department, event type and month for Super Admins, with CSV. 2 new tests, passing on SQLite and PostgreSQL. |

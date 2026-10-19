@@ -466,3 +466,61 @@ def revoke(event_id):
     except changes.ChangeError as exc:
         flash(str(exc), 'danger')
     return _back(event_id)
+
+
+# ── Lists, exports and counts (UPG-128) ─────────────────────────────────────
+
+SEARCH_FIELDS = ('name', 'number', 'type_title', 'cert_type')
+
+
+def _filtered(event_id):
+    import services_certificates as certs
+    from utils_pagination import matches
+    q = (request.args.get('q') or '').strip()
+    return [r for r in certs.list_rows(event_id) if matches(r, q, SEARCH_FIELDS)]
+
+
+@certificates_bp.route('/events/<event_id>/list')
+@login_required
+def event_list(event_id):
+    """Every certificate the event issued: search and pages (25 a page)."""
+    import services_certificates as certs
+    from utils_pagination import paginate_items
+    event = _event_or_abort(event_id, 'edit_event', 'issue_certificates')
+    page = paginate_items(certs.list_rows(event_id), search_fields=SEARCH_FIELDS)
+    return render_template('certificates/list.html', event=event, page=page)
+
+
+@certificates_bp.route('/events/<event_id>/export.<kind>')
+@login_required
+def event_export(event_id, kind):
+    """The same rows as the list (with its search), as CSV or XLSX."""
+    import services_certificates as certs
+    import services_export
+    event = _event_or_abort(event_id, 'edit_event', 'issue_certificates')
+    rows = certs.export_rows(_filtered(event_id))
+    from routes_spoc import _export_name
+    if kind == 'csv':
+        return Response(services_export.to_csv(rows, certs.EXPORT_COLUMNS), mimetype='text/csv', headers={
+            'Content-Disposition': f"attachment; filename={_export_name(event, 'Certificates.csv')}"})
+    if kind == 'xlsx':
+        return Response(services_export.to_xlsx([('Certificates', certs.EXPORT_COLUMNS, rows)]),
+                        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={
+                            'Content-Disposition': f"attachment; filename={_export_name(event, 'Certificates.xlsx')}"})
+    abort(404)
+
+
+@certificates_bp.route('/reports/counts')
+@login_required
+def college_counts():
+    """Certificates per department, event type and month, college-wide (admins)."""
+    import services_certificates as certs
+    import services_export
+    if session.get('role') not in ('SuperAdmin', 'Super Admin', 'UniversityAdmin'):
+        abort(403)
+    rows = certs.college_counts(db)
+    if request.args.get('format') == 'csv':
+        return Response(services_export.to_csv([[r['department'], r['event_type'], r['month'], r['certificates']]
+                                                for r in rows], ['Department', 'Event type', 'Month', 'Certificates']),
+                        mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=certificate-counts.csv'})
+    return render_template('certificates/counts.html', rows=rows, total=sum(r['certificates'] for r in rows))

@@ -3982,12 +3982,16 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO.
 
 #### UPG-129 — Who may issue, revoke, approve and download certificates
-- **Status:** TODO
-- **Last verified:** 2026-10-19 [C]
+- **Status:** DONE
+- **Last verified:** 2026-10-19, commit "UPG-129: …" on `production-ready` (parent `3396622`) [T]
 - **What to build:** issuing, revoking and approving corrections only for the event's owner or someone holding `issue_certificates` on that event (`services_permission.can`); students download only their own certificates.
+- **Built (2026-10-19):**
+  - Every certificate action checks the event through `services_permission.can`: issuing, retrying a run, issuing to one person, revoking, approving or rejecting a correction and the automatic-issue switch need `issue_certificates` (`routes_certificates.py`, UPG-124 and UPG-127); the certificate page needs `edit_event` or `issue_certificates`; a certificate's own downloads are for its person and the event's staff who manage certificates (`_may_download`, UPG-125); asking for a correction is for the certificate's own person (UPG-127).
+  - This item adds the test across every role. It found nothing to change: the event's owner, a Super Admin and an EventOrganizer assigned to that event alone may act; another SPOC and the event's own coordinator, judge and volunteer may not.
+- **Files touched:** `tests/test_certificate_permissions.py` (new)
 - **Effort:** S · **Depends on:** UPG-124, UPG-127 · **Risk:** low.
 - **Acceptance criteria:**
-  1. Test, for each role (owner SPOC, another SPOC, coordinator, judge, volunteer, student, Super Admin): only the owner, Super Admin and anyone holding `issue_certificates` on the event can issue, revoke or approve; a student downloads their own certificate and gets 403 for someone else's.
+  1. ✅ Test, for each role (owner SPOC, another SPOC, coordinator, judge, volunteer, student, Super Admin): only the owner, Super Admin and anyone holding `issue_certificates` on the event can issue, revoke or approve; a student downloads their own certificate and gets 403 for someone else's. [T `tests/test_certificate_permissions.py::test_only_the_owner_an_admin_and_an_issue_certificates_holder_issue_revoke_and_approve` (8 roles × issue, retry, issue to one, revoke, approve, the switch and the page, each checked by its effect), `::test_a_student_downloads_only_their_own`; SQLite and PostgreSQL]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. The certificate page already checks `edit_event` / `issue_certificates` per event (UPG-123); issuing, revoking and approving routes come with UPG-124 and UPG-127.
 
 #### UPG-130 — Hours on the certificate (UPG-11's deferred criterion 4)
@@ -4537,3 +4541,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-127: …" (parent `979a228`) | UPG-127 | Corrections and revocation: a student asks for a name correction, the organiser approves (version 2, same number, emailed; version 1's file then checks as replaced) or rejects (nothing changes); revoking needs a reason and shows on verification with the date; every issue, correction and revocation is audit-logged. 2 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-141: …" (parent `020cb88`) | UPG-141 | The participant's certificate page says "at Venue to be announced" or "at Online" for an event without a venue, not "at .". |
 | 2026-10-19 | "UPG-128: …" (parent `cb8772c`) | UPG-128 | The event's certificate list (25 a page, search by name, number or type) with CSV and Excel exports of the same rows; college-wide counts per department, event type and month for Super Admins, with CSV. 2 new tests, passing on SQLite and PostgreSQL. |
+| 2026-10-19 | "UPG-129: …" (parent `3396622`) | UPG-129 | The certificate permissions tested for 8 roles (owner, another SPOC, the event's coordinator, judge and volunteer, a student, Super Admin, and an EventOrganizer on that event only): only the owner, Super Admin and the holder of `issue_certificates` issue, revoke or approve; students download only their own. No code change needed. |

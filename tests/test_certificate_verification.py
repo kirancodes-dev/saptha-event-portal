@@ -2,7 +2,8 @@
 tests/test_certificate_verification.py — on the real database layer:
 UPG-126 (the public page of a certificate number: valid, not found, revoked,
 replaced; no personal data; rate limits; the lookup form and the legacy check
-lead to it).
+lead to it) and UPG-134 (SUPPORT_EMAIL on every verification page, nothing
+hard-coded).
 """
 import datetime
 import uuid
@@ -132,3 +133,26 @@ def test_the_lookup_form_and_the_legacy_check_lead_to_the_new_page(site):
         'hash': old_hash, 'student_name': 'Olden Days', 'event_title': 'Old Event', 'cert_type': 'participation',
         'issued_at': '2025-01-01T10:00:00', 'status': 'Verified'})
     assert 'Olden Days' in d['visitor'].get(f'/verify/{old_hash}').get_data(as_text=True)
+
+
+# ── UPG-134 ─────────────────────────────────────────────────────────────────
+
+def test_upg134_verification_pages_show_support_email_or_none(site, monkeypatch):
+    d = site
+    got = d['issued']()
+    old_hash = uuid.uuid4().hex + uuid.uuid4().hex
+    d['db'].collection('verified_certificates').document(old_hash).set({
+        'hash': old_hash, 'student_name': 'Olden Days', 'event_title': 'Old Event', 'cert_type': 'participation',
+        'issued_at': '2025-01-01T10:00:00', 'status': 'Verified'})
+    pages = (f"/verify/{got['cert']['number']}", f'/verify/{old_hash}', f"/verify/{got['reg_id']}",
+             '/verify/SE-AAAA-BBBB-CCCC-D')
+    monkeypatch.setenv('SUPPORT_EMAIL', 'events@example.edu')
+    for path in pages:
+        assert 'mailto:events@example.edu' in d['visitor'].get(path).get_data(as_text=True), path
+    monkeypatch.delenv('SUPPORT_EMAIL')
+    for path in pages:
+        page = d['visitor'].get(path).get_data(as_text=True)
+        assert 'mailto:' not in page and 'snpsu.edu.in' not in page, path
+    import glob
+    for template in glob.glob('templates/public/verify_*.html') + ['templates/certificates/verify.html']:
+        assert 'support@' not in open(template, encoding='utf-8').read(), template

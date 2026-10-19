@@ -2568,7 +2568,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   - **Commit note:** the six deletions were staged early and went into the UPG-69 commit (`24d6eec`) by mistake; this commit adds the test and this entry. Nothing was pushed, and the history wasn't rewritten.
 
 #### UPG-65 — Fabricated figures and simulated features on live pages
-- **Status:** DONE (the certificate pages' support address is deferred with certificates)
+- **Status:** DONE (the certificate pages' support address, deferred with certificates, is UPG-134, DONE)
 - **Last verified:** 2026-10-17, commit "UPG-65: …" on `production-ready` (parent `6c356b4`) [T]
 - **Problem:** Found during UPG-63 [C, templates read; R, pages loaded]. Several pages show numbers or behaviour that no data or backend supports:
   - **Hard-coded figures:**
@@ -3994,8 +3994,11 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-125).
 
 #### UPG-134 — The support address on the verification pages (UPG-65's deferred part)
-- **Status:** TODO · **Built with:** UPG-126
-- **Acceptance criteria:** 1. Test: the verification pages show `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded.
+- **Status:** DONE · **Built with:** UPG-126
+- **Last verified:** 2026-10-19, commit "UPG-134: …" on `production-ready` (parent `6e472df`) [T]
+- **Built (2026-10-19):** the legacy certificate and registration verification pages (`templates/public/verify_certificate.html:535-543`, `verify_success.html:491-499`) show "contact <SUPPORT_EMAIL>" only when `SUPPORT_EMAIL` is set, as the new page does (UPG-126); the hard-coded `support@snpsu.edu.in` is gone from every verification page.
+- **Files touched:** `templates/public/verify_certificate.html`, `templates/public/verify_success.html`, `tests/test_certificate_verification.py`
+- **Acceptance criteria:** 1. ✅ Test: the verification pages show `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded. [T `tests/test_certificate_verification.py::test_upg134_verification_pages_show_support_email_or_none`: the new page, an old hash, a registration check and a not-found page, with and without the setting; no verification template holds an address]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-126).
 
 #### UPG-135 — Certificate verification keeps the lead's name and email (UPG-69's deferred part)
@@ -4468,3 +4471,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-124: …" (parent `cd1842b`) | UPG-124 | Issuing in the background in chunks through the outbox, with progress, failures and a retry; position certificates when results are published (with an off switch); not before the event ends; by hand to one person; the organiser's list; the stored PDF checked against its SHA-256. 8 new tests, passing on SQLite and PostgreSQL (the 1,200-person run included). |
 | 2026-10-19 | "UPG-122 follow-up: …" (parent `c035f44`) | UPG-122 | The full run of the UPG-122 commit (1,211 passed, 7 skipped) had one failure: migration 0008 refused a development database whose start-up had already created the `certificates` table. 0008 now accepts the table and adds only the missing indexes. |
 | 2026-10-19 | "UPG-126: …" (parent `45899bf`) | UPG-126 | The public page of a certificate number: valid, revoked with the date, or replaced, with the name, event, dates, type and college and no personal data; one rate limit over every lookup; the lookup form and the coordinator's legacy check lead to it. Criterion 3 reworded: old IDs keep their legacy pages. 6 new tests, passing on SQLite and PostgreSQL. |
+| 2026-10-19 | "UPG-134: …" (parent `6e472df`) | UPG-134 | UPG-65's deferred part: every certificate verification page shows `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded. |

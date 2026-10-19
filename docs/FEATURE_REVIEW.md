@@ -1098,6 +1098,7 @@ Phase 2 flows that existing items already cover: check-in (UPG-02), certificates
   - Full pytest: **867 passed** on SQLite and PostgreSQL 16; ruff clean.
 - **Rule 8 (early pass, `db_adapter.py` and `models_pg.py` changed):** the change only adds columns to `payment_orders`. Of the 32 open items, UPG-16 lists that table for its baseline; its line now names the new columns. The other items citing `models_pg.py` (UPG-11 to UPG-14, UPG-18) don't touch `payment_orders`, and their claims are unchanged.
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; criterion 4 (the owner's checkout with Razorpay test keys) goes on Part 3's go-live checklist.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still IN PROGRESS; `routes_payment.py` unchanged since UPG-115. Criterion 4 is the owner's Test Mode checkout and refund (go-live checklist).
 
 #### UPG-31 — Notifications: confirmation, day-before reminder, change and cancellation notices through Brevo
 - **Status:** DONE
@@ -1251,6 +1252,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
   3. ✅ **Met for now: there's no production deployment** (owner, 2026-09-30), so nothing accepts the old SuperAdmin password or master key. The next deploy must pass **"Before the next deploy"** (new `SECRET_KEY`, `MASTER_SECRET_KEY`, `JWT_SECRET_KEY`, `SUPER_ADMIN_PASS`, `RAZORPAY_KEY_SECRET`, and a PostgreSQL `DATABASE_URL`, all set first). The start-up refusal for published values exists (`tests/test_integration_flow.py:205`).
   4. ✅ **Met:** both Google API keys are revoked (owner, 2026-09-30) and accepted in `.gitleaksignore`. The full-history gitleaks scan finds **no leaks in 212 commits** [R]. ✅ **On GitHub:** CI run 36886209908 on the pushed `master` (`56a014d`, 2026-10-01) passed "Repo hygiene & secret scan" and "Lint (ruff)" [R, GitHub Actions API]. The bandit job failed on the known BLK-11 findings and pytest on BLK-15's causes. The old password and master key remain as literals in history (gitleaks doesn't flag them); they're unused and must not be reused (criterion 3).
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; only GitHub Support's removal of the PR refs is left (owner).
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still IN PROGRESS; nothing in the code changes it. Only GitHub Support's removal of the old pull-request refs is left (owner; on the go-live checklist).
 
 #### BLK-02 — The public registration form logs the visitor in as any email they type
 - **Status:** DONE
@@ -3482,6 +3484,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. Test: `pyrefly check` reports 0 errors in the routes, services and utils files, or each remaining kind is turned off with a reason in `pyrefly.toml`.
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** `pyrefly check` now reports 1,058 errors (1 suppressed), up from 1,044; the new code and tests since added the difference. Still TODO.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. `pyrefly check` now reports 1,081 errors (1,044 when written): 7 are in the new certificate code (`certificate_pdf.py:172`, `services_certificates.py:402`, `services_signatories.py:53-67`), all of the noise kinds above (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`); the rest come from Parts 2–3.
 
 #### UPG-103 — No way back to the previous page in the installed app
 - **Status:** DONE
@@ -3742,6 +3745,7 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Effort:** S · **Depends on:** none · **Risk:** low.
 - **Acceptance criteria:**
   1. Test: joining a full `registration_open` event through the endpoint adds the person to the waitlist; a cancelled or completed event is refused.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
 
 #### UPG-118 — The CI secret scan flags the production boot test's dummy settings
 - **Status:** DONE
@@ -3879,6 +3883,7 @@ The items below are built in this order, one commit each; each deferred part is 
   2. Test: publishing results issues the position certificates; with the automatic issue switched off it doesn't.
   3. Test: issuing before the event ends is refused; issuing to one person works and is audit-logged; the organiser's list shows who got which certificate.
   4. Test: the stored PDF's SHA-256 matches the record; a changed file is reported as changed.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. Since written, UPG-122 stores each PDF privately with its SHA-256 on the record (`services_certificates.store_pdf`) and issues in one call (`issue_event`), and UPG-123 adds the signatory gate the button must show; what's left is the outbox chunks and progress, the automatic issue on results with its switch, issuing to one person, the after-the-event check, the list, the changed-file check, and moving end-event and the bulk button (`utils_certificate.issue_event_certificates`, UPG-06) onto the new service.
 
 #### UPG-125 — Delivering certificates: email, "My certificates", sharing and phones
 - **Status:** TODO
@@ -3894,6 +3899,7 @@ The items below are built in this order, one commit each; each deferred part is 
   2. Test: "My certificates" lists the person's certificates (team members included) and the ledger links them.
   3. Test: the PNG download is a real image of the certificate; the share link opens the public verification page.
   4. Test: at 375px the list and the download work in headless Chromium, with no sideways scroll.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; nothing delivers the new certificates yet.
 
 #### UPG-126 — Verifying a certificate
 - **Status:** TODO
@@ -3908,6 +3914,7 @@ The items below are built in this order, one commit each; each deferred part is 
   1. Test: a valid certificate shows valid with the name, event, date, type and college, and no email or phone; an unknown number shows not found; a revoked one shows revoked and the date; a replaced version shows it was replaced.
   2. Test: more than the limit of lookups a minute from one address gets 429.
   3. Test: the legacy lookup form, `/verify/<old hash>` and the coordinator's legacy check redirect to the new page.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `/verify/<number>` doesn't exist yet. UPG-136 changed only the old preview's venue (`routes_verification.py:87-91`).
 
 #### UPG-127 — Correcting and revoking certificates
 - **Status:** TODO
@@ -3920,6 +3927,7 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Acceptance criteria:**
   1. Test: a correction request, approved, gives version 2 with the same number and the new name; version 1's hash no longer verifies as current; a rejected request changes nothing; only the certificate's owner can ask.
   2. Test: a revocation needs a reason, shows on verification with the date, and is audit-logged.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; the `certificates` table has the version, status and revocation fields it needs (UPG-122).
 
 #### UPG-128 — Certificate lists, exports and college-wide counts
 - **Status:** TODO
@@ -3931,6 +3939,7 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Acceptance criteria:**
   1. Test: the event's list pages at 25, searches by name, number and type, and exports the same rows as CSV and XLSX.
   2. Test: the college-wide counts per department, event type and month match the certificates issued.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO.
 
 #### UPG-129 — Who may issue, revoke, approve and download certificates
 - **Status:** TODO
@@ -3939,6 +3948,7 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Effort:** S · **Depends on:** UPG-124, UPG-127 · **Risk:** low.
 - **Acceptance criteria:**
   1. Test, for each role (owner SPOC, another SPOC, coordinator, judge, volunteer, student, Super Admin): only the owner, Super Admin and anyone holding `issue_certificates` on the event can issue, revoke or approve; a student downloads their own certificate and gets 403 for someone else's.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. The certificate page already checks `edit_event` / `issue_certificates` per event (UPG-123); issuing, revoking and approving routes come with UPG-124 and UPG-127.
 
 #### UPG-130 — Hours on the certificate (UPG-11's deferred criterion 4)
 - **Status:** DONE · **Built with:** UPG-122/UPG-123
@@ -3957,18 +3967,22 @@ The items below are built in this order, one commit each; each deferred part is 
 #### UPG-132 — The certificate page and download on a phone (UPG-28's certificate part)
 - **Status:** TODO · **Built with:** UPG-125
 - **Acceptance criteria:** 1. Test: at 375px the certificate page has no sideways scroll and its download works (headless).
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-125).
 
 #### UPG-133 — Escaping in the certificate email (UPG-50's deferred part)
 - **Status:** TODO · **Built with:** UPG-125
 - **Acceptance criteria:** 1. Test: a recipient named `<b>Ann</b>` gets a certificate email showing the text, not markup.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-125).
 
 #### UPG-134 — The support address on the verification pages (UPG-65's deferred part)
 - **Status:** TODO · **Built with:** UPG-126
 - **Acceptance criteria:** 1. Test: the verification pages show `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-126).
 
 #### UPG-135 — Certificate verification keeps the lead's name and email (UPG-69's deferred part)
 - **Status:** TODO · **Built with:** UPG-126
 - **Acceptance criteria:** 1. Test: `/verify/<present reg_id>` (the legacy form) and its preview show the lead's name, on seeded rows too, and the certificate number's documentation describes how it's made.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-126).
 
 #### UPG-136 — No invented venue in the certificate preview (UPG-111's deferred part)
 - **Status:** DONE · **Built with:** UPG-123
@@ -3980,6 +3994,7 @@ The items below are built in this order, one commit each; each deferred part is 
 #### UPG-137 — One certificate store (UPG-112's "two certificate stores")
 - **Status:** TODO · **Built with:** UPG-122
 - **Acceptance criteria:** 1. Test: API v1's issue and verify endpoints use the same `certificates` records as the web, and `/verify` finds an API-issued certificate.
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; API v1 still uses `services_certificate.CertificateService` (`routes_api_v1.py`, unchanged).
 
 ---
 
@@ -4404,3 +4419,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-131: …" (parent `f2d7fcc`) | UPG-131 | UPG-12's deferred criterion 2: an FDP completion certificate's PDF shows the faculty member's designation and institution, and the hours. |
 | 2026-10-19 | "UPG-136: …" (parent `389c8ad`) | UPG-136 | UPG-111's deferred part: the old certificate preview shows the event's venue, "Online" or "Venue to be announced", never "Main Campus"; the issued PDF names no venue; the scan for invented places covers every file. |
 | 2026-10-19 | "UPG-32: …" (parent `845476b`) | UPG-32 | **Part 3, the release check.** From a fresh clone at `eaea1fe`: fresh install OK; pip-audit clean (Werkzeug fixed, UPG-119); gitleaks clean after UPG-118; ruff and bandit clean; `alembic upgrade head` on empty PostgreSQL; production boot serves with HSTS and a CSP nonce and refuses with a setting missing; two instances share sessions through a restart; pytest SQLite 1,199 passed / 7 skipped and PostgreSQL 1,205 passed / 1 skipped, the one failure on each being the clone's virtual environment not at `.venv` (now in the guide); browser pass of 7 roles × 31 pages × 375/1280px with 0 problems after UPG-120 and UPG-121. Container step not run (no Docker). `docs/DEPLOY.md` rewritten as the deploy guide with the go-live checklist. |
+| 2026-10-19 | "docs: …" (parent `221cef3`) | ALL open (re-verification at the end of Part 3) | **Rule 8 re-verification of the 15 open items at `221cef3`.** No item changed status. UPG-124's remaining work is narrowed (PDF storage with its hash and the signatory gate came with UPG-122/123); UPG-102's count is now 1,081 (7 from the certificate code, all noise of its known kinds). The certificate work continues with UPG-124. |

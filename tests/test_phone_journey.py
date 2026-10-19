@@ -8,8 +8,8 @@ page; a coordinator opens the scanner with the camera replaced by a stand-in
 that "reads" the student's ticket QR, and the real check-in marks them
 present; the student then opens the feedback form. Every page is measured at
 375×812 and 1280×800: the page never scrolls sideways and no text, image or
-control is cut off (UPG-23's measure). The certificate step is deferred with
-certificates.
+control is cut off (UPG-23's measure). The certificate step is
+tests/test_certificate_phone.py (UPG-132).
 
 Screenshots go to $UPG28_SHOTS when it's set (outside git), else a temp dir.
 """

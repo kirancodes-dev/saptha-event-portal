@@ -1,6 +1,7 @@
 """
-tests/test_certificate_phone.py — UPG-125 criterion 4, in headless Chromium
-against the app on a local server: at 375px and 1280px, "My certificates" and
+tests/test_certificate_phone.py — UPG-125 criterion 4 and UPG-132 (UPG-28's
+certificate part), in headless Chromium against the app on a local server:
+at 375px and 1280px, "My certificates", the participant's certificate page and
 the public verification page never scroll sideways or cut anything off
 (UPG-23's measure), and the PDF download works from the phone.
 """
@@ -59,6 +60,8 @@ def test_certificates_fit_a_phone_and_download_from_it(issued):
                 assert fh.read() == get_private(d['cert']['pdf_key'])
             assert download.value.suggested_filename == f"Certificate-{d['cert']['number']}.pdf"
 
+            page.goto(f"{base}/participant/certificate/{d['reg_id']}")
+            _check(page, d, 'cert-2-participant-page', problems)
             page.goto(f"{base}/verify/{d['cert']['number']}")
             assert 'Valid certificate' in page.content()
             _check(page, d, 'cert-3-verify', problems)

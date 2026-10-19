@@ -128,10 +128,33 @@
             background: #0a224a;
         }
 
+        /* Fits any screen (UPG-132): the certificate scales down from 1000px, long names wrap */
+        body { flex-direction: column; padding: 72px 16px 120px; box-sizing: border-box; }
+        .cert-container { width: min(1000px, 100%); height: auto; min-height: min(700px, 70vw);
+            padding: clamp(20px, 5vw, 50px); border-width: clamp(6px, 1.5vw, 15px);
+            outline-offset: clamp(-25px, -2.5vw, -10px); }
+        .univ-name { font-size: clamp(17px, 3.6vw, 36px); letter-spacing: clamp(0px, .2vw, 2px); }
+        .univ-sub { font-size: clamp(9px, 1.4vw, 14px); letter-spacing: clamp(1px, .4vw, 4px); margin-bottom: clamp(16px, 5vw, 50px); }
+        .cert-title { font-size: clamp(20px, 5.2vw, 52px); margin-bottom: clamp(12px, 3vw, 30px); overflow-wrap: anywhere; }
+        .presented-to { font-size: clamp(13px, 2vw, 20px); margin-bottom: clamp(8px, 2vw, 20px); }
+        .student-name { font-size: clamp(20px, 4.8vw, 48px); padding: 0 clamp(4px, 5vw, 50px) 10px; max-width: 100%;
+            box-sizing: border-box; overflow-wrap: anywhere; margin-bottom: clamp(12px, 3vw, 30px); }
+        .cert-body { font-size: clamp(13px, 2vw, 20px); padding: 0 clamp(0px, 10vw, 100px); margin-bottom: clamp(20px, 6vw, 60px);
+            overflow-wrap: anywhere; }
+        .cert-body strong { font-size: clamp(15px, 2.4vw, 24px); }
+        .footer-grid { padding: 0 clamp(0px, 10vw, 100px); margin-top: clamp(16px, 4vw, 40px); gap: 16px; flex-wrap: wrap;
+            justify-content: space-around; }
+        .signature { width: min(220px, 40%); font-size: clamp(12px, 1.8vw, 18px); }
+        @media (max-width: 575.98px) {   /* in the page's flow on a phone, so it never covers the share buttons */
+            body { padding-bottom: 32px; }
+            .print-btn { position: static; display: block; margin: 16px auto 0; padding: 12px 20px; font-size: 15px; }
+        }
+
         /* When the user hits Ctrl+P to print, hide the background and buttons! */
         @media print {
             body { background: white; }
-            .cert-container { box-shadow: none; border: 15px solid #00185e; margin: 0; }
+            body { padding: 0; }
+            .cert-container { box-shadow: none; border: 15px solid #00185e; margin: 0; width: 1000px; height: 700px; }
             .print-btn, .no-print { display: none; }
             @page { size: landscape; margin: 0mm; }
         }

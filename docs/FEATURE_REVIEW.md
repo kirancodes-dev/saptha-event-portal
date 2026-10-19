@@ -1000,7 +1000,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
 - **Status:** DONE
 - **Last verified:** 2026-10-18, commit "UPG-28: …" on `production-ready` (parent `7ea50d4`) [T]
 - **Evidence:** `templates/layouts/document.html:23` (`html, body { max-width: 100%; overflow-x: hidden; }`), `templates/participant/certificate.html:20-33` (mobile container scaling), journey and scanner templates verified responsive.
-- **Changed 2026-10-10 (owner, Step 0):** the certificate page's phone scaling (`templates/participant/certificate.html`) is reverted: certificate part deferred (owner, 2026-10-10). The layout's overflow safeguard stays.
+- **Changed 2026-10-10 (owner, Step 0):** the certificate page's phone scaling (`templates/participant/certificate.html`) is reverted: certificate part deferred (owner, 2026-10-10). The layout's overflow safeguard stays. *(The certificate part is UPG-132, DONE 2026-10-19.)*
 - **To test later:** criteria 1–3 (headless browser check of student journey discover → register → pay → ticket → scanner → feedback → certificate at 375px; scrollWidth <= innerWidth; mock camera token submit; screenshots).
 - **Problem:** Not verified. Nobody has checked discover → register → pay → ticket → check-in → feedback → certificate, or the scanner pages, at phone width. `MOBILE_UX_PLAN.md` exists, but its claims weren't checked. No headless browser is set up in the repo.
 - **Who benefits:** students (most use phones) and coordinators scanning on phones.
@@ -1012,7 +1012,7 @@ Traced in code and, where marked, run in the sandbox against three SPOC-created 
     - a paid event's form → payment page;
     - the coordinator's scanner, with the camera replaced by a stand-in that "reads" the student's ticket QR; the real check-in marks them present;
     - the feedback form.
-    Every page is checked for sideways scroll and cut-off text, images or controls (UPG-23's measure). The certificate step is deferred with certificates. Playwright 1.64.0 is now in `requirements-dev.txt`. CI doesn't download Chromium, so the browser tests skip there.
+    Every page is checked for sideways scroll and cut-off text, images or controls (UPG-23's measure). The certificate step, deferred with certificates, is UPG-132 (DONE, `tests/test_certificate_phone.py`). Playwright 1.64.0 is now in `requirements-dev.txt`. CI doesn't download Chromium, so the browser tests skip there.
   - **The screenshots showed two problems, now fixed, each with a check that fails without the fix:**
     - the payment page's "Order summary" title was navy on navy (contrast 1.1:1): the panel's white-heading rule covered `h2`/`h3`, but the title is an `h1` (`templates/payment/checkout.html:12`). Check: every heading on the journey must reach 3:1 against its background;
     - the ticket page pinned the site footer to the bottom of the screen, where it covered the ticket's own footer on a phone (and on a desktop). The footer now follows the ticket, and the page stacks as a column (`templates/participant/ticket.html:3,12-19`). Check: no text under a pinned footer at the top or the bottom of the page.
@@ -3991,8 +3991,11 @@ The items below are built in this order, one commit each; each deferred part is 
 - **Acceptance criteria:** 1. ✅ Test: an FDP certificate's PDF text shows the faculty member's designation and institution. [T `tests/test_certificate_wording.py::test_upg131_an_fdp_certificate_shows_designation_and_institution`]
 
 #### UPG-132 — The certificate page and download on a phone (UPG-28's certificate part)
-- **Status:** TODO · **Built with:** UPG-125
-- **Acceptance criteria:** 1. Test: at 375px the certificate page has no sideways scroll and its download works (headless).
+- **Status:** DONE · **Built with:** UPG-125
+- **Last verified:** 2026-10-19, commit "UPG-132: …" on `production-ready` (parent `d72ae12`) [T]
+- **Built (2026-10-19):** the participant's certificate page (`templates/participant/certificate.html`) was a fixed 1000×700 box: on a 375px phone it hung off both sides and long names spilled out (found by this test). It now scales down to the screen: its width is capped at the page, sizes use `clamp()`, long names and titles wrap, the signature lines wrap, and on a phone the print button sits in the page instead of floating over the share buttons. Printing keeps the full 1000×700 certificate. "My certificates" and its download were checked at 375px with UPG-125.
+- **Files touched:** `templates/participant/certificate.html`, `tests/test_certificate_phone.py`
+- **Acceptance criteria:** 1. ✅ Test: at 375px the certificate page has no sideways scroll and its download works (headless). [T `tests/test_certificate_phone.py::test_certificates_fit_a_phone_and_download_from_it`: the participant's certificate page (with a long name) measured at 375 and 1280 with no sideways scroll or cut-off text, beside "My certificates" with a real download; fails on the old page]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO (built with UPG-125).
 
 #### UPG-133 — Escaping in the certificate email (UPG-50's deferred part)
@@ -4484,3 +4487,4 @@ The five most important claims, re-verified as if someone else wrote them, follo
 | 2026-10-19 | "UPG-134: …" (parent `6e472df`) | UPG-134 | UPG-65's deferred part: every certificate verification page shows `SUPPORT_EMAIL`, or no address when it's unset; nothing hard-coded. |
 | 2026-10-19 | "UPG-135: …" (parent `177db09`) | UPG-135 | UPG-69's deferred part: the legacy registration check and its preview show the lead's name on seeded rows; API v1's verification hash is documented as a truncated SHA-256, not an HMAC. |
 | 2026-10-19 | "UPG-125: …" (parent `9b1be9f`) | UPG-125 | Delivery: one email per certificate with a signed link that expires (30 days) and refuses alteration, sent once through the outbox; "My certificates" for students and faculty with PDF, LinkedIn image and share links; the ledger links each event's certificate; checked at 375px and 1280px in headless Chromium with a real download. 6 new tests, passing on SQLite and PostgreSQL. |
+| 2026-10-19 | "UPG-132: …" (parent `d72ae12`) | UPG-132 | UPG-28's certificate part: the participant's certificate page fits a 375px phone (it hung off both sides before); "My certificates" downloads on a phone (UPG-125). |

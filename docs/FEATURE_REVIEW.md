@@ -181,7 +181,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-140 | Audit rows written outside a request are lost | DONE | Found building UPG-127. utils.log_action (utils.py:90-138) reads session for the user and role whatever the… |
 | UPG-141 | The participant's certificate page prints "at ." for an event without a venue | DONE | Found building UPG-132. templates/participant/certificate.html says "held on <date> at {{ event.venue }}."… |
 | UPG-142 | Merit and special-mention certificates can't be awarded | DONE | Found while making the sample emails. services_certificates.TYPES has "merit" and "special_mention" (the… |
-| UPG-143 | Tests that make an event "today" fail when a run crosses midnight | TODO | Found in the final PostgreSQL run of the certificate phase.… |
+| UPG-143 | Tests that make an event "today" fail when a run crosses midnight | DONE | Found in the final PostgreSQL run of the certificate phase.… |
 
 ## Open items
 
@@ -309,15 +309,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. `pyrefly check` now reports 1,081 errors (1,044 when written): 7 are in the new certificate code (`certificate_pdf.py:172`, `services_certificates.py:402`, `services_signatories.py:53-67`), all of the noise kinds above (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`); the rest come from Parts 2–3.
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO. `pyrefly check` reports 1,119 errors (1,081 at the end of Part 3). The certificate code adds 9, all of the known noise kinds (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`, a lookup that can't be `None` after an update in `services_certificate_changes.revoke`); the one real finding (the fallback limiter without `shared_limit`) is fixed as a UPG-126 follow-up. `routes_coordinator.py` stays at 0 (`tests/test_type_check_config.py`).
 
-#### UPG-143 — Tests that make an event "today" fail when a run crosses midnight
-- **Status:** TODO
-- **Last verified:** 2026-10-20, at `8666965` [T]
-- **Problem:** Found in the final PostgreSQL run of the certificate phase. `tests/test_teams.py::test_joining_by_code_adds_the_member_and_they_can_open_the_ticket` builds its event for `datetime.date.today()`; the run created it at 23:53 and joined at 00:09, when the event was in the past and closed, so the join was refused. Re-run the next day it passes on both databases (6 of 6). Other fixtures that use "today" (`tests/test_certificates.py`, `tests/test_phone_journey.py`) can fail the same way.
-- **What to build:** those fixtures use a date a day or more ahead where "today" isn't the point, or fix the clock for the test.
-- **Effort:** S · **Depends on:** none · **Risk:** none.
-- **Acceptance criteria:**
-  1. Test: the team-join test passes with the clock set to 23:59 at the start and 00:01 by the join.
-
 ## Open decisions
 
 | ID | Decision | Blocks | Status |
@@ -332,7 +323,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-10-19 | "UPG-132: …" (parent `d72ae12`) | UPG-132 | UPG-28's certificate part: the participant's certificate page fits a 375px phone (it hung off both sides before); "My certificates" downloads on a phone (UPG-125). |
 | 2026-10-19 | "UPG-133: …" (parent `77e843b`) | UPG-133 | UPG-50's deferred part: the certificate email shows a name or event title with markup as text. |
 | 2026-10-19 | "UPG-124/125/126 follow-up: ..." (parent `cb0e937`) | UPG-124, UPG-125, UPG-126 | The full SQLite run at `45899bf` (1,234 passed, 7 skipped) failed one check: `CERT_CHUNK_SIZE`, `CERT_LINK_DAYS` and `VERIFY_RATE_LIMIT` were not in `.env.example`. Added. |
 | 2026-10-19 | "docs: ..." (parent `47fd4f0`) | UPG-140, UPG-141 | **Two new items.** UPG-140 (found building UPG-127): `log_action` drops every audit row written outside a request. UPG-141 (found building UPG-132): the participant's certificate page prints "at ." for an event without a venue. |
@@ -352,3 +342,4 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | "docs: …" (parent `06da54d`) | ALL | Split this file: index, open items, open decisions and the last 20 changelog lines stay; done items and reference sections moved to docs/archive/FEATURE_REVIEW_DONE.md, older changelog to docs/archive/CHANGELOG.md. Nothing deleted. |
 | 2026-10-20 | "UPG-142: …" (parent `c9571df`) | UPG-142 | Organisers award merit and special-mention certificates to registered people from the certificate page, with optional wording; issued once, emailed, audit-logged; 403 without issue_certificates. |
 | 2026-10-20 | "UPG-117: …" (parent `810abc8`) | UPG-117 | The JSON waitlist join follows the registration form's open/closed rule, so events in registration_open can be joined; closed, completed and cancelled events are refused with the form's message. |
+| 2026-10-20 | "UPG-143: …" (parent `8204fce`) | UPG-143 | Tests no longer fail when a run crosses midnight: the team event registers until a week ahead and the certificate fixture is a week ahead; a clock test joins at 00:01 after a 23:59 registration. |

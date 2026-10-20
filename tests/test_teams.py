@@ -15,13 +15,17 @@ from tests.test_integration_flow import _create_event, _login, _unique, _user
 
 @pytest.fixture
 def team_event(real_app):
-    """A team event for 2–4 people, today, with registration open."""
+    """A team event for 2–4 people, today (the ticket's QR shows on the event day), with
+    registration open until a week ahead: a run that crosses midnight would otherwise
+    find registration closed (UPG-143)."""
     flask_app, db = real_app
     spoc = f"{_unique('teamspoc')}@test.edu"
     _user(db, spoc, 'ClubSPOC')
     owner = _login(flask_app, spoc, 'ClubSPOC')
     event_id = _create_event(owner, db, _unique('Team Hack'), datetime.date.today().isoformat(), team=True)
-    db.collection('events').document(event_id).update({'status': 'registration_open'})
+    week_ahead = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
+    db.collection('events').document(event_id).update({'status': 'registration_open', 'reg_deadline': week_ahead,
+                                                       'deadline': week_ahead})
     return {'app': flask_app, 'db': db, 'owner': owner, 'event_id': event_id}
 
 
@@ -189,3 +193,31 @@ def test_a_team_check_in_records_exactly_the_members_who_came(team_event, monkey
     assert resp.get_json()['status'] == 'success'
     present = {m['usn']: m['attendance'] for m in _reg(d, reg_id)['members']}
     assert present == {'1SN22CS100': 'Present', '1SN22CS301': 'Absent', '1SN22CS302': 'Present'}
+
+
+def test_upg143_joining_still_works_when_the_clock_passes_midnight(team_event, monkeypatch):
+    """The lead registers at 23:59, the joiner joins at 00:01 the next day."""
+    import types
+    import routes_forms
+    d = team_event
+    start = datetime.datetime.combine(datetime.date.today(), datetime.time(23, 59))
+
+    class Clock(datetime.datetime):
+        current = start
+
+        @classmethod
+        def now(cls, tz=None):
+            return cls.current if tz is None else cls.current.replace(tzinfo=tz)
+    fake = types.ModuleType('datetime')
+    fake.__dict__.update(datetime.__dict__)
+    fake.datetime = Clock
+    monkeypatch.setattr(routes_forms, 'datetime', fake)
+
+    lead, lead_client = _student(d, 'nightlead')
+    _register(d, lead_client, lead, [('Mo Mate', f"{_unique('mate')}@test.edu", '1SN22CS101')])
+    [(reg_id, reg)] = _team_regs(d)
+    Clock.current = start + datetime.timedelta(minutes=2)                     # 00:01, the next day
+    joiner, joiner_client = _student(d, 'nightjoiner')
+    resp = joiner_client.post('/teams/join', data={'join_code': reg['team_code']})
+    assert resp.status_code == 302 and resp.headers['Location'] == f'/teams/{reg_id}'
+    assert joiner in _emails(_reg(d, reg_id))

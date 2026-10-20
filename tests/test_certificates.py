@@ -39,7 +39,8 @@ def ended(real_app, mail, monkeypatch):
     _user(db, spoc, 'ClubSPOC')
     owner = _login(flask_app, spoc, 'ClubSPOC')
     title = _unique('Certificate Day')
-    event_id = _create_event(owner, db, title, datetime.date.today().isoformat(), team=False)
+    week_ahead = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()   # not today (UPG-143)
+    event_id = _create_event(owner, db, title, week_ahead, team=False)
     import services_signatories       # no certificate without a signature (UPG-123)
     from tests.test_certificate_types import _signature
     services_signatories.add(db, event_id, name='Dr. A. Kumar', title='Principal', image=_signature(), actor=spoc)

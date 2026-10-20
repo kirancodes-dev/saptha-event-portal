@@ -3995,9 +3995,6 @@ The items below are built in this order, one commit each; each deferred part is 
   1. ✅ Test: the participant's certificate page for an event with no venue says "Venue to be announced" (or "Online"), never "at .". [T `tests/test_certificate_wording.py::test_upg141_the_participant_certificate_page_never_says_at_nothing`: fails on the old page]
 
 
-#### UPG-143 — Tests that make an event "today" fail when a run crosses midnight
-- *Open: full text in `docs/FEATURE_REVIEW.md`.*
-
 ---
 
 ## 7. Production-ready plan (phases)
@@ -4221,3 +4218,14 @@ The five most important claims, re-verified as if someone else wrote them, follo
   1. ✅ Test: joining a full `registration_open` event through the endpoint adds the person to the waitlist; a cancelled or completed event is refused. [T `tests/test_waitlist_places.py::test_upg117_the_json_join_follows_the_forms_rule` (registration_open and active join; published, registration_closed, completed and cancelled refused)]
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
+
+#### UPG-143 — Tests that make an event "today" fail when a run crosses midnight
+- **Status:** DONE
+- **Last verified:** 2026-10-20, commit "UPG-143: …" (parent `8204fce`) [T]
+- **Problem:** Found in the final PostgreSQL run of the certificate phase. `tests/test_teams.py::test_joining_by_code_adds_the_member_and_they_can_open_the_ticket` builds its event for `datetime.date.today()`; the run created it at 23:53 and joined at 00:09, when the event was in the past and closed, so the join was refused. Re-run the next day it passes on both databases (6 of 6). Other fixtures that use "today" (`tests/test_certificates.py`, `tests/test_phone_journey.py`) can fail the same way.
+- **What to build:** those fixtures use a date a day or more ahead where "today" isn't the point, or fix the clock for the test.
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Built (2026-10-20):** The team test keeps its event on today (the ticket QR shows on the event day) but its registration now runs until a week ahead, so a join after midnight is still open; UPG-06's certificate fixture makes its event a week ahead (nothing there needs today). A new test sets the clock to 23:59 for the lead's registration and 00:01 the next day for the join. `tests/test_phone_journey.py` still needs today (the scanner opens only on the event day); left as is.
+- **Files touched:** `tests/test_teams.py`, `tests/test_certificates.py`
+- **Acceptance criteria:**
+  1. ✅ Test: the team-join test passes with the clock set to 23:59 at the start and 00:01 by the join. [T `tests/test_teams.py::test_upg143_joining_still_works_when_the_clock_passes_midnight`]

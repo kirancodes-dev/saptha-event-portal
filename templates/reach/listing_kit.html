@@ -1,0 +1,19 @@
+{% extends "base_classic.html" %}
+{#- Copy-ready listing text for event sites (UPG-146). None offers an API, so you paste it yourself. -#}
+{% block title %}Listing kit — {{ event.title }}{% endblock %}
+{% block page_title %}Listing kit{% endblock %}
+{% block page_sub %}{{ event.title }}: copy these into each site's own form. SapthaEvent never posts to these sites for you.{% endblock %}
+{% block page_actions %}<a href="/spoc/event/{{ event.id }}/review" class="btn btn-secondary">Event</a>{% endblock %}
+{% block content %}
+{% for site in sites %}
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">{{ site.name }}</h2>
+    <p class="small text-muted">{{ site.how }} <a href="{{ site.submit }}" rel="noopener" target="_blank">{{ site.submit }}<span class="visually-hidden"> (opens in a new tab)</span></a></p>
+    {% for label, value in site.fields %}
+    <label class="form-label small mb-0 mt-2" for="{{ site.id }}-{{ loop.index }}">{{ label }}</label>
+    {% if label in ('Full description',) %}<textarea class="form-control form-control-sm" id="{{ site.id }}-{{ loop.index }}" rows="4" readonly>{{ value }}</textarea>
+    {% else %}<input class="form-control form-control-sm" id="{{ site.id }}-{{ loop.index }}" value="{{ value }}" readonly>{% endif %}
+    {% endfor %}
+</div></div>
+{% endfor %}
+{% endblock %}

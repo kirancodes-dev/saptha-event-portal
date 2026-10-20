@@ -4,5 +4,6 @@
 <footer class="site-footer{% if site_footer_fixed %} site-footer--fixed{% endif %}" role="contentinfo">
     © 2026 Sapthagiri NPS University ·
     <a href="/privacy">Privacy notice</a> ·
-    <a href="/terms">Terms</a>
+    <a href="/terms">Terms</a>{% if powered_by() %} ·
+    <span class="site-footer__powered">Powered by SapthaEvent</span>{% endif %}
 </footer>

@@ -146,6 +146,17 @@ def _e(value) -> str:
     return _html.escape(str(value if value is not None else ''))
 
 
+def _powered_line() -> str:
+    """The "Powered by SapthaEvent" line, unless the Super Admin switched it off (UPG-146)."""
+    try:
+        from services_reach import powered_by
+        if not powered_by():
+            return ''
+    except Exception:
+        pass
+    return '<p style="margin:0 0 8px;color:#94a3b8;font-size:11px;">Powered by SapthaEvent</p>'
+
+
 def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
     # COLLEGE_LOGO_URL if set; otherwise the logo attached to the email itself
     logo_url = os.environ.get('COLLEGE_LOGO_URL', '').strip() or LOGO_CID
@@ -229,7 +240,7 @@ def _html_wrapper(content: str, title: str = 'SapthaEvent') -> str:
                     </p>
                     <p style="margin:0 0 12px;color:#94a3b8;font-size:11px;">
                       Autonomous event management platform
-                    </p>
+                    </p>{_powered_line()}
                     <p style="margin:0;font-size:11px;color:#b0bec5;">
                       &copy; 2026 Sapthagiri NPS University. All rights reserved.<br>
                       <a href="{base}" style="color:#c9a020;text-decoration:none;font-weight:600;">Visit Portal</a>

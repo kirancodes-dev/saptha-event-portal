@@ -16,6 +16,12 @@
 <a href="/spoc/event/{{ ev.id }}/setup" class="btn btn-outline-primary"><i class="fas fa-pen" aria-hidden="true"></i> Edit</a>
 <a href="/certificates/events/{{ ev.id }}" class="btn btn-outline-primary"><i class="fas fa-award" aria-hidden="true"></i> Certificates</a>
 <a href="/naac/events/{{ ev.id }}/report" class="btn btn-outline-primary"><i class="fas fa-file-lines" aria-hidden="true"></i> NAAC report</a>
+<a href="/reach/events/{{ ev.id }}/listing-kit" class="btn btn-outline-primary"><i class="fas fa-bullhorn" aria-hidden="true"></i> Listing kit</a>
+<form method="POST" action="/reach/events/{{ ev.id }}/audience" class="d-inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="audience" value="{{ 'campus' if ev.audience == 'open' else 'open' }}">
+  <button type="submit" class="btn btn-outline-secondary">{{ 'Open to other colleges: make campus only' if ev.audience == 'open' else 'Campus only: open to other colleges' }}</button>
+</form>
 {% if status in ('draft', 'published') %}
 <form method="POST" action="/spoc/event/{{ ev.id }}/publish" class="d-inline">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

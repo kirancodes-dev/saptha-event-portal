@@ -26,6 +26,7 @@
 {%- set title = title or (workspaces.get(role, 'SapthaEvent') if signed_in else 'SapthaEvent') -%}
 {%- if not signed_in -%}
   {%- set links = [('/', 'fa-home', 'Home', 'home'), ('/events', 'fa-compass', 'Events', 'events'),
+                   ('/open-events', 'fa-globe', 'Open events', 'open_events'),
                    ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar')] -%}
 {%- elif role in ('Student', 'Participant') -%}
   {%- set links = [('/participant/dashboard', 'fa-th-large', 'Dashboard', 'dashboard'),

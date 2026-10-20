@@ -109,7 +109,9 @@ def remind(event_id):
         abort(403)
     sent = naac.remind(db, event_id, session.get('user_id', ''))
     flash("Reminder sent to the organiser." if sent else "The reminder couldn't be sent.", 'success' if sent else 'danger')
-    return redirect(request.referrer if (request.referrer or '').startswith(request.host_url) else '/naac/')
+    from services_accounts import is_safe_next
+    back = request.form.get('next', '')
+    return redirect(back if is_safe_next(back) else '/naac/')
 
 
 def _built():

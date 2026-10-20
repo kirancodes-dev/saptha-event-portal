@@ -184,6 +184,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-143 | Tests that make an event "today" fail when a run crosses midnight | DONE | Found in the final PostgreSQL run of the certificate phase.… |
 | UPG-144 | NAAC / AQAR report from event data | DONE | NAAC categories, post-event reports with evidence, a yearly report builder and exports; IQAC coordinator and department admin roles. |
 | UPG-145 | Track record: impact dashboard, time saved, testimonials, impact report and page | DONE | Real-data impact dashboard, organisers' time-saved estimates, permissioned testimonials, a 2-page impact PDF and an optional public page. |
+| UPG-146 | Reach beyond one campus: open events, external students, share cards, listing kit, "Powered by" | TODO | Campus-only or open events, a public open-events page, external registrations, share cards with valid schema.org, a listing kit (no site offers an API) and a switchable "Powered by" line. |
 
 ## Open items
 
@@ -311,6 +312,25 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. `pyrefly check` now reports 1,081 errors (1,044 when written): 7 are in the new certificate code (`certificate_pdf.py:172`, `services_certificates.py:402`, `services_signatories.py:53-67`), all of the noise kinds above (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`); the rest come from Parts 2–3.
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO. `pyrefly check` reports 1,119 errors (1,081 at the end of Part 3). The certificate code adds 9, all of the known noise kinds (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`, a lookup that can't be `None` after an update in `services_certificate_changes.revoke`); the one real finding (the fallback limiter without `shared_limit`) is fixed as a UPG-126 follow-up. `routes_coordinator.py` stays at 0 (`tests/test_type_check_config.py`).
 
+#### UPG-146 — Reach beyond one campus: open events, external students, share cards, listing kit, "Powered by"
+- **Status:** TODO
+- **Last verified:** 2026-10-20, at `9db31d1` [C]
+- **Problem:** Events are visible only to this campus. There's no public list of events other colleges can join, the event page's schema.org data is hand-escaped (a quote or newline in a title breaks it, and an event without a venue says "None"), it has no Open Graph or Twitter tags, and nothing helps an organiser list an event on outside sites.
+- **What to build:**
+  - **Audience per event:** campus only (default) or open to other colleges, set by the organiser; open lets external participants register (UPG-12), campus only takes that back.
+  - **`/open-events`:** upcoming open events with search and filters (category, type, dates), no login.
+  - **External students** register with their college as external participants and get the same ticket, check-in and certificate.
+  - **Share cards** on every public event page: Open Graph and Twitter tags (title, date, venue, image), schema.org Event data built and JSON-encoded in code, and the WhatsApp share link.
+  - **Cross-posting:** Unstop, KnowAFest and Festooo were checked on 2026-10-20: none publishes an official API for posting listings (Unstop has only unofficial scrapers; no developer documentation was found for KnowAFest or Festooo). So: a "Listing kit" with copy-ready text, the poster and the registration link for each site's own form. Nothing is posted automatically or scraped.
+  - **"Powered by SapthaEvent"** on public pages, tickets and emails, which the Super Admin can switch off.
+- **Effort:** M · **Depends on:** UPG-12, UPG-111 · **Risk:** low.
+- **Acceptance criteria:**
+  1. Test: the organiser opens an event to other colleges and back (another SPOC gets 403); open adds external participants, campus only removes them; `/open-events`, without a login, lists upcoming open events only, and its search and filters narrow the list.
+  2. Test: a student from another college registers for an open event with their college; their ticket opens, the staff check-in marks them Present, and their certificate carries their college; a campus-only event refuses an external registration.
+  3. Test: the event page has Open Graph and Twitter tags with the title, date and venue, schema.org data that parses as JSON (also for a title with quotes and a line break, and "Venue to be announced" without a venue), and the WhatsApp link.
+  4. Test: the listing kit shows each site's fields with the registration link; only the event's editors open it.
+  5. Test: "Powered by SapthaEvent" is on a public page, the ticket and an email; the Super Admin hides it everywhere (audit-logged); nobody else can switch it.
+
 ## Open decisions
 
 | ID | Decision | Blocks | Status |
@@ -326,7 +346,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-10-19 | "docs: ..." (parent `47fd4f0`) | UPG-140, UPG-141 | **Two new items.** UPG-140 (found building UPG-127): `log_action` drops every audit row written outside a request. UPG-141 (found building UPG-132): the participant's certificate page prints "at ." for an event without a venue. |
 | 2026-10-19 | "UPG-140: …" (parent `2368312`) | UPG-140 | Audit rows written outside a request (background tasks, scheduled jobs, certificate runs) are kept, as "system"; before, every one was dropped with a warning. |
 | 2026-10-19 | "UPG-127: …" (parent `979a228`) | UPG-127 | Corrections and revocation: a student asks for a name correction, the organiser approves (version 2, same number, emailed; version 1's file then checks as replaced) or rejects (nothing changes); revoking needs a reason and shows on verification with the date; every issue, correction and revocation is audit-logged. 2 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-141: …" (parent `020cb88`) | UPG-141 | The participant's certificate page says "at Venue to be announced" or "at Online" for an event without a venue, not "at .". |
@@ -346,3 +365,4 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | "UPG-143: …" (parent `8204fce`) | UPG-143 | Tests no longer fail when a run crosses midnight: the team event registers until a week ahead and the certificate fixture is a week ahead; a clock test joins at 00:01 after a 23:59 registration. |
 | 2026-10-20 | "UPG-144: …" (parent `7fc18b1`) | UPG-144 | NAAC/AQAR: IQAC coordinator and department admin roles (migration 0009), editable NAAC categories, post-event reports with evidence and daily reminders, a yearly builder, XLSX/PDF/ZIP exports from a layout file. 7 tests, SQLite and PostgreSQL. |
 | 2026-10-20 | "UPG-145: …" (parent `5c6dd25`) | UPG-145 | Track record from real counts only: impact dashboard per month and year, organisers' hours-saved estimates, testimonials with permission to quote and Super Admin approval, a 2-page impact PDF and an optional public page. 4 tests, SQLite and PostgreSQL. |
+| 2026-10-20 | "UPG-144 follow-up: ..." (parent `9db31d1`) | UPG-144 | The NAAC reminder button no longer builds its redirect from the request host (BLK-16); it returns to a checked next path. |

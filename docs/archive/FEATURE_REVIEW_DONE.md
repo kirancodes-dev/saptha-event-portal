@@ -4252,6 +4252,7 @@ The five most important claims, re-verified as if someone else wrote them, follo
   5. ✅ Test: the builder for an academic year, with each filter, gives the right summary per category, detail rows, awards and positions, and faculty participation. [T `tests/test_naac.py`::test_the_builder_summarises_details_awards_and_faculty_with_each_filter]
   6. ✅ Test: the XLSX has a sheet per category with the columns from the layout file; the PDF's text has the letterhead and the totals; the ZIP holds each event's evidence under its category. [T `tests/test_naac.py`::test_the_exports_follow_the_layout_file]
   7. ✅ Test, for each role (organiser, another SPOC, IQAC coordinator, department admin of the event's department and of another, Super Admin, student, coordinator): who may edit, view, run the builder, export and remind. [T `tests/test_naac.py`::test_each_role_may_do_only_its_part (8 roles)]
+- **2026-10-20 (follow-up):** the reminder button redirected back by comparing the referrer with `request.host_url`, which `tests/test_public_links.py::test_no_app_module_builds_links_from_the_request_host` forbids (BLK-16); it now returns to a `next` path checked by `is_safe_next`.
 
 #### UPG-145 — Track record: impact dashboard, time saved, testimonials, impact report and page
 - **Status:** DONE

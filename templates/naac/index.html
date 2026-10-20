@@ -23,7 +23,7 @@
                 {% if r.reminders %}<span class="text-muted small">· {{ r.reminders }} reminder{{ '' if r.reminders == 1 else 's' }}</span>{% endif %}</td>
             <td class="text-end">{% if sees_all %}
                 <form method="POST" action="/naac/events/{{ r.id }}/remind" class="d-inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="/naac/">
                     <button type="submit" class="btn btn-sm btn-outline-primary">Send a reminder</button>
                 </form>{% endif %}</td>
         </tr>

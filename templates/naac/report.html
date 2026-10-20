@@ -4,7 +4,7 @@
 {% block page_title %}NAAC report{% endblock %}
 {% block page_sub %}{{ event.title }} · {{ event.date }}{% if due %} · due {{ due }}{% endif %} · {{ 'Submitted' if report.status == 'submitted' else 'Not submitted yet' }}{% endblock %}
 {% block page_actions %}{% if remind and report.status != 'submitted' %}
-<form method="POST" action="/naac/events/{{ event.id }}/remind" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<form method="POST" action="/naac/events/{{ event.id }}/remind" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="next" value="/naac/events/{{ event.id }}/report">
 <button type="submit" class="btn btn-outline-primary">Send a reminder</button></form>{% endif %}{% endblock %}
 {% block content %}
 <div class="card mb-3"><div class="card-body">

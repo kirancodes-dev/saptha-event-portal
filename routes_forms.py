@@ -58,12 +58,7 @@ from services_accounts import (cancel_url_for, create_unverified_account, load_c
 
 from extensions import limiter
 
-# WhatsApp optional
-try:
-    from utils_whatsapp import send_ticket_whatsapp
-    WA_ENABLED = True
-except ImportError:
-    WA_ENABLED = False
+# WhatsApp goes through services_whatsapp: opted-in, once, under the cap (UPG-147)
 
 from typing import Optional
 
@@ -724,6 +719,9 @@ def submit_form(event_id):
             'designation':     designation,
             'institution':     institution,
         }
+        if request.form.get('whatsapp_opt_in') == 'yes':   # saved with the time (UPG-147)
+            reg_data.update(whatsapp_opt_in=True,
+                            whatsapp_opt_in_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
         if without_login:
             reg_data['registered_without_login'] = True   # its emails carry a cancel link (UPG-97)
         record_consent(db, email, reg_data['privacy_consent'])
@@ -850,15 +848,14 @@ def submit_form(event_id):
                     m_email, m.get('name') or 'Participant', event_data.get('title', ''),
                     event_date=event_data.get('date', ''), venue=event_data.get('venue', ''),
                     added_by=full_name, team_name=team_name)
-        if phone and WA_ENABLED:
-            try:
-                send_ticket_whatsapp(
-                    phone=phone, name=full_name,
-                    event_title=event_data.get('title', ''),
-                    reg_id=reg_id,
-                    event_date=event_data.get('date', ''),
-                    venue=event_data.get('venue', '')
-                )
+        if phone and reg_data.get('whatsapp_opt_in'):
+            try:   # the template message, once per registration (UPG-147)
+                import services_whatsapp
+                from utils_email import _base_url
+                services_whatsapp.set_consent(db, phone, True, f'registration {reg_id}')
+                services_whatsapp.notify(db, 'registration_confirmed', phone, {
+                    'name': full_name, 'event': event_data.get('title', ''), 'date': event_data.get('date', ''),
+                    'ticket_link': f"{_base_url().rstrip('/')}/ticket/{reg_id}"}, key=reg_id)
             except Exception:
                 pass
 

@@ -359,6 +359,10 @@ class WorkflowEngine:
                         custom_rule=custom_rule,
                         idempotency_key=f"event_cancelled_{event_id}_{email}",
                     )
+                    if _phone:   # WhatsApp too, once, if they opted in (UPG-147)
+                        from services_whatsapp import notify
+                        notify(db, 'event_cancelled', _phone, {'name': recipient_name, 'event': event_title,
+                                                               'date': date_str}, key=str(event_id))
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Error sending cancellation notifications: {e}")

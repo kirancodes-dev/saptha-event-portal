@@ -9,7 +9,7 @@ has the container basics. The go-live checklist at the end lists what only the
 owner can do.
 
 Contents: Google Cloud set-up · Settings · Database migrations · First Super
-Admin · Uploads · Certificates · Scheduled jobs · Background tasks · Backups ·
+Admin · Uploads · Certificates · WhatsApp · Scheduled jobs · Background tasks · Backups ·
 Restore drill · Rollback · Monitoring · Android app · Release check · Go-live
 checklist.
 
@@ -206,6 +206,36 @@ runs inside the request for up to `TASK_INLINE_TIMEOUT` seconds and carries on
 in a thread; if the instance stops first, the `outbox` cron job finishes it.
 Each event needs at least one signatory with a signature (on the event's
 certificate page) before anything is issued.
+
+## WhatsApp
+
+Off until you switch it on. Messages go only to people who ticked "Send me
+updates about this event on WhatsApp" or turned it on in their profile, each
+message once, and never more than the monthly cap the Super Admin sets
+(`/whatsapp/settings`). Email always goes out as well.
+
+1. **Choose a provider.** Meta's WhatsApp Cloud API (`WHATSAPP_PROVIDER=meta`):
+   create a Meta Business account and an app with the WhatsApp product, add the
+   college's phone number, and copy the permanent access token (`META_WA_TOKEN`),
+   the phone number ID (`META_WA_PHONE_ID`) and the app secret
+   (`META_WA_APP_SECRET`); choose any long random `META_WA_VERIFY_TOKEN`. Or
+   Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`).
+2. **Submit the templates for approval.** `config/whatsapp_templates.json` has
+   the four messages (registration confirmed, event reminder, event changed,
+   event cancelled). For each, create a template in WhatsApp Manager (Meta) or
+   the Content Template Builder (Twilio) with the **same name**, category
+   **Utility**, language **English**, and the body as written, keeping the
+   numbered variables `{{1}}`, `{{2}}`… in order (the file's `variables` says
+   what each is, for the sample values Meta asks for). Approval usually takes
+   minutes to a day; a rejected template can be edited and resubmitted.
+3. **Point the webhook at the app** so STOP replies are honoured:
+   `https://<BASE_URL>/whatsapp/webhook` (Meta: callback URL, with the verify
+   token, subscribed to `messages`; Twilio: "A message comes in" on the
+   WhatsApp sender). Requests without a valid provider signature are refused.
+4. **It's on once the provider's settings are in** (set `WHATSAPP_ENABLED=false`
+   to pause it). Set the monthly cap on
+   `/whatsapp/settings` (default `WHATSAPP_MONTHLY_CAP`, 1000). At the cap,
+   WhatsApp pauses until the next month and the Super Admins get one email.
 
 ## Scheduled jobs
 
@@ -528,6 +558,9 @@ Tick each before opening the portal to students.
   white paper or a transparent background) on the event's certificate page;
   collect the signature scans from the people who will sign. Issue one test
   certificate and check it at `/verify/<number>`.
+- [ ] **WhatsApp (optional):** a WhatsApp Business account, the four templates
+  approved, the webhook set, then the provider's settings and a monthly cap
+  (see "WhatsApp").
 - [ ] **Campus facts:** confirm or correct the chatbot's campus facts
   (UPG-108); until then it refers campus questions to the college office.
 - [ ] **Login limit:** `LOGIN_THROTTLE_IP_LIMIT=50` (many students share one

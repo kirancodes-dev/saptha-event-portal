@@ -223,7 +223,7 @@ class NotificationAutomationEngine:
                 # No Twilio settings: the channel is off, not a fallback (UPG-49)
                 skipped_channels.append("whatsapp (not configured)")
             elif phone and cls.check_user_preferences(db, clean_email, "whatsapp", notif_type):
-                if send_whatsapp_message(phone, message):
+                if send_whatsapp_message(phone, message, consented=True):   # their own opt-in (UPG-147)
                     dispatched_channels.append("whatsapp")
                 else:
                     logger.warning("WhatsApp to %s failed for %s", clean_email, notif_type)

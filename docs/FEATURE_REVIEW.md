@@ -185,6 +185,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-144 | NAAC / AQAR report from event data | DONE | NAAC categories, post-event reports with evidence, a yearly report builder and exports; IQAC coordinator and department admin roles. |
 | UPG-145 | Track record: impact dashboard, time saved, testimonials, impact report and page | DONE | Real-data impact dashboard, organisers' time-saved estimates, permissioned testimonials, a 2-page impact PDF and an optional public page. |
 | UPG-146 | Reach beyond one campus: open events, external students, share cards, listing kit, "Powered by" | DONE | Campus-only or open events, a public open-events page, external registrations, share cards with valid schema.org, a listing kit (no site offers an API) and a switchable "Powered by" line. |
+| UPG-147 | WhatsApp notifications through the official API, with opt-in, once-only sends and a monthly cap | DONE | WhatsApp via Meta Cloud API or Twilio, off by default: opt-in, once-only template messages, STOP replies, outbox retries and a monthly cap. |
 
 ## Open items
 
@@ -327,7 +328,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-10-19 | "UPG-127: …" (parent `979a228`) | UPG-127 | Corrections and revocation: a student asks for a name correction, the organiser approves (version 2, same number, emailed; version 1's file then checks as replaced) or rejects (nothing changes); revoking needs a reason and shows on verification with the date; every issue, correction and revocation is audit-logged. 2 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-141: …" (parent `020cb88`) | UPG-141 | The participant's certificate page says "at Venue to be announced" or "at Online" for an event without a venue, not "at .". |
 | 2026-10-19 | "UPG-128: …" (parent `cb8772c`) | UPG-128 | The event's certificate list (25 a page, search by name, number or type) with CSV and Excel exports of the same rows; college-wide counts per department, event type and month for Super Admins, with CSV. 2 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-129: …" (parent `3396622`) | UPG-129 | The certificate permissions tested for 8 roles (owner, another SPOC, the event's coordinator, judge and volunteer, a student, Super Admin, and an EventOrganizer on that event only): only the owner, Super Admin and the holder of `issue_certificates` issue, revoke or approve; students download only their own. No code change needed. |
@@ -347,3 +347,4 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | "UPG-145: …" (parent `5c6dd25`) | UPG-145 | Track record from real counts only: impact dashboard per month and year, organisers' hours-saved estimates, testimonials with permission to quote and Super Admin approval, a 2-page impact PDF and an optional public page. 4 tests, SQLite and PostgreSQL. |
 | 2026-10-20 | "UPG-144 follow-up: ..." (parent `9db31d1`) | UPG-144 | The NAAC reminder button no longer builds its redirect from the request host (BLK-16); it returns to a checked next path. |
 | 2026-10-20 | "UPG-146: …" (parent `b58ec15`) | UPG-146 | Open events for other colleges with a public search page, external students' full journey, share cards with JSON-encoded schema.org data, a listing kit (no site offers a posting API), and a switchable Powered by line. 5 tests, SQLite and PostgreSQL. |
+| 2026-10-20 | "UPG-147: …" (parent `dc3987b`) | UPG-147 | WhatsApp via Meta Cloud API or Twilio, off until configured: opt-in (checkbox, profile, UPG-49 preferences), STOP via signed webhooks, four once-only template messages through the outbox, a monthly cap with an admin alert. 6 tests; UPG-49 tests unchanged. |

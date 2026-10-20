@@ -582,6 +582,12 @@ def notify_event_details_changed(
                     custom_rule=custom_rule,
                     idempotency_key=idempotency_key,
                 )
+                if _phone:   # WhatsApp too, once, if they opted in (UPG-147)
+                    from services_whatsapp import notify
+                    from utils_email import _base_url
+                    notify(db, 'event_changed', _phone, {
+                        'name': recipient_name, 'event': event_title, 'change': change_summary,
+                        'event_link': f"{_base_url().rstrip('/')}/event/{event_id}"}, key=f"{event_id}:{change_id}")
                 count += 1
         return count
     except Exception as e:

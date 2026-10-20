@@ -1,0 +1,17 @@
+{% extends "base_classic.html" %}
+{#- WhatsApp: status and the monthly cap (UPG-147). -#}
+{% block title %}WhatsApp{% endblock %}
+{% block page_sub %}Messages go only to people who opted in, once each; email always goes out as well.{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+    <p class="mb-1">WhatsApp is <strong>{{ 'on' if enabled else 'off' }}</strong>
+      ({{ provider|capitalize }}{% if not configured %}, not configured{% endif %}). It's on once a provider is set up, unless <code>WHATSAPP_ENABLED=false</code> (docs/DEPLOY.md, "WhatsApp").</p>
+    <p class="mb-0">This month: <strong>{{ used }}</strong> of {{ cap }} messages.</p>
+</div></div>
+<form method="POST" class="card"><div class="card-body d-flex gap-2 align-items-end flex-wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div><label class="form-label" for="wa-cap">Monthly cap (messages)</label>
+    <input class="form-control" type="number" min="0" id="wa-cap" name="monthly_cap" value="{{ cap }}" required></div>
+    <button class="btn btn-primary" type="submit">Save</button>
+</div></form>
+{% endblock %}

@@ -269,6 +269,14 @@
         {% if field_errors.get('privacy_consent') %}<div class="field-error" id="privacy_consent-error" role="alert">{{ field_errors['privacy_consent'] }}</div>{% endif %}
       </div>
 
+      <!-- WhatsApp updates, only if they ask (UPG-147) -->
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="whatsapp_opt_in" name="whatsapp_opt_in" value="yes">
+        <label class="form-check-label" for="whatsapp_opt_in">
+          Send me updates about this event on WhatsApp (reply STOP any time to stop).
+        </label>
+      </div>
+
       <!-- Submit -->
       <button type="submit" class="btn btn-gold btn-lg w-100 mt-2" id="submit-btn" data-no-loader>
         <i class="fas fa-paper-plane" aria-hidden="true"></i>

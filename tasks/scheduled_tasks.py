@@ -110,7 +110,7 @@ def send_24h_reminders(self):
                         with_qr=True,
                     )
                     queued_emails += 1
-                    if phone:
+                    if phone:   # the task sends the template once, opted-in only, under the cap (UPG-147)
                         send_reminder_whatsapp_task.delay(
                             phone=phone,
                             name=name,

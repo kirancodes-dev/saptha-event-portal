@@ -322,6 +322,7 @@ from routes_verification   import verify_limit       # noqa: E402  (UPG-126)
 from routes_naac           import naac_bp            # noqa: E402  (UPG-144)
 from routes_impact         import impact_bp          # noqa: E402  (UPG-145)
 from routes_reach          import reach_bp           # noqa: E402  (UPG-146)
+from routes_whatsapp       import whatsapp_bp, webhook as whatsapp_webhook  # noqa: E402  (UPG-147)
 from routes_sports         import sports_bp          # noqa: E402  (UPG-13)
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
@@ -353,6 +354,7 @@ app.register_blueprint(certificates_bp)
 app.register_blueprint(naac_bp)
 app.register_blueprint(impact_bp)
 app.register_blueprint(reach_bp)
+app.register_blueprint(whatsapp_bp)
 from services_reach import powered_by as _powered_by, share_meta as _share_meta  # noqa: E402  (UPG-146)
 app.jinja_env.globals.update(powered_by=_powered_by, share_meta=_share_meta)
 app.register_blueprint(sports_bp)
@@ -432,6 +434,8 @@ csrf.exempt(price_preview)
 csrf.exempt(razorpay_webhook)
 # The scheduler calls the cron endpoint with a shared secret, not a session (UPG-07)
 csrf.exempt(cron_bp)
+# The WhatsApp provider calls its webhook with its own signature, not a session (UPG-147)
+csrf.exempt(whatsapp_webhook)
 
 
 @app.context_processor

@@ -41,8 +41,9 @@ def join_waitlist(event_id):
         return jsonify({"error": "Event not found"}), 404
 
     ev = ev_doc.to_dict()
-    if ev.get("status") != "active":
-        return jsonify({"error": "Event is not active"}), 400
+    from routes_forms import registration_closed
+    if registration_closed(ev):              # the form's own rule (UPG-117), not only the old "active"
+        return jsonify({"error": "Registration is closed for this event."}), 400
 
     # Check not already on waitlist
     existing = (

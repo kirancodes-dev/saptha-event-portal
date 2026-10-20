@@ -3628,9 +3628,6 @@ Generate each secret with: `python3 -c "import secrets; print(secrets.token_urls
 - **Acceptance criteria:**
   1. ✅ Test: the popup test passes whatever the event id is, and still fails if the cached count is shown. [T `tests/test_event_popup.py::test_registrations_shown_are_counted_not_cached`; a page showing "999 registered" still fails it]
 
-#### UPG-117 — The JSON waitlist join only takes events in the old "active" status
-- *Open: full text in `docs/FEATURE_REVIEW.md`.*
-
 #### UPG-118 — The CI secret scan flags the production boot test's dummy settings
 - **Status:** DONE
 - **Last verified:** 2026-10-19, commit "UPG-118: …" on `production-ready` [T]
@@ -4211,3 +4208,16 @@ The five most important claims, re-verified as if someone else wrote them, follo
 - **Files touched:** `services_certificates.py`, `routes_certificates.py`, `templates/certificates/manage.html`, `tests/test_certificate_awards.py` (new)
 - **Acceptance criteria:**
   1. ✅ Test: the organiser awards a merit and a special-mention certificate to two registered people; each is issued once, emailed and audit-logged; someone without `issue_certificates` gets 403. [T `tests/test_certificate_awards.py::test_the_organiser_awards_merit_and_special_mention`]
+
+#### UPG-117 — The JSON waitlist join only takes events in the old "active" status
+- **Status:** DONE
+- **Last verified:** 2026-10-20, commit "UPG-117: …" (parent `810abc8`) [T]
+- **Problem:** Found in UPG-114. `POST /waitlist/join/<event_id>` (`routes_waitlist.join_waitlist`) answers "Event is not active" (400) unless the event's status is `active`. Since UPG-73, an event that is taking registrations is `registration_open` (or `published`), so the endpoint refuses every new event. No page calls it today: the registration form puts people on the waitlist itself when an event is full.
+- **What to build:** accept the statuses in which registration is open (as the form does), and refuse the rest with the same message the form gives; or remove the endpoint if nothing will call it.
+- **Effort:** S · **Depends on:** none · **Risk:** low.
+- **Built (2026-10-20):** `POST /waitlist/join/<id>` (`routes_waitlist.py:44`) uses the registration form's own rule (`routes_forms.registration_closed`: closed statuses and the deadline) instead of accepting only the old "active" status, and refuses with the form's message.
+- **Files touched:** `routes_waitlist.py`, `tests/test_waitlist_places.py`
+- **Acceptance criteria:**
+  1. ✅ Test: joining a full `registration_open` event through the endpoint adds the person to the waitlist; a cancelled or completed event is refused. [T `tests/test_waitlist_places.py::test_upg117_the_json_join_follows_the_forms_rule` (registration_open and active join; published, registration_closed, completed and cancelled refused)]
+- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
+- **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.

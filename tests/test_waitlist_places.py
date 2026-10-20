@@ -87,3 +87,16 @@ def test_the_registration_form_says_the_right_place(line):
         'privacy_consent': 'yes', 'full_name': 'Form Second', 'email': second, 'phone': '9876543210',
         'usn': '1SN20CS990'}, follow_redirects=True)
     assert "joined the waitlist at position #2" in resp.get_data(as_text=True)
+
+
+@pytest.mark.parametrize('status, joins', [('registration_open', True), ('active', True), ('published', False),
+                                          ('registration_closed', False), ('completed', False), ('cancelled', False)])
+def test_upg117_the_json_join_follows_the_forms_rule(line, status, joins):
+    d = line
+    d['db'].collection('events').document(d['event_id']).update({'status': status})
+    _, client = d['student'](f'json{status}')
+    resp = client.post(f"/waitlist/join/{d['event_id']}", json={})
+    if joins:
+        assert resp.status_code == 201, resp.data
+    else:
+        assert resp.status_code == 400 and resp.get_json()['error'] == 'Registration is closed for this event.'

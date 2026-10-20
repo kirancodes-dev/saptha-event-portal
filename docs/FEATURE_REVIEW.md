@@ -155,7 +155,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-114 | The waitlist shows a position that can repeat | DONE | Found in UPG-112. Both join paths store position as the number still waiting plus one… |
 | UPG-115 | Two registration forms sent at the same instant register the same person twice | DONE | Found testing UPG-26. The duplicate check in routes_forms.submit_form (routes_forms.py:647-656) reads the… |
 | UPG-116 | A popup test fails when a random event id contains "999" | DONE | Found in the end-of-Part-2 full run.… |
-| UPG-117 | The JSON waitlist join only takes events in the old "active" status | TODO | Found in UPG-114. POST /waitlist/join/<event_id> (routes_waitlist.join_waitlist) answers "Event is not… |
+| UPG-117 | The JSON waitlist join only takes events in the old "active" status | DONE | Found in UPG-114. POST /waitlist/join/<event_id> (routes_waitlist.join_waitlist) answers "Event is not… |
 | UPG-118 | The CI secret scan flags the production boot test's dummy settings | DONE | Found in Part 3's full-history gitleaks scan (8.30.1, CI's version and command).… |
 | UPG-119 | Werkzeug 3.1.8 has a known vulnerability (fixed in 3.1.9) | DONE | Found by Part 3's pip-audit of a fresh install of requirements-dev.txt: Werkzeug 3.1.8 has PYSEC-2026-4312… |
 | UPG-120 | Volunteers can't log in | DONE | Found by Part 3's browser pass of every role. A volunteer account's role is Volunteer (staff appointment, the… |
@@ -309,17 +309,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. `pyrefly check` now reports 1,081 errors (1,044 when written): 7 are in the new certificate code (`certificate_pdf.py:172`, `services_certificates.py:402`, `services_signatories.py:53-67`), all of the noise kinds above (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`); the rest come from Parts 2–3.
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO. `pyrefly check` reports 1,119 errors (1,081 at the end of Part 3). The certificate code adds 9, all of the known noise kinds (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`, a lookup that can't be `None` after an update in `services_certificate_changes.revoke`); the one real finding (the fallback limiter without `shared_limit`) is fixed as a UPG-126 follow-up. `routes_coordinator.py` stays at 0 (`tests/test_type_check_config.py`).
 
-#### UPG-117 — The JSON waitlist join only takes events in the old "active" status
-- **Status:** TODO
-- **Last verified:** 2026-10-19 [T]
-- **Problem:** Found in UPG-114. `POST /waitlist/join/<event_id>` (`routes_waitlist.join_waitlist`) answers "Event is not active" (400) unless the event's status is `active`. Since UPG-73, an event that is taking registrations is `registration_open` (or `published`), so the endpoint refuses every new event. No page calls it today: the registration form puts people on the waitlist itself when an event is full.
-- **What to build:** accept the statuses in which registration is open (as the form does), and refuse the rest with the same message the form gives; or remove the endpoint if nothing will call it.
-- **Effort:** S · **Depends on:** none · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test: joining a full `registration_open` event through the endpoint adds the person to the waitlist; a cancelled or completed event is refused.
-- **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
-- **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
-
 #### UPG-143 — Tests that make an event "today" fail when a run crosses midnight
 - **Status:** TODO
 - **Last verified:** 2026-10-20, at `8666965` [T]
@@ -343,7 +332,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-10-19 | "UPG-125: …" (parent `9b1be9f`) | UPG-125 | Delivery: one email per certificate with a signed link that expires (30 days) and refuses alteration, sent once through the outbox; "My certificates" for students and faculty with PDF, LinkedIn image and share links; the ledger links each event's certificate; checked at 375px and 1280px in headless Chromium with a real download. 6 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-132: …" (parent `d72ae12`) | UPG-132 | UPG-28's certificate part: the participant's certificate page fits a 375px phone (it hung off both sides before); "My certificates" downloads on a phone (UPG-125). |
 | 2026-10-19 | "UPG-133: …" (parent `77e843b`) | UPG-133 | UPG-50's deferred part: the certificate email shows a name or event title with markup as text. |
 | 2026-10-19 | "UPG-124/125/126 follow-up: ..." (parent `cb0e937`) | UPG-124, UPG-125, UPG-126 | The full SQLite run at `45899bf` (1,234 passed, 7 skipped) failed one check: `CERT_CHUNK_SIZE`, `CERT_LINK_DAYS` and `VERIFY_RATE_LIMIT` were not in `.env.example`. Added. |
@@ -363,3 +351,4 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | (deploy, no commit) | Deploy | **Deployed `dfce764` to Cloud Run** (owner's request): service `saptha`, project `saptha-event-261017`, region asia-south1, from Cloud Shell as queserateam07@gmail.com. Image built with Cloud Build (`web:dfce764`); migration 0008 ran first as the job `saptha-migrate` (completed); revision `saptha-00005-jlg` serves 100% at https://saptha-967997581752.asia-south1.run.app with the existing settings and secrets. Checked: `/health`, `/`, `/events`, `/login`, `/verify` 200; `/certificates/mine` redirects to login; an unknown certificate number is a 404; HSTS and CSP present. Rollback: `gcloud run services update-traffic saptha --region asia-south1 --to-revisions saptha-00004-q58=100`. |
 | 2026-10-20 | "docs: …" (parent `06da54d`) | ALL | Split this file: index, open items, open decisions and the last 20 changelog lines stay; done items and reference sections moved to docs/archive/FEATURE_REVIEW_DONE.md, older changelog to docs/archive/CHANGELOG.md. Nothing deleted. |
 | 2026-10-20 | "UPG-142: …" (parent `c9571df`) | UPG-142 | Organisers award merit and special-mention certificates to registered people from the certificate page, with optional wording; issued once, emailed, audit-logged; 403 without issue_certificates. |
+| 2026-10-20 | "UPG-117: …" (parent `810abc8`) | UPG-117 | The JSON waitlist join follows the registration form's open/closed rule, so events in registration_open can be joined; closed, completed and cancelled events are refused with the form's message. |

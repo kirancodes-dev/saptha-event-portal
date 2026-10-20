@@ -57,7 +57,14 @@ def _naac():
     return daily_reminders(db)
 
 
-JOBS = {'reminders': _reminders, 'lifecycle': _lifecycle, 'cleanup': _cleanup, 'outbox': _outbox, 'naac': _naac}
+def _impact():
+    from models import db
+    from services_impact import request_testimonials
+    return request_testimonials(db)
+
+
+JOBS = {'reminders': _reminders, 'lifecycle': _lifecycle, 'cleanup': _cleanup, 'outbox': _outbox, 'naac': _naac,
+        'impact': _impact}
 
 
 @cron_bp.route('/<job>', methods=['POST'])

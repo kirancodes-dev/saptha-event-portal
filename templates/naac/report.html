@@ -50,6 +50,18 @@
     </form>
 </div></div>
 
+{% if editable %}
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">One optional question</h2>
+    <form method="POST" action="/impact/events/{{ event.id }}/hours" class="d-flex gap-2 flex-wrap align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div><label class="form-label" for="hours-saved">About how many hours did SapthaEvent save you?</label>
+        <input class="form-control" type="number" min="0" max="500" step="0.5" id="hours-saved" name="hours_saved" value="{{ event.hours_saved if event.hours_saved is not none else '' }}"></div>
+        <button type="submit" class="btn btn-outline-primary">Save</button>
+    </form>
+</div></div>
+{% endif %}
+
 <div class="card mb-3"><div class="card-body">
     <h2 class="h5">Photos and evidence</h2>
     {% if report.files %}

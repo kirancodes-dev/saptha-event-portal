@@ -1,0 +1,60 @@
+{% extends "base_classic.html" %}
+{#- The impact dashboard (UPG-145): counts from records only. -#}
+{% block title %}Impact{% endblock %}
+{% block page_sub %}Every figure is a count of SapthaEvent's own records; nothing is estimated except where it says so.{% endblock %}
+{% block content %}
+{% macro table(rows, key, label) %}
+<div class="table-responsive"><table class="table table-sm">
+<thead><tr><th scope="col">{{ label }}</th><th scope="col">Events held</th><th scope="col">Registrations</th><th scope="col">Check-ins</th><th scope="col">Attendance</th><th scope="col">Certificates</th><th scope="col">Departments and clubs</th><th scope="col">External</th><th scope="col">NAAC reports</th><th scope="col">Forms saved</th></tr></thead>
+<tbody>{% for r in rows %}<tr><td>{{ r[key] }}</td><td>{{ r.events }}</td><td>{{ r.registrations }}</td><td>{{ r.checkins }}</td>
+<td>{% if r.attendance_rate is not none %}{{ r.attendance_rate }}% <span class="text-muted small">({{ r.checkins }} of {{ r.expected }})</span>{% endif %}</td>
+<td>{{ r.certificates }}</td><td>{{ r.units }}</td><td>{{ r.external }}</td><td>{{ r.naac_reports }}</td><td>{{ r.forms_saved }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endmacro %}
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Per year</h2>
+    {% if data.years %}{{ table(data.years, 'year', 'Year') }}{% else %}<p class="text-muted mb-0">No records yet.</p>{% endif %}
+</div></div>
+<div class="card mb-3"><div class="card-body">
+    <div class="d-flex justify-content-between flex-wrap gap-2 align-items-end">
+        <h2 class="h5 mb-0">Per month</h2>
+        <form method="GET" class="d-flex gap-2 align-items-end"><div><label class="form-label small" for="imp-year">Year</label>
+            <select class="form-select form-select-sm" id="imp-year" name="year"><option value="">All</option>
+            {% for y in data.years %}<option {% if y.year == year %}selected{% endif %}>{{ y.year }}</option>{% endfor %}</select></div>
+            <button class="btn btn-sm btn-outline-primary" type="submit">Show</button></form>
+    </div>
+    {% if data.months %}{{ table(data.months, 'month', 'Month') }}{% else %}<p class="text-muted mb-0">No records in this period.</p>{% endif %}
+    <p class="small text-muted mb-0">Forms saved: registrations made online on SapthaEvent rather than on paper or a separate form (walk-ins at the desk aren't counted).</p>
+</div></div>
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Hours saved (organisers' estimates)</h2>
+    {% if data.time_saved.events %}<p class="mb-0">{{ '%g' % data.time_saved.total }} hours over {{ data.time_saved.events }} event{{ '' if data.time_saved.events == 1 else 's' }}, {{ data.time_saved.average }} per event on average. These are the organisers' own estimates.</p>
+    {% else %}<p class="text-muted mb-0">No organiser has answered yet.</p>{% endif %}
+</div></div>
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Impact report (PDF, 2 pages)</h2>
+    <form method="GET" action="/impact/report.pdf" class="d-flex gap-2 flex-wrap align-items-end">
+        <div><label class="form-label small" for="rep-start">From (month)</label><input class="form-control form-control-sm" type="month" id="rep-start" name="start" value="{{ start }}" required></div>
+        <div><label class="form-label small" for="rep-end">To (month)</label><input class="form-control form-control-sm" type="month" id="rep-end" name="end" value="{{ end }}" required></div>
+        <button class="btn btn-sm btn-primary" type="submit">Download</button>
+    </form>
+</div></div>
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Public Impact page</h2>
+    <form method="POST" action="/impact/public" class="d-flex gap-2 align-items-center flex-wrap">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="public" value="{{ 'off' if public else 'on' }}">
+        <span>It is <strong>{{ 'on' if public else 'off' }}</strong>{% if public %} at <a href="/impact">/impact</a>{% endif %}.</span>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Turn {{ 'off' if public else 'on' }}</button>
+    </form>
+</div></div>
+<div class="card mb-3" id="testimonials"><div class="card-body">
+    <h2 class="h5">Testimonials</h2>
+    {% if testimonials %}<ul class="list-unstyled mb-0">{% for t in testimonials %}
+    <li class="mb-3"><strong>{{ t.name }}</strong>, {{ t.role }} · {{ t.rating }}/5{% if t.approved %} · <span class="badge text-bg-success">Approved</span>{% endif %}
+        {% if not t.may_quote %} · <span class="text-muted small">not for quoting</span>{% endif %}<br>{{ t.comment }}
+        {% if t.may_quote %}<form method="POST" action="/impact/testimonials/{{ t.id }}/{{ 'withdraw' if t.approved else 'approve' }}" class="mt-1">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-primary" type="submit">{{ 'Withdraw' if t.approved else 'Approve for public use' }}</button></form>{% endif %}</li>
+    {% endfor %}</ul>{% else %}<p class="text-muted mb-0">None yet. They're asked for the day after each event.</p>{% endif %}
+</div></div>
+{% endblock %}

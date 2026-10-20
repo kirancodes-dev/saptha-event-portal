@@ -183,6 +183,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-142 | Merit and special-mention certificates can't be awarded | DONE | Found while making the sample emails. services_certificates.TYPES has "merit" and "special_mention" (the… |
 | UPG-143 | Tests that make an event "today" fail when a run crosses midnight | DONE | Found in the final PostgreSQL run of the certificate phase.… |
 | UPG-144 | NAAC / AQAR report from event data | DONE | NAAC categories, post-event reports with evidence, a yearly report builder and exports; IQAC coordinator and department admin roles. |
+| UPG-145 | Track record: impact dashboard, time saved, testimonials, impact report and page | DONE | Real-data impact dashboard, organisers' time-saved estimates, permissioned testimonials, a 2-page impact PDF and an optional public page. |
 
 ## Open items
 
@@ -325,7 +326,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-10-19 | "UPG-124/125/126 follow-up: ..." (parent `cb0e937`) | UPG-124, UPG-125, UPG-126 | The full SQLite run at `45899bf` (1,234 passed, 7 skipped) failed one check: `CERT_CHUNK_SIZE`, `CERT_LINK_DAYS` and `VERIFY_RATE_LIMIT` were not in `.env.example`. Added. |
 | 2026-10-19 | "docs: ..." (parent `47fd4f0`) | UPG-140, UPG-141 | **Two new items.** UPG-140 (found building UPG-127): `log_action` drops every audit row written outside a request. UPG-141 (found building UPG-132): the participant's certificate page prints "at ." for an event without a venue. |
 | 2026-10-19 | "UPG-140: …" (parent `2368312`) | UPG-140 | Audit rows written outside a request (background tasks, scheduled jobs, certificate runs) are kept, as "system"; before, every one was dropped with a warning. |
 | 2026-10-19 | "UPG-127: …" (parent `979a228`) | UPG-127 | Corrections and revocation: a student asks for a name correction, the organiser approves (version 2, same number, emailed; version 1's file then checks as replaced) or rejects (nothing changes); revoking needs a reason and shows on verification with the date; every issue, correction and revocation is audit-logged. 2 new tests, passing on SQLite and PostgreSQL. |
@@ -345,3 +345,4 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | "UPG-117: …" (parent `810abc8`) | UPG-117 | The JSON waitlist join follows the registration form's open/closed rule, so events in registration_open can be joined; closed, completed and cancelled events are refused with the form's message. |
 | 2026-10-20 | "UPG-143: …" (parent `8204fce`) | UPG-143 | Tests no longer fail when a run crosses midnight: the team event registers until a week ahead and the certificate fixture is a week ahead; a clock test joins at 00:01 after a 23:59 registration. |
 | 2026-10-20 | "UPG-144: …" (parent `7fc18b1`) | UPG-144 | NAAC/AQAR: IQAC coordinator and department admin roles (migration 0009), editable NAAC categories, post-event reports with evidence and daily reminders, a yearly builder, XLSX/PDF/ZIP exports from a layout file. 7 tests, SQLite and PostgreSQL. |
+| 2026-10-20 | "UPG-145: …" (parent `5c6dd25`) | UPG-145 | Track record from real counts only: impact dashboard per month and year, organisers' hours-saved estimates, testimonials with permission to quote and Super Admin approval, a 2-page impact PDF and an optional public page. 4 tests, SQLite and PostgreSQL. |

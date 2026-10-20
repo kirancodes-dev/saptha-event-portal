@@ -561,7 +561,8 @@ def process_walkin():
                 'registered_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'attendance': 'Present',
                 'checkin_time': datetime.datetime.now().strftime("%H:%M:%S"),
-                'is_eliminated': False, 'current_round': event_doc.get('active_round', 1)})
+                'is_eliminated': False, 'current_round': event_doc.get('active_round', 1),
+                'source': 'walk_in'})   # a desk sign-up, not an online form (UPG-145)
         except AlreadyRegistered:   # the database keeps one active registration per person (UPG-115)
             flash(f"{email} is already registered for {event_title}; check them in from the scanner instead.", "info")
             return redirect('/coordinator/on_spot')

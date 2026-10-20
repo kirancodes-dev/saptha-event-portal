@@ -175,6 +175,50 @@ def _ranks(db, event_id: str, event: dict) -> Dict[str, int]:
     return {str(r['id']): int(r['rank']) for r in podium(for_event(db, event_id))}
 
 
+AWARD_TYPES = ('merit', 'special_mention')
+
+
+def registered_people(db, event_id: str) -> List[dict]:
+    """Everyone on an active registration (each team member too): who the
+    organiser can award a merit or special-mention certificate to (UPG-142)."""
+    out = []
+    for d in db.collection('registrations').where('event_id', '==', event_id).stream():
+        reg = d.to_dict() or {}
+        if not _active(reg):
+            continue
+        for name, email, usn, member in _people(reg, d.id):
+            out.append({'name': name, 'email': email, 'reg_id': d.id, 'lead': member is None,
+                        'person_key': person_key(email, usn, name, d.id),
+                        'designation': (reg.get('designation') if member is None else member.get('designation')) or '',
+                        'institution': (reg.get('institution') if member is None else member.get('institution')) or '',
+                        'team': reg.get('team_name') if reg.get('team_name') not in (None, '', 'Individual') else ''})
+    return sorted(out, key=lambda p: p['name'].lower())
+
+
+def award(db, event_id: str, person: str, kind: str, note: str = '', actor: str = '') -> Optional[dict]:
+    """Award a merit or special-mention certificate to a registered person:
+    issued once, emailed and audit-logged like any other. None if they have it."""
+    from services_certificate_runs import ready_to_issue
+    if kind not in AWARD_TYPES:
+        raise CertificateError("Choose merit or special mention.")
+    doc = db.collection('events').document(event_id).get()
+    if not doc.exists:
+        raise CertificateError('Event not found.')
+    event = doc.to_dict() or {}
+    problem = ready_to_issue(event)
+    if problem:
+        raise CertificateError(problem)
+    who = next((p for p in registered_people(db, event_id) if p['person_key'] == person), None)
+    if who is None:
+        raise CertificateError("Choose someone registered for this event.")
+    cert = issue_one(event_id, event, dict(who, cert_type=kind, note=' '.join(str(note or '').split())), actor)
+    if cert:
+        from utils import log_action
+        log_action(db, "CERT_AWARDED", f"{actor}: {TYPES[kind]['title']} {cert['number']} to {who['name']} "
+                                       f"for event {event_id}")
+    return cert
+
+
 def recipients(db, event_id: str, event: Optional[dict] = None) -> List[dict]:
     """Every certificate the event's people are owed: one dict per person and type."""
     if event is None:
@@ -389,6 +433,8 @@ def wording(event: dict, recipient: dict) -> dict:
     kind = recipient['cert_type']
     spec = TYPES[kind]
     phrase = spec['phrase']
+    if kind in AWARD_TYPES and recipient.get('note'):
+        phrase = str(recipient['note'])[:160]          # the organiser's own line (UPG-142)
     if kind == 'position' and recipient.get('position'):
         phrase = f"for securing the {_ordinal(recipient['position'])} place in"
     return {'title': spec['title'], 'phrase': phrase, 'event_title': event.get('title') or 'Event',

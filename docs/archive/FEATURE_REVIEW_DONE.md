@@ -3998,9 +3998,6 @@ The items below are built in this order, one commit each; each deferred part is 
   1. ✅ Test: the participant's certificate page for an event with no venue says "Venue to be announced" (or "Online"), never "at .". [T `tests/test_certificate_wording.py::test_upg141_the_participant_certificate_page_never_says_at_nothing`: fails on the old page]
 
 
-#### UPG-142 — Merit and special-mention certificates can't be awarded
-- *Open: full text in `docs/FEATURE_REVIEW.md`.*
-
 #### UPG-143 — Tests that make an event "today" fail when a run crosses midnight
 - *Open: full text in `docs/FEATURE_REVIEW.md`.*
 
@@ -4198,3 +4195,19 @@ The five most important claims, re-verified as if someone else wrote them, follo
 - **Re-verification after Phase 1 (2026-10-02, `986d108`):** by reading the code [C], with runs where a claim could be run [R]: the empty-database Alembic upgrade, the counting script on `56a014d` and `986d108`, the app's URL map for the linked paths, the read-only `git ls-remote`, and the full test, lint and scan runs. As in Phase 0, no flow was re-driven over HTTP beyond what the tests do; inventory rows marked "not re-run" still are.
 
 ---
+
+---
+
+### Done since 2026-10-20
+
+
+#### UPG-142 — Merit and special-mention certificates can't be awarded
+- **Status:** DONE
+- **Last verified:** 2026-10-20, commit "UPG-142: …" (parent `c9571df`) [T]
+- **Problem:** Found while making the sample emails. `services_certificates.TYPES` has "merit" and "special_mention" (the brief's "merit or special mention"), and the PDF has their wording and colours, but nothing awards them: `recipients()` never lists them and "issue to one person" (UPG-124) only issues certificates someone is already owed. UPG-122's criterion 3 didn't ask for them, so its tests didn't notice.
+- **What to build:** on the event's certificate page, the organiser picks a registered person and awards "merit" or "special mention" (with an optional line of wording); it is then issued like any other (once, emailed, audit-logged), with `issue_certificates` on the event.
+- **Effort:** S · **Depends on:** UPG-124 · **Risk:** low.
+- **Built (2026-10-20):** The certificate page has an Award form: pick a registered person (each team member too, `services_certificates.registered_people`), merit or special mention, and an optional line of wording. `services_certificates.award` checks the event can issue, issues it once through `issue_one` (stored, emailed, audit-logged as CERT_ISSUED) and logs CERT_AWARDED; `POST /certificates/events/<id>/award` needs `issue_certificates`.
+- **Files touched:** `services_certificates.py`, `routes_certificates.py`, `templates/certificates/manage.html`, `tests/test_certificate_awards.py` (new)
+- **Acceptance criteria:**
+  1. ✅ Test: the organiser awards a merit and a special-mention certificate to two registered people; each is issued once, emailed and audit-logged; someone without `issue_certificates` gets 403. [T `tests/test_certificate_awards.py::test_the_organiser_awards_merit_and_special_mention`]

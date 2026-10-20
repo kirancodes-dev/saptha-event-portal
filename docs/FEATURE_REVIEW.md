@@ -180,7 +180,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-139 | The coordinator's "publish results" doesn't mark the results published | DONE | Found starting UPG-124. POST /coordinator/publish_results/<id> (routes_coordinator.py:422-484) ranks the… |
 | UPG-140 | Audit rows written outside a request are lost | DONE | Found building UPG-127. utils.log_action (utils.py:90-138) reads session for the user and role whatever the… |
 | UPG-141 | The participant's certificate page prints "at ." for an event without a venue | DONE | Found building UPG-132. templates/participant/certificate.html says "held on <date> at {{ event.venue }}."… |
-| UPG-142 | Merit and special-mention certificates can't be awarded | TODO | Found while making the sample emails. services_certificates.TYPES has "merit" and "special_mention" (the… |
+| UPG-142 | Merit and special-mention certificates can't be awarded | DONE | Found while making the sample emails. services_certificates.TYPES has "merit" and "special_mention" (the… |
 | UPG-143 | Tests that make an event "today" fail when a run crosses midnight | TODO | Found in the final PostgreSQL run of the certificate phase.… |
 
 ## Open items
@@ -320,15 +320,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO; `routes_waitlist.py:44` still refuses any status but `active`.
 
-#### UPG-142 — Merit and special-mention certificates can't be awarded
-- **Status:** TODO
-- **Last verified:** 2026-10-19, at `e8351d0` [C]
-- **Problem:** Found while making the sample emails. `services_certificates.TYPES` has "merit" and "special_mention" (the brief's "merit or special mention"), and the PDF has their wording and colours, but nothing awards them: `recipients()` never lists them and "issue to one person" (UPG-124) only issues certificates someone is already owed. UPG-122's criterion 3 didn't ask for them, so its tests didn't notice.
-- **What to build:** on the event's certificate page, the organiser picks a registered person and awards "merit" or "special mention" (with an optional line of wording); it is then issued like any other (once, emailed, audit-logged), with `issue_certificates` on the event.
-- **Effort:** S · **Depends on:** UPG-124 · **Risk:** low.
-- **Acceptance criteria:**
-  1. Test: the organiser awards a merit and a special-mention certificate to two registered people; each is issued once, emailed and audit-logged; someone without `issue_certificates` gets 403.
-
 #### UPG-143 — Tests that make an event "today" fail when a run crosses midnight
 - **Status:** TODO
 - **Last verified:** 2026-10-20, at `8666965` [T]
@@ -352,7 +343,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-10-19 | "UPG-135: …" (parent `177db09`) | UPG-135 | UPG-69's deferred part: the legacy registration check and its preview show the lead's name on seeded rows; API v1's verification hash is documented as a truncated SHA-256, not an HMAC. |
 | 2026-10-19 | "UPG-125: …" (parent `9b1be9f`) | UPG-125 | Delivery: one email per certificate with a signed link that expires (30 days) and refuses alteration, sent once through the outbox; "My certificates" for students and faculty with PDF, LinkedIn image and share links; the ledger links each event's certificate; checked at 375px and 1280px in headless Chromium with a real download. 6 new tests, passing on SQLite and PostgreSQL. |
 | 2026-10-19 | "UPG-132: …" (parent `d72ae12`) | UPG-132 | UPG-28's certificate part: the participant's certificate page fits a 375px phone (it hung off both sides before); "My certificates" downloads on a phone (UPG-125). |
 | 2026-10-19 | "UPG-133: …" (parent `77e843b`) | UPG-133 | UPG-50's deferred part: the certificate email shows a name or event title with markup as text. |
@@ -372,3 +362,4 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | "docs: ..." (parent `8666965`) | UPG-143 | **Final full run of the certificate phase, at `3456f1a`:** SQLite 1,264 passed, 7 skipped; PostgreSQL 1,270 passed, 1 failed, the team-join test, because the run crossed midnight with an event made for "today" (re-run: 6 of 6 on both). New item UPG-143. The tests changed after `3456f1a` pass on both databases. |
 | 2026-10-20 | (deploy, no commit) | Deploy | **Deployed `dfce764` to Cloud Run** (owner's request): service `saptha`, project `saptha-event-261017`, region asia-south1, from Cloud Shell as queserateam07@gmail.com. Image built with Cloud Build (`web:dfce764`); migration 0008 ran first as the job `saptha-migrate` (completed); revision `saptha-00005-jlg` serves 100% at https://saptha-967997581752.asia-south1.run.app with the existing settings and secrets. Checked: `/health`, `/`, `/events`, `/login`, `/verify` 200; `/certificates/mine` redirects to login; an unknown certificate number is a 404; HSTS and CSP present. Rollback: `gcloud run services update-traffic saptha --region asia-south1 --to-revisions saptha-00004-q58=100`. |
 | 2026-10-20 | "docs: …" (parent `06da54d`) | ALL | Split this file: index, open items, open decisions and the last 20 changelog lines stay; done items and reference sections moved to docs/archive/FEATURE_REVIEW_DONE.md, older changelog to docs/archive/CHANGELOG.md. Nothing deleted. |
+| 2026-10-20 | "UPG-142: …" (parent `c9571df`) | UPG-142 | Organisers award merit and special-mention certificates to registered people from the certificate page, with optional wording; issued once, emailed, audit-logged; 403 without issue_certificates. |

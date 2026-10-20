@@ -33,6 +33,29 @@
         </form>
         {% endif %}
 
+        {% if can_issue and registered %}
+        <form method="POST" action="/certificates/events/{{ event.id }}/award" class="mt-3 row g-2 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-4">
+                <label class="form-label small" for="award-person">Award to</label>
+                <select class="form-select form-select-sm" id="award-person" name="person" required>
+                    {% for p in registered %}<option value="{{ p.person_key }}">{{ p.name }}{% if p.team %} ({{ p.team }}){% endif %}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small" for="award-kind">Certificate</label>
+                <select class="form-select form-select-sm" id="award-kind" name="kind">
+                    <option value="merit">Merit</option><option value="special_mention">Special mention</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small" for="award-note">Wording (optional)</label>
+                <input class="form-control form-control-sm" id="award-note" name="note" maxlength="160" placeholder="for the best design in">
+            </div>
+            <div class="col-md-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100" {% if issue_problem %}disabled{% endif %}>Award</button></div>
+        </form>
+        {% endif %}
+
         {% if runs %}
         <h3 class="h6 mt-3">Recent runs</h3>
         <ul class="list-unstyled small mb-0">

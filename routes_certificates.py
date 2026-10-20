@@ -79,7 +79,8 @@ def manage(event_id):
                            auto_issue=event.get('cert_auto_issue') is not False, runs=event_runs,
                            running=any(r['status'] in ('queued', 'running') for r in event_runs),
                            people=people, others=others, issued_count=len(issued),
-                           corrections=changes.for_event(db, event_id))
+                           corrections=changes.for_event(db, event_id),
+                           registered=certs.registered_people(db, event_id))
 
 
 def _can(event, permission):
@@ -524,3 +525,21 @@ def college_counts():
                                                 for r in rows], ['Department', 'Event type', 'Month', 'Certificates']),
                         mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=certificate-counts.csv'})
     return render_template('certificates/counts.html', rows=rows, total=sum(r['certificates'] for r in rows))
+
+
+@certificates_bp.route('/events/<event_id>/award', methods=['POST'])
+@login_required
+def award(event_id):
+    """Award a merit or special-mention certificate to a registered person (UPG-142)."""
+    import services_certificates as certs
+    _event_or_abort(event_id, 'issue_certificates')
+    kind = request.form.get('kind', '')
+    try:
+        cert = certs.award(db, event_id, request.form.get('person', ''), kind, request.form.get('note', ''),
+                           session.get('user_id', ''))
+        title = certs.TYPES.get(kind, {}).get('title', 'Certificate')
+        flash(f"{title} {cert['number']} issued to {cert['name']}." if cert else
+              "That person already has this certificate.", 'success' if cert else 'info')
+    except certs.CertificateError as exc:
+        flash(str(exc), 'danger')
+    return _back(event_id)

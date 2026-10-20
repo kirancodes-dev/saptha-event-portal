@@ -4316,3 +4316,14 @@ The five most important claims, re-verified as if someone else wrote them, follo
   4. ✅ Test: without the checkbox nothing is sent; the opt-in is saved with its time; a signed STOP reply (Twilio and Meta) stops messages and an unsigned one is refused; the profile switch turns them off and on. [T `tests/test_whatsapp.py`::test_opt_in_stop_and_the_profile_switch]
   5. ✅ Test: when the provider fails, the email still goes and the WhatsApp send waits in the outbox. [T `tests/test_whatsapp.py`::test_a_failed_whatsapp_waits_in_the_outbox_and_email_still_goes]
   6. ✅ Test: at the monthly cap nothing more is sent, the Super Admin is told once, and email still goes; only the Super Admin sets the cap. [T `tests/test_whatsapp.py`::test_the_monthly_cap_pauses_whatsapp_and_tells_the_admin_once]
+
+#### UPG-148 — The registration confirmation hides text under the pinned footer on a phone
+- **Status:** DONE
+- **Last verified:** 2026-10-20, commit "UPG-148: …" (parent `e4c0012`) [T]
+- **Problem:** Found by the end-of-run browser pass. `templates/participant/registration_confirmed.html` uses the status layout, which pins the footer to the bottom of the screen. For someone registering without an account, the page adds a "Set your password" box and becomes taller than a 375px screen, so the pinned footer sits over that box. The phone journey (UPG-28) registers a signed-in student, whose page has no such box, so it never showed.
+- **What to build:** the page doesn't pin its footer (as the certificate verification page, UPG-125).
+- **Effort:** S · **Depends on:** none · **Risk:** none.
+- **Built (2026-10-20):** `templates/participant/registration_confirmed.html` sets `site_footer_fixed = false`, so the footer follows the page instead of covering the set-password box. Found by the end-of-run browser pass (`tests/test_reach_and_reports_phone.py`, which also covers the IQAC report flow, the impact dashboard and the open-events page for UPG-144 to UPG-146).
+- **Files touched:** `templates/participant/registration_confirmed.html`, `tests/test_reach_and_reports_phone.py` (new)
+- **Acceptance criteria:**
+  1. ✅ Test: at 375px and 1280px, the confirmation for a new account (with the "Set your password" box) has no text under the footer (headless). [T `tests/test_reach_and_reports_phone.py::test_reports_impact_open_events_and_an_external_registration_fit_both_widths` (an external student's confirmation with the set-password box, measured at 375 and 1280); fails before the change]

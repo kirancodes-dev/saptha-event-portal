@@ -1,0 +1,79 @@
+{% extends "base_classic.html" %}
+{#- An event's post-event NAAC report (UPG-144). -#}
+{% block title %}NAAC report — {{ event.title }}{% endblock %}
+{% block page_title %}NAAC report{% endblock %}
+{% block page_sub %}{{ event.title }} · {{ event.date }}{% if due %} · due {{ due }}{% endif %} · {{ 'Submitted' if report.status == 'submitted' else 'Not submitted yet' }}{% endblock %}
+{% block page_actions %}{% if remind and report.status != 'submitted' %}
+<form method="POST" action="/naac/events/{{ event.id }}/remind" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" class="btn btn-outline-primary">Send a reminder</button></form>{% endif %}{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Attendance (from check-ins)</h2>
+    <p class="mb-0">{{ attendance.students }} students · {{ attendance.faculty }} faculty · {{ attendance.external }} external participants
+       · <strong>{{ attendance.total }}</strong> in all · {{ attendance.hours }} participation hours</p>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">NAAC category</h2>
+    {% if editable %}
+    <form method="POST" class="d-flex gap-2 flex-wrap align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="category">
+        <div><label class="form-label" for="naac-category">Category</label>
+        <select class="form-select" id="naac-category" name="naac_category">
+            {% for c in categories %}<option {% if c == event.naac_category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select></div>
+        <button type="submit" class="btn btn-outline-primary">Save category</button>
+    </form>
+    {% else %}<p class="mb-0">{{ event.naac_category or 'Not classified yet' }}</p>{% endif %}
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Report</h2>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for field, label, rows in [('objectives', 'Objectives', 3), ('summary', 'Short summary', 5), ('outcomes', 'Outcomes', 3)] %}
+        <label class="form-label mt-2" for="f-{{ field }}">{{ label }}</label>
+        <textarea class="form-control" id="f-{{ field }}" name="{{ field }}" rows="{{ rows }}" {% if not editable %}readonly{% endif %}>{{ report[field] or '' }}</textarea>
+        {% endfor %}
+        <div class="row g-2 mt-1">
+            {% for field, label in [('resource_name', 'Resource person / chief guest'), ('resource_designation', 'Designation'), ('resource_organisation', 'Organisation'), ('collaborator', 'Collaborating organisation (if any)')] %}
+            <div class="col-md-3"><label class="form-label" for="f-{{ field }}">{{ label }}</label>
+            <input class="form-control" id="f-{{ field }}" name="{{ field }}" value="{{ report[field] or '' }}" maxlength="200" {% if not editable %}readonly{% endif %}></div>
+            {% endfor %}
+        </div>
+        {% if editable %}
+        <div class="d-flex gap-2 mt-3 flex-wrap">
+            <button type="submit" name="action" value="save" class="btn btn-outline-primary">Save draft</button>
+            <button type="submit" name="action" value="submit" class="btn btn-primary">Submit report</button>
+        </div>
+        {% endif %}
+    </form>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h5">Photos and evidence</h2>
+    {% if report.files %}
+    <ul class="list-unstyled">
+    {% for f in report.files %}
+        <li class="mb-1"><span class="badge text-bg-light">{{ f.kind }}</span>
+            <a href="/naac/events/{{ event.id }}/files/{{ f.id }}">{{ f.name }}</a>
+            {% if f.geotag %}<span class="small text-muted">· {{ f.geotag.lat }}, {{ f.geotag.lon }}</span>{% endif %}
+            {% if f.shareable %}<span class="small text-muted">· may be shown publicly</span>{% endif %}</li>
+    {% endfor %}
+    </ul>
+    {% else %}<p class="text-muted">No files yet.</p>{% endif %}
+    {% if editable %}
+    <form method="POST" action="/naac/events/{{ event.id }}/files" enctype="multipart/form-data" class="row g-2 align-items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-3"><label class="form-label" for="file-kind">Kind</label>
+        <select class="form-select" id="file-kind" name="kind"><option value="photo">Photo (JPG or PNG, 5 MB)</option>
+            <option value="brochure">Brochure or notice (PDF, JPG or PNG, 10 MB)</option><option value="evidence">Other evidence (PDF, JPG or PNG, 10 MB)</option></select></div>
+        <div class="col-md-5"><label class="form-label" for="file-input">File</label>
+        <input class="form-control" type="file" id="file-input" name="file" accept="application/pdf,image/jpeg,image/png" required></div>
+        <div class="col-md-2 form-check ms-2"><input class="form-check-input" type="checkbox" id="file-share" name="shareable">
+            <label class="form-check-label small" for="file-share">Photo may be shown publicly</label></div>
+        <div class="col-md-1"><button type="submit" class="btn btn-outline-primary">Upload</button></div>
+    </form>
+    {% endif %}
+</div></div>
+{% endblock %}

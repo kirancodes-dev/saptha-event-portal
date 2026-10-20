@@ -182,6 +182,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-141 | The participant's certificate page prints "at ." for an event without a venue | DONE | Found building UPG-132. templates/participant/certificate.html says "held on <date> at {{ event.venue }}."… |
 | UPG-142 | Merit and special-mention certificates can't be awarded | DONE | Found while making the sample emails. services_certificates.TYPES has "merit" and "special_mention" (the… |
 | UPG-143 | Tests that make an event "today" fail when a run crosses midnight | DONE | Found in the final PostgreSQL run of the certificate phase.… |
+| UPG-144 | NAAC / AQAR report from event data | DONE | NAAC categories, post-event reports with evidence, a yearly report builder and exports; IQAC coordinator and department admin roles. |
 
 ## Open items
 
@@ -316,6 +317,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | D-2 | **BLK-01 owner actions:** force-push the rewritten `master`, delete the remote `main` and `claude/busy-davinci-6nkabi`, and ask GitHub Support to purge the 47 PR refs (commands in the 2026-09-29 changelog). The agent never pushes. | BLK-01 criteria 0 and 4 (CI green on GitHub); BLK-11 criterion 2 | **Done (owner, 2026-10-01):** `master` force-pushed, `main` and `claude/busy-davinci-6nkabi` deleted, `production-ready` pushed, GitHub Support contacted. Verified with `git ls-remote`; BLK-01 criterion 4 is met on GitHub. **Left:** Support removing the 47 PR refs (BLK-01 criterion 0). Nothing else waits on it. |
 | D-7 | **UPG-22: what is kept after an account is deleted?** Built: the account and the person's name, email, phone, USN and answers go; registration rows stay without them (attendance and payment totals for reports). Still holding the email: payment orders (finance records) and the audit log. Also: should API v1 registrations (the apps) require consent once the apps are updated? | UPG-22 (policy, not code) | Open (2026-10-10). Proposed: keep payment orders and the audit log for the finance and audit retention period (e.g. 8 years), then anonymise; require consent in API v1 after the next app release. |
 | D-8 | **Keep `/live/reels` and `/live/streams` public?** Both are demo pages: made-up like and viewer counts, a "Live" badge, and (until UPG-60) cartoon sample videos. UPG-60 replaced the videos with event images; the counts are still invented. | none (content, not code) | Open (2026-10-10). Proposed: hide both until there's real event media, as UPG-53 did for the home page's fake hackathon. |
+| D-10 | **Confirm the exact AQAR table layout with the IQAC coordinator.** UPG-144 builds a sensible default in `config/naac_layout.json`; the columns and sheets follow that file, so a confirmed layout needs no code change. | UPG-144 (layout only) | Open |
 
 *Decided decisions: `docs/archive/FEATURE_REVIEW_DONE.md` ("Decisions needed").*
 
@@ -323,7 +325,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-| 2026-10-19 | "UPG-133: …" (parent `77e843b`) | UPG-133 | UPG-50's deferred part: the certificate email shows a name or event title with markup as text. |
 | 2026-10-19 | "UPG-124/125/126 follow-up: ..." (parent `cb0e937`) | UPG-124, UPG-125, UPG-126 | The full SQLite run at `45899bf` (1,234 passed, 7 skipped) failed one check: `CERT_CHUNK_SIZE`, `CERT_LINK_DAYS` and `VERIFY_RATE_LIMIT` were not in `.env.example`. Added. |
 | 2026-10-19 | "docs: ..." (parent `47fd4f0`) | UPG-140, UPG-141 | **Two new items.** UPG-140 (found building UPG-127): `log_action` drops every audit row written outside a request. UPG-141 (found building UPG-132): the participant's certificate page prints "at ." for an event without a venue. |
 | 2026-10-19 | "UPG-140: …" (parent `2368312`) | UPG-140 | Audit rows written outside a request (background tasks, scheduled jobs, certificate runs) are kept, as "system"; before, every one was dropped with a warning. |
@@ -343,3 +344,4 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | "UPG-142: …" (parent `c9571df`) | UPG-142 | Organisers award merit and special-mention certificates to registered people from the certificate page, with optional wording; issued once, emailed, audit-logged; 403 without issue_certificates. |
 | 2026-10-20 | "UPG-117: …" (parent `810abc8`) | UPG-117 | The JSON waitlist join follows the registration form's open/closed rule, so events in registration_open can be joined; closed, completed and cancelled events are refused with the form's message. |
 | 2026-10-20 | "UPG-143: …" (parent `8204fce`) | UPG-143 | Tests no longer fail when a run crosses midnight: the team event registers until a week ahead and the certificate fixture is a week ahead; a clock test joins at 00:01 after a 23:59 registration. |
+| 2026-10-20 | "UPG-144: …" (parent `7fc18b1`) | UPG-144 | NAAC/AQAR: IQAC coordinator and department admin roles (migration 0009), editable NAAC categories, post-event reports with evidence and daily reminders, a yearly builder, XLSX/PDF/ZIP exports from a layout file. 7 tests, SQLite and PostgreSQL. |

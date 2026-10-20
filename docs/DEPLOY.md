@@ -125,6 +125,9 @@ the extra registrations from the Super Admin's registrations page (keep one each
 refund any extra payment from the payments page), then run `alembic upgrade head`
 again. It never cancels or deletes a registration itself.
 
+**Migration `0009_naac_roles`** adds the IQAC coordinator and department admin
+roles to the role type (PostgreSQL). Run it before the new revision, as usual.
+
 **Migration `0008_certificates`** adds the `certificates` table (one current
 certificate per person, event and type, enforced by a unique index). It changes
 no existing table. Certificates issued before it stay in the old
@@ -226,6 +229,7 @@ Reminders, event lifecycle changes and clean-up run on a schedule.
 | `reminders` | every hour | Day-before ticket email and WhatsApp reminder, coordinators' briefing, and the 3-day reminder. Each registration is reminded once (`ticket_sent`, `early_reminder_sent`). |
 | `lifecycle` | every 6 hours | Closes registration after the deadline, and marks events whose end date has passed as `completed`. It never deletes anything. Each change is in the workflow audit trail. |
 | `cleanup` | daily | Deletes expired sessions, login attempts older than the throttle window (one hour), and outbox rows sent more than 7 days ago or failed more than 30 days ago. Nothing else. |
+| `naac` | daily | Emails each organiser whose post-event NAAC report is overdue, once a day until it's submitted (UPG-144). |
 | `outbox` | every 15 minutes | Retries background tasks (emails, WhatsApp, notices) that failed or timed out inline; see "Background tasks" below. |
 
 Answers: `200` with a JSON summary; `403` for a missing or wrong secret;
@@ -279,6 +283,10 @@ gcloud scheduler jobs create http saptha-outbox --location=$REGION \
   --schedule='*/15 * * * *' --time-zone='Asia/Kolkata' \
   --uri="$APP/internal/cron/outbox" --http-method=POST \
   --headers="X-Cron-Secret=$SECRET" --attempt-deadline=15m
+gcloud scheduler jobs create http saptha-naac --location=$REGION \
+  --schedule='0 10 * * *' --time-zone='Asia/Kolkata' \
+  --uri="$APP/internal/cron/naac" --http-method=POST \
+  --headers="X-Cron-Secret=$SECRET" --attempt-deadline=10m
 ```
 
 Check one by running it now and reading its last result:
@@ -500,8 +508,8 @@ Tick each before opening the portal to students.
   Only then switch to the live key ID, key secret and webhook secret.
 - [ ] **Sentry:** create a project and set `SENTRY_DSN`; trigger a test error
   and check it arrives without personal data.
-- [ ] **Cloud Scheduler:** create the four jobs (`reminders` every hour,
-  `lifecycle` every 6 hours, `cleanup` daily, `outbox` every 15 minutes) with the
+- [ ] **Cloud Scheduler:** create the five jobs (`reminders` every hour,
+  `lifecycle` every 6 hours, `cleanup` daily, `naac` daily, `outbox` every 15 minutes) with the
   `X-Cron-Secret` header (see "Scheduled jobs"); run each once by hand and
   check it answers 200.
 - [ ] **Budget alert:** a budget on the billing account with alerts at 50, 75,

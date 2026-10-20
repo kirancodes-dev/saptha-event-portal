@@ -227,6 +227,8 @@ ROLE_REDIRECTS = {
     'UnitAdmin':        '/spoc/dashboard',
     'EventOrganizer':   '/spoc/dashboard',
     'Judge':            '/judge/dashboard',
+    'IQACCoordinator':  '/naac/',
+    'DepartmentAdmin':  '/naac/',
     'Volunteer':        '/coordinator/scanner',
 }
 

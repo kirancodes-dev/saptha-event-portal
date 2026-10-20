@@ -319,6 +319,7 @@ from routes_teams          import teams_bp           # noqa: E402
 from routes_placement      import placement_bp       # noqa: E402  (UPG-57)
 from routes_certificates   import certificates_bp    # noqa: E402  (UPG-123)
 from routes_verification   import verify_limit       # noqa: E402  (UPG-126)
+from routes_naac           import naac_bp            # noqa: E402  (UPG-144)
 from routes_sports         import sports_bp          # noqa: E402  (UPG-13)
 from routes_push           import push_bp           # noqa: E402
 from routes_checkin        import checkin_bp        # noqa: E402
@@ -347,6 +348,7 @@ app.register_blueprint(sponsors_bp)
 app.register_blueprint(teams_bp)
 app.register_blueprint(placement_bp)
 app.register_blueprint(certificates_bp)
+app.register_blueprint(naac_bp)
 app.register_blueprint(sports_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(checkin_bp)

@@ -1,0 +1,49 @@
+{
+  "_note": "Columns and sheets of the NAAC / AQAR report (UPG-144). A default until the IQAC coordinator confirms the AQAR layout (decision D-10): change titles, order or which fields appear here; no code change needed. Fields available per sheet are listed under _fields.",
+  "_fields": {
+    "summary": ["category", "events", "students", "faculty", "external", "participants", "hours"],
+    "detail": ["title", "date", "end_date", "department", "event_type", "category", "resource_person", "collaborator", "students", "faculty", "external", "participants", "hours", "report", "evidence_files", "evidence_link"],
+    "awards": ["name", "award", "position", "event", "date", "department"],
+    "faculty": ["name", "designation", "institution", "event", "event_type", "date", "hours"]
+  },
+  "summary": [
+    {"field": "category", "title": "NAAC category"},
+    {"field": "events", "title": "Events"},
+    {"field": "students", "title": "Students"},
+    {"field": "faculty", "title": "Faculty"},
+    {"field": "external", "title": "External participants"},
+    {"field": "participants", "title": "Total participants"},
+    {"field": "hours", "title": "Total hours"}
+  ],
+  "detail": [
+    {"field": "title", "title": "Title of the activity"},
+    {"field": "date", "title": "Date"},
+    {"field": "end_date", "title": "End date"},
+    {"field": "department", "title": "Organising department"},
+    {"field": "resource_person", "title": "Resource person / chief guest"},
+    {"field": "collaborator", "title": "Collaborating organisation"},
+    {"field": "students", "title": "Students"},
+    {"field": "faculty", "title": "Faculty"},
+    {"field": "external", "title": "External"},
+    {"field": "participants", "title": "Total participants"},
+    {"field": "hours", "title": "Hours"},
+    {"field": "evidence_link", "title": "Evidence (link)"}
+  ],
+  "awards": [
+    {"field": "name", "title": "Student"},
+    {"field": "award", "title": "Award"},
+    {"field": "position", "title": "Position"},
+    {"field": "event", "title": "Event"},
+    {"field": "date", "title": "Date"},
+    {"field": "department", "title": "Department"}
+  ],
+  "faculty": [
+    {"field": "name", "title": "Faculty member"},
+    {"field": "designation", "title": "Designation"},
+    {"field": "institution", "title": "Institution"},
+    {"field": "event", "title": "Programme"},
+    {"field": "event_type", "title": "Type"},
+    {"field": "date", "title": "Date"},
+    {"field": "hours", "title": "Hours"}
+  ]
+}

@@ -15,6 +15,7 @@
 <a href="/spoc/dashboard" class="btn btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Console</a>
 <a href="/spoc/event/{{ ev.id }}/setup" class="btn btn-outline-primary"><i class="fas fa-pen" aria-hidden="true"></i> Edit</a>
 <a href="/certificates/events/{{ ev.id }}" class="btn btn-outline-primary"><i class="fas fa-award" aria-hidden="true"></i> Certificates</a>
+<a href="/naac/events/{{ ev.id }}/report" class="btn btn-outline-primary"><i class="fas fa-file-lines" aria-hidden="true"></i> NAAC report</a>
 {% if status in ('draft', 'published') %}
 <form method="POST" action="/spoc/event/{{ ev.id }}/publish" class="d-inline">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

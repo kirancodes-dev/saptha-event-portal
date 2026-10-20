@@ -1424,7 +1424,8 @@ def delete_room(room_id):
 # Super Admin through everywhere); these pages make it usable.
 # =========================================================
 ASSIGNABLE_ROLES = [('Student', 'Student / participant'), ('EventCoordinator', 'Event coordinator'),
-                    ('ClubSPOC', 'Club SPOC'), ('Judge', 'Judge'), ('SuperAdmin', 'Super Admin')]
+                    ('ClubSPOC', 'Club SPOC'), ('Judge', 'Judge'), ('IQACCoordinator', 'IQAC coordinator'),
+                    ('DepartmentAdmin', 'Department admin'), ('SuperAdmin', 'Super Admin')]
 SPOC_CATEGORIES = ('Technical', 'Cultural', 'Sports', 'Management', 'All')
 EVENT_STATUSES = ('draft', 'pending_approval', 'published', 'registration_open', 'registration_closed',
                   'in_progress', 'evaluation', 'active', 'completed', 'certified', 'cancelled', 'archived')

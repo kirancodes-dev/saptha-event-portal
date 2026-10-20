@@ -43,6 +43,9 @@
   {%- set links = [('/coordinator/dashboard', 'fa-th-large', 'Dashboard', 'dashboard'),
                    ('/coordinator/scanner', 'fa-qrcode', 'Scanner', 'scanner'),
                    ('/calendar', 'fa-calendar-alt', 'Calendar', 'calendar')] -%}
+{%- elif role in ('IQACCoordinator', 'DepartmentAdmin') -%}
+  {%- set links = [('/naac/', 'fa-file-lines', 'NAAC reports', 'naac'), ('/naac/report', 'fa-table', 'Report builder', 'naac_builder'),
+                   ('/events', 'fa-compass', 'Events', 'events')] -%}
 {%- elif role == 'Volunteer' -%}
   {%- set links = [('/coordinator/scanner', 'fa-qrcode', 'Scanner', 'scanner')] -%}
 {%- elif role == 'Judge' -%}

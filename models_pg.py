@@ -48,6 +48,8 @@ class UserRole(enum.Enum):
     EventOrganizer   = "EventOrganizer"
     EventCoordinator = "EventCoordinator"
     Volunteer        = "Volunteer"
+    IQACCoordinator  = "IQACCoordinator"    # NAAC reports, university-wide, read-only (UPG-144)
+    DepartmentAdmin  = "DepartmentAdmin"    # NAAC reports for their own department (UPG-144)
 
 
 class EventCategory(enum.Enum):

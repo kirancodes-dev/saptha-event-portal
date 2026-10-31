@@ -289,6 +289,8 @@ def view_ticket(reg_id):
     # A placement drive shows the student's current round and result (UPG-57)
     from services_placement import current_round, is_placement
     placement_status = current_round(event, reg) if is_placement(event) else None
+    from services_rounds import status_for   # a multi-round competition (UPG-149)
+    round_status = None if placement_status is not None else status_for(event, reg)
 
     return render_template(
         'participant/ticket.html',
@@ -299,6 +301,7 @@ def view_ticket(reg_id):
         show_qr=show_qr,
         event_date=event_date_str,
         placement_status=placement_status,
+        round_status=round_status,
     )
 
 

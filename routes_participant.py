@@ -107,6 +107,8 @@ def dashboard():
         r['final_rank']   = r.get('final_rank')
         r['final_score']  = r.get('final_score')
         r['ai_summary']   = r.get('ai_summary')   # Gemini performance summary
+        from services_rounds import status_for   # "Round 2 of 3" (UPG-149)
+        r['round_status'] = status_for(evt, r)
 
         # Certificate eligible: attended + event completed or certified
         r['cert_eligible'] = (

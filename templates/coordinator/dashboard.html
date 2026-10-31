@@ -294,15 +294,16 @@
                     </div>
                     <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="round" value="{{ event.active_round | default(1) }}">
                         <div class="modal-body p-4">
                             <div class="alert alert-warning border-warning bg-light text-center">
                                 <h6 class="fw-bold mb-1">
-                                    Current Active Round: {{ event.active_round | default(1) }}
+                                    Current Active Round: {{ event.active_round | default(1) }} of {{ [event.total_rounds | default(1) | int, event.active_round | default(1) | int] | max }}
                                 </h6>
                                 <small class="text-muted">
-                                    Teams at or above the cut-off advance to Round
+                                    Teams whose average judge score is at or above the cut-off advance to Round
                                     {{ (event.active_round | default(1)) + 1 }}.
-                                    Others are eliminated.
+                                    Others are eliminated. Every round's scores are kept.
                                 </small>
                             </div>
                             <div class="mb-3 mt-4">

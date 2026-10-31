@@ -1840,33 +1840,23 @@ def round_panel(event_id):
         flash("Not authorised.", "danger")
         return redirect('/spoc/dashboard')
 
-    cur_round      = event.get('active_round', 1)
+    import services_rounds   # the round, its teams and earlier rounds (UPG-149)
+    info           = services_rounds.round_info(event)
+    cur_round      = info['current']
     scoring_locked = event.get('scoring_locked', False)
 
-    regs_raw = list(db.collection('registrations')
-                    .where('event_id', '==', event_id).stream())
     leaderboard = []
-    for r in regs_raw:
-        d = r.to_dict() or {}
-        if d.get('is_eliminated'):
-            continue
-        if d.get('current_round', 1) != cur_round:
-            continue
-        scores_map = d.get('scores', {})
-        if scores_map:
-            avg = round(sum(float(s.get('total', 0)) for s in scores_map.values())
-                        / len(scores_map), 2)
-        else:
-            avg = None
+    for t in services_rounds.round_teams(db, event_id, event):
+        d = t['reg']
         leaderboard.append({
-            'id':            r.id,
-            'team_name':     d.get('team_name', d.get('lead_name', '—')),
+            'id':            t['id'],
+            'team_name':     d.get('team_name') or d.get('lead_name') or '—',
             'lead_name':     d.get('lead_name', '—'),
             'lead_email':    d.get('lead_email', ''),
             'assigned_room': d.get('assigned_room', '—'),
-            'score':         avg,
+            'score':         t['score'],
             'attendance':    d.get('attendance', 'Pending'),
-            'judge_count':   len(scores_map),
+            'judge_count':   t['judges'],
         })
 
     leaderboard.sort(key=lambda x: (-(x['score'] or -9999), x['team_name']))
@@ -1877,6 +1867,8 @@ def round_panel(event_id):
                            event=event,
                            leaderboard=leaderboard,
                            cur_round=cur_round,
+                           round_info=info,
+                           past_rounds=services_rounds.history(db, event_id),
                            scoring_locked=scoring_locked)
 
 
@@ -1914,80 +1906,22 @@ def advance_round(event_id):
         flash("Not authorised.", "danger")
         return redirect('/spoc/dashboard')
 
-    mode = request.form.get('mode', 'top_n')
-    try:
-        top_n = int(request.form.get('top_n', 0))
-    except (ValueError, TypeError):
-        top_n = 0
-    try:
-        cutoff = float(request.form.get('cutoff', 0))
-    except (ValueError, TypeError):
-        cutoff = 0.0
-
-    cur_round = event.get('active_round', 1)
-    nxt_round = cur_round + 1
-
-    regs_raw = list(db.collection('registrations')
-                    .where('event_id', '==', event_id).stream())
-    scored = []
-    for r in regs_raw:
-        d = r.to_dict() or {}
-        if d.get('is_eliminated') or d.get('current_round', 1) != cur_round:
-            continue
-        scores_map = d.get('scores', {})
-        if not scores_map:
-            continue
-        avg = round(sum(float(s.get('total', 0)) for s in scores_map.values())
-                    / len(scores_map), 2)
-        scored.append({'id': r.id, 'avg': avg, 'data': d})
-
-    scored.sort(key=lambda x: -x['avg'])
-
-    if mode == 'top_n' and top_n > 0:
-        advancers   = scored[:top_n]
-        eliminatees = scored[top_n:]
-    elif mode == 'cutoff' and cutoff > 0:
-        advancers   = [s for s in scored if float(s['avg']) >= cutoff]
-        eliminatees = [s for s in scored if float(s['avg']) < cutoff]
-    else:
-        flash("Please specify Top N or a score cutoff.", "warning")
+    # One rule for every round advance, kept history and all (UPG-149)
+    import services_rounds
+    result = services_rounds.advance(
+        db, event_id=event_id, event=event,
+        mode=request.form.get('mode', 'top_n'),
+        top_n=request.form.get('top_n', 0), cutoff=request.form.get('cutoff'),
+        expected_round=request.form.get('round'),
+        eliminate_unscored=request.form.get('eliminate_unscored') == 'yes',
+        actor=session.get('user_id', ''))
+    if not result['ok']:
+        flash(result['message'], "warning")
         return redirect(f'/spoc/round_panel/{event_id}')
-
-    from utils_email import send_advancement_email
-
-    promoted = eliminated = 0
-    for s in advancers:
-        db.collection('registrations').document(s['id']).update({
-            'current_round': nxt_round,
-            'scores':        {},
-            'assigned_room': None,
-        })
-        try:
-            d: dict = s['data']
-            send_advancement_email(
-                to_email=d.get('lead_email', ''),
-                name=d.get('lead_name', 'Participant'),
-                event_title=event.get('title', 'Event'),
-                next_round=nxt_round,
-            )
-        except Exception:
-            pass
-        promoted += 1
-
-    for s in eliminatees:
-        db.collection('registrations').document(s['id']).update({'is_eliminated': True})
-        eliminated += 1
-
-    db.collection('events').document(event_id).update({
-        'active_round':  nxt_round,
-        'scoring_locked': False,
-    })
-
     log_action(db, "ROUND_ADVANCED",
-               f"SPOC {session.get('user_id')} advanced event {event_id} "
-               f"to Round {nxt_round}: {promoted} promoted, {eliminated} eliminated")
-    flash(f"✅ Round {nxt_round} started! {promoted} advanced, {eliminated} eliminated. "
-          f"Advancement emails sent.", "success")
+               f"SPOC {session.get('user_id')} advanced event {event_id} to Round {result['round']}: "
+               f"{len(result['advanced'])} promoted, {len(result['eliminated'])} eliminated")
+    flash(result['message'], "success")
     return redirect(f'/spoc/round_panel/{event_id}')
 
 

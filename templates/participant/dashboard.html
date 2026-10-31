@@ -256,6 +256,11 @@
             {% if reg.assigned_room %}
               <span class="ticket-chip ticket-chip-room"><i class="fas fa-door-open"></i>Room {{ reg.assigned_room }}</span>
             {% endif %}
+
+            {% if reg.round_status %}{# multi-round events (UPG-149) #}
+              <span class="ticket-chip {{ 'ticket-chip-attended' if reg.round_status.tone == 'success' else 'ticket-chip-past' if reg.round_status.tone == 'muted' else 'ticket-chip-upcoming' }}" data-round-status>
+                <i class="fas fa-layer-group" aria-hidden="true"></i>{{ reg.round_status.label }}</span>
+            {% endif %}
           </div>
 
           <div class="d-flex flex-wrap align-items-start gap-4 mb-3">

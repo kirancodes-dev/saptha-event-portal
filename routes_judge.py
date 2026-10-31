@@ -207,6 +207,13 @@ def submit_score(reg_id):
             if request.is_json or 'json' in request.headers.get('Accept', ''):
                 return jsonify({'status': 'locked', 'message': 'Scoring is locked by the SPOC for this round.'}), 403
             return "locked", 403
+        from services_rounds import can_score   # only teams still in this round (UPG-149)
+        if not can_score(event_doc, reg_data):
+            message = "This team isn't in the current round, so it can't be scored."
+            if request.is_json or 'json' in request.headers.get('Accept', ''):
+                return jsonify({'status': 'error', 'message': message}), 409
+            flash(message, "warning")
+            return redirect(f'/judge/event/{event_id}'), 409
 
         norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
 
@@ -302,6 +309,10 @@ def score_inline(reg_id):
         if event_doc.get('scoring_locked'):
             return jsonify({'status': 'locked',
                             'message': 'Scoring is locked by the SPOC for this round.'}), 403
+        from services_rounds import can_score   # only teams still in this round (UPG-149)
+        if not can_score(event_doc, reg_data):
+            return jsonify({'status': 'error',
+                            'message': "This team isn't in the current round, so it can't be scored."}), 409
 
         norm_criteria = normalize_criteria(event_doc.get('judging_criteria'))
 

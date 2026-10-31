@@ -390,6 +390,12 @@
                                 <div class="value">{{ (placement_status[0] ~ ': ' ~ placement_status[1]|capitalize) if placement_status[0] else 'Registered' }}</div>
                             </div>
                             {% endif %}
+                            {% if round_status %}
+                            <div class="info-item" data-round-status>
+                                <div class="label">Round</div>
+                                <div class="value">{{ round_status.label }}</div>
+                            </div>
+                            {% endif %}
                             <div class="info-item">
                                 <div class="label">Team Name</div>
                                 <div class="value">{{ reg.get('team_name', 'Individual') }}

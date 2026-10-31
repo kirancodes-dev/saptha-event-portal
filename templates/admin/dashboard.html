@@ -830,10 +830,11 @@ async function approveAiProposal() {
       </div>
       <form action="/coordinator/promote_round/{{ event.id }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="round" value="{{ event.active_round|default(1) }}">
         <div class="modal-body p-4">
           <div class="alert alert-warning text-center">
             <strong>Current Round: {{ event.active_round|default(1) }}</strong><br>
-            <small>Teams at or above the cut-off advance to Round {{ (event.active_round|default(1)) + 1 }}.</small>
+            <small>Teams whose average judge score is at or above the cut-off advance to Round {{ (event.active_round|default(1)) + 1 }}.</small>
           </div>
           <label class="form-label text-danger">Cut-off Score</label>
           <input aria-label="Cut-off Score" type="number" step="0.1" name="cutoff_score" class="form-control form-control-lg text-center fw-bold border-danger" placeholder="e.g. 75" required>

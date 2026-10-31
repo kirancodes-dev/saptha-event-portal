@@ -354,35 +354,26 @@ def trigger_reminders(event_id):
 @login_required
 @role_required(COORD_ROLES)
 def promote_round(event_id):
-    _event_or_abort(event_id, 'publish_results')
+    event_d = _event_or_abort(event_id, 'publish_results')
     try:
-        cutoff    = float(request.form.get('cutoff_score', 0))
-        event_ref = db.collection('events').document(event_id)
-        event_d   = event_ref.get().to_dict()
-        cur_round = event_d.get('active_round', 1)
-        nxt_round = cur_round + 1
-        promoted = eliminated = 0
-        for reg in (db.collection('registrations')
-                      .where(filter=_ff('event_id', '==', event_id)).stream()):
-            rd = reg.to_dict()
-            if rd.get('is_eliminated'): continue
-            scores = rd.get('scores', {})
-            total  = sum(safe_int(s.get('total', 0)) for s in scores.values())
-            rr     = db.collection('registrations').document(reg.id)
-            if total >= cutoff:
-                rr.update({'current_round': nxt_round, 'scores': firestore.DELETE_FIELD,
-                            'assigned_room': None, 'assigned_judge_email': None,
-                            'assigned_judge_name': None})
-                promoted += 1
-            else:
-                rr.update({'is_eliminated': True})
-                eliminated += 1
-                _wa(send_elimination_whatsapp, _phone(rd), rd.get('lead_name', ''),
-                    event_d.get('title', 'Event'), cur_round)
-        event_ref.update({'active_round': nxt_round})
+        # The SPOC panel's rule: the average judge score, history kept (UPG-149)
+        import services_rounds
+        result = services_rounds.advance(
+            db, event_id=event_id, event=event_d, mode='cutoff',
+            cutoff=request.form.get('cutoff_score'), expected_round=request.form.get('round'),
+            eliminate_unscored=request.form.get('eliminate_unscored') == 'yes',
+            actor=session.get('user_id', ''))
+        if not result['ok']:
+            flash(result['message'], "warning")
+            return redirect('/coordinator/dashboard')
+        for t in result['eliminated']:
+            rd = t['reg']
+            _wa(send_elimination_whatsapp, _phone(rd), rd.get('lead_name', ''),
+                event_d.get('title', 'Event'), result['round'] - 1)
         log_action(db, "ROUND_PROMOTED",
-                   f"Event {event_id}: {promoted} promoted, {eliminated} eliminated. Cutoff={cutoff}")
-        flash(f"Round {nxt_round}: {promoted} advanced, {eliminated} eliminated.", "success")
+                   f"Event {event_id}: {len(result['advanced'])} promoted, {len(result['eliminated'])} "
+                   f"eliminated. Cutoff={request.form.get('cutoff_score')}")
+        flash(result['message'], "success")
     except Exception as exc:
         flash(f"Promotion error: {exc}", "danger")
     return redirect('/coordinator/dashboard')

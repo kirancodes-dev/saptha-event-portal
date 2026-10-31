@@ -1056,6 +1056,23 @@ def send_advancement_email(to_email: str, name: str, event_title: str,
     return _send(to_email, f"🎉 You advanced to Round {next_round}! — {event_title}", html)
 
 
+def send_round_not_qualified_email(to_email: str, name: str, event_title: str,
+                                   round_num: int, absent: bool = False) -> bool:
+    """A team that doesn't go on after a round (UPG-149)."""
+    reason = ("Your team wasn't marked present in this round, so it can't go on."
+              if absent else "Your team's score in this round didn't reach the qualifying mark.")
+    html = _html_wrapper(f"""
+        <p style="color:#475569;">Dear <strong>{_e(name)}</strong>,</p>
+        <p style="color:#475569;">Thank you for taking part in
+           <strong style="color:#1a2557;">{_e(event_title)}</strong>.
+           Round {_e(round_num)} is over, and your team hasn't qualified for the next round.</p>
+        <p style="color:#475569;font-size:13px;">{_e(reason)}</p>
+        <p style="color:#475569;font-size:13px;">Your participation still counts: it stays on your
+           dashboard, and certificates follow the event's rules.</p>
+    """, f"Round {_e(round_num)} result — {_e(event_title)}")
+    return _send(to_email, f"Round {round_num} result — {event_title}", html)
+
+
 # Alias used by utils_certificate.py
 def _get_mail():
     return None

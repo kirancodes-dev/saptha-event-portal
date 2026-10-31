@@ -187,6 +187,9 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | UPG-146 | Reach beyond one campus: open events, external students, share cards, listing kit, "Powered by" | DONE | Campus-only or open events, a public open-events page, external registrations, share cards with valid schema.org, a listing kit (no site offers an API) and a switchable "Powered by" line. |
 | UPG-147 | WhatsApp notifications through the official API, with opt-in, once-only sends and a monthly cap | DONE | WhatsApp via Meta Cloud API or Twilio, off by default: opt-in, once-only template messages, STOP replies, outbox retries and a monthly cap. |
 | UPG-148 | The registration confirmation hides text under the pinned footer on a phone | DONE | The confirmation page for a new account no longer pins its footer over the set-password box on a phone. |
+| UPG-149 | Multi-round competitions (hackathons with 2–3 rounds) end to end | DONE | One round service for the SPOC panel and the coordinator: round history kept, "Round X of N" and a final round, no stranded or double-advanced teams, ties go through, every team emailed, judges limited to the current round, students see their status. |
+| UPG-150 | The registration form as a full-page, official form | DONE | A full-width form beside a sticky event summary, in numbered sections (participant, details, team, declaration), with underlined fields instead of boxes. |
+| UPG-151 | Writing an empty `scores` map keeps the old scores (postgres mode) | TODO | Found building UPG-149. `update({'scores': {}})` deletes no Score rows in the SQL adapter (Firestore would empty the map); only `DELETE_FIELD` clears them. |
 
 ## Open items
 
@@ -239,6 +242,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; criterion 4 (the owner's checkout with Razorpay test keys) goes on Part 3's go-live checklist.
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still IN PROGRESS; `routes_payment.py` unchanged since UPG-115. Criterion 4 is the owner's Test Mode checkout and refund (go-live checklist).
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still IN PROGRESS; `routes_payment.py` untouched by the certificate work. Criterion 4 is the owner's Test Mode checkout and refund.
+- **Re-verified 2026-10-31 (rule 8, after UPG-149 and UPG-150, on `f6fcf99`):** still IN PROGRESS. `routes_payment.py`, `services_payments.py` and `routes_admin.py` are unchanged; `routes_ticket.py` changed only in `view_ticket` (the round status), so check-in's refusal of refunded and cancelled tickets is as cited; the admin dashboard changed only in the promote modal. Criterion 4 is the owner's Test Mode checkout and refund.
 
 #### BLK-01 — Admin credentials and a user database are in the public GitHub history
 - **Status:** IN PROGRESS. Only GitHub Support's removal of the PR refs is left (criterion 0); nothing else waits on it.
@@ -297,6 +301,7 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** unchanged; only GitHub Support's removal of the PR refs is left (owner).
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still IN PROGRESS; nothing in the code changes it. Only GitHub Support's removal of the old pull-request refs is left (owner; on the go-live checklist).
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still IN PROGRESS; only GitHub Support's removal of the old pull-request refs is left (owner).
+- **Re-verified 2026-10-31 (rule 8, after UPG-149 and UPG-150, on `f6fcf99`):** still IN PROGRESS; nothing in this change touches it. Only GitHub Support's removal of the old pull-request refs is left (owner).
 
 #### UPG-102 — 1,044 Pyrefly type errors across the app
 - **Status:** TODO
@@ -313,6 +318,18 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 - **Re-verified 2026-10-19 (rule 8, end of Part 2):** `pyrefly check` now reports 1,058 errors (1 suppressed), up from 1,044; the new code and tests since added the difference. Still TODO.
 - **Re-verified 2026-10-19 (rule 8, end of Part 3, at `221cef3`):** still TODO. `pyrefly check` now reports 1,081 errors (1,044 when written): 7 are in the new certificate code (`certificate_pdf.py:172`, `services_certificates.py:402`, `services_signatories.py:53-67`), all of the noise kinds above (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`); the rest come from Parts 2–3.
 - **Re-verified 2026-10-19 (rule 8, end of the certificate phase, at `71c2f09`):** still TODO. `pyrefly check` reports 1,119 errors (1,081 at the end of Part 3). The certificate code adds 9, all of the known noise kinds (PIL's `load()` typed as optional, qrcode's image factory, SQLAlchemy's `Result.rowcount`, a lookup that can't be `None` after an update in `services_certificate_changes.revoke`); the one real finding (the fallback limiter without `shared_limit`) is fixed as a UPG-126 follow-up. `routes_coordinator.py` stays at 0 (`tests/test_type_check_config.py`).
+- **Re-verified 2026-10-20 (end of the NAAC / reach / WhatsApp run, at `3a8fb29`):** still TODO; `pyrefly check` reports 1,139 errors (1,119 before this run), the new ones in the new modules and of the known noise kinds; `routes_coordinator.py` stays at 0.
+- **Re-verified 2026-10-31 (rule 8, after UPG-149 and UPG-150, on `f6fcf99`):** still TODO. `pyrefly check` reports 1,136 errors (1,139 before); the new `services_rounds.py` has 0, `routes_coordinator.py` stays at 0, and the new `routes_forms` helpers add none (its 13 are the known optional-import and placement noise).
+
+#### UPG-151 — Writing an empty `scores` map keeps the old scores (postgres mode)
+- **Status:** TODO
+- **Last verified:** 2026-10-31, commit `f6fcf99` [R, found by `tests/test_multi_round.py` while building UPG-149]
+- **Problem:** In the SQL adapter, a registration's judge scores live in their own `Score` table. `update({'scores': {...}})` adds or changes one row per judge in the map (`db_adapter.py:1530-1532`), so `update({'scores': {}})` deletes nothing; only `firestore.DELETE_FIELD` clears the rows. Firestore would replace the map with an empty one. The round panel's old advance relied on `{}` (`routes_spoc.py:1962` at `f6fcf99`), so in postgres mode round 1's scores were still counted in round 2. UPG-149 now uses `DELETE_FIELD` (`services_rounds.py:193`). No other code writes an empty map to an existing registration: `demo_reset.py:630` writes `{}` only when it creates a new one. Any future "reset the scores" code would hit the same trap.
+- **What to build:** in the registrations update path, treat `scores: {}` (an empty map) as "replace with nothing": delete the registration's `Score` rows, the same as `DELETE_FIELD`. Keep merging a non-empty map judge by judge, as today, since judges' scores are written one judge at a time.
+- **Effort:** S · **Depends on:** none · **Risk:** low; an empty map then means "no scores" in both backends.
+- **Acceptance criteria:**
+  1. Test (real database layer): a registration with two judges' scores, updated with `scores: {}`, reads back with no scores and leaves no `Score` rows.
+  2. Test: updating with one judge's scores still keeps the other judge's.
 
 ## Open decisions
 
@@ -329,10 +346,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 
 | Date | Commit | Item ID | What changed |
 |---|---|---|---|
-- **Re-verified 2026-10-20 (end of the NAAC / reach / WhatsApp run, at `3a8fb29`):** still TODO; `pyrefly check` reports 1,139 errors (1,119 before this run), the new ones in the new modules and of the known noise kinds; `routes_coordinator.py` stays at 0.
-| 2026-10-19 | "UPG-129: …" (parent `3396622`) | UPG-129 | The certificate permissions tested for 8 roles (owner, another SPOC, the event's coordinator, judge and volunteer, a student, Super Admin, and an EventOrganizer on that event only): only the owner, Super Admin and the holder of `issue_certificates` issue, revoke or approve; students download only their own. No code change needed. |
-| 2026-10-19 | "UPG-137: …" (parent `27d081f`) | UPG-137 | UPG-112's "two certificate stores": API v1 issues into and verifies from the web's `certificates` table (older API IDs still verify); a SPOC token can now issue (its role was missing from the list), with the per-event permission check. |
-| 2026-10-19 | "UPG-138: …" (parent `161d0a8`) | UPG-138 | One issuing path again: end-event, the bulk button and the queued task start runs of the new issuing; the old `issue_event_certificates` is retired; registrations keep their certificate number and link; the participant's certificate page links the new certificate and still opens older ones. UPG-06's tests moved check by check (winners now from published results, per the brief). |
 | 2026-10-19 | "UPG-124 follow-up: ..." (parent `3456f1a`) | UPG-124 | Final headless pass of issuing: the organiser signs, issues 31 certificates and opens the list in the browser, measured at 375px and 1280px with no problem found (the student's download and the verification page were measured with UPG-125). |
 | 2026-10-19 | "UPG-126 follow-up: ..." (parent `34d69ac`) | UPG-126 | Pyrefly found that the fallback limiter (no flask-limiter installed) lacked `shared_limit`, which the verification routes use; added, with a test. |
 | 2026-10-19 | "docs: ..." (parent `71c2f09`) | ALL open (re-verification at the end of the certificate phase) | **Rule 8 re-verification of the 4 open items at `71c2f09`** (BLK-01, UPG-30, UPG-102, UPG-117); none changed status. Every certificate item, UPG-122 to UPG-141, is DONE. |
@@ -350,3 +363,6 @@ The source of truth for planned work: work on one item ID at a time (`AGENTS.md`
 | 2026-10-20 | "UPG-147: …" (parent `dc3987b`) | UPG-147 | WhatsApp via Meta Cloud API or Twilio, off until configured: opt-in (checkbox, profile, UPG-49 preferences), STOP via signed webhooks, four once-only template messages through the outbox, a monthly cap with an admin alert. 6 tests; UPG-49 tests unchanged. |
 | 2026-10-20 | "UPG-148: …" (parent `e4c0012`) | UPG-148 | The confirmation page for a new account no longer hides its set-password box under the pinned footer on a phone; found by the end-of-run browser pass, which now covers the IQAC report, impact dashboard, open events and an external registration. |
 | 2026-10-20 | "docs: ..." (parent `3a8fb29`) | ALL | **End of run:** full pytest at `e4c0012`: SQLite 1,296 passed, 7 skipped; PostgreSQL 1,303 passed; ruff and bandit clean; browser pass of the IQAC report, impact dashboard, open events and an external registration at 375/1280 (found UPG-148, fixed). |
+| 2026-10-31 | "UPG-149: …" (parent `f6fcf99`) | UPG-149 | Multi-round competitions: one round service for the SPOC panel and the coordinator; round history kept, "Round X of N" with a final round, no stranded or double-advanced teams, ties at top N go through, cut-off on the average, one result email per person, judges limited to the current round, students see their round. 9 tests. |
+| 2026-10-31 | "UPG-150: …" (parent `820a5ce`) | UPG-150 | The registration form is a full-page form beside a sticky event summary, in numbered sections, with underlined fields; each team member has a block of their own (owner's review). 10 tests, headless at 1280 and 375. |
+| 2026-10-31 | "docs: …" (parent `9130692`) | UPG-149, UPG-150, UPG-151, ALL open | Both items DONE and archived. **New item UPG-151** (found building UPG-149): an empty `scores` map keeps the old scores in postgres mode. Rule 8 re-check of UPG-30, BLK-01 and UPG-102: none changed status; pyrefly 1,136. Full pytest at `9130692`: SQLite 1,316 passed, 7 skipped; PostgreSQL 16 1,322 passed + the backup test (needs a plain `postgresql://` URL); ruff clean. |

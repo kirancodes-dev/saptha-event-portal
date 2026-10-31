@@ -181,6 +181,65 @@ def team_fields(event: dict, existing_ids=()) -> list:
     return fields
 
 
+# The questions that say who someone is; they open the form (UPG-150)
+IDENTITY_FIELD_IDS = frozenset((
+    'full_name', 'name', 'lead_name', 'email', 'phone', 'whatsapp', 'usn', 'roll_no', 'roll_number',
+    'department', 'dept', 'branch', 'year', 'semester', 'section', 'gender', 'college',
+))
+
+
+def form_sections(fields) -> dict:
+    """The form's fields in the page's sections: {'participant', 'details', 'team'}.
+    A heading, paragraph or divider goes with the field after it, so a builder
+    heading stays above the questions it introduces."""
+    groups: dict = {'participant': [], 'details': [], 'team': []}
+    pending: list = []
+    for f in fields or []:
+        if f.get('id') == 'team_members':   # team_fields' own heading always belongs to the team
+            groups['team'].append(f)
+            continue
+        if f.get('type') in LAYOUT_TYPES:
+            pending.append(f)
+            continue
+        fid = str(f.get('id') or '')
+        if fid == 'team_name' or fid.startswith('member_'):
+            key = 'team'
+        elif fid in IDENTITY_FIELD_IDS:
+            key = 'participant'
+        else:
+            key = 'details'
+        groups[key] += pending + [f]
+        pending = []
+    groups['details'] += pending
+    return groups
+
+
+_MEMBER_FIELD = re.compile(r'^member_(\d+)_')
+
+
+def team_blocks(team) -> dict:
+    """The team section for the page: {'general': the team name and headings,
+    'members': [{'n', 'required', 'fields'}]}, one block per member, so one
+    member's fields never sit beside another's. `n` is the number people see
+    (member_1_* is "Member 2"; the lead is member 1); inside a block the label
+    drops the "Member N " the block's title already says."""
+    general: list = []
+    members: dict = {}
+    for f in team or []:
+        m = _MEMBER_FIELD.match(str(f.get('id') or ''))
+        if not m or f.get('type') in LAYOUT_TYPES:
+            general.append(f)
+            continue
+        n = int(m.group(1)) + 1
+        label = str(f.get('label') or '')
+        prefix = f'Member {n} '
+        short = label[len(prefix):] if label.startswith(prefix) and len(label) > len(prefix) else label
+        block = members.setdefault(n, {'n': n, 'required': False, 'fields': []})
+        block['fields'].append({**f, 'label': short[:1].upper() + short[1:]})
+        block['required'] = block['required'] or bool(f.get('required'))
+    return {'general': general, 'members': [members[n] for n in sorted(members)]}
+
+
 def registration_schema(event_id: str, event: dict) -> dict:
     """The form a registrant fills: the event's form (or the default one)
     plus the team fields its limits call for."""
@@ -527,6 +586,9 @@ def registration_page(event_id):
         back_url=back_url,
         event=event,
         schema=schema,
+        sections=(sections := form_sections(schema.get('fields'))),   # the full-page layout (UPG-150)
+        team_blocks=team_blocks(sections['team']),                    # one block per member
+        team_size=team_limits(event),
         is_registered=is_registered,
         is_waitlist=is_waitlist,
         values=state.get('values') or {},

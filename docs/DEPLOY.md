@@ -88,6 +88,16 @@ Also set: `SUPPORT_EMAIL` (shown on the privacy, terms and payment-failed pages)
 certificate settings (see "Certificates"), and the optional features in
 `.env.example` (all off by default).
 
+**Daily email limit (UPG-152).** `EMAIL_DAILY_LIMIT` (default 450) caps the emails the
+app sends in a UTC day, every kind and every instance together, one per recipient;
+at the limit it sends nothing and tells people to contact the organizer. Set it below
+your provider's quota: about 270 on Brevo's free plan (300 a day), 450 on Gmail
+(500), 1,800 on Google Workspace (2,000). `NOTIFY_TEAM_MEMBERS=true` also emails every team
+member (off: the lead only). `PARTICIPANT_RESET_LIMIT` (1) and
+`PARTICIPANT_RESET_WINDOW_HOURS` (48) limit a registration account's reset emails.
+`/diag/email` shows today's count. The limit's table comes from migration
+`0010_email_quota`.
+
 ## Database migrations
 
 The schema is built and changed only by Alembic migrations (`migrations/versions/`).
@@ -523,6 +533,127 @@ record the results in `docs/FEATURE_REVIEW.md` (UPG-32 has the first run's).
    checks on every test run where Chromium is installed.
 9. **Container:** `docker compose up --build` starts the app, worker and
    database (Cloud Build builds the same `Dockerfile` on deploy).
+
+## Hackathon release (UPG-199)
+
+The release with the hackathon portal (UPG-190 to UPG-198) and the work before it
+(UPG-152 to UPG-162). Do the steps in order; each one says what you should see.
+Run them in **Cloud Shell** (console.cloud.google.com, the `>_` button): gcloud on
+the Mac is refused for this project.
+
+**0. Before you start (on the Mac).** All the work must be committed and pushed to
+`production-ready`, because Cloud Shell builds from GitHub, not from your Mac. The
+full test suite passes on SQLite and PostgreSQL (`docs/FEATURE_REVIEW.md`, UPG-198).
+Pick a quiet hour: the deploy itself takes about 15 minutes.
+
+**1. Get the code and note today's revision (your way back).**
+
+```bash
+PROJECT=saptha-event-261017; REGION=asia-south1
+gcloud config set project "$PROJECT"
+rm -rf saptha && git clone --branch production-ready https://github.com/kirancodes-dev/saptha-event-portal.git saptha && cd saptha
+git log -1 --oneline                       # the commit you meant to release
+OLD=$(gcloud run services describe saptha --region "$REGION" --format='value(status.latestReadyRevisionName)')
+echo "Rollback revision: $OLD"             # write this down
+```
+
+**2. Back up the database** (a manual backup, kept until you delete it):
+
+```bash
+SQL=$(gcloud run services describe saptha --region "$REGION" \
+  --format='value(spec.template.metadata.annotations."run.googleapis.com/cloudsql-instances")')
+gcloud sql backups create --instance="${SQL##*:}"
+```
+
+**3. Build the image.**
+
+```bash
+IMAGE="$REGION-docker.pkg.dev/$PROJECT/saptha/web:$(git rev-parse --short HEAD)"
+gcloud builds submit --tag "$IMAGE"        # ends with STATUS: SUCCESS
+```
+
+**4. Migrate the database before the new code serves.** The `saptha-migrate` job
+already exists; point it at the new image and run it. It applies every migration the
+database hasn't had yet: `0009_naac_roles` (if it isn't there already) and
+`0010_email_quota` to `0014_source_visits`. They only add tables and a role value,
+so the running (old) revision keeps working on the new schema.
+
+```bash
+gcloud run jobs update saptha-migrate --image "$IMAGE" --region "$REGION"
+gcloud run jobs execute saptha-migrate --region "$REGION" --wait     # must end "successfully completed"
+```
+
+If it fails, stop here: nothing has changed for users. Read the job's log
+(`gcloud run jobs executions list --job saptha-migrate --region "$REGION"`, then the
+link it prints) and send the error (never a password or key) for a fix.
+
+**5. Settings.** Three things, checked or added once:
+
+- **Gemini key (AI scoring, UPG-192).** Make a key at aistudio.google.com (API keys),
+  then store it as a secret. Paste it only into this command, never into a chat,
+  email or report:
+
+  ```bash
+  read -rs GEMINI && printf '%s' "$GEMINI" | gcloud secrets create GEMINI_API_KEY --data-file=- && unset GEMINI
+  ```
+
+  Without it the app still works: the SPOC's page says AI scoring is off and the
+  SPOC ranks by hand. Each AI-scored submission is one call (at most 500 per event).
+- **Daily email limit (UPG-152).** `EMAIL_DAILY_LIMIT` below your mail provider's
+  daily quota: 270 on Brevo's free plan, 450 on Gmail, 1,800 on Google Workspace.
+- **Private files in the bucket.** Problem statement PDFs and team submissions are
+  private files; in production they must go to Cloud Storage (the app refuses local
+  storage). Check the service already has `STORAGE_TYPE=gcs` and `GCS_BUCKET_NAME`,
+  and that the bucket uses fine-grained access (see "Uploads and private file links"):
+
+  ```bash
+  gcloud run services describe saptha --region "$REGION" --format=yaml | grep -A1 -E 'STORAGE_TYPE|GCS_BUCKET_NAME'
+  gcloud storage buckets describe gs://saptha-event-261017-uploads | grep -i uniform   # must say false
+  ```
+
+**6. Deploy.** `--update-…` adds to the service's settings and keeps the rest
+(`--set-env-vars` or `--set-secrets` here would **remove** every other setting):
+
+```bash
+gcloud run deploy saptha --image "$IMAGE" --region "$REGION" \
+  --update-env-vars=EMAIL_DAILY_LIMIT=270 \
+  --update-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest
+gcloud run services describe saptha --region "$REGION" --format='value(status.latestReadyRevisionName)'   # the new revision
+```
+
+Leave out `--update-secrets` if you skipped the Gemini key. If the revision fails to
+start, Cloud Run keeps serving the old one; the log names the problem.
+
+**7. Smoke checks (about 15 minutes).** On a phone and a laptop:
+
+1. `https://<service URL>/health/ready` answers `{"ready": true}`.
+2. The login page lists Admin, SPOC, Event coordinator, Judge and Student and
+   nothing else, on an **iPhone (Safari)** too (UPG-198's hand check, UPG-204).
+   The home page has no "Sparky" chat button (UPG-205).
+3. As a SPOC, create a test hackathon (event type Hackathon, a WhatsApp group link),
+   open its hackathon page, add one problem statement released now and one 10
+   minutes ahead, and a submission form that opens now and closes in 30 minutes.
+4. Register a test team from a private browser window with an address you can read:
+   exactly **one** email arrives, with the WhatsApp link and the portal link.
+5. Log in as that lead: the team page shows the stages, the countdown and the first
+   problem; 10 minutes later the second appears without anyone pressing anything.
+   Submit with a small PDF (this proves private storage), then open the PDF.
+6. As the SPOC, extend the deadline by 15 minutes: the team page shows the new time.
+   After it closes, press "Start AI scoring": the submission gets a score (this
+   proves the Gemini key). Shortlist it, then undo the shortlist.
+7. As Super Admin, `/diag/email` shows today's email count.
+8. Cancel or delete the test event (SPOC dashboard) so students don't see it.
+
+**8. If something is wrong: roll back.** Send all traffic to the revision from step 1
+(takes seconds; the database stays as it is, which the old revision can use):
+
+```bash
+gcloud run services update-traffic saptha --region "$REGION" --to-revisions="$OLD"=100
+```
+
+**9. Afterwards.** Send the new revision name and the commit to record in
+`docs/FEATURE_REVIEW.md` (UPG-199). Keep the step 2 backup until the first real
+hackathon is over.
 
 ## Go-live checklist (what only the owner can do)
 
